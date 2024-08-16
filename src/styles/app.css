@@ -1,0 +1,114 @@
+/* @import url(babylonjs.css);
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* 颜色署名 */
+  :root {
+    --white: 255 255 255;
+    --grey: 55 55 55;
+    --black: 0 0 0;
+    --brown: 47 26 73;
+    --navyBlue: 105 145 214;
+    --greenBlue: 149 207 213;
+    --yellow: 255 166 60;
+    --orange: 253 126 80;
+
+    --water: 0 140 229;
+    --fire: 233 62 38;
+    --earth: 255 151 54;
+    --wind: 0 143 84;
+    --light: 248 193 56;
+    --dark: 141 56 240;
+  }
+
+  :root {
+    color: rgb(var(--accent));
+    background-color: rgb(var(--primary));
+  }
+
+  .light {
+    --accent: var(--brown);
+    --primary: var(--white);
+    --transition: var(--navyBlue);
+    --brand-1st: var(--greenBlue);
+    --brand-2nd: var(--yellow);
+    --brand-3rd: var(--orange);
+  }
+
+  .dark {
+    --accent: var(--white);
+    --primary: var(--grey);
+    --transition: var(--white);
+    --brand-1st: var(--greenBlue);
+    --brand-2nd: var(--yellow);
+    --brand-3rd: var(--orange);
+  }
+}
+
+* {
+  transition: all 150ms;
+  outline-width: 0.5px;
+  outline-color: rgba(105, 145, 214, 0);
+  outline-style: solid;
+}
+
+*:focus {
+  outline-width: 1.5px;
+  outline-color: rgba(105, 145, 214, 0.7);
+}
+
+.Nav * {
+  outline: none;
+}
+
+.ModuleContent::-webkit-scrollbar {
+  display: none;
+}
+
+
+@keyframes loading {
+  from {
+    left: 0;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+/* Loading组件的动画参数 */
+.Loading .dot1 {
+  animation: loading 4s infinite;
+}
+.Loading .dot2 {
+  animation: loading 4s 1s infinite;
+}
+.Loading .dot3 {
+  animation: loading 4s 2s infinite;
+}
+
+/* index的图片背景 */
+.BG {
+  opacity: 0;
+}
+
+.dark .BG {
+  opacity: 1;
+}
+
+.BGMask {
+  content: "";
+  z-index: -9;
+}
+
+.light .BGMask {
+  background-color: rgba(255, 255, 255, 0.3);
+  background-blend-mode: multiply;
+}
+
+.dark .BGMask {
+  background-color: rgba(0, 0, 0, 0.7);
+  background-blend-mode: multiply;
+}

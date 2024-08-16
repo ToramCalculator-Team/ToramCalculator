@@ -1,0 +1,29 @@
+version: "3.3"
+name: "toram-calculator"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PG_DBNAME}
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+    ports:
+      - ${PG_PORT}:5432
+    tmpfs:
+      - /var/lib/postgresql/data
+      - /tmp
+    command:
+      - -c
+      - listen_addresses=*
+      - -c
+      - wal_level=logical
+
+  electric:
+    image: electricsql/electric
+    environment:
+      DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:5432/${PG_DBNAME}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres

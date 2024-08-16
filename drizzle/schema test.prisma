@@ -1,0 +1,34 @@
+// 由于drizzle本身的schema可读性较差，因此使用prisma的schema来构建数据库模型。
+// 此模型将用于生成drizzle的schema。
+datasource db {
+    provider = "postgresql"
+    url      = env("PG_URL")
+}
+
+generator drizzle {
+    provider = "drizzle-prisma-generator"
+    output   = "./" // 输出目录（相对此文件）
+}
+
+enum UserRole {
+    USER
+    ADMIN
+}
+
+model User {
+    id       String   @id
+    name     String
+    userRole UserRole
+    posts    Post[]
+}
+
+model Post {
+    id          String   @id
+    name        String
+    createdAt   DateTime
+    updatedAt   DateTime @updatedAt
+    createdBy   User     @relation(fields: [createdById], references: [id])
+    createdById String
+
+    @@index([name])
+}
