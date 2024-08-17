@@ -1,4 +1,3 @@
-"use client";
 import { getDictionary } from "~/i18n";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
