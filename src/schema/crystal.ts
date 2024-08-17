@@ -36,7 +36,7 @@ export const InsertCrystalSchema = createInsertSchema(Crystal).extend({
 
 export const defaultSelectCrystal: SelectCrystal = {
   id: "",
-  name: "",
+  name: "defaultSelectCrystal",
   crystalType: "GENERAL",
   front: 0,
   modifiersList: defaultSelectModifiersList,
@@ -69,6 +69,18 @@ export const defaultInsertCrystal: InsertCrystal = {
 };
 
 export const testCrystalQueryData: SelectCrystal[] = [
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
+  defaultSelectCrystal,
   defaultSelectCrystal,
   defaultSelectCrystal,
   defaultSelectCrystal,

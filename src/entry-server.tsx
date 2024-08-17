@@ -30,7 +30,7 @@ export default createHandler(() => (
           <meta name="twitter:title" content={APP_DEFAULT_TITLE} />
           <meta name="twitter:description" content={APP_DESCRIPTION} />
           <link rel="manifest" href="/manifest.json" />
-          <meta name="baidu-site-verification" content={env.BAIDU_HTML_LABEL} />
+          {/* <meta name="baidu-site-verification" content={env.BAIDU_HTML_LABEL} /> */}
           {assets}
         </head>
         <body>
@@ -38,7 +38,7 @@ export default createHandler(() => (
             {children}
           </div>
           {scripts}
-          <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script>
+          {/* <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script> */}
         </body>
       </html>
     )}

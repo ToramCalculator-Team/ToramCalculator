@@ -121,6 +121,21 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
       },
+      keyframes: {
+        "up": {
+          "0%": {
+            transform: "translateY(20px)",
+            opacity: "0",
+          },
+          "100%": {
+            transform: "translateY(0px)",
+            opacity: "1",
+          },
+        }
+      },
+      animation: {
+        "up": "up 0.3s ease-in-out forwards",
+      },
     },
   },
   plugins: [typography],

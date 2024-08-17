@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { getDictionary } from "~/i18n";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
@@ -50,8 +50,6 @@ export default function Home() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
-
-  const [isPC, setIsPC] = createSignal(true);
 
   // 搜索函数
   const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId"];
@@ -204,26 +202,14 @@ export default function Home() {
       history.replaceState(null, "", location.href);
     };
 
-    // 媒体查询
-    const mediaQuery = window.matchMedia("(max-width: 1024px)");
-
-    const handleMediaQueryChange = (e: MediaQueryListEvent) => {
-      setIsPC(!e.matches);
-    };
-
-    // 设置初始状态
-    setIsPC(!mediaQuery.matches);
-
     // 监听绑带与清除
     document.addEventListener("keydown", handleEnterKeyPress);
     document.addEventListener("keydown", handleEscapeKeyPress);
-    mediaQuery.addEventListener("change", handleMediaQueryChange);
     window.addEventListener("popstate", handlePopState);
 
     onCleanup(() => {
       document.removeEventListener("keydown", handleEnterKeyPress);
       document.removeEventListener("keydown", handleEscapeKeyPress);
-      mediaQuery.removeEventListener("change", handleMediaQueryChange);
       window.removeEventListener("popstate", handlePopState);
     });
   });
@@ -234,50 +220,58 @@ export default function Home() {
       <RandomBallBackground />
       <Motion.div
         initial={false}
-        animate={resultDialogOpened() ? "open" : "closed"}
+        // animate={resultDialogOpened() ? "open" : "closed"}
         class={`Client flex max-h-[100dvh] max-w-[100dvw] flex-1 flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}
       >
-        <Motion.div class="QueryStarus fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
-          <Motion.span>MonsterList: ...</Motion.span>
-          <Motion.span>SkillList: ...</Motion.span>
-          <Motion.span>CrystalList:...</Motion.span>
+        <Motion.div class="QueryStarus fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex pointer-events-none">
+          <Motion.span>MonsterList: 测试数据</Motion.span>
+          <Motion.span>SkillList: 测试数据</Motion.span>
+          <Motion.span>CrystalList: 测试数据</Motion.span>
         </Motion.div>
         <Motion.div
           initial={false}
-          class={`Top flex flex-col items-center justify-center lg:px-0`}
-          animate={resultDialogOpened() ? "open" : "closed"}
-          variants={{
-            open: {
-              flex: "0 0 auto",
-              padding: isPC() ? "0rem" : "0.75rem",
-              paddingTop: isPC() ? "0rem" : "0.75rem",
-              paddingBottom: "0.75rem",
-            },
-            closed: {
-              flex: "1 1 0%",
-              padding: "1.5rem",
-              paddingTop: isPC() ? "5rem" : "1.5rem",
-              paddingBottom: "1.5rem",
-            },
-          }}
+          class={`Top flex flex-col items-center justify-center lg:px-0 ${
+            resultDialogOpened()
+              ? `p-3 lg:p-0 lg:pb-3`
+              : `flex-1 p-6 pb-6 pt-6 lg:pt-20`
+          }`}
+          // animate={resultDialogOpened() ? "open" : "closed"}
+          // variants={{
+          //   open: {
+          //     flex: "0 0 auto",
+          //     padding: isPC() ? "0rem" : "0.75rem",
+          //     paddingTop: isPC() ? "0rem" : "0.75rem",
+          //     paddingBottom: "0.75rem",
+          //   },
+          //   closed: {
+          //     flex: "1 1 0%",
+          //     padding: "1.5rem",
+          //     paddingTop: isPC() ? "5rem" : "1.5rem",
+          //     paddingBottom: "1.5rem",
+          //   },
+          // }}
         >
           <Motion.div
-            class={`Greetings flex-col items-center justify-center gap-2 overflow-hidden lg:flex-none`}
-            animate={resultDialogOpened() ? "open" : "closed"}
-            variants={{
-              open: {
-                opacity: 0,
-                paddingBottom: "0rem",
-                flex: "0 0 auto",
-                display: "none",
-              },
-              closed: {
-                opacity: 1,
-                paddingBottom: "3rem",
-                flex: isPC() ? "0 0 auto" : "1 1 0%",
-                display: "flex",
-              },
-            }}
+            class={`Greetings flex-col items-center justify-center gap-2 overflow-hidden lg:flex-none ${
+              resultDialogOpened()
+                ? `hidden flex-auto pb-0 opacity-0`
+                : `flex pb-12 opacity-100 flex-1`
+            }`}
+            // animate={resultDialogOpened() ? "open" : "closed"}
+            // variants={{
+            //   open: {
+            //     opacity: 0,
+            //     paddingBottom: "0rem",
+            //     flex: "0 0 auto",
+            //     display: "none",
+            //   },
+            //   closed: {
+            //     opacity: 1,
+            //     paddingBottom: "3rem",
+            //     flex: isPC() ? "0 0 auto" : "1 1 0%",
+            //     display: "flex",
+            //   },
+            // }}
           >
             <Motion.div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
               <Icon.LogoText class="h-12 w-fit lg:h-auto" />
@@ -286,20 +280,24 @@ export default function Home() {
           </Motion.div>
           <Motion.div class="FunctionBox flex w-full flex-col items-center justify-center lg:flex-row">
             <Motion.div
-              class="BackButton hidden w-full flex-none self-start lg:flex lg:w-60"
-              animate={resultDialogOpened() ? "open" : "closed"}
-              variants={{
-                open: {
-                  opacity: 1,
-                  margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem 0.75rem 0rem",
-                  pointerEvents: "auto",
-                },
-                closed: {
-                  opacity: 0,
-                  margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem -3rem 0rem",
-                  pointerEvents: "none",
-                },
-              }}
+              class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
+                resultDialogOpened()
+                  ? `pointer-events-auto opacity-100 mt-3`
+                  : `pointer-events-none opacity-0 -mt-12`
+              }`}
+              // animate={resultDialogOpened() ? "open" : "closed"}
+              // variants={{
+              //   open: {
+              //     opacity: 1,
+              //     margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem 0.75rem 0rem",
+              //     pointerEvents: "auto",
+              //   },
+              //   closed: {
+              //     opacity: 0,
+              //     margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem -3rem 0rem",
+              //     pointerEvents: "none",
+              //   },
+              // }}
             >
               <Button
                 level="quaternary"
@@ -313,21 +311,22 @@ export default function Home() {
               </Button>
             </Motion.div>
             <Motion.div
-              class={`SearchBox border-b-none box-content flex w-full items-center gap-1 border-transition-color-20 p-0.5 focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4`}
-              animate={resultDialogOpened() ? "open" : "closed"}
-              variants={{
-                open: {
-                  width: `100%`,
-                },
-                closed: {
-                  width: isPC() ? `426px` : `100%`,
-                },
-              }}
+              class={`SearchBox border-b-none box-content flex w-full items-center gap-1 border-transition-color-20 p-0.5 focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 
+                ${resultDialogOpened() ? `` : `lg:w-[426px]`}`}
+              // animate={resultDialogOpened() ? "open" : "closed"}
+              // variants={{
+              //   open: {
+              //     width: `100%`,
+              //   },
+              //   closed: {
+              //     width: isPC() ? `426px` : `100%`,
+              //   },
+              // }}
             >
               <input
                 id="searchInput-PC"
                 type="text"
-                placeholder={greetings + "," + dictionary.ui.adventurer}
+                placeholder={greetings() + "," + dictionary.ui.adventurer}
                 onFocus={() => setSearchInputFocused(true)}
                 onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
@@ -351,11 +350,11 @@ export default function Home() {
                 class="flex focus-within:outline-none lg:bg-transparent"
                 onClick={() => {
                   setIsNullResult(true);
-                  if (searchInputValue() === "" || searchInputValue === null) {
+                  if (searchInputValue() === "" || searchInputValue() === null) {
                     setResultDialogOpened(false);
                     return;
                   }
-                  if (!resultDialogOpened) {
+                  if (!resultDialogOpened()) {
                     setResultDialogOpened(true);
                     history.pushState({ popup: true }, "");
                   }
@@ -396,92 +395,122 @@ export default function Home() {
           </Motion.div>
         </Motion.div>
         <Motion.div
-          class={`Result flex h-full flex-col gap-1 overflow-hidden lg:flex-row lg:p-0`}
-          animate={resultDialogOpened() ? "open" : "closed"}
-          variants={{
-            open: {
-              flex: "1 1 0%",
-              transform: "translateY(0px)",
-              padding: isPC() ? "0rem" : "0.75rem",
-              paddingTop: "0rem",
-              // transitionEnd: {
-              //   opacity: 1,
-              // },
-            },
-            closed: {
-              flex: "0 0 0%",
-              transform: "translateY(50%)",
-              padding: "0rem",
-              opacity: 0,
-            },
-          }}
+          class={`Result flex h-full flex-col gap-1 overflow-hidden pt-0 lg:flex-row lg:p-0 ${
+            resultDialogOpened()
+              ? `flex-1 translate-y-0 p-3 lg:p-0}`
+              : `flex-shrink-0 flex-grow-0 basis-[0%] translate-y-1/2 opacity-0`
+          }`}
+          style={
+            resultDialogOpened()
+              ? {
+                  "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                "transition-duration": "0.5s",
+                  "transition-timing-function": "ease-in-out",
+                }
+              : {
+                  "clip-path": "inset(10% 50% 90% 50% round 12px)",
+                  "transition-duration": "0.3s",
+                  "transition-timing-function": "ease-out",
+                }
+          }
+          // animate={resultDialogOpened() ? "open" : "closed"}
+          // variants={{
+          //   open: {
+          //     flex: "1 1 0%",
+          //     transform: "translateY(0px)",
+          //     padding: isPC() ? "0rem" : "0.75rem",
+          //     paddingTop: "0rem",
+          //     // transitionEnd: {
+          //     //   opacity: 1,
+          //     // },
+          //   },
+          //   closed: {
+          //     flex: "0 0 0%",
+          //     transform: "translateY(50%)",
+          //     padding: "0rem",
+          //     opacity: 0,
+          //   },
+          // }}
         >
           {isNullResult() ? (
-            <div class="NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0">
+            <Motion.div class={`NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0 ${
+              resultDialogOpened() ? "opacity-100" : "opacity-0"
+            }`}>
               <span class="NullResultWarring text-xl font-bold leading-loose lg:text-2xl">
                 {dictionary.ui.root.nullSearchResultWarring}
               </span>
               <Motion.p
-                class="NullResultTips text-center leading-loose text-accent-color-70"
-                variants={{
-                  open: {
-                    clipPath: "inset(0% 0% 0% 0% round 12px)",
-                    transition: {
-                      // type: "spring",
-                      // bounce: 0,
-                      duration: 0.7,
-                      // delayChildren: 0.3,
-                      // staggerChildren: 0.05,
-                    },
-                  },
-                  closed: {
-                    clipPath: "inset(10% 50% 90% 50% round 12px)",
-                    transition: {
-                      // type: "spring",
-                      // bounce: 0,
-                      duration: 0.3,
-                    },
-                  },
-                }}
+                class={`NullResultTips text-center leading-loose text-accent-color-70`}
+                // variants={{
+                //   open: {
+                //     clipPath: "inset(0% 0% 0% 0% round 12px)",
+                //     transition: {
+                //       // type: "spring",
+                //       // bounce: 0,
+                //       duration: 0.7,
+                //       // delayChildren: 0.3,
+                //       // staggerChildren: 0.05,
+                //     },
+                //   },
+                //   closed: {
+                //     clipPath: "inset(10% 50% 90% 50% round 12px)",
+                //     transition: {
+                //       // type: "spring",
+                //       // bounce: 0,
+                //       duration: 0.3,
+                //     },
+                //   },
+                // }}
               >
                 {dictionary.ui.root.nullSearchResultTips.split("\n").map((line, index) => (
                   <Motion.span
-                    variants={{
-                      open: {
-                        opacity: 1,
-                        y: 0,
-                        // transition: { type: "spring", stiffness: 300, damping: 24 },
-                      },
-                      closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
-                    }}
+                  // variants={{
+                  //   open: {
+                  //     opacity: 1,
+                  //     y: 0,
+                  //     // transition: { type: "spring", stiffness: 300, damping: 24 },
+                  //   },
+                  //   closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
+                  // }}
                   >
                     {line}
                     <br />
                   </Motion.span>
                 ))}
               </Motion.p>
-            </div>
+            </Motion.div>
           ) : (
             <Motion.div
-              variants={{
-                open: {
-                  clipPath: "inset(0% 0% 0% 0% round 12px)",
-                  transition: {
-                    // type: "spring",
-                    // bounce: 0,
-                    duration: 0.7,
-                  },
-                },
-                closed: {
-                  clipPath: "inset(10% 50% 90% 50% round 12px)",
-                  transition: {
-                    // type: "spring",
-                    // bounce: 0,
-                    duration: 0.3,
-                  },
-                },
-              }}
               class={`Content flex h-full flex-1 flex-col gap-2 overflow-y-auto rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
+              style={
+                resultDialogOpened()
+                  ? {
+                      "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                      "transition-duration": "0.7s",
+                    }
+                  : {
+                      "clip-path": "inset(10% 50% 90% 50% round 12px)",
+                      "transition-duration": "0.3s",
+                    }
+              }
+              // variants={{
+              //   open: {
+              //     clipPath: "inset(0% 0% 0% 0% round 12px)",
+              //     transition: {
+              //       // type: "spring",
+              //       // bounce: 0,
+              //       duration: 0.7,
+              //     },
+              //   },
+              //   closed: {
+              //     clipPath: "inset(10% 50% 90% 50% round 12px)",
+              //     transition: {
+              //       // type: "spring",
+              //       // bounce: 0,
+              //       duration: 0.3,
+              //     },
+              //   },
+              // }}
             >
               {Object.entries(searchResult()).map(([key, value], groupIndex) => {
                 let icon: JSX.Element = null;
@@ -531,28 +560,30 @@ export default function Home() {
                         // transition={{
                         //   ease: "easeInOut",
                         // }}
-                        variants={{
-                          open: {
-                            // transition: {
-                            //   delayChildren: 0.3,
-                            //   staggerChildren: 0.05,
-                            // },
-                          },
-                          closed: {},
-                        }}
+                        // variants={{
+                        //   open: {
+                        //     // transition: {
+                        //     //   delayChildren: 0.3,
+                        //     //   staggerChildren: 0.05,
+                        //     // },
+                        //   },
+                        //   closed: {},
+                        // }}
                       >
                         {value.map((item, index) => {
                           return (
                             <Motion.button
-                              class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded-md border border-transition-color-20 bg-primary-color p-3`}
-                              variants={{
-                                open: {
-                                  opacity: 1,
-                                  y: 0,
-                                  // transition: { type: "spring", stiffness: 300, damping: 24 },
-                                },
-                                closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
-                              }}
+                              class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded-md border border-transition-color-20 bg-primary-color p-3 animate-up opacity-0`}
+                              style={{"animation-delay": `${0 + index * 0.07}s`}
+                              }
+                              // variants={{
+                              //   open: {
+                              //     opacity: 1,
+                              //     y: 0,
+                              //     // transition: { type: "spring", stiffness: 300, damping: 24 },
+                              //   },
+                              //   closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
+                              // }}
                               onClick={() => {
                                 if (item?.data.id === currentCardId()) {
                                   setCurrentCardId("defaultId");
@@ -599,24 +630,25 @@ export default function Home() {
           )}
         </Motion.div>
         <Motion.div
-          class={`Bottom flex-none flex-col items-center bg-accent-color dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent`}
-          animate={resultDialogOpened() ? "open" : "closed"}
-          variants={{
-            open: {
-              opacity: 0,
-              padding: 0,
-              display: "none",
-            },
-            closed: {
-              opacity: 1,
-              padding: "1.5rem",
-              paddingTop: isPC() ? "5rem" : "1.5rem",
-              paddingBottom: isPC() ? "5rem" : "1.5rem",
-              display: "flex",
-            },
-          }}
+          class={`Bottom flex-none flex-col items-center bg-accent-color dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent 
+            ${resultDialogOpened() ? `opacity-0 p-0 h-0 overflow-hidden` : `opacity-100 p-6 lg:py-20 flex`}`}
+          // animate={resultDialogOpened() ? "open" : "closed"}
+          // variants={{
+          //   open: {
+          //     opacity: 0,
+          //     padding: 0,
+          //     display: "none",
+          //   },
+          //   closed: {
+          //     opacity: 1,
+          //     padding: "1.5rem",
+          //     paddingTop: isPC() ? "5rem" : "1.5rem",
+          //     paddingBottom: isPC() ? "5rem" : "1.5rem",
+          //     display: "flex",
+          //   },
+          // }}
         >
-          <div class="Content flex flex-wrap gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 lg:p-3">
+          <div class="Content flex justify-center flex-wrap gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 lg:p-3">
             <a href={"/monster"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"

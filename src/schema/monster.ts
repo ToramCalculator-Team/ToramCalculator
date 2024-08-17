@@ -29,7 +29,7 @@ export const InsertMonsterSchema = createInsertSchema(Monster).extend({
 export const defaultSelectMonster: SelectMonster = {
   id: "",
 
-  name: "",
+  name: "defaultSelectMonster",
   monsterType: "COMMON_BOSS",
   baseLv: 0,
   experience: 0,
@@ -100,6 +100,18 @@ export const defaultInsertMonster: InsertMonster = {
 };
 
 export const testMonsterQueryData: SelectMonster[] = [
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
+  defaultSelectMonster,
   defaultSelectMonster,
   defaultSelectMonster,
   defaultSelectMonster,

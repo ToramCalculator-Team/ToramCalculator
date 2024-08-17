@@ -41,7 +41,7 @@ export const InsertSkillSchema = createInsertSchema(Skill).extend({
 // default
 export const defaultSelectSkill: SelectSkill = {
   id: "",
-  name: "",
+  name: "defaultSelectSkill",
   skillDescription: "",
   skillTreeName: "BLADE",
   skillType: "ACTIVE_SKILL",
@@ -80,6 +80,15 @@ export const defaultInsertSkill: InsertSkill = {
 };
 
 export const testSkillQueryData: SelectSkill[] = [
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
+  defaultSelectSkill,
   defaultSelectSkill,
   defaultSelectSkill,
   defaultSelectSkill,
