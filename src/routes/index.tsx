@@ -213,90 +213,188 @@ export default function Home() {
     });
   });
 
+  const searchResultDom = (dialogStatus: boolean) => {
+    return isNullResult() ? (
+      <div
+        class={`NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0 ${
+          dialogStatus ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <span class="NullResultWarring text-xl font-bold leading-loose lg:text-2xl">
+          {dictionary.ui.root.nullSearchResultWarring}
+        </span>
+        <p class={`NullResultTips text-center leading-loose text-accent-color-70`}>
+          {dictionary.ui.root.nullSearchResultTips.split("\n").map((line, index) => (
+            <span>
+              {line}
+              <br />
+            </span>
+          ))}
+        </p>
+      </div>
+    ) : (
+      <div
+        class={`ResultContent flex h-full flex-1 flex-col gap-2 overflow-y-auto rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
+        style={
+          dialogStatus
+            ? {
+                "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                "transition-duration": "0.7s",
+              }
+            : {
+                "clip-path": "inset(10% 50% 90% 50% round 12px)",
+                "transition-duration": "0.3s",
+              }
+        }
+      >
+        {Object.entries(searchResult()).map(([key, value], groupIndex) => {
+          let icon: JSX.Element = null;
+          let groupName = "未知分类";
+          switch (key) {
+            case "skills":
+              icon = <Icon.Line.Basketball />;
+              groupName = dictionary.ui.root.skills;
+              break;
+            case "crystals":
+              icon = <Icon.Line.Box2 />;
+              groupName = dictionary.ui.root.crystals;
+              break;
+            case "monsters":
+              icon = <Icon.Line.Calendar />;
+              groupName = dictionary.ui.root.monsters;
+              break;
+            default:
+              break;
+          }
+
+          return (
+            value.length > 0 && (
+              <div class="RsultGroup flex flex-col gap-1">
+                <button
+                  onClick={() =>
+                    setResultListState([
+                      ...resultListSate().slice(0, groupIndex),
+                      !resultListSate()[groupIndex],
+                      ...resultListSate().slice(groupIndex + 1),
+                    ])
+                  }
+                  class={`Group flex cursor-pointer justify-center gap-2 ${resultListSate()[groupIndex] ? "bg-transition-color-8" : "bg-primary-color"} rounded-md px-3 py-4`}
+                >
+                  {icon}
+                  <span class="w-full text-left">
+                    {groupName} [{value.length}]
+                  </span>
+                  {resultListSate()[groupIndex] ? (
+                    <Icon.Line.Left class="rotate-[360deg]" />
+                  ) : (
+                    <Icon.Line.Left class="rotate-[270deg]" />
+                  )}
+                </button>
+                <div class="Content flex flex-col gap-1">
+                  {value.map((item, index) => {
+                    return (
+                      <button
+                        class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} animate-up rounded-md border border-transition-color-20 bg-primary-color p-3 opacity-0`}
+                        style={{ "animation-delay": `${0 + index * 0.07}s` }}
+                        onClick={() => {
+                          if (item?.data.id === currentCardId()) {
+                            setCurrentCardId("defaultId");
+                          } else {
+                            setCurrentCardId(item?.data.id ?? "未知ID");
+                          }
+                        }}
+                      >
+                        <div class="Name border-b-2 border-transparent p-1 font-bold group-hover:border-accent-color">
+                          {item?.name}
+                        </div>
+                        <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-accent-color-70 group-hover:text-accent-color">
+                          {item?.relateds.map((related, index) => {
+                            return (
+                              <div class="Related w-fit pr-2">
+                                <span>
+                                  {related?.key}: {related?.value}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div
+                          class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded-md bg-transition-color-8 p-1`}
+                        >
+                          {JSON.stringify(item?.data, null, 2)
+                            .split(",")
+                            .map((line, index) => (
+                              <span class="text-left lg:basis-1/4">
+                                {line}
+                                <br />
+                              </span>
+                            ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
       <RandomBallBackground />
-      <Motion.div
-        initial={false}
-        // animate={resultDialogOpened() ? "open" : "closed"}
-        class={`Client flex max-h-[100dvh] max-w-[100dvw] flex-1 flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}
-      >
-        <Motion.div class="QueryStarus fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex pointer-events-none">
-          <Motion.span>MonsterList: 测试数据</Motion.span>
-          <Motion.span>SkillList: 测试数据</Motion.span>
-          <Motion.span>CrystalList: 测试数据</Motion.span>
-        </Motion.div>
-        <Motion.div
-          initial={false}
-          class={`Top flex flex-col items-center justify-center lg:px-0 ${
-            resultDialogOpened()
-              ? `p-3 lg:p-0 lg:pb-3`
-              : `flex-1 p-6 pb-6 pt-6 lg:pt-20`
+      <div class={`Client flex h-dvh w-dvw flex-1 flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}>
+        <div class="QueryStarus pointer-events-none fixed left-10 top-10 -z-50 hidden flex-col text-xs text-accent-color-30 lg:flex">
+          <span>MonsterList: 测试数据</span>
+          <span>SkillList: 测试数据</span>
+          <span>CrystalList: 测试数据</span>
+          <span>searchInputFocused: {searchInputFocused().toString()}</span>
+        </div>
+        <div
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden duration-700 ${
+            resultDialogOpened() ? `p-3 lg:p-0 lg:pb-3` : `p-6 lg:px-0 lg:pt-20`
           }`}
-          // animate={resultDialogOpened() ? "open" : "closed"}
-          // variants={{
-          //   open: {
-          //     flex: "0 0 auto",
-          //     padding: isPC() ? "0rem" : "0.75rem",
-          //     paddingTop: isPC() ? "0rem" : "0.75rem",
-          //     paddingBottom: "0.75rem",
-          //   },
-          //   closed: {
-          //     flex: "1 1 0%",
-          //     padding: "1.5rem",
-          //     paddingTop: isPC() ? "5rem" : "1.5rem",
-          //     paddingBottom: "1.5rem",
-          //   },
-          // }}
         >
-          <Motion.div
-            class={`Greetings flex-col items-center justify-center gap-2 overflow-hidden lg:flex-none ${
-              resultDialogOpened()
-                ? `hidden flex-auto pb-0 opacity-0`
-                : `flex pb-12 opacity-100 flex-1`
+          <div
+            class={`Greetings flex flex-col items-center justify-center gap-2 overflow-hidden duration-700 lg:flex-none ${
+              resultDialogOpened() ? `h-0 flex-auto pb-0 opacity-0` : `flex-1 pb-12 opacity-100`
             }`}
-            // animate={resultDialogOpened() ? "open" : "closed"}
-            // variants={{
-            //   open: {
-            //     opacity: 0,
-            //     paddingBottom: "0rem",
-            //     flex: "0 0 auto",
-            //     display: "none",
-            //   },
-            //   closed: {
-            //     opacity: 1,
-            //     paddingBottom: "3rem",
-            //     flex: isPC() ? "0 0 auto" : "1 1 0%",
-            //     display: "flex",
-            //   },
-            // }}
           >
-            <Motion.div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
+            <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
               <Icon.LogoText class="h-12 w-fit lg:h-auto" />
-            </Motion.div>
+            </div>
             <h1 class={`py-4 text-accent-color-70 lg:hidden`}>{greetings() + ",  " + dictionary.ui.adventurer}</h1>
-          </Motion.div>
-          <Motion.div class="FunctionBox flex w-full flex-col items-center justify-center lg:flex-row">
-            <Motion.div
+          </div>
+          <div
+            class={`Result flex h-full flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
+              resultDialogOpened()
+                ? `flex-shrink-1 flex-grow-1 basis-[100%]`
+                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
+            }`}
+            style={
+              resultDialogOpened()
+                ? {
+                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                    "transition-duration": "0.7s",
+                    "transition-timing-function": "ease-out",
+                  }
+                : {
+                    "clip-path": "inset(10% 5% 90% 5% round 12px)",
+                    "transition-duration": "0.3s",
+                    "transition-timing-function": "ease-out",
+                  }
+            }
+          >
+            {searchResultDom(resultDialogOpened())}
+          </div>
+          <div class="FunctionBox flex w-full flex-col justify-between lg:flex-row">
+            <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
-                resultDialogOpened()
-                  ? `pointer-events-auto opacity-100 mt-3`
-                  : `pointer-events-none opacity-0 -mt-12`
+                resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
               }`}
-              // animate={resultDialogOpened() ? "open" : "closed"}
-              // variants={{
-              //   open: {
-              //     opacity: 1,
-              //     margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem 0.75rem 0rem",
-              //     pointerEvents: "auto",
-              //   },
-              //   closed: {
-              //     opacity: 0,
-              //     margin: isPC() ? "0rem 0rem 0rem 0rem" : "0rem 0rem -3rem 0rem",
-              //     pointerEvents: "none",
-              //   },
-              // }}
             >
               <Button
                 level="quaternary"
@@ -308,19 +406,9 @@ export default function Home() {
                 <Icon.Line.Back />
                 <span class="w-full text-left">{dictionary.ui.back}</span>
               </Button>
-            </Motion.div>
-            <Motion.div
-              class={`SearchBox border-b-none box-content flex w-full items-center gap-1 border-transition-color-20 p-0.5 focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 
-                ${resultDialogOpened() ? `` : `lg:w-[426px]`}`}
-              // animate={resultDialogOpened() ? "open" : "closed"}
-              // variants={{
-              //   open: {
-              //     width: `100%`,
-              //   },
-              //   closed: {
-              //     width: isPC() ? `426px` : `100%`,
-              //   },
-              // }}
+            </div>
+            <div
+              class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 ease-out focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `duration-700 lg:basis-[100%]` : `duration-500 lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -329,7 +417,10 @@ export default function Home() {
                 onFocus={() => setSearchInputFocused(true)}
                 onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
-                onChange={(e) => setSearchInputValue(e.target.value)}
+                tabIndex={1}
+                onInput={(e) => {
+                  setSearchInputValue(e.target.value);
+                }}
                 class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
               />
               <input
@@ -339,7 +430,10 @@ export default function Home() {
                 onFocus={() => setSearchInputFocused(true)}
                 onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
-                onChange={(e) => setSearchInputValue(e.target.value)}
+                tabIndex={1}
+                onInput={(e) => {
+                  setSearchInputValue(e.target.value);
+                }}
                 class="w-full flex-1 rounded bg-transition-color-8 px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-accent-color-50 dark:mix-blend-normal lg:hidden"
               />
               <Button
@@ -350,10 +444,12 @@ export default function Home() {
                 onClick={() => {
                   setIsNullResult(true);
                   if (searchInputValue() === "" || searchInputValue() === null) {
+                    // console.log("输入值为空，不处理");
                     setResultDialogOpened(false);
                     return;
                   }
                   if (!resultDialogOpened()) {
+                    // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
                     setResultDialogOpened(true);
                     history.pushState({ popup: true }, "");
                   }
@@ -389,269 +485,41 @@ export default function Home() {
                   setResultListState(resultListSate);
                 }}
               ></Button>
-            </Motion.div>
-            <Motion.div class="hidden w-60 flex-none lg:flex"></Motion.div>
-          </Motion.div>
-        </Motion.div>
-        <Motion.div
-          class={`Result flex h-full flex-col gap-1 overflow-hidden pt-0 lg:flex-row lg:p-0 ${
-            resultDialogOpened()
-              ? `flex-1 translate-y-0 p-3 lg:p-0}`
-              : `flex-shrink-0 flex-grow-0 basis-[0%] translate-y-1/2 opacity-0`
-          }`}
-          style={
-            resultDialogOpened()
-              ? {
-                  "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                "transition-duration": "0.5s",
-                  "transition-timing-function": "ease-in-out",
-                }
-              : {
-                  "clip-path": "inset(10% 50% 90% 50% round 12px)",
-                  "transition-duration": "0.3s",
-                  "transition-timing-function": "ease-out",
-                }
-          }
-          // animate={resultDialogOpened() ? "open" : "closed"}
-          // variants={{
-          //   open: {
-          //     flex: "1 1 0%",
-          //     transform: "translateY(0px)",
-          //     padding: isPC() ? "0rem" : "0.75rem",
-          //     paddingTop: "0rem",
-          //     // transitionEnd: {
-          //     //   opacity: 1,
-          //     // },
-          //   },
-          //   closed: {
-          //     flex: "0 0 0%",
-          //     transform: "translateY(50%)",
-          //     padding: "0rem",
-          //     opacity: 0,
-          //   },
-          // }}
+            </div>
+            <div class="hidden w-60 flex-none lg:flex"></div>
+          </div>
+          <div
+            class={`Result hidden h-full flex-1 gap-1 overflow-hidden py-3 lg:flex lg:flex-row ${
+              resultDialogOpened()
+                ? `flex-shrink-1 flex-grow-1 basis-[100%] opacity-100`
+                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
+            }`}
+            style={
+              resultDialogOpened()
+                ? {
+                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                    "transition-duration": "0.7s",
+                    "transition-timing-function": "ease-out",
+                  }
+                : {
+                    "clip-path": "inset(10% 5% 90% 5% round 12px)",
+                    "transition-duration": "0.3s",
+                    "transition-timing-function": "ease-out",
+                  }
+            }
+          >
+            {searchResultDom(resultDialogOpened())}
+          </div>
+        </div>
+        <div
+          class={`Bottom flex flex-none flex-col items-center bg-accent-color duration-700 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `h-[0%] py-0 opacity-0` : `p-6 opacity-100 lg:py-20`}`}
         >
-          {isNullResult() ? (
-            <Motion.div class={`NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0 ${
-              resultDialogOpened() ? "opacity-100" : "opacity-0"
-            }`}>
-              <span class="NullResultWarring text-xl font-bold leading-loose lg:text-2xl">
-                {dictionary.ui.root.nullSearchResultWarring}
-              </span>
-              <Motion.p
-                class={`NullResultTips text-center leading-loose text-accent-color-70`}
-                // variants={{
-                //   open: {
-                //     clipPath: "inset(0% 0% 0% 0% round 12px)",
-                //     transition: {
-                //       // type: "spring",
-                //       // bounce: 0,
-                //       duration: 0.7,
-                //       // delayChildren: 0.3,
-                //       // staggerChildren: 0.05,
-                //     },
-                //   },
-                //   closed: {
-                //     clipPath: "inset(10% 50% 90% 50% round 12px)",
-                //     transition: {
-                //       // type: "spring",
-                //       // bounce: 0,
-                //       duration: 0.3,
-                //     },
-                //   },
-                // }}
-              >
-                {dictionary.ui.root.nullSearchResultTips.split("\n").map((line, index) => (
-                  <Motion.span
-                  // variants={{
-                  //   open: {
-                  //     opacity: 1,
-                  //     y: 0,
-                  //     // transition: { type: "spring", stiffness: 300, damping: 24 },
-                  //   },
-                  //   closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
-                  // }}
-                  >
-                    {line}
-                    <br />
-                  </Motion.span>
-                ))}
-              </Motion.p>
-            </Motion.div>
-          ) : (
-            <Motion.div
-              class={`Content flex h-full flex-1 flex-col gap-2 overflow-y-auto rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
-              style={
-                resultDialogOpened()
-                  ? {
-                      "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                      "transition-duration": "0.7s",
-                    }
-                  : {
-                      "clip-path": "inset(10% 50% 90% 50% round 12px)",
-                      "transition-duration": "0.3s",
-                    }
-              }
-              // variants={{
-              //   open: {
-              //     clipPath: "inset(0% 0% 0% 0% round 12px)",
-              //     transition: {
-              //       // type: "spring",
-              //       // bounce: 0,
-              //       duration: 0.7,
-              //     },
-              //   },
-              //   closed: {
-              //     clipPath: "inset(10% 50% 90% 50% round 12px)",
-              //     transition: {
-              //       // type: "spring",
-              //       // bounce: 0,
-              //       duration: 0.3,
-              //     },
-              //   },
-              // }}
-            >
-              {Object.entries(searchResult()).map(([key, value], groupIndex) => {
-                let icon: JSX.Element = null;
-                let groupName = "未知分类";
-                switch (key) {
-                  case "skills":
-                    icon = <Icon.Line.Basketball />;
-                    groupName = dictionary.ui.root.skills;
-                    break;
-                  case "crystals":
-                    icon = <Icon.Line.Box2 />;
-                    groupName = dictionary.ui.root.crystals;
-                    break;
-                  case "monsters":
-                    icon = <Icon.Line.Calendar />;
-                    groupName = dictionary.ui.root.monsters;
-                    break;
-                  default:
-                    break;
-                }
-
-                return (
-                  value.length > 0 && (
-                    <Motion.div class="RsultGroup flex flex-col gap-1">
-                      <Motion.button
-                        onClick={() =>
-                          setResultListState([
-                            ...resultListSate().slice(0, groupIndex),
-                            !resultListSate()[groupIndex],
-                            ...resultListSate().slice(groupIndex + 1),
-                          ])
-                        }
-                        class={`Group flex cursor-pointer justify-center gap-2 ${resultListSate()[groupIndex] ? "bg-transition-color-8" : "bg-primary-color"} rounded-md px-3 py-4`}
-                      >
-                        {icon}
-                        <span class="w-full text-left">
-                          {groupName} [{value.length}]
-                        </span>
-                        {resultListSate()[groupIndex] ? (
-                          <Icon.Line.Left class="rotate-[360deg]" />
-                        ) : (
-                          <Icon.Line.Left class="rotate-[270deg]" />
-                        )}
-                      </Motion.button>
-                      <Motion.div
-                        class="Content flex flex-col gap-1"
-                        // transition={{
-                        //   ease: "easeInOut",
-                        // }}
-                        // variants={{
-                        //   open: {
-                        //     // transition: {
-                        //     //   delayChildren: 0.3,
-                        //     //   staggerChildren: 0.05,
-                        //     // },
-                        //   },
-                        //   closed: {},
-                        // }}
-                      >
-                        {value.map((item, index) => {
-                          return (
-                            <Motion.button
-                              class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded-md border border-transition-color-20 bg-primary-color p-3 animate-up opacity-0`}
-                              style={{"animation-delay": `${0 + index * 0.07}s`}
-                              }
-                              // variants={{
-                              //   open: {
-                              //     opacity: 1,
-                              //     y: 0,
-                              //     // transition: { type: "spring", stiffness: 300, damping: 24 },
-                              //   },
-                              //   closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
-                              // }}
-                              onClick={() => {
-                                if (item?.data.id === currentCardId()) {
-                                  setCurrentCardId("defaultId");
-                                } else {
-                                  setCurrentCardId(item?.data.id ?? "未知ID");
-                                }
-                              }}
-                            >
-                              <div class="Name border-b-2 border-transparent p-1 font-bold group-hover:border-accent-color">
-                                {item?.name}
-                              </div>
-                              <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-accent-color-70 group-hover:text-accent-color">
-                                {item?.relateds.map((related, index) => {
-                                  return (
-                                    <Motion.div class="Related w-fit pr-2">
-                                      <span>
-                                        {related?.key}: {related?.value}
-                                      </span>
-                                    </Motion.div>
-                                  );
-                                })}
-                              </div>
-                              <Motion.div
-                                class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded-md bg-transition-color-8 p-1`}
-                              >
-                                {JSON.stringify(item?.data, null, 2)
-                                  .split(",")
-                                  .map((line, index) => (
-                                    <Motion.span class="text-left lg:basis-1/4">
-                                      {line}
-                                      <br />
-                                    </Motion.span>
-                                  ))}
-                              </Motion.div>
-                            </Motion.button>
-                          );
-                        })}
-                      </Motion.div>
-                    </Motion.div>
-                  )
-                );
-              })}
-            </Motion.div>
-          )}
-        </Motion.div>
-        <Motion.div
-          class={`Bottom flex-none flex-col items-center bg-accent-color dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent 
-            ${resultDialogOpened() ? `opacity-0 p-0 h-0 overflow-hidden` : `opacity-100 p-6 lg:py-20 flex`}`}
-          // animate={resultDialogOpened() ? "open" : "closed"}
-          // variants={{
-          //   open: {
-          //     opacity: 0,
-          //     padding: 0,
-          //     display: "none",
-          //   },
-          //   closed: {
-          //     opacity: 1,
-          //     padding: "1.5rem",
-          //     paddingTop: isPC() ? "5rem" : "1.5rem",
-          //     paddingBottom: isPC() ? "5rem" : "1.5rem",
-          //     display: "flex",
-          //   },
-          // }}
-        >
-          <div class="Content flex justify-center flex-wrap gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 lg:p-3">
-            <a href={"/monster"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+          <div class="Content flex flex-wrap justify-center gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 lg:p-3">
+            <a tabIndex={2} href={"/monster"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -659,10 +527,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.monsters}</span>
               </Button>
             </a>
-            <a href={"/skill"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a tabIndex={2} href={"/skill"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -670,10 +539,15 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.skills}</span>
               </Button>
             </a>
-            <a href={"/equipment"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/equipment"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -681,10 +555,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.equipments}</span>
               </Button>
             </a>
-            <a href={"/crystal"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a tabIndex={2} href={"/crystal"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -692,10 +567,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.crystals}</span>
               </Button>
             </a>
-            <a href={"/pet"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a tabIndex={2} href={"/pet"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -703,10 +579,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.pets}</span>
               </Button>
             </a>
-            <a href={"/building"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a tabIndex={2} href={"/building"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -714,10 +591,15 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.items}</span>
               </Button>
             </a>
-            <a href={"/character"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/character"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -725,10 +607,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.character}</span>
               </Button>
             </a>
-            <a href={"/analyze"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a tabIndex={2} href={"/analyze"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
+                tabIndex={-1}
                 icon={
                   <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
                 }
@@ -737,8 +620,8 @@ export default function Home() {
               </Button>
             </a>
           </div>
-        </Motion.div>
-      </Motion.div>
+        </div>
+      </div>
       <Filing />
     </MetaProvider>
   );
