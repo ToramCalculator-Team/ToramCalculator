@@ -34,6 +34,8 @@
     "@solidjs/router": "^0.14.1",
     "@solidjs/start": "^1.0.2",
     "@tailwindcss/typography": "^0.5.14",
+    "@tanstack/solid-table": "^8.20.1",
+    "@tanstack/solid-virtual": "^3.9.0",
     "autoprefixer": "^10.4.20",
     "drizzle-orm": "latest",
     "drizzle-zod": "latest",
