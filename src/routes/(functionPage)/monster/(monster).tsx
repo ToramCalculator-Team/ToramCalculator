@@ -10,14 +10,13 @@ import {
 import Button from "~/components/button";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/dialog";
-import { useVirtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import { setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
 import { createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/i18n";
 import MonsterForm from "./monsterForm";
-import { Element } from "@/schema";
-
+import { Element } from "~/../drizzle/schema";
 
 // 计算各星级属性的方法
 export const computeMonsterAugmentedList = (
@@ -245,7 +244,7 @@ export default function MonserPageClient() {
   let tableContainerRef: HTMLDivElement;
 
   // 表格虚拟滚动
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = createVirtualizer({
     count: table.getRowModel().rows.length,
     estimateSize: () => 112, // estimate row height for accurate scrollbar dragging
     getScrollElement: () => tableContainerRef,
@@ -264,7 +263,7 @@ export default function MonserPageClient() {
     const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
     const styles: JSX.CSSProperties = {
       position: isPinned ? "sticky" : "relative",
-      width: column.getSize(),
+      width: column.getSize().toString(),
       "z-index": isPinned ? 1 : 0,
     };
     if (isPinned) {
@@ -395,24 +394,28 @@ export default function MonserPageClient() {
                 <Button // 仅移动端显示
                   size="sm"
                   level="tertiary"
-                  icon={<CloudUpload />}
+                  icon={<Icon.Line.CloudUpload />}
                   class="flex lg:hidden"
                   onClick={() => {
-                    setMonster(defaultMonster);
+                    setStore("monster", defaultSelectMonster);
                     setSameNameMonsterList([]);
-                    setMonsterDialogState(true);
-                    setMonsterFormState("CREATE");
+                    setStore("monsterPage", {
+                      monsterDialogState: true,
+                      monsterFormState: "CREATE",
+                    })
                   }}
                 ></Button>
                 <Button // 仅PC端显示
                   level="primary"
-                  icon={<CloudUpload />}
+                  icon={<Icon.Line.CloudUpload />}
                   class="hidden lg:flex"
                   onClick={() => {
-                    setMonster(defaultMonster);
+                    setStore("monster", defaultSelectMonster);
                     setSameNameMonsterList([]);
-                    setMonsterDialogState(true);
-                    setMonsterFormState("CREATE");
+                    setStore("monsterPage", {
+                      monsterDialogState: true,
+                      monsterFormState: "CREATE",
+                    })
                   }}
                 >
                   {dictionary.ui.upload} [u]
@@ -474,7 +477,7 @@ export default function MonserPageClient() {
             <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
               {table.getHeaderGroups().map((headerGroup) => {
                 return (
-                  <tr key={headerGroup.id} class="flex min-w-full gap-0 border-b-2">
+                  <tr class="flex min-w-full gap-0 border-b-2">
                     {headerGroup.headers.map((header) => {
                       const { column } = header;
                       if (monsterHiddenData.includes(column.id as keyof SelectMonster)) {
@@ -598,7 +601,7 @@ export default function MonserPageClient() {
                               WIND: <Icon.ElementWind class="h-12 w-12" />,
                               LIGHT: <Icon.ElementLight class="h-12 w-12" />,
                               DARK: <Icon.ElementDark class="h-12 w-12" />,
-                              NO_ELEMENT: <IconElementNoElement class="h-12 w-12" />,
+                              NO_ELEMENT: <Icon.ElementNoElement class="h-12 w-12" />,
                             }[cell.getValue() as keyof typeof Element] ?? undefined;
                           return (
                             <td
@@ -665,7 +668,7 @@ export default function MonserPageClient() {
         </div>
         <div class="RightArea sticky top-0 z-10 flex-1"></div>
       </div>
-      <Dialog state={monsterDialogState} setState={setMonsterDialogState}>
+      <Dialog state={monsterDialogState} setState={(dialogState) => setStore("monsterPage", {monsterDialogState: dialogState})}>
         {monsterDialogState && (
           <div class="Content flex w-full flex-col overflow-y-auto lg:flex-row 2xl:w-[1536px]">
             {sameNameMonsterList.length > 1 && (

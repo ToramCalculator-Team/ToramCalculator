@@ -352,6 +352,7 @@ export default function Home() {
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
           <span>searchInputFocused: {searchInputFocused().toString()}</span>
+          <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden duration-700 ${
@@ -359,8 +360,8 @@ export default function Home() {
           }`}
         >
           <div
-            class={`Greetings flex flex-col items-center justify-center gap-2 overflow-hidden duration-700 lg:flex-none ${
-              resultDialogOpened() ? `h-0 flex-auto pb-0 opacity-0` : `flex-1 pb-12 opacity-100`
+            class={`Greetings flex flex-col flex-1 items-center justify-center gap-2 overflow-hidden duration-700 ${
+              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100`
             }`}
           >
             <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
@@ -369,7 +370,7 @@ export default function Home() {
             <h1 class={`py-4 text-accent-color-70 lg:hidden`}>{greetings() + ",  " + dictionary.ui.adventurer}</h1>
           </div>
           <div
-            class={`Result flex h-full flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
+            class={`Result flex flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
               resultDialogOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%]`
                 : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
@@ -378,7 +379,7 @@ export default function Home() {
               resultDialogOpened()
                 ? {
                     "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                    "transition-duration": "0.7s",
+                    "transition-duration": "0.3s",
                     "transition-timing-function": "ease-out",
                   }
                 : {
@@ -390,7 +391,7 @@ export default function Home() {
           >
             {searchResultDom(resultDialogOpened())}
           </div>
-          <div class="FunctionBox flex w-full flex-col justify-between lg:flex-row">
+          <div class={`FunctionBox flex w-full flex-col justify-between lg:flex-row`}>
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
                 resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
@@ -408,7 +409,7 @@ export default function Home() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 ease-out focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `duration-700 lg:basis-[100%]` : `duration-500 lg:basis-[426px]`}`}
+              class={`SearchBox duration-700 border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -489,21 +490,19 @@ export default function Home() {
             <div class="hidden w-60 flex-none lg:flex"></div>
           </div>
           <div
-            class={`Result hidden h-full flex-1 gap-1 overflow-hidden py-3 lg:flex lg:flex-row ${
+            class={`Result hidden h-full duration-700 flex-1 gap-1 overflow-hidden py-3 lg:flex lg:flex-row ${
               resultDialogOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%] opacity-100`
-                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
+                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-100`
             }`}
             style={
               resultDialogOpened()
                 ? {
                     "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                    "transition-duration": "0.7s",
                     "transition-timing-function": "ease-out",
                   }
                 : {
                     "clip-path": "inset(10% 5% 90% 5% round 12px)",
-                    "transition-duration": "0.3s",
                     "transition-timing-function": "ease-out",
                   }
             }
@@ -512,9 +511,12 @@ export default function Home() {
           </div>
         </div>
         <div
-          class={`Bottom flex flex-none flex-col items-center bg-accent-color duration-700 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `h-[0%] py-0 opacity-0` : `p-6 opacity-100 lg:py-20`}`}
+          class={`Bottom self-center duration-700 p-6 grid bg-accent-color dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `opacity-0 py-0` : `opacity-100 lg:py-20`}`}
+          style={{
+              "grid-template-rows": resultDialogOpened() ? "0fr" : "1fr"
+            }}
         >
-          <div class="Content flex flex-wrap justify-center gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 lg:p-3">
+          <div class={`Content overflow-hidden flex flex-wrap justify-center gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}>
             <a tabIndex={2} href={"/monster"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
