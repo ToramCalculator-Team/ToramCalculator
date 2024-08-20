@@ -39,6 +39,7 @@
     "autoprefixer": "^10.4.20",
     "drizzle-orm": "latest",
     "drizzle-zod": "latest",
+    "fuse.js": "^7.0.0",
     "lodash-es": "^4.17.21",
     "mathjs": "^13.0.3",
     "pg": "^8.12.0",

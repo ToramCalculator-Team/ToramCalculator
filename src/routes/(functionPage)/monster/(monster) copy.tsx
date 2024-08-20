@@ -1,4 +1,3 @@
-"use client";
 import {
   type Column,
   type ColumnDef,
@@ -14,14 +13,14 @@ import Dialog from "~/components/dialog";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
-import { createEffect, createSignal, For, JSX, onMount } from "solid-js";
+import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/i18n";
 import { type $Enums } from "~/schema/enums";
 import * as _ from "lodash-es";
-import Fuse from "fuse.js";
+import Fuse from "fuse.js"
 
 // 通过基本列表生成包含其他星级定点boss属性的列表
-const generateAugmentedMonsterList = (
+export const generateAugmentedMonsterList = (
   baseMonsterList: SelectMonster[],
   dictionary: ReturnType<typeof getDictionary>,
 ) => {
@@ -96,26 +95,26 @@ export default function MonserPage() {
   const setAugmented = (newAugmented: boolean): void => {
     setStore("monsterPage", {
       augmented: newAugmented,
-    });
-  };
+    })
+  }
   const setMonsterList = (newList: SelectMonster[]): void => {
     setStore("monsterPage", {
       monsterList: newList,
-    });
-  };
+    })
+  }
   const setMonsterDialogState = (newState: boolean): void => {
     setStore("monsterPage", {
       monsterDialogState: newState,
-    });
-  };
+    })
+  }
   const setFilterState = (newState: boolean): void => {
     setStore("monsterPage", {
       filterState: newState,
-    });
-  };
+    })
+  }
   const setMonster = (newMonster: SelectMonster): void => {
     setStore("monster", newMonster);
-  };
+  }
 
   // i18n字典
   const dictionary = getDictionary(store.location);
@@ -130,7 +129,7 @@ export default function MonserPage() {
   let actualList = rawMonsterList();
   createEffect(() => {
     console.log("星级变化");
-    actualList = augmented ? generateAugmentedMonsterList(rawMonsterList(), dictionary) : rawMonsterList();
+    actualList = augmented ? generateAugmentedMonsterList(rawMonsterList(), dictionary) : rawMonsterList()
   });
 
   // 搜索框行为函数
@@ -150,12 +149,10 @@ export default function MonserPage() {
 
   // 搜索
   const searchMonster = (value: string, list: SelectMonster[]) => {
-    const fuse = new Fuse(list, {
-      keys: Object.keys(defaultSelectMonster).filter(
-        (key) => !monsterSearchHiddenData.includes(key as keyof SelectMonster),
-      ),
-    });
-    return fuse.search(value).map((result) => result.item);
+  const fuse = new Fuse(list, {
+    keys: Object.keys(defaultSelectMonster).filter((key) => !monsterSearchHiddenData.includes(key as keyof SelectMonster)),
+  })
+  return fuse.search(value).map((result) => result.item);
   };
 
   const handleSearchChange = (key: string) => {
@@ -164,7 +161,7 @@ export default function MonserPage() {
     } else {
       setMonsterList(searchMonster(key, actualList));
     }
-  };
+  }
 
   // 创建表格
   const table = createSolidTable({
@@ -269,6 +266,21 @@ export default function MonserPage() {
       ],
     },
   });
+
+  // 虚拟表格容器
+  let tableContainerRef!: HTMLDivElement;
+  // 表格虚拟滚动
+  const rowVirtualizer = createVirtualizer({
+    count: table.getRowModel().rows.length,
+    estimateSize: () => 112, // estimate row height for accurate scrollbar dragging
+    getScrollElement: () => tableContainerRef,
+    // measure dynamic row height, except in firefox because it measures table border height incorrectly
+    measureElement:
+      typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
+        ? (element) => element?.getBoundingClientRect().height
+        : undefined,
+    overscan: 5,
+  });
   // 表头固定
   const getCommonPinningStyles = (column: Column<SelectMonster>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -287,9 +299,59 @@ export default function MonserPage() {
     return styles;
   };
 
+  const handleMouseDown = (id: string, e: MouseEvent) => {
+    if (e.button !== 0) return;
+    const startX = e.pageX;
+    const startY = e.pageY;
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      offsetX = e.pageX - startX;
+      offsetY = e.pageY - startY;
+      if (!isDragging) {
+        // 判断是否开始拖动
+        isDragging = Math.abs(offsetX) > 3 || Math.abs(offsetY) > 3;
+      }
+      if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (tableContainerRef.parentElement) {
+          tableContainerRef.style.transition = "none";
+          tableContainerRef.parentElement.style.transition = "none";
+          // tableContainerRef.scrollTop -= offsetY / 100;
+          tableContainerRef.scrollLeft += offsetX / 100;
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      if (!isDragging) {
+        console.log(id);
+        const targetMonster = monsterList.find((monster) => monster.id === id);
+        if (targetMonster) {
+          setStore("monster", targetMonster);
+          setSameNameMonsterList(findSameNameMonsterInList(targetMonster, monsterList));
+          setStore("monsterPage", {
+            monsterDialogState: true,
+            monsterFormState: "DISPLAY",
+          });
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
   onMount(() => {
     console.log("--Monster Client Render");
-    setMonsterList(actualList);
+    setStore("monsterPage", {
+      monsterList: augmented ? generateAugmentedMonsterList(testMonsterQueryData, dictionary) : testMonsterQueryData,
+    });
     setRawMonsterList(testMonsterQueryData);
     // u键监听
     const handleUKeyPress = (e: KeyboardEvent) => {
@@ -327,7 +389,10 @@ export default function MonserPage() {
       </div> */}
       <div class="Module2 flex w-full flex-1 overflow-hidden px-3 backdrop-blur-xl">
         <div class="LeftArea sticky top-0 z-10 flex-1"></div>
-        <div class={`ModuleContent h-[calc(100dvh-67px)] w-full flex-col overflow-auto lg:h-dvh lg:max-w-[1536px]`}>
+        <div
+          ref={tableContainerRef}
+          class={`ModuleContent h-[calc(100dvh-67px)] w-full flex-col overflow-auto lg:h-dvh lg:max-w-[1536px]`}
+        >
           <div class="Title sticky left-0 mt-3 flex flex-col gap-9 py-5 lg:pt-20">
             <div class="Row flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
               <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary.ui.monster.pageTitle}</h1>
@@ -435,151 +500,90 @@ export default function MonserPage() {
           </div>
           <table class="Table bg-transition-color-8 px-2 lg:bg-transparent">
             <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
-              <For each={table.getHeaderGroups()}>
-                {(headerGroup) => (
+              {table.getHeaderGroups().map((headerGroup) => {
+                return (
                   <tr class="flex min-w-full gap-0 border-b-2">
-                    <For each={headerGroup.headers}>
-                      {(header) => {
-                        const { column } = header;
-                        if (monsterTableHiddenData.includes(column.id as keyof SelectMonster)) {
-                          // 默认隐藏的数据
-                          return;
-                        }
-                        return (
-                          <th
-                            style={{
-                              ...getCommonPinningStyles(column),
+                    {headerGroup.headers.map((header) => {
+                      const { column } = header;
+                      if (monsterTableHiddenData.includes(column.id as keyof SelectMonster)) {
+                        // 默认隐藏的数据
+                        return;
+                      }
+                      return (
+                        <th
+                          style={{
+                            ...getCommonPinningStyles(column),
+                          }}
+                          class="flex flex-col"
+                        >
+                          <div
+                            {...{
+                              onClick: header.column.getToggleSortingHandler(),
                             }}
-                            class="flex flex-col"
+                            class={`border-1 flex-1 border-transition-color-8 px-3 py-4 text-left hover:bg-transition-color-8 lg:py-6 ${
+                              header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                            }`}
                           >
-                            <div
-                              {...{
-                                onClick: header.column.getToggleSortingHandler(),
-                              }}
-                              class={`border-1 flex-1 border-transition-color-8 px-3 py-4 text-left hover:bg-transition-color-8 lg:py-6 ${
-                                header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                              }`}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {{
-                                asc: " ↓",
-                                desc: " ↑",
-                              }[header.column.getIsSorted() as string] ?? null}
-                            </div>
-                          </th>
-                        );
-                      }}
-                    </For>
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {{
+                              asc: " ↓",
+                              desc: " ↑",
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </div>
+                          {/* {!header.isPlaceholder &&
+                            header.column.getCanPin() && ( // 固定列
+                              <div class="flex">
+                                {header.column.getIsPinned() !== "left" ? (
+                                  <button
+                                    class="flex-1 rounded bg-transition-color-8 px-1"
+                                    onClick={() => {
+                                      header.column.pin("left");
+                                    }}
+                                  >
+                                    {"←"}
+                                  </button>
+                                ) : null}
+                                {header.column.getIsPinned() ? (
+                                  <button
+                                    class="flex-1 rounded bg-transition-color-8 px-1"
+                                    onClick={() => {
+                                      header.column.pin(false);
+                                    }}
+                                  >
+                                    {"x"}
+                                  </button>
+                                ) : null}
+                                {header.column.getIsPinned() !== "right" ? (
+                                  <button
+                                    class="flex-1 rounded bg-transition-color-8 px-1"
+                                    onClick={() => {
+                                      header.column.pin("right");
+                                    }}
+                                  >
+                                    {"→"}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )} */}
+                        </th>
+                      );
+                    })}
                   </tr>
-                )}
-              </For>
+                );
+              })}
             </thead>
-            <tbody class="TableBody relative mt-[54px] px-2 lg:mt-[84px]">
-              <For each={table.getRowModel().rows}>
-                {(row) => (
-                  <tr class={`group flex cursor-pointer border-y-[1px] border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold lg:border-y-1.5`}>
-                    <For each={row.getVisibleCells()}>
-                      {(cell) => {
-                        const { column } = cell;
-                        if (monsterTableHiddenData.includes(column.id as keyof SelectMonster)) {
-                          // 默认隐藏的数据
-                          return;
-                        }
-
-                        switch (cell.column.id as Exclude<keyof SelectMonster, keyof typeof monsterTableHiddenData>) {
-                          case "name":
-                            return (
-                              <td
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                }}
-                                class="flex flex-col justify-center px-3 py-6 lg:py-8"
-                              >
-                                <span class="text-lg font-bold">
-                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </span>
-                                <span class="text-sm font-normal text-accent-color-70">
-                                  {(row.getValue("address") === ("" ?? undefined ?? null) && "不知名的地方") ||
-                                    row.getValue("address")}
-                                </span>
-                              </td>
-                            );
-
-                          case "element": {
-                            const icon =
-                              {
-                                WATER: <Icon.ElementWater class="h-12 w-12" />,
-                                FIRE: <Icon.ElementFire class="h-12 w-12" />,
-                                EARTH: <Icon.ElementEarth class="h-12 w-12" />,
-                                WIND: <Icon.ElementWind class="h-12 w-12" />,
-                                LIGHT: <Icon.ElementLight class="h-12 w-12" />,
-                                DARK: <Icon.ElementDark class="h-12 w-12" />,
-                                NO_ELEMENT: <Icon.ElementNoElement class="h-12 w-12" />,
-                              }[cell.getValue() as $Enums.Element] ?? undefined;
-                            return (
-                              <td
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                }}
-                                class={"flex flex-col justify-center px-3 py-6"}
-                              >
-                                {icon}
-                              </td>
-                            );
-                          }
-
-                          // 以下值需要添加百分比符号
-                          case "physicalResistance":
-                          case "magicalResistance":
-                          case "dodge":
-                          case "block":
-                          case "normalAttackResistanceModifier":
-                          case "physicalAttackResistanceModifier":
-                          case "magicalAttackResistanceModifier":
-                            return (
-                              <td
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                }}
-                                class={`flex flex-col justify-center px-3 py-6`}
-                              >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}%
-                              </td>
-                            );
-
-                          case "criticalResistance":
-
-                          default:
-                            return (
-                              <td
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                }}
-                                class={`flex flex-col justify-center px-3 py-6`}
-                              >
-                                {((cell) => {
-                                  try {
-                                    const content =
-                                      dictionary.db.enums[
-                                        cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)
-                                      ][cell.getValue()];
-                                    return content;
-                                  } catch (error) {
-                                    return flexRender(cell.column.columnDef.cell, cell.getContext());
-                                  }
-                                })(cell)}
-                              </td>
-                            );
-                        }
-                      }}
-                    </For>
-                  </tr>
-                )}
-              </For>
-              {/* {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            <tbody
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
+              }}
+              class="TableBody relative mt-[54px] px-2 lg:mt-[84px]"
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = table.getRowModel().rows[virtualRow.index]!;
                 return (
                   <tr
+                    data-index={virtualRow.index} //needed for dynamic row height measurement
+                    ref={(node) => rowVirtualizer.measureElement(node)} //measure dynamic row height
                     style={{
                       position: "absolute",
                       transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
@@ -682,7 +686,7 @@ export default function MonserPage() {
                     })}
                   </tr>
                 );
-              })} */}
+              })}
             </tbody>
           </table>
         </div>
