@@ -55,6 +55,7 @@
 .transitionNone * {
   transition: none !important;
   transition-delay: 0s !important;
+  animation: none !important;
   animation-duration: 0s !important;
   animation-delay: 0s !important;
 }

@@ -1,22 +1,22 @@
+import { createSignal, JSX, onCleanup, onMount } from "solid-js";
+import { MetaProvider, Title } from "@solidjs/meta";
+import * as _ from "lodash-es";
+import { evaluate } from "mathjs";
+
 import { getDictionary } from "~/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/button";
-import * as _ from "lodash-es";
-import { Motion } from "solid-motionone";
-import { evaluate } from "mathjs";
 import { testMonsterQueryData, type SelectMonster } from "~/schema/monster";
 import { testSkillQueryData, type SelectSkill } from "~/schema/skill";
 import { testCrystalQueryData, type SelectCrystal } from "~/schema/crystal";
+import RandomBallBackground from "~/components/randomBallBg";
+import Filing from "~/components/filing";
+import Setting from "~/components/setting";
+
 import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../dictionaries/type";
-import { createEffect, createSignal, JSX, onCleanup, onMount } from "solid-js";
-import RandomBallBackground from "~/components/randomBallBg";
-import Filing from "~/components/filing";
-import { MetaProvider, Title } from "@solidjs/meta";
-import Dialog from "~/components/dialog";
-import Setting from "~/components/setting";
 
 type Related =
   | {
@@ -351,26 +351,24 @@ export default function Home() {
       <Title>ToramCalculator 首页</Title>
       <RandomBallBackground />
       <div class={`Client flex h-dvh w-dvw flex-1 flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}>
-        <div class="QueryStarus pointer-events-none fixed left-10 top-10 -z-50 hidden flex-col text-xs text-accent-color-30 lg:flex">
+        {/* <div class="QueryStarus pointer-events-none fixed left-10 top-10 -z-50 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: 测试数据</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
           <span>searchInputFocused: {searchInputFocused().toString()}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
-        </div>
-        <div class="Config fixed flex gap-1 lg:right-6 lg:top-6">
+        </div> */}
+        <div class="Config fixed flex gap-1 lg:right-8 lg:top-8">
           <Button
             class="outline-none duration-150 focus-within:outline-none"
-            size="sm"
-            level="tertiary"
+            level="quaternary"
             onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
           >
             <Icon.Line.Light />
           </Button>
           <Button
             class="outline-none duration-150 focus-within:outline-none"
-            size="sm"
-            level="tertiary"
+            level="quaternary"
             onClick={() => setStore("indexPage", { settingsDialogState: !store.indexPage.settingsDialogState })}
           >
             <Icon.Line.Coins />
