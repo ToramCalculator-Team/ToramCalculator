@@ -50,14 +50,19 @@
 
 * {
   transition: all 150ms;
-  outline-width: 0.5px;
-  outline-color: rgba(105, 145, 214, 0);
-  outline-style: solid;
+}
+
+.transitionNone * {
+  transition: none !important;
+  transition-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
 }
 
 *:focus {
-  outline-width: 1.5px;
-  outline-color: rgba(105, 145, 214, 0.7);
+  outline-width: 2px;
+  outline-color: rgb(var(--brand-1st));
+  outline-style: solid;
 }
 
 .Nav * {

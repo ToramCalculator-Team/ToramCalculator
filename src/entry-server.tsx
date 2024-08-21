@@ -10,7 +10,7 @@ const APP_DESCRIPTION = "Wiki、角色配置、连击计算等";
 export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
-      <html lang="zh_CN" class="light">
+      <html lang="zh_CN" class="transitionNone">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -32,6 +32,12 @@ export default createHandler(() => (
           <link rel="manifest" href="/manifest.json" />
           {/* <meta name="baidu-site-verification" content={env.BAIDU_HTML_LABEL} /> */}
           {assets}
+          <script>
+            let theme = "light";
+            const storeCache = JSON.parse(localStorage.getItem("store") ?? "");
+            storeCache.theme && (theme = storeCache.theme);
+            document.documentElement.classList.add(theme);
+          </script>
         </head>
         <body>
           <div id="app" class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">

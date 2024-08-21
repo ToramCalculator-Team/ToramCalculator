@@ -1,5 +1,5 @@
 import { getDictionary } from "~/i18n";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/button";
 import * as _ from "lodash-es";
@@ -11,10 +11,12 @@ import { testCrystalQueryData, type SelectCrystal } from "~/schema/crystal";
 import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../dictionaries/type";
-import { createSignal, JSX, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import RandomBallBackground from "~/components/randomBallBg";
 import Filing from "~/components/filing";
 import { MetaProvider, Title } from "@solidjs/meta";
+import Dialog from "~/components/dialog";
+import Setting from "~/components/setting";
 
 type Related =
   | {
@@ -37,7 +39,6 @@ export default function Home() {
 
   type FinalResult = Partial<Record<"monsters" | "skills" | "crystals", Result[]>>;
 
-  const [greetings, setGreetings] = createSignal(dictionary.ui.index.goodMorning);
   const [searchInputFocused, setSearchInputFocused] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
@@ -173,47 +174,8 @@ export default function Home() {
     return result;
   };
 
-  onMount(() => {
-    // 问候语计算
-    const now = new Date().getHours();
-    if (now >= 13 && now < 18) {
-      setGreetings(dictionary.ui.index.goodAfternoon);
-    } else if ((now >= 18 && now < 24) || now < 5) {
-      setGreetings(dictionary.ui.index.goodEvening);
-    }
-    // enter键监听
-    const handleEnterKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && searchInputFocused()) {
-        searchButtonRef.click();
-      }
-    };
-
-    // esc键监听
-    const handleEscapeKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setResultDialogOpened(false);
-      }
-    };
-
-    // 浏览器后退事件监听
-    const handlePopState = () => {
-      setResultDialogOpened(false);
-      history.replaceState(null, "", location.href);
-    };
-
-    // 监听绑带与清除
-    document.addEventListener("keydown", handleEnterKeyPress);
-    document.addEventListener("keydown", handleEscapeKeyPress);
-    window.addEventListener("popstate", handlePopState);
-
-    onCleanup(() => {
-      document.removeEventListener("keydown", handleEnterKeyPress);
-      document.removeEventListener("keydown", handleEscapeKeyPress);
-      window.removeEventListener("popstate", handlePopState);
-    });
-  });
-
-  const searchResultDom = (dialogStatus: boolean) => {
+  // 生成搜索结果列表DOM
+  const generateSearchResultDom = (dialogStatus: boolean) => {
     return isNullResult() ? (
       <div
         class={`NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0 ${
@@ -235,17 +197,17 @@ export default function Home() {
     ) : (
       <div
         class={`ResultContent flex h-full flex-1 flex-col gap-2 overflow-y-auto rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
-        style={
-          dialogStatus
-            ? {
-                "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                "transition-duration": "0.7s",
-              }
-            : {
-                "clip-path": "inset(10% 50% 90% 50% round 12px)",
-                "transition-duration": "0.3s",
-              }
-        }
+        // style={
+        //   dialogStatus
+        //     ? {
+        //         "clip-path": "inset(0% 0% 0% 0% round 12px)",
+        //         "transition-timing-function": "ease-out",
+        //       }
+        //     : {
+        //         "clip-path": "inset(10% 5% 40% 5% round 12px)",
+        //         "transition-timing-function": "ease-out",
+        //       }
+        // }
       >
         {Object.entries(searchResult()).map(([key, value], groupIndex) => {
           let icon: JSX.Element = null;
@@ -342,6 +304,48 @@ export default function Home() {
     );
   };
 
+  // 问候语计算
+  const now = new Date().getHours();
+  let greetings: string = dictionary.ui.index.goodMorning;
+  if (now >= 13 && now < 18) {
+    greetings = dictionary.ui.index.goodAfternoon;
+  } else if ((now >= 18 && now < 24) || now < 5) {
+    greetings = dictionary.ui.index.goodEvening;
+  }
+
+  onMount(() => {
+    // enter键监听
+    const handleEnterKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && searchInputFocused()) {
+        searchButtonRef.click();
+      }
+    };
+
+    // esc键监听
+    const handleEscapeKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setResultDialogOpened(false);
+      }
+    };
+
+    // 浏览器后退事件监听
+    const handlePopState = () => {
+      setResultDialogOpened(false);
+      history.replaceState(null, "", location.href);
+    };
+
+    // 监听绑带与清除
+    document.addEventListener("keydown", handleEnterKeyPress);
+    document.addEventListener("keydown", handleEscapeKeyPress);
+    window.addEventListener("popstate", handlePopState);
+
+    onCleanup(() => {
+      document.removeEventListener("keydown", handleEnterKeyPress);
+      document.removeEventListener("keydown", handleEscapeKeyPress);
+      window.removeEventListener("popstate", handlePopState);
+    });
+  });
+
   return (
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
@@ -354,23 +358,41 @@ export default function Home() {
           <span>searchInputFocused: {searchInputFocused().toString()}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
+        <div class="Config fixed flex gap-1 lg:right-6 lg:top-6">
+          <Button
+            class="outline-none duration-150 focus-within:outline-none"
+            size="sm"
+            level="tertiary"
+            onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
+          >
+            <Icon.Line.Light />
+          </Button>
+          <Button
+            class="outline-none duration-150 focus-within:outline-none"
+            size="sm"
+            level="tertiary"
+            onClick={() => setStore("indexPage", { settingsDialogState: !store.indexPage.settingsDialogState })}
+          >
+            <Icon.Line.Coins />
+          </Button>
+        </div>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden duration-700 ${
             resultDialogOpened() ? `p-3 lg:p-0 lg:pb-3` : `p-6 lg:px-0 lg:pt-20`
           }`}
         >
           <div
-            class={`Greetings flex flex-col flex-1 items-center justify-center gap-2 overflow-hidden duration-700 ${
-              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100`
+            class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
+              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100 lg:flex-none`
             }`}
           >
             <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
               <Icon.LogoText class="h-12 w-fit lg:h-auto" />
             </div>
-            <h1 class={`py-4 text-accent-color-70 lg:hidden`}>{greetings() + ",  " + dictionary.ui.adventurer}</h1>
+            <h1 class={`py-4 text-accent-color-70 lg:hidden`}>{greetings + ",  " + dictionary.ui.adventurer}</h1>
           </div>
           <div
-            class={`Result flex flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
+            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
               resultDialogOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%]`
                 : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
@@ -384,12 +406,12 @@ export default function Home() {
                   }
                 : {
                     "clip-path": "inset(10% 5% 90% 5% round 12px)",
-                    "transition-duration": "0.3s",
+                    "transition-duration": "0.7s",
                     "transition-timing-function": "ease-out",
                   }
             }
           >
-            {searchResultDom(resultDialogOpened())}
+            {generateSearchResultDom(resultDialogOpened())}
           </div>
           <div class={`FunctionBox flex w-full flex-col justify-between lg:flex-row`}>
             <div
@@ -402,19 +424,19 @@ export default function Home() {
                 onClick={() => {
                   setResultDialogOpened(false);
                 }}
-                class="w-full"
+                class="w-full outline-none focus-within:outline-none"
               >
                 <Icon.Line.Back />
                 <span class="w-full text-left">{dictionary.ui.back}</span>
               </Button>
             </div>
             <div
-              class={`SearchBox duration-700 border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
                 type="text"
-                placeholder={greetings() + "," + dictionary.ui.adventurer}
+                placeholder={greetings + "," + dictionary.ui.adventurer}
                 onFocus={() => setSearchInputFocused(true)}
                 onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
@@ -422,7 +444,7 @@ export default function Home() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
+                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
               />
               <input
                 id="searchInput-Mobile"
@@ -441,7 +463,7 @@ export default function Home() {
                 ref={(el) => (searchButtonRef = el)}
                 level="tertiary"
                 icon={<Icon.Line.Search />}
-                class="flex focus-within:outline-none lg:bg-transparent"
+                class="flex outline-none focus-within:outline-none lg:bg-transparent"
                 onClick={() => {
                   setIsNullResult(true);
                   if (searchInputValue() === "" || searchInputValue() === null) {
@@ -490,34 +512,40 @@ export default function Home() {
             <div class="hidden w-60 flex-none lg:flex"></div>
           </div>
           <div
-            class={`Result hidden h-full duration-700 flex-1 gap-1 overflow-hidden py-3 lg:flex lg:flex-row ${
-              resultDialogOpened()
-                ? `flex-shrink-1 flex-grow-1 basis-[100%] opacity-100`
-                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-100`
+            class={`ResultPC hidden h-full flex-1 gap-1 overflow-hidden py-3 ease-linear lg:flex lg:flex-row ${
+              resultDialogOpened() ? `flex-grow-1 basis-[100%] opacity-100` : `flex-grow-0 basis-[0%] opacity-100`
             }`}
             style={
               resultDialogOpened()
                 ? {
                     "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                    "transition-duration": "0.7s",
                     "transition-timing-function": "ease-out",
                   }
                 : {
-                    "clip-path": "inset(10% 5% 90% 5% round 12px)",
+                    "clip-path": "inset(10% 25% 90% 25% round 12px)",
+                    "transition-duration": "0.5s",
                     "transition-timing-function": "ease-out",
                   }
             }
           >
-            {searchResultDom(resultDialogOpened())}
+            {generateSearchResultDom(resultDialogOpened())}
           </div>
         </div>
         <div
-          class={`Bottom self-center duration-700 p-6 grid bg-accent-color dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `opacity-0 py-0` : `opacity-100 lg:py-20`}`}
+          class={`Bottom grid self-center bg-accent-color p-6 duration-700 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `py-0 opacity-0` : `opacity-100 lg:py-20`}`}
           style={{
-              "grid-template-rows": resultDialogOpened() ? "0fr" : "1fr"
-            }}
+            "grid-template-rows": resultDialogOpened() ? "0fr" : "1fr",
+          }}
         >
-          <div class={`Content overflow-hidden flex flex-wrap justify-center gap-3 rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}>
-            <a tabIndex={2} href={"/monster"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+          <div
+            class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
+          >
+            <a
+              tabIndex={2}
+              href={"/monster"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -529,7 +557,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.monsters}</span>
               </Button>
             </a>
-            <a tabIndex={2} href={"/skill"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/skill"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -544,7 +576,7 @@ export default function Home() {
             <a
               tabIndex={2}
               href={"/equipment"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto"
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
             >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
@@ -557,7 +589,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.equipments}</span>
               </Button>
             </a>
-            <a tabIndex={2} href={"/crystal"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/crystal"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -569,7 +605,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.crystals}</span>
               </Button>
             </a>
-            <a tabIndex={2} href={"/pet"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/pet"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -581,7 +621,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.pets}</span>
               </Button>
             </a>
-            <a tabIndex={2} href={"/building"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/building"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -596,7 +640,7 @@ export default function Home() {
             <a
               tabIndex={2}
               href={"/character"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto"
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
             >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
@@ -609,7 +653,11 @@ export default function Home() {
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary.ui.root.character}</span>
               </Button>
             </a>
-            <a tabIndex={2} href={"/analyze"} class="flex-none basis-[calc(33.33%-8px)] overflow-hidden lg:basis-auto">
+            <a
+              tabIndex={2}
+              href={"/analyze"}
+              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+            >
               <Button
                 class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
                 level="primary"
@@ -624,6 +672,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+      <Setting />
       <Filing />
     </MetaProvider>
   );
