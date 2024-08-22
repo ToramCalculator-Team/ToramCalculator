@@ -30,6 +30,7 @@ export default function Dialog(props: { children: JSX.Element; state: boolean; s
           <Motion.div
             animate={{ transform: "translateX(0)" }}
             exit={{ transform: "translateX(2.5rem)" }}
+            transition={{ duration: store.durtion ? 0.3 : 0 }}
             class={`DialogContent flex max-h-[100dvh] min-h-[40dvh] max-w-[100dvw] basis-4/5 flex-col items-center overflow-y-auto bg-primary-color shadow-2xl shadow-transition-color-20 lg:translate-x-10`}
           >
             {children}

@@ -28,23 +28,24 @@ const statistics: ConvertToAllString<Statistics> = {
 
 const dictionary: dictionary = {
   ui: {
-    adventurer: "Adventurer",
-    add: "Add",
-    create: "Create",
-    remove: "Remove",
-    update: "Update",
-    open: "Open",
-    upload: "Upload",
-    reset: "Reset",
-    save: "Save",
-    modify: "Modify",
-    cancel: "Cancel",
-    close: "close",
-    back: "Back",
     columnsHidden: "Columns Hidden",
-    filter: "Filter",
     searchPlaceholder: "Search something ~",
-    root: {
+    actions: {
+      add: "Add",
+      create: "Create",
+      remove: "Remove",
+      update: "Update",
+      open: "Open",
+      upload: "Upload",
+      reset: "Reset",
+      save: "Save",
+      modify: "Modify",
+      cancel: "Cancel",
+      close: "close",
+      back: "Back",
+      filter: "Filter",
+    },
+    nav: {
       home: "Home",
       monsters: "Monsters",
       skills: "Skills",
@@ -54,13 +55,19 @@ const dictionary: dictionary = {
       items: "Items",
       character: "Character",
       comboAnalyze: "Combo",
-      nullSearchResultWarring: "Can not find anything!",
-      nullSearchResultTips: "Emmm..."
+    },
+    settings: {
+      title: "Settings",
+      isAnimationEnabled: "Is Animation Enabled",
+      selectedLanguage: "Selected Language",
     },
     index: {
+      adventurer: "Adventurer",
       goodMorning: "Good Morning ~",
       goodAfternoon: "Good Afternoon ~",
       goodEvening: "Good Evening ~",
+      nullSearchResultWarring: "Can not find anything!",
+      nullSearchResultTips: "Emmm..."
     },
     monster: {
       pageTitle: "Monster",

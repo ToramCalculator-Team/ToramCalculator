@@ -5,10 +5,10 @@ import { defaultSelectMonster, SelectMonster } from "./schema/monster";
 type Store = {
   location: Locale;
   theme: "light" | "dark";
+  settingsDialogState: boolean;
   durtion: boolean;
   monster: SelectMonster;
   indexPage: {
-    settingsDialogState: boolean;
   };
   monsterPage: {
     augmented: boolean;
@@ -22,10 +22,10 @@ type Store = {
 const initialStore: Store = {
   location: "zh-CN",
   theme: "light",
+  settingsDialogState: false,
   durtion: false,
   monster: defaultSelectMonster,
   indexPage: {
-    settingsDialogState: false,
   },
   monsterPage: {
     augmented: true,

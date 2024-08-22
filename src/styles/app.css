@@ -52,6 +52,11 @@
   transition: all 150ms;
 }
 
+.transitionColorNone * {
+  transition: color 0s, background-color 0s, border-color 0s, opacity 0s !important;
+  transition-delay: 0s !important;
+}
+
 .transitionNone * {
   transition: none !important;
   transition-delay: 0s !important;

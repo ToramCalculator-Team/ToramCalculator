@@ -28,7 +28,9 @@ const statistics: ConvertToAllString<Statistics> = {
 
 const dictionary: dictionary = {
   ui: {
-    adventurer: "冒险者",
+    searchPlaceholder: "这里是搜索框~",
+    columnsHidden: "隐藏列",
+    actions: {
     add: "添加",
     create: "创建",
     remove: "删除",
@@ -41,10 +43,9 @@ const dictionary: dictionary = {
     cancel: "取消",
     close: "关闭",
     back: "返回",
-    searchPlaceholder: "这里是搜索框~",
-    columnsHidden: "隐藏列",
     filter: "过滤",
-    root: {
+    },
+    nav: {
       home: "首页",
       monsters: "怪物",
       skills: "技能",
@@ -54,13 +55,19 @@ const dictionary: dictionary = {
       items: "消耗品",
       character: "角色配置",
       comboAnalyze: "连击分析",
-      nullSearchResultWarring: "没有找到相关内容!!!∑(ﾟДﾟノ)ノ",
-      nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有"
+    },
+    settings: {
+      title: "设置",
+      isAnimationEnabled: "是否开启动画",
+      selectedLanguage: "选择语言",
     },
     index: {
+      adventurer: "冒险者",
       goodMorning: "哦哈喵~ (=´ω｀=)",
       goodAfternoon: "下午好ヾ(=･ω･=)o",
       goodEvening: "晚上好(。-ω-)zzz",
+      nullSearchResultWarring: "没有找到相关内容!!!∑(ﾟДﾟノ)ノ",
+      nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有"
     },
     monster: {
       pageTitle: "怪物信息表",

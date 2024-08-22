@@ -10,16 +10,16 @@ export default function Nav() {
   const location = useLocation();
   const active = (path: string) => (path.includes(location.pathname) ? "bg-brand-color-1st" : "");
   const NavBtnConfig: [string, JSX.Element | undefined, string | undefined][] = [
-    [dictionary.ui.root.monsters, < Icon.Line.Calendar />, "/monster"],
+    [dictionary.ui.nav.monsters, < Icon.Line.Calendar />, "/monster"],
     ["LineA", , ,],
-    [dictionary.ui.root.skills, < Icon.Line.Basketball />, "/skill"],
-    [dictionary.ui.root.equipments, < Icon.Line.Category2 />, "/equipment"],
-    [dictionary.ui.root.crystals, < Icon.Line.Box2 />, "/crystal"],
-    [dictionary.ui.root.pets, < Icon.Line.Money />, "/pet"],
-    [dictionary.ui.root.items, < Icon.Line.Coins />, "/building"],
+    [dictionary.ui.nav.skills, < Icon.Line.Basketball />, "/skill"],
+    [dictionary.ui.nav.equipments, < Icon.Line.Category2 />, "/equipment"],
+    [dictionary.ui.nav.crystals, < Icon.Line.Box2 />, "/crystal"],
+    [dictionary.ui.nav.pets, < Icon.Line.Money />, "/pet"],
+    [dictionary.ui.nav.items, < Icon.Line.Coins />, "/building"],
     ["LineB", , ,],
-    [dictionary.ui.root.character, < Icon.Line.Gamepad />, "/character"],
-    [dictionary.ui.root.comboAnalyze, < Icon.Line.Filter />, "/analyze"],
+    [dictionary.ui.nav.character, < Icon.Line.Gamepad />, "/character"],
+    [dictionary.ui.nav.comboAnalyze, < Icon.Line.Filter />, "/analyze"],
   ];
 
   return (
@@ -36,7 +36,7 @@ export default function Nav() {
             < Icon.Line.Home />
           </div>
           < Icon.Line.Logo class="hidden lg:block" />
-          <div class="text-xs lg:hidden">{dictionary.ui.root.home}</div>
+          <div class="text-xs lg:hidden">{dictionary.ui.nav.home}</div>
         </a>
       </div>
       <div class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4 lg:overflow-y-auto">

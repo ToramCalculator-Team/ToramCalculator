@@ -1,13 +1,14 @@
-import type { Monster } from "@/schema";
 import {
   type MonsterData,
   type SkillData,
   type CharacterData,
   type modifiers,
-} from "../[lang]/(functionPage)/analyze/worker";
-import { type Crystal } from "~/schema/crystal";
-import { type Skill } from "~/schema/skill";
-import { type Character } from "~/schema/character";
+} from "~/routes/(app)/(functionPage)/analyzer/worker";
+import { type SelectCrystal } from "~/schema/crystal";
+import { type SelectSkill } from "~/schema/skill";
+import { type SelectCharacter } from "~/schema/character";
+import { $Enums } from "~/schema/enums";
+import { SelectMonster } from "~/schema/monster";
 
 // 为了方便编辑器自动补全，这个方法可以将数据库模型的值类型转换为字符串
 export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<object>
@@ -20,23 +21,24 @@ export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<
 
 interface dictionary {
   ui: {
-    adventurer: string;
-    add: string;
-    create: string;
-    remove: string;
-    upload: string;
-    update: string;
-    save: string;
-    reset: string;
-    modify: string;
-    cancel: string;
-    open: string;
-    close: string;
-    back: string;
     searchPlaceholder: string;
-    filter: string;
     columnsHidden: string;
-    root: {
+    actions: {
+      add: string;
+      create: string;
+      remove: string;
+      upload: string;
+      update: string;
+      save: string;
+      reset: string;
+      modify: string;
+      cancel: string;
+      open: string;
+      close: string;
+      back: string;
+      filter: string;
+    };
+    nav: {
       home: string;
       monsters: string;
       skills: string;
@@ -46,13 +48,19 @@ interface dictionary {
       items: string;
       character: string;
       comboAnalyze: string;
-      nullSearchResultWarring: string;
-      nullSearchResultTips: string;
+    };
+    settings: {
+      title: string;
+      isAnimationEnabled: string;
+      selectedLanguage: string;
     };
     index: {
+      adventurer: string;
       goodMorning: string;
       goodAfternoon: string;
       goodEvening: string;
+      nullSearchResultWarring: string;
+      nullSearchResultTips: string;
     };
     monster: {
       pageTitle: string;
@@ -98,16 +106,16 @@ interface dictionary {
     };
   };
   db: {
-    enums: ConvertToAllString<typeof $Enums>;
+    enums: ConvertToAllString<$Enums>;
     models: {
-      monster: ConvertToAllString<Monster>;
-      crystal: ConvertToAllString<Crystal>;
-      skill: ConvertToAllString<Skill>;
-      skillEffect: ConvertToAllString<Skill["skillEffect"][0]>;
-      skillCost: ConvertToAllString<Skill["skillEffect"][0]["skillCost"][0]>;
-      skillYield: ConvertToAllString<Skill["skillEffect"][0]["skillYield"][0]>;
+      monster: ConvertToAllString<SelectMonster>;
+      crystal: ConvertToAllString<SelectCrystal>;
+      skill: ConvertToAllString<SelectSkill>;
+      skillEffect: ConvertToAllString<SelectSkill["skillEffect"][0]>;
+      skillCost: ConvertToAllString<SelectSkill["skillEffect"][0]["skillCost"][0]>;
+      skillYield: ConvertToAllString<SelectSkill["skillEffect"][0]["skillYield"][0]>;
       user: ConvertToAllString<User>;
-      character: ConvertToAllString<Character>;
+      character: ConvertToAllString<SelectCharacter>;
     };
   };
 }

@@ -1,33 +1,36 @@
-import { AdditionalEquipmentSchema } from "prisma/generated/zod";
-import { z, type ZodType } from "zod";
-import { CrystalInclude, CrystalInputSchema, defaultCrystal } from "./crystal";
-import { ModifiersListInputSchema, defaultModifiersList, ModifiersListInclude } from "./modifiers_list";
-import { type Prisma } from "@prisma/client";
-import { StatisticsInputSchema, defaultStatistics, StatisticsInclude } from "./statistics";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import {
+  defaultSelectStatistics,
+  InsertStatistics,
+  InsertStatisticsSchema,
+  SelectStatistics,
+  SelectStatisticsSchema,
+} from "./statistics";
+import { additional_equipment as AdditionalEquipment } from "../../drizzle/schema";
+import { defaultSelectCrystal, SelectCrystal, SelectCrystalSchema } from "./crystal";
+import { defaultSelectModifiersList, SelectModifiersList, SelectModifiersListSchema } from "./modifiers_list";
 
-export const AdditionalEquipmentInclude = {
-  include: {
-    crystal: CrystalInclude,
-    modifiersList: ModifiersListInclude,
-    statistics: StatisticsInclude,
-  },
+// TS
+export type SelectAdditionalEquipment = InferSelectModel<typeof AdditionalEquipment> & {
+  crystal: SelectCrystal[];
+  modifiersList: SelectModifiersList;
+  statistics: SelectStatistics;
 }
 
-export type AdditionalEquipment = Prisma.AdditionalEquipmentGetPayload<typeof AdditionalEquipmentInclude>;
+export const  SelectAdditionalEquipmentSchema = createSelectSchema(AdditionalEquipment).extend({
+  crystal: SelectCrystalSchema.array(),
+  modifiersList: SelectModifiersListSchema,
+  statistics: SelectStatisticsSchema,
+});
 
-export const AdditionalEquipmentInputSchema = AdditionalEquipmentSchema.extend({
-  modifiersList: ModifiersListInputSchema,
-  crystal: z.array(CrystalInputSchema),
-  statistics: StatisticsInputSchema,
-}) satisfies ZodType<AdditionalEquipment>;
-
-export const defaultAdditionalEquipment: AdditionalEquipment = {
+export const defaultSelectAdditionalEquipment: SelectAdditionalEquipment = {
   id: "",
   name: "",
   refinement: 0,
-  crystal: [defaultCrystal],
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  crystal: [defaultSelectCrystal],
+  modifiersList: defaultSelectModifiersList,
+  modifiersListId: defaultSelectModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -35,7 +38,7 @@ export const defaultAdditionalEquipment: AdditionalEquipment = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultStatistics,
+  statistics: defaultSelectStatistics,
   statisticsId: "",
 };
 
