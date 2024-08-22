@@ -1,9 +1,9 @@
-import { createEffect, createMemo, createSignal, For, JSX, onCleanup, onMount } from "solid-js";
+import { createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
 
-import { getDictionary, i18n, Locale, dictionary } from "~/i18n";
+import { getDictionary } from "~/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/button";
@@ -49,6 +49,7 @@ export default function App() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
+  const dictionary = createMemo(() => getDictionary(store.location));
 
   // 搜索函数
   const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId"];
@@ -350,8 +351,8 @@ export default function App() {
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
       <RandomBallBackground />
-      <div class={`Client flex h-dvh w-dvw flex-1 flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}>
-        <div class="QueryStarus pointer-events-none fixed left-10 top-10 -z-50 hidden flex-col text-xs text-accent-color-30 lg:flex">
+      <div class={`Client flex h-dvh w-dvw flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}>
+        <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: 测试数据</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
@@ -384,7 +385,7 @@ export default function App() {
               resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100 lg:flex-none`
             }`}
           >
-            <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur lg:mb-0`}>
+            <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
               <Icon.LogoText class="h-12 w-fit lg:h-auto" />
             </div>
             <h1 class={`py-4 text-accent-color-70 lg:hidden`}>
@@ -556,7 +557,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.monsters}</span>
@@ -572,7 +573,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.skills}</span>
@@ -588,7 +589,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.equipments}</span>
@@ -604,7 +605,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.crystals}</span>
@@ -620,7 +621,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.pets}</span>
@@ -636,7 +637,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.items}</span>
@@ -652,7 +653,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.character}</span>
@@ -668,7 +669,7 @@ export default function App() {
                 level="primary"
                 tabIndex={-1}
                 icon={
-                  <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color lg:h-6 lg:w-6" />
+                  <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
                 <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.comboAnalyze}</span>

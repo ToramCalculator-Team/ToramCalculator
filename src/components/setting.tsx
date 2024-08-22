@@ -1,11 +1,13 @@
 import { setStore, store } from "~/store";
 import Dialog from "./dialog";
-import { For, JSX, onMount, Show } from "solid-js";
-import { dictionary, i18n, Locale } from "~/i18n";
+import { createMemo, For, JSX, onMount, Show } from "solid-js";
+import { getDictionary, i18n, Locale } from "~/i18n";
 import { Motion, Presence } from "solid-motionone";
 import Button from "./button";
 
 export default function Setting() {
+  const dictionary = createMemo(() => getDictionary(store.location));
+  
   onMount(() => {
     console.log("--DialogBox render");
     return () => {
@@ -21,18 +23,17 @@ export default function Setting() {
             onClick={() => setStore("settingsDialogState", false)}
           ></div> */}
         <Motion.div
-          animate={{ transform: "scale(1)", opacity: [0,1] }}
+          animate={{ transform: "scale(1)", opacity: [0, 1] }}
           exit={{ transform: "scale(1.2)", opacity: 0 }}
           transition={{ duration: store.durtion ? 0.3 : 0 }}
-          class={`SettingBox grid place-items-center fixed left-0 top-0 h-dvh w-dvw scale-[120%] overflow-y-auto bg-primary-color`}
+          class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[120%] place-items-center overflow-y-auto bg-primary-color`}
         >
-          <div class={`SettingForm w-full h-full flex flex-1 flex-col gap-4 overflow-y-auto rounded px-3 lg:max-w-[1536px]`}>
-            <div
-              class="FormTitle flex justify-between p-3"
-              onClick={() => setStore("settingsDialogState", false)}
-            >
+          <div
+            class={`SettingForm flex h-full w-full flex-1 flex-col gap-4 overflow-y-auto rounded px-3 lg:max-w-[1536px]`}
+          >
+            <div class="FormTitle flex justify-between p-3">
               <h1 class="text-3xl font-bold">{dictionary().ui.settings.title}</h1>
-              <Button>{dictionary().ui.actions.close}</Button>
+              <Button onClick={() => setStore("settingsDialogState", false)}>{dictionary().ui.actions.close}</Button>
             </div>
             <div class="FormContent flex flex-1 lg:flex-row">
               <div class="Nav hidden w-60 flex-col gap-2 border-r-2 border-transition-color-8 lg:flex"></div>

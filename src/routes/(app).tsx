@@ -5,7 +5,6 @@ import { store } from "~/store";
 
 const Setting = clientOnly(() => import("~/components/setting"));
 
-
 export default function AppMainContet(props: ParentProps) {
   return (
     <>

@@ -29,5 +29,3 @@ export const getDictionary = (locale: Locale) => {
       return zh_CN;
   }
 };
-
-export const dictionary = createMemo(() => getDictionary(store.location));

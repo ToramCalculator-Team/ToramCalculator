@@ -8,6 +8,7 @@
   /* 颜色署名 */
   :root {
     --white: 255 255 255;
+    --white-90: 225 225 225;
     --grey: 55 55 55;
     --black: 0 0 0;
     --brown: 47 26 73;
@@ -39,7 +40,7 @@
   }
 
   .dark {
-    --accent: var(--white);
+    --accent: var(--white-90);
     --primary: var(--grey);
     --transition: var(--white);
     --brand-1st: var(--greenBlue);
