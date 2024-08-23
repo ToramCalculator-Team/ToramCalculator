@@ -1,4 +1,4 @@
-import { createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
+import { createMemo, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
@@ -16,7 +16,7 @@ import Filing from "~/components/filing";
 import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../../dictionaries/type";
-import { Motion } from "solid-motionone";
+import { Motion, Presence } from "solid-motionone";
 
 type Related =
   | {
@@ -558,147 +558,162 @@ export default function App() {
             {generateSearchResultDom(resultDialogOpened())}
           </div>
         </div>
-        <div
-          class={`Bottom grid self-center bg-accent-color p-6 duration-500 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `py-0 opacity-0` : `opacity-100 lg:py-20`}`}
-          style={{
-            "grid-template-rows": resultDialogOpened() ? "0fr" : "1fr",
-          }}
-        >
-          <div
-            class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
-          >
-            <a
-              tabIndex={2}
-              href={"/monster"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+
+        <Presence exitBeforeEnter>
+          <Show when={!resultDialogOpened()}>
+            <Motion.div
+              animate={{
+                opacity: [0, 1],
+                gridTemplateRows: ["0fr", "1fr"],
+              }}
+              exit={{
+                opacity: [1, 0],
+                gridTemplateRows: ["1fr", "0fr"],
+                paddingBottom: 0,
+                paddingTop: 0,
+              }}
+              transition={{ duration: store.durtion ? 0.5 : 0 }}
+              class={`Bottom ease-linear grid self-center bg-accent-color px-6 dark:bg-transition-color-8 lg:bg-transparent py-6 lg:py-20 dark:lg:bg-transparent`}
             >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
+              <div
+                class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.monsters}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/skill"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.skills}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/equipment"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.equipments}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/crystal"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.crystals}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/pet"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.pets}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/building"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.items}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/character"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.character}</span>
-              </Button>
-            </a>
-            <a
-              tabIndex={2}
-              href={"/analyze"}
-              class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
-            >
-              <Button
-                class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
-                level="primary"
-                tabIndex={-1}
-                icon={
-                  <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                }
-              >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.comboAnalyze}</span>
-              </Button>
-            </a>
-          </div>
-        </div>
+                <a
+                  tabIndex={2}
+                  href={"/monster"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.monsters}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/skill"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.skills}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/equipment"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.equipments}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/crystal"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.crystals}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/pet"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.pets}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/building"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.items}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/character"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.character}</span>
+                  </Button>
+                </a>
+                <a
+                  tabIndex={2}
+                  href={"/analyze"}
+                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded-md lg:basis-auto"
+                >
+                  <Button
+                    class="group w-full flex-col rounded-md border-2 border-primary-color-10 bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color lg:px-4 lg:py-3"
+                    level="primary"
+                    tabIndex={-1}
+                    icon={
+                      <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                    }
+                  >
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">
+                      {dictionary().ui.nav.comboAnalyze}
+                    </span>
+                  </Button>
+                </a>
+              </div>
+            </Motion.div>
+          </Show>
+        </Presence>
       </div>
-      <Filing />
+      <Filing />{" "}
     </MetaProvider>
   );
 }
