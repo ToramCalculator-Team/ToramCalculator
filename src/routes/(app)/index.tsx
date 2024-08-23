@@ -35,10 +35,10 @@ type Result =
 
 export default function App() {
   let searchButtonRef: HTMLButtonElement;
+  let searchInputRef: HTMLInputElement;
 
   type FinalResult = Partial<Record<"monsters" | "skills" | "crystals", Result[]>>;
 
-  const [searchInputFocused, setSearchInputFocused] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
     monsters: [],
@@ -317,15 +317,39 @@ export default function App() {
   onMount(() => {
     // enter键监听
     const handleEnterKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && searchInputFocused()) {
+      if (e.key === "Enter" && document.activeElement === searchInputRef) {
         searchButtonRef.click();
+      }
+    };
+
+    // s键监听
+    const handleSKeyPress = (e: KeyboardEvent) => {
+      if ((e.key === "S" || e.key === "s") && document.activeElement !== searchInputRef) {
+        setStore("settingsDialogState", true);
+      }
+    };
+
+    // ~键监听
+    const handleTildeKeyPress = (e: KeyboardEvent) => {
+      if ((e.key === "`" || e.key === "·") && document.activeElement !== searchInputRef) {
+        searchInputRef.focus();
+        e.preventDefault(); // 阻止默认输入行为
       }
     };
 
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setResultDialogOpened(false);
+        if (store.settingsDialogState) {
+          setStore("settingsDialogState", false);
+          e.stopPropagation();
+        } else if (document.activeElement === searchInputRef) {
+          searchInputRef.blur();
+          e.stopPropagation();
+        } else if (resultDialogOpened()) {
+          setResultDialogOpened(false);
+          e.stopPropagation();
+        }
       }
     };
 
@@ -338,11 +362,15 @@ export default function App() {
     // 监听绑带与清除
     document.addEventListener("keydown", handleEnterKeyPress);
     document.addEventListener("keydown", handleEscapeKeyPress);
+    document.addEventListener("keydown", handleSKeyPress);
+    document.addEventListener("keydown", handleTildeKeyPress);
     window.addEventListener("popstate", handlePopState);
 
     onCleanup(() => {
       document.removeEventListener("keydown", handleEnterKeyPress);
       document.removeEventListener("keydown", handleEscapeKeyPress);
+      document.removeEventListener("keydown", handleSKeyPress);
+      document.removeEventListener("keydown", handleTildeKeyPress);
       window.removeEventListener("popstate", handlePopState);
     });
   });
@@ -351,15 +379,14 @@ export default function App() {
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
       <RandomBallBackground />
-      <div class={`Client flex h-dvh w-dvw flex-col justify-between lg:mx-auto lg:max-w-[1536px] lg:p-8`}>
+      <div class={`Client flex h-dvh w-dvw flex-col justify-between lg:mx-auto lg:max-w-[1536px]`}>
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: 测试数据</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
-          <span>searchInputFocused: {searchInputFocused().toString()}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
-        <div class="Config fixed flex gap-1 lg:right-8 lg:top-8">
+        <div class="Config fixed flex gap-1 lg:right-3 lg:top-3">
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
@@ -375,11 +402,7 @@ export default function App() {
             <Icon.Line.Settings />
           </Button>
         </div>
-        <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden duration-700 ${
-            resultDialogOpened() ? `p-3 lg:p-0 lg:pb-3` : `p-6 lg:px-0 lg:pt-20`
-          }`}
-        >
+        <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-3 duration-700`}>
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
               resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100 lg:flex-none`
@@ -393,7 +416,7 @@ export default function App() {
             </h1>
           </div>
           <div
-            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden py-3 lg:hidden lg:flex-row ${
+            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
               resultDialogOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%]`
                 : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
@@ -414,7 +437,7 @@ export default function App() {
           >
             {generateSearchResultDom(resultDialogOpened())}
           </div>
-          <div class={`FunctionBox flex w-full flex-col justify-between lg:flex-row`}>
+          <div class={`FunctionBox flex w-full flex-col justify-between pb-3 lg:flex-row`}>
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
                 resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
@@ -436,10 +459,9 @@ export default function App() {
             >
               <input
                 id="searchInput-PC"
+                ref={searchInputRef!}
                 type="text"
                 placeholder={getGreetings() + "," + dictionary().ui.index.adventurer}
-                onFocus={() => setSearchInputFocused(true)}
-                onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
                 tabIndex={1}
                 onInput={(e) => {
@@ -451,8 +473,6 @@ export default function App() {
                 id="searchInput-Mobile"
                 type="text"
                 placeholder={dictionary().ui.searchPlaceholder}
-                onFocus={() => setSearchInputFocused(true)}
-                onBlur={() => setSearchInputFocused(false)}
                 value={searchInputValue()}
                 tabIndex={1}
                 onInput={(e) => {
@@ -518,7 +538,7 @@ export default function App() {
             <div class="hidden w-60 flex-none lg:flex"></div>
           </div>
           <div
-            class={`ResultPC hidden h-full flex-1 gap-1 overflow-hidden py-3 ease-linear lg:flex lg:flex-row ${
+            class={`ResultPC hidden h-full flex-1 gap-1 overflow-hidden ease-linear lg:flex lg:flex-row ${
               resultDialogOpened() ? `flex-grow-1 basis-[100%] opacity-100` : `flex-grow-0 basis-[0%] opacity-100`
             }`}
             style={
@@ -539,7 +559,7 @@ export default function App() {
           </div>
         </div>
         <div
-          class={`Bottom grid self-center bg-accent-color p-6 duration-700 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `py-0 opacity-0` : `opacity-100 lg:py-20`}`}
+          class={`Bottom grid self-center bg-accent-color p-6 duration-500 dark:bg-transition-color-8 lg:bg-transparent dark:lg:bg-transparent ${resultDialogOpened() ? `py-0 opacity-0` : `opacity-100 lg:py-20`}`}
           style={{
             "grid-template-rows": resultDialogOpened() ? "0fr" : "1fr",
           }}

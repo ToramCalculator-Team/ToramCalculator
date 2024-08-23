@@ -43,7 +43,7 @@ export default function RandomBallBackground() {
   return (
     <div class="Background fixed -z-10 h-dvh w-dvw">
       <div class="Balls -z-10">{balls}</div>
-      <div class="Mask -z-10 h-dvh w-dvw dark:backdrop-blur-sm"></div>
+      <div class="Mask -z-10 h-dvh w-dvw backdrop-blur-none dark:backdrop-blur-sm"></div>
     </div>
   );
 }
