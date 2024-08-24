@@ -35,7 +35,8 @@ type Result =
 
 export default function App() {
   let searchButtonRef: HTMLButtonElement;
-  let searchInputRef: HTMLInputElement;
+  let searchInputPCRef: HTMLInputElement;
+  let searchInputMobileRef: HTMLInputElement;
 
   type FinalResult = Partial<Record<"monsters" | "skills" | "crystals", Result[]>>;
 
@@ -315,41 +316,56 @@ export default function App() {
   };
 
   onMount(() => {
-    // enter键监听
-    const handleEnterKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && document.activeElement === searchInputRef) {
-        searchButtonRef.click();
-      }
-    };
-
-    // s键监听
-    const handleSKeyPress = (e: KeyboardEvent) => {
-      if ((e.key === "S" || e.key === "s") && document.activeElement !== searchInputRef) {
-        setStore("settingsDialogState", true);
-      }
-    };
-
-    // ~键监听
-    const handleTildeKeyPress = (e: KeyboardEvent) => {
-      if ((e.key === "`" || e.key === "·") && document.activeElement !== searchInputRef) {
-        searchInputRef.focus();
-        e.preventDefault(); // 阻止默认输入行为
-      }
-    };
-
-    // esc键监听
-    const handleEscapeKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (store.settingsDialogState) {
-          setStore("settingsDialogState", false);
-          e.stopPropagation();
-        } else if (document.activeElement === searchInputRef) {
-          searchInputRef.blur();
-          e.stopPropagation();
-        } else if (resultDialogOpened()) {
-          setResultDialogOpened(false);
-          e.stopPropagation();
-        }
+    const handleKeyPress = (e: KeyboardEvent) => {
+      console.log(e.key);
+      switch (e.key) {
+        case "Enter":
+          {
+            if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+              searchButtonRef.click();
+            }
+          }
+          break;
+        case "Escape":
+          {
+            if (store.settingsDialogState) {
+              setStore("settingsDialogState", false);
+              e.stopPropagation();
+            } else if (document.activeElement === searchInputPCRef) {
+              searchInputPCRef.blur();
+              e.stopPropagation();
+            } else if (document.activeElement === searchInputMobileRef) {
+              searchInputMobileRef.blur();
+              e.stopPropagation();
+            } else if (resultDialogOpened()) {
+              setResultDialogOpened(false);
+              e.stopPropagation();
+            }
+            if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+              searchInputPCRef.blur();
+              searchInputMobileRef.blur();
+            }
+          }
+          break;
+        case "s":
+        case "S":
+          {
+            if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+              setStore("settingsDialogState", true);
+            }
+          }
+          break;
+        case "·":
+        case "`":
+          {
+            if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+              searchInputPCRef.focus();
+              e.preventDefault(); // 阻止默认输入行为
+            }
+          }
+          break;
+        default:
+          break;
       }
     };
 
@@ -360,17 +376,11 @@ export default function App() {
     };
 
     // 监听绑带与清除
-    document.addEventListener("keydown", handleEnterKeyPress);
-    document.addEventListener("keydown", handleEscapeKeyPress);
-    document.addEventListener("keydown", handleSKeyPress);
-    document.addEventListener("keydown", handleTildeKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
     window.addEventListener("popstate", handlePopState);
 
     onCleanup(() => {
-      document.removeEventListener("keydown", handleEnterKeyPress);
-      document.removeEventListener("keydown", handleEscapeKeyPress);
-      document.removeEventListener("keydown", handleSKeyPress);
-      document.removeEventListener("keydown", handleTildeKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
       window.removeEventListener("popstate", handlePopState);
     });
   });
@@ -381,14 +391,15 @@ export default function App() {
       <Motion.div
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.durtion ? 0.7 : 0 }}
-        class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}>
+        class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
+      >
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: 测试数据</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
-        <div class="Config fixed flex gap-1 lg:right-3 lg:top-3">
+        <div class="Config fixed flex gap-1 right-3 top-3">
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
@@ -439,7 +450,9 @@ export default function App() {
           >
             {generateSearchResultDom(resultDialogOpened())}
           </div>
-          <div class={`FunctionBox flex w-full flex-col justify-between pb-3 lg:flex-row`}>
+          <div
+            class={`FunctionBox flex w-full flex-col justify-between ${resultDialogOpened() ? "pb-3" : ""} lg:flex-row`}
+          >
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
                 resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
@@ -461,7 +474,7 @@ export default function App() {
             >
               <input
                 id="searchInput-PC"
-                ref={searchInputRef!}
+                ref={searchInputPCRef!}
                 type="text"
                 placeholder={getGreetings() + "," + dictionary().ui.index.adventurer}
                 value={searchInputValue()}
@@ -473,6 +486,7 @@ export default function App() {
               />
               <input
                 id="searchInput-Mobile"
+                ref={searchInputMobileRef!}
                 type="text"
                 placeholder={dictionary().ui.searchPlaceholder}
                 value={searchInputValue()}
@@ -575,10 +589,10 @@ export default function App() {
                 paddingTop: 0,
               }}
               transition={{ duration: store.durtion ? 0.5 : 0 }}
-              class={`Bottom ease-linear grid self-center bg-accent-color px-6 dark:bg-transition-color-8 lg:bg-transparent py-6 lg:py-20 dark:lg:bg-transparent`}
+              class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-transition-color-8 lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
-                class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded-md backdrop-blur lg:flex-1 lg:bg-transition-color-8 ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded-md lg:flex-1 lg:bg-transition-color-8 lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
                 <a
                   tabIndex={2}
