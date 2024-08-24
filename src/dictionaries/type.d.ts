@@ -51,8 +51,54 @@ interface dictionary {
     };
     settings: {
       title: string;
-      isAnimationEnabled: string;
-      selectedLanguage: string;
+      userInterface: {
+        title: string;
+        isAnimationEnabled: {
+          title: string;
+        };
+      };
+      language: {
+        title: string;
+        selectedLanguage: {
+          title: string;
+          zhCN: string;
+          zhTW: string;
+          enUS: string;
+          jaJP: string;
+        };
+      };
+      statusAndSync: {
+        title: string;
+        restorePreviousStateOnStartup: {
+          title: string;
+        };
+        syncStateAcrossClients: {
+          title: string;
+        };
+      };
+      privacy: {
+        title: string;
+        postVisibility: {
+          title: string;
+          everyone: string;
+          friends: string;
+          onlyMe: string;
+        };
+      };
+      messages: {
+        title: string;
+        notifyOnContentChange: {
+          title: string;
+          notifyOnReferencedContentChange: string;
+          notifyOnLike: string;
+          notifyOnBookmark: string;
+        };
+      };
+      about: {
+        title: string;
+        description: string;
+        version: string;
+      };
     };
     index: {
       adventurer: string;

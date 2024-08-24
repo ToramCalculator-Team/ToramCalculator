@@ -58,8 +58,54 @@ const dictionary: dictionary = {
     },
     settings: {
       title: "设置",
-      isAnimationEnabled: "是否开启动画",
-      selectedLanguage: "选择语言",
+      userInterface: {
+        title: "外观",
+        isAnimationEnabled: {
+          title: "是否开启动画"
+        }
+      },
+      language: {
+        title: "语言",
+        selectedLanguage: {
+          title: "选择语言",
+          zhCN: "简体中文",
+          zhTW: "繁体中文",
+          enUS: "English",
+          jaJP: "日本語"
+        }
+      },
+      statusAndSync: {
+        title: "状态和同步",
+        restorePreviousStateOnStartup: {
+          title: "启动时恢复上一次的状态"
+        },
+        syncStateAcrossClients: {
+          title: "同步所有客户端状态"
+        }
+      },
+      privacy: {
+        title: "隐私",
+        postVisibility: {
+          title: "作品可见性",
+          everyone: "所有人可见",
+          friends: "仅好友可见",
+          onlyMe: "仅自己可见"
+        }
+      },
+      messages: {
+        title: "消息通知",
+        notifyOnContentChange: {
+          title: "以下内容发生变化时通知我",
+          notifyOnReferencedContentChange: "引用内容发生变化时",
+          notifyOnLike: "收到赞时",
+          notifyOnBookmark: "作品被收藏时"
+        }
+      },
+      about: {
+        title: "关于",
+        description: "描述",
+        version: "版本"
+      }
     },
     index: {
       adventurer: "冒险者",

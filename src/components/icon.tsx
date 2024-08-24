@@ -21,18 +21,6 @@ export const Line = {
     );
   },
 
-  Light: (props: JSX.IntrinsicElements["svg"]) => {
-    return (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <path
-          d="M13.8154 10.4211C13.7049 10.4211 13.6154 10.3316 13.6154 10.2211V2.60383C13.6154 2.41125 13.3699 2.32994 13.2549 2.48445L5.59411 12.7804C5.34868 13.1103 5.58411 13.5789 5.99525 13.5789H10.1846C10.2951 13.5789 10.3846 13.6684 10.3846 13.7789V21.3962C10.3846 21.5888 10.6301 21.6701 10.7451 21.5156L18.4059 11.2196C18.6513 10.8897 18.4159 10.4211 18.0047 10.4211H13.8154Z"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
-      </svg>
-    );
-  },
-
   Back: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -55,6 +43,19 @@ export const Line = {
           stroke-width="1.5"
           stroke-linejoin="round"
         />
+      </svg>
+    );
+  },
+
+  Calculactor: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <rect x="4" y="2" width="16" height="20" rx="4" stroke="currentColor" stroke-width="1.5" />
+        <rect x="8" y="6" width="8" height="3" rx="1" stroke="currentColor" stroke-width="1.5" />
+        <path d="M9 18H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M9 14H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M15 18H16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M15 14L16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
       </svg>
     );
   },
@@ -167,6 +168,65 @@ export const Line = {
     );
   },
 
+  ColorPalette: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <rect x="2" y="2" width="10" height="20" rx="3" stroke="currentColor" stroke-width="1.5" />
+        <path
+          d="M12.1421 5L13.0208 4.12132C14.1924 2.94975 16.0919 2.94975 17.2634 4.12132L20.0919 6.94975C21.2634 8.12132 21.2634 10.0208 20.0919 11.1924L12.1421 19.1421"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path
+          d="M19 12V12C20.6568 12 22 13.3431 22 15L22 19C22 20.6569 20.6568 22 19 22L6.99998 22"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <circle cx="7" cy="18" r="1" fill="currentColor" />
+      </svg>
+    );
+  },
+
+  Close: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="1.5" />
+        <path
+          d="M9.8787 14.1215L14.1213 9.87891"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M9.8787 9.87894L14.1213 14.1216"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    );
+  },
+
+  Flag: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M4 3.5C4 2.67157 4.67157 2 5.5 2H10.5C11.3284 2 12 2.67157 12 3.5V11.5C12 12.3284 11.3284 13 10.5 13H4V3.5Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path
+          d="M12 4H18.0362C18.8535 4 19.3257 4.9272 18.845 5.58817L16.8555 8.32366C16.3455 9.02496 16.3455 9.97504 16.8555 10.6763L18.845 13.4118C19.3257 14.0728 18.8535 15 18.0362 15H13C12.4477 15 12 14.5523 12 14V4Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path d="M4 22L4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    );
+  },
+
   Filter: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -219,6 +279,16 @@ export const Line = {
     );
   },
 
+  Laptop: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <rect x="2" y="17" width="20" height="3" rx="1" stroke="currentColor" stroke-width="1.5" />
+        <rect x="3" y="5" width="18" height="12" rx="1" stroke="currentColor" stroke-width="1.5" />
+        <path d="M14 5.5L10 5.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+      </svg>
+    );
+  },
+
   Loading: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -266,6 +336,73 @@ export const Line = {
           stroke-linecap="round"
           stroke-linejoin="round"
         />
+      </svg>
+    );
+  },
+
+  Location: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M20 10.4167C20 15.8445 13.6 21.5 12 21.5C10.4 21.5 4 15.8445 4 10.4167C4 6.04441 7.58172 2.5 12 2.5C16.4183 2.5 20 6.04441 20 10.4167Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <circle cx="3" cy="3" r="3" transform="matrix(-1 0 0 1 15 7)" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+    );
+  },
+
+  Light: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M13.8154 10.4211C13.7049 10.4211 13.6154 10.3316 13.6154 10.2211V2.60383C13.6154 2.41125 13.3699 2.32994 13.2549 2.48445L5.59411 12.7804C5.34868 13.1103 5.58411 13.5789 5.99525 13.5789H10.1846C10.2951 13.5789 10.3846 13.6684 10.3846 13.7789V21.3962C10.3846 21.5888 10.6301 21.6701 10.7451 21.5156L18.4059 11.2196C18.6513 10.8897 18.4159 10.4211 18.0047 10.4211H13.8154Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+      </svg>
+    );
+  },
+
+  Left: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M15 19L9.66939 12.7809C9.2842 12.3316 9.2842 11.6684 9.66939 11.2191L15 5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
+      </svg>
+    );
+  },
+
+  Logo: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" fill="none" {...props}>
+        <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" />
+        <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" stroke-width="1.5" class="stroke-accent-color" />
+        <rect x="12.3611" y="12.2222" width="8.61111" height="27.7778" rx="4.30556" class="fill-accent-color" />
+        <rect
+          x="23.2077"
+          y="28.6913"
+          width="5.20137"
+          height="16.7786"
+          rx="2.60068"
+          transform="rotate(-45 23.2077 28.6913)"
+          class="fill-brand-color-2nd"
+        />
+        <rect
+          x="35.0366"
+          y="25"
+          width="5.20137"
+          height="16.7786"
+          rx="2.60068"
+          transform="rotate(45 35.0366 25)"
+          class="fill-brand-color-2nd"
+        />
+        <rect x="24.4444" y="11.8055" width="12.7778" height="12.7778" rx="6.38889" class="fill-brand-color-3rd" />
       </svg>
     );
   },
@@ -322,19 +459,6 @@ export const Line = {
     );
   },
 
-  Calculactor: (props: JSX.IntrinsicElements["svg"]) => {
-    return (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <rect x="4" y="2" width="16" height="20" rx="4" stroke="currentColor" stroke-width="1.5" />
-        <rect x="8" y="6" width="8" height="3" rx="1" stroke="currentColor" stroke-width="1.5" />
-        <path d="M9 18H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        <path d="M9 14H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        <path d="M15 18H16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        <path d="M15 14L16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-      </svg>
-    );
-  },
-
   Search: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -358,48 +482,6 @@ export const Line = {
     );
   },
 
-  Left: (props: JSX.IntrinsicElements["svg"]) => {
-    return (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <path
-          d="M15 19L9.66939 12.7809C9.2842 12.3316 9.2842 11.6684 9.66939 11.2191L15 5"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-        />
-      </svg>
-    );
-  },
-
-  Logo: (props: JSX.IntrinsicElements["svg"]) => {
-    return (
-      <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" fill="none" {...props}>
-        <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" />
-        <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" stroke-width="1.5" class="stroke-accent-color" />
-        <rect x="12.3611" y="12.2222" width="8.61111" height="27.7778" rx="4.30556" class="fill-accent-color" />
-        <rect
-          x="23.2077"
-          y="28.6913"
-          width="5.20137"
-          height="16.7786"
-          rx="2.60068"
-          transform="rotate(-45 23.2077 28.6913)"
-          class="fill-brand-color-2nd"
-        />
-        <rect
-          x="35.0366"
-          y="25"
-          width="5.20137"
-          height="16.7786"
-          rx="2.60068"
-          transform="rotate(45 35.0366 25)"
-          class="fill-brand-color-2nd"
-        />
-        <rect x="24.4444" y="11.8055" width="12.7778" height="12.7778" rx="6.38889" class="fill-brand-color-3rd" />
-      </svg>
-    );
-  },
-
   Settings: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -412,23 +494,19 @@ export const Line = {
     );
   },
 
-  Close: (props: JSX.IntrinsicElements["svg"]) => {
+  VolumeDown: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="1.5" />
         <path
-          d="M9.8787 14.1215L14.1213 9.87891"
+          d="M15 6.3706C15 4.65827 12.9884 3.73774 11.6926 4.85712L8.36317 7.73321C7.99988 8.04704 7.53583 8.21972 7.05576 8.21973L5.49998 8.21974C4.11928 8.21975 3 9.33903 3 10.7197V14.0127C3 15.3934 4.11929 16.5127 5.5 16.5127H7.0558C7.53587 16.5127 7.99993 16.6854 8.36322 16.9992L11.6926 19.8753C12.9884 20.9947 15 20.0741 15 18.3618V12.3662V6.3706Z"
           stroke="currentColor"
           stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
         />
         <path
-          d="M9.8787 9.87894L14.1213 14.1216"
+          d="M18 15.3667C18.6279 14.531 19 13.4923 19 12.3667C19 11.2411 18.6279 10.2024 18 9.3667"
           stroke="currentColor"
           stroke-width="1.5"
           stroke-linecap="round"
-          stroke-linejoin="round"
         />
       </svg>
     );

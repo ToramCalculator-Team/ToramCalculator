@@ -49,21 +49,37 @@ export default function Setting() {
             <div class="FormContent overflow-hidden flex flex-1 flex-row items-start">
               <div class="Nav mr-3 hidden w-60 flex-col gap-2 rounded-md bg-transition-color-8 p-3 lg:flex">
                 <Button level="tertiary" class="bg-transparent">
-                  <Icon.Line.Box2 />
-                  <span class="w-full text-left">{dictionary().ui.nav.crystals}</span>
+                  <Icon.Line.Laptop />
+                  <span class="w-full text-left">{dictionary().ui.settings.userInterface.title}</span>
                 </Button>
                 <Button level="tertiary" class="bg-transparent">
-                  <Icon.Line.Box2 />
-                  <span class="w-full text-left">{dictionary().ui.nav.crystals}</span>
+                  <Icon.Line.Location />
+                  <span class="w-full text-left">{dictionary().ui.settings.language.title}</span>
+                </Button>
+                <Button level="tertiary" class="bg-transparent">
+                  <Icon.Line.CloudUpload />
+                  <span class="w-full text-left">{dictionary().ui.settings.statusAndSync.title}</span>
+                </Button>
+                <Button level="tertiary" class="bg-transparent">
+                  <Icon.Line.ColorPalette />
+                  <span class="w-full text-left">{dictionary().ui.settings.privacy.title}</span>
+                </Button>
+                <Button level="tertiary" class="bg-transparent">
+                  <Icon.Line.VolumeDown />
+                  <span class="w-full text-left">{dictionary().ui.settings.messages.title}</span>
+                </Button>
+                <Button level="tertiary" class="bg-transparent">
+                  <Icon.Line.Flag />
+                  <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
                 </Button>
               </div>
               <div class="List overflow-y-auto flex flex-1 h-full flex-col items-stretch gap-3">
                 <div class="Module UI flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
-                  <h2 class="p-2 text-lg font-bold">外观</h2>
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.userInterface.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
                     <label class="Durtion flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
                       <div class="Dsicription flex flex-col gap-2">
-                        <h3>{dictionary().ui.settings.isAnimationEnabled}</h3>
+                        <h3>{dictionary().ui.settings.userInterface.isAnimationEnabled.title}</h3>
                         <span class="text-sm text-accent-color-70">
                           Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
                         </span>
@@ -75,60 +91,25 @@ export default function Setting() {
                           setStore("durtion", e.currentTarget.checked);
                         }}
                       />
-                    </label>
-                    <label class="Location flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
-                      <div class="Dsicription flex flex-col gap-2">
-                        <h3>{dictionary().ui.settings.selectedLanguage}</h3>
-                        <span class="text-sm text-accent-color-70">
-                          Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
-                        </span>
-                      </div>
-                      <select
-                        name="Language"
-                        value={store.location}
-                        onChange={(e) => setStore("location", e.currentTarget.value as Locale)}
-                      >
-                        <For each={i18n.locales} fallback={<option value="">--Please choose an option--</option>}>
-                          {(item) => <option value={item}>{item}</option>}
-                        </For>
-                      </select>
                     </label>
                   </div>
                 </div>
                 <div class="Module UI flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
-                  <h2 class="p-2 text-lg font-bold">外观</h2>
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.language.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <label class="Durtion flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
-                      <div class="Dsicription flex flex-col gap-2">
-                        <h3>{dictionary().ui.settings.isAnimationEnabled}</h3>
-                        <span class="text-sm text-accent-color-70">
-                          Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
-                        </span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={store.durtion}
-                        onChange={(e) => {
-                          setStore("durtion", e.currentTarget.checked);
-                        }}
-                      />
-                    </label>
                     <label class="Location flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
                       <div class="Dsicription flex flex-col gap-2">
-                        <h3>{dictionary().ui.settings.selectedLanguage}</h3>
+                        <h3>{dictionary().ui.settings.language.selectedLanguage.title}</h3>
                         <span class="text-sm text-accent-color-70">
                           Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
                         </span>
                       </div>
-                      <select
-                        name="Language"
-                        value={store.location}
-                        onChange={(e) => setStore("location", e.currentTarget.value as Locale)}
-                      >
-                        <For each={i18n.locales} fallback={<option value="">--Please choose an option--</option>}>
-                          {(item) => <option value={item}>{item}</option>}
-                        </For>
-                      </select>
+                      <div class="Selector flex flex-1 flex-wrap gap-1">
+                        <Button level="quaternary">{dictionary().ui.settings.language.selectedLanguage.zhCN}</Button>
+                        <Button level="quaternary">{dictionary().ui.settings.language.selectedLanguage.zhTW}</Button>
+                        <Button level="quaternary">{dictionary().ui.settings.language.selectedLanguage.enUS}</Button>
+                        <Button level="quaternary">{dictionary().ui.settings.language.selectedLanguage.jaJP}</Button>
+                      </div>
                     </label>
                   </div>
                 </div>

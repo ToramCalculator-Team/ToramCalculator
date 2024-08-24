@@ -443,7 +443,7 @@ export default function MonserPage() {
                     });
                   }}
                 >
-                  {dictionary.ui.upload} [u]
+                  {dictionary.ui.actions.upload} [u]
                 </Button>
               </div>
             </div>

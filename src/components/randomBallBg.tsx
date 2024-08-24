@@ -1,5 +1,7 @@
 import { JSX } from "solid-js";
 import { Keyframes } from "./keyframes";
+import { Motion } from "solid-motionone";
+import { store } from "~/store";
 
 export default function RandomBallBackground() {
   const balls: JSX.Element[] = [];
@@ -41,9 +43,9 @@ export default function RandomBallBackground() {
   }
 
   return (
-    <div class="Background fixed -z-10 h-dvh w-dvw">
+    <Motion.div animate={{ opacity: [0, 1] }} transition={{ duration: store.durtion ? 2 : 0 }} class="Background fixed -z-10 h-dvh w-dvw opacity-0">
       <div class="Balls -z-10">{balls}</div>
       <div class="Mask -z-10 h-dvh w-dvw backdrop-blur-none dark:backdrop-blur-sm"></div>
-    </div>
+    </Motion.div>
   );
 }

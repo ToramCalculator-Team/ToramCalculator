@@ -58,8 +58,54 @@ const dictionary: dictionary = {
     },
     settings: {
       title: "Settings",
-      isAnimationEnabled: "Is Animation Enabled",
-      selectedLanguage: "Selected Language",
+      userInterface: {
+        title: "User Interface",
+        isAnimationEnabled: {
+          title: "Enable Animation",
+        }
+      },
+      language: {
+        title: "Language",
+        selectedLanguage: {
+          title: "Select Language",
+          zhCN: "简体中文",
+          zhTW: "繁体中文",
+          enUS: "English",
+          jaJP: "日本語"
+        }
+      },
+      statusAndSync: {
+        title: "Status and Sync",
+        restorePreviousStateOnStartup: {
+          title: "Restore Previous State on Startup"
+        },
+        syncStateAcrossClients: {
+          title: "Sync State Across Clients"
+        }
+      },
+      privacy: {
+        title: "Privacy",
+        postVisibility: {
+          title: "Post Visibility",
+          everyone: "Everyone",
+          friends: "Friends",
+          onlyMe: "Only Me"
+        }
+      },
+      messages: {
+        title: "Messages",
+        notifyOnContentChange: {
+          title: "Notify on Content Change",
+          notifyOnReferencedContentChange: "Notify on Referenced Content Change",
+          notifyOnLike: "Notify on Like",
+          notifyOnBookmark: "Notify on Bookmark"
+        }
+      },
+      about: {
+        title: "About",
+        description: "Description",
+        version: "Version"
+      }
     },
     index: {
       adventurer: "Adventurer",

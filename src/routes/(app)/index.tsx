@@ -10,13 +10,13 @@ import Button from "~/components/button";
 import { testMonsterQueryData, type SelectMonster } from "~/schema/monster";
 import { testSkillQueryData, type SelectSkill } from "~/schema/skill";
 import { testCrystalQueryData, type SelectCrystal } from "~/schema/crystal";
-import RandomBallBackground from "~/components/randomBallBg";
 import Filing from "~/components/filing";
 
 import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../../dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
+import RandomBallBackground from "~/components/randomBallBg";
 
 type Related =
   | {
@@ -378,8 +378,10 @@ export default function App() {
   return (
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
-      <RandomBallBackground />
-      <div class={`Client flex h-dvh w-dvw flex-col justify-between lg:mx-auto lg:max-w-[1536px]`}>
+      <Motion.div
+        animate={{ opacity: [0, 1] }}
+        transition={{ duration: store.durtion ? 0.7 : 0 }}
+        class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}>
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: 测试数据</span>
           <span>SkillList: 测试数据</span>
@@ -712,7 +714,7 @@ export default function App() {
             </Motion.div>
           </Show>
         </Presence>
-      </div>
+      </Motion.div>
       <Filing />{" "}
     </MetaProvider>
   );
