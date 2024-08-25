@@ -23,7 +23,7 @@ const initialStore: Store = {
   location: "zh-CN",
   theme: "light",
   settingsDialogState: false,
-  durtion: false,
+  durtion: true,
   monster: defaultSelectMonster,
   indexPage: {
   },

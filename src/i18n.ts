@@ -2,8 +2,6 @@ import zh_CN from "~/dictionaries/zh_CN";
 import zh_TW from "~/dictionaries/zh_TW";
 import en from "~/dictionaries/en";
 import ja from "~/dictionaries/ja";
-import { createMemo } from "solid-js";
-import { store } from "./store";
 
 export const i18n = {
   defaultLocale: "zh-CN",

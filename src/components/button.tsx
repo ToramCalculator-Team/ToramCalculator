@@ -38,16 +38,14 @@ const Button = (props: MyButtonProps) => {
   });
 
   return (
-    <>
-      <button
-        ref={buttonRef}
-        {...rest}
-        class={` ` + rest.class ? defaultButtonClassNames + rest.class : defaultButtonClassNames}
-      >
-        {icon}
-        {children}
-      </button>
-    </>
+    <button
+      ref={buttonRef}
+      {...rest}
+      class={` ` + rest.class ? defaultButtonClassNames + rest.class : defaultButtonClassNames}
+    >
+      {icon}
+      {children}
+    </button>
   );
 };
 
