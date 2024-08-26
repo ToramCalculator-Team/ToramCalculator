@@ -4,9 +4,10 @@ import { createMemo, onMount, Show } from "solid-js";
 import { getDictionary } from "~/i18n";
 import { Motion, Presence } from "solid-motionone";
 import Button from "./button";
+import Toggle from "./toggle";
 
 export default function Setting() {
-  const dictionary = createMemo(() => getDictionary(store.location));
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   onMount(() => {
     console.log("--DialogBox render");
@@ -32,7 +33,7 @@ export default function Setting() {
         <Motion.div
           animate={{ transform: "scale(1)", opacity: [0, 1] }}
           exit={{ transform: "scale(1.05)", opacity: 0 }}
-          transition={{ duration: store.durtion ? 0.3 : 0 }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-primary-color`}
         >
           <div class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-3 lg:max-w-7xl`}>
@@ -69,70 +70,206 @@ export default function Setting() {
                   <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
                 </Button>
               </div>
-              <div class="List flex h-full flex-1 flex-col items-stretch gap-3 overflow-y-auto">
-                <div class="Module UI flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+              <div class="List flex h-full flex-1 flex-col items-stretch gap-3 overflow-y-auto rounded-md">
+                <div class="Module UserInterface flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
                   <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.userInterface.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <label class="Durtion flex cursor-pointer flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
-                      <div class="Dsicription flex flex-col gap-2">
+                    <div class="Durtion flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
                         <h3>{dictionary().ui.settings.userInterface.isAnimationEnabled.title}</h3>
                         <span class="text-sm text-accent-color-70">
-                          Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
+                          {dictionary().ui.settings.userInterface.isAnimationEnabled.description}
                         </span>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={store.durtion}
-                        onChange={(e) => {
-                          setStore("durtion", e.currentTarget.checked);
-                        }}
+                      <Toggle
+                        onclick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
+                        state={store.settings.userInterface.isAnimationEnabled}
                       />
-                    </label>
+                    </div>
                   </div>
                 </div>
-                <div class="Module UI flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+
+                <div class="Module Language flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
                   <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.language.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
                     <div class="Location flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
-                      <div class="Dsicription flex flex-col gap-2">
-                        <h3>
-                          {dictionary().ui.settings.language.selectedLanguage.title}
-                          {store.location}
-                        </h3>
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.language.selectedLanguage.title}</h3>
                         <span class="text-sm text-accent-color-70">
-                          Innovation distinguishes between a leader and a follower. 领袖和跟风者的区别就在于创新。
+                          {dictionary().ui.settings.language.selectedLanguage.description}
                         </span>
                       </div>
-                      <div class="Selector flex flex-1 flex-wrap gap-1">
+                      <div class="Selector flex flex-1 flex-wrap gap-2">
                         <Button
                           level="quaternary"
-                          active={store.location === "zh-CN" || store.location === "zh-HK"}
-                          onClick={() => setStore("location", "zh-CN")}
+                          active={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
+                          onClick={() => setStore("settings", "language", "zh-CN")}
                         >
                           {dictionary().ui.settings.language.selectedLanguage.zhCN}
                         </Button>
                         <Button
                           level="quaternary"
-                          active={store.location === "zh-TW"}
-                          disabled
-                          onClick={() => setStore("location", "zh-TW")}
+                          active={store.settings.language === "zh-TW"}
+                          onClick={() => setStore("settings", "language", "zh-TW")}
                         >
                           {dictionary().ui.settings.language.selectedLanguage.zhTW}
                         </Button>
                         <Button
                           level="quaternary"
-                          active={store.location === "en-US" || store.location === "en-GB"}
-                          onClick={() => setStore("location", "en-US")}
+                          active={store.settings.language === "en-US" || store.settings.language === "en-GB"}
+                          onClick={() => setStore("settings", "language", "en-US")}
                         >
                           {dictionary().ui.settings.language.selectedLanguage.enUS}
                         </Button>
                         <Button
                           level="quaternary"
-                          active={store.location === "ja"}
-                          onClick={() => setStore("location", "ja")}
+                          active={store.settings.language === "ja"}
+                          onClick={() => setStore("settings", "language", "ja")}
                         >
                           {dictionary().ui.settings.language.selectedLanguage.jaJP}
                         </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="Module StatusAndSync flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.statusAndSync.title}</h2>
+                  <div class="LabelGroup flex flex-col gap-1">
+                    <div class="RestorePreviousStateOnStartup flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title}</h3>
+                        <span class="text-sm text-accent-color-70">
+                          {dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.description}
+                        </span>
+                      </div>
+                      <Toggle
+                        onclick={() =>
+                          setStore("settings", "statusAndSync", "restorePreviousStateOnStartup", (prev) => !prev)
+                        }
+                        state={store.settings.statusAndSync.restorePreviousStateOnStartup}
+                      />
+                    </div>
+                    <div class="SyncStateAcrossClients flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.statusAndSync.syncStateAcrossClients.title}</h3>
+                        <span class="text-sm text-accent-color-70">
+                          {dictionary().ui.settings.statusAndSync.syncStateAcrossClients.description}
+                        </span>
+                      </div>
+                      <Toggle
+                        onclick={() => setStore("settings", "statusAndSync", "syncStateAcrossClients", (prev) => !prev)}
+                        state={store.settings.statusAndSync.syncStateAcrossClients}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="Module Message flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.privacy.title}</h2>
+                  <div class="LabelGroup flex flex-col gap-1">
+                    <div class="PostVisibility flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.privacy.postVisibility.title}</h3>
+                        <span class="text-sm text-accent-color-70">
+                          {dictionary().ui.settings.privacy.postVisibility.description}
+                        </span>
+                      </div>
+                      <div class="Selector flex flex-1 flex-wrap gap-2">
+                        <Button
+                          level="quaternary"
+                          active={store.settings.privacy.postVisibility === "everyone"}
+                          onClick={() => setStore("settings", "privacy", "postVisibility", "everyone")}
+                        >
+                          {dictionary().ui.settings.privacy.postVisibility.everyone}
+                        </Button>
+                        <Button
+                          level="quaternary"
+                          active={store.settings.privacy.postVisibility === "friends"}
+                          onClick={() => setStore("settings", "privacy", "postVisibility", "friends")}
+                        >
+                          {dictionary().ui.settings.privacy.postVisibility.friends}
+                        </Button>
+                        <Button
+                          level="quaternary"
+                          active={store.settings.privacy.postVisibility === "onlyMe"}
+                          onClick={() => setStore("settings", "privacy", "postVisibility", "onlyMe")}
+                        >
+                          {dictionary().ui.settings.privacy.postVisibility.onlyMe}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="Module Privacy flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.messages.title}</h2>
+                  <div class="LabelGroup flex flex-col gap-1">
+                    <div class="Durtion flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.messages.notifyOnContentChange.title}</h3>
+                        <span class="text-sm text-accent-color-70">
+                          {dictionary().ui.settings.messages.notifyOnContentChange.description}
+                        </span>
+                      </div>
+                      <div class="Selector flex flex-1 flex-wrap gap-2">
+                        <Button
+                          level="quaternary"
+                          active={store.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
+                          onClick={() =>
+                            setStore(
+                              "settings",
+                              "messages",
+                              "notifyOnContentChange",
+                              "notifyOnReferencedContentChange",
+                              (prev) => !prev,
+                            )
+                          }
+                        >
+                          {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
+                        </Button>
+                        <Button
+                          level="quaternary"
+                          active={store.settings.messages.notifyOnContentChange.notifyOnLike}
+                          onClick={() =>
+                            setStore("settings", "messages", "notifyOnContentChange", "notifyOnLike", (prev) => !prev)
+                          }
+                        >
+                          {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnLike}
+                        </Button>
+                        <Button
+                          level="quaternary"
+                          active={store.settings.messages.notifyOnContentChange.notifyOnBookmark}
+                          onClick={() =>
+                            setStore(
+                              "settings",
+                              "messages",
+                              "notifyOnContentChange",
+                              "notifyOnBookmark",
+                              (prev) => !prev,
+                            )
+                          }
+                        >
+                          {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnBookmark}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="Module About flex flex-col gap-1 rounded-md bg-transition-color-8 p-3">
+                  <h2 class="p-2 text-lg font-bold">{dictionary().ui.settings.about.title}</h2>
+                  <div class="LabelGroup flex flex-col gap-1">
+                    <div class="Version flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.about.version.title}</h3>
+                        <span class="text-sm text-accent-color-70">{dictionary().ui.settings.about.version.description}</span>
+                      </div>
+                    </div>
+                    <div class="Description flex flex-col items-start gap-2 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                      <div class="Description flex flex-col gap-2">
+                        <h3>{dictionary().ui.settings.about.description.title}</h3>
+                        <span class="text-sm text-accent-color-70">{dictionary().ui.settings.about.description.description}</span>
                       </div>
                     </div>
                   </div>

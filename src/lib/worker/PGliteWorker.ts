@@ -1,3 +1,5 @@
+/// <reference lib="webworker" />
+
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";

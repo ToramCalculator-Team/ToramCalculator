@@ -1,4 +1,3 @@
-"use client";
 import {
   type Column,
   type ColumnDef,
@@ -118,7 +117,7 @@ export default function MonserPage() {
   };
 
   // i18n字典
-  const dictionary = getDictionary(store.location);
+  const dictionary = getDictionary(store.settings.language);
 
   // table原始数据
   const [rawMonsterList, setRawMonsterList] = createSignal<SelectMonster[]>(testMonsterQueryData ?? []);
@@ -376,7 +375,7 @@ export default function MonserPage() {
                     });
                   }}
                 >
-                  {dictionary.ui.upload} [u]
+                  {dictionary.ui.actions.upload} [u]
                 </Button>
               </div>
             </div>

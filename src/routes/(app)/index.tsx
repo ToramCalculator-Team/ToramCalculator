@@ -50,7 +50,7 @@ export default function App() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
-  const dictionary = createMemo(() => getDictionary(store.location));
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 搜索函数
   const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId"];
@@ -254,8 +254,8 @@ export default function App() {
                           transform: ["translateY(30px)", "translateY(0)"],
                         }}
                         transition={{
-                          duration: store.durtion ? 0.7 : 0,
-                          delay: store.durtion ? (index < 10 ? 0.3 + index * 0.07 : 0) : 0,
+                          duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                          delay: store.settings.userInterface.isAnimationEnabled ? (index < 10 ? 0.3 + index * 0.07 : 0) : 0,
                         }}
                         onClick={() => {
                           if (item?.data.id === currentCardId()) {
@@ -388,172 +388,172 @@ export default function App() {
   return (
     <MetaProvider>
       <Title>ToramCalculator 首页</Title>
-      <Presence exitBeforeEnter>
-        <Motion.div
-          animate={{ opacity: [0, 1] }}
-          transition={{ duration: store.durtion ? 0.7 : 0 }}
-          class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
-        >
-          <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
-            <span>MonsterList: 测试数据</span>
-            <span>SkillList: 测试数据</span>
-            <span>CrystalList: 测试数据</span>
-            <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
+      <Motion.div
+        animate={{ opacity: [0, 1] }}
+        transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+        class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
+      >
+        <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
+          <span>MonsterList: 测试数据</span>
+          <span>SkillList: 测试数据</span>
+          <span>CrystalList: 测试数据</span>
+          <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
+        </div>
+        <div class="Config fixed right-3 top-3 flex gap-1">
+          <Button
+            class="outline-none duration-150 focus-within:outline-none"
+            level="quaternary"
+            onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
+          >
+            <Icon.Line.Light />
+          </Button>
+          <Button
+            class="outline-none duration-150 focus-within:outline-none"
+            level="quaternary"
+            onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
+          >
+            <Icon.Line.Settings />
+          </Button>
+        </div>
+        <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-3 duration-700`}>
+          <div
+            class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
+              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] lg:pb-12 opacity-100 lg:flex-none`
+            }`}
+          >
+            <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
+              <Icon.LogoText class="h-12 w-fit lg:h-auto" />
+            </div>
+            <h1 class={`py-4 text-accent-color-70 lg:hidden`}>
+              {getGreetings() + ",  " + dictionary().ui.index.adventurer}
+            </h1>
           </div>
-          <div class="Config fixed right-3 top-3 flex gap-1">
-            <Button
-              class="outline-none duration-150 focus-within:outline-none"
-              level="quaternary"
-              onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
-            >
-              <Icon.Line.Light />
-            </Button>
-            <Button
-              class="outline-none duration-150 focus-within:outline-none"
-              level="quaternary"
-              onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
-            >
-              <Icon.Line.Settings />
-            </Button>
+          <div
+            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
+              resultDialogOpened()
+                ? `flex-shrink-1 flex-grow-1 basis-[100%]`
+                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
+            }`}
+            style={
+              resultDialogOpened()
+                ? {
+                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                    "transition-duration": "0.3s",
+                    "transition-timing-function": "ease-out",
+                  }
+                : {
+                    "clip-path": "inset(10% 5% 90% 5% round 12px)",
+                    "transition-duration": "0.7s",
+                    "transition-timing-function": "ease-out",
+                  }
+            }
+          >
+            {generateSearchResultDom(resultDialogOpened())}
           </div>
-          <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-3 duration-700`}>
+          <div
+            class={`FunctionBox flex w-full flex-col justify-between ${resultDialogOpened() ? "pb-3" : ""} lg:flex-row`}
+          >
             <div
-              class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
-                resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] pb-12 opacity-100 lg:flex-none`
+              class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
+                resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
               }`}
             >
-              <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
-                <Icon.LogoText class="h-12 w-fit lg:h-auto" />
-              </div>
-              <h1 class={`py-4 text-accent-color-70 lg:hidden`}>
-                {getGreetings() + ",  " + dictionary().ui.index.adventurer}
-              </h1>
-            </div>
-            <div
-              class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
-                resultDialogOpened()
-                  ? `flex-shrink-1 flex-grow-1 basis-[100%]`
-                  : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
-              }`}
-              style={
-                resultDialogOpened()
-                  ? {
-                      "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                      "transition-duration": "0.3s",
-                      "transition-timing-function": "ease-out",
-                    }
-                  : {
-                      "clip-path": "inset(10% 5% 90% 5% round 12px)",
-                      "transition-duration": "0.7s",
-                      "transition-timing-function": "ease-out",
-                    }
-              }
-            >
-              {generateSearchResultDom(resultDialogOpened())}
-            </div>
-            <div
-              class={`FunctionBox flex w-full flex-col justify-between ${resultDialogOpened() ? "pb-3" : ""} lg:flex-row`}
-            >
-              <div
-                class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
-                  resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
-                }`}
+              <Button
+                level="quaternary"
+                onClick={() => {
+                  setResultDialogOpened(false);
+                }}
+                class="w-full outline-none focus-within:outline-none"
               >
-                <Button
-                  level="quaternary"
-                  onClick={() => {
+                <Icon.Line.Back />
+                <span class="w-full text-left">{dictionary().ui.actions.back}</span>
+              </Button>
+            </div>
+            <div
+              class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+            >
+              <input
+                id="searchInput-PC"
+                ref={searchInputPCRef!}
+                type="text"
+                placeholder={getGreetings() + "," + dictionary().ui.index.adventurer}
+                value={searchInputValue()}
+                tabIndex={1}
+                onInput={(e) => {
+                  setSearchInputValue(e.target.value);
+                }}
+                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
+              />
+              <input
+                id="searchInput-Mobile"
+                ref={searchInputMobileRef!}
+                type="text"
+                placeholder={dictionary().ui.searchPlaceholder}
+                value={searchInputValue()}
+                tabIndex={1}
+                onInput={(e) => {
+                  setSearchInputValue(e.target.value);
+                }}
+                class="w-full flex-1 rounded bg-transition-color-8 px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-accent-color-50 dark:mix-blend-normal lg:hidden"
+              />
+              <Button
+                ref={(el) => (searchButtonRef = el)}
+                level="tertiary"
+                icon={<Icon.Line.Search />}
+                class="outline-none focus-within:outline-none lg:bg-transparent"
+                onClick={() => {
+                  setIsNullResult(true);
+                  if (searchInputValue() === "" || searchInputValue() === null) {
+                    // console.log("输入值为空，不处理");
                     setResultDialogOpened(false);
-                  }}
-                  class="w-full outline-none focus-within:outline-none"
-                >
-                  <Icon.Line.Back />
-                  <span class="w-full text-left">{dictionary().ui.actions.back}</span>
-                </Button>
-              </div>
-              <div
-                class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
-              >
-                <input
-                  id="searchInput-PC"
-                  ref={searchInputPCRef!}
-                  type="text"
-                  placeholder={getGreetings() + "," + dictionary().ui.index.adventurer}
-                  value={searchInputValue()}
-                  tabIndex={1}
-                  onInput={(e) => {
-                    setSearchInputValue(e.target.value);
-                  }}
-                  class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
-                />
-                <input
-                  id="searchInput-Mobile"
-                  ref={searchInputMobileRef!}
-                  type="text"
-                  placeholder={dictionary().ui.searchPlaceholder}
-                  value={searchInputValue()}
-                  tabIndex={1}
-                  onInput={(e) => {
-                    setSearchInputValue(e.target.value);
-                  }}
-                  class="w-full flex-1 rounded bg-transition-color-8 px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-accent-color-50 dark:mix-blend-normal lg:hidden"
-                />
-                <Button
-                  ref={(el) => (searchButtonRef = el)}
-                  level="tertiary"
-                  icon={<Icon.Line.Search />}
-                  class="flex outline-none focus-within:outline-none lg:bg-transparent"
-                  onClick={() => {
-                    setIsNullResult(true);
-                    if (searchInputValue() === "" || searchInputValue() === null) {
-                      // console.log("输入值为空，不处理");
-                      setResultDialogOpened(false);
-                      return;
-                    }
-                    if (!resultDialogOpened()) {
-                      // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
-                      setResultDialogOpened(true);
-                      history.pushState({ popup: true }, "");
-                    }
+                    return;
+                  }
+                  if (!resultDialogOpened()) {
+                    // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
+                    setResultDialogOpened(true);
+                    history.pushState({ popup: true }, "");
+                  }
 
-                    const parsedInput = parseFloat(searchInputValue());
-                    const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
-                    const searchValue = isNumber ? parsedInput : searchInputValue();
+                  const parsedInput = parseFloat(searchInputValue());
+                  const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
+                  const searchValue = isNumber ? parsedInput : searchInputValue();
 
-                    const finalResult: FinalResult = {
-                      monsters: searchInList(
-                        testMonsterQueryData,
-                        searchValue,
-                        dictionary().db.models.monster,
-                        monsterHiddenData,
-                      ),
-                      skills: searchInList(
-                        testSkillQueryData,
-                        searchValue,
-                        dictionary().db.models.skill,
-                        skillHiddenData,
-                      ),
-                      crystals: searchInList(
-                        testCrystalQueryData,
-                        searchValue,
-                        dictionary().db.models.crystal,
-                        crystalHiddenData,
-                      ),
-                    };
-                    setSearchResult(finalResult);
-                    // 动态初始化列表状态
-                    const resultListSate: boolean[] = [];
-                    Object.entries(finalResult).forEach(([_key, value]) => {
-                      if (value.length > 0) {
-                        setIsNullResult(false);
-                      }
-                      resultListSate.push(true);
-                    });
-                    setResultListState(resultListSate);
-                  }}
-                ></Button>
-              </div>
-              <div class="hidden w-60 flex-none lg:flex"></div>
+                  const finalResult: FinalResult = {
+                    monsters: searchInList(
+                      testMonsterQueryData,
+                      searchValue,
+                      dictionary().db.models.monster,
+                      monsterHiddenData,
+                    ),
+                    skills: searchInList(
+                      testSkillQueryData,
+                      searchValue,
+                      dictionary().db.models.skill,
+                      skillHiddenData,
+                    ),
+                    crystals: searchInList(
+                      testCrystalQueryData,
+                      searchValue,
+                      dictionary().db.models.crystal,
+                      crystalHiddenData,
+                    ),
+                  };
+                  setSearchResult(finalResult);
+                  // 动态初始化列表状态
+                  const resultListSate: boolean[] = [];
+                  Object.entries(finalResult).forEach(([_key, value]) => {
+                    if (value.length > 0) {
+                      setIsNullResult(false);
+                    }
+                    resultListSate.push(true);
+                  });
+                  setResultListState(resultListSate);
+                }}
+              ></Button>
             </div>
+            <div class="hidden w-60 flex-none lg:flex"></div>
+          </div>
+          <Presence exitBeforeEnter>
             <Show when={resultDialogOpened()}>
               <Motion.div
                 animate={{
@@ -561,22 +561,24 @@ export default function App() {
                   opacity: [0, 1],
                   flexBasis: ["0%", "100%"],
                   flexGrow: [0, 1],
-                  transitionDuration: store.durtion ? 0.7 : 0,
+                  transitionDuration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
                 }}
                 exit={{
                   clipPath: ["inset(0% 0% 0% 0% round 12px)", "inset(10% 25% 90% 25% round 12px)"],
                   opacity: [1, 0],
                   flexBasis: ["100%", "0%"],
                   flexGrow: [1, 0],
-                  transition: { duration: store.durtion ? 0.7 : 0 },
+                  transition: { duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 },
                 }}
                 class={`ResultPC hidden lg:flex lg:h-full lg:flex-1 lg:flex-row lg:gap-1 lg:overflow-y-hidden`}
               >
                 {generateSearchResultDom(resultDialogOpened())}
               </Motion.div>
             </Show>
-          </div>
+          </Presence>
+        </div>
 
+        <Presence exitBeforeEnter>
           <Show when={!resultDialogOpened()}>
             <Motion.div
               animate={{
@@ -589,7 +591,7 @@ export default function App() {
                 paddingBottom: 0,
                 paddingTop: 0,
               }}
-              transition={{ duration: store.durtion ? 0.5 : 0 }}
+              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.5 : 0 }}
               class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-transition-color-8 lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
@@ -728,8 +730,8 @@ export default function App() {
               </div>
             </Motion.div>
           </Show>
-        </Motion.div>
-      </Presence>
+        </Presence>
+      </Motion.div>
       <Filing />{" "}
     </MetaProvider>
   );

@@ -6,7 +6,7 @@ import { JSX } from "solid-js";
 import { store } from "~/store";
 
 export default function Nav() {
-  const dictionary = getDictionary(store.location);
+  const dictionary = getDictionary(store.settings.language);
   const location = useLocation();
   const active = (path: string) => (path.includes(location.pathname) ? "bg-brand-color-1st" : "");
   const NavBtnConfig: [string, JSX.Element | undefined, string | undefined][] = [

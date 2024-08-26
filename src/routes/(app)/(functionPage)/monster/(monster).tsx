@@ -32,7 +32,7 @@ export default function MonsterCategoryViewPage() {
     });
   };
 
-  const dictionary = createMemo(() => getDictionary(store.location));
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   
   // table原始数据
   const [rawMonsterList] = createSignal<SelectMonster[]>(testMonsterQueryData ?? []);

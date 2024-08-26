@@ -1,13 +1,13 @@
-import { type Statistics } from "~/schema/statistics";
+import { type SelectStatistics } from "~/schema/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type ModifiersList } from "~/schema/modifiers_list";
+import { type SelectModifiersList } from "~/schema/modifiers_list";
 
-const modifiersList: ConvertToAllString<ModifiersList> = {
+const modifiersList: ConvertToAllString<SelectModifiersList> = {
   modifiers: "Modifiers",
   name:"Name",
   id: "ID"
 }
-const statistics: ConvertToAllString<Statistics> = {
+const statistics: ConvertToAllString<SelectStatistics> = {
   id: "ID",
   usageTimestamps: "UsageTimestamps",
   viewTimestamps: "ViewTimestamps",
@@ -62,12 +62,14 @@ const dictionary: dictionary = {
         title: "User Interface",
         isAnimationEnabled: {
           title: "Enable Animation",
+          description: "Will affect the duration of transitions and animations on all pages. If you find animations that are not controlled by this configuration, please give me feedback.",
         }
       },
       language: {
         title: "Language",
         selectedLanguage: {
           title: "Select Language",
+          description: "Affects all interface texts, but cannot change data class texts.",
           zhCN: "简体中文",
           zhTW: "繁体中文",
           enUS: "English",
@@ -77,16 +79,19 @@ const dictionary: dictionary = {
       statusAndSync: {
         title: "Status and Sync",
         restorePreviousStateOnStartup: {
-          title: "Restore Previous State on Startup"
+          title: "Restore Previous State on Startup",
+          description: "Not implemented yet.",
         },
         syncStateAcrossClients: {
-          title: "Sync State Across Clients"
+          title: "Sync State Across Clients",
+          description: "Not implemented yet.",
         }
       },
       privacy: {
         title: "Privacy",
         postVisibility: {
           title: "Post Visibility",
+          description: "Post Visibility includes: Character, Monstors, Crystas, Main Weapon, Sub Weapon, Body Armor, Additional Equipment, Special Equipment, Skills, Consumables, Combo, Analyzer.",
           everyone: "Everyone",
           friends: "Friends",
           onlyMe: "Only Me"
@@ -96,6 +101,7 @@ const dictionary: dictionary = {
         title: "Messages",
         notifyOnContentChange: {
           title: "Notify on Content Change",
+          description: "Not implemented yet.",
           notifyOnReferencedContentChange: "Notify on Referenced Content Change",
           notifyOnLike: "Notify on Like",
           notifyOnBookmark: "Notify on Bookmark"
@@ -103,8 +109,14 @@ const dictionary: dictionary = {
       },
       about: {
         title: "About",
-        description: "Description",
-        version: "Version"
+        description: {
+          title: "Description",
+          description: "~~~~~~~~~~~",
+        },
+        version: {
+          title: "Version",
+          description: "0.0.1-alpha",
+        }
       }
     },
     index: {

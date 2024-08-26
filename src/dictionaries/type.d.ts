@@ -55,12 +55,14 @@ interface dictionary {
         title: string;
         isAnimationEnabled: {
           title: string;
+          description: string;
         };
       };
       language: {
         title: string;
         selectedLanguage: {
           title: string;
+          description: string;
           zhCN: string;
           zhTW: string;
           enUS: string;
@@ -71,15 +73,18 @@ interface dictionary {
         title: string;
         restorePreviousStateOnStartup: {
           title: string;
+          description: string;
         };
         syncStateAcrossClients: {
           title: string;
+          description: string;
         };
       };
       privacy: {
         title: string;
         postVisibility: {
           title: string;
+          description: string;
           everyone: string;
           friends: string;
           onlyMe: string;
@@ -89,6 +94,7 @@ interface dictionary {
         title: string;
         notifyOnContentChange: {
           title: string;
+          description: string;
           notifyOnReferencedContentChange: string;
           notifyOnLike: string;
           notifyOnBookmark: string;
@@ -96,8 +102,14 @@ interface dictionary {
       };
       about: {
         title: string;
-        description: string;
-        version: string;
+        description: {
+          title: string;
+          description: string;
+        };
+        version: {
+          title: string;
+          description: string;
+        };
       };
     };
     index: {

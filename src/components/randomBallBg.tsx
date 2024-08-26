@@ -46,7 +46,7 @@ export default function RandomBallBackground() {
   }
 
   return (
-    <Motion.div animate={{ opacity: [0, 1] }} transition={{ duration: store.durtion ? 2 : 0 }} class="Background fixed -z-10 h-dvh w-dvw opacity-0">
+    <Motion.div animate={{ opacity: [0, 1] }} transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 2 : 0 }} class="Background fixed -z-10 h-dvh w-dvw opacity-0">
       <div class="Balls -z-10">{balls}</div>
     </Motion.div>
   );

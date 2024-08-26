@@ -1,13 +1,13 @@
-import { type Statistics } from "~/schema/statistics";
+import { type SelectStatistics } from "~/schema/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type ModifiersList } from "~/schema/modifiers_list";
+import { type SelectModifiersList } from "~/schema/modifiers_list";
 
-const modifiersList: ConvertToAllString<ModifiersList> = {
+const modifiersList: ConvertToAllString<SelectModifiersList> = {
   name: "名称",
   modifiers: "加成项",
   id: "ID"
 }
-const statistics: ConvertToAllString<Statistics> = {
+const statistics: ConvertToAllString<SelectStatistics> = {
   id: "ID",
   rates: "评分",
   usageTimestamps: "被使用记录",
@@ -61,13 +61,15 @@ const dictionary: dictionary = {
       userInterface: {
         title: "外观",
         isAnimationEnabled: {
-          title: "是否开启动画"
+          title: "是否开启动画",
+          description: "将影响所有页面的过渡和动画效果持续时间。如果您发现有动画不受此配置控制，请反馈给我。"
         }
       },
       language: {
         title: "语言",
         selectedLanguage: {
           title: "选择语言",
+          description: "影响所有的界面文本，但是无法改变数据类文本。",
           zhCN: "简体中文",
           zhTW: "繁体中文",
           enUS: "English",
@@ -77,16 +79,19 @@ const dictionary: dictionary = {
       statusAndSync: {
         title: "状态和同步",
         restorePreviousStateOnStartup: {
-          title: "启动时恢复上一次的状态"
+          title: "启动时恢复上一次的状态",
+          description: "暂未实现。"
         },
         syncStateAcrossClients: {
-          title: "同步所有客户端状态"
+          title: "同步所有客户端状态",
+          description: "此配置仅当用户登录时生效，未登录时客户端不具有身份标识，无法同步。"
         }
       },
       privacy: {
         title: "隐私",
         postVisibility: {
           title: "作品可见性",
+          description: "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
           everyone: "所有人可见",
           friends: "仅好友可见",
           onlyMe: "仅自己可见"
@@ -96,15 +101,22 @@ const dictionary: dictionary = {
         title: "消息通知",
         notifyOnContentChange: {
           title: "以下内容发生变化时通知我",
+          description: "暂未实现。",
           notifyOnReferencedContentChange: "引用内容发生变化时",
           notifyOnLike: "收到赞时",
           notifyOnBookmark: "作品被收藏时"
         }
       },
       about: {
-        title: "关于",
-        description: "描述",
-        version: "版本"
+        title: "关于此应用",
+        description: {
+          title: "描述",
+          description: "没想好怎么写。"
+        },
+        version: {
+          title: "版本",
+          description: "0.0.1-alpha"
+        }
       }
     },
     index: {

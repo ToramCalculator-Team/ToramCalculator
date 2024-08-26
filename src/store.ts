@@ -2,11 +2,30 @@ import { createStore } from "solid-js/store";
 import { Locale } from "~/i18n";
 import { defaultSelectMonster, SelectMonster } from "./schema/monster";
 
-type Store = {
-  location: Locale;
+export type Store = {
+  version: number;
   theme: "light" | "dark";
   settingsDialogState: boolean;
-  durtion: boolean;
+  settings: {
+    userInterface: {
+      isAnimationEnabled: boolean;
+    };
+    language: Locale;
+    statusAndSync: {
+      restorePreviousStateOnStartup: boolean;
+      syncStateAcrossClients: boolean;
+    };
+    privacy: {
+      postVisibility: "everyone" | "friends" | "onlyMe";
+    };
+    messages: {
+      notifyOnContentChange: {
+        notifyOnReferencedContentChange: boolean;
+        notifyOnLike: boolean;
+        notifyOnBookmark: boolean;
+      };
+    };
+  };
   monster: SelectMonster;
   indexPage: {
   };
@@ -19,11 +38,30 @@ type Store = {
   };
 };
 
-const initialStore: Store = {
-  location: "zh-CN",
+export const initialStore: Store = {
+  version: 0.001,
   theme: "light",
+  settings: {
+    userInterface: {
+      isAnimationEnabled: true
+    },
+    language: "zh-CN",
+    statusAndSync: {
+      restorePreviousStateOnStartup: true,
+      syncStateAcrossClients: true,
+    },
+    privacy: {
+      postVisibility: "everyone"
+    },
+    messages: {
+      notifyOnContentChange: {
+        notifyOnReferencedContentChange: true,
+        notifyOnLike: true,
+        notifyOnBookmark: true
+      }
+    },
+  },
   settingsDialogState: false,
-  durtion: true,
   monster: defaultSelectMonster,
   indexPage: {
   },
