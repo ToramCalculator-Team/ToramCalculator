@@ -1,4 +1,5 @@
-import { createEffect, createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
+import * as _ from "lodash-es";
 
 type Size = "sm" | "md" | "lg";
 
@@ -9,26 +10,29 @@ interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLDivElement> {
 }
 
 const Toggle = (props: MyButtonProps) => {
-  const { size, state, ...rest } = props;
-  const sizeClass = {
-    sm: "p-0.5",
-    md: "p-1",
-    lg: "p-2",
-  }[size ?? "md"];
-  const [disableClass, setDisableClass] = createSignal("");
-  const [activedClass, setActivedClass] = createSignal("");
+  const rest = _.omit(props, "size", "state");
+  const config = createMemo(() => {
+    return {
+      sizeClass: {
+        sm: "p-0.5",
+        md: "p-1",
+        lg: "p-2",
+      }[props.size ?? "md"],
+      disableClass: rest.disabled ? "pointer-events-none opacity-50" : "",
+      activedClass: props.state ? "justify-start bg-brand-color-1st" : "justify-end bg-transition-color-20",
+    };
+  })
+
   const [defaultBoxClassNames, setDefaultBoxClassNames] = createSignal("");
   const [defaultBallClassNames, setDefaultBallClassNames] = createSignal("");
   let switchRef: HTMLDivElement | undefined;
 
   createEffect(() => {
-    setDisableClass(rest.disabled ? "pointer-events-none opacity-50" : "");
-    setActivedClass(props.state ? "justify-start bg-brand-color-1st" : "justify-end bg-transition-color-20");
     setDefaultBoxClassNames(
-      `${disableClass()} group cursor-pointer w-20 rounded-full flex flex-none items-center hover:underline ${sizeClass} ${activedClass()} `,
+      `${config().disableClass} group cursor-pointer w-20 rounded-full flex flex-none items-center hover:underline ${config().sizeClass} ${config().activedClass} `,
     );
     setDefaultBallClassNames(
-      `${disableClass()} h-[34px] w-[34px] rounded-full bg-primary-color group-hover:scale-110`,
+      `${config().disableClass} h-[34px] w-[34px] rounded-full bg-primary-color group-hover:scale-110`,
     );
   });
 

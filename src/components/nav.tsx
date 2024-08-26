@@ -6,16 +6,30 @@ import { createEffect, createMemo, For, JSX } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";
 import Button from "./button";
+import { createStore } from "solid-js/store";
+import { monster } from "@/schema";
 
 export default function Nav() {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [navStore, setNavStore] = createStore({
+    monsters: dictionary().ui.nav.monsters,
+    skills: dictionary().ui.nav.skills,
+    equipments: dictionary().ui.nav.equipments,
+    crystals: dictionary().ui.nav.crystals,
+    pets: dictionary().ui.nav.pets,
+    items: dictionary().ui.nav.items,
+    character: dictionary().ui.nav.character,
+    comboAnalyze: dictionary().ui.nav.comboAnalyze,
+  });
   const location = useLocation();
   const active = (path: string) => (path.includes(location.pathname) ? "bg-brand-color-1st" : "");
-  const NavBtnConfig: {
-    btnName: string;
-    icon: JSX.Element | undefined;
-    url: string | undefined;
-  }[] = [
+  const NavBtnConfig = createMemo<
+    {
+      btnName: string;
+      icon: JSX.Element | undefined;
+      url: string | undefined;
+    }[]
+  >(() => [
     {
       btnName: dictionary().ui.nav.monsters,
       icon: <Icon.Line.Calendar />,
@@ -58,7 +72,7 @@ export default function Nav() {
       icon: <Icon.Line.Filter />,
       url: "/analyze",
     },
-  ];
+  ]);
 
   createEffect(() => {
     console.log(dictionary().ui.nav);
@@ -83,7 +97,7 @@ export default function Nav() {
         </a>
       </div>
       <div class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4 lg:overflow-y-auto">
-        <For each={NavBtnConfig}>
+        <For each={NavBtnConfig()}>
           {(config) => {
             if (config.icon !== undefined && config.url !== undefined) {
               return (
