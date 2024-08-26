@@ -1,11 +1,12 @@
 import { ParentProps } from "solid-js";
-import Nav from "~/components/leftNav";
+import { Motion } from "solid-motionone";
+import Nav from "~/components/nav";
 
 export default function Home(props: ParentProps) {
   return (
-    <main class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
+    <Motion.main animate={{ opacity: 1 }} class="flex h-dvh w-dvw flex-col-reverse opacity-0 lg:flex-row">
       <Nav />
       {props.children}
-    </main>
+    </Motion.main>
   );
 }
