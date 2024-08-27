@@ -28,12 +28,12 @@ const CheckBox = (props: MyButtonProps) => {
   });
 
   const [defaultButtonClassNames, setDefaultButtonClassNames] = createSignal(
-    `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 hover:underline ${config().sizeClass} ${config().stateClass} `,
+    ``
   );
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 hover:underline ${config().sizeClass} ${config().stateClass} `,
+      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 ${props.state ? "" : "focus-within:outline-transition-color-20"} hover:underline ${config().sizeClass} ${config().stateClass} `,
     );
   });
 
