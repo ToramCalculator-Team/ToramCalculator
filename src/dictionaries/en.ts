@@ -56,6 +56,9 @@ const dictionary: dictionary = {
       character: "Character",
       comboAnalyze: "Combo",
     },
+    errorPage: {
+      tips: "You have no knowledge of the desert. Click the screen to return",
+    },
     settings: {
       title: "Settings",
       userInterface: {

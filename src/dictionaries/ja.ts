@@ -57,6 +57,9 @@ const dictionary: dictionary = {
       character: "キャラクター設定",
       comboAnalyze: "コンボ分析",
     },
+    errorPage: {
+      tips: "あなたは知識の荒野にいるが、クリックして戻ります",
+    },
     settings: {
       title: "設定",
       userInterface: {

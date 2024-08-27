@@ -121,6 +121,10 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
       },
+      backgroundImage: {
+        'aeskl': "url('/app-image/bg.jpg')",
+        'test': "url('/app-image/test.jpg')",
+      },
       keyframes: {
         "up": {
           "0%": {

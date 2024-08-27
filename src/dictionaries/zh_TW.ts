@@ -56,6 +56,9 @@ const dictionary: dictionary = {
       character: "角色配置",
       comboAnalyze: "連擊分析",
     },
+    errorPage: {
+      tips: "你來到了沒有知識的荒原~，點擊屏幕返回",
+    },
     settings: {
       title: "設定",
       userInterface: {

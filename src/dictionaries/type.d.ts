@@ -49,6 +49,9 @@ interface dictionary {
       character: string;
       comboAnalyze: string;
     };
+    errorPage: {
+      tips: string;
+    }
     settings: {
       title: string;
       userInterface: {
