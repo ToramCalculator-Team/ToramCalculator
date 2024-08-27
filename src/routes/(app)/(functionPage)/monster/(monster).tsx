@@ -4,10 +4,9 @@ import Dialog from "~/components/dialog";
 import { setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
 import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
-import { getDictionary, Locale } from "~/i18n";
+import { getDictionary } from "~/i18n";
 import * as _ from "lodash-es";
 import Fuse from "fuse.js";
-import { getCookie } from "vinxi/http";
 
 /**
  * @页面逻辑 获取原始数据，并根据配置生成分类数据
