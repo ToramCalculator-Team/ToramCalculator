@@ -1,6 +1,6 @@
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
-import { createMemo, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 import { getDictionary } from "~/i18n";
 import { Motion, Presence } from "solid-motionone";
 import Button from "./button";
@@ -8,7 +8,11 @@ import Toggle from "./toggle";
 import CheckBox from "./checkBox";
 
 export default function Setting() {
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+
+  createEffect(() => {
+    setDictionary(getDictionary(store.settings.language));
+  })
 
   onMount(() => {
     console.log("--DialogBox render");

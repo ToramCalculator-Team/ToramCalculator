@@ -1,16 +1,20 @@
 // @refresh reload
 import { StartServer, createHandler } from "@solidjs/start/server";
 import { env } from "process";
+import { getCookie } from "vinxi/http";
+import { Locale } from "./i18n";
 
 const APP_NAME = "托拉姆计算器-ToramCalculator:一个简单的托拉姆数值计算器";
 const APP_DEFAULT_TITLE = "托拉姆计算器-ToramCalculator";
 const APP_TITLE_TEMPLATE = "ToramCalculator";
 const APP_DESCRIPTION = "Wiki、角色配置、连击计算等";
 
+const lang = getCookie("lang") as Locale ?? "zh_CN" ;
+
 export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
-      <html lang="zh_CN" class="transitionNone">
+      <html lang={lang} class="transitionNone">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />

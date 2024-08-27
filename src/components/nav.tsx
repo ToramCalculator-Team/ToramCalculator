@@ -2,25 +2,13 @@ import { useLocation } from "@solidjs/router";
 
 import * as Icon from "./icon";
 import { getDictionary } from "~/i18n";
-import { createEffect, createMemo, For, JSX } from "solid-js";
+import { createEffect, createMemo, createSignal, For, JSX } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";
 import Button from "./button";
-import { createStore } from "solid-js/store";
-import { monster } from "@/schema";
 
 export default function Nav() {
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
-  const [navStore, setNavStore] = createStore({
-    monsters: dictionary().ui.nav.monsters,
-    skills: dictionary().ui.nav.skills,
-    equipments: dictionary().ui.nav.equipments,
-    crystals: dictionary().ui.nav.crystals,
-    pets: dictionary().ui.nav.pets,
-    items: dictionary().ui.nav.items,
-    character: dictionary().ui.nav.character,
-    comboAnalyze: dictionary().ui.nav.comboAnalyze,
-  });
+  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   const location = useLocation();
   const active = (path: string) => (path.includes(location.pathname) ? "bg-brand-color-1st" : "");
   const NavBtnConfig = createMemo<
@@ -75,8 +63,8 @@ export default function Nav() {
   ]);
 
   createEffect(() => {
-    console.log(dictionary().ui.nav);
-  });
+    setDictionary(getDictionary(store.settings.language));
+  })
 
   return (
     <Motion.div

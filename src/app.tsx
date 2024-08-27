@@ -43,6 +43,8 @@ export default function App() {
 
   // 更新配置数据的本地存储
   createEffect(() => {
+    document.documentElement.lang = store.settings.language;
+    document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
     localStorage.setItem("store", JSON.stringify(store));
   });
 

@@ -3,7 +3,7 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
 
-import { getDictionary } from "~/i18n";
+import { getDictionary, Locale } from "~/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/button";

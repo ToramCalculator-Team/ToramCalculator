@@ -3,10 +3,11 @@ import * as Icon from "~/components/icon";
 import Dialog from "~/components/dialog";
 import { setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
-import { createMemo, createSignal, For, onMount } from "solid-js";
-import { getDictionary } from "~/i18n";
+import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
+import { getDictionary, Locale } from "~/i18n";
 import * as _ from "lodash-es";
 import Fuse from "fuse.js";
+import { getCookie } from "vinxi/http";
 
 /**
  * @页面逻辑 获取原始数据，并根据配置生成分类数据
@@ -31,8 +32,7 @@ export default function MonsterCategoryViewPage() {
       monsterDialogState: newState,
     });
   };
-
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   
   // table原始数据
   const [rawMonsterList] = createSignal<SelectMonster[]>(testMonsterQueryData ?? []);
@@ -146,6 +146,10 @@ export default function MonsterCategoryViewPage() {
       document.removeEventListener("keydown", handleUKeyPress);
     };
   });
+
+  createEffect(() => {
+    setDictionary(getDictionary(store.settings.language));
+  })
 
   return (
     <main class="flex flex-col lg:w-[calc(100dvw-96px)] lg:flex-row">
