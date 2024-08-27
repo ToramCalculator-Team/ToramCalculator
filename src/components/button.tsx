@@ -5,7 +5,6 @@ type Size = "sm" | "md" | "lg";
 type Level = "primary" | "secondary" | "tertiary" | "quaternary";
 
 interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-  children?: JSX.Element;
   icon?: JSX.Element;
   size?: Size;
   level?: Level;
@@ -14,7 +13,6 @@ interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = (props: MyButtonProps) => {
-  const rest = _.omit(props, "children", "icon", "size", "level", "active");
   const config = createMemo(() => {
     return {
       icon: props.icon,
@@ -36,9 +34,7 @@ const Button = (props: MyButtonProps) => {
     };
   });
 
-  const [defaultButtonClassNames, setDefaultButtonClassNames] = createSignal(
-    `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().activedClass} `,
-  );
+  const [defaultButtonClassNames, setDefaultButtonClassNames] = createSignal(``);
 
   createEffect(() => {
     setDefaultButtonClassNames(
@@ -50,9 +46,15 @@ const Button = (props: MyButtonProps) => {
 
   return (
     <button
+      type={props.type ?? "button"}
       ref={buttonRef}
-      {...rest}
-      class={` ` + rest.class ? defaultButtonClassNames() + rest.class : defaultButtonClassNames()}
+      onclick={props.onClick}
+      onBlur={props.onBlur}
+      id={props.id}
+      style={props.style}
+      disabled={props.disabled}
+      value={props.value}
+      class={` ` + props.class ? defaultButtonClassNames() + props.class : defaultButtonClassNames()}
     >
       {config().icon}
       {config().children}

@@ -122,8 +122,15 @@ export default function Nav() {
       </div>
       <div class="FunctionGroup flex items-center justify-center gap-3 px-6 lg:flex-col lg:p-0">
         <Button
-          level="tertiary"
-          class="rounded-full bg-transparent px-3 py-3"
+          level="quaternary"
+          class="rounded-full bg-transparent px-2 py-2"
+          onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
+        >
+          <Icon.Line.Light />
+        </Button>
+        <Button
+          level="quaternary"
+          class="rounded-full bg-transparent px-2 py-2"
           onClick={() => setStore("settingsDialogState", true)}
         >
           <Icon.Line.Settings />

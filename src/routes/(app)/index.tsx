@@ -315,60 +315,62 @@ export default function App() {
     }
   };
 
-  onMount(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      console.log(e.key);
-      switch (e.key) {
-        case "Enter":
-          {
-            if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
-              searchButtonRef.click();
-            }
+  // 键盘事件
+  const handleKeyPress = (e: KeyboardEvent) => {
+    console.log(e.key);
+    switch (e.key) {
+      case "Enter":
+        {
+          if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+            searchButtonRef.click();
           }
-          break;
-        case "Escape":
-          {
-            if (store.settingsDialogState) {
-              setStore("settingsDialogState", false);
-              e.stopPropagation();
-            } else if (document.activeElement === searchInputPCRef) {
-              searchInputPCRef.blur();
-              e.stopPropagation();
-            } else if (document.activeElement === searchInputMobileRef) {
-              searchInputMobileRef.blur();
-              e.stopPropagation();
-            } else if (resultDialogOpened()) {
-              setResultDialogOpened(false);
-              e.stopPropagation();
-            }
-            if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
-              searchInputPCRef.blur();
-              searchInputMobileRef.blur();
-            }
+        }
+        break;
+      case "Escape":
+        {
+          if (store.settingsDialogState) {
+            setStore("settingsDialogState", false);
+            e.stopPropagation();
+          } else if (document.activeElement === searchInputPCRef) {
+            searchInputPCRef.blur();
+            e.stopPropagation();
+          } else if (document.activeElement === searchInputMobileRef) {
+            searchInputMobileRef.blur();
+            e.stopPropagation();
+          } else if (resultDialogOpened()) {
+            setResultDialogOpened(false);
+            e.stopPropagation();
           }
-          break;
-        case "s":
-        case "S":
-          {
-            if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
-              setStore("settingsDialogState", true);
-            }
+          if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+            searchInputPCRef.blur();
+            searchInputMobileRef.blur();
           }
-          break;
-        case "·":
-        case "`":
-          {
-            if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
-              searchInputPCRef.focus();
-              e.preventDefault(); // 阻止默认输入行为
-            }
+        }
+        break;
+      case "s":
+      case "S":
+        {
+          if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+            setStore("settingsDialogState", true);
           }
-          break;
-        default:
-          break;
-      }
-    };
+        }
+        break;
+      case "·":
+      case "`":
+        {
+          if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+            searchInputPCRef.focus();
+            e.preventDefault(); // 阻止默认输入行为
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  };
 
+  onMount(() => {
+    
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);

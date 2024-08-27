@@ -3,15 +3,16 @@ import { type ConvertToAllString, type dictionary } from "./type";
 import { type SelectModifiersList } from "~/schema/modifiers_list";
 
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
-  name: "名称",
-  modifiers: "加成项",
-  id: "ID"
-}
+  name: "名前",
+  modifiers: "補正項目",
+  id: "ID",
+};
+
 const statistics: ConvertToAllString<SelectStatistics> = {
   id: "ID",
-  rates: "评分",
-  usageTimestamps: "被使用记录",
-  viewTimestamps: "被查看记录",
+  rates: "評価",
+  usageTimestamps: "使用記録",
+  viewTimestamps: "閲覧記録",
   monsterId: "",
   crystalId: "",
   mainWeaponId: "",
@@ -23,161 +24,165 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   petId: "",
   consumableId: "",
   characterId: "",
-  analyzerId: ""
+  analyzerId: "",
 };
 
 const dictionary: dictionary = {
   ui: {
-    searchPlaceholder: "这里是搜索框~",
-    columnsHidden: "隐藏列",
+    searchPlaceholder: "ここで検索~",
+    columnsHidden: "列を隠す",
     actions: {
-    add: "添加",
-    create: "创建",
-    remove: "删除",
-    update: "更新",
-    open: "打开",
-    upload: "上传",
-    save: "保存",
-    reset: "清空",
-    modify: "修改",
-    cancel: "取消",
-    close: "关闭",
-    back: "返回",
-    filter: "过滤",
+      add: "追加",
+      create: "作成",
+      remove: "削除",
+      update: "更新",
+      open: "開く",
+      upload: "アップロード",
+      save: "保存",
+      reset: "クリア",
+      modify: "修正",
+      cancel: "キャンセル",
+      close: "閉じる",
+      back: "戻る",
+      filter: "フィルター",
     },
     nav: {
-      home: "首页",
-      monsters: "怪物",
-      skills: "技能",
-      equipments: "装备",
-      crystals: "锻晶",
-      pets: "宠物",
+      home: "ホーム",
+      monsters: "モンスター",
+      skills: "スキル",
+      equipments: "装備",
+      crystals: "クリスタル",
+      pets: "ペット",
       items: "消耗品",
-      character: "角色配置",
-      comboAnalyze: "连击分析",
+      character: "キャラクター設定",
+      comboAnalyze: "コンボ分析",
     },
     settings: {
-      title: "设置",
+      title: "設定",
       userInterface: {
-        title: "外观",
+        title: "外観",
         isAnimationEnabled: {
-          title: "是否开启动画",
-          description: "将影响所有页面的过渡和动画效果持续时间。如果您发现有动画不受此配置控制，请反馈给我。"
-        }
+          title: "アニメーションを有効にする",
+          description:
+            "すべてのページの遷移とアニメーション効果の持続時間に影響します。このコンフィグで制御されていないアニメーションがある場合は、ご報告ください。",
+        },
       },
       language: {
-        title: "语言",
+        title: "言語",
         selectedLanguage: {
-          title: "选择语言",
-          description: "影响所有的界面文本，但是无法改变数据类文本。",
+          title: "言語を選択",
+          description: "すべてのインターフェーステキストに影響しますが、データテキストは変更できません。",
           zhCN: "简体中文",
           zhTW: "繁体中文",
           enUS: "English",
           jaJP: "日本語"
-        }
+        },
       },
       statusAndSync: {
-        title: "状态和同步",
+        title: "状態と同期",
         restorePreviousStateOnStartup: {
-          title: "启动时恢复上一次的状态",
-          description: "暂未实现。"
+          title: "起動時に前回の状態を復元",
+          description: "まだ実装されていません。",
         },
         syncStateAcrossClients: {
-          title: "同步所有客户端状态",
-          description: "此配置仅当用户登录时生效，未登录时客户端不具有身份标识，无法同步。"
-        }
+          title: "すべてのクライアントの状態を同期",
+          description:
+            "この設定はユーザーがログインしている場合にのみ有効です。ログインしていない場合、クライアントには識別子がないため同期できません。",
+        },
       },
       privacy: {
-        title: "隐私",
+        title: "プライバシー",
         postVisibility: {
-          title: "作品可见性",
-          description: "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
-          everyone: "所有人可见",
-          friends: "仅好友可见",
-          onlyMe: "仅自己可见"
-        }
+          title: "作品の可視性",
+          description:
+            "作品の可視性には以下が含まれます：キャラクター、モンスター、クリスタル、メイン武器、サブ武器、ボディアーマー、追加装備、特殊装備、ペット、スキル、消耗品、コンボ、アナライザー。",
+          everyone: "全員に公開",
+          friends: "フレンドのみに公開",
+          onlyMe: "自分のみに公開",
+        },
       },
       messages: {
-        title: "消息通知",
+        title: "メッセージ通知",
         notifyOnContentChange: {
-          title: "以下内容发生变化时通知我",
-          description: "暂未实现。",
-          notifyOnReferencedContentChange: "引用内容发生变化时",
-          notifyOnLike: "收到赞时",
-          notifyOnBookmark: "作品被收藏时"
-        }
+          title: "以下の内容に変更があった場合に通知する",
+          description: "まだ実装されていません。",
+          notifyOnReferencedContentChange: "参照コンテンツに変更があった場合",
+          notifyOnLike: "いいねを受け取った場合",
+          notifyOnBookmark: "作品がブックマークされた場合",
+        },
       },
       about: {
-        title: "关于此应用",
+        title: "このアプリについて",
         description: {
-          title: "描述",
-          description: "没想好怎么写。"
+          title: "説明",
+          description: "まだ記述内容を決めていません。",
         },
         version: {
-          title: "版本",
-          description: "0.0.1-alpha"
-        }
-      }
+          title: "バージョン",
+          description: "0.0.1-alpha",
+        },
+      },
     },
     index: {
-      adventurer: "冒险者",
-      goodMorning: "哦哈喵~ (=´ω｀=)",
-      goodAfternoon: "下午好ヾ(=･ω･=)o",
-      goodEvening: "晚上好(。-ω-)zzz",
-      nullSearchResultWarring: "没有找到相关内容!!!∑(ﾟДﾟノ)ノ",
-      nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有"
+      adventurer: "冒険者",
+      goodMorning: "おはにゃ～ (=´ω｀=)",
+      goodAfternoon: "こんにちは ヾ(=･ω･=)o",
+      goodEvening: "こんばんは (。-ω-)zzz",
+      nullSearchResultWarring: "関連コンテンツが見つかりません!!!∑(ﾟДﾟノ)ノ",
+      nullSearchResultTips:
+        "強くなる旅には困難が待ち受け、知識を求める道には障害物が散らばっています\nしかし、ここにはありません\n検索結果にないということは、存在しないということです",
     },
     monster: {
-      pageTitle: "怪物信息表",
-      discription:
-        "登录后可自行上传数据。",
-      augmented: "是否展示全部星级数据",
-      canNotModify: "系统生成，不可修改",
+      pageTitle: "モンスター情報テーブル",
+      discription: "ログイン後、自身でデータをアップロードできます。",
+      augmented: "すべての星級データを表示",
+      canNotModify: "システムによって生成され、修正不可",
       monsterDegreeOfDifficulty: {
-        0: "零星",
+        0: "ゼロ星",
         1: "一星",
         2: "二星",
         3: "三星",
         4: "四星",
       },
       monsterForm: {
-        discription: "上传定点boss数据时请使用一星数据，系统将按规则自动计算其余星级数据。",
+        discription:
+          "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
       },
     },
     crystal: {
-      pageTitle: "锻晶表",
-      discription: "正在开发中，请勿使用。",
-      canNotModify: "系统生成，不可修改",
+      pageTitle: "クリスタルテーブル",
+      discription: "開発中です。使用しないでください。",
+      canNotModify: "システムによって生成され、修正不可",
       crystalForm: {
-        discription: "阿拉啦"
-      }
+        discription: "アララ",
+      },
     },
     skill: {
-      pageTitle: "技能信息表",
-      discription: "此页面正在开发中，请勿使用",
+      pageTitle: "スキル情報テーブル",
+      discription: "このページは開発中です。使用しないでください。",
     },
     analyze: {
-      pageTitle: "流程计算器",
-      discription: "正在开发中，请勿使用",
-      modifiers: "加成项",
+      pageTitle: "プロセス計算機",
+      discription: "開発中です。使用しないでください。",
+      modifiers: "補正項目",
       dialogData: {
-        lv: "等级",
+        lv: "レベル",
         mainWeapon: {
-          type: "主武器类型",
-          baseAtk: "主武器基础攻击力",
-          refinement: "主武器精炼值",
-          stability: "主武器稳定率",
+          type: "メイン武器タイプ",
+          baseAtk: "メイン武器基礎攻撃力",
+          refinement: "メイン武器精錬値",
+          stability: "メイン武器安定率",
         },
         subWeapon: {
-          type: "副武器类型",
-          baseAtk: "副武器基础攻击力",
-          refinement: "副武器精炼值",
-          stability: "副武器稳定率",
+          type: "サブ武器タイプ",
+          baseAtk: "サブ武器基礎攻撃力",
+          refinement: "サブ武器精錬値",
+          stability: "サブ武器安定率",
         },
         bodyArmor: {
-          type: "身体装备类型",
-          baseDef: "身体装备基础防御力",
-          refinement: "身体装备精炼值",
+          type: "ボディアーマータイプ",
+          baseDef: "ボディアーマー基礎防御力",
+          refinement: "ボディアーマー精錬値",
         },
         str: "力量",
         int: "智力",

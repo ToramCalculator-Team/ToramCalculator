@@ -62,7 +62,7 @@ const dictionary: dictionary = {
         title: "User Interface",
         isAnimationEnabled: {
           title: "Enable Animation",
-          description: "Will affect the duration of transitions and animations on all pages. If you find animations that are not controlled by this configuration, please give me feedback.",
+          description: "Will affect the duration of transitions and animations on all pages.",
         }
       },
       language: {

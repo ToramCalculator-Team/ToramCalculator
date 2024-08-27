@@ -72,7 +72,7 @@
 }
 
 *:focus {
-  outline-color: rgb(var(--transition));
+  outline-color: rgb(var(--brand-1st));
 }
 
 .Nav * {

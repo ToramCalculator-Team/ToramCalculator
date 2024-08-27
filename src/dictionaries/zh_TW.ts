@@ -62,7 +62,7 @@ const dictionary: dictionary = {
         title: "外觀",
         isAnimationEnabled: {
           title: "是否開啟動畫",
-          description: "將影響所有頁面的過渡和動畫效果持續時間。如果您發現有動畫不受此配置控制，請反饋給我。",
+          description: "將影響所有頁面的過渡和動畫效果持續時間。",
         },
       },
       language: {
