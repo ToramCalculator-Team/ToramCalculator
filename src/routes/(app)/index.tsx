@@ -1,4 +1,4 @@
-import { createMemo, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
@@ -16,7 +16,6 @@ import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../../dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
-import RandomBallBackground from "~/components/randomBallBg";
 
 type Related =
   | {
@@ -33,7 +32,7 @@ type Result =
     }
   | undefined;
 
-export default function App() {
+export default function Index() {
   let searchButtonRef: HTMLButtonElement;
   let searchInputPCRef: HTMLInputElement;
   let searchInputMobileRef: HTMLInputElement;
@@ -50,7 +49,7 @@ export default function App() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   // 搜索函数
   const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId"];
@@ -369,8 +368,11 @@ export default function App() {
     }
   };
 
+  createEffect(() => {
+    setDictionary(getDictionary(store.settings.language));
+  })
+
   onMount(() => {
-    
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);
@@ -401,7 +403,7 @@ export default function App() {
           <span>CrystalList: 测试数据</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
-        <div class="Config fixed right-3 top-3 flex gap-1">
+        <div class={`Config fixed right-3 top-3 flex gap-1 ${resultDialogOpened() ? "opacity-0 lg:opacity-100" : ""}`}>
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
