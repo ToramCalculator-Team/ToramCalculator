@@ -1,21 +1,25 @@
-import { type Prisma } from "@prisma/client";
-import { ComboSchema } from "prisma/generated/zod";
-import { z, type ZodType } from "zod";
-import { ComboStepInputSchema } from "./combo_step";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { combo as Combo } from "../../drizzle/schema";
+import { SelectComboStep, InsertComboStep, SelectComboStepSchema, InsertComboStepSchema } from "./combo_step";
 
-export const ComboInclude = {
-  include: {
-    comboStep: true,
-  },
+// TS 
+export type SelectCombo = InferSelectModel<typeof Combo> & {
+  comboStep: SelectComboStep[];
+};
+export type InsertCombo = InferInsertModel<typeof Combo> & {
+  comboStep: InsertComboStep[];
 }
 
-export type Combo = Prisma.ComboGetPayload<typeof ComboInclude>;
+// Zod
+export const SelectComboSchema = createSelectSchema(Combo).extend({
+  comboStep: SelectComboStepSchema.array(),
+})
+export const InsertComboSchema = createInsertSchema(Combo).extend({
+  comboStep: InsertComboStepSchema.array(),
+})
 
-export const ComboInputSchema = ComboSchema.extend({
-  comboStep: z.array(ComboStepInputSchema),
-}) satisfies ZodType<Combo>;
-
-export const defaultCombos: Combo = {
+export const defaultSelectCombo: SelectCombo = {
   id: "",
   name: null,
   comboStep: [],

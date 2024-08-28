@@ -10,6 +10,14 @@ import {
 import { character as Character } from "../../drizzle/schema";
 import { defaultSelectModifiersList, SelectModifiersList, SelectModifiersListSchema } from "./modifiers_list";
 import { defaultSelectSkill, SelectSkill, SelectSkillSchema } from "./skill";
+import { defaultSelectMainWeapon, SelectMainWeapon, SelectMainWeaponSchema } from "./main_weapon";
+import { defaultSelectSubWeapon, SelectSubWeapon, SelectSubWeaponSchema } from "./sub_weapon";
+import { defaultSelectBodyArmor, SelectBodyArmor, SelectBodyArmorSchema } from "./body_armor";
+import { defaultSelectAdditionalEquipment, SelectAdditionalEquipment, SelectAdditionalEquipmentSchema } from "./additional_equipment";
+import { defaultSelectSpecialEquipment, SelectSpecialEquipment, SelectSpecialEquipmentSchema } from "./special_equipment";
+import { defaultSelectPet, SelectPet, SelectPetSchema } from "./pet";
+import { defaultSelectConsumable, SelectConsumable, SelectConsumableSchema } from "./consumable";
+import { SelectCombo, SelectComboSchema } from "./combo";
 
 // TS
 export type SelectCharacter = InferSelectModel<typeof Character> & {

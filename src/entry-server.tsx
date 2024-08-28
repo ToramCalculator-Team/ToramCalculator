@@ -19,9 +19,9 @@ export default createHandler(() => (
           <meta name="theme-color" content="#ffffff" />
           <meta name="application-name" content={APP_NAME} />
           <meta name="description" content={APP_DESCRIPTION} />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-          <meta name="apple-mobile-web-app-title" content={APP_NAME} />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="mobile-web-app-status-bar-style" content="default" />
+          <meta name="mobile-web-app-title" content={APP_NAME} />
           <meta property="og:title" content={APP_DEFAULT_TITLE} />
           <meta property="og:description" content={APP_DESCRIPTION} />
           <meta property="og:type" content="website" />

@@ -37,7 +37,6 @@
     "@tanstack/solid-table": "^8.20.1",
     "@tanstack/solid-virtual": "^3.9.0",
     "autoprefixer": "^10.4.20",
-    "comlink": "^4.4.1",
     "drizzle-orm": "latest",
     "drizzle-zod": "latest",
     "fuse.js": "^7.0.0",

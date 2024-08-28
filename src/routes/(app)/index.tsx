@@ -419,7 +419,7 @@ export default function Index() {
             <Icon.Line.Settings />
           </Button>
         </div>
-        <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-3 duration-700`}>
+        <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-6 lg:p-3 duration-700`}>
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
               resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] lg:pb-12 opacity-100 lg:flex-none`

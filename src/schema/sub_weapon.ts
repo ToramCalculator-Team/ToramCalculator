@@ -37,7 +37,7 @@ export const InsertSubWeaponSchema = createInsertSchema(SubWeapon).extend({
 });
 
 // Default
-export const defaultSubWeapon: SelectSubWeapon = {
+export const defaultSelectSubWeapon: SelectSubWeapon = {
   id: "",
   name: "",
   subWeaponType: "NO_WEAPON",

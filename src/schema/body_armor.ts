@@ -1,35 +1,50 @@
-import { BodyArmorSchema } from "prisma/generated/zod";
-import { ModifiersListInputSchema, defaultModifiersList, ModifiersListInclude } from "./modifiers_list";
-import { CrystalInclude, CrystalInputSchema, defaultCrystal } from "./crystal";
-import { type ZodType, z } from "zod";
-import { type Prisma } from "@prisma/client";
-import { StatisticsInputSchema, defaultStatistics, StatisticsInclude } from "./statistics";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import {
+  defaultSelectStatistics,
+  InsertStatistics,
+  InsertStatisticsSchema,
+  SelectStatistics,
+  SelectStatisticsSchema,
+} from "./statistics";
+import { body_armor as BodyArmor } from "~/../drizzle/schema";
+import { SelectCrystal, InsertCrystal, SelectCrystalSchema, InsertCrystalSchema, defaultSelectCrystal } from "./crystal";
+import { SelectModifiersList, InsertModifiersList, SelectModifiersListSchema, InsertModifiersListSchema, defaultSelectModifiersList } from "./modifiers_list";
+import { z } from "zod";
 
-export const BodyArmorInclude = {
-  include: {
-    modifiersList: ModifiersListInclude,
-    crystal: CrystalInclude,
-    statistics: StatisticsInclude
-  },
-}
+// TS
+export type SelectBodyArmor = InferSelectModel<typeof BodyArmor> & {
+  modifiersList: SelectModifiersList;
+  crystal: SelectCrystal[];
+  statistics: SelectStatistics;
+};
+export type InsertBodyArmor = InferInsertModel<typeof BodyArmor> & {
+  modifiersList: InsertModifiersList;
+  crystal: InsertCrystal[];
+  statistics: InsertStatistics;
+};
 
-export type BodyArmor = Prisma.BodyArmorGetPayload<typeof BodyArmorInclude>;
+// Zod
+export const SelectBodyArmorSchema = createSelectSchema(BodyArmor).extend({
+  modifiersList: SelectModifiersListSchema,
+  crystal: z.array(SelectCrystalSchema),
+  statistics: SelectStatisticsSchema,
+})
+export const InsertBodyArmorSchema = createInsertSchema(BodyArmor).extend({
+  modifiersList: InsertModifiersListSchema,
+  crystal: z.array(InsertCrystalSchema),
+  statistics: InsertStatisticsSchema,
+})
 
-export const BodyArmorInputSchema = BodyArmorSchema.extend({
-  modifiersList: ModifiersListInputSchema,
-  crystal: z.array(CrystalInputSchema),
-  statistics: StatisticsInputSchema,
-}) satisfies ZodType<BodyArmor>;
-
-export const defaultBodyArmor: BodyArmor = {
+export const defaultSelectBodyArmor: SelectBodyArmor = {
   id: "",
   name: "",
   bodyArmorType: "NORMAL",
   refinement: 0,
   baseDef: 0,
-  crystal: [defaultCrystal],
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  crystal: [defaultSelectCrystal],
+  modifiersList: defaultSelectModifiersList,
+  modifiersListId: defaultSelectModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -37,6 +52,6 @@ export const defaultBodyArmor: BodyArmor = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultStatistics,
+  statistics: defaultSelectStatistics,
   statisticsId: "",
 };

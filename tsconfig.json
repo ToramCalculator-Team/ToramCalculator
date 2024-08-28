@@ -14,7 +14,10 @@
     "isolatedModules": true,
     "paths": {
       "~/*": ["./src/*"],
-      "@/*": ["./drizzle/*"]
+      "@/*": ["./drizzle/*"],
+      //  threads bug
+      "threads": ["./node_modules/threads/dist/index.d.ts"],
+      "expose": ["./node_modules/threads/worker.d.ts"],
     }
   }
 }

@@ -39,7 +39,7 @@ export const InsertSpecialEquipmentSchema = createInsertSchema(SpecialEquipment)
   statistics: InsertStatisticsSchema,
 });
 
-export const defaultSpecialEquipment: SelectSpecialEquipment = {
+export const defaultSelectSpecialEquipment: SelectSpecialEquipment = {
   id: "",
   name: "",
   crystal: [defaultSelectCrystal],

@@ -1,21 +1,25 @@
-import { type Prisma } from "@prisma/client";
-import { PetSchema } from "prisma/generated/zod";
-import { z, type ZodType } from "zod";
-import { StatisticsInputSchema, defaultStatistics, StatisticsInclude } from "./statistics";
+import { pet as Pet } from "~/../drizzle/schema";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { SelectStatistics, InsertStatistics, SelectStatisticsSchema, InsertStatisticsSchema, defaultSelectStatistics } from "./statistics";
 
-export const PetInclude = {
-  include: {
-    statistics: StatisticsInclude,
-  },
-}
+// TS
+export type SelectPet = InferSelectModel<typeof Pet> & {
+  statistics: SelectStatistics
+};
+export type InsertPet = InferInsertModel<typeof Pet> & {
+  statistics: InsertStatistics
+};
 
-export type Pet = Prisma.PetGetPayload<typeof PetInclude>;
+// Zod
+export const SelectPetSchema = createSelectSchema(Pet).extend({
+  statistics: SelectStatisticsSchema
+}); 
+export const InsertPetSchema = createInsertSchema(Pet).extend({
+  statistics: InsertStatisticsSchema
+});
 
-export const PetInputSchema = PetSchema.extend({
-  statistics: StatisticsInputSchema,
-}) satisfies ZodType<Pet>;
-
-export const defaultPet: Pet = {
+export const defaultSelectPet: SelectPet = {
   id: "",
   name: null,
   dataSources: "",
@@ -25,6 +29,6 @@ export const defaultPet: Pet = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultStatistics,
+  statistics: defaultSelectStatistics,
   statisticsId: "",
 };

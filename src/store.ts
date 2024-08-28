@@ -1,6 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/i18n";
 import { defaultSelectMonster, SelectMonster } from "./schema/monster";
+import { defaultSelectCrystal, SelectCrystal } from "./schema/crystal";
+import { defaultSelectSkill, SelectSkill } from "./schema/skill";
+import { defaultSelectCharacter, SelectCharacter } from "./schema/character";
+import { defaultSelectAnalyzer, SelectAnalyzer } from "./schema/analyzer";
 
 export type Store = {
   version: number;
@@ -36,6 +40,36 @@ export type Store = {
     monsterFormState: "CREATE" | "UPDATE" | "DISPLAY";
     filterState: boolean;
   };
+  crystal: SelectCrystal;
+  crystalPage: {
+    augmented: boolean;
+    crystalList: SelectCrystal[];
+    crystalDialogState: boolean;
+    crystalFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    filterState: boolean;
+  };
+  skillPage: {
+    skillList: SelectSkill[];
+    skill: SelectSkill;
+    skillDialogState: boolean;
+    skillFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    filterState: boolean;
+  };
+  character: SelectCharacter;
+  characterPage: {
+    augmented: boolean;
+    characterList: SelectCharacter[];
+    characterDialogState: boolean;
+    characterFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    filterState: boolean;
+  };
+  analyzePage: {
+    analyzeList: SelectAnalyzer[];
+    analyze: SelectAnalyzer;
+    analyzeDialogState: boolean;
+    analyzeFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    filterState: boolean;
+  };
 };
 
 export const initialStore: Store = {
@@ -63,8 +97,7 @@ export const initialStore: Store = {
   },
   settingsDialogState: false,
   monster: defaultSelectMonster,
-  indexPage: {
-  },
+  indexPage: {},
   monsterPage: {
     augmented: true,
     monsterList: [],
@@ -72,6 +105,36 @@ export const initialStore: Store = {
     monsterFormState: "DISPLAY",
     filterState: false,
   },
+  crystal: defaultSelectCrystal,
+  crystalPage: {
+    augmented: false,
+    crystalList: [],
+    crystalDialogState: false,
+    crystalFormState: "CREATE",
+    filterState: false
+  },
+  skillPage: {
+    skillList: [],
+    skill: defaultSelectSkill,
+    skillDialogState: false,
+    skillFormState: "CREATE",
+    filterState: false
+  },
+  character: defaultSelectCharacter,
+  characterPage: {
+    augmented: false,
+    characterList: [],
+    characterDialogState: false,
+    characterFormState: "CREATE",
+    filterState: false
+  },
+  analyzePage: {
+    analyzeList: [],
+    analyze: defaultSelectAnalyzer,
+    analyzeDialogState: false,
+    analyzeFormState: "CREATE",
+    filterState: false
+  }
 };
 
 const [store, setStore] = createStore<Store>(

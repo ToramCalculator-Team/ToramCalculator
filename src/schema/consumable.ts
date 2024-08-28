@@ -1,28 +1,41 @@
-import { type Prisma } from "@prisma/client";
-import { ConsumableSchema } from "prisma/generated/zod";
-import { type ZodType } from "zod";
-import { ModifiersListInputSchema, defaultModifiersList, ModifiersListInclude } from "./modifiers_list";
-import { StatisticsInputSchema, defaultStatistics, StatisticsInclude } from "./statistics";
+import { consumable as Consumable } from "~/../drizzle/schema";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import {
+  defaultSelectModifiersList,
+  InsertModifiersListSchema,
+  SelectModifiersList,
+  SelectModifiersListSchema,
+} from "./modifiers_list";
+import {
+  defaultSelectStatistics,
+  InsertStatisticsSchema,
+  SelectStatistics,
+  SelectStatisticsSchema,
+} from "./statistics";
 
-export const ConsumableInclude = {
-  include: {
-    modifiersList: ModifiersListInclude,
-    statistics: StatisticsInclude,
-  },
-}
+// TS
+export type SelectConsumable = InferSelectModel<typeof Consumable> & {
+  modifiersList: SelectModifiersList;
+  statistics: SelectStatistics;
+};
+export type InsertConsumable = InferInsertModel<typeof Consumable>;
 
-export type Consumable = Prisma.ConsumableGetPayload<typeof ConsumableInclude>;
+// Zod
+export const SelectConsumableSchema = createSelectSchema(Consumable).extend({
+  modifiersList: SelectModifiersListSchema,
+  statistics: SelectStatisticsSchema,
+});
+export const InsertConsumableSchema = createInsertSchema(Consumable).extend({
+  modifiersList: InsertModifiersListSchema,
+  statistics: InsertStatisticsSchema,
+});
 
-export const ConsumableInputSchema = ConsumableSchema.extend({
-  modifiersList: ModifiersListInputSchema,
-  statistics: StatisticsInputSchema,
-}) satisfies ZodType<Consumable>;
-
-export const defaultConsumable: Consumable = {
+export const defaultSelectConsumable: SelectConsumable = {
   id: "",
   name: "",
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifiersList: defaultSelectModifiersList,
+  modifiersListId: defaultSelectModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -30,6 +43,6 @@ export const defaultConsumable: Consumable = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultStatistics,
+  statistics: defaultSelectStatistics,
   statisticsId: "",
 };

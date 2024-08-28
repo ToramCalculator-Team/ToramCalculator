@@ -1,11 +1,24 @@
-import { type Prisma } from "@prisma/client";
-import { ComboStepSchema } from "prisma/generated/zod";
-import { type ZodType } from "zod";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { combo_step as ComboStep } from "../../drizzle/schema";
 
-export const ComboStepInclude = {
-    include: {
-    }
+// TS
+export type SelectComboStep = InferSelectModel<typeof ComboStep> & {
+
+};
+export type InsertComboStep = InferInsertModel<typeof ComboStep> & {
+    
 }
 
-export type ComboStep = Prisma.ComboStepGetPayload<typeof ComboStepInclude>;
-export const ComboStepInputSchema = ComboStepSchema.extend({}) satisfies ZodType<ComboStep>;
+// Zod
+export const SelectComboStepSchema = createSelectSchema(ComboStep);
+export const InsertComboStepSchema = createInsertSchema(ComboStep);
+
+// default
+export const defaultSelectComboStep: SelectComboStep = {
+    id: "",
+    comboId: "",
+    order: 0,
+    comboType: "NULL",
+    skillId: ""
+}

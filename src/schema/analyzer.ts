@@ -1,21 +1,31 @@
-import { type Prisma } from "@prisma/client";
-import { AnalyzerSchema } from "prisma/generated/zod";
-import { StatisticsInputSchema, defaultStatistics, StatisticsInclude } from "./statistics";
-import { z, type ZodType } from "zod";
+import { analyzer as Analyzer } from "~/../drizzle/schema";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import {
+  SelectStatistics,
+  SelectStatisticsSchema,
+  InsertStatisticsSchema,
+  defaultSelectStatistics,
+  InsertStatistics,
+} from "./statistics";
 
-export const AnalyzerInclude = {
-  include: {
-    statistics: StatisticsInclude,
-  }
-}
+// TS
+export type SelectAnalyzer = InferSelectModel<typeof Analyzer> & {
+  statistics: SelectStatistics;
+};
+export type InsertAnalyzer = InferInsertModel<typeof Analyzer> & {
+  statistics: InsertStatistics;
+};
 
-export type Analyzer = Prisma.AnalyzerGetPayload<typeof AnalyzerInclude>;
+// Zod
+export const SelectAnalyzerSchema = createSelectSchema(Analyzer).extend({
+  statistics: SelectStatisticsSchema,
+});
+export const InsertAnalyzerSchema = createInsertSchema(Analyzer).extend({
+  statistics: InsertStatisticsSchema,
+});
 
-export const AnalyzerInputSchema = AnalyzerSchema.extend({
-  statistics: StatisticsInputSchema,
-}) satisfies ZodType<Analyzer>;
-
-export const defaultAnalyzer: Analyzer = {
+export const defaultSelectAnalyzer: SelectAnalyzer = {
   id: "",
 
   name: "",
@@ -27,6 +37,6 @@ export const defaultAnalyzer: Analyzer = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultStatistics,
+  statistics: defaultSelectStatistics,
   statisticsId: "",
 };

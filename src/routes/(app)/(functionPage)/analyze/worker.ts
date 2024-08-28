@@ -1,4 +1,5 @@
-"use client";
+/// <reference lib="webworker" />
+
 import * as _ from "lodash-es";
 import { type $Enums } from "~/schema/enums";
 import { type getDictionary } from "~/i18n";
@@ -1905,6 +1906,7 @@ export const compute = (
 const self = globalThis;
 
 self.onmessage = (e: MessageEvent<computeInput>) => {
+  console.log("收到消息：", e.data);
   switch (e.data.type) {
     case "start":
       {
