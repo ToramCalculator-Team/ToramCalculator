@@ -74,7 +74,7 @@ export default function Nav() {
       <div class="flex items-center justify-center lg:flex-none">
         <a
           href={"/"}
-          class="Home group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 lg:gap-4"
+          class="Home group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 lg:p-0"
           tabIndex={1}
         >
           <div class="iconArea rounded-full px-4 py-1 group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st lg:hidden">

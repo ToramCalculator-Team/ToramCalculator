@@ -79,9 +79,9 @@
   outline: none;
 }
 
-.ModuleContent::-webkit-scrollbar {
+/* .ModuleContent::-webkit-scrollbar {
   display: none;
-}
+} */
 
 
 @keyframes loading {

@@ -10,11 +10,10 @@ import Fuse from "fuse.js";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
 
 export default function MonsterCategoryViewPage() {
-
   /**
    * @页面逻辑 获取原始数据，并根据配置生成分类数据
    **/
-  
+
   /**
    * @表类型配置
    * key: 需要分类的字段
@@ -24,8 +23,6 @@ export default function MonsterCategoryViewPage() {
     element: 1,
     monsterType: 2,
   };
-
-  
 
   // 状态管理参数
   const { monsterDialogState } = store.monsterPage;
@@ -100,53 +97,50 @@ export default function MonsterCategoryViewPage() {
 
   return (
     <>
-      <div class="Title sticky left-0 mt-3 flex flex-col gap-9 py-5 lg:pt-20">
-        <div class="Row flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
-          <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary().ui.monster.pageTitle}</h1>
-          <div class="Control flex flex-1 gap-2">
-            <input
-              id="MonsterSearchBox"
-              type="search"
-              placeholder={dictionary().ui.searchPlaceholder}
-              class="w-full flex-1 rounded-sm border-transition-color-20 bg-transition-color-8 px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:flex-1 lg:rounded-none lg:border-b-1.5 lg:bg-transparent lg:px-5 lg:font-normal"
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-            <Button // 仅移动端显示
-              size="sm"
-              level="tertiary"
-              icon={<Icon.Line.CloudUpload />}
-              class="flex lg:hidden"
-              onClick={() => {
-                setStore("monster", defaultSelectMonster);
-                setStore("monsterPage", {
-                  monsterDialogState: true,
-                  monsterFormState: "CREATE",
-                });
-              }}
-            ></Button>
-            <Button // 仅PC端显示
-              level="primary"
-              icon={<Icon.Line.CloudUpload />}
-              class="hidden lg:flex"
-              onClick={() => {
-                setStore("monster", defaultSelectMonster);
-                setStore("monsterPage", {
-                  monsterDialogState: true,
-                  monsterFormState: "CREATE",
-                });
-              }}
-            >
-              {dictionary().ui.actions.upload} [u]
-            </Button>
-          </div>
-        </div>
-        <div class="Content flex flex-col gap-2">
-          <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
-            {dictionary().ui.monster.discription}
-          </div>
+      <div class="Title flex flex-col lg:pt-12">
+        <div class="Content flex flex-row items-center justify-between gap-4 py-3">
+          <h1 class="Text text-left lg:bg-transparent lg: text-[40px] lg:leading-[48px]">
+            {dictionary().ui.monster.pageTitle}
+          </h1>
+          <input
+            id="MonsterSearchBox"
+            type="search"
+            placeholder={dictionary().ui.searchPlaceholder}
+            class="w-full flex-1 rounded-sm border-transition-color-20 bg-transition-color-8 px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:flex-1 lg:rounded-none lg:border-b-2 lg:bg-transparent lg:px-5 lg:font-normal"
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          <Button // 仅移动端显示
+            size="sm"
+            level="tertiary"
+            icon={<Icon.Line.CloudUpload />}
+            class="flex lg:hidden"
+            onClick={() => {
+              setStore("monster", defaultSelectMonster);
+              setStore("monsterPage", {
+                monsterDialogState: true,
+                monsterFormState: "CREATE",
+              });
+            }}
+          ></Button>
+          <Button // 仅PC端显示
+            level="tertiary"
+            size="lg"
+            icon={<Icon.Line.CloudUpload />}
+            class="hidden lg:flex"
+            onClick={() => {
+              setStore("monster", defaultSelectMonster);
+              setStore("monsterPage", {
+                monsterDialogState: true,
+                monsterFormState: "CREATE",
+              });
+            }}
+          >
+            {dictionary().ui.actions.upload} [u]
+          </Button>
         </div>
       </div>
-      <For each={actualList}>{(monster) => monster.name}</For>
+      <div class="grid h-[1000px] w-full flex-none place-items-center bg-brand-color-1st">1</div>
+      <div class="grid h-[1000px] w-full flex-none place-items-center bg-brand-color-2nd">2</div>
       <Dialog
         state={monsterDialogState}
         setState={(dialogState) => setStore("monsterPage", { monsterDialogState: dialogState })}

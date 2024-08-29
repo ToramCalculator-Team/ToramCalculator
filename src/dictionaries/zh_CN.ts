@@ -131,7 +131,7 @@ const dictionary: dictionary = {
       nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有"
     },
     monster: {
-      pageTitle: "怪物信息表",
+      pageTitle: "怪物",
       discription:
         "登录后可自行上传数据。",
       augmented: "是否展示全部星级数据",
