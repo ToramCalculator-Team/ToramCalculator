@@ -22,8 +22,8 @@ const Button = (props: MyButtonProps) => {
         lg: "gap-0 rounded-md px-2 pr-[18px] py-1",
       }[props.size ?? "md"],
       iconSizeClass: {
-        sm: "",
-        md: "",
+        sm: `${props.icon ? "" : "hidden"}`,
+        md: `${props.icon ? "" : "hidden"}`,
         lg: "p-2",
       }[props.size ?? "md"],
       levelClass: {

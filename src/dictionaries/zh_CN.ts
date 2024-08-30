@@ -132,7 +132,7 @@ const dictionary: dictionary = {
     },
     monster: {
       pageTitle: "怪物",
-      discription:
+      description:
         "登录后可自行上传数据。",
       augmented: "是否展示全部星级数据",
       canNotModify: "系统生成，不可修改",
@@ -144,24 +144,24 @@ const dictionary: dictionary = {
         4: "四星",
       },
       monsterForm: {
-        discription: "上传定点boss数据时请使用一星数据，系统将按规则自动计算其余星级数据。",
+        description: "上传定点boss数据时请使用一星数据，系统将按规则自动计算其余星级数据。",
       },
     },
     crystal: {
       pageTitle: "锻晶表",
-      discription: "正在开发中，请勿使用。",
+      description: "正在开发中，请勿使用。",
       canNotModify: "系统生成，不可修改",
       crystalForm: {
-        discription: "阿拉啦"
+        description: "阿拉啦"
       }
     },
     skill: {
       pageTitle: "技能信息表",
-      discription: "此页面正在开发中，请勿使用",
+      description: "此页面正在开发中，请勿使用",
     },
     analyze: {
       pageTitle: "流程计算器",
-      discription: "正在开发中，请勿使用",
+      description: "正在开发中，请勿使用",
       modifiers: "加成项",
       dialogData: {
         lv: "等级",
@@ -252,7 +252,7 @@ const dictionary: dictionary = {
     },
     character: {
       pageTitle: "机体表",
-      discription: "此页面正在开发中，请勿使用",
+      description: "此页面正在开发中，请勿使用",
     },
   },
   db: {

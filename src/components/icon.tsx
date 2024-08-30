@@ -209,6 +209,19 @@ export const Line = {
     );
   },
 
+  Expand: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M9.11539 19.3846L5.5 19.3846C4.94772 19.3846 4.5 18.9369 4.5 18.3846L4.5 14.7692M5.26918 18.6155L10.6538 13.2309M19.8844 8.61514L19.8844 4.99976C19.8844 4.44747 19.4367 3.99976 18.8844 3.99976L15.269 3.99976M19.1152 4.76902L13.7305 10.1536"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
+      </svg>
+    );
+  },
+
   Flag: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>

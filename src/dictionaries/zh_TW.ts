@@ -133,7 +133,7 @@ const dictionary: dictionary = {
     },
     monster: {
       pageTitle: "怪物資訊表",
-      discription: "登入後可自行上傳資料。",
+      description: "登入後可自行上傳資料。",
       augmented: "是否展示全部星級資料",
       canNotModify: "系統生成，不可修改",
       monsterDegreeOfDifficulty: {
@@ -144,24 +144,24 @@ const dictionary: dictionary = {
         4: "四星",
       },
       monsterForm: {
-        discription: "上傳定點boss資料時請使用一星數據，系統將以規則自動計算其餘星級資料。",
+        description: "上傳定點boss資料時請使用一星數據，系統將以規則自動計算其餘星級資料。",
       },
     },
     crystal: {
       pageTitle: "鍛晶表",
-      discription: "正在開發中，請勿使用。",
+      description: "正在開發中，請勿使用。",
       canNotModify: "系統生成，不可修改",
       crystalForm: {
-        discription: "阿拉啦",
+        description: "阿拉啦",
       },
     },
     skill: {
       pageTitle: "技能資訊表",
-      discription: "此頁面正在開發中，請勿使用",
+      description: "此頁面正在開發中，請勿使用",
     },
     analyze: {
       pageTitle: "流程計算器",
-      discription: "正在開發中，請勿使用",
+      description: "正在開發中，請勿使用",
       modifiers: "加成項",
       dialogData: {
         lv: "等級",
@@ -252,7 +252,7 @@ const dictionary: dictionary = {
     },
     character: {
       pageTitle: "機體表",
-      discription: "此頁面正在開發中，請勿使用",
+      description: "此頁面正在開發中，請勿使用",
     },
   },
   db: {

@@ -6,6 +6,8 @@ import { defaultSelectSkill, SelectSkill } from "./schema/skill";
 import { defaultSelectCharacter, SelectCharacter } from "./schema/character";
 import { defaultSelectAnalyzer, SelectAnalyzer } from "./schema/analyzer";
 
+export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
+
 export type Store = {
   version: number;
   theme: "light" | "dark";
@@ -37,7 +39,7 @@ export type Store = {
     augmented: boolean;
     monsterList: SelectMonster[];
     monsterDialogState: boolean;
-    monsterFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    monsterFormState: FormSate;
     filterState: boolean;
   };
   crystal: SelectCrystal;
@@ -45,14 +47,14 @@ export type Store = {
     augmented: boolean;
     crystalList: SelectCrystal[];
     crystalDialogState: boolean;
-    crystalFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    crystalFormState: FormSate;
     filterState: boolean;
   };
   skillPage: {
     skillList: SelectSkill[];
     skill: SelectSkill;
     skillDialogState: boolean;
-    skillFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    skillFormState: FormSate;
     filterState: boolean;
   };
   character: SelectCharacter;
@@ -60,14 +62,14 @@ export type Store = {
     augmented: boolean;
     characterList: SelectCharacter[];
     characterDialogState: boolean;
-    characterFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    characterFormState: FormSate;
     filterState: boolean;
   };
   analyzePage: {
     analyzeList: SelectAnalyzer[];
     analyze: SelectAnalyzer;
     analyzeDialogState: boolean;
-    analyzeFormState: "CREATE" | "UPDATE" | "DISPLAY";
+    analyzeFormState: FormSate;
     filterState: boolean;
   };
 };

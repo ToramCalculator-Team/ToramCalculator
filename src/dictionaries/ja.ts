@@ -137,7 +137,7 @@ const dictionary: dictionary = {
     },
     monster: {
       pageTitle: "モンスター情報テーブル",
-      discription: "ログイン後、自身でデータをアップロードできます。",
+      description: "ログイン後、自身でデータをアップロードできます。",
       augmented: "すべての星級データを表示",
       canNotModify: "システムによって生成され、修正不可",
       monsterDegreeOfDifficulty: {
@@ -148,25 +148,25 @@ const dictionary: dictionary = {
         4: "四星",
       },
       monsterForm: {
-        discription:
+        description:
           "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
       },
     },
     crystal: {
       pageTitle: "クリスタルテーブル",
-      discription: "開発中です。使用しないでください。",
+      description: "開発中です。使用しないでください。",
       canNotModify: "システムによって生成され、修正不可",
       crystalForm: {
-        discription: "アララ",
+        description: "アララ",
       },
     },
     skill: {
       pageTitle: "スキル情報テーブル",
-      discription: "このページは開発中です。使用しないでください。",
+      description: "このページは開発中です。使用しないでください。",
     },
     analyze: {
       pageTitle: "プロセス計算機",
-      discription: "開発中です。使用しないでください。",
+      description: "開発中です。使用しないでください。",
       modifiers: "補正項目",
       dialogData: {
         lv: "レベル",
@@ -257,7 +257,7 @@ const dictionary: dictionary = {
     },
     character: {
       pageTitle: "机体表",
-      discription: "此页面正在开发中，请勿使用",
+      description: "此页面正在开发中，请勿使用",
     },
   },
   db: {

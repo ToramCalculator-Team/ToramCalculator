@@ -426,7 +426,7 @@ export default function MonserPage() {
                 </div>
               </div>
               <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
-                {dictionary.ui.monster.discription}
+                {dictionary.ui.monster.description}
               </div>
             </div>
           </div>

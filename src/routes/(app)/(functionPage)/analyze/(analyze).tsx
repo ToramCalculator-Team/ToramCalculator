@@ -461,6 +461,7 @@ export default function AnalyzePageClient() {
     } satisfies SelectCharacter,
     monster: {
       id: "",
+      image: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
       baseLv: 251,
@@ -1147,7 +1148,7 @@ export default function AnalyzePageClient() {
           </div>
         </div>
         <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
-          {dictionary().ui.analyze.discription}
+          {dictionary().ui.analyze.description}
         </div>
         <div></div>
       </div>
