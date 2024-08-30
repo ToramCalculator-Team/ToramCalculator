@@ -28,6 +28,7 @@ export const InsertMonsterSchema = createInsertSchema(Monster).extend({
 // default
 export const defaultSelectMonster: SelectMonster = {
   id: "",
+  image: "",
 
   name: "defaultSelectMonster",
   monsterType: "COMMON_BOSS",
@@ -64,6 +65,7 @@ export const defaultSelectMonster: SelectMonster = {
 };
 export const defaultInsertMonster: InsertMonster = {
   id: "",
+  image: "",
 
   name: "",
   monsterType: "COMMON_BOSS",

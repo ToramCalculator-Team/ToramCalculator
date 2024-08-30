@@ -10,7 +10,12 @@ interface ImportMetaEnv {
   
   BAIDU_HTML_LABEL:string
   
-  UMAMI_ID:string
+  UMAMI_ID: string
+  
+  S3_BUCKET: string
+  S3_ID: string
+  S3_SECRET: string
+  S3_ENDPOINT: string
 }
   
 interface ImportMeta {

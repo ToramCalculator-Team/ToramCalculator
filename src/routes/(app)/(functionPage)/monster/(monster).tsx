@@ -97,9 +97,9 @@ export default function MonsterCategoryViewPage() {
 
   return (
     <>
-      <div class="Title flex flex-col lg:pt-12">
+      <div class="Title flex flex-col p-3 lg:pt-12">
         <div class="Content flex flex-row items-center justify-between gap-4 py-3">
-          <h1 class="Text text-left lg:bg-transparent lg: text-[40px] lg:leading-[48px]">
+          <h1 class="Text lg: text-left text-[40px] lg:bg-transparent lg:leading-[48px]">
             {dictionary().ui.monster.pageTitle}
           </h1>
           <input
@@ -139,8 +139,8 @@ export default function MonsterCategoryViewPage() {
           </Button>
         </div>
       </div>
-      <div class="grid h-[1000px] w-full flex-none place-items-center bg-brand-color-1st">1</div>
-      <div class="grid h-[1000px] w-full flex-none place-items-center bg-brand-color-2nd">2</div>
+      <div class="Banner flex gap-3 bg-brand-color-1st p-3">banner</div>
+      <div class="Table&News flex gap-3 p-3"></div>
       <Dialog
         state={monsterDialogState}
         setState={(dialogState) => setStore("monsterPage", { monsterDialogState: dialogState })}

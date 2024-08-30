@@ -68,10 +68,10 @@ export default function Nav() {
 
   return (
     <Motion.div
-      animate={{ transform: "translateX(0)", opacity: 1 }}
+      animate={{ transform: "none", opacity: 1 }}
       class={`Nav border-t-1 z-10 flex w-dvw flex-shrink-0 translate-y-full overflow-x-auto border-transition-color-20 opacity-0 backdrop-blur lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:gap-10 lg:border-none lg:bg-transition-color-8 lg:py-5`}
     >
-      <div class="flex items-center justify-center lg:flex-none">
+      <div class="LogoOrHomeflex items-center justify-center lg:flex-none">
         <a
           href={"/"}
           class="Home group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 lg:p-0"

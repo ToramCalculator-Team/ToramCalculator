@@ -12,11 +12,9 @@ export default function Setting() {
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
-  })
+  });
 
   onMount(() => {
-    console.log("--DialogBox render");
-
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -27,7 +25,6 @@ export default function Setting() {
 
     document.addEventListener("keydown", handleEscapeKeyPress);
     return () => {
-      console.log("--DialogBox unmount");
       document.addEventListener("keydown", handleEscapeKeyPress);
     };
   });
@@ -42,7 +39,7 @@ export default function Setting() {
           class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-primary-color`}
         >
           <div class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-3 lg:max-w-7xl`}>
-            <div class="FormTitle items-center flex justify-between">
+            <div class="FormTitle flex items-center justify-between">
               <h1 class="text-2xl font-bold">{dictionary().ui.settings.title}</h1>
               <Button level="tertiary" onClick={() => setStore("settingsDialogState", false)}>
                 <Icon.Line.Close />
@@ -75,11 +72,11 @@ export default function Setting() {
                   <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
                 </Button>
               </div>
-              <div class="List flex h-full flex-1 flex-col items-stretch gap-5 lg:gap-3 overflow-y-auto rounded-md">
+              <div class="List flex h-full flex-1 flex-col items-stretch gap-5 overflow-y-auto rounded-md lg:gap-3">
                 <div class="Module UserInterface flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.userInterface.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="Durtion flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="Durtion flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.userInterface.isAnimationEnabled.title}</h3>
                         <span class="text-sm text-accent-color-70">
@@ -97,14 +94,14 @@ export default function Setting() {
                 <div class="Module Language flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.language.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="Location flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="Location flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.language.selectedLanguage.title}</h3>
                         <span class="text-sm text-accent-color-70">
                           {dictionary().ui.settings.language.selectedLanguage.description}
                         </span>
                       </div>
-                      <div class="Selector flex flex-wrap lg:flex-nowrap gap-2">
+                      <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
                         <CheckBox
                           state={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
                           onClick={() => setStore("settings", "language", "zh-CN")}
@@ -137,7 +134,7 @@ export default function Setting() {
                 <div class="Module StatusAndSync flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.statusAndSync.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="RestorePreviousStateOnStartup flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="RestorePreviousStateOnStartup flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title}</h3>
                         <span class="text-sm text-accent-color-70">
@@ -151,7 +148,7 @@ export default function Setting() {
                         state={store.settings.statusAndSync.restorePreviousStateOnStartup}
                       />
                     </div>
-                    <div class="SyncStateAcrossClients flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="SyncStateAcrossClients flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.statusAndSync.syncStateAcrossClients.title}</h3>
                         <span class="text-sm text-accent-color-70">
@@ -169,14 +166,14 @@ export default function Setting() {
                 <div class="Module Privacy flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.privacy.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="PostVisibility flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="PostVisibility flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.privacy.postVisibility.title}</h3>
                         <span class="text-sm text-accent-color-70">
                           {dictionary().ui.settings.privacy.postVisibility.description}
                         </span>
                       </div>
-                      <div class="Selector flex flex-wrap lg:flex-nowrap gap-2">
+                      <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
                         <CheckBox
                           state={store.settings.privacy.postVisibility === "everyone"}
                           onClick={() => setStore("settings", "privacy", "postVisibility", "everyone")}
@@ -203,14 +200,14 @@ export default function Setting() {
                 <div class="Module Message flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.messages.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="Durtion flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="Durtion flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.messages.notifyOnContentChange.title}</h3>
                         <span class="text-sm text-accent-color-70">
                           {dictionary().ui.settings.messages.notifyOnContentChange.description}
                         </span>
                       </div>
-                      <div class="Selector flex flex-wrap lg:flex-nowrap gap-2">
+                      <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
                         <CheckBox
                           state={store.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
                           onClick={() =>
@@ -255,7 +252,7 @@ export default function Setting() {
                 <div class="Module About flex flex-col gap-2 rounded-md bg-transition-color-8 p-1 lg:p-3">
                   <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.about.title}</h2>
                   <div class="LabelGroup flex flex-col gap-1">
-                    <div class="Version flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="Version flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.about.version.title}</h3>
                         <span class="text-sm text-accent-color-70">
@@ -263,7 +260,7 @@ export default function Setting() {
                         </span>
                       </div>
                     </div>
-                    <div class="Description flex flex-col lg:flex-row flex-1 items-start lg:items-center justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3">
+                    <div class="Description flex flex-1 flex-col items-start justify-between gap-4 rounded-md border-1.5 border-transition-color-20 bg-primary-color p-3 lg:flex-row lg:items-center">
                       <div class="Description flex flex-1 flex-col gap-2">
                         <h3>{dictionary().ui.settings.about.description.title}</h3>
                         <span class="text-sm text-accent-color-70">
