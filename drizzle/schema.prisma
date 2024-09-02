@@ -354,8 +354,7 @@ model user_update_data {
 
 // 怪物模型
 model monster {
-    id    String @id
-    image String
+    id String @id
 
     name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
     monsterType                      MonsterType
@@ -394,6 +393,8 @@ model monster {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image             @relation(fields: [imageId], references: [id])
+    imageId         String
 }
 
 // 单项加成数据模型
@@ -480,6 +481,7 @@ model main_weapon {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image[]
 }
 
 // 副武器模型
@@ -508,6 +510,7 @@ model sub_weapon {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image[]
 }
 
 // 身体装备模型
@@ -536,6 +539,7 @@ model body_armor {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image[]
 }
 
 // 追加装备模型
@@ -562,6 +566,7 @@ model additional_equipment {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image[]
 }
 
 // 特殊装备模型
@@ -587,6 +592,7 @@ model special_equipment {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image[]
 }
 
 // 技能卡片模型
@@ -782,6 +788,8 @@ model character {
     createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
+    image           image             @relation(fields: [imageId], references: [id])
+    imageId         String            @unique
 }
 
 // 分析器模型
@@ -860,6 +868,23 @@ model statistics {
     characterId                 String?
     Analyzer                    analyzer?
     analyzerId                  String?
+}
+
+model image {
+    id String @id
+
+    usedByMonster               monster[]
+    belongToMainWeapon          main_weapon?          @relation(fields: [main_weaponId], references: [id])
+    main_weaponId               String?
+    belongToSubWeapon           sub_weapon?           @relation(fields: [sub_weaponId], references: [id])
+    sub_weaponId                String?
+    belongToBodyArmor           body_armor?           @relation(fields: [body_armorId], references: [id])
+    body_armorId                String?
+    belongToAdditionalEquipment additional_equipment? @relation(fields: [additional_equipmentId], references: [id])
+    additional_equipmentId      String?
+    belongToSpecialEquipment    special_equipment?    @relation(fields: [special_equipmentId], references: [id])
+    special_equipmentId         String?
+    usedByCharacter             character[]
 }
 
 model rate {

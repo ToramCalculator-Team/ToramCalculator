@@ -6,7 +6,7 @@ import { live } from "@electric-sql/pglite/live";
 import { worker } from "@electric-sql/pglite/worker";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "~/../drizzle/schema";
-import { createId } from '@paralleldrive/cuid2';
+import { createId } from "@paralleldrive/cuid2";
 
 worker({
   async init() {
@@ -15,12 +15,12 @@ worker({
       relaxedDurability: true,
       extensions: {
         live,
-        electric: electricSync({debug: true}),
+        electric: electricSync({ debug: true }),
       },
     });
     await pg.exec(
       `
-    DO $$ BEGIN
+	  DO $$ BEGIN
  CREATE TYPE "public"."BodyArmorType" AS ENUM('NORMAL', 'LIGHT', 'HEAVY');
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -214,10 +214,12 @@ CREATE TABLE IF NOT EXISTS "character" (
 	"updatedByUserId" text,
 	"createdByUserId" text,
 	"statisticsId" text NOT NULL,
+	"imageId" text NOT NULL,
 	CONSTRAINT "character_fashionModifiersListId_unique" UNIQUE("fashionModifiersListId"),
 	CONSTRAINT "character_CuisineModifiersListId_unique" UNIQUE("CuisineModifiersListId"),
 	CONSTRAINT "character_modifiersListId_unique" UNIQUE("modifiersListId"),
-	CONSTRAINT "character_statisticsId_unique" UNIQUE("statisticsId")
+	CONSTRAINT "character_statisticsId_unique" UNIQUE("statisticsId"),
+	CONSTRAINT "character_imageId_unique" UNIQUE("imageId")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "combo" (
@@ -272,6 +274,15 @@ CREATE TABLE IF NOT EXISTS "_crystalTomain_weapon" (
 CREATE TABLE IF NOT EXISTS "_crystalTospecial_equipment" (
 	"A" text NOT NULL,
 	"B" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "image" (
+	"id" text PRIMARY KEY NOT NULL,
+	"main_weaponId" text,
+	"sub_weaponId" text,
+	"body_armorId" text,
+	"additional_equipmentId" text,
+	"special_equipmentId" text
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "main_weapon" (
@@ -336,6 +347,7 @@ CREATE TABLE IF NOT EXISTS "monster" (
 	"updatedByUserId" text,
 	"createdByUserId" text,
 	"statisticsId" text NOT NULL,
+	"imageId" text NOT NULL,
 	CONSTRAINT "monster_statisticsId_unique" UNIQUE("statisticsId")
 );
 --> statement-breakpoint
@@ -701,6 +713,12 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "character" ADD CONSTRAINT "character_image_fkey" FOREIGN KEY ("imageId") REFERENCES "public"."image"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "combo" ADD CONSTRAINT "combo_user_create_data_fkey" FOREIGN KEY ("userCreateUserId") REFERENCES "public"."user_create_data"("userId") ON DELETE cascade ON UPDATE cascade;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -791,6 +809,36 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "image" ADD CONSTRAINT "image_belongToMainWeapon_fkey" FOREIGN KEY ("main_weaponId") REFERENCES "public"."main_weapon"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "image" ADD CONSTRAINT "image_belongToSubWeapon_fkey" FOREIGN KEY ("sub_weaponId") REFERENCES "public"."sub_weapon"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "image" ADD CONSTRAINT "image_belongToBodyArmor_fkey" FOREIGN KEY ("body_armorId") REFERENCES "public"."body_armor"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "image" ADD CONSTRAINT "image_belongToAdditionalEquipment_fkey" FOREIGN KEY ("additional_equipmentId") REFERENCES "public"."additional_equipment"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "image" ADD CONSTRAINT "image_belongToSpecialEquipment_fkey" FOREIGN KEY ("special_equipmentId") REFERENCES "public"."special_equipment"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "main_weapon" ADD CONSTRAINT "main_weapon_modifiersList_fkey" FOREIGN KEY ("modifiersListId") REFERENCES "public"."modifiers_list"("id") ON DELETE cascade ON UPDATE cascade;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -834,6 +882,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "monster" ADD CONSTRAINT "monster_statistics_fkey" FOREIGN KEY ("statisticsId") REFERENCES "public"."statistics"("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "monster" ADD CONSTRAINT "monster_image_fkey" FOREIGN KEY ("imageId") REFERENCES "public"."image"("id") ON DELETE cascade ON UPDATE cascade;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -1008,12 +1062,12 @@ END $$;
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "account_provider_providerAccountId_key" ON "account" USING btree ("provider","providerAccountId");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "verification_token" USING btree ("identifier","token");
-      `,
+		`,
     );
 
     await pg.electric.syncShapeToTable({
-      url: "http://localhost:3000/v1/shape/statistics",
-      table: "statistics",
+      url: "http://localhost:3000/v1/shape/monster",
+      table: "monster",
       primaryKey: ["id"],
       subscribe: true,
     });
@@ -1021,10 +1075,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "
     await pg.waitReady;
 
     const db = drizzle(pg, { schema });
-    // const query = await db.query.verification_token.findMany();
-    // console.log(query);
-    const sql = db.query.statistics.findMany().toSQL().sql;
-    const ret1 = pg.live.query(sql, [], (res) => {
+
+    const sql = db.query.monster.findMany().toSQL().sql;
+    pg.live.query(sql, [], (res) => {
       console.log(res);
     });
 

@@ -6,7 +6,10 @@ interface ImportMetaEnv {
   PG_USERNAME:string
   PG_PASSWORD:string
   PG_DBNAME:string
-  PG_URL:string
+  PG_URL: string
+  
+  ELECTRIC_HOST: string
+  ELECTRIC_PORT: string
   
   BAIDU_HTML_LABEL:string
   
