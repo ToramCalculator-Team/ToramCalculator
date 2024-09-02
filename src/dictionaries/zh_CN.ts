@@ -133,7 +133,7 @@ const dictionary: dictionary = {
     monster: {
       pageTitle: "怪物",
       description:
-        "登录后可自行上传数据。",
+        "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。",
       augmented: "是否展示全部星级数据",
       canNotModify: "系统生成，不可修改",
       monsterDegreeOfDifficulty: {

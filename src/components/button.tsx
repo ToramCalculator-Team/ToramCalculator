@@ -17,20 +17,15 @@ const Button = (props: MyButtonProps) => {
       icon: props.icon,
       children: props.children,
       sizeClass: {
-        sm: "gap-1 rounded px-4 py-1",
-        md: "gap-2 rounded px-4 py-2",
-        lg: "gap-0 rounded-md px-2 pr-[18px] py-1",
-      }[props.size ?? "md"],
-      iconSizeClass: {
-        sm: `${props.icon ? "" : "hidden"}`,
-        md: `${props.icon ? "" : "hidden"}`,
-        lg: "p-2",
+        sm: "gap-2 rounded px-4 py-3",
+        md: "gap-2 rounded-md px-4 py-3",
+        lg: "gap-2 rounded-md px-4 py-3",
       }[props.size ?? "md"],
       levelClass: {
-        primary: "border-1.5 border-transparent bg-accent-color text-primary-color hover:bg-accent-color-80",
-        secondary: "border-1.5 border-accent-color-30 bg-primary-color hover:bg-accent-color hover:text-primary-color",
-        tertiary: "border-1.5 border-transparent bg-transition-color-8 hover:bg-transition-color-20",
-        quaternary: "border-1.5 border-transparent bg-transparent hover:bg-transition-color-20",
+        primary: "bg-accent-color text-primary-color hover:bg-accent-color-80",
+        secondary: "bg-primary-color hover:bg-accent-color hover:text-primary-color",
+        tertiary: "bg-transition-color-8 hover:bg-transition-color-20",
+        quaternary: "bg-transparent hover:bg-transition-color-8 outline-none focus-within:outline-none",
       }[props.level ?? "secondary"],
       active: props.active,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
@@ -42,7 +37,7 @@ const Button = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().activedClass} `,
+      `${config().disableClass} box-content cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().activedClass} `,
     );
   });
 
@@ -57,8 +52,7 @@ const Button = (props: MyButtonProps) => {
       disabled={props.disabled}
       value={props.value}
       class={` ` + props.class ? defaultButtonClassNames() + props.class : defaultButtonClassNames()}
-    >
-      <div class={config().iconSizeClass}>{config().icon}</div>
+    >{config().icon}
       {config().children}
     </button>
   );

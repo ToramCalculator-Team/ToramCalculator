@@ -62,6 +62,12 @@ dependencies:
   mathjs:
     specifier: ^13.0.3
     version: 13.0.3
+  overlayscrollbars:
+    specifier: ^2.10.0
+    version: 2.10.0
+  overlayscrollbars-solid:
+    specifier: ^0.5.5
+    version: 0.5.5(overlayscrollbars@2.10.0)(solid-js@1.8.21)
   pg:
     specifier: ^8.12.0
     version: 8.12.0
@@ -4527,6 +4533,20 @@ packages:
       supports-color: 9.4.0
       undici: 5.28.4
       yargs-parser: 21.1.1
+    dev: false
+
+  /overlayscrollbars-solid@0.5.5(overlayscrollbars@2.10.0)(solid-js@1.8.21):
+    resolution: {integrity: sha512-YXjU0Q8XhpDcnKyLlgAI6Qcum3btU/4fQbLVzOgxgld4b1oWEaYRL+V8YNgLc/TmlT2taQoLuskTUMDVrIapaQ==}
+    peerDependencies:
+      overlayscrollbars: ^2.0.0
+      solid-js: ^1.7.0
+    dependencies:
+      overlayscrollbars: 2.10.0
+      solid-js: 1.8.21
+    dev: false
+
+  /overlayscrollbars@2.10.0:
+    resolution: {integrity: sha512-diNMeEafWTE0A4GJfwRpdBp2rE/BEvrhptBdBcDu8/UeytWcdCy9Td8tZWnztJeJ26f8/uHCWfPnPUC/dtgJdw==}
     dev: false
 
   /package-json-from-dist@1.0.0:

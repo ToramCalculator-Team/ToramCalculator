@@ -72,6 +72,7 @@
 }
 
 *:focus {
+  outline-width: 2px;
   outline-color: rgb(var(--brand-1st));
 }
 

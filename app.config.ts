@@ -7,10 +7,13 @@ export default defineConfig({
     cacheDir: '',
     build: {
       sourcemap: true,
+      rollupOptions: {
+        external: ['solid-js'],
+      }
     },
     ssr: { external: ["drizzle-orm"] },
     optimizeDeps: {
       exclude: ['@electric-sql/pglite'],
-    }
+    },
   },
 });
