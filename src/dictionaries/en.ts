@@ -391,6 +391,7 @@ const dictionary: dictionary = {
         updatedAt: "UpdatedAt",
         statistics: statistics,
         statisticsId: "StatisticsId",
+        imageId: "ImageId",
       },
       crystal: {
         modifiersList: modifiersList,
@@ -598,6 +599,7 @@ const dictionary: dictionary = {
         updatedAt: "UpdatedAt",
         statistics: statistics,
         statisticsId: "StatisticsId",
+        imageId: "ImageId",
       },
     },
   },

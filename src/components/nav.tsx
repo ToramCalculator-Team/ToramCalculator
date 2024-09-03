@@ -70,6 +70,7 @@ export default function Nav() {
   return (
     <Motion.div
       animate={{ transform: "none", opacity: 1 }}
+      transition={{duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0}}
       class={`Nav border-t-1 z-10 flex w-dvw flex-shrink-0 translate-y-full overflow-x-auto border-transition-color-20 opacity-0 backdrop-blur lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:gap-10 lg:border-none lg:bg-transition-color-8 lg:py-5`}
     >
       <div class="LogoOrHomeflex items-center justify-center lg:flex-none">
@@ -81,7 +82,7 @@ export default function Nav() {
           <div class="text-xs lg:hidden">{dictionary().ui.nav.home}</div>
         </a>
       </div>
-      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}>
+      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4">
         <div class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4">
           <For each={NavBtnConfig()}>
             {(config) => {

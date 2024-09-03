@@ -458,10 +458,11 @@ export default function AnalyzePageClient() {
       extraDetails: "",
       statistics: defaultSelectStatistics,
       statisticsId: "",
+      imageId: "",
     } satisfies SelectCharacter,
     monster: {
       id: "",
-      image: "",
+      imageId: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
       baseLv: 251,
@@ -1136,7 +1137,7 @@ export default function AnalyzePageClient() {
 
   return (
     <>
-      <div class="Title sticky left-0 mt-3 flex flex-col gap-9 py-5 lg:pt-20">
+      <div class="Title sticky left-0 mt-3 flex flex-col gap-9 py-5 p-3 lg:pt-12">
         <div class="Row flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
           <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary().ui.analyze.pageTitle}</h1>
           <div class="Control flex flex-1 gap-2">
@@ -1152,7 +1153,7 @@ export default function AnalyzePageClient() {
         </div>
         <div></div>
       </div>
-      <div class="Content flex flex-col gap-4">
+      <div class="Content flex flex-col gap-4 p-3">
         <div class="MonsterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex gap-4">
             <span class="Key">怪物：</span>

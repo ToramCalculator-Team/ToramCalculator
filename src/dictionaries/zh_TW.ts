@@ -392,6 +392,7 @@ const dictionary: dictionary = {
         updatedAt: "更新於",
         statistics: statistics,
         statisticsId: "統計ID",
+        imageId: "圖片ID",
       },
       crystal: {
         id: "ID",
@@ -599,6 +600,7 @@ const dictionary: dictionary = {
         updatedAt: "更新於",
         statistics: statistics,
         statisticsId: "統計ID",
+        imageId: "圖片Id",
       },
     },
   },

@@ -16,6 +16,7 @@ import { type SelectSkillEffect } from "~/schema/skill_effect";
 import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../../dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
 type Related =
   | {
@@ -197,108 +198,114 @@ export default function Index() {
         </p>
       </div>
     ) : (
-      <div
-        class={`ResultContent flex h-full flex-1 flex-col gap-2 overflow-y-auto rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
-      >
-        {Object.entries(searchResult()).map(([key, value], groupIndex) => {
-          let icon: JSX.Element = null;
-          let groupName = "未知分类";
-          switch (key) {
-            case "skills":
-              icon = <Icon.Line.Basketball />;
-              groupName = dictionary().ui.nav.skills;
-              break;
-            case "crystals":
-              icon = <Icon.Line.Box2 />;
-              groupName = dictionary().ui.nav.crystals;
-              break;
-            case "monsters":
-              icon = <Icon.Line.Calendar />;
-              groupName = dictionary().ui.nav.monsters;
-              break;
-            default:
-              break;
-          }
+      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer class="w-full">
+        <div
+          class={`ResultContent flex h-full flex-1 flex-col gap-2 rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
+        >
+          {Object.entries(searchResult()).map(([key, value], groupIndex) => {
+            let icon: JSX.Element = null;
+            let groupName = "未知分类";
+            switch (key) {
+              case "skills":
+                icon = <Icon.Line.Basketball />;
+                groupName = dictionary().ui.nav.skills;
+                break;
+              case "crystals":
+                icon = <Icon.Line.Box2 />;
+                groupName = dictionary().ui.nav.crystals;
+                break;
+              case "monsters":
+                icon = <Icon.Line.Calendar />;
+                groupName = dictionary().ui.nav.monsters;
+                break;
+              default:
+                break;
+            }
 
-          return (
-            value.length > 0 && (
-              <div class="RsultGroup flex flex-col gap-1">
-                <button
-                  onClick={() =>
-                    setResultListState([
-                      ...resultListSate().slice(0, groupIndex),
-                      !resultListSate()[groupIndex],
-                      ...resultListSate().slice(groupIndex + 1),
-                    ])
-                  }
-                  class={`Group flex cursor-pointer justify-center gap-2 ${resultListSate()[groupIndex] ? "bg-transition-color-8" : "bg-primary-color"} rounded-md px-3 py-4`}
-                >
-                  {icon}
-                  <span class="w-full text-left">
-                    {groupName} [{value.length}]
-                  </span>
-                  {resultListSate()[groupIndex] ? (
-                    <Icon.Line.Left class="rotate-[360deg]" />
-                  ) : (
-                    <Icon.Line.Left class="rotate-[270deg]" />
-                  )}
-                </button>
-                <div class="Content flex flex-col gap-1">
-                  {value.map((item, index) => {
-                    return (
-                      <Motion.button
-                        class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded-md border border-transition-color-20 bg-primary-color p-3`}
-                        animate={{
-                          opacity: [0, 1],
-                          transform: ["translateY(30px)", "translateY(0)"],
-                        }}
-                        transition={{
-                          duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                          delay: store.settings.userInterface.isAnimationEnabled ? (index < 10 ? 0.3 + index * 0.07 : 0) : 0,
-                        }}
-                        onClick={() => {
-                          if (item?.data.id === currentCardId()) {
-                            setCurrentCardId("defaultId");
-                          } else {
-                            setCurrentCardId(item?.data.id ?? "未知ID");
-                          }
-                        }}
-                      >
-                        <div class="Name border-b-2 border-transparent p-1 font-bold group-hover:border-accent-color">
-                          {item?.name}
-                        </div>
-                        <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-accent-color-70 group-hover:text-accent-color">
-                          {item?.relateds.map((related, index) => {
-                            return (
-                              <div class="Related w-fit pr-2">
-                                <span>
-                                  {related?.key}: {related?.value}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div
-                          class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded-md bg-transition-color-8 p-1`}
+            return (
+              value.length > 0 && (
+                <div class="RsultGroup flex flex-col gap-1">
+                  <button
+                    onClick={() =>
+                      setResultListState([
+                        ...resultListSate().slice(0, groupIndex),
+                        !resultListSate()[groupIndex],
+                        ...resultListSate().slice(groupIndex + 1),
+                      ])
+                    }
+                    class={`Group flex cursor-pointer justify-center gap-2 ${resultListSate()[groupIndex] ? "bg-transition-color-8" : "bg-primary-color"} rounded-md px-3 py-4`}
+                  >
+                    {icon}
+                    <span class="w-full text-left">
+                      {groupName} [{value.length}]
+                    </span>
+                    {resultListSate()[groupIndex] ? (
+                      <Icon.Line.Left class="rotate-[360deg]" />
+                    ) : (
+                      <Icon.Line.Left class="rotate-[270deg]" />
+                    )}
+                  </button>
+                  <div class="Content flex flex-col gap-1">
+                    {value.map((item, index) => {
+                      return (
+                        <Motion.button
+                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded-md border border-transition-color-20 bg-primary-color p-3`}
+                          animate={{
+                            opacity: [0, 1],
+                            transform: ["translateY(30px)", "translateY(0)"],
+                          }}
+                          transition={{
+                            duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                            delay: store.settings.userInterface.isAnimationEnabled
+                              ? index < 10
+                                ? 0.3 + index * 0.07
+                                : 0
+                              : 0,
+                          }}
+                          onClick={() => {
+                            if (item?.data.id === currentCardId()) {
+                              setCurrentCardId("defaultId");
+                            } else {
+                              setCurrentCardId(item?.data.id ?? "未知ID");
+                            }
+                          }}
                         >
-                          {JSON.stringify(item?.data, null, 2)
-                            .split(",")
-                            .map((line, index) => (
-                              <span class="text-left lg:basis-1/4">
-                                {line}
-                                <br />
-                              </span>
-                            ))}
-                        </div>
-                      </Motion.button>
-                    );
-                  })}
+                          <div class="Name border-b-2 border-transparent p-1 font-bold group-hover:border-accent-color">
+                            {item?.name}
+                          </div>
+                          <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-accent-color-70 group-hover:text-accent-color">
+                            {item?.relateds.map((related, index) => {
+                              return (
+                                <div class="Related w-fit pr-2">
+                                  <span>
+                                    {related?.key}: {related?.value}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div
+                            class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded-md bg-transition-color-8 p-1`}
+                          >
+                            {JSON.stringify(item?.data, null, 2)
+                              .split(",")
+                              .map((line, index) => (
+                                <span class="text-left lg:basis-1/4">
+                                  {line}
+                                  <br />
+                                </span>
+                              ))}
+                          </div>
+                        </Motion.button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )
-          );
-        })}
-      </div>
+              )
+            );
+          })}
+        </div>
+      </OverlayScrollbarsComponent>
     );
   };
 
@@ -370,7 +377,7 @@ export default function Index() {
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
-  })
+  });
 
   onMount(() => {
     // 浏览器后退事件监听
@@ -419,10 +426,12 @@ export default function Index() {
             <Icon.Line.Settings />
           </Button>
         </div>
-        <div class={`Top flex flex-1 flex-col justify-center overflow-hidden p-6 lg:p-3 duration-700`}>
+        <div
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 lg:p-3`}
+        >
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
-              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] lg:pb-12 opacity-100 lg:flex-none`
+              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] opacity-100 lg:flex-none lg:pb-12`
             }`}
           >
             <div class={`LogoBox mb-2 overflow-hidden rounded-md backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
@@ -446,7 +455,7 @@ export default function Index() {
                     "transition-timing-function": "ease-out",
                   }
                 : {
-                    "clip-path": "inset(10% 5% 90% 5% round 12px)",
+                    "clip-path": "inset(90% 5% 10% 5% round 12px)",
                     "transition-duration": "0.7s",
                     "transition-timing-function": "ease-out",
                   }
@@ -565,15 +574,14 @@ export default function Index() {
                   opacity: [0, 1],
                   flexBasis: ["0%", "100%"],
                   flexGrow: [0, 1],
-                  transitionDuration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
                 }}
                 exit={{
                   clipPath: ["inset(0% 0% 0% 0% round 12px)", "inset(10% 25% 90% 25% round 12px)"],
                   opacity: [1, 0],
                   flexBasis: ["100%", "0%"],
                   flexGrow: [1, 0],
-                  transition: { duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 },
                 }}
+                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
                 class={`ResultPC hidden lg:flex lg:h-full lg:flex-1 lg:flex-row lg:gap-1 lg:overflow-y-hidden`}
               >
                 {generateSearchResultDom(resultDialogOpened())}

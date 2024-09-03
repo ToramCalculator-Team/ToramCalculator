@@ -54,7 +54,7 @@ const dictionary: dictionary = {
       crystals: "クリスタル",
       pets: "ペット",
       items: "消耗品",
-      character: "キャラクター設定",
+      character: "キャラクター",
       comboAnalyze: "コンボ分析",
     },
     errorPage: {
@@ -136,7 +136,7 @@ const dictionary: dictionary = {
         "強くなる旅には困難が待ち受け、知識を求める道には障害物が散らばっています\nしかし、ここにはありません\n検索結果にないということは、存在しないということです",
     },
     monster: {
-      pageTitle: "モンスター情報テーブル",
+      pageTitle: "モンスター",
       description: "ログイン後、自身でデータをアップロードできます。",
       augmented: "すべての星級データを表示",
       canNotModify: "システムによって生成され、修正不可",
@@ -397,6 +397,7 @@ const dictionary: dictionary = {
         updatedAt: "更新于",
         statistics: statistics,
         statisticsId: "统计ID",
+        imageId: "图片ID"
       },
       crystal: {
         id: "ID",
@@ -604,6 +605,7 @@ const dictionary: dictionary = {
         updatedAt: "更新于",
         statistics: statistics,
         statisticsId: "统计ID",
+        imageId: "图片ID",
       },
     },
   },
