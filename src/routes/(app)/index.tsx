@@ -198,10 +198,10 @@ export default function Index() {
         </p>
       </div>
     ) : (
-      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer class="w-full">
-        <div
-          class={`ResultContent flex h-full flex-1 flex-col gap-2 rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
-        >
+      <div
+        class={`ResultContent flex h-full flex-1 flex-col gap-2 rounded-md bg-transition-color-8 p-2 backdrop-blur-md`}
+      >
+        <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer>
           {Object.entries(searchResult()).map(([key, value], groupIndex) => {
             let icon: JSX.Element = null;
             let groupName = "未知分类";
@@ -233,7 +233,7 @@ export default function Index() {
                         ...resultListSate().slice(groupIndex + 1),
                       ])
                     }
-                    class={`Group flex cursor-pointer justify-center gap-2 ${resultListSate()[groupIndex] ? "bg-transition-color-8" : "bg-primary-color"} rounded-md px-3 py-4`}
+                    class={`Group outline-none focus-within:outline-none flex cursor-pointer justify-center gap-2 bg-primary-color ${resultListSate()[groupIndex] ? "" : ""} rounded-md px-3 py-4`}
                   >
                     {icon}
                     <span class="w-full text-left">
@@ -304,8 +304,8 @@ export default function Index() {
               )
             );
           })}
-        </div>
-      </OverlayScrollbarsComponent>
+        </OverlayScrollbarsComponent>
+      </div>
     );
   };
 
