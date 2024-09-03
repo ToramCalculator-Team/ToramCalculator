@@ -22,7 +22,7 @@ export default function App() {
     const oldConfig = JSON.parse(storage);
     const newConfig = initialStore;
     if (oldConfig.version && oldConfig.version === newConfig.version) {
-      console.log(`配置数据版本${oldConfig.version}`);
+      // console.log(`配置数据版本${oldConfig.version}`);
     } else {
       console.log(`配置数据版本更新至${newConfig.version}`);
 

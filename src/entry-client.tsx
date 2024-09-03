@@ -1073,18 +1073,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS "account_provider_providerAccountId_key" ON "a
 CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "verification_token" USING btree ("identifier","token");
 `,
 );
-console.log("MODE=" + import.meta.env.MODE)
 await pg.electric.syncShapeToTable({
-  url: `${import.meta.env.PROD ? "http://kiaclouth.com:3000/v1/shape/monster" : "http://localhost:3000/v1/shape/monster" }`,
+  url: "http://kiaclouth.com:3000/v1/shape/monster",
   table: "monster",
   primaryKey: ["id"],
   subscribe: true,
 });
-
 await pg.waitReady;
-
 const db = drizzle(pg, { schema });
-
 const sql = db.query.monster.findMany().toSQL().sql;
 pg.live.query(sql, [], (res) => {
   console.log(res);
@@ -1096,5 +1092,6 @@ if ("serviceWorker" in navigator) {
     type: "module",
   });
 }
+
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
