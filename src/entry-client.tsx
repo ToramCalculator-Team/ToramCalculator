@@ -1074,7 +1074,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "
 `,
 );
 await pg.electric.syncShapeToTable({
-  url: "http://kiaclouth.com:3000/v1/shape/monster",
+  url: "https://test.kiaclouth.com/v1/shape/monster",
   table: "monster",
   primaryKey: ["id"],
   subscribe: true,
