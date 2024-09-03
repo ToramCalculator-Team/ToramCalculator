@@ -10,7 +10,7 @@ export default function Home(props: ParentProps) {
       <Motion.div
         animate={{ opacity: 1 }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-        class="Content flex flex-1 overflow-hidden w-full lg:max-w-[1536px] mx-auto flex-col opacity-0 lg:h-dvh lg:py-5 bg-primary-color"
+        class="Content flex flex-1 overflow-hidden w-full lg:max-w-[1536px] mx-auto flex-col opacity-0 lg:h-dvh bg-primary-color"
       >
         {props.children}
       </Motion.div>

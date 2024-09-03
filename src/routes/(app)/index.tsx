@@ -410,7 +410,10 @@ export default function Index() {
           <span>CrystalList: 测试数据</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
-        <div class={`Config fixed right-3 top-3 flex gap-1 ${resultDialogOpened() ? "opacity-0 lg:opacity-100" : ""}`}>
+        <Motion.div
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+          class={`Config fixed right-3 top-3 flex gap-1`}>
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
@@ -425,7 +428,7 @@ export default function Index() {
           >
             <Icon.Line.Settings />
           </Button>
-        </div>
+        </Motion.div>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 lg:p-3`}
         >
@@ -483,7 +486,7 @@ export default function Index() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox group border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -495,7 +498,7 @@ export default function Index() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
+                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-accent-color-50 focus-within:outline-none focus:placeholder:text-accent-color-0 dark:mix-blend-normal lg:flex lg:bg-transparent"
               />
               <input
                 id="searchInput-Mobile"
@@ -513,7 +516,7 @@ export default function Index() {
                 ref={(el) => (searchButtonRef = el)}
                 level="tertiary"
                 icon={<Icon.Line.Search />}
-                class="outline-none focus-within:outline-none lg:bg-transparent"
+                class="outline-none focus-within:outline-none lg:bg-transparent text-accent-color-50 group-hover:text-accent-color"
                 onClick={() => {
                   setIsNullResult(true);
                   if (searchInputValue() === "" || searchInputValue() === null) {
