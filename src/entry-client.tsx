@@ -1,17 +1,17 @@
 // @refresh reload
 import "~/styles/app.css";
-import 'overlayscrollbars/overlayscrollbars.css';
+import "overlayscrollbars/overlayscrollbars.css";
 import { mount, StartClient } from "@solidjs/start/client";
 import { PGliteWorker } from "@electric-sql/pglite/worker";
-import PGliteWorkerUrl from "~/lib/worker/PGliteWorker.ts?url";
-import serviceWorkerUrl from "~/entry-serviceworker.ts?url";
+import PGliteWorkerUrl from '~/lib/worker/PGliteWorker?worker&url'
+import serviceWorkerUrl from '~/entry-serviceworker?worker&url'
 import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 
-// // 初始化本地数据库
+// 初始化本地数据库
 export const pg = await PGliteWorker.create(
   new Worker(PGliteWorkerUrl, {
-    type: "module",
-  })
+  type: 'module'
+}),
 );
 
 // 注册ServiceWorker
