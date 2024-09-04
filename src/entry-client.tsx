@@ -16,7 +16,7 @@ import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js", {
+  navigator.serviceWorker.register(serviceWorkerUrl, {
     type: "module",
   });
 }
