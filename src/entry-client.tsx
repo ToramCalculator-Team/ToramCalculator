@@ -14,12 +14,12 @@ import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 //   })
 // );
 
-// // 注册ServiceWorker
-// if ("serviceWorker" in navigator) {
-//   navigator.serviceWorker.register(serviceWorkerUrl, {
-//     type: "module",
-//   });
-// }
+// 注册ServiceWorker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js", {
+    type: "module",
+  });
+}
 
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);

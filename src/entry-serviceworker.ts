@@ -1,10 +1,17 @@
 /// <reference lib="webworker" />
 
+import { defaultSelectMonster } from "./schema/monster";
+
 (async (worker: ServiceWorkerGlobalScope) => {
 
   worker.addEventListener("install", (event) => {
     event.waitUntil(worker.skipWaiting());
   });
+
+  worker.addEventListener("activate", (event) => {
+    console.log("SW: activate", defaultSelectMonster);
+  });
+  
   // worker.addEventListener("fetch", (event) => {
   //   console.log('SW: fetch', event.request.url);
   // });
