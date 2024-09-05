@@ -2,11 +2,11 @@
   "name": "toram-calculator",
   "type": "module",
   "scripts": {
-    "schema:generate": "prisma generate --schema=./drizzle/schema.prisma",
+    "schema:generate": "prisma generate --schema=./db/schema.prisma",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "prisma studio --schema=./drizzle/schema.prisma",
+    "db:studio": "prisma studio --schema=./db/schema.prisma",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",

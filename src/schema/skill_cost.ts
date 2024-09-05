@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { skill_cost as SkillCost } from "../../drizzle/schema";
+import { skill_cost as SkillCost } from "~/../db/schema";
 
 // TS
 export type SelectSkillCost = InferSelectModel<typeof SkillCost>;

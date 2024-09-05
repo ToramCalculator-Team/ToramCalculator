@@ -1,4 +1,4 @@
-import { modifier as Modifier } from "../../drizzle/schema";
+import { modifier as Modifier } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 

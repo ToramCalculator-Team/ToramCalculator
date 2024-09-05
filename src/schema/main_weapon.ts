@@ -7,7 +7,7 @@ import {
   SelectStatistics,
   SelectStatisticsSchema,
 } from "./statistics";
-import { main_weapon as MainWeapon } from "~/../drizzle/schema";
+import { main_weapon as MainWeapon } from "~/../db/schema";
 import { SelectCrystal, InsertCrystal, SelectCrystalSchema, InsertCrystalSchema, defaultSelectCrystal } from "./crystal";
 import { SelectModifiersList, InsertModifiersList, SelectModifiersListSchema, InsertModifiersListSchema, defaultSelectModifiersList } from "./modifiers_list";
 

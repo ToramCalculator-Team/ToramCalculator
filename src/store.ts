@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store";
-import { Locale } from "~/i18n";
+import { Locale } from "~/locales/i18n";
 import { defaultSelectMonster, SelectMonster } from "./schema/monster";
 import { defaultSelectCrystal, SelectCrystal } from "./schema/crystal";
 import { defaultSelectSkill, SelectSkill } from "./schema/skill";

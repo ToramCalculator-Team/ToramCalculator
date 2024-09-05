@@ -1,7 +1,7 @@
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
 import Button from "./button";
 import Toggle from "./toggle";

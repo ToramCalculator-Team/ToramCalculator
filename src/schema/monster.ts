@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { monster as Monster } from "../../drizzle/schema";
+import { monster as Monster } from "~/../db/schema";
 import {
   defaultSelectStatistics,
   InsertStatistics,
@@ -28,7 +28,7 @@ export const InsertMonsterSchema = createInsertSchema(Monster).extend({
 // default
 export const defaultSelectMonster: SelectMonster = {
   id: "defaultSelectMonster",
-  image: "",
+  imageId: "",
 
   name: "defaultSelectMonster",
   monsterType: "COMMON_BOSS",
@@ -65,7 +65,7 @@ export const defaultSelectMonster: SelectMonster = {
 };
 export const defaultInsertMonster: InsertMonster = {
   id: "defaultInsertMonster",
-  image: "",
+  imageId: "",
 
   name: "",
   monsterType: "COMMON_BOSS",

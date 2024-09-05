@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { combo_step as ComboStep } from "../../drizzle/schema";
+import { combo_step as ComboStep } from "~/../db/schema";
 
 // TS
 export type SelectComboStep = InferSelectModel<typeof ComboStep> & {

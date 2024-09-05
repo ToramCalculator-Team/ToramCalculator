@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { statistics as Statistics } from "../../drizzle/schema";
+import { statistics as Statistics } from "~/../db/schema";
 import {
   defaultSelectUsageTimestamp,
   InsertUsageTimestamp,

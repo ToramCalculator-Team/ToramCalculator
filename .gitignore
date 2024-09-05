@@ -29,5 +29,5 @@ gitignore
 Thumbs.db
 
 # db
-/drizzle/schema.ts
-/drizzle/migrations
+/db/schema.ts
+/db/migrations

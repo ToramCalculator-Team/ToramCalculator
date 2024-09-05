@@ -1,4 +1,4 @@
-import { consumable as Consumable } from "~/../drizzle/schema";
+import { consumable as Consumable } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import {

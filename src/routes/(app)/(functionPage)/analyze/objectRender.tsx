@@ -1,4 +1,4 @@
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import { type modifiers, type CharacterData, type MonsterData, type SkillData, dynamicTotalValue } from "./worker";
 
 // 类型谓词函数，用于检查对象是否符合目标类型

@@ -2,7 +2,7 @@
 
 import * as _ from "lodash-es";
 import { type $Enums } from "~/schema/enums";
-import { type getDictionary } from "~/i18n";
+import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import { type SelectCharacter } from "~/schema/character";
 import { type SelectMonster } from "~/schema/monster";

@@ -7,7 +7,7 @@ import {
   SelectStatistics,
   SelectStatisticsSchema,
 } from "./statistics";
-import { body_armor as BodyArmor } from "~/../drizzle/schema";
+import { body_armor as BodyArmor } from "~/../db/schema";
 import { SelectCrystal, InsertCrystal, SelectCrystalSchema, InsertCrystalSchema, defaultSelectCrystal } from "./crystal";
 import { SelectModifiersList, InsertModifiersList, SelectModifiersListSchema, InsertModifiersListSchema, defaultSelectModifiersList } from "./modifiers_list";
 import { z } from "zod";

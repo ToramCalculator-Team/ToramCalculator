@@ -1,5 +1,5 @@
 import { SelectMonster } from "~/schema/monster";
-import { dictionary } from "~/dictionaries/type";
+import { dictionary } from "~/locales/dictionaries/type";
 
 /**
  * 通过基本列表生成包含其他星级定点boss属性的列表

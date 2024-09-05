@@ -1,7 +1,7 @@
 import { useLocation } from "@solidjs/router";
 
 import * as Icon from "./icon";
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import { createEffect, createMemo, createSignal, For, JSX } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";

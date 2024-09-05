@@ -5,7 +5,7 @@ import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import { worker } from "@electric-sql/pglite/worker";
 import { drizzle } from "drizzle-orm/pglite";
-import * as schema from "~/../drizzle/schema";
+import * as schema from "~/../db/schema";
 import { createId } from "@paralleldrive/cuid2";
 
 worker({

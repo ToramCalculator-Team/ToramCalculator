@@ -15,7 +15,7 @@ import {
   SubWeaponType,
   UserRole,
   YieldType,
-} from "~/../drizzle/schema";
+} from "~/../db/schema";
 export type EnumValues<T extends PgEnum<any>> = T["enumValues"] extends Array<infer U> ? U : never;
 
 export namespace $Enums {

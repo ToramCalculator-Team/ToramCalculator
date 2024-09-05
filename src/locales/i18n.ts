@@ -1,7 +1,7 @@
-import zh_CN from "~/dictionaries/zh_CN";
-import zh_TW from "~/dictionaries/zh_TW";
-import en from "~/dictionaries/en";
-import ja from "~/dictionaries/ja";
+import zh_CN from "~/locales/dictionaries/zh_CN";
+import zh_TW from "~/locales/dictionaries/zh_TW";
+import en from "~/locales/dictionaries/en";
+import ja from "~/locales/dictionaries/ja";
 
 export const i18n = {
   defaultLocale: "zh-CN",

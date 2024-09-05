@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { skill_yield as SkillYield } from "../../drizzle/schema";
+import { skill_yield as SkillYield } from "~/../db/schema";
 
 // TS
 export type SelectSkillYield = InferSelectModel<typeof SkillYield>;

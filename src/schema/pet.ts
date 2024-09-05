@@ -1,4 +1,4 @@
-import { pet as Pet } from "~/../drizzle/schema";
+import { pet as Pet } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { SelectStatistics, InsertStatistics, SelectStatisticsSchema, InsertStatisticsSchema, defaultSelectStatistics } from "./statistics";

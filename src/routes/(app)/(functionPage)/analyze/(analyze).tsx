@@ -9,7 +9,7 @@ import { defaultSelectConsumable } from "~/schema/consumable";
 import { defaultSelectSkill } from "~/schema/skill";
 import { defaultSelectPet } from "~/schema/pet";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
 import Button from "~/components/button";

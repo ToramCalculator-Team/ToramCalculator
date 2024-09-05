@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { skill as Skill } from "../../drizzle/schema";
+import { skill as Skill } from "~/../db/schema";
 import {
   defaultInsertSkillEffect,
   defaultSelectSkillEffect,

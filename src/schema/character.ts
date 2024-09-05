@@ -7,7 +7,7 @@ import {
   SelectStatistics,
   SelectStatisticsSchema,
 } from "./statistics";
-import { character as Character } from "../../drizzle/schema";
+import { character as Character } from "~/../db/schema";
 import { defaultSelectModifiersList, SelectModifiersList, SelectModifiersListSchema } from "./modifiers_list";
 import { defaultSelectSkill, SelectSkill, SelectSkillSchema } from "./skill";
 import { defaultSelectMainWeapon, SelectMainWeapon, SelectMainWeaponSchema } from "./main_weapon";

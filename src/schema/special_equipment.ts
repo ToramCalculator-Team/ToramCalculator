@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { special_equipment as SpecialEquipment } from "~/../drizzle/schema";
+import { special_equipment as SpecialEquipment } from "~/../db/schema";
 import {
   defaultSelectModifiersList,
   InsertModifiersList,

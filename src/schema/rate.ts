@@ -1,4 +1,4 @@
-import { rate as Rate } from "../../drizzle/schema";
+import { rate as Rate } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 

@@ -4,7 +4,7 @@ import Dialog from "~/components/dialog";
 import { FormSate, setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
 import { createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import * as _ from "lodash-es";
 import Fuse from "fuse.js";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";

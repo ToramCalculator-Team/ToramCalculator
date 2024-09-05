@@ -1,4 +1,4 @@
-import { crystal as Crystal } from "../../drizzle/schema";
+import { crystal as Crystal } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import {

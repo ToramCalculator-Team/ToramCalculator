@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { sub_weapon as SubWeapon } from "~/../drizzle/schema";
+import { sub_weapon as SubWeapon } from "~/../db/schema";
 import {
   defaultSelectModifiersList,
   InsertModifiersList,

@@ -1,6 +1,6 @@
 import { createEffect, createSignal, onMount } from "solid-js";
 import LoadingBox from "~/components/loadingBox";
-import { getDictionary } from "~/i18n";
+import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
 export default function Loading() {

@@ -1,4 +1,4 @@
-import { analyzer as Analyzer } from "~/../drizzle/schema";
+import { analyzer as Analyzer } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import {

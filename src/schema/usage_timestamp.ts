@@ -1,4 +1,4 @@
-import { usage_timestamp as UsageTimestamp } from "../../drizzle/schema";
+import { usage_timestamp as UsageTimestamp } from "~/../db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 

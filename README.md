@@ -17,15 +17,15 @@
 ### 目录说明
 
 - .husky: git hooks
-- dirzzle: drizzle orm
+- db: 存放Prisma模型和drizzle模型以及迁移信息
 - public: 公共静态资源
 - src: 项目文件夹
 - - components: 页面组件
 - - styles: 项目公用样式、动画、主题、变量等
-- - lib：工具库
+- - lib：工具函数库
 - - routes: 应用程序路由
 - - schema: 应用程序数据结构定义
-- - dictionaries: 应用程序文本字典（i18n）
+- - locales: 国际化相关
 
 ### Commit 规范
 
@@ -57,6 +57,18 @@ subject: 对 commit 的简短描述
 # 安装依赖
 pnpm install
 
+# generate drizzle schema
+# 生成drizzle模型
+pnpm schema:generate
+
+# generate DDL
+# 生成数据库定义语句
+pnpm db:generate
+
+# database push
+# 推送数据库架构到数据库
+pnpm db:push
+
 # start dev
 # 以开发模式试运行
 pnpm dev
@@ -73,9 +85,9 @@ pnpm start
 ### 引入新的 pnpm 包
 
 - devDependencies 预编译时用到的模块，生产环境用不上
-  `pnpm install --save-dev moduleName`
+  `pnpm install -d moduleName`
 - dependencies 实际运行时要用到的模块，生产环境也要用到
-  `pnpm install --save moduleName`
+  `pnpm install moduleName`
 
 ### 开发概要
 
@@ -83,5 +95,4 @@ pnpm start
 - TypeScript
 - Tailwind CSS
 - Prisma & Drizzle
-- 团队规范
-  eslint
+- Electric & PGlite

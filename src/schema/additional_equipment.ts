@@ -7,7 +7,7 @@ import {
   SelectStatistics,
   SelectStatisticsSchema,
 } from "./statistics";
-import { additional_equipment as AdditionalEquipment } from "../../drizzle/schema";
+import { additional_equipment as AdditionalEquipment } from "~/../db/schema";
 import { defaultSelectCrystal, SelectCrystal, SelectCrystalSchema } from "./crystal";
 import { defaultSelectModifiersList, SelectModifiersList, SelectModifiersListSchema } from "./modifiers_list";
 

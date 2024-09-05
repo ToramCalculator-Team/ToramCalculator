@@ -1,6 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { combo as Combo } from "../../drizzle/schema";
+import { combo as Combo } from "~/../db/schema";
 import { SelectComboStep, InsertComboStep, SelectComboStepSchema, InsertComboStepSchema } from "./combo_step";
 
 // TS 
