@@ -286,47 +286,55 @@ export default function MonsterCategoryViewPage() {
 
   return (
     <>
-      <div class="Title flex flex-col p-3 lg:pt-12">
-        <div class="Content flex flex-row items-center justify-between gap-4 py-3">
-          <h1 class="Text lg: text-left text-[40px] lg:bg-transparent lg:leading-[48px]">
-            {dictionary().ui.monster.pageTitle}
-          </h1>
-          <input
-            id="MonsterSearchBox"
-            type="search"
-            placeholder={dictionary().ui.searchPlaceholder}
-            class="w-full flex-1 rounded-sm border-transition-color-20 bg-transition-color-8 px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:flex-1 lg:rounded-none lg:border-b-2 lg:bg-transparent lg:px-5 lg:font-normal"
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          <Button // 仅移动端显示
-            size="sm"
-            level="tertiary"
-            icon={<Icon.Line.CloudUpload />}
-            class="flex lg:hidden"
-            onClick={() => {
-              setStore("monster", defaultSelectMonster);
-              setStore("monsterPage", {
-                monsterDialogState: true,
-                monsterFormState: "CREATE",
-              });
-            }}
-          ></Button>
-          <Button // 仅PC端显示
-            level="tertiary"
-            icon={<Icon.Line.CloudUpload />}
-            class="hidden lg:flex"
-            onClick={() => {
-              setStore("monster", defaultSelectMonster);
-              setStore("monsterPage", {
-                monsterDialogState: true,
-                monsterFormState: "CREATE",
-              });
-            }}
+      <Presence exitBeforeEnter>
+        <Show when={!isFormFullscreen()}>
+          <Motion.div
+            animate={{ opacity: [0, 1] }}
+            exit={{ opacity: 0 }}
+            class="Title flex flex-col p-3 lg:pt-12"
           >
-            {dictionary().ui.actions.upload} [u]
-          </Button>
-        </div>
-      </div>
+            <div class="Content flex flex-row items-center justify-between gap-4 py-3">
+              <h1 class="Text lg: text-left text-4xl leading-[50px] lg:bg-transparent lg:leading-[48px]">
+                {dictionary().ui.monster.pageTitle}
+              </h1>
+              <input
+                id="MonsterSearchBox"
+                type="search"
+                placeholder={dictionary().ui.searchPlaceholder}
+                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-transition-color-20 bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+              <Button // 仅移动端显示
+                size="sm"
+                level="tertiary"
+                icon={<Icon.Line.CloudUpload />}
+                class="flex lg:hidden"
+                onClick={() => {
+                  setStore("monster", defaultSelectMonster);
+                  setStore("monsterPage", {
+                    monsterDialogState: true,
+                    monsterFormState: "CREATE",
+                  });
+                }}
+              ></Button>
+              <Button // 仅PC端显示
+                level="tertiary"
+                icon={<Icon.Line.CloudUpload />}
+                class="hidden lg:flex"
+                onClick={() => {
+                  setStore("monster", defaultSelectMonster);
+                  setStore("monsterPage", {
+                    monsterDialogState: true,
+                    monsterFormState: "CREATE",
+                  });
+                }}
+              >
+                {dictionary().ui.actions.upload} [u]
+              </Button>
+            </div>
+          </Motion.div>
+        </Show>
+      </Presence>
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
@@ -334,16 +342,20 @@ export default function MonsterCategoryViewPage() {
             exit={{ opacity: 0 }}
             class="Banner flex h-[260px] flex-initial gap-3 p-3 opacity-0"
           >
-            <div class="BannerContent flex flex-1 bg-brand-color-1st"></div>
+            <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
+              <div class="banner1 flex-none basis-full rounded-md bg-brand-color-1st shadow-lg shadow-transition-color-20 lg:basis-4/6"></div>
+              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-2nd lg:basis-1/6"></div>
+              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-3rd lg:basis-1/6"></div>
+            </div>
           </Motion.div>
         </Show>
       </Presence>
-      <div class="Table&News flex flex-1 gap-3 overflow-hidden p-3">
+      <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title flex h-12 w-full items-center gap-3">
-            <div class={`Text text-xl ${isFormFullscreen() ? "hidden opacity-0" : "opacity-100"}`}>浏览</div>
+            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>浏览</div>
             <div
-              class={`Description flex-1 bg-transition-color-8 p-3 rounded-md ${isFormFullscreen() ? "opacity-100" : "opacity-0"}`}
+              class={`Description flex-1 rounded-md bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.monster.description}
             </div>
