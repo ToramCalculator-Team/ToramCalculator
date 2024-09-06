@@ -132,7 +132,13 @@ const dictionary: dictionary = {
     },
     monster: {
       pageTitle: "Monster",
-      description: "Emmm..............",
+      table: {
+        title: "Monsters Table",
+        description: "Emmm..............",
+      },
+      news: {
+        title: "Recently Updated",
+      },
       augmented: "Show All Stars",
       canNotModify: "System Generated",
       monsterDegreeOfDifficulty: {

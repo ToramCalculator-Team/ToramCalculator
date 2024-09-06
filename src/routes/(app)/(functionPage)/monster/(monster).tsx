@@ -343,9 +343,9 @@ export default function MonsterCategoryViewPage() {
             class="Banner flex h-[260px] flex-initial gap-3 p-3 opacity-0"
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
-              <div class="banner1 flex-none basis-full rounded-md bg-brand-color-1st shadow-lg shadow-transition-color-20 lg:basis-4/6"></div>
-              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-2nd lg:basis-1/6"></div>
-              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-3rd lg:basis-1/6"></div>
+              <div class="banner1 flex-none basis-full rounded-md bg-brand-color-1st shadow-lg shadow-transition-color-20 lg:basis-[calc((100%*4/6)-(16px/3))]"></div>
+              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-2nd lg:basis-[calc((100%*1/6)-(16px/3))]"></div>
+              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-3rd lg:basis-[calc((100%*1/6)-(16px/3))]"></div>
             </div>
           </Motion.div>
         </Show>
@@ -353,11 +353,11 @@ export default function MonsterCategoryViewPage() {
       <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title flex h-12 w-full items-center gap-3">
-            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>浏览</div>
+            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>{dictionary().ui.monster.table.title}</div>
             <div
               class={`Description flex-1 rounded-md bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
-              {dictionary().ui.monster.description}
+              {dictionary().ui.monster.table.description}
             </div>
             <Button
               level="quaternary"
@@ -546,7 +546,7 @@ export default function MonsterCategoryViewPage() {
               exit={{ opacity: 0 }}
               class="News flex w-[248px] flex-initial flex-col gap-2"
             >
-              <div class="Title flex h-12 text-xl">近期更新</div>
+              <div class="Title flex h-12 text-xl">{dictionary().ui.monster.news.title}</div>
               <div class="Content flex flex-1 flex-col bg-transition-color-8"></div>
             </Motion.div>
           </Show>

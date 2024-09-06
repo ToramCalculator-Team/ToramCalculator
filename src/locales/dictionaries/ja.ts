@@ -137,7 +137,13 @@ const dictionary: dictionary = {
     },
     monster: {
       pageTitle: "モンスター",
-      description: "ログイン後、自身でデータをアップロードできます。",
+      table: {
+        title: "モンスター",
+        description: "ログイン後、自身でデータをアップロードできます。",
+      },
+      news: {
+        title: "最新のアップデート",
+      },
       augmented: "すべての星級データを表示",
       canNotModify: "システムによって生成され、修正不可",
       monsterDegreeOfDifficulty: {

@@ -125,7 +125,13 @@ interface dictionary {
     };
     monster: {
       pageTitle: string;
-      description: string;
+      table: {
+        title: string;
+        description: string;
+      }
+      news: {
+        title: string;
+      }
       augmented: string;
       canNotModify: string;
       monsterDegreeOfDifficulty: {

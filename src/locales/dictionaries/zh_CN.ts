@@ -5,8 +5,8 @@ import { type SelectModifiersList } from "~/schema/modifiers_list";
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
   name: "名称",
   modifiers: "加成项",
-  id: "ID"
-}
+  id: "ID",
+};
 const statistics: ConvertToAllString<SelectStatistics> = {
   id: "ID",
   rates: "评分",
@@ -23,7 +23,7 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   petId: "",
   consumableId: "",
   characterId: "",
-  analyzerId: ""
+  analyzerId: "",
 };
 
 const dictionary: dictionary = {
@@ -31,19 +31,19 @@ const dictionary: dictionary = {
     searchPlaceholder: "这里是搜索框~",
     columnsHidden: "隐藏列",
     actions: {
-    add: "添加",
-    create: "创建",
-    remove: "删除",
-    update: "更新",
-    open: "打开",
-    upload: "上传",
-    save: "保存",
-    reset: "清空",
-    modify: "修改",
-    cancel: "取消",
-    close: "关闭",
-    back: "返回",
-    filter: "过滤",
+      add: "添加",
+      create: "创建",
+      remove: "删除",
+      update: "更新",
+      open: "打开",
+      upload: "上传",
+      save: "保存",
+      reset: "清空",
+      modify: "修改",
+      cancel: "取消",
+      close: "关闭",
+      back: "返回",
+      filter: "过滤",
     },
     nav: {
       home: "首页",
@@ -65,8 +65,8 @@ const dictionary: dictionary = {
         title: "外观",
         isAnimationEnabled: {
           title: "是否开启动画",
-          description: "将影响所有页面的过渡和动画效果持续时间。"
-        }
+          description: "将影响所有页面的过渡和动画效果持续时间。",
+        },
       },
       language: {
         title: "语言",
@@ -76,29 +76,30 @@ const dictionary: dictionary = {
           zhCN: "简体中文",
           zhTW: "繁体中文",
           enUS: "English",
-          jaJP: "日本語"
-        }
+          jaJP: "日本語",
+        },
       },
       statusAndSync: {
         title: "状态和同步",
         restorePreviousStateOnStartup: {
           title: "启动时恢复上一次的状态",
-          description: "暂未实现。"
+          description: "暂未实现。",
         },
         syncStateAcrossClients: {
           title: "同步所有客户端状态",
-          description: "此配置仅当用户登录时生效，未登录时客户端不具有身份标识，无法同步。"
-        }
+          description: "此配置仅当用户登录时生效，未登录时客户端不具有身份标识，无法同步。",
+        },
       },
       privacy: {
         title: "隐私",
         postVisibility: {
           title: "作品可见性",
-          description: "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
+          description:
+            "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
           everyone: "所有人可见",
           friends: "仅好友可见",
-          onlyMe: "仅自己可见"
-        }
+          onlyMe: "仅自己可见",
+        },
       },
       messages: {
         title: "消息通知",
@@ -107,20 +108,20 @@ const dictionary: dictionary = {
           description: "暂未实现。",
           notifyOnReferencedContentChange: "引用内容发生变化时",
           notifyOnLike: "收到赞时",
-          notifyOnBookmark: "作品被收藏时"
-        }
+          notifyOnBookmark: "作品被收藏时",
+        },
       },
       about: {
         title: "关于此应用",
         description: {
           title: "描述",
-          description: "没想好怎么写。"
+          description: "没想好怎么写。",
         },
         version: {
           title: "版本",
-          description: "0.0.1-alpha"
-        }
-      }
+          description: "0.0.1-alpha",
+        },
+      },
     },
     index: {
       adventurer: "冒险者",
@@ -128,12 +129,17 @@ const dictionary: dictionary = {
       goodAfternoon: "下午好ヾ(=･ω･=)o",
       goodEvening: "晚上好(。-ω-)zzz",
       nullSearchResultWarring: "没有找到相关内容!!!∑(ﾟДﾟノ)ノ",
-      nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有"
+      nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有",
     },
     monster: {
       pageTitle: "怪物",
-      description:
-        "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。",
+      table: {
+        title: "怪物表",
+        description: "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。",
+      },
+      news: {
+        title: "最近更新",
+      },
       augmented: "是否展示全部星级数据",
       canNotModify: "系统生成，不可修改",
       monsterDegreeOfDifficulty: {
@@ -152,8 +158,8 @@ const dictionary: dictionary = {
       description: "正在开发中，请勿使用。",
       canNotModify: "系统生成，不可修改",
       crystalForm: {
-        description: "阿拉啦"
-      }
+        description: "阿拉啦",
+      },
     },
     skill: {
       pageTitle: "技能信息表",
@@ -392,7 +398,7 @@ const dictionary: dictionary = {
         updatedAt: "更新于",
         statistics: statistics,
         statisticsId: "统计ID",
-        imageId: "图片ID"
+        imageId: "图片ID",
       },
       crystal: {
         id: "ID",
@@ -600,7 +606,7 @@ const dictionary: dictionary = {
         updatedAt: "更新于",
         statistics: statistics,
         statisticsId: "统计ID",
-        imageId: "图片ID"
+        imageId: "图片ID",
       },
     },
   },

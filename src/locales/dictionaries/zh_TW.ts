@@ -132,8 +132,14 @@ const dictionary: dictionary = {
       nullSearchResultTips: "變強之旅總有艱險阻道，求知路上不免遍佈荊棘\n但是這裡沒有\n搜尋結果裡沒有就是沒有",
     },
     monster: {
-      pageTitle: "怪物資訊表",
-      description: "登入後可自行上傳資料。",
+      pageTitle: "怪物",
+      table: {
+        title: "怪物資訊表",
+        description: "不是所有怪物一開始就是怪物，也不是所有怪物看起來都像怪物。",
+      },
+      news: {
+        title: "最近更新",
+      },
       augmented: "是否展示全部星級資料",
       canNotModify: "系統生成，不可修改",
       monsterDegreeOfDifficulty: {

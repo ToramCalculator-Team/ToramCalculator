@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { defaultSelectMonster } from "./schema/monster";
+import { defaultSelectMonster } from "~/schema/monster";
 
 (async (worker: ServiceWorkerGlobalScope) => {
 
