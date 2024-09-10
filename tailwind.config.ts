@@ -3,8 +3,8 @@ import { fontFamily } from "tailwindcss/defaultTheme";
 import typography from "@tailwindcss/typography";
 
 export default {
-  darkMode: "class",
-  content: ["./src/**/*.tsx"],
+  darkMode: ["class"],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     colors: {
       transparent: "transparent",
@@ -87,58 +87,28 @@ export default {
       "brand-color-1st": "rgb(var(--brand-1st) / <alpha-value>)",
       "brand-color-2nd": "rgb(var(--brand-2nd) / <alpha-value>)",
       "brand-color-3rd": "rgb(var(--brand-3rd) / <alpha-value>)",
-      "water": "rgb(var(--water) / <alpha-value>)",
-      "fire": "rgb(var(--fire) / <alpha-value>)",
-      "earth": "rgb(var(--earth) / <alpha-value>)",
-      "wind": "rgb(var(--wind) / <alpha-value>)",
-      "light": "rgb(var(--light) / <alpha-value>)",
-      "dark": "rgb(var(--dark) / <alpha-value>)",
+      water: "rgb(var(--water) / <alpha-value>)",
+      fire: "rgb(var(--fire) / <alpha-value>)",
+      earth: "rgb(var(--earth) / <alpha-value>)",
+      wind: "rgb(var(--wind) / <alpha-value>)",
+      light: "rgb(var(--light) / <alpha-value>)",
+      dark: "rgb(var(--dark) / <alpha-value>)",
     },
     borderRadius: {
+      DEFAULT: "var(--radius)",
+      xl: "calc(var(--radius) + 8px)",
+      lg: "calc(var(--radius) + 4px)",
+      md: "calc(var(--radius) - 2px)",
+      sm: "calc(var(--radius) - 4px)",
       none: "0px",
-      sm: "0.25rem",
-      DEFAULT: "0.5rem",
-      md: "0.75rem",
-      lg: "1rem",
-      xl: "1.5rem",
-      "2xl": "2rem",
-      "3xl": "3rem",
       full: "9999px",
     },
     extend: {
-      maxWidth: {
-        "8xl": "96rem",
-      },
-      height: {
-        line: "1px",
-      },
-      borderWidth: {
-        "1.5": "1.5px",
-      },
-      visible: {
-        invisible: "hidden",
-      },
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
       },
       backgroundImage: {
-        'aeskl': "url('/app-image/bg.jpg')",
-        'test': "url('/app-image/test.jpg')",
-      },
-      keyframes: {
-        "up": {
-          "0%": {
-            transform: "translateY(20px)",
-            opacity: "0",
-          },
-          "100%": {
-            transform: "translateY(0px)",
-            opacity: "1",
-          },
-        }
-      },
-      animation: {
-        "up": "up 0.3s ease-in-out forwards",
+        aeskl: "url('/app-image/bg.jpg')",
       },
     },
   },

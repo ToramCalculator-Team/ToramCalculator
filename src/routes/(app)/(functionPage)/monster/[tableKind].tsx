@@ -7,9 +7,9 @@ import {
   flexRender,
 } from "@tanstack/solid-table";
 // import MonsterForm from "./monsterForm";
-import Button from "~/components/button";
-import * as Icon from "~/components/icon";
-import Dialog from "~/components/dialog";
+import Button from "~/components/ui/button";
+import * as Icon from "~/lib/icon";
+import Dialog from "~/components/ui/dialog";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
@@ -309,14 +309,14 @@ export default function MonserPage() {
   return (
     <main class="flex flex-col lg:w-[calc(100dvw-96px)] lg:flex-row">
       {/* <div
-        class={`Module1 pointer-events-none invisible fixed left-0 top-0 z-50 flex-none basis-[0px] -translate-x-full border-transition-color-8 bg-primary-color opacity-0 backdrop-blur-xl lg:sticky lg:z-0 lg:translate-x-0 lg:border-x-1.5 lg:bg-transition-color-8`}
+        class={`Module1 pointer-events-none fixed left-0 top-0 z-50 flex-none basis-[0px] -translate-x-full border-transition-color-8 bg-primary-color opacity-0 backdrop-blur-xl lg:sticky lg:z-0 lg:translate-x-0 lg:border-x-1.5 lg:bg-transition-color-8`}
       >
         <div
           class={`Content flex h-dvh w-dvw flex-col gap-4 overflow-y-auto px-6 pt-8 lg:absolute lg:left-0 lg:top-0 lg:w-[260px]`}
         >
           <div class="Title flex items-center justify-between">
             <h1 class="text-lg">{dictionary.ui.filter}</h1>
-            <Button level="tertiary" onClick={() => setFilterState(!filterState)}>
+            <Button onClick={() => setFilterState(!filterState)}>
               X
             </Button>
           </div>
@@ -338,7 +338,7 @@ export default function MonserPage() {
                 />
                 <Button // 仅移动端显示
                   size="sm"
-                  level="tertiary"
+                 
                   class="switch lg:hidden"
                   icon={<Icon.Line.Filter />}
                   onClick={() => setStore("monsterPage", { filterState: !filterState })}
@@ -350,7 +350,7 @@ export default function MonserPage() {
                 ></Button>
                 <Button // 仅移动端显示
                   size="sm"
-                  level="tertiary"
+                 
                   icon={<Icon.Line.CloudUpload />}
                   class="flex lg:hidden"
                   onClick={() => {
@@ -391,7 +391,7 @@ export default function MonserPage() {
                     <div class="content flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        level={table.getIsAllColumnsVisible() ? "tertiary" : "primary"}
+                        level={table.getIsAllColumnsVisible() ? "default" : "primary"}
                         onClick={table.getToggleAllColumnsVisibilityHandler()}
                       >
                         ALL
@@ -404,7 +404,7 @@ export default function MonserPage() {
                         return (
                           <Button
                             size="sm"
-                            level={column.getIsVisible() ? "tertiary" : "primary"}
+                            level={column.getIsVisible() ? "default" : "primary"}
                             onClick={column.getToggleVisibilityHandler()}
                           >
                             {typeof dictionary.db.models.monster[column.id as keyof SelectMonster] === "string"
@@ -418,7 +418,7 @@ export default function MonserPage() {
                   <div class="module flex flex-col gap-3">
                     <div class="title">{dictionary.ui.monster.augmented}</div>
                     <div class="content flex flex-wrap gap-2">
-                      <Button level="tertiary" onClick={() => setStore("monsterPage", { augmented: !augmented })}>
+                      <Button onClick={() => setStore("monsterPage", { augmented: !augmented })}>
                         {augmented ? "Yes" : "No"}
                       </Button>
                     </div>
@@ -426,7 +426,7 @@ export default function MonserPage() {
                 </div>
               </div>
               <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
-                {dictionary.ui.monster.description}
+                {dictionary.ui.monster.table.description}
               </div>
             </div>
           </div>
@@ -703,7 +703,7 @@ export default function MonserPage() {
                   const order = sameNameMonsterList().indexOf(currentMonster) + 1;
                   return (
                     <Button
-                      level="tertiary"
+                     
                       onClick={() => {
                         setStore("monster", currentMonster);
                       }}

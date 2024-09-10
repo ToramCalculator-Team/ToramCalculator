@@ -22,11 +22,8 @@
     --wind: 0 143 84;
     --light: 248 193 56;
     --dark: 141 56 240;
-  }
 
-  :root {
-    color: rgb(var(--accent));
-    background-color: rgb(var(--primary));
+    --radius: 8px;
   }
 
   .light {
@@ -45,6 +42,11 @@
     --brand-1st: var(--greenBlue);
     --brand-2nd: var(--yellow);
     --brand-3rd: var(--orange);
+  }
+
+  :root {
+    color: rgb(var(--accent));
+    background-color: rgb(var(--primary));
   }
 }
 
@@ -74,57 +76,4 @@
 *:focus {
   outline-width: 2px;
   outline-color: rgb(var(--brand-1st));
-}
-
-.Nav * {
-  outline: none;
-}
-
-/* .ModuleContent::-webkit-scrollbar {
-  display: none;
-} */
-
-
-@keyframes loading {
-  from {
-    left: 0;
-  }
-  to {
-    left: 100%;
-  }
-}
-
-/* Loading组件的动画参数 */
-.Loading .dot1 {
-  animation: loading 4s infinite;
-}
-.Loading .dot2 {
-  animation: loading 4s 1s infinite;
-}
-.Loading .dot3 {
-  animation: loading 4s 2s infinite;
-}
-
-/* index的图片背景 */
-.BG {
-  opacity: 0;
-}
-
-.dark .BG {
-  opacity: 1;
-}
-
-.BGMask {
-  content: "";
-  z-index: -9;
-}
-
-.light .BGMask {
-  background-color: rgba(255, 255, 255, 0.3);
-  background-blend-mode: multiply;
-}
-
-.dark .BGMask {
-  background-color: rgba(0, 0, 0, 0.7);
-  background-blend-mode: multiply;
 }

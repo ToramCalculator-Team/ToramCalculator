@@ -12,8 +12,8 @@ import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
-import Button from "~/components/button";
-import Dialog from "~/components/dialog";
+import Button from "~/components/ui/button";
+import Dialog from "~/components/ui/dialog";
 
 export type skillSequenceList = {
   name: string;
@@ -1178,7 +1178,7 @@ export default function AnalyzePageClient() {
                     <div class="Content flex flex-wrap gap-2">
                       {member.actionQueue.map((skill, index) => {
                         return (
-                          <Button size="sm" level="tertiary">
+                          <Button size="sm">
                             {skill.name}
                           </Button>
                         );
@@ -1220,7 +1220,7 @@ export default function AnalyzePageClient() {
                 <div class="Tab flex flex-wrap gap-1">
                   {dialogFrameData()?.teamState.map((member, memberIndex) => {
                     return (
-                      <Button onClick={() => setDialogMeberIndex(memberIndex)} size="sm" level="tertiary">
+                      <Button onClick={() => setDialogMeberIndex(memberIndex)} size="sm">
                         {member?.name}
                       </Button>
                     );

@@ -54,6 +54,7 @@ export const SelectCharacterSchema = createSelectSchema(Character).extend({
 
 export const defaultSelectCharacter: SelectCharacter = {
   id: "",
+  imageId: "",
   characterType: "Tank",
   name: "",
   lv: 0,

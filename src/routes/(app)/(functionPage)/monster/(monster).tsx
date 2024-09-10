@@ -1,6 +1,6 @@
-import Button from "~/components/button";
-import * as Icon from "~/components/icon";
-import Dialog from "~/components/dialog";
+import Button from "~/components/ui/button";
+import * as Icon from "~/lib/icon";
+import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
 import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
 import { createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
@@ -306,7 +306,7 @@ export default function MonsterCategoryViewPage() {
               />
               <Button // 仅移动端显示
                 size="sm"
-                level="tertiary"
+               
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
@@ -318,7 +318,7 @@ export default function MonsterCategoryViewPage() {
                 }}
               ></Button>
               <Button // 仅PC端显示
-                level="tertiary"
+               
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {

@@ -1,6 +1,6 @@
 import { onMount, ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
-import Nav from "~/components/nav";
+import Nav from "~/components/module/nav";
 import { store } from "~/store";
 
 export default function Home(props: ParentProps) {

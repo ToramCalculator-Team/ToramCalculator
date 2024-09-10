@@ -1,12 +1,12 @@
 import { useLocation } from "@solidjs/router";
 
-import * as Icon from "./icon";
+import * as Icon from "~/lib/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createMemo, createSignal, For, JSX } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import Button from "./button";
+import Button from "~/components/ui/button";
 
 export default function Nav() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
@@ -102,7 +102,7 @@ export default function Nav() {
                   </a>
                 );
               } else {
-                return <div class={"Line h-line flex-none lg:w-12 lg:bg-brand-color-1st"}></div>;
+                return <div class={"Line h-[1px] flex-none lg:w-12 lg:bg-brand-color-1st"}></div>;
               }
             }}
           </For>

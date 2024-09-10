@@ -1,7 +1,33 @@
 import { JSX } from "solid-js";
-import { Keyframes } from "./keyframes";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
+
+export const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
+  const toCss = (cssObject: JSX.CSSProperties | string) =>
+    typeof cssObject === "string"
+      ? cssObject
+      : Object.keys(cssObject).reduce((accumulator, key) => {
+          const cssKey = key.replace(/[A-Z]/g, (v) => `-${v.toLowerCase()}`);
+          const cssValue = cssObject[key as keyof typeof cssObject]!.toString().replace("'", "");
+          return `${accumulator}${cssKey}:${cssValue};`;
+        }, "");
+
+  return (
+    <style>
+      {`@keyframes ${props.name} {
+        ${Object.keys(props)
+          .map((key) => {
+            return ["from", "to"].includes(key)
+              ? `${key} { ${toCss(props[key] ?? "")} }`
+              : /^_[0-9]+$/.test(key)
+                ? `${key.replace("_", "")}% { ${toCss(props[key] ?? "")} }`
+                : "";
+          })
+          .join(" ")}
+      }`}
+    </style>
+  );
+};
 
 export default function RandomBallBackground() {
   const balls: JSX.Element[] = [];
@@ -10,8 +36,8 @@ export default function RandomBallBackground() {
 
   for (let i = 0; i < numBalls; i++) {
     const keyFramesName = "randomMove" + i;
-    const color = `rgb(var(--brand-${i % 3 === 0 ? "3rd" : i % 3 === 1 ? "2nd" : "1st"}))`
-    const size = Math.random()
+    const color = `rgb(var(--brand-${i % 3 === 0 ? "3rd" : i % 3 === 1 ? "2nd" : "1st"}))`;
+    const size = Math.random();
     const ball = (
       <>
         <Keyframes
@@ -46,7 +72,11 @@ export default function RandomBallBackground() {
   }
 
   return (
-    <Motion.div animate={{ opacity: [0, 1] }} transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 2 : 0 }} class="Background fixed -z-10 h-dvh w-dvw opacity-0">
+    <Motion.div
+      animate={{ opacity: [0, 1] }}
+      transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 2 : 0 }}
+      class="Background fixed -z-10 h-dvh w-dvw opacity-0"
+    >
       <div class="Balls -z-10">{balls}</div>
     </Motion.div>
   );
