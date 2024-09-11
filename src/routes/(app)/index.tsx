@@ -726,7 +726,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/analyze"}
+                  href={"/analyzer"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
