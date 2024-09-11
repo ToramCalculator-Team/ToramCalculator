@@ -15,7 +15,7 @@ worker({
       relaxedDurability: true,
       extensions: {
         live,
-        electric: electricSync({ debug: true }),
+        electric: electricSync({ debug: false }),
       },
     });
     await pg.exec(
@@ -1072,9 +1072,9 @@ worker({
     await pg.waitReady;
     const db = drizzle(pg, { schema });
     const sql = db.query.monster.findMany().toSQL().sql;
-    pg.live.query(sql, [], (res) => {
-      console.log(res);
-    });
+    // pg.live.query(sql, [], (res) => {
+    //   console.log(res);
+    // });
 
     return pg;
   },

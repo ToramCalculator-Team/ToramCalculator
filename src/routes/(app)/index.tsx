@@ -738,7 +738,7 @@ export default function Index() {
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">
-                      {dictionary().ui.nav.comboAnalyze}
+                      {dictionary().ui.nav.analyzer}
                     </span>
                   </Button>
                 </a>

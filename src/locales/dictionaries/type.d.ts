@@ -3,12 +3,13 @@ import {
   type SkillData,
   type CharacterData,
   type modifiers,
-} from "~/routes/(app)/(functionPage)/analyze/worker";
+} from "~/routes/(app)/(functionPage)/analyzer/worker";
 import { type SelectCrystal } from "~/schema/crystal";
 import { type SelectSkill } from "~/schema/skill";
 import { type SelectCharacter } from "~/schema/character";
 import { $Enums } from "~/schema/enums";
 import { SelectMonster } from "~/schema/monster";
+import { SelectUser } from "~/schema/user";
 
 // 为了方便编辑器自动补全，这个方法可以将数据库模型的值类型转换为字符串
 export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<object>
@@ -47,7 +48,7 @@ interface dictionary {
       pets: string;
       items: string;
       character: string;
-      comboAnalyze: string;
+      analyzer: string;
     };
     errorPage: {
       tips: string;
@@ -173,7 +174,7 @@ interface dictionary {
     };
   };
   db: {
-    enums: ConvertToAllString<$Enums>;
+    enums: ConvertToAllString<typeof $Enums>;
     models: {
       monster: ConvertToAllString<SelectMonster>;
       crystal: ConvertToAllString<SelectCrystal>;
@@ -181,7 +182,7 @@ interface dictionary {
       skillEffect: ConvertToAllString<SelectSkill["skillEffect"][0]>;
       skillCost: ConvertToAllString<SelectSkill["skillEffect"][0]["skillCost"][0]>;
       skillYield: ConvertToAllString<SelectSkill["skillEffect"][0]["skillYield"][0]>;
-      user: ConvertToAllString<User>;
+      user: ConvertToAllString<SelectUser>;
       character: ConvertToAllString<SelectCharacter>;
     };
   };

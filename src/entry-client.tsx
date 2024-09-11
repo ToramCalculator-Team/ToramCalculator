@@ -35,8 +35,8 @@ const worker = new dataWorker;
 
 const dataworker = Comlink.wrap<typeof dw>(worker.port);
 const proxiedPg = Comlink.proxy(pg);  // 使用 proxy 包装
-console.log(await dataworker.counter);
-console.log(await dataworker.getMonsterList(proxiedPg));
+// console.log(await dataworker.counter);
+// console.log(await dataworker.getMonsterList(proxiedPg));
 
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);

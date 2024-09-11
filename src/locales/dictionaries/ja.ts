@@ -55,7 +55,7 @@ const dictionary: dictionary = {
       pets: "ペット",
       items: "消耗品",
       character: "キャラクター",
-      comboAnalyze: "コンボ分析",
+      analyzer: "コンボ分析",
     },
     errorPage: {
       tips: "あなたは知識の荒野にいるが、クリックして戻ります",

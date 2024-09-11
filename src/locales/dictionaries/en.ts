@@ -54,7 +54,7 @@ const dictionary: dictionary = {
       pets: "Pets",
       items: "Items",
       character: "Character",
-      comboAnalyze: "Combo",
+      analyzer: "Combo",
     },
     errorPage: {
       tips: "You have no knowledge of the desert. Click the screen to return",

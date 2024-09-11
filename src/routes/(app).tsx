@@ -1,11 +1,8 @@
 import { ParentProps } from "solid-js";
-import { clientOnly } from "@solidjs/start";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import Setting from "~/components/module/setting-page";
-
-// const Setting = clientOnly(() => import("~/components/setting"));
 
 export default function AppMainContet(props: ParentProps) {
   return (

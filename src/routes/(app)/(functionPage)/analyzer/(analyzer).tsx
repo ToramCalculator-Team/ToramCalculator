@@ -20,7 +20,7 @@ export type skillSequenceList = {
   data: tSkill[];
 };
 
-export default function AnalyzePageClient() {
+export default function AnalyzerIndexClient() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   createEffect(() => {
@@ -53,10 +53,10 @@ export default function AnalyzePageClient() {
       characterType: "Tank",
       name: "测试机体",
       lv: 265,
-      baseStr: 0,
+      baseStr: 1,
       baseInt: 440,
-      baseVit: 0,
-      baseAgi: 0,
+      baseVit: 1,
+      baseAgi: 1,
       baseDex: 247,
       specialAbiType: "NULL",
       specialAbiValue: 0,
@@ -116,7 +116,7 @@ export default function AnalyzePageClient() {
               modifiers: [
                 {
                   id: "",
-                  formula: "mAtk + isMAGIC_DEVICE(mainWeapon) ?  7 : 0 %",
+                  formula: "mAtk + 7%",
                   belongToModifiersListId: "",
                 },
                 {
@@ -153,7 +153,22 @@ export default function AnalyzePageClient() {
           modifiers: [
             {
               id: "",
-              formula: "",
+              formula: "mAtk + 6%",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "pCr + 25",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "pCd + 21",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "stro.DARK + 21",
               belongToModifiersListId: "",
             },
           ],
@@ -183,7 +198,7 @@ export default function AnalyzePageClient() {
           modifiers: [
             {
               id: "",
-              formula: "",
+              formula: "aspd + 300",
               belongToModifiersListId: "",
             },
           ],
@@ -213,11 +228,26 @@ export default function AnalyzePageClient() {
             front: 0,
             modifiersList: {
               id: "",
-              name: "铁之女帝属性",
+              name: "铁之女帝",
               modifiers: [
                 {
                   id: "",
-                  formula: "",
+                  formula: "mAtk + 5%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "mPie + 10",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "cspd + 20%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "maxMp - 300",
                   belongToModifiersListId: "",
                 },
               ],
@@ -239,11 +269,26 @@ export default function AnalyzePageClient() {
             front: 0,
             modifiersList: {
               id: "",
-              name: "约尔拉兹属性",
+              name: "约尔拉兹",
               modifiers: [
                 {
                   id: "",
-                  formula: "",
+                  formula: "mAtk + 7%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "int + 3%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "cspd + 35%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "ampr + 10%",
                   belongToModifiersListId: "",
                 },
               ],
@@ -265,7 +310,22 @@ export default function AnalyzePageClient() {
           modifiers: [
             {
               id: "",
-              formula: "",
+              formula: "pCr + 25",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "pCd + 10%",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "pCd + 21",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "stro.DARK + 21",
               belongToModifiersListId: "",
             },
           ],
@@ -293,11 +353,26 @@ export default function AnalyzePageClient() {
             front: 0,
             modifiersList: {
               id: "",
-              name: "深谋的青影属性",
+              name: "深谋的青影",
               modifiers: [
                 {
                   id: "",
-                  formula: "",
+                  formula: "nDis + 8%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "fDis + 8%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "maxMp - 150",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "uAtk + 8%",
                   belongToModifiersListId: "",
                 },
               ],
@@ -345,7 +420,17 @@ export default function AnalyzePageClient() {
           modifiers: [
             {
               id: "",
-              formula: "",
+              formula: "fDis + 10%",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "dex + 5%",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "mPie + isMAGIC_DEVICE(mainWeapon) ?  25 : 0",
               belongToModifiersListId: "",
             },
           ],
@@ -372,11 +457,21 @@ export default function AnalyzePageClient() {
             front: 0,
             modifiersList: {
               id: "",
-              name: "星之魔导士属性",
+              name: "星之魔导士",
               modifiers: [
                 {
                   id: "",
-                  formula: "",
+                  formula: "mAtk + 9%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "cspd + 9%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "anticipate + 9%",
                   belongToModifiersListId: "",
                 },
               ],
@@ -402,7 +497,17 @@ export default function AnalyzePageClient() {
               modifiers: [
                 {
                   id: "",
-                  formula: "",
+                  formula: "pAtk + 6%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "mAtk + 6%",
+                  belongToModifiersListId: "",
+                },
+                {
+                  id: "",
+                  formula: "am + 2",
                   belongToModifiersListId: "",
                 },
               ],
@@ -424,7 +529,12 @@ export default function AnalyzePageClient() {
           modifiers: [
             {
               id: "",
-              formula: "",
+              formula: "mPie + 10",
+              belongToModifiersListId: "",
+            },
+            {
+              id: "",
+              formula: "maxMp + 300",
               belongToModifiersListId: "",
             },
           ],
@@ -1198,7 +1308,7 @@ export default function AnalyzePageClient() {
       </div>
 
       <Dialog state={dialogState()} setState={setDialogState}>
-        <div class="Content flex w-full flex-col overflow-y-auto p-2 lg:p-4 2xl:w-[1536px]">
+        <div class="Content flex w-full flex-col overflow-y-auto p-2 lg:p-4">
           <div class="Title flex items-center gap-6">
             {/* <div class="h-[2px] flex-1 bg-accent-color"></div> */}
             <span class="text-lg font-bold lg:text-2xl">当前帧属性</span>

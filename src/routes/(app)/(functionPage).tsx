@@ -1,4 +1,4 @@
-import { onMount, ParentProps } from "solid-js";
+import { ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
 import Nav from "~/components/module/nav";
 import { store } from "~/store";

@@ -14,7 +14,7 @@ import { $Enums } from "~/schema/enums";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
-export default function MonsterCategoryViewPage() {
+export default function MonsterIndexPage() {
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
   const [dialogState, setDialogState] = createSignal(false);

@@ -54,7 +54,7 @@ const dictionary: dictionary = {
       pets: "寵物",
       items: "消耗品",
       character: "角色配置",
-      comboAnalyze: "連擊分析",
+      analyzer: "連擊分析",
     },
     errorPage: {
       tips: "你來到了沒有知識的荒原~，點擊屏幕返回",
