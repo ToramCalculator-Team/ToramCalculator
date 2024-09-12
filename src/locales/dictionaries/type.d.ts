@@ -11,7 +11,7 @@ import { $Enums } from "~/schema/enums";
 import { SelectMonster } from "~/schema/monster";
 import { SelectUser } from "~/schema/user";
 
-// 为了方便编辑器自动补全，这个方法可以将数据库模型的值类型转换为字符串
+// 为了方便编辑器自动补全，这个方法可以将对象的值类型转换为字符串
 export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<object>
   ? string
   : T extends object
@@ -52,7 +52,7 @@ interface dictionary {
     };
     errorPage: {
       tips: string;
-    }
+    };
     settings: {
       title: string;
       userInterface: {
@@ -129,10 +129,10 @@ interface dictionary {
       table: {
         title: string;
         description: string;
-      }
+      };
       news: {
         title: string;
-      }
+      };
       augmented: string;
       canNotModify: string;
       monsterDegreeOfDifficulty: {
@@ -174,7 +174,7 @@ interface dictionary {
     };
   };
   db: {
-    enums: ConvertToAllString<typeof $Enums>;
+    enums: ConvertToAllString<$Enums>;
     models: {
       monster: ConvertToAllString<SelectMonster>;
       crystal: ConvertToAllString<SelectCrystal>;

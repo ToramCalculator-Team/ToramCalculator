@@ -1,0 +1,6 @@
+#FlowEditor,
+#FlowEditor *,
+.sqd-drag,
+.sqd-drag * {
+    transition: all 0ms !important;
+}

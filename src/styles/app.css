@@ -1,5 +1,6 @@
 /* @import url(babylonjs.css);
  */
+@import url(flowEditor.css);
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
