@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
@@ -8,10 +8,13 @@ import "sequential-workflow-designer/css/designer-dark.css";
 import { Designer } from "sequential-workflow-designer";
 import Button from "../ui/button";
 import Input from "../ui/input";
+import * as Icon from "~/lib/icon"
 
 export default function FlowEditor() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   let placeholder: HTMLDivElement;
+  let consoleRef: HTMLPreElement;
+  let variablesRef: HTMLPreElement;
   let designer;
 
   function uid() {
@@ -32,7 +35,7 @@ export default function FlowEditor() {
       });
     }
 
-    static createIfStep(varName, val, name, trueSteps, falseSteps) {
+    static createIfStep(varName, val, name, trueSteps?, falseSteps?) {
       return StateMachineSteps.createIfStep(
         name,
         {
@@ -44,7 +47,7 @@ export default function FlowEditor() {
       );
     }
 
-    static createLoopStep(varName, val, name, steps) {
+    static createLoopStep(varName, val, name, steps?) {
       return StateMachineSteps.createLoopStep(
         name,
         {
@@ -231,7 +234,7 @@ export default function FlowEditor() {
     const sm = new StateMachine(definition, definition.properties["speed"], {
       executeStep: (step, data) => {
         if (step.type === "text") {
-          document.getElementById("console").innerText += step.properties["text"] + "\r\n";
+          consoleRef.innerText += step.properties["text"] + "\r\n";
           return;
         }
 
@@ -272,7 +275,7 @@ export default function FlowEditor() {
       },
 
       onStepExecuted: (step, data) => {
-        document.getElementById("variables").innerText = JSON.stringify(data, null, 2) + "\r\n";
+        variablesRef.innerText = JSON.stringify(data, null, 2) + "\r\n";
         designer.selectStepById(step.id);
         designer.moveViewportToStep(step.id);
       },
@@ -284,75 +287,63 @@ export default function FlowEditor() {
     sm.start();
   }
 
-  function appendTitle(parent, text) {
-    const title = document.createElement("h4");
-    title.innerText = text;
-    parent.appendChild(title);
-  }
-
-  function appendTextField(
-    parent: HTMLDivElement,
-    label: string,
-    isReadonly: boolean,
-    startValue: string,
-    set: (value: string) => void,
-  ) {
-    const field = (
+  const rootEditorProvider = (definition, editorContext, isReadonly) => (
+    <span>
+      <h4>状态机信息</h4>
       <p>
-        <label>{label}</label>
+        <label>速度(毫秒)</label>
         <Input
-          onInput={(e) => set((e.target as HTMLInputElement).value)}
-          value={startValue}
+          onInput={(e) => {
+            console.log(e.target.value);
+            definition.properties["speed"] = parseInt(e.target.value, 10);
+            editorContext.notifyPropertiesChanged();
+          }}
+          value={definition.properties["speed"]}
           readOnly={isReadonly}
           type="text"
         />
       </p>
-    );
-    parent.appendChild(field);
-  }
+    </span>
+  );
 
-  function rootEditorProvider(definition, editorContext, isReadonly) {
-    const container = document.createElement("span");
-    appendTitle(container, "State machine config");
-    appendTextField(container, "Speed (ms)", isReadonly, definition.properties["speed"], (v) => {
-      definition.properties["speed"] = parseInt(v, 10);
-      editorContext.notifyPropertiesChanged();
-    });
-    return container;
-  }
-
-  function stepEditorProvider(step, editorContext, _definition, isReadonly) {
-    const container = document.createElement("div");
-    appendTitle(container, "Step " + step.type);
-
-    appendTextField(container, "Name", isReadonly, step.name, (v) => {
-      step.name = v;
-      editorContext.notifyNameChanged();
-    });
-    if (step.properties["var"] !== undefined) {
-      appendTextField(container, "Variable", isReadonly, step.properties["var"], (v) => {
-        step.properties["var"] = v;
-        editorContext.notifyPropertiesChanged();
-      });
-    }
-    if (step.properties["val"]) {
-      appendTextField(container, "Value", isReadonly, step.properties["val"], (v) => {
-        step.properties["val"] = parseInt(v, 10);
-        editorContext.notifyPropertiesChanged();
-      });
-    }
-    if (step.properties["text"]) {
-      appendTextField(container, "Text", isReadonly, step.properties["text"], (v) => {
-        step.properties["text"] = v;
-        editorContext.notifyPropertiesChanged();
-      });
-    }
-    return container;
-  }
+  const stepEditorProvider = (step, editorContext, _definition, isReadonly) => (
+    <div>
+      <h4>{"Step " + step.type}</h4>
+      <p>
+        <label>名称</label>
+        <Input
+          onInput={(v) => {
+            step.name = v.target.value;
+            editorContext.notifyNameChanged();
+          }}
+          value={step.name}
+          readOnly={isReadonly}
+          type="text"
+        />
+      </p>
+      <For each={["var", "val", "text"]}>
+        {(key) => (
+          <Show when={step.properties[key] !== undefined}>
+            <p>
+              <label>{key}</label>
+              <Input
+                onInput={(v) => {
+                  step.properties[key] = v.target.value;
+                  editorContext.notifyPropertiesChanged();
+                }}
+                value={step.properties[key]}
+                readOnly={isReadonly}
+                type="text"
+              />
+            </p>
+          </Show>
+        )}
+      </For>
+    </div>
+  );
 
   const configuration = {
     undoStackSize: 5,
-
     toolbox: {
       groups: [
         {
@@ -373,10 +364,10 @@ export default function FlowEditor() {
     },
 
     steps: {
-      iconUrlProvider: (componentType, type) => {
+      iconProvider: (componentType, type) => {
         const supportedIcons = ["if", "loop", "text"];
         const fileName = supportedIcons.includes(type) ? type : "task";
-        return `./assets/icon-${fileName}.svg`;
+        return Icon.Line.Box2({});
       },
     },
 
@@ -456,11 +447,11 @@ export default function FlowEditor() {
 
             <h5>Variables</h5>
 
-            <pre id="variables"></pre>
+            <pre ref={variablesRef!} id="variables"></pre>
 
             <h5>Console</h5>
 
-            <pre id="console"></pre>
+            <pre ref={consoleRef!} id="console"></pre>
           </div>
         </Motion.div>
       </Show>

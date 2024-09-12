@@ -45,14 +45,8 @@ const Button = (props: MyButtonProps) => {
 
   return (
     <button
+      {...props}
       type={props.type ?? "button"}
-      ref={props.ref}
-      onclick={props.onClick}
-      onBlur={props.onBlur}
-      id={props.id}
-      style={props.style}
-      disabled={props.disabled}
-      value={props.value}
       class={` ` + props.class ? defaultButtonClassNames() + props.class : defaultButtonClassNames()}
     >
       {config().icon}

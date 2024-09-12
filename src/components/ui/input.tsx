@@ -34,14 +34,9 @@ const Input = (props: MyInputProps) => {
 
   return (
     <input
+      {...props}
       type={props.type ?? "button"}
       ref={props.ref}
-      onclick={props.onClick}
-      onBlur={props.onBlur}
-      id={props.id}
-      style={props.style}
-      disabled={props.disabled}
-      value={props.value}
       class={` ` + props.class ? defaultInputClassNames() + props.class : defaultInputClassNames()}
     >
       {config().icon}
