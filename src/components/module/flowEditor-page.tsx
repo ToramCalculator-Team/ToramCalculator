@@ -7,6 +7,7 @@ import "sequential-workflow-designer/css/designer-light.css";
 import "sequential-workflow-designer/css/designer-dark.css";
 import {
   BranchedStep,
+  Definition,
   Designer,
   DesignerConfiguration,
   Properties,
@@ -25,11 +26,13 @@ export default function FlowEditor() {
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
   });
-  
+
   let placeholder: HTMLDivElement;
   let consoleRef: HTMLPreElement;
   let variablesRef: HTMLPreElement;
-  let designer: Designer<typeof Definition>;
+  let rootEditorRef: HTMLDivElement;
+  let stepEditorRef: HTMLDivElement;
+  let designer: Designer<typeof startDefinition>;
 
   function uid() {
     return Math.ceil(Math.random() * 10 ** 16).toString(16);
@@ -127,7 +130,7 @@ export default function FlowEditor() {
   }
 
   class StateMachine {
-    definition: typeof Definition;
+    definition: typeof startDefinition;
     speed: number;
     handler: StateMachineHandler;
     data: { [key: string]: number };
@@ -142,7 +145,7 @@ export default function FlowEditor() {
     variablesArea: HTMLPreElement;
 
     constructor(
-      definition: typeof Definition,
+      definition: typeof startDefinition,
       speed: number,
       { consoleArea, variablesArea }: { consoleArea: HTMLPreElement; variablesArea: HTMLPreElement },
       handler: StateMachineHandler,
@@ -205,7 +208,6 @@ export default function FlowEditor() {
 
       const depth = this.callstack.length - 1;
       const program = this.callstack[depth];
-      debugger;
       if (program.sequence.length === program.index) {
         if (depth > 0) {
           program.unwind();
@@ -371,7 +373,7 @@ export default function FlowEditor() {
   }
 
   function onRunClicked(
-    designer: Designer<typeof Definition>,
+    designer: Designer<typeof startDefinition>,
     { consoleRef, variablesRef }: { consoleRef: HTMLPreElement; variablesRef: HTMLPreElement },
   ) {
     if (designer.isReadonly()) {
@@ -381,9 +383,18 @@ export default function FlowEditor() {
       window.alert("The definition is invalid");
       return;
     }
+    designer.setIsReadonly(true);
+    const definition = designer.getDefinition();
+    const sm = new StateMachine(
+      definition,
+      definition.properties.speed as number,
+      { consoleArea: consoleRef, variablesArea: variablesRef },
+      StateMachineHandler,
+    );
+    sm.start();
   }
 
-  const configuration: DesignerConfiguration<typeof Definition> = {
+  const configuration: DesignerConfiguration<typeof startDefinition> = {
     undoStackSize: 5,
     toolbox: {
       groups: [
@@ -429,9 +440,8 @@ export default function FlowEditor() {
     },
 
     editors: {
-      rootEditorProvider: (definition: typeof Definition, editorContext, isReadonly): HTMLElement => {
-        let DivRef: HTMLDivElement;
-        <div ref={DivRef!} class="RootEditor">
+      rootEditorProvider: (definition: typeof startDefinition, editorContext, isReadonly): HTMLElement => {
+        <div ref={rootEditorRef!} class="RootEditor">
           <h4>状态机信息</h4>
           <p>
             <label>速度(毫秒)</label>
@@ -446,11 +456,10 @@ export default function FlowEditor() {
             />
           </p>
         </div>;
-        return DivRef!;
+        return rootEditorRef;
       },
       stepEditorProvider: (step, editorContext, _definition, isReadonly) => {
-        let DivRef: HTMLDivElement;
-        <div ref={DivRef!} class="StepEditor">
+        <div ref={stepEditorRef!} class="StepEditor">
           <h4>{"Step " + step.type}</h4>
           <p>
             <label>名称</label>
@@ -483,14 +492,14 @@ export default function FlowEditor() {
             )}
           </For>
         </div>;
-        return DivRef!;
+        return stepEditorRef;
       },
     },
 
     controlBar: true,
   };
 
-  const Definition = {
+  const startDefinition = {
     properties: {
       speed: 300,
     },
@@ -504,21 +513,28 @@ export default function FlowEditor() {
       Steps.createTextStep("the end"),
     ],
   };
+  interface WrappedDefinition<TDefinition extends Definition = Definition> {
+    readonly value: TDefinition;
+    readonly isValid: boolean | undefined;
+  }
+
+  function wrapDefinition<TDefinition extends Definition = Definition>(
+    value: TDefinition,
+    isValid?: boolean,
+  ): WrappedDefinition<TDefinition> {
+    return {
+      value,
+      isValid,
+    };
+  }
+
+  const [definition, setDefinition] = createSignal(startDefinition);
 
   onMount(() => {
-    designer = Designer.create(placeholder, Definition, configuration);
+    designer = Designer.create(placeholder, definition(), configuration);
     designer.onDefinitionChanged.subscribe((newDefinition) => {
       // ...
     });
-    designer.setIsReadonly(true);
-    const definition = designer.getDefinition();
-    const sm = new StateMachine(
-      definition,
-      definition.properties.speed as number,
-      { consoleArea: consoleRef, variablesArea: variablesRef },
-      StateMachineHandler,
-    );
-    sm.start();
 
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
