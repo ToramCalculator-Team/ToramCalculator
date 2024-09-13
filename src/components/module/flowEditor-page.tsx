@@ -21,10 +21,15 @@ import * as _ from "lodash-es";
 
 export default function FlowEditor() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+
+  createEffect(() => {
+    setDictionary(getDictionary(store.settings.language));
+  });
+  
   let placeholder: HTMLDivElement;
   let consoleRef: HTMLPreElement;
   let variablesRef: HTMLPreElement;
-  let designer: Designer<Def>;
+  let designer: Designer<typeof Definition>;
 
   function uid() {
     return Math.ceil(Math.random() * 10 ** 16).toString(16);
@@ -122,7 +127,7 @@ export default function FlowEditor() {
   }
 
   class StateMachine {
-    definition: Def;
+    definition: typeof Definition;
     speed: number;
     handler: StateMachineHandler;
     data: { [key: string]: number };
@@ -137,7 +142,7 @@ export default function FlowEditor() {
     variablesArea: HTMLPreElement;
 
     constructor(
-      definition: Def,
+      definition: typeof Definition,
       speed: number,
       { consoleArea, variablesArea }: { consoleArea: HTMLPreElement; variablesArea: HTMLPreElement },
       handler: StateMachineHandler,
@@ -200,7 +205,7 @@ export default function FlowEditor() {
 
       const depth = this.callstack.length - 1;
       const program = this.callstack[depth];
-
+      debugger;
       if (program.sequence.length === program.index) {
         if (depth > 0) {
           program.unwind();
@@ -366,7 +371,7 @@ export default function FlowEditor() {
   }
 
   function onRunClicked(
-    designer: Designer<Def>,
+    designer: Designer<typeof Definition>,
     { consoleRef, variablesRef }: { consoleRef: HTMLPreElement; variablesRef: HTMLPreElement },
   ) {
     if (designer.isReadonly()) {
@@ -376,20 +381,9 @@ export default function FlowEditor() {
       window.alert("The definition is invalid");
       return;
     }
-
-    designer.setIsReadonly(true);
-
-    const definition = designer.getDefinition();
-    const sm = new StateMachine(
-      definition,
-      definition.properties.speed as number,
-      { consoleArea: consoleRef, variablesArea: variablesRef },
-      StateMachineHandler,
-    );
-    sm.start();
   }
 
-  const configuration: DesignerConfiguration<Def> = {
+  const configuration: DesignerConfiguration<typeof Definition> = {
     undoStackSize: 5,
     toolbox: {
       groups: [
@@ -435,7 +429,7 @@ export default function FlowEditor() {
     },
 
     editors: {
-      rootEditorProvider: (definition: Def, editorContext, isReadonly): HTMLElement => {
+      rootEditorProvider: (definition: typeof Definition, editorContext, isReadonly): HTMLElement => {
         let DivRef: HTMLDivElement;
         <div ref={DivRef!} class="RootEditor">
           <h4>状态机信息</h4>
@@ -510,17 +504,21 @@ export default function FlowEditor() {
       Steps.createTextStep("the end"),
     ],
   };
-  type Def = typeof Definition;
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
 
   onMount(() => {
     designer = Designer.create(placeholder, Definition, configuration);
     designer.onDefinitionChanged.subscribe((newDefinition) => {
       // ...
     });
+    designer.setIsReadonly(true);
+    const definition = designer.getDefinition();
+    const sm = new StateMachine(
+      definition,
+      definition.properties.speed as number,
+      { consoleArea: consoleRef, variablesArea: variablesRef },
+      StateMachineHandler,
+    );
+    sm.start();
 
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
