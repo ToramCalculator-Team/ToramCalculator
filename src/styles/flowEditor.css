@@ -1,5 +1,5 @@
-#FlowEditor,
-#FlowEditor *,
+.sqd-workspace,
+.sqd-workspace *, 
 .sqd-drag,
 .sqd-drag * {
     transition: all 0ms !important;

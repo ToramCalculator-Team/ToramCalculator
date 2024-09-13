@@ -5,105 +5,184 @@ import { getDictionary } from "~/locales/i18n";
 import "sequential-workflow-designer/css/designer.css";
 import "sequential-workflow-designer/css/designer-light.css";
 import "sequential-workflow-designer/css/designer-dark.css";
-import { Designer } from "sequential-workflow-designer";
+import {
+  BranchedStep,
+  Designer,
+  DesignerConfiguration,
+  Properties,
+  PropertyValue,
+  SequentialStep,
+  Step,
+} from "sequential-workflow-designer";
 import Button from "../ui/button";
 import Input from "../ui/input";
-import * as Icon from "~/lib/icon"
+import * as Icon from "~/lib/icon";
+import * as _ from "lodash-es";
 
 export default function FlowEditor() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   let placeholder: HTMLDivElement;
   let consoleRef: HTMLPreElement;
   let variablesRef: HTMLPreElement;
-  let designer;
+  let designer: Designer<Def>;
 
   function uid() {
     return Math.ceil(Math.random() * 10 ** 16).toString(16);
   }
 
+  interface MathStepProperties extends Record<string, PropertyValue> {
+    var: string;
+    val: number;
+  }
+  interface TextStepProperties extends Record<string, PropertyValue> {
+    text: string;
+  }
+
+  interface CustomBaseStep<P extends Properties> extends Step {
+    properties: P;
+  }
+  interface CustomBranchStep<P extends Properties> extends BranchedStep {
+    properties: P;
+    branches: {
+      true: CustomStateMachineStep[];
+      false: CustomStateMachineStep[];
+    };
+  }
+  interface CustomSequentialStep<P extends Properties> extends SequentialStep {
+    properties: P;
+    sequence: CustomStateMachineStep[];
+  }
+
+  type CustomStateMachineStep =
+    | CustomBaseStep<TextStepProperties>
+    | CustomBaseStep<MathStepProperties>
+    | CustomBranchStep<MathStepProperties>
+    | CustomSequentialStep<MathStepProperties>;
+
   class Steps {
-    static createMathStep(type, name, varName, val) {
+    static createMathStep(type: string, name: string, varName: string, val: number) {
       return StateMachineSteps.createTaskStep(name, type, {
         var: varName,
         val,
       });
     }
 
-    static createTextStep(message) {
+    static createTextStep(message: string) {
       return StateMachineSteps.createTaskStep(message, "text", {
         text: message,
       });
     }
 
-    static createIfStep(varName, val, name, trueSteps?, falseSteps?) {
+    static createIfStep(
+      varName: string,
+      val: number,
+      name: string,
+      trueSteps?: CustomStateMachineStep[],
+      falseSteps?: CustomStateMachineStep[],
+    ) {
       return StateMachineSteps.createIfStep(
         name,
         {
           var: varName,
           val,
         },
-        trueSteps,
-        falseSteps,
+        trueSteps ?? [],
+        falseSteps ?? [],
       );
     }
 
-    static createLoopStep(varName, val, name, steps?) {
+    static createLoopStep(varName: string, val: number, name: string, steps?: CustomStateMachineStep[]) {
       return StateMachineSteps.createLoopStep(
         name,
         {
           var: varName,
           val,
         },
-        steps,
+        steps ?? [],
       );
     }
   }
 
-  class StateMachine {
-    isInterrupted = false;
+  function isTextStep(step: CustomStateMachineStep): step is CustomBaseStep<TextStepProperties> {
+    let condition: boolean = true && "text" in step.properties;
+    condition = step.type === "text";
+    return condition;
+  }
+  function isMathStep(step: CustomStateMachineStep): step is CustomBaseStep<MathStepProperties> {
+    let condition: boolean = "val" in step.properties && "var" in step.properties;
+    return condition;
+  }
+  function isIfStep(step: CustomStateMachineStep): step is CustomBranchStep<MathStepProperties> {
+    let condition: boolean = "branches" in step && step.type === "if";
+    return condition;
+  }
+  function isLoopStep(step: CustomStateMachineStep): step is CustomSequentialStep<MathStepProperties> {
+    let condition: boolean = step.type === "loop";
+    return condition;
+  }
 
-    constructor(definition, speed, handler) {
+  class StateMachine {
+    definition: Def;
+    speed: number;
+    handler: StateMachineHandler;
+    data: { [key: string]: number };
+    callstack: {
+      sequence: CustomStateMachineStep[];
+      index: number;
+      unwind: () => void;
+    }[];
+    isRunning: boolean;
+    isInterrupted = false;
+    consoleArea: HTMLPreElement;
+    variablesArea: HTMLPreElement;
+
+    constructor(
+      definition: Def,
+      speed: number,
+      { consoleArea, variablesArea }: { consoleArea: HTMLPreElement; variablesArea: HTMLPreElement },
+      handler: StateMachineHandler,
+    ) {
       this.definition = definition;
       this.speed = speed;
       this.handler = handler;
       this.data = {};
+      this.consoleArea = consoleArea;
+      this.variablesArea = variablesArea;
       this.callstack = [
         {
           sequence: this.definition.sequence,
           index: 0,
-          unwind: null,
+          unwind: () => {},
         },
       ];
       this.isRunning = false;
+      console.log(_.cloneDeep(this.callstack));
     }
 
-    executeStep(step) {
-      this.handler.executeStep(step, this.data);
+    executeStep<S extends CustomStateMachineStep>(consoleArea: HTMLPreElement, step: S) {
+      StateMachineHandler.executeStep(consoleArea, step, this.data);
     }
 
     unwindStack() {
       this.callstack.pop();
     }
 
-    executeIfStep(step) {
-      const value = this.handler.executeIf(step, this.data);
-      const branchName = value ? "true" : "false";
-
+    executeIfStep(step: CustomBranchStep<MathStepProperties>) {
+      const value = StateMachineHandler.executeIf(step, this.data);
       this.callstack.push({
-        sequence: step.branches[branchName],
+        sequence: value ? step.branches.true : step.branches.false,
         index: 0,
         unwind: this.unwindStack.bind(this),
       });
     }
 
-    executeLoopStep(step) {
-      this.handler.initLoopStep(step, this.data);
-
+    executeLoopStep(step: CustomSequentialStep<MathStepProperties>) {
+      StateMachineHandler.initLoopStep(step, this.data);
       const program = {
         sequence: step.sequence,
         index: 0,
         unwind: () => {
-          if (this.handler.canReplyLoopStep(step, this.data)) {
+          if (StateMachineHandler.canReplyLoopStep(step, this.data)) {
             program.index = 0;
           } else {
             this.unwindStack();
@@ -115,7 +194,7 @@ export default function FlowEditor() {
 
     execute() {
       if (this.isInterrupted) {
-        this.handler.onInterrupted();
+        StateMachineHandler.onInterrupted();
         return;
       }
 
@@ -128,7 +207,7 @@ export default function FlowEditor() {
           this.execute();
         } else {
           this.isRunning = false;
-          this.handler?.onFinished(this.data);
+          StateMachineHandler.onFinished();
         }
         return;
       }
@@ -136,25 +215,21 @@ export default function FlowEditor() {
       const step = program.sequence[program.index];
       program.index++;
 
-      if (this.handler.beforeStepExecution) {
-        this.handler.beforeStepExecution(step, this.data);
-      }
+      // StateMachineHandler.beforeStepExecution(step, this.data);
 
       switch (step.type) {
         case "if":
-          this.executeIfStep(step);
+          isIfStep(step) && this.executeIfStep(step);
           break;
         case "loop":
-          this.executeLoopStep(step);
+          isLoopStep(step) && this.executeLoopStep(step);
           break;
         default:
-          this.executeStep(step);
+          this.executeStep(this.consoleArea, step);
           break;
       }
 
-      if (this.handler.onStepExecuted) {
-        this.handler.onStepExecuted(step, this.data);
-      }
+      StateMachineHandler.onStepExecuted(this.variablesArea, step, this.data);
       setTimeout(this.execute.bind(this), this.speed);
     }
 
@@ -176,7 +251,12 @@ export default function FlowEditor() {
   }
 
   class StateMachineSteps {
-    static createIfStep(name, properties, trueSteps, falseSteps) {
+    static createIfStep<P extends Properties, TS extends CustomStateMachineStep, FS extends CustomStateMachineStep>(
+      name: string,
+      properties: P,
+      trueSteps: TS[],
+      falseSteps: FS[],
+    ): CustomBranchStep<P> {
       return {
         id: uid(),
         componentType: "switch",
@@ -190,18 +270,22 @@ export default function FlowEditor() {
       };
     }
 
-    static createLoopStep(name, properties, steps) {
+    static createLoopStep<P extends Properties>(
+      name: string,
+      properties: P,
+      steps: CustomStateMachineStep[],
+    ): CustomSequentialStep<P> {
       return {
         id: uid(),
         componentType: "container",
         type: "loop",
         name,
-        sequence: steps || [],
+        sequence: steps ?? [],
         properties,
       };
     }
 
-    static createTaskStep(name, type, properties) {
+    static createTaskStep<P extends Properties>(name: string, type: string, properties: P): CustomBaseStep<P> {
       return {
         id: uid(),
         componentType: "task",
@@ -212,34 +296,19 @@ export default function FlowEditor() {
     }
   }
 
-  function createVariableIfNeeded(varName, data) {
-    if (typeof data[varName] === "undefined") {
-      data[varName] = 0;
-    }
-  }
-
-  function onRunClicked(designer) {
-    console.log(designer);
-    if (designer.isReadonly()) {
-      return;
-    }
-    if (!designer.isValid()) {
-      window.alert("The definition is invalid");
-      return;
-    }
-
-    designer.setIsReadonly(true);
-
-    const definition = designer.getDefinition();
-    const sm = new StateMachine(definition, definition.properties["speed"], {
-      executeStep: (step, data) => {
-        if (step.type === "text") {
-          consoleRef.innerText += step.properties["text"] + "\r\n";
-          return;
-        }
-
-        const varName = step.properties["var"];
-        const value = step.properties["val"];
+  class StateMachineHandler {
+    static executeStep<S extends CustomStateMachineStep>(
+      consoleArea: HTMLPreElement,
+      step: S,
+      data: { [key: string]: number },
+    ) {
+      if (isTextStep(step)) {
+        consoleArea.innerText += step.properties.text + "\r\n";
+        return;
+      }
+      if (isMathStep(step)) {
+        const varName = step.properties.var;
+        const value = step.properties.val;
         createVariableIfNeeded(varName, data);
         switch (step.type) {
           case "add":
@@ -255,94 +324,72 @@ export default function FlowEditor() {
             data[varName] /= value;
             break;
         }
-      },
+      }
+    }
 
-      executeIf: (step, data) => {
-        var varName = step.properties["var"];
-        createVariableIfNeeded(varName, data);
-        return data[varName] > step.properties["val"];
-      },
+    static executeIf(step: CustomBranchStep<MathStepProperties>, data: { [key: string]: number }) {
+      var varName = step.properties.var;
+      createVariableIfNeeded(varName, data);
+      return data[varName] > step.properties.val;
+    }
 
-      initLoopStep: (step, data) => {
-        const varName = step.properties["var"];
-        createVariableIfNeeded(varName, data);
-        data[varName] = step.properties["val"];
-      },
+    static initLoopStep(step: CustomSequentialStep<MathStepProperties>, data: { [key: string]: number }) {
+      const varName = step.properties.var;
+      createVariableIfNeeded(varName, data);
+      data[varName] = step.properties.val;
+    }
 
-      canReplyLoopStep: (step, data) => {
-        const varName = step.properties["var"];
-        return --data[varName] >= 0;
-      },
+    static canReplyLoopStep(step: CustomSequentialStep<MathStepProperties>, data: { [key: string]: number }) {
+      const varName = step.properties["var"];
+      return --data[varName] >= 0;
+    }
 
-      onStepExecuted: (step, data) => {
-        variablesRef.innerText = JSON.stringify(data, null, 2) + "\r\n";
-        designer.selectStepById(step.id);
-        designer.moveViewportToStep(step.id);
-      },
+    static onStepExecuted(variablesArea: HTMLPreElement, step: Step, data: { [key: string]: number }) {
+      variablesArea.innerText = JSON.stringify(data, null, 2) + "\r\n";
+      designer.selectStepById(step.id);
+      designer.moveViewportToStep(step.id);
+    }
 
-      onFinished: () => {
-        designer.setIsReadonly(false);
-      },
-    });
+    static onFinished() {
+      designer.setIsReadonly(false);
+    }
+
+    static onInterrupted() {
+      designer.setIsReadonly(false);
+    }
+  }
+
+  function createVariableIfNeeded(varName: string, data: { [key: string]: number }) {
+    if (typeof data[varName] === "undefined") {
+      data[varName] = 0;
+    }
+  }
+
+  function onRunClicked(
+    designer: Designer<Def>,
+    { consoleRef, variablesRef }: { consoleRef: HTMLPreElement; variablesRef: HTMLPreElement },
+  ) {
+    if (designer.isReadonly()) {
+      return;
+    }
+    if (!designer.isValid()) {
+      window.alert("The definition is invalid");
+      return;
+    }
+
+    designer.setIsReadonly(true);
+
+    const definition = designer.getDefinition();
+    const sm = new StateMachine(
+      definition,
+      definition.properties.speed as number,
+      { consoleArea: consoleRef, variablesArea: variablesRef },
+      StateMachineHandler,
+    );
     sm.start();
   }
 
-  const rootEditorProvider = (definition, editorContext, isReadonly) => (
-    <span>
-      <h4>状态机信息</h4>
-      <p>
-        <label>速度(毫秒)</label>
-        <Input
-          onInput={(e) => {
-            console.log(e.target.value);
-            definition.properties["speed"] = parseInt(e.target.value, 10);
-            editorContext.notifyPropertiesChanged();
-          }}
-          value={definition.properties["speed"]}
-          readOnly={isReadonly}
-          type="text"
-        />
-      </p>
-    </span>
-  );
-
-  const stepEditorProvider = (step, editorContext, _definition, isReadonly) => (
-    <div>
-      <h4>{"Step " + step.type}</h4>
-      <p>
-        <label>名称</label>
-        <Input
-          onInput={(v) => {
-            step.name = v.target.value;
-            editorContext.notifyNameChanged();
-          }}
-          value={step.name}
-          readOnly={isReadonly}
-          type="text"
-        />
-      </p>
-      <For each={["var", "val", "text"]}>
-        {(key) => (
-          <Show when={step.properties[key] !== undefined}>
-            <p>
-              <label>{key}</label>
-              <Input
-                onInput={(v) => {
-                  step.properties[key] = v.target.value;
-                  editorContext.notifyPropertiesChanged();
-                }}
-                value={step.properties[key]}
-                readOnly={isReadonly}
-                type="text"
-              />
-            </p>
-          </Show>
-        )}
-      </For>
-    </div>
-  );
-
-  const configuration = {
+  const configuration: DesignerConfiguration<Def> = {
     undoStackSize: 5,
     toolbox: {
       groups: [
@@ -364,11 +411,18 @@ export default function FlowEditor() {
     },
 
     steps: {
-      iconProvider: (componentType, type) => {
-        const supportedIcons = ["if", "loop", "text"];
-        const fileName = supportedIcons.includes(type) ? type : "task";
-        return Icon.Line.Box2({});
-      },
+      // iconUrlProvider: (componentType, type) => {
+      //   const icon =
+      //     {
+      //       add: Icon.Line.Basketball({}),
+      //       sub: Icon.Line.Basketball({}),
+      //       mul: Icon.Line.Basketball({}),
+      //       div: Icon.Line.Basketball({}),
+      //       if: Icon.Line.Box2({}),
+      //       loop: Icon.Line.Filter({}),
+      //     }[type] ?? Icon.Line.Coins({});
+      //   return Icon.getDataUrl(icon);
+      // },
     },
 
     validator: {
@@ -376,13 +430,67 @@ export default function FlowEditor() {
         return Object.keys(step.properties).every((n) => !!step.properties[n]);
       },
       root: (definition) => {
-        return definition.properties["speed"] > 0;
+        return (definition.properties["speed"] as number) > 0;
       },
     },
 
     editors: {
-      rootEditorProvider,
-      stepEditorProvider,
+      rootEditorProvider: (definition: Def, editorContext, isReadonly): HTMLElement => {
+        let DivRef: HTMLDivElement;
+        <div ref={DivRef!} class="RootEditor">
+          <h4>状态机信息</h4>
+          <p>
+            <label>速度(毫秒)</label>
+            <Input
+              onInput={(e) => {
+                definition.properties.speed = parseInt(e.target.value, 10);
+                editorContext.notifyPropertiesChanged();
+              }}
+              value={definition.properties.speed?.toString()}
+              readOnly={isReadonly}
+              type="text"
+            />
+          </p>
+        </div>;
+        return DivRef!;
+      },
+      stepEditorProvider: (step, editorContext, _definition, isReadonly) => {
+        let DivRef: HTMLDivElement;
+        <div ref={DivRef!} class="StepEditor">
+          <h4>{"Step " + step.type}</h4>
+          <p>
+            <label>名称</label>
+            <Input
+              onInput={(v) => {
+                step.name = v.target.value;
+                editorContext.notifyNameChanged();
+              }}
+              value={step.name}
+              readOnly={isReadonly}
+              type="text"
+            />
+          </p>
+          <For each={["var", "val", "text"]}>
+            {(key) => (
+              <Show when={step.properties[key] !== undefined}>
+                <p>
+                  <label>{key}</label>
+                  <Input
+                    onInput={(v) => {
+                      step.properties[key] = v.target.value;
+                      editorContext.notifyPropertiesChanged();
+                    }}
+                    value={step.properties[key] as string}
+                    readOnly={isReadonly}
+                    type="text"
+                  />
+                </p>
+              </Show>
+            )}
+          </For>
+        </div>;
+        return DivRef!;
+      },
     },
 
     controlBar: true,
@@ -402,6 +510,7 @@ export default function FlowEditor() {
       Steps.createTextStep("the end"),
     ],
   };
+  type Def = typeof Definition;
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
@@ -440,16 +549,16 @@ export default function FlowEditor() {
           <div ref={placeholder!} class="h-full w-full"></div>
           <div id="result" class="flex basis-1/4 flex-col">
             <p>
-              <Button id="run" onClick={() => onRunClicked(designer)}>
-                Run 🚀
+              <Button id="run" onClick={() => onRunClicked(designer, { variablesRef, consoleRef })}>
+                运行🚀
               </Button>
             </p>
 
-            <h5>Variables</h5>
+            <h5>变量属性</h5>
 
             <pre ref={variablesRef!} id="variables"></pre>
 
-            <h5>Console</h5>
+            <h5>日志</h5>
 
             <pre ref={consoleRef!} id="console"></pre>
           </div>

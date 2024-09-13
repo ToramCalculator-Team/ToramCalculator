@@ -28,7 +28,7 @@ const Input = (props: MyInputProps) => {
 
   createEffect(() => {
     setDefaultInputClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} `,
+      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center bg-transition-color-8 focus-within:bg-primary-color underline-offset-4 hover:underline ${config().sizeClass} `,
     );
   });
 
