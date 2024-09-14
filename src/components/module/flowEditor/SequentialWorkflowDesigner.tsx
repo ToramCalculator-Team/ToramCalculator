@@ -1,4 +1,4 @@
-import { createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import {
   Definition,
   ToolboxConfiguration,
@@ -153,33 +153,33 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
     }
   }
 
-//   onMount(() => {
-//     onDefinitionChangeRef = props.onDefinitionChange;
-//   });
+  //   onMount(() => {
+  //     onDefinitionChangeRef = props.onDefinitionChange;
+  //   });
 
-//   onMount(() => {
-//     onSelectedStepIdChangedRef = props.onSelectedStepIdChanged;
-//   });
+  //   onMount(() => {
+  //     onSelectedStepIdChangedRef = props.onSelectedStepIdChanged;
+  //   });
 
-//   onMount(() => {
-//     onIsEditorCollapsedChangedRef = props.onIsEditorCollapsedChanged;
-//   });
+  //   onMount(() => {
+  //     onIsEditorCollapsedChangedRef = props.onIsEditorCollapsedChanged;
+  //   });
 
-//   onMount(() => {
-//     onIsToolboxCollapsedChangedRef = props.onIsToolboxCollapsedChanged;
-//   });
+  //   onMount(() => {
+  //     onIsToolboxCollapsedChangedRef = props.onIsToolboxCollapsedChanged;
+  //   });
 
-//   onMount(() => {
-//     rootEditorRef = props.rootEditor;
-//   });
+  //   onMount(() => {
+  //     rootEditorRef = props.rootEditor;
+  //   });
 
-//   onMount(() => {
-//     stepEditorRef = props.stepEditor;
-//   });
+  //   onMount(() => {
+  //     stepEditorRef = props.stepEditor;
+  //   });
 
-//   onMount(() => {
-//     customActionHandlerRef = props.customActionHandler;
-//   });
+  //   onMount(() => {
+  //     customActionHandlerRef = props.customActionHandler;
+  //   });
 
   onMount(() => {
     if (!placeholder) {
@@ -250,7 +250,6 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
     if (selectedStepId) {
       designer.selectStepById(selectedStepId);
     }
-    // console.log('sqd: designer rendered');
 
     designer.onReady.subscribe(forwardDefinition);
     designer.onDefinitionChanged.subscribe(forwardDefinition);
@@ -277,6 +276,6 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   onMount(() => {
     return tryDestroy;
   });
-  
+
   return <div ref={setPlaceholder} data-testid="designer" class="sqd-designer-react"></div>;
 }

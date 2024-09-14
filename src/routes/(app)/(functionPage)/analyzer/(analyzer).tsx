@@ -15,7 +15,12 @@ import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMons
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import FlowEditor from "~/components/module/flowEditor-page";
+import FlowEditorUrl from "~/components/module/flowEditor-page";
+import { clientOnly } from "@solidjs/start";
+
+const FlowEditor = clientOnly(() => import("~/components/module/flowEditor-page"));
+
+
 
 export type skillSequenceList = {
   name: string;

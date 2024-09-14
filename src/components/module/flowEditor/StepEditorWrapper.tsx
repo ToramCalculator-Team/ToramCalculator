@@ -1,5 +1,5 @@
 import { StepEditorContext, PropertyValue, Step, Definition } from "sequential-workflow-designer";
-import { Context, createContext, createSignal, JSX, useContext } from "solid-js";
+import { Context, createContext, createEffect, createSignal, JSX, onMount, useContext } from "solid-js";
 
 declare global {
   interface Window {

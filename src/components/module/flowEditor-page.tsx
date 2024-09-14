@@ -28,7 +28,6 @@ import { useStepEditor } from "./flowEditor/StepEditorWrapper";
 import { SequentialWorkflowDesigner } from "./flowEditor/SequentialWorkflowDesigner";
 import { useSequentialWorkflowDesignerController } from "./flowEditor/SequentialWorkflowDesignerController";
 
-
 function uid() {
   return Math.ceil(Math.random() * 10 ** 16).toString(16);
 }
@@ -438,6 +437,9 @@ export default function FlowEditor() {
 
   function RootEditor() {
     const { properties, setProperty, definition, isReadonly } = useRootEditor<WorkflowDefinition>();
+    onMount(() => {
+      console.log("RootEditor", properties, setProperty, definition, isReadonly);
+    })
     return (
       <div class="RootEditor">
         <h4>状态机信息</h4>
@@ -456,6 +458,9 @@ export default function FlowEditor() {
 
   function StepEditor() {
     const { type, componentType, name, setName, properties, setProperty, definition, isReadonly } = useStepEditor<CustomStateMachineStep>();
+    onMount(() => {
+      console.log("StepEditor", type, componentType, name, setName, properties, setProperty, definition, isReadonly);
+    })
     return (
       <div class="StepEditor">
         <h4>{"Step " + type}</h4>
@@ -501,6 +506,8 @@ export default function FlowEditor() {
       document.addEventListener("keydown", handleEscapeKeyPress);
     };
   });
+
+  debugger;
 
   return (
     <Presence exitBeforeEnter>
