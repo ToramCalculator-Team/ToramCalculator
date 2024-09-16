@@ -24,10 +24,7 @@ import { wrapDefinition } from "./flowEditor/WrappedDefinition";
 import { useRootEditor } from "./flowEditor/RootEditorWrapper";
 import { useStepEditor } from "./flowEditor/StepEditorWrapper";
 import { SequentialWorkflowDesigner } from "./flowEditor/SequentialWorkflowDesigner";
-
-function uid() {
-  return Math.ceil(Math.random() * 10 ** 16).toString(16);
-}
+import { createId } from "@paralleldrive/cuid2";
 
 interface MathStepProperties extends Record<string, PropertyValue> {
   var: string;
@@ -121,14 +118,14 @@ function isLoopStep(step: CustomStateMachineStep): step is CustomSequentialStep<
 }
 
 class StateMachineSteps {
-  static createIfStep<P extends Properties, TS extends CustomStateMachineStep, FS extends CustomStateMachineStep>(
+  static createIfStep<P extends Properties>(
     name: string,
     properties: P,
-    trueSteps: TS[],
-    falseSteps: FS[],
+    trueSteps: CustomStateMachineStep[],
+    falseSteps: CustomStateMachineStep[],
   ): CustomBranchStep<P> {
     return {
-      id: uid(),
+      id: createId(),
       componentType: "switch",
       type: "if",
       name,
@@ -146,7 +143,7 @@ class StateMachineSteps {
     steps: CustomStateMachineStep[],
   ): CustomSequentialStep<P> {
     return {
-      id: uid(),
+      id: createId(),
       componentType: "container",
       type: "loop",
       name,
@@ -157,18 +154,12 @@ class StateMachineSteps {
 
   static createTaskStep<P extends Properties>(name: string, type: string, properties: P): CustomBaseStep<P> {
     return {
-      id: uid(),
+      id: createId(),
       componentType: "task",
       type,
       name,
       properties,
     };
-  }
-}
-
-function createVariableIfNeeded(varName: string, data: { [key: string]: number }) {
-  if (typeof data[varName] === "undefined") {
-    data[varName] = 0;
   }
 }
 
@@ -203,7 +194,7 @@ export default function FlowEditor() {
   const toolboxConfiguration: Accessor<ToolboxConfiguration> = createMemo(() => ({
     groups: [
       {
-        name: "Tasks",
+        name: "技能模块",
         steps: [
           Steps.createMathStep("add", "Add", "x", 10),
           Steps.createMathStep("sub", "Subtract", "x", 10),
@@ -213,7 +204,7 @@ export default function FlowEditor() {
         ],
       },
       {
-        name: "Logic",
+        name: "逻辑模块",
         steps: [Steps.createIfStep("x", 10, "If"), Steps.createLoopStep("index", 3, "Loop")],
       },
     ],
@@ -341,6 +332,12 @@ export default function FlowEditor() {
       this.isRunning = false;
     }
 
+    createVariableIfNeeded(varName: string) {
+      if (typeof this.data[varName] === "undefined") {
+        this.data[varName] = 0;
+      }
+    }
+
     unwindStack() {
       this.callstack.pop();
     }
@@ -378,7 +375,7 @@ export default function FlowEditor() {
       if (isMathStep(step)) {
         const varName = step.properties.var;
         const value = step.properties.val;
-        createVariableIfNeeded(varName, this.data);
+        this.createVariableIfNeeded(varName);
         switch (step.type) {
           case "add":
             this.data[varName] += value;
@@ -454,13 +451,13 @@ export default function FlowEditor() {
 
     executeIf(step: CustomBranchStep<MathStepProperties>) {
       var varName = step.properties.var;
-      createVariableIfNeeded(varName, this.data);
+      this.createVariableIfNeeded(varName);
       return this.data[varName] > step.properties.val;
     }
 
     initLoopStep(step: CustomSequentialStep<MathStepProperties>) {
       const varName = step.properties.var;
-      createVariableIfNeeded(varName, this.data);
+      this.createVariableIfNeeded(varName);
       this.data[varName] = step.properties.val;
     }
 
@@ -533,6 +530,7 @@ export default function FlowEditor() {
               isFollowingSelectedStep={isFollowingSelectedStep()}
               onIsFollowingSelectedStepChanged={setIsFollowingSelectedStep}
               keyboard={true}
+              theme={store.theme === "dark" ? "dark" : "light"}
             />
           </div>
           {/* <div class="basis-1/3">

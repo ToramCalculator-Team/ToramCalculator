@@ -11,6 +11,9 @@ import serviceWorkerUrl from "~/worker/serviceWorker?worker&url";
 import dataWorker from "~/worker/dataWorker?sharedworker";
 
 import { dw } from "./worker/dataWorker";
+import { Context, createContext, useContext } from "solid-js";
+
+console.log("entry-client.tsx");
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -37,6 +40,25 @@ const dataworker = Comlink.wrap<typeof dw>(worker.port);
 const proxiedPg = Comlink.proxy(pg);  // 使用 proxy 包装
 // console.log(await dataworker.counter);
 // console.log(await dataworker.getMonsterList(proxiedPg));
+
+declare global {
+  interface Window {
+    DataWorker?: Context<Comlink.Remote<typeof dw> | null>;
+  }
+}
+
+if (!window.DataWorker) {
+  window.DataWorker = createContext<Comlink.Remote<typeof dw> | null>(dataworker);
+}
+const DataWorkerContext = window.DataWorker;
+
+export function useDataWorker(): Comlink.Remote<typeof dw> {
+  const wrapper = useContext(DataWorkerContext);
+  if (!wrapper) {
+    throw new Error("没找到数据层服务");
+  }
+  return wrapper;
+}
 
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);

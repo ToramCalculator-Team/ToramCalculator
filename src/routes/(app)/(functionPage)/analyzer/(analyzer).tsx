@@ -8,19 +8,17 @@ import { defaultSelectModifiersList } from "~/schema/modifiers_list";
 import { defaultSelectConsumable } from "~/schema/consumable";
 import { defaultSelectSkill } from "~/schema/skill";
 import { defaultSelectPet } from "~/schema/pet";
-import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
+import { createEffect, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import FlowEditor from "~/components/module/flowEditor-page-solid";
+import FlowEditor from "~/components/module/flowEditor";
 import { clientOnly } from "@solidjs/start";
 
-// const FlowEditor = clientOnly(() => import("~/components/module/flowEditor-page-solid"));
-
-
+// const FlowEditor = clientOnly(() => import("~/components/module/flowEditor"));
 
 export type skillSequenceList = {
   name: string;
@@ -1194,7 +1192,7 @@ export default function AnalyzerIndexClient() {
     );
   }
 
-  onMount(async () => {
+  onMount(() => {
     console.log("--ComboAnalyze Client Render");
     setMonsterList(generateAugmentedMonsterList(defaultMonsterList(), dictionary()));
     setCharacterList([defaultSelectCharacter, defaultSelectCharacter]);
