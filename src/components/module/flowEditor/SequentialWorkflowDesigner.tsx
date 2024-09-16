@@ -23,7 +23,6 @@ import { RootEditorWrapperContext } from "./RootEditorWrapper";
 import { StepEditorWrapperContext } from "./StepEditorWrapper";
 import { wrapDefinition, WrappedDefinition } from "./WrappedDefinition";
 import { Presenter } from "./Presenter";
-import { SequentialWorkflowDesignerController } from "./SequentialWorkflowDesignerController";
 
 const externalEditorClassName = "sqd-editor-react";
 
@@ -34,6 +33,8 @@ export interface SequentialWorkflowDesignerProps<TDefinition extends Definition>
   onDefinitionChange: (state: WrappedDefinition<TDefinition>) => void;
   selectedStepId?: string | null;
   onSelectedStepIdChanged?: (stepId: string | null) => void;
+  isFollowingSelectedStep?: boolean;
+  onIsFollowingSelectedStepChanged?: (isFollowing: boolean) => void;
   isReadonly?: boolean;
 
   rootEditor: false | (() => JSX.Element | RootEditorProvider);
@@ -55,7 +56,6 @@ export interface SequentialWorkflowDesignerProps<TDefinition extends Definition>
   contextMenu?: boolean;
   keyboard?: boolean | KeyboardConfiguration;
   preferenceStorage?: PreferenceStorage;
-  controller?: SequentialWorkflowDesignerController;
   customActionHandler?: CustomActionHandler;
   extensions?: DesignerExtension[];
   i18n?: I18n;
@@ -72,7 +72,6 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   const onIsToolboxCollapsedChanged = props.onIsToolboxCollapsedChanged;
   const rootEditor = props.rootEditor;
   const stepEditor = props.stepEditor;
-  const controller = props.controller;
   const customActionHandler = props.customActionHandler;
   const definition = props.definition;
   const theme = props.theme;
@@ -121,9 +120,6 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   }
 
   function tryDestroy() {
-    if (controller) {
-      controller.setDesigner(null);
-    }
     if (designer()) {
       designer()!.destroy();
       setDesigner(null);
@@ -162,9 +158,6 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
         isReadonly: props.isReadonly,
       }),
     );
-    if (controller) {
-      controller.setDesigner(designer() as unknown as Designer<Definition>);
-    }
     if (props.selectedStepId) {
       designer()?.selectStepById(props.selectedStepId);
     }
@@ -181,6 +174,7 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
 
     createEffect(() => {
       props.selectedStepId && designer()?.selectStepById(props.selectedStepId);
+      props.isFollowingSelectedStep && props.selectedStepId && designer()?.moveViewportToStep(props.selectedStepId);
     });
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {
       onSelectedStepIdChanged?.(stepId);
@@ -199,6 +193,14 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
     designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {
       onIsEditorCollapsedChanged?.(isCollapsed);
     });
+
+    createEffect(() => {
+      props.isReadonly && designer()?.setIsReadonly(props.isReadonly);
+    })
+
+    createEffect(() => {
+      props.isFollowingSelectedStep && props.selectedStepId && designer()?.moveViewportToStep(props.selectedStepId);
+    })
   });
 
   onMount(() => {
