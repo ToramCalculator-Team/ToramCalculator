@@ -1,5 +1,4 @@
 import { Definition, Designer } from 'sequential-workflow-designer';
-import { createMemo } from 'solid-js';
 
 export class SequentialWorkflowDesignerController {
 	public static create(): SequentialWorkflowDesignerController {
@@ -68,9 +67,4 @@ export class SequentialWorkflowDesignerController {
 		}
 		return this.designer;
 	}
-}
-
-export function useSequentialWorkflowDesignerController(): SequentialWorkflowDesignerController {
-	const controller = createMemo(() => SequentialWorkflowDesignerController.create())
-	return controller();
 }

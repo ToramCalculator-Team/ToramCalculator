@@ -1,4 +1,4 @@
-import { createEffect, createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import {
   Definition,
   ToolboxConfiguration,
@@ -36,8 +36,8 @@ export interface SequentialWorkflowDesignerProps<TDefinition extends Definition>
   onSelectedStepIdChanged?: (stepId: string | null) => void;
   isReadonly?: boolean;
 
-  rootEditor: false | JSX.Element | RootEditorProvider;
-  stepEditor: false | JSX.Element | StepEditorProvider;
+  rootEditor: false | (() => JSX.Element | RootEditorProvider);
+  stepEditor: false | (() => JSX.Element | StepEditorProvider);
   isEditorCollapsed?: boolean;
   onIsEditorCollapsedChanged?: (isCollapsed: boolean) => void;
 
@@ -64,31 +64,22 @@ export interface SequentialWorkflowDesignerProps<TDefinition extends Definition>
 export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   props: SequentialWorkflowDesignerProps<TDefinition>,
 ) {
-  // debugger;
   const [placeholder, setPlaceholder] = createSignal<HTMLElement | null>(null);
 
-  const onDefinitionChangeRef = props.onDefinitionChange;
-  const onSelectedStepIdChangedRef = props.onSelectedStepIdChanged;
-  const onIsEditorCollapsedChangedRef = props.onIsEditorCollapsedChanged;
-  const onIsToolboxCollapsedChangedRef = props.onIsToolboxCollapsedChanged;
-  const rootEditorRef = props.rootEditor;
-  const stepEditorRef = props.stepEditor;
-  const controllerRef = props.controller;
-  const customActionHandlerRef = props.customActionHandler;
-
-  let designerRef: Designer<TDefinition> | null = null;
-  let editorRootRef: HTMLElement | null = null;
-
+  const onDefinitionChange = props.onDefinitionChange;
+  const onSelectedStepIdChanged = props.onSelectedStepIdChanged;
+  const onIsEditorCollapsedChanged = props.onIsEditorCollapsedChanged;
+  const onIsToolboxCollapsedChanged = props.onIsToolboxCollapsedChanged;
+  const rootEditor = props.rootEditor;
+  const stepEditor = props.stepEditor;
+  const controller = props.controller;
+  const customActionHandler = props.customActionHandler;
   const definition = props.definition;
-  const selectedStepId = props.selectedStepId;
-  const isReadonly = props.isReadonly;
   const theme = props.theme;
   const undoStackSize = props.undoStackSize;
-  const steps = props.stepsConfiguration;
-  const validator = props.validatorConfiguration;
-  const toolbox = props.toolboxConfiguration;
-  const isEditorCollapsed = props.isEditorCollapsed;
-  const isToolboxCollapsed = props.isToolboxCollapsed;
+  const stepsConfiguration = props.stepsConfiguration;
+  const validatorConfiguration = props.validatorConfiguration;
+  const toolboxConfiguration = props.toolboxConfiguration;
   const controlBar = props.controlBar;
   const contextMenu = props.contextMenu;
   const keyboard = props.keyboard;
@@ -96,186 +87,123 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   const extensions = props.extensions;
   const i18n = props.i18n;
 
+  const [designer, setDesigner] = createSignal<Designer<TDefinition> | null>(null);
+
   function forwardDefinition() {
-    if (designerRef) {
-      const wd = wrapDefinition(designerRef.getDefinition(), designerRef.isValid());
-      onDefinitionChangeRef(wd);
+    if (designer()) {
+      const wd = wrapDefinition(designer()!.getDefinition(), designer()!.isValid());
+      onDefinitionChange(wd);
     }
   }
 
   function rootEditorProvider(def: TDefinition, context: RootEditorContext, isReadonly: boolean) {
-    if (!rootEditorRef) {
+    if (!rootEditor) {
       throw new Error("Root editor is not provided");
     }
     return Presenter.render(
       externalEditorClassName,
-      editorRootRef,
       <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
-        {rootEditorRef as JSX.Element}
+        {rootEditor() as JSX.Element}
       </RootEditorWrapperContext>,
     );
   }
 
   function stepEditorProvider(step: Step, context: StepEditorContext, def: Definition, isReadonly: boolean) {
-    if (!stepEditorRef) {
+    if (!stepEditor) {
       throw new Error("Step editor is not provided");
     }
     return Presenter.render(
       externalEditorClassName,
-      editorRootRef,
       <StepEditorWrapperContext step={step} definition={def} context={context} isReadonly={isReadonly}>
-        {stepEditorRef as JSX.Element}
+        {stepEditor() as JSX.Element}
       </StepEditorWrapperContext>,
     );
   }
 
-  function customActionHandler(
-    action: CustomAction,
-    step: Step | null,
-    sequence: Sequence,
-    context: CustomActionHandlerContext,
-  ) {
-    if (customActionHandlerRef) {
-      customActionHandlerRef(action, step, sequence, context);
-    }
-  }
-
   function tryDestroy() {
-    Presenter.tryDestroy(editorRootRef);
-
-    if (controllerRef) {
-      controllerRef.setDesigner(null);
+    if (controller) {
+      controller.setDesigner(null);
     }
-    if (designerRef) {
-      designerRef.destroy();
-      designerRef = null;
+    if (designer()) {
+      designer()!.destroy();
+      setDesigner(null);
       // console.log('sqd: designer destroyed');
     }
   }
 
-  //   onMount(() => {
-  //     onDefinitionChangeRef = props.onDefinitionChange;
-  //   });
-
-  //   onMount(() => {
-  //     onSelectedStepIdChangedRef = props.onSelectedStepIdChanged;
-  //   });
-
-  //   onMount(() => {
-  //     onIsEditorCollapsedChangedRef = props.onIsEditorCollapsedChanged;
-  //   });
-
-  //   onMount(() => {
-  //     onIsToolboxCollapsedChangedRef = props.onIsToolboxCollapsedChanged;
-  //   });
-
-  //   onMount(() => {
-  //     rootEditorRef = props.rootEditor;
-  //   });
-
-  //   onMount(() => {
-  //     stepEditorRef = props.stepEditor;
-  //   });
-
-  //   onMount(() => {
-  //     customActionHandlerRef = props.customActionHandler;
-  //   });
-
   onMount(() => {
-    if (!placeholder) {
-      return;
-    }
-
-    if (designerRef) {
-      const isNotChanged = definition.value === designerRef.getDefinition();
-      if (isNotChanged) {
-        if (selectedStepId !== undefined && selectedStepId !== designerRef.getSelectedStepId()) {
-          if (selectedStepId) {
-            designerRef.selectStepById(selectedStepId);
-          } else {
-            designerRef.clearSelectedStep();
-          }
-          // console.log('sqd: selected step updated');
-        }
-
-        if (isReadonly !== undefined && isReadonly !== designerRef.isReadonly()) {
-          designerRef.setIsReadonly(isReadonly);
-          // console.log('sqd: isReadonly updated');
-        }
-        if (isToolboxCollapsed !== undefined && isToolboxCollapsed !== designerRef.isToolboxCollapsed()) {
-          designerRef.setIsToolboxCollapsed(isToolboxCollapsed);
-          // console.log('sqd: isToolboxCollapsed updated');
-        }
-        if (isEditorCollapsed !== undefined && isEditorCollapsed !== designerRef.isEditorCollapsed()) {
-          designerRef.setIsEditorCollapsed(isEditorCollapsed);
-          // console.log('sqd: isEditorCollapsed updated');
-        }
-        return;
-      }
-
-      tryDestroy();
-    }
-
-    const designer = Designer.create(placeholder()!, definition.value, {
-      theme,
-      undoStackSize,
-      toolbox: toolbox
-        ? {
-            ...toolbox,
-            isCollapsed: isToolboxCollapsed,
-          }
-        : false,
-      steps,
-      validator,
-      controlBar,
-      contextMenu,
-      keyboard,
-      preferenceStorage,
-      editors:
-        rootEditorRef && stepEditorRef
+    setDesigner(
+      Designer.create(placeholder()!, definition.value, {
+        theme,
+        undoStackSize,
+        toolbox: toolboxConfiguration
           ? {
-              isCollapsed: isEditorCollapsed,
-              rootEditorProvider,
-              stepEditorProvider,
+              ...toolboxConfiguration,
+              isCollapsed: props.isToolboxCollapsed,
             }
           : false,
-      customActionHandler: customActionHandlerRef && customActionHandler,
-      extensions,
-      i18n,
-      isReadonly,
-    });
-    if (controllerRef) {
-      controllerRef.setDesigner(designer as unknown as Designer<Definition>);
+        steps: stepsConfiguration,
+        validator: validatorConfiguration,
+        controlBar,
+        contextMenu,
+        keyboard,
+        preferenceStorage,
+        editors:
+          rootEditor && stepEditor
+            ? {
+                isCollapsed: props.isEditorCollapsed,
+                rootEditorProvider,
+                stepEditorProvider,
+              }
+            : false,
+        customActionHandler: customActionHandler ?? (() => {}),
+        extensions,
+        i18n,
+        isReadonly: props.isReadonly,
+      }),
+    );
+    if (controller) {
+      controller.setDesigner(designer() as unknown as Designer<Definition>);
     }
-    if (selectedStepId) {
-      designer.selectStepById(selectedStepId);
+    if (props.selectedStepId) {
+      designer()?.selectStepById(props.selectedStepId);
     }
 
-    designer.onReady.subscribe(forwardDefinition);
-    designer.onDefinitionChanged.subscribe(forwardDefinition);
+    // 由于不清楚subscribe内部执行逻辑，暂时保留其源生用法，作为Designer属性变化的副作用
+    // createEffect用于实时更新Designer属性
 
-    designer.onSelectedStepIdChanged.subscribe((stepId) => {
-      if (onSelectedStepIdChangedRef) {
-        onSelectedStepIdChangedRef(stepId);
-      }
+    designer()?.onReady.subscribe(forwardDefinition);
+
+    createEffect(() => {
+      props.definition.value && props.definition.value !== designer()?.getDefinition() && designer()?.replaceDefinition(props.definition.value);
     });
-    designer.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {
-      if (onIsToolboxCollapsedChangedRef) {
-        onIsToolboxCollapsedChangedRef(isCollapsed);
-      }
+    designer()?.onDefinitionChanged.subscribe(forwardDefinition);
+
+    createEffect(() => {
+      props.selectedStepId && designer()?.selectStepById(props.selectedStepId);
     });
-    designer.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {
-      if (onIsEditorCollapsedChangedRef) {
-        onIsEditorCollapsedChangedRef(isCollapsed);
-      }
+    designer()?.onSelectedStepIdChanged.subscribe((stepId) => {
+      onSelectedStepIdChanged?.(stepId);
     });
 
-    designerRef = designer;
+    createEffect(() => {
+      props.isToolboxCollapsed && designer()?.setIsToolboxCollapsed(props.isToolboxCollapsed);
+    });
+    designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {
+      onIsToolboxCollapsedChanged?.(isCollapsed);
+    });
+
+    createEffect(() => {
+      props.isEditorCollapsed && designer()?.setIsEditorCollapsed(props.isEditorCollapsed);
+    });
+    designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {
+      onIsEditorCollapsedChanged?.(isCollapsed);
+    });
   });
 
   onMount(() => {
     return tryDestroy;
   });
 
-  return <div ref={setPlaceholder} data-testid="designer" class="sqd-designer-react"></div>;
+  return <div ref={setPlaceholder} data-testid="designer" class="sqd-designer-solid h-full w-full"></div>;
 }

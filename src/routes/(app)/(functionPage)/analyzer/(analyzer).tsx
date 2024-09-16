@@ -15,10 +15,10 @@ import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMons
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import FlowEditorUrl from "~/components/module/flowEditor-page";
+import FlowEditor from "~/components/module/flowEditor-page-solid";
 import { clientOnly } from "@solidjs/start";
 
-const FlowEditor = clientOnly(() => import("~/components/module/flowEditor-page"));
+// const FlowEditor = clientOnly(() => import("~/components/module/flowEditor-page-solid"));
 
 
 
@@ -53,8 +53,6 @@ export default function AnalyzerIndexClient() {
   const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
   const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
   const [defaultMonsterList] = createSignal(store.monsterPage.monsterList);
-
-  let FlowCanvas: HTMLDivElement;
 
   const test = {
     character: {
