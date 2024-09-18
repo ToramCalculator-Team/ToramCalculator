@@ -1308,7 +1308,7 @@ export default function AnalyzerIndexClient() {
           {computeResult()}
         </div>
       </OverlayScrollbarsComponent>
-      <FlowEditor />
+      {/* <FlowEditor /> */}
       <Dialog state={dialogState()} setState={setDialogState}>
         <div class="Content flex w-full flex-col overflow-y-auto p-2 lg:p-4">
           <div class="Title flex items-center gap-6">

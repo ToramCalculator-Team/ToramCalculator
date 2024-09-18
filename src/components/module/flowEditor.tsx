@@ -184,6 +184,8 @@ const startDefinition: WorkflowDefinition = {
   ],
 };
 
+const [StateMachineStatus, setStateMachineStatus] = createSignal();
+
 export default function FlowEditor() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 

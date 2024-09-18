@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import {
   Definition,
   ToolboxConfiguration,
@@ -9,9 +9,6 @@ import {
   StepsConfiguration,
   DesignerExtension,
   CustomActionHandler,
-  CustomActionHandlerContext,
-  CustomAction,
-  Sequence,
   ValidatorConfiguration,
   RootEditorProvider,
   StepEditorProvider,
@@ -22,9 +19,9 @@ import {
 import { RootEditorWrapperContext } from "./RootEditorWrapper";
 import { StepEditorWrapperContext } from "./StepEditorWrapper";
 import { wrapDefinition, WrappedDefinition } from "./WrappedDefinition";
-import { Presenter } from "./Presenter";
+import { render } from "solid-js/web";
 
-const externalEditorClassName = "sqd-editor-react";
+const externalEditorClassName = "sqd-editor-solid";
 
 export type ReactToolboxConfiguration = Omit<ToolboxConfiguration, "isCollapsed">;
 
@@ -49,9 +46,6 @@ export interface SequentialWorkflowDesignerProps<TDefinition extends Definition>
   toolboxConfiguration: false | ReactToolboxConfiguration;
   isToolboxCollapsed?: boolean;
   onIsToolboxCollapsedChanged?: (isCollapsed: boolean) => void;
-  /**
-   * @description If true, the control bar will be displayed.
-   */
   controlBar: boolean;
   contextMenu?: boolean;
   keyboard?: boolean | KeyboardConfiguration;
@@ -99,31 +93,41 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
     if (!rootEditor) {
       throw new Error("Root editor is not provided");
     }
-    return Presenter.render(
-      externalEditorClassName,
-      <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
-        {rootEditor() as JSX.Element}
-      </RootEditorWrapperContext>,
+    const container = document.createElement("div");
+    container.className = externalEditorClassName;
+    render(
+      () => (
+        <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
+          {rootEditor() as JSX.Element}
+        </RootEditorWrapperContext>
+      ),
+      container,
     );
+    return container;
   }
 
   function stepEditorProvider(step: Step, context: StepEditorContext, def: Definition, isReadonly: boolean) {
     if (!stepEditor) {
       throw new Error("Step editor is not provided");
     }
-    return Presenter.render(
-      externalEditorClassName,
-      <StepEditorWrapperContext step={step} definition={def} context={context} isReadonly={isReadonly}>
-        {stepEditor() as JSX.Element}
-      </StepEditorWrapperContext>,
+    const container = document.createElement("div");
+    container.className = externalEditorClassName;
+    render(
+      () => (
+        <StepEditorWrapperContext step={step} definition={def} context={context} isReadonly={isReadonly}>
+          {stepEditor() as JSX.Element}
+        </StepEditorWrapperContext>
+      ),
+      container,
     );
+
+    return container;
   }
 
   function tryDestroy() {
     if (designer()) {
       designer()!.destroy();
       setDesigner(null);
-      // console.log('sqd: designer destroyed');
     }
   }
 
@@ -168,7 +172,9 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
     designer()?.onReady.subscribe(forwardDefinition);
 
     createEffect(() => {
-      props.definition.value && props.definition.value !== designer()?.getDefinition() && designer()?.replaceDefinition(props.definition.value);
+      props.definition.value &&
+        props.definition.value !== designer()?.getDefinition() &&
+        designer()?.replaceDefinition(props.definition.value);
     });
     designer()?.onDefinitionChanged.subscribe(forwardDefinition);
 
@@ -196,11 +202,11 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
 
     createEffect(() => {
       props.isReadonly && designer()?.setIsReadonly(props.isReadonly);
-    })
+    });
 
     createEffect(() => {
       props.isFollowingSelectedStep && props.selectedStepId && designer()?.moveViewportToStep(props.selectedStepId);
-    })
+    });
   });
 
   onMount(() => {
