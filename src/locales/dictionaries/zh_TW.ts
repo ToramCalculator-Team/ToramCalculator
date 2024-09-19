@@ -44,6 +44,7 @@ const dictionary: dictionary = {
       close: "關閉",
       back: "返回",
       filter: "過濾",
+      generateImage: "生成圖片",
     },
     nav: {
       home: "首頁",
@@ -165,7 +166,7 @@ const dictionary: dictionary = {
       pageTitle: "技能資訊表",
       description: "此頁面正在開發中，請勿使用",
     },
-    analyze: {
+    analyzer: {
       pageTitle: "流程計算器",
       description: "正在開發中，請勿使用",
       modifiers: "加成項",

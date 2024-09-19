@@ -16,6 +16,8 @@ import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
 import { SelectAnalyzer } from "~/schema/analyzer";
+import { useParams } from "@solidjs/router";
+import * as Icon from "~/lib/icon";
 
 export type skillSequenceList = {
   name: string;
@@ -23,6 +25,7 @@ export type skillSequenceList = {
 };
 
 export default function AnalyzerIndexClient() {
+  const params = useParams();
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   createEffect(() => {
@@ -1252,60 +1255,14 @@ export default function AnalyzerIndexClient() {
 
   return (
     <>
-      <div class="Title sticky left-0 mt-3 flex flex-col gap-9 p-3 py-5 lg:pt-12">
-        <div class="Row flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
-          <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary().ui.analyzer.pageTitle}</h1>
-          <div class="Control flex flex-1 gap-2">
-            <input
-              type="search"
-              placeholder={dictionary().ui.searchPlaceholder}
-              class="lg:border-b-1.5 w-full flex-1 rounded-sm border-transition-color-20 bg-transition-color-8 px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:px-5 lg:font-normal"
-            />
+      <div class="Title flex flex-col p-3 lg:pt-12">
+        <div class="Content flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
+          <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{analyzer.name}</h1>
+          <div class="Control flex gap-3">
+            <Button icon={<Icon.Line.Share />}>{dictionary().ui.actions.generateImage}</Button>
+            <Button icon={<Icon.Line.Save />}>{dictionary().ui.actions.save}</Button>
           </div>
         </div>
-        <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
-          {dictionary().ui.analyzer.description}
-        </div>
-      </div>
-      <div class="Content flex flex-col gap-4 p-3">
-        <div class="MonsterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div class="Title flex gap-4">
-            <span class="Key">怪物：</span>
-            <span class="MonsterName font-bold">{monster.name}</span>
-          </div>
-          {/* <LongSearchBox dictionary={dictionary} monsterList={monsterList} setMonster={setMonster} /> */}
-        </div>
-        <div class="TeamConfig flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div class="Title flex flex-col gap-4">队伍配置：</div>
-          <div class="Content flex flex-col">
-            {team().map((member, index) => {
-              return (
-                <div class="Member flex flex-col gap-4 border-b border-transition-color-20 p-4 lg:flex-row lg:items-center">
-                  <div class="CharacterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
-                    <div class="Title flex gap-4">
-                      <span class="Key">角色：</span>
-                      <span class="CharacterName font-bold">{member.config.name}</span>
-                    </div>
-                  </div>
-                  <div class="SkillSequence flex flex-col gap-4 lg:flex-row lg:items-center">
-                    <div class="Title">流程：</div>
-                    <div class="Content flex flex-wrap gap-2">
-                      {member.actionQueue.map((skill, index) => {
-                        return <Button size="sm">{skill.name}</Button>;
-                      })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <Button size="sm" level="primary" onClick={startCompute}>
-          开始计算
-        </Button>
-        <a href="./analyzer/sss">configPage</a>
-        {computeResult()}
       </div>
       {/* <FlowEditor /> */}
       <Dialog state={dialogState()} setState={setDialogState}>

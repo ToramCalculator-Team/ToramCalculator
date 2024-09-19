@@ -1,6 +1,5 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 import * as Comlink from "comlink";
-import { defaultSM } from "./analyzerWorker/stateMachine";
 
 const worker = self as unknown as SharedWorkerGlobalScope;
 
@@ -12,10 +11,6 @@ export const dw = {
   async getMonsterList(pg: PGliteWorker) {
     return await pg.exec("SELECT * FROM monster");
   },
-  runSM() {
-    defaultSM.start();
-    return defaultSM.consoles
-  }
 };
 
 /**

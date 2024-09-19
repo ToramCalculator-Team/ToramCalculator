@@ -913,11 +913,11 @@ export class CharacterData {
     this.mainWeaponAtk = new modifiers(ModifierType.DEFAULT);
     this.mainWeaponAtk.modifiers.static.fixed[0] = {
       value: this.mainWeapon.refinement,
-      origin: dictionary.ui.analyze.dialogData.mainWeapon.refinement,
+      origin: dictionary.ui.analyzer.dialogData.mainWeapon.refinement,
     };
     this.mainWeaponAtk.modifiers.static.percentage[0] = {
       value: Math.pow(this.mainWeapon.refinement, 2),
-      origin: dictionary.ui.analyze.dialogData.mainWeapon.refinement,
+      origin: dictionary.ui.analyzer.dialogData.mainWeapon.refinement,
     };
     this.mainWeaponAtk.update = () => {
       this.mainWeaponAtk.baseValue = dynamicTotalValue(this.mainWeapon.baseAtk);
@@ -1014,7 +1014,7 @@ export class CharacterData {
     this.pStab = new modifiers(ModifierType.DEFAULT, 0);
     this.pStab.modifiers.static.fixed[0] = {
       value: config.mainWeapon?.stability ?? 0,
-      origin: dictionary.ui.analyze.dialogData.mainWeapon.stability,
+      origin: dictionary.ui.analyzer.dialogData.mainWeapon.stability,
     };
     this.pStab.update = () => {
       this.pStab.modifiers.static.fixed[1] = {
@@ -1026,10 +1026,10 @@ export class CharacterData {
               CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.stabT * dynamicTotalValue(this.dex),
           ) ?? 0,
         origin: [
-          dictionary.ui.analyze.dialogData.str,
-          dictionary.ui.analyze.dialogData.int,
-          dictionary.ui.analyze.dialogData.agi,
-          dictionary.ui.analyze.dialogData.dex,
+          dictionary.ui.analyzer.dialogData.str,
+          dictionary.ui.analyzer.dialogData.int,
+          dictionary.ui.analyzer.dialogData.agi,
+          dictionary.ui.analyzer.dialogData.dex,
         ].join(" + "),
       };
     };
@@ -1074,7 +1074,7 @@ export class CharacterData {
     this.am.update = () => {
       this.am.modifiers.static.fixed[0] = {
         value: max(0, floor((dynamicTotalValue(this.aspd) - 1000) / 180)),
-        origin: dictionary.ui.analyze.dialogData.aspd,
+        origin: dictionary.ui.analyzer.dialogData.aspd,
       };
     };
     this.am.update();
@@ -1083,7 +1083,7 @@ export class CharacterData {
     this.cm.update = () => {
       this.cm.modifiers.static.fixed[0] = {
         value: min(50 + floor((dynamicTotalValue(this.cspd) - 1000) / 180), floor(dynamicTotalValue(this.cspd) / 20)),
-        origin: dictionary.ui.analyze.dialogData.cspd,
+        origin: dictionary.ui.analyzer.dialogData.cspd,
       };
     };
     this.cm.update();

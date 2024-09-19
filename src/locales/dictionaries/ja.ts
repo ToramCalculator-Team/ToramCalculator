@@ -45,6 +45,7 @@ const dictionary: dictionary = {
       close: "閉じる",
       back: "戻る",
       filter: "フィルター",
+      generateImage: "画像生成",
     },
     nav: {
       home: "ホーム",
@@ -170,7 +171,7 @@ const dictionary: dictionary = {
       pageTitle: "スキル情報テーブル",
       description: "このページは開発中です。使用しないでください。",
     },
-    analyze: {
+    analyzer: {
       pageTitle: "プロセス計算機",
       description: "開発中です。使用しないでください。",
       modifiers: "補正項目",

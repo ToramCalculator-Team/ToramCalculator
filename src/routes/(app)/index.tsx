@@ -17,6 +17,7 @@ import { type SelectSkillCost } from "~/schema/skill_cost";
 import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import RandomBallBackground from "~/components/module/randomBallBg";
 
 type Related =
   | {
@@ -198,9 +199,7 @@ export default function Index() {
         </p>
       </div>
     ) : (
-      <div
-        class={`ResultContent flex h-full flex-1 flex-col gap-2 rounded bg-transition-color-8 p-2 backdrop-blur-md`}
-      >
+      <div class={`ResultContent flex h-full flex-1 flex-col gap-2 rounded bg-transition-color-8 p-2 backdrop-blur-md`}>
         <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer>
           {Object.entries(searchResult()).map(([key, value], groupIndex) => {
             let icon: JSX.Element = null;
@@ -233,7 +232,7 @@ export default function Index() {
                         ...resultListSate().slice(groupIndex + 1),
                       ])
                     }
-                    class={`Group outline-none focus-within:outline-none flex cursor-pointer justify-center gap-2 bg-primary-color ${resultListSate()[groupIndex] ? "" : ""} rounded px-3 py-4`}
+                    class={`Group flex cursor-pointer justify-center gap-2 bg-primary-color outline-none focus-within:outline-none ${resultListSate()[groupIndex] ? "" : ""} rounded px-3 py-4`}
                   >
                     {icon}
                     <span class="w-full text-left">
@@ -398,6 +397,7 @@ export default function Index() {
 
   return (
     <MetaProvider>
+      <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
       <Motion.div
         animate={{ opacity: [0, 1] }}
@@ -413,7 +413,8 @@ export default function Index() {
         <Motion.div
           animate={{ opacity: [0, 1] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          class={`Config fixed right-3 top-3 flex gap-1`}>
+          class={`Config fixed right-3 top-3 flex gap-1`}
+        >
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
@@ -486,7 +487,7 @@ export default function Index() {
               </Button>
             </div>
             <div
-              class={`SearchBox group border-b-none box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox border-b-none group box-content flex w-full gap-1 border-transition-color-20 p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -514,9 +515,8 @@ export default function Index() {
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
-               
                 icon={<Icon.Line.Search />}
-                class="outline-none focus-within:outline-none lg:bg-transparent text-accent-color-50 group-hover:text-accent-color"
+                class="text-accent-color-50 outline-none focus-within:outline-none group-hover:text-accent-color lg:bg-transparent"
                 onClick={() => {
                   setIsNullResult(true);
                   if (searchInputValue() === "" || searchInputValue() === null) {
@@ -737,9 +737,7 @@ export default function Index() {
                       <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
-                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">
-                      {dictionary().ui.nav.analyzer}
-                    </span>
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.analyzer}</span>
                   </Button>
                 </a>
               </div>
@@ -747,7 +745,7 @@ export default function Index() {
           </Show>
         </Presence>
       </Motion.div>
-      <Filing />{" "}
+      <Filing />
     </MetaProvider>
   );
 }

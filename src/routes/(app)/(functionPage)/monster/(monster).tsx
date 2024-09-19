@@ -285,7 +285,7 @@ export default function MonsterIndexPage() {
   });
 
   return (
-    <>
+    <main class="flex flex-col w-full overflow-hidden h-[calc(100dvh-67px)] lg:h-dvh">
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
@@ -555,6 +555,6 @@ export default function MonsterIndexPage() {
       <Dialog state={dialogState()} setState={setDialogState}>
         {"emmm..."}
       </Dialog>
-    </>
+    </main>
   );
 }

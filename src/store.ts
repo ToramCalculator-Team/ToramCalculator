@@ -65,11 +65,11 @@ export type Store = {
     characterFormState: FormSate;
     filterState: boolean;
   };
-  analyzePage: {
-    analyzeList: SelectAnalyzer[];
-    analyze: SelectAnalyzer;
-    analyzeDialogState: boolean;
-    analyzeFormState: FormSate;
+  analyzer: SelectAnalyzer;
+  analyzerPage: {
+    analyzerList: SelectAnalyzer[];
+    analyzerDialogState: boolean;
+    analyzerFormState: FormSate;
     filterState: boolean;
   };
 };
@@ -130,11 +130,11 @@ export const initialStore: Store = {
     characterFormState: "CREATE",
     filterState: false
   },
-  analyzePage: {
-    analyzeList: [],
-    analyze: defaultSelectAnalyzer,
-    analyzeDialogState: false,
-    analyzeFormState: "CREATE",
+  analyzer: defaultSelectAnalyzer,
+  analyzerPage: {
+    analyzerList: [],
+    analyzerDialogState: false,
+    analyzerFormState: "CREATE",
     filterState: false
   }
 };

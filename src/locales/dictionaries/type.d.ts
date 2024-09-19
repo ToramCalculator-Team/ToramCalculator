@@ -38,6 +38,7 @@ interface dictionary {
       close: string;
       back: string;
       filter: string;
+      generateImage: string;
     };
     nav: {
       home: string;
@@ -158,7 +159,7 @@ interface dictionary {
       pageTitle: string;
       description: string;
     };
-    analyze: {
+    analyzer: {
       pageTitle: string;
       description: string;
       actualValue: string;

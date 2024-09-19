@@ -26,9 +26,9 @@ export const InsertAnalyzerSchema = createInsertSchema(Analyzer).extend({
 });
 
 export const defaultSelectAnalyzer: SelectAnalyzer = {
-  id: "",
+  id: "defaultSelectAnalyzer",
 
-  name: "",
+  name: "defaultSelectAnalyzer",
   monsterId: null,
   characterId: null,
   extraDetails: "",

@@ -1,6 +1,460 @@
 .sqd-workspace,
-.sqd-workspace *, 
+.sqd-workspace *,
 .sqd-drag,
 .sqd-drag * {
-    transition: all 0ms !important;
+  transition: all 0ms !important;
+}
+
+/* .sqd-designer */
+.sqd-designer {
+  @apply bg-primary-color flex w-full h-full
+}
+
+.sqd-designer,
+.sqd-drag,
+.sqd-context-menu {
+  font-size: 13px;
+  line-height: 1em;
+}
+
+.sqd-hidden {
+  display: none !important;
+}
+
+.sqd-disabled {
+  opacity: 0.25;
+}
+
+/* .sqd-toolbox */
+.sqd-toolbox,
+.sqd-toolbox-filter-input {
+  font-size: 11px;
+  line-height: 1.2em;
+}
+
+.sqd-toolbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  box-sizing: border-box;
+  width: 130px;
+  -webkit-user-select: none;
+  user-select: none;
+  background: #fff;
+  box-shadow:
+    0 0 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+
+.sqd-toolbox-header {
+  position: relative;
+  padding: 15px 10px;
+  cursor: pointer;
+}
+
+.sqd-toolbox-header-title {
+  color: #000;
+  display: block;
+  font-size: 1.2em;
+  line-height: 1em;
+  font-weight: bold;
+}
+
+.sqd-toolbox-toggle-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0;
+}
+
+.sqd-toolbox-header:hover .sqd-toolbox-toggle-icon {
+  opacity: 0.6;
+}
+
+.sqd-scrollbox {
+  position: relative;
+  overflow: hidden;
+}
+
+.sqd-scrollbox-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.sqd-toolbox-filter {
+  padding: 0 10px 10px;
+}
+
+.sqd-toolbox-filter-input {
+  display: block;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  outline: none;
+  width: 100%;
+  background: #fff;
+  color: #000;
+  border: 1px solid #c3c3c3;
+  border-radius: 10px;
+}
+
+.sqd-toolbox-filter-input:focus {
+  border-color: #939393;
+}
+
+.sqd-toolbox-group-title {
+  text-align: center;
+  padding: 5px 0;
+  margin: 0 0 10px;
+  width: 100%;
+  color: #000;
+  background: #e5e5e5;
+  border-radius: 10px;
+}
+
+.sqd-toolbox-item {
+  position: relative;
+  box-sizing: border-box;
+  margin: 0 0 10px;
+  width: 100%;
+  cursor: move;
+  color: #000;
+  border: 1px solid #c3c3c3;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+  background: #fff;
+  border-radius: 5px;
+}
+.sqd-toolbox-item:hover {
+  border-color: #939393;
+  background: #fff;
+}
+
+.sqd-toolbox-item-icon {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  margin-top: -10px;
+  width: 20px;
+  height: 20px;
+}
+
+.sqd-toolbox-item-icon-image {
+  width: 100%;
+  height: 100%;
+}
+
+.sqd-toolbox-item-text {
+  position: relative;
+  display: block;
+  padding: 10px 10px 10px 30px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.sqd-drag {
+  position: absolute;
+  z-index: 9999999;
+  pointer-events: none;
+}
+
+/* .sqd-control-bar */
+.sqd-control-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 20;
+  padding: 8px 0 8px 8px;
+  white-space: nowrap;
+  background: #fff;
+  box-shadow:
+    0 0 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+
+.sqd-control-bar-button {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+  cursor: pointer;
+  box-sizing: border-box;
+  border: 1px solid #c3c3c3;
+  background: #fff;
+  border-radius: 5px;
+}
+
+.sqd-control-bar-button:hover {
+  border-color: #939393;
+  background: #fff;
+}
+
+.sqd-control-bar-button-icon {
+  width: 24px;
+  height: 24px;
+  margin: 3px 0 0 3px;
+}
+
+.sqd-control-bar-button .sqd-icon-path {
+  fill: #000;
+}
+.sqd-control-bar-button.sqd-delete .sqd-icon-path {
+  fill: #e01a24;
+}
+
+.sqd-control-bar-button.sqd-disabled .sqd-control-bar-button-icon {
+  opacity: 0.2;
+}
+
+/* .sqd-smart-editor */
+.sqd-smart-editor-toggle {
+  position: absolute;
+  top: 0;
+  z-index: 29;
+  width: 36px;
+  height: 64px;
+  border-bottom-left-radius: 10px;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.sqd-smart-editor-toggle-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+}
+
+.sqd-smart-editor-toggle:hover .sqd-smart-editor-toggle-icon {
+  opacity: 0.6;
+}
+
+.sqd-smart-editor {
+  z-index: 30;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.sqd-layout-desktop .sqd-smart-editor {
+  position: relative;
+  width: 300px;
+}
+
+.sqd-layout-desktop .sqd-smart-editor-toggle {
+  right: 300px;
+}
+
+.sqd-layout-desktop .sqd-smart-editor-toggle.sqd-collapsed {
+  right: 0;
+}
+
+.sqd-layout-mobile .sqd-smart-editor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 41px;
+}
+
+.sqd-layout-mobile .sqd-smart-editor-toggle {
+  left: 5px;
+}
+
+.sqd-layout-mobile .sqd-smart-editor-toggle.sqd-collapsed {
+  left: auto;
+  right: 0;
+}
+
+/* .sqd-context-menu */
+.sqd-context-menu {
+  position: absolute;
+  z-index: 2000000000;
+  overflow: hidden;
+  padding: 5px;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.sqd-context-menu-group,
+.sqd-context-menu-item {
+  width: 130px;
+  padding: 8px 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.sqd-context-menu-group {
+  font-size: 11px;
+  line-height: 1em;
+  color: #888;
+}
+
+.sqd-context-menu-item {
+  cursor: pointer;
+  transition: background 70ms;
+  color: #000;
+  border-radius: 4px;
+}
+.sqd-context-menu-item:hover {
+  background: #eee;
+}
+
+/* .sqd-workspace */
+.sqd-workspace {
+  flex: 1;
+  position: relative;
+  display: block;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.sqd-workspace-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: move;
+}
+
+.sqd-label-text {
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.sqd-placeholder .sqd-placeholder-rect {
+  transition: fill 100ms;
+  fill: #d8d8d8;
+  stroke: #6a6a6a;
+  stroke-width: 1;
+  stroke-dasharray: 3;
+}
+
+.sqd-placeholder.sqd-hover .sqd-placeholder-rect {
+  fill: #ed4800;
+}
+
+.sqd-step-task-text {
+  text-anchor: left;
+  dominant-baseline: central;
+}
+
+.sqd-toolbox-item .sqd-toolbox-item-icon.sqd-no-icon {
+  background: #c6c6c6;
+  border-radius: 4px;
+}
+
+.sqd-line-grid-path {
+  stroke: #e3e3e3;
+  stroke-width: 1;
+}
+
+.sqd-join {
+  stroke-width: 2;
+  stroke: #000;
+}
+
+.sqd-region {
+  stroke: #cecece;
+  stroke-width: 2;
+  stroke-dasharray: 3;
+}
+
+.sqd-region.sqd-selected {
+  stroke: #ed4800;
+  stroke-width: 2;
+  stroke-dasharray: 0;
+}
+
+.sqd-placeholder-icon-path {
+  fill: #2b2b2b;
+}
+.sqd-placeholder.sqd-hover .sqd-placeholder-icon-path {
+  fill: #fff;
+}
+
+.sqd-validation-error {
+  fill: #ffa200;
+}
+.sqd-validation-error-icon-path {
+  fill: #000;
+}
+
+/* internal */
+
+.sqd-root-start-stop-circle {
+  fill: #2c18df;
+}
+.sqd-root-start-stop-icon {
+  fill: #fff;
+}
+
+.sqd-step-task .sqd-step-task-rect {
+  fill: #fff;
+  stroke-width: 1;
+  stroke: #c3c3c3;
+  filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.15));
+}
+.sqd-step-task .sqd-step-task-rect.sqd-selected {
+  stroke: #ed4800;
+  stroke-width: 2;
+}
+.sqd-step-task .sqd-step-task-text {
+  fill: #000;
+}
+.sqd-step-task .sqd-step-task-empty-icon {
+  fill: #c6c6c6;
+}
+.sqd-step-task .sqd-input {
+  fill: #fff;
+  stroke-width: 2;
+  stroke: #000;
+}
+.sqd-step-task .sqd-output {
+  fill: #000;
+  stroke-width: 0;
+}
+
+.sqd-step-switch > .sqd-label-primary > .sqd-label-text {
+  fill: #fff;
+}
+.sqd-step-switch > .sqd-label-primary > .sqd-label-rect {
+  fill: #2411db;
+  stroke-width: 0;
+}
+.sqd-step-switch > .sqd-label-secondary > .sqd-label-rect {
+  fill: #000;
+  stroke-width: 0;
+}
+.sqd-step-switch > .sqd-label-secondary > .sqd-label-text {
+  fill: #fff;
+}
+.sqd-step-switch > g > .sqd-input {
+  fill: #fff;
+  stroke-width: 2;
+  stroke: #000;
+}
+
+.sqd-step-container > .sqd-label > .sqd-label-text {
+  fill: #fff;
+}
+.sqd-step-container > .sqd-label > .sqd-label-rect {
+  fill: #2411db;
+  stroke-width: 0;
+}
+.sqd-step-container > g > .sqd-input {
+  fill: #fff;
+  stroke-width: 2;
+  stroke: #000;
 }

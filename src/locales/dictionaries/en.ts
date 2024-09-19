@@ -44,6 +44,7 @@ const dictionary: dictionary = {
       close: "close",
       back: "Back",
       filter: "Filter",
+      generateImage: "Generate Image",
     },
     nav: {
       home: "Home",
@@ -165,7 +166,7 @@ const dictionary: dictionary = {
       pageTitle: "Skill",
       description: "Emmm..............",
     },
-    analyze: {
+    analyzer: {
       pageTitle: "Analyzer",
       description: "Emmm..............",
       modifiers: "Modifiers",
