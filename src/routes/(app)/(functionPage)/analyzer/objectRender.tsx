@@ -42,9 +42,9 @@ export const ObjectRenderer = (props: {
     obj: unknown,
     path: string[] = [],
     d:
-      | ReturnType<typeof getDictionary>["ui"]["analyze"]["dialogData"]
+      | ReturnType<typeof getDictionary>["ui"]["analyzer"]["dialogData"]
       | Record<string, string | number | object>
-      | undefined = dictionary.ui.analyze.dialogData,
+      | undefined = dictionary.ui.analyzer.dialogData,
   ) => {
     return Object.entries(obj ?? {}).map(([key, value]) => {
       const currentPath = [...path, key].join(".");
@@ -75,24 +75,24 @@ export const ObjectRenderer = (props: {
                   <div
                     class={`TotalValue flex flex-col rounded-sm p-1 ${!(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0 || value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && "w-full"}`}
                   >
-                    <div class="Key text-sm text-accent-color-70">{dictionary.ui.analyze.actualValue}</div>
+                    <div class="Key text-sm text-accent-color-70">{dictionary.ui.analyzer.actualValue}</div>
                     <div class={`` + actualValueClass}>{dynamicTotalValue(value)}</div>
                   </div>
                   <div class="BaseVlaue flex w-[25%] flex-col rounded-sm p-1 lg:w-[10%]">
                     <span class="BaseValueName text-sm text-accent-color-70">
-                      {dictionary.ui.analyze.baseValue}
+                      {dictionary.ui.analyzer.baseValue}
                     </span>
                     <span class={`` + baseValueClass}>{value.baseValue}</span>
                   </div>
                   <div class="ModifierVlaue flex w-full flex-1 flex-col rounded-sm p-1">
                     <span class="ModifierValueName px-1 text-sm text-accent-color-70">
-                      {dictionary.ui.analyze.modifiers}
+                      {dictionary.ui.analyzer.modifiers}
                     </span>
                     <div class="ModifierValueContent flex gap-1">
                       {(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0) && (
                         <div class="ModifierStaticBox flex flex-1 items-center px-1">
                           <span class="ModifierStaticName text-sm text-accent-color-70">
-                            {dictionary.ui.analyze.staticModifiers}
+                            {dictionary.ui.analyzer.staticModifiers}
                           </span>
                           <div class="ModifierStaticContent flex flex-wrap gap-1 text-nowrap rounded-sm p-1">
                             {value.modifiers.static.fixed.length > 0 && (
@@ -129,7 +129,7 @@ export const ObjectRenderer = (props: {
                       {(value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && (
                         <div class="ModifierDynamicBox flex flex-1 items-center px-1">
                           <span class="ModifierDynamicName text-sm text-accent-color-70">
-                            {dictionary.ui.analyze.dynamicModifiers}
+                            {dictionary.ui.analyzer.dynamicModifiers}
                           </span>
                           <div class="ModifierDynamicContent flex flex-wrap gap-1 text-nowrap rounded-sm p-1">
                             {value.modifiers.dynamic.fixed.length > 0 && (
