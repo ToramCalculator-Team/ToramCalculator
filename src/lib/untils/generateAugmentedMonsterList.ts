@@ -1,6 +1,27 @@
 import { SelectMonster } from "~/schema/monster";
 import { dictionary } from "~/locales/dictionaries/type";
 
+type Star = 0 | 1 | 2 | 3 | 4;
+
+export const generateMonsterByStar = (
+  baseMonster: SelectMonster,
+  star: Star,
+  generateName?: boolean,
+  dictionary?: dictionary,
+): SelectMonster => {
+  const resultMonster = {
+    ...baseMonster,
+    name: baseMonster.name + (generateName ? " " + dictionary?.ui.monster.monsterDegreeOfDifficulty[star] : null),
+    baseLv: baseMonster.baseLv * [-10, 0, 10, 20, 40][star],
+    experience: baseMonster.experience * [0.1, 1, 2, 5, 10][star],
+    maxhp: baseMonster.maxhp * [0.1, 1, 2, 5, 10][star],
+    physicalDefense: baseMonster.physicalDefense * [0.1, 1, 2, 4, 6][star],
+    magicalDefense: baseMonster.magicalDefense * [0.1, 1, 2, 4, 6][star],
+    avoidance: baseMonster.avoidance * [0.1, 1, 2, 4, 6][star],
+  } satisfies SelectMonster;
+  return resultMonster;
+};
+
 /**
  * 通过基本列表生成包含其他星级定点boss属性的列表
  * @param baseMonsterList 基本列表
@@ -15,42 +36,11 @@ export const generateAugmentedMonsterList = (baseMonsterList: SelectMonster[], d
       result.push(monster);
     } else {
       result.push(
-        {
-          ...monster,
-          name: monster.name + " " + dictionary.ui.monster.monsterDegreeOfDifficulty[1],
-        },
-        {
-          ...monster,
-          id: monster.id + "**",
-          name: monster.name + " " + dictionary.ui.monster.monsterDegreeOfDifficulty[2],
-          baseLv: monster.baseLv !== null ? monster.baseLv + 10 : 0,
-          experience: monster.experience !== null ? monster.experience * 2 : 0,
-          maxhp: monster.maxhp !== null ? monster.maxhp * 2 : 0,
-          physicalDefense: monster.physicalDefense !== null ? monster.physicalDefense * 2 : 0,
-          magicalDefense: monster.magicalDefense !== null ? monster.magicalDefense * 2 : 0,
-        },
-        {
-          ...monster,
-          id: monster.id + "***",
-          name: monster.name + " " + dictionary.ui.monster.monsterDegreeOfDifficulty[3],
-          baseLv: monster.baseLv !== null ? monster.baseLv + 20 : 0,
-          experience: monster.experience !== null ? monster.experience * 5 : 0,
-          maxhp: monster.maxhp !== null ? monster.maxhp * 5 : 0,
-          physicalDefense: monster.physicalDefense !== null ? monster.physicalDefense * 4 : 0,
-          magicalDefense: monster.magicalDefense !== null ? monster.magicalDefense * 4 : 0,
-          avoidance: monster.avoidance !== null ? monster.avoidance * 4 : 0,
-        },
-        {
-          ...monster,
-          id: monster.id + "****",
-          name: monster.name + " " + dictionary.ui.monster.monsterDegreeOfDifficulty[4],
-          baseLv: monster.baseLv !== null ? monster.baseLv + 40 : 0,
-          experience: monster.experience !== null ? monster.experience * 10 : 0,
-          maxhp: monster.maxhp !== null ? monster.maxhp * 10 : 0,
-          physicalDefense: monster.physicalDefense !== null ? monster.physicalDefense * 6 : 0,
-          magicalDefense: monster.magicalDefense !== null ? monster.magicalDefense * 6 : 0,
-          avoidance: monster.avoidance !== null ? monster.avoidance * 6 : 0,
-        },
+        generateMonsterByStar(monster, 0, true, dictionary),
+        generateMonsterByStar(monster, 1, true, dictionary),
+        generateMonsterByStar(monster, 2, true, dictionary),
+        generateMonsterByStar(monster, 3, true, dictionary),
+        generateMonsterByStar(monster, 4, true, dictionary),
       );
     }
   });

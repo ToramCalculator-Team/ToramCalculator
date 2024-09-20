@@ -45,6 +45,10 @@ const dictionary: dictionary = {
       back: "返回",
       filter: "過濾",
       generateImage: "生成圖片",
+      swap: "替換",
+      checkInfo: "查看詳情",
+      zoomIn: "放大",
+      zoomOut: "縮小",
     },
     nav: {
       home: "首頁",
@@ -264,6 +268,11 @@ const dictionary: dictionary = {
       baseValue: "基礎值",
       staticModifiers: "常態加成",
       dynamicModifiers: "暫時加成",
+      analyzerPage: {
+        monsterConfig: {
+          title: "即將挨揍的怪物"
+        }
+      }
     },
     character: {
       pageTitle: "機體表",

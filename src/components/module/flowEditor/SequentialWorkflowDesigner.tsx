@@ -1,8 +1,7 @@
 import { createEffect, createSignal, JSX, onMount } from "solid-js";
-import {
+import type {
   Definition,
   ToolboxConfiguration,
-  Designer,
   RootEditorContext,
   Step,
   StepEditorContext,
@@ -16,6 +15,7 @@ import {
   I18n,
   PreferenceStorage,
 } from "sequential-workflow-designer";
+import { Designer } from "sequential-workflow-designer";
 import { RootEditorWrapperContext } from "./RootEditorWrapper";
 import { StepEditorWrapperContext } from "./StepEditorWrapper";
 import { wrapDefinition, WrappedDefinition } from "./WrappedDefinition";

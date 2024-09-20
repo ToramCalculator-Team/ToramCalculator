@@ -8,7 +8,7 @@ import { defaultSelectModifiersList } from "~/schema/modifiers_list";
 import { defaultSelectConsumable } from "~/schema/consumable";
 import { defaultSelectSkill } from "~/schema/skill";
 import { defaultSelectPet } from "~/schema/pet";
-import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
@@ -18,6 +18,7 @@ import FlowEditor from "~/components/module/flowEditor";
 import { SelectAnalyzer } from "~/schema/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
+import { defaultSelectImage } from "~/schema/image";
 
 export type skillSequenceList = {
   name: string;
@@ -50,6 +51,11 @@ export default function AnalyzerIndexClient() {
   const analyzer = store.analyzer;
   const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
 
+  const defaultStarArray: number[] = [];
+  analyzer.mobs.forEach((mob) => {
+    defaultStarArray.push(mob.star);
+  });
+  const [starArray, setStarArray] = createSignal(defaultStarArray);
   const [dialogState, setDialogState] = createSignal(false);
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
   const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
@@ -581,6 +587,7 @@ export default function AnalyzerIndexClient() {
     } satisfies SelectCharacter,
     monster: {
       id: "",
+      image: defaultSelectImage,
       imageId: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
@@ -629,7 +636,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -679,7 +686,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -729,7 +736,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -779,7 +786,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -829,7 +836,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "23",
             actionModifiableDurationFormula: "148",
             skillExtraActionType: "Chanting",
@@ -887,7 +894,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -946,7 +953,7 @@ export default function AnalyzerIndexClient() {
             chantingModifiableDurationFormula: "8",
             skillStartupFramesFormula: "0",
             belongToskillId: "",
-            description: null,
+            description: "",
             skillCost: [
               {
                 id: "",
@@ -984,7 +991,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -1043,7 +1050,7 @@ export default function AnalyzerIndexClient() {
             chantingModifiableDurationFormula: "8",
             skillStartupFramesFormula: "0",
             belongToskillId: "",
-            description: null,
+            description: "",
             skillCost: [
               {
                 id: "",
@@ -1262,6 +1269,67 @@ export default function AnalyzerIndexClient() {
             <Button icon={<Icon.Line.Share />}>{dictionary().ui.actions.generateImage}</Button>
             <Button icon={<Icon.Line.Save />}>{dictionary().ui.actions.save}</Button>
           </div>
+        </div>
+      </div>
+      <div class="MobsConfig flex flex-col gap-3 p-3">
+        <div class="ModuleTitle h-12 w-full">{dictionary().ui.analyzer.analyzerPage.monsterConfig.title}</div>
+        <div class="ModuleContent flex flex-col gap-6">
+          <For each={analyzer.mobs}>
+            {(mob, index) => {
+              function setStarArr(star: number) {
+                const newStarArray = [...starArray()];
+                newStarArray[index()] = star;
+                setStarArray(newStarArray);
+              }
+              return (
+                <div class="flex items-center gap-6 rounded bg-accent-color bg-right shadow-card shadow-transition-color-20">
+                  <div class="MobsName px-6 py-3 text-xl text-primary-color">{mob.monster.name}</div>
+                  <div class="MobsConfig flex flex-1 gap-6 px-6 py-3">
+                    <div
+                      class="MobsAugment flex cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
+                      onMouseEnter={() => setStarArr(0)}
+                      onMouseLeave={() => {
+                        setStarArr(mob.star);
+                      }}
+                      onClick={() => setStore("analyzer", "mobs", index(), "star", starArray()[index()])}
+                    >
+                      <Icon.Filled.Star
+                        onMouseEnter={() => setStarArr(1)}
+                        class={`${starArray()[index()] >= 1 ? "text-brand-color-1st" : "text-primary-color-30"} hover:text-primary-color`}
+                      />
+                      <Icon.Filled.Star
+                        onMouseEnter={() => setStarArr(2)}
+                        class={`${starArray()[index()] >= 2 ? "text-brand-color-2nd" : "text-primary-color-30"} hover:text-primary-color`}
+                      />
+                      <Icon.Filled.Star
+                        onMouseEnter={() => setStarArr(3)}
+                        class={`${starArray()[index()] >= 3 ? "text-brand-color-3rd" : "text-primary-color-30"} hover:text-primary-color`}
+                      />
+                      <Icon.Filled.Star
+                        onMouseEnter={() => setStarArr(4)}
+                        class={`${starArray()[index()] >= 4 ? "text-transition-color" : "text-primary-color-30"} hover:text-primary-color`}
+                      />
+                    </div>
+                    <Button class="text-primary-color" icon={<Icon.Line.Swap />}>
+                      {dictionary().ui.actions.swap}
+                    </Button>
+                    <Button class="text-primary-color" icon={<Icon.Line.ZoomIn />}>
+                      {dictionary().ui.actions.checkInfo}
+                    </Button>
+                  </div>
+                  <div
+                    class="MobsBG w-1/2 self-stretch rounded"
+                    style={{
+                      "background-image": `url(${mob?.monster?.image?.dataUrl})`,
+                      "background-position-y": "40%",
+                    }}
+                  >
+                    <div class="Mask w-1/2 h-full bg-gradient-to-r from-accent-color to-accent-color-0"></div>
+                  </div>
+                </div>
+              );
+            }}
+          </For>
         </div>
       </div>
       {/* <FlowEditor /> */}

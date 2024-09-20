@@ -8,9 +8,13 @@ import {
   defaultSelectStatistics,
   InsertStatistics,
 } from "./statistics";
+import { defaultSelectMob, SelectMob } from "./mob";
+import { defaultSelectMember, SelectMember } from "./team";
 
 // TS
 export type SelectAnalyzer = InferSelectModel<typeof Analyzer> & {
+  mobs: SelectMob[];
+  team: SelectMember[];
   statistics: SelectStatistics;
 };
 export type InsertAnalyzer = InferInsertModel<typeof Analyzer> & {
@@ -29,8 +33,8 @@ export const defaultSelectAnalyzer: SelectAnalyzer = {
   id: "defaultSelectAnalyzer",
 
   name: "defaultSelectAnalyzer",
-  monsterId: null,
-  characterId: null,
+  mobs: [defaultSelectMob],
+  team: [defaultSelectMember],
   extraDetails: "",
 
   updatedAt: new Date(),

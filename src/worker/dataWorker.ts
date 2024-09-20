@@ -9,7 +9,7 @@ export const dw = {
     this.counter++;
   },
   async getMonsterList(pg: PGliteWorker) {
-    return await pg.exec("SELECT * FROM monster");
+    return await pg.exec("SELECT * FROM public.user");
   },
 };
 

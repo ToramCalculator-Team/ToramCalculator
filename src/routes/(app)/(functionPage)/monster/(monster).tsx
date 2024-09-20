@@ -462,13 +462,13 @@ export default function MonsterIndexPage() {
                                 case "element": {
                                   const icon =
                                     {
-                                      WATER: <Icon.ElementWater class="h-12 w-12" />,
-                                      FIRE: <Icon.ElementFire class="h-12 w-12" />,
-                                      EARTH: <Icon.ElementEarth class="h-12 w-12" />,
-                                      WIND: <Icon.ElementWind class="h-12 w-12" />,
-                                      LIGHT: <Icon.ElementLight class="h-12 w-12" />,
-                                      DARK: <Icon.ElementDark class="h-12 w-12" />,
-                                      NO_ELEMENT: <Icon.ElementNoElement class="h-12 w-12" />,
+                                      WATER: <Icon.Element.Water class="h-12 w-12" />,
+                                      FIRE: <Icon.Element.Fire class="h-12 w-12" />,
+                                      EARTH: <Icon.Element.Earth class="h-12 w-12" />,
+                                      WIND: <Icon.Element.Wind class="h-12 w-12" />,
+                                      LIGHT: <Icon.Element.Light class="h-12 w-12" />,
+                                      DARK: <Icon.Element.Dark class="h-12 w-12" />,
+                                      NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
                                     }[cell.getValue() as $Enums.Element] ?? undefined;
                                   return (
                                     <td

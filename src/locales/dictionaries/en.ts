@@ -45,6 +45,10 @@ const dictionary: dictionary = {
       back: "Back",
       filter: "Filter",
       generateImage: "Generate Image",
+      swap: "Swap",
+      checkInfo: "Check Info",
+      zoomIn: "Zoom In",
+      zoomOut: "Zoom Out",
     },
     nav: {
       home: "Home",
@@ -263,6 +267,11 @@ const dictionary: dictionary = {
       baseValue: "Base",
       staticModifiers: "StaticModifiers",
       dynamicModifiers: "DynamicModifiers",
+      analyzerPage: {
+        monsterConfig: {
+          title: "Will be attacked by the following monster"
+        }
+      }
     },
     character: {
       pageTitle: "Skill",

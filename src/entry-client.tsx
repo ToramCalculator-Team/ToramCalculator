@@ -12,6 +12,7 @@ import dataWorker from "~/worker/dataWorker?sharedworker";
 
 import { dw } from "./worker/dataWorker";
 import { Context, createContext, useContext } from "solid-js";
+import { live } from "@electric-sql/pglite/live";
 
 console.log("entry-client.tsx");
 
@@ -26,8 +27,8 @@ if ("serviceWorker" in navigator) {
 export const pg = await PGliteWorker.create(
   new Worker(PGliteWorkerUrl, {
     type: "module",
-  }),
-);
+  })
+); 
 
 // 初始化数据层服务
 const worker = new dataWorker;

@@ -18,10 +18,12 @@
     "drizzle-kit": "latest",
     "drizzle-prisma-generator": "latest",
     "husky": "^9.1.4",
+    "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",
-    "prisma": "^5.18.0"
+    "prisma": "^5.18.0",
+    "pg": "^8.12.0"
   },
   "dependencies": {
     "@editorjs/editorjs": "^2.30.4",
@@ -36,7 +38,6 @@
     "@tailwindcss/typography": "^0.5.14",
     "@tanstack/solid-table": "^8.20.1",
     "@tanstack/solid-virtual": "^3.9.0",
-    "autoprefixer": "^10.4.20",
     "comlink": "^4.4.1",
     "drizzle-orm": "latest",
     "drizzle-zod": "latest",
@@ -45,7 +46,6 @@
     "mathjs": "^13.0.3",
     "overlayscrollbars": "^2.10.0",
     "overlayscrollbars-solid": "^0.5.5",
-    "pg": "^8.12.0",
     "sequential-workflow-designer": "^0.24.0",
     "solid-js": "^1.8.18",
     "solid-motionone": "^1.0.0",

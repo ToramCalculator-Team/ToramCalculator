@@ -31,6 +31,7 @@ interface dictionary {
       upload: string;
       update: string;
       save: string;
+      swap: string;
       reset: string;
       modify: string;
       cancel: string;
@@ -39,6 +40,9 @@ interface dictionary {
       back: string;
       filter: string;
       generateImage: string;
+      checkInfo: string;
+      zoomIn: string;
+      zoomOut: string;
     };
     nav: {
       home: string;
@@ -168,6 +172,11 @@ interface dictionary {
       staticModifiers: string;
       dynamicModifiers: string;
       dialogData: ConvertToAllString<CharacterData & MonsterData & SkillData>;
+      analyzerPage: {
+        monsterConfig: {
+          title: string;
+        }
+      }
     };
     character: {
       pageTitle: string;

@@ -358,34 +358,34 @@ model monster {
 
     name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
     monsterType                      MonsterType
-    baseLv                           Int?
-    experience                       Int?
-    address                          String?
+    baseLv                           Int
+    experience                       Int
+    address                          String
     element                          Element
-    radius                           Int?
-    maxhp                            Int?
-    physicalDefense                  Int?
-    physicalResistance               Int?
-    magicalDefense                   Int?
-    magicalResistance                Int?
-    criticalResistance               Int?
-    avoidance                        Int?
-    dodge                            Int?
-    block                            Int?
-    normalAttackResistanceModifier   Int?
-    physicalAttackResistanceModifier Int?
-    magicalAttackResistanceModifier  Int?
+    radius                           Int
+    maxhp                            Int
+    physicalDefense                  Int
+    physicalResistance               Int
+    magicalDefense                   Int
+    magicalResistance                Int
+    criticalResistance               Int
+    avoidance                        Int
+    dodge                            Int
+    block                            Int
+    normalAttackResistanceModifier   Int
+    physicalAttackResistanceModifier Int
+    magicalAttackResistanceModifier  Int
     difficultyOfTank                 Int
     difficultyOfMelee                Int
     difficultyOfRanged               Int
     possibilityOfRunningAround       Int
-    extraDetails                     String?
-    dataSources                      String?
+    extraDetails                     String
+    dataSources                      String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    belongToAnalyzers analyzer[]
+    belongToMobs mob[]
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
@@ -409,7 +409,7 @@ model modifier {
 model modifiers_list {
     id String @id
 
-    name      String?
+    name      String
     modifiers modifier[]
 
     usedByMainWeapon          main_weapon[]
@@ -469,8 +469,8 @@ model main_weapon {
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -498,8 +498,8 @@ model sub_weapon {
     modifiersListId String
     usedBy          character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -527,8 +527,8 @@ model body_armor {
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -554,8 +554,8 @@ model additional_equipment {
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -580,8 +580,8 @@ model special_equipment {
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -611,8 +611,8 @@ model skill {
     usedByComboStep combo_step[]
     usedByStep      step[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -630,7 +630,7 @@ model skill_effect {
     id String @id
 
     condition                         String
-    description                       String?
+    description                       String
     actionBaseDurationFormula         String
     actionModifiableDurationFormula   String
     skillExtraActionType              SkillExtraActionType
@@ -638,7 +638,7 @@ model skill_effect {
     chantingModifiableDurationFormula String
     chargingBaseDurationFormula       String
     chargingModifiableDurationFormula String
-    skillStartupFramesFormula         String?
+    skillStartupFramesFormula         String
     skillCost                         skill_cost[]
     skillYield                        skill_yield[]
 
@@ -661,7 +661,7 @@ model skill_cost {
 model skill_yield {
     id String @id
 
-    name                  String?
+    name                  String
     yieldType             YieldType
     yieldFormula          String
     mutationTimingFormula String?
@@ -674,12 +674,12 @@ model skill_yield {
 model pet {
     id String @id
 
-    name String?
+    name String
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -702,8 +702,8 @@ model consumable {
 
     usedBy character[]
 
-    extraDetails String?
-    dataSources  String?
+    extraDetails String
+    dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -720,7 +720,7 @@ model consumable {
 model combo {
     id String @id
 
-    name      String?
+    name      String
     comboStep combo_step[]
 
     usedBy           character[]
@@ -775,9 +775,9 @@ model character {
     skillList              skill[]
     consumableList         consumable[]
     combos                 combo[]
-    belongToAnalyzers      analyzer[]
+    belongToMembers        memeber[]
 
-    extraDetails String?
+    extraDetails String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -792,16 +792,36 @@ model character {
     imageId         String            @unique
 }
 
+// 队伍成员模型
+model memeber {
+    id String @id
+
+    character   character @relation(fields: [characterId], references: [id])
+    characterId String
+    flow        String
+
+    belongToAnalyzers analyzer[]
+}
+
+// 讨伐目标模型
+model mob {
+    id String @id
+
+    monster   monster @relation(fields: [monsterId], references: [id])
+    monsterId String
+    star      Int
+    flow      String
+
+    belongToAnalyzers analyzer[]
+}
+
 // 分析器模型
 model analyzer {
     id String @id
 
-    name        String?
-    monster     monster?   @relation(fields: [monsterId], references: [id])
-    monsterId   String?
-    character   character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
-    characterId String?
-    processes   process[]
+    name String
+    mobs mob[]
+    team memeber[]
 
     extraDetails String?
 
@@ -821,9 +841,6 @@ model process {
     id String @id
 
     steps step[]
-
-    belongToAnalyzer analyzer @relation(fields: [analyzerId], references: [id], onDelete: Cascade)
-    analyzerId       String
 }
 
 // 输出流程步骤模型
@@ -872,6 +889,8 @@ model statistics {
 
 model image {
     id String @id
+
+    dataUrl String
 
     usedByMonster               monster[]
     belongToMainWeapon          main_weapon?          @relation(fields: [main_weaponId], references: [id])

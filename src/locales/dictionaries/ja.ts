@@ -46,6 +46,10 @@ const dictionary: dictionary = {
       back: "戻る",
       filter: "フィルター",
       generateImage: "画像生成",
+      swap: "入れ替え",
+      checkInfo: "情報を確認",
+      zoomIn: "拡大",
+      zoomOut: "縮小",
     },
     nav: {
       home: "ホーム",
@@ -268,6 +272,11 @@ const dictionary: dictionary = {
       baseValue: "基本値",
       staticModifiers: "常時補正",
       dynamicModifiers: "一時補正",
+      analyzerPage: {
+        monsterConfig: {
+          title: "挨拶したモンスター"
+        }
+      }
     },
     character: {
       pageTitle: "キャラクターテーブル",

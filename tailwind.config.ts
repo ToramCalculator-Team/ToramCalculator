@@ -109,7 +109,14 @@ export default {
       },
       backgroundImage: {
         aeskl: "url('/app-image/bg.jpg')",
+        // gradient: "linear-gradient(180deg, rgb(var(--accent) 0%, rgb(var(--accent)) 100%)",
       },
+      boxShadowColor: {
+        DEFAULT: "rgb(var(--transition) / <alpha-value>)",
+      },
+      boxShadow: {
+        card: "0 4px 4px 0, 0 4px 16px 0",
+      }
     },
   },
   plugins: [typography],

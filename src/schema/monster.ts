@@ -8,12 +8,15 @@ import {
   SelectStatistics,
   SelectStatisticsSchema,
 } from "./statistics";
+import { defaultInsertImage, defaultSelectImage, InsertImage, SelectImage } from "./image";
 
 // TS
 export type SelectMonster = InferSelectModel<typeof Monster> & {
+  image: SelectImage;
   statistics: SelectStatistics;
 };
 export type InsertMonster = InferInsertModel<typeof Monster> & {
+  image: InsertImage;
   statistics: InsertStatistics;
 };
 
@@ -28,6 +31,7 @@ export const InsertMonsterSchema = createInsertSchema(Monster).extend({
 // default
 export const defaultSelectMonster: SelectMonster = {
   id: "defaultSelectMonster",
+  image: defaultSelectImage,
   imageId: "",
 
   name: "defaultSelectMonster",
@@ -65,6 +69,7 @@ export const defaultSelectMonster: SelectMonster = {
 };
 export const defaultInsertMonster: InsertMonster = {
   id: "defaultInsertMonster",
+  image: defaultInsertImage,
   imageId: "",
 
   name: "",
