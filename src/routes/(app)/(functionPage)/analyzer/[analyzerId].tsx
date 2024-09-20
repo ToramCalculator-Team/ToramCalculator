@@ -1272,7 +1272,7 @@ export default function AnalyzerIndexClient() {
         </div>
       </div>
       <div class="MobsConfig flex flex-col gap-3 p-3">
-        <div class="ModuleTitle h-12 w-full">{dictionary().ui.analyzer.analyzerPage.monsterConfig.title}</div>
+        <div class="ModuleTitle flex text-xl h-12 w-full items-center">{dictionary().ui.analyzer.analyzerPage.monsterConfig.title}</div>
         <div class="ModuleContent flex flex-col gap-6">
           <For each={analyzer.mobs}>
             {(mob, index) => {
