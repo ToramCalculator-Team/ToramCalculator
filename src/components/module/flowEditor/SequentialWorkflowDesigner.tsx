@@ -132,6 +132,7 @@ export function SequentialWorkflowDesigner<TDefinition extends Definition>(
   }
 
   onMount(() => {
+    console.log("designer mounted");
     setDesigner(
       Designer.create(placeholder()!, definition.value, {
         theme,

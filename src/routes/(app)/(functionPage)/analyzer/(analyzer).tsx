@@ -11,11 +11,12 @@ import { defaultSelectPet } from "~/schema/pet";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
+import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
 import { SelectAnalyzer } from "~/schema/analyzer";
+import { defaultSelectImage } from "~/schema/image";
 
 export type skillSequenceList = {
   name: string;
@@ -578,6 +579,7 @@ export default function AnalyzerIndexClient() {
     } satisfies SelectCharacter,
     monster: {
       id: "",
+      image: defaultSelectImage,
       imageId: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
@@ -626,7 +628,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -676,7 +678,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -726,7 +728,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "None",
@@ -776,7 +778,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -826,7 +828,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "23",
             actionModifiableDurationFormula: "148",
             skillExtraActionType: "Chanting",
@@ -884,7 +886,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -943,7 +945,7 @@ export default function AnalyzerIndexClient() {
             chantingModifiableDurationFormula: "8",
             skillStartupFramesFormula: "0",
             belongToskillId: "",
-            description: null,
+            description: "",
             skillCost: [
               {
                 id: "",
@@ -981,7 +983,7 @@ export default function AnalyzerIndexClient() {
           skillType: "ACTIVE_SKILL",
           skillEffect: {
             id: "",
-            description: null,
+            description: "",
             actionBaseDurationFormula: "13",
             actionModifiableDurationFormula: "48",
             skillExtraActionType: "Chanting",
@@ -1040,7 +1042,7 @@ export default function AnalyzerIndexClient() {
             chantingModifiableDurationFormula: "8",
             skillStartupFramesFormula: "0",
             belongToskillId: "",
-            description: null,
+            description: "",
             skillCost: [
               {
                 id: "",
@@ -1268,7 +1270,7 @@ export default function AnalyzerIndexClient() {
         </div>
       </div>
       <div class="Content flex flex-col gap-4 p-3">
-        <div class="MonsterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div class="mobsConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex gap-4">
             <span class="Key">怪物：</span>
             <span class="MonsterName font-bold">{monster.name}</span>

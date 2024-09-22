@@ -1,13 +1,16 @@
 import { type SelectStatistics } from "~/schema/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
 import { type SelectModifiersList } from "~/schema/modifiers_list";
+import { SelectImage } from "~/schema/image";
 
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
+  selfName: "Modifiers List",
   modifiers: "Modifiers",
   name:"Name",
   id: "ID"
 }
 const statistics: ConvertToAllString<SelectStatistics> = {
+  selfName: "Statistics",
   id: "ID",
   usageTimestamps: "UsageTimestamps",
   viewTimestamps: "ViewTimestamps",
@@ -25,6 +28,17 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   characterId: "",
   analyzerId: ""
 };
+
+const image: ConvertToAllString<SelectImage> = {
+  selfName: "Image",
+  id: "ID",
+  dataUrl: "DataUrl",
+  main_weaponId: "",
+  sub_weaponId: "",
+  body_armorId: "",
+  additional_equipmentId: "",
+  special_equipmentId: ""
+}
 
 const dictionary: dictionary = {
   ui: {
@@ -175,20 +189,24 @@ const dictionary: dictionary = {
       description: "Emmm..............",
       modifiers: "Modifiers",
       dialogData: {
+        selfName: "Attribute",
         lv: "Lv",
         mainWeapon: {
+          selfName: "Main Weapon",
           type: "Type",
           baseAtk: "BaseAtk",
           refinement: "Refinement",
           stability: "Stability",
         },
         subWeapon: {
+          selfName: "Sub Weapon",
           type: "Type",
           baseAtk: "BaseAtk",
           refinement: "Refinement",
           stability: "Stability",
         },
         bodyArmor: {
+          selfName: "Body Armor",
           type: "Type",
           baseDef: "BaseDef",
           refinement: "Refinement",
@@ -213,6 +231,7 @@ const dictionary: dictionary = {
         weaponMatkT: "Wea-mAtk-T",
         uAtk: "Unsheathe-Atk",
         stro: {
+          selfName: "Stro",
           LIGHT: "Strong against Light",
           NO_ELEMENT: "Strong against No Element",
           DARK: "Strong against Dark",
@@ -268,8 +287,11 @@ const dictionary: dictionary = {
       staticModifiers: "StaticModifiers",
       dynamicModifiers: "DynamicModifiers",
       analyzerPage: {
-        monsterConfig: {
-          title: "Will be attacked by the following monster"
+        mobsConfig: {
+          title: "Mobs Config",
+        },
+        teamConfig: {
+          title: "Team Config",
         }
       }
     },
@@ -383,6 +405,7 @@ const dictionary: dictionary = {
     },
     models: {
       monster: {
+        selfName: "Monster",
         id: "ID",
         name: "Name",
         monsterType: "Type",
@@ -415,9 +438,11 @@ const dictionary: dictionary = {
         updatedAt: "UpdatedAt",
         statistics: statistics,
         statisticsId: "StatisticsId",
+        image: image,
         imageId: "ImageId",
       },
       crystal: {
+        selfName: "Crystal",
         modifiersList: modifiersList,
         id: "Id",
         name: "Name",
@@ -434,6 +459,7 @@ const dictionary: dictionary = {
         statisticsId: "StatisticsId",
       },
       skill: {
+        selfName: "Skill",
         id: "ID",
         name: "Name",
         skillType: "SkillType",
@@ -452,6 +478,7 @@ const dictionary: dictionary = {
         statisticsId: "StatisticsId",
       },
       user: {
+        selfName: "User",
         id: "ID",
         name: "Name",
         email: "Email",
@@ -460,6 +487,7 @@ const dictionary: dictionary = {
         userRole: "Role",
       },
       skillEffect: {
+        selfName: "SkillEffect",
         skillCost: "SkillCost",
         skillYield: "SkillYield",
         id: "ID",
@@ -476,12 +504,14 @@ const dictionary: dictionary = {
         description: "Description",
       },
       skillCost: {
+        selfName: "SkillCost",
         id: "ID",
         name: "Name",
         costFormula: "CostFormula",
         skillEffectId: "SkillEffectId",
       },
       skillYield: {
+        selfName: "SkillYield",
         id: "ID",
         name: "Name",
         yieldType: "YieldType",
@@ -490,6 +520,7 @@ const dictionary: dictionary = {
         skillEffectId: "SkillEffectId",
       },
       character: {
+        selfName: "Character",
         id: "Id",
         name: "",
         lv: "",
@@ -502,6 +533,7 @@ const dictionary: dictionary = {
         specialAbiType: "",
         specialAbiValue: "",
         mainWeapon: {
+          selfName: "MainWeapon",
           crystal: "",
           id: "ID",
           name: "",
@@ -523,6 +555,7 @@ const dictionary: dictionary = {
         },
         mainWeaponId: "",
         subWeapon: {
+          selfName: "SubWeapon",
           modifiersList: modifiersList,
           id: "ID",
           name: "",
@@ -543,6 +576,7 @@ const dictionary: dictionary = {
         },
         subWeaponId: "",
         bodyArmor: {
+          selfName: "BodyArmor",
           modifiersList: modifiersList,
           crystal: "",
           id: "ID",
@@ -562,6 +596,7 @@ const dictionary: dictionary = {
         },
         bodyArmorId: "",
         additionalEquipment: {
+          selfName: "AdditionalEquipment",
           modifiersList: modifiersList,
           crystal: "",
           id: "ID",
@@ -579,6 +614,7 @@ const dictionary: dictionary = {
         },
         additionalEquipmentId: "",
         specialEquipment: {
+          selfName: "SpecialEquipment",
           modifiersList: modifiersList,
           crystal: "",
           id: "ID",
@@ -602,6 +638,7 @@ const dictionary: dictionary = {
         skillList: "",
         combos: "",
         pet: {
+          selfName: "Pet",
           id: "ID",
           name: "",
           extraDetails: "SpecialBehavior",

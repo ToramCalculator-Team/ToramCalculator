@@ -87,6 +87,7 @@ export default {
       "brand-color-1st": "rgb(var(--brand-1st) / <alpha-value>)",
       "brand-color-2nd": "rgb(var(--brand-2nd) / <alpha-value>)",
       "brand-color-3rd": "rgb(var(--brand-3rd) / <alpha-value>)",
+      "brand-color-4th": "rgb(var(--brand-4th) / <alpha-value>)",
       water: "rgb(var(--water) / <alpha-value>)",
       fire: "rgb(var(--fire) / <alpha-value>)",
       earth: "rgb(var(--earth) / <alpha-value>)",

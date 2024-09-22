@@ -1,12 +1,15 @@
 import { type SelectStatistics } from "~/schema/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
 import { type SelectModifiersList } from "~/schema/modifiers_list";
+import { SelectImage } from "~/schema/image";
 
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
   name: "名稱",
   modifiers: "加成項",
   id: "ID",
+  selfName: "加成項列表",
 };
+
 const statistics: ConvertToAllString<SelectStatistics> = {
   id: "ID",
   rates: "評分",
@@ -24,7 +27,19 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   consumableId: "",
   characterId: "",
   analyzerId: "",
+  selfName: "統計資訊",
 };
+
+const image: ConvertToAllString<SelectImage> = {
+  id: "ID",
+  dataUrl: "DataUrl",
+  main_weaponId: "",
+  sub_weaponId: "",
+  body_armorId: "",
+  additional_equipmentId: "",
+  special_equipmentId: "",
+  selfName: "圖片",
+}
 
 const dictionary: dictionary = {
   ui: {
@@ -175,23 +190,27 @@ const dictionary: dictionary = {
       description: "正在開發中，請勿使用",
       modifiers: "加成項",
       dialogData: {
+        selfName: "属性",
         lv: "等級",
         mainWeapon: {
           type: "主武器型別",
           baseAtk: "主武器基礎攻擊力",
           refinement: "主武器精煉值",
           stability: "主武器穩定率",
+          selfName: "主武器",
         },
         subWeapon: {
           type: "副武器型別",
           baseAtk: "副武器基礎攻擊力",
           refinement: "副武器精煉值",
           stability: "副武器穩定率",
+          selfName: "副武器",
         },
         bodyArmor: {
           type: "身體裝備類型",
           baseDef: "身體裝備基礎防禦力",
           refinement: "身體裝備精煉值",
+          selfName: "身體裝備",
         },
         str: "力量",
         int: "智力",
@@ -220,6 +239,7 @@ const dictionary: dictionary = {
           FIRE: "对火属性增强",
           EARTH: "对土属性增强",
           WIND: "对風属性增强",
+          selfName: "对属增強",
         },
         total: "總傷害提升",
         final: "最終傷害提升",
@@ -269,8 +289,11 @@ const dictionary: dictionary = {
       staticModifiers: "常態加成",
       dynamicModifiers: "暫時加成",
       analyzerPage: {
-        monsterConfig: {
-          title: "即將挨揍的怪物"
+        mobsConfig: {
+          title: "目標怪物",
+        },
+        teamConfig: {
+          title: "隊伍配置"
         }
       }
     },
@@ -384,6 +407,7 @@ const dictionary: dictionary = {
     },
     models: {
       monster: {
+        selfName: "怪物",
         id: "ID",
         name: "名稱",
         monsterType: "類型",
@@ -416,9 +440,11 @@ const dictionary: dictionary = {
         updatedAt: "更新於",
         statistics: statistics,
         statisticsId: "統計ID",
+        image: image,
         imageId: "圖片ID",
       },
       crystal: {
+        selfName: "鍛晶",
         id: "ID",
         modifiersList: modifiersList,
         name: "鍛晶名稱",
@@ -435,6 +461,7 @@ const dictionary: dictionary = {
         statisticsId: "統計ID",
       },
       skill: {
+        selfName: "技能",
         id: "ID",
         name: "名稱",
         skillType: "型別",
@@ -453,6 +480,7 @@ const dictionary: dictionary = {
         statisticsId: "統計ID",
       },
       user: {
+        selfName: "使用者",
         id: "帳號ID",
         name: "使用者名稱",
         email: "郵件地址",
@@ -461,6 +489,7 @@ const dictionary: dictionary = {
         userRole: "身分類型",
       },
       skillEffect: {
+        selfName: "技能效果",
         id: "ID",
         condition: "生效條件",
         description: "條件說明",
@@ -473,16 +502,18 @@ const dictionary: dictionary = {
         chantingModifiableDurationFormula: "可加速詠唱時長表達式（秒）",
         skillStartupFramesFormula: "技能前搖表達式（秒）",
         belongToskillId: "所屬技能",
-        skillCost: "技能消耗",
-        skillYield: "作用效果",
+        skillCost: "消耗项",
+        skillYield: "作用项",
       },
       skillCost: {
+        selfName: "技能消耗",
         id: "ID",
         costFormula: "計算公式",
         skillEffectId: "所屬技能效果",
         name: "名稱",
       },
       skillYield: {
+        selfName: "技能作用",
         id: "ID",
         name: "名稱",
         yieldType: "效果類型",
@@ -491,6 +522,7 @@ const dictionary: dictionary = {
         skillEffectId: "所屬技能效果",
       },
       character: {
+        selfName: "角色",
         id: "Id",
         name: "名稱",
         lv: "等級",
@@ -503,6 +535,7 @@ const dictionary: dictionary = {
         specialAbiType: "特殊屬性類型",
         specialAbiValue: "特殊屬性值",
         mainWeapon: {
+          selfName: "主武器",
           crystal: "鍛晶",
           id: "ID",
           name: "名稱",
@@ -524,6 +557,7 @@ const dictionary: dictionary = {
         },
         mainWeaponId: "主武器Id",
         subWeapon: {
+          selfName: "副武器",
           modifiersList: modifiersList,
           id: "ID",
           name: "名稱",
@@ -544,6 +578,7 @@ const dictionary: dictionary = {
         },
         subWeaponId: "",
         bodyArmor: {
+          selfName: "身體裝備",
           modifiersList: modifiersList,
           crystal: "鍛晶",
           id: "ID",
@@ -563,6 +598,7 @@ const dictionary: dictionary = {
         },
         bodyArmorId: "",
         additionalEquipment: {
+          selfName: "追加裝備",
           modifiersList: modifiersList,
           crystal: "鍛晶",
           id: "ID",
@@ -580,6 +616,7 @@ const dictionary: dictionary = {
         },
         additionalEquipmentId: "",
         specialEquipment: {
+          selfName: "特殊裝備",
           modifiersList: modifiersList,
           crystal: "鍛晶",
           id: "ID",
@@ -603,6 +640,7 @@ const dictionary: dictionary = {
         skillList: "技能清單",
         combos: "連擊列表",
         pet: {
+          selfName: "寵物",
           id: "ID",
           name: "名稱",
           extraDetails: "額外說明",

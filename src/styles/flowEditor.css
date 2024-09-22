@@ -7,7 +7,7 @@
 
 /* .sqd-designer */
 .sqd-designer {
-  @apply bg-primary-color flex w-full h-full
+  @apply bg-primary-color flex w-full h-full backdrop-blur-lg
 }
 
 .sqd-designer,

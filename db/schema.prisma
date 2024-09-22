@@ -798,7 +798,7 @@ model memeber {
 
     character   character @relation(fields: [characterId], references: [id])
     characterId String
-    flow        String
+    flow        Json
 
     belongToAnalyzers analyzer[]
 }

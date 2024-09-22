@@ -1,14 +1,17 @@
 import { type SelectStatistics } from "~/schema/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
 import { type SelectModifiersList } from "~/schema/modifiers_list";
+import { SelectImage } from "~/schema/image";
 
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
+  selfName: "補正項目リスト",
   name: "名前",
   modifiers: "補正項目",
   id: "ID",
 };
 
 const statistics: ConvertToAllString<SelectStatistics> = {
+  selfName: "統計情報",
   id: "ID",
   rates: "評価",
   usageTimestamps: "使用記録",
@@ -26,6 +29,17 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   characterId: "",
   analyzerId: "",
 };
+
+const image: ConvertToAllString<SelectImage> = {
+  selfName: "画像",
+  id: "ID",
+  dataUrl: "DataUrl",
+  main_weaponId: "",
+  sub_weaponId: "",
+  body_armorId: "",
+  additional_equipmentId: "",
+  special_equipmentId: ""
+}
 
 const dictionary: dictionary = {
   ui: {
@@ -180,20 +194,24 @@ const dictionary: dictionary = {
       description: "開発中です。使用しないでください。",
       modifiers: "補正項目",
       dialogData: {
+        selfName: "属性",
         lv: "レベル",
         mainWeapon: {
+          selfName: "メイン武器",
           type: "メイン武器タイプ",
           baseAtk: "メイン武器基礎攻撃力",
           refinement: "メイン武器精錬値",
           stability: "メイン武器安定率",
         },
         subWeapon: {
+          selfName: "サブ武器",
           type: "サブ武器タイプ",
           baseAtk: "サブ武器基礎攻撃力",
           refinement: "サブ武器精錬値",
           stability: "サブ武器安定率",
         },
         bodyArmor: {
+          selfName: "ボディアーマー",
           type: "ボディアーマータイプ",
           baseDef: "ボディアーマー基礎防御力",
           refinement: "ボディアーマー精錬値",
@@ -225,6 +243,7 @@ const dictionary: dictionary = {
           FIRE: "",
           EARTH: "",
           WIND: "",
+          selfName: "攻撃タイプ",
         },
         total: "総ダメージ上昇",
         final: "最終ダメージ上昇",
@@ -273,8 +292,11 @@ const dictionary: dictionary = {
       staticModifiers: "常時補正",
       dynamicModifiers: "一時補正",
       analyzerPage: {
-        monsterConfig: {
-          title: "挨拶したモンスター"
+        mobsConfig: {
+          title: "モンスター設定",
+        },
+        teamConfig: {
+          title: "チーム設定"
         }
       }
     },
@@ -388,6 +410,7 @@ const dictionary: dictionary = {
     },
     models: {
       monster: {
+        selfName: "モンスター",
         id: "ID",
         name: "名前",
         monsterType: "タイプ",
@@ -420,9 +443,11 @@ const dictionary: dictionary = {
         updatedAt: "更新日時",
         statistics: statistics,
         statisticsId: "統計ID",
+        image: image,
         imageId: "",
       },
       crystal: {
+        selfName: "クリスタル",
         id: "ID",
         modifiersList: modifiersList,
         name: "クリスタル名",
@@ -439,6 +464,7 @@ const dictionary: dictionary = {
         statisticsId: "統計ID",
       },
       skill: {
+        selfName: "スキル",
         id: "ID",
         name: "名前",
         skillType: "スキルタイプ",
@@ -457,6 +483,7 @@ const dictionary: dictionary = {
         statisticsId: "統計ID",
       },
       user: {
+        selfName: "ユーザー",
         id: "アカウントID",
         name: "ユーザー名",
         email: "メールアドレス",
@@ -465,6 +492,7 @@ const dictionary: dictionary = {
         userRole: "ユーザー権限",
       },
       skillEffect: {
+        selfName: "スキル効果",
         id: "ID",
         condition: "発動条件",
         description: "条件説明",
@@ -481,12 +509,14 @@ const dictionary: dictionary = {
         skillYield: "スキル効果",
       },
       skillCost: {
+        selfName: "スキルコスト",
         id: "ID",
         costFormula: "コスト計算式",
         skillEffectId: "所属スキル効果",
         name: "名前",
       },
       skillYield: {
+        selfName: "スキル効果",
         id: "ID",
         name: "名前",
         yieldType: "効果タイプ",
@@ -495,6 +525,7 @@ const dictionary: dictionary = {
         skillEffectId: "所属スキル効果",
       },
       character: {
+        selfName: "キャラクター",
         id: "ID",
         name: "名前",
         lv: "レベル",
@@ -507,6 +538,7 @@ const dictionary: dictionary = {
         specialAbiType: "特殊能力タイプ",
         specialAbiValue: "特殊能力値",
         mainWeapon: {
+          selfName: "メイン武器",
           crystal: "クリスタル",
           id: "ID",
           name: "名前",
@@ -528,6 +560,7 @@ const dictionary: dictionary = {
         },
         mainWeaponId: "メイン武器ID",
         subWeapon: {
+          selfName: "サブ武器",
           modifiersList: modifiersList,
           id: "ID",
           name: "名前",
@@ -548,6 +581,7 @@ const dictionary: dictionary = {
         },
         subWeaponId: "",
         bodyArmor: {
+          selfName: "身体装備",
           modifiersList: modifiersList,
           crystal: "クリスタル",
           id: "ID",
@@ -567,6 +601,7 @@ const dictionary: dictionary = {
         },
         bodyArmorId: "",
         additionalEquipment: {
+          selfName: "追加装備",
           modifiersList: modifiersList,
           crystal: "クリスタル",
           id: "ID",
@@ -584,6 +619,7 @@ const dictionary: dictionary = {
         },
         additionalEquipmentId: "",
         specialEquipment: {
+          selfName: "特殊装備",
           modifiersList: modifiersList,
           crystal: "クリスタル",
           id: "ID",
@@ -607,6 +643,7 @@ const dictionary: dictionary = {
         skillList: "スキルリスト",
         combos: "コンボリスト",
         pet: {
+          selfName: "ペット",
           id: "ID",
           name: "名前",
           extraDetails: "追加詳細",

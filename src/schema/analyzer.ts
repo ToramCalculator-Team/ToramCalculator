@@ -9,7 +9,7 @@ import {
   InsertStatistics,
 } from "./statistics";
 import { defaultSelectMob, SelectMob } from "./mob";
-import { defaultSelectMember, SelectMember } from "./team";
+import { defaultSelectMember, SelectMember } from "./member";
 
 // TS
 export type SelectAnalyzer = InferSelectModel<typeof Analyzer> & {

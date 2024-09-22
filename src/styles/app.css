@@ -9,6 +9,7 @@
   /* 颜色署名 */
   :root {
     --white: 255 255 255;
+    --geryWhite: 200 200 200;
     --grey: 55 55 55;
     --black: 0 0 0;
     --brown: 47 26 73;
@@ -34,15 +35,17 @@
     --brand-1st: var(--greenBlue);
     --brand-2nd: var(--yellow);
     --brand-3rd: var(--orange);
+    --brand-4th: var(--navyBlue);
   }
 
   .dark {
     --accent: var(--white);
     --primary: var(--grey);
-    --transition: var(--white);
+    --transition: var(--geryWhite);
     --brand-1st: var(--greenBlue);
     --brand-2nd: var(--yellow);
     --brand-3rd: var(--orange);
+    --brand-4th: var(--navyBlue);
   }
 
   :root {

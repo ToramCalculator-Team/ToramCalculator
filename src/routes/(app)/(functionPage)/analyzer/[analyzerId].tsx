@@ -11,7 +11,7 @@ import { defaultSelectPet } from "~/schema/pet";
 import { createEffect, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { generateAugmentedMonsterList } from "~/lib/untils/generateAugmentedMonsterList";
+import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
@@ -19,6 +19,9 @@ import { SelectAnalyzer } from "~/schema/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
 import { defaultSelectImage } from "~/schema/image";
+import { defaultSelectMember, SelectMember } from "~/schema/member";
+import { $Enums } from "~/schema/enums";
+import * as _ from "lodash-es";
 
 export type skillSequenceList = {
   name: string;
@@ -44,547 +47,560 @@ export default function AnalyzerIndexClient() {
   const setCharacterList = (value: SelectCharacter[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
   const setAnalyzeList = (value: SelectAnalyzer[]) => setStore("analyzerPage", "analyzerList", value);
-  const monster = store.monster;
-  const setMonster = (value: SelectMonster) => setStore("monster", value);
-  const character = store.character;
-  const setCharacter = (value: SelectCharacter) => setStore("character", value);
   const analyzer = store.analyzer;
   const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
+  const [member, setMember] = createSignal(analyzer.team[0]);
 
   const defaultStarArray: number[] = [];
   analyzer.mobs.forEach((mob) => {
     defaultStarArray.push(mob.star);
   });
   const [starArray, setStarArray] = createSignal(defaultStarArray);
-  const [dialogState, setDialogState] = createSignal(false);
-  const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
-  const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
-  const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
-  const [defaultMonsterList] = createSignal(store.monsterPage.monsterList);
+  const [dialogState, setDialogState] = createSignal(true); // 避免流程设计器初始化因没有父级元素失败
 
   const test = {
-    character: {
+    member: {
       id: "",
-      characterType: "Tank",
-      name: "测试机体",
-      lv: 265,
-      baseStr: 1,
-      baseInt: 440,
-      baseVit: 1,
-      baseAgi: 1,
-      baseDex: 247,
-      specialAbiType: "NULL",
-      specialAbiValue: 0,
-      mainWeapon: {
+      character: {
         id: "",
-        name: "暴击残酷之翼",
-        mainWeaponType: "MAGIC_DEVICE",
-        baseAtk: 194,
-        refinement: 15,
-        stability: 70,
-        element: "LIGHT",
-        crystal: [
-          {
-            id: "",
-            name: "寄生甲兽",
-            crystalType: "WEAPONCRYSTAL",
-            front: 0,
-            modifiersList: {
+        characterType: "Tank",
+        name: "测试机体",
+        lv: 265,
+        baseStr: 1,
+        baseInt: 440,
+        baseVit: 1,
+        baseAgi: 1,
+        baseDex: 247,
+        specialAbiType: "NULL",
+        specialAbiValue: 0,
+        mainWeapon: {
+          id: "",
+          name: "暴击残酷之翼",
+          mainWeaponType: "MAGIC_DEVICE",
+          baseAtk: 194,
+          refinement: 15,
+          stability: 70,
+          element: "LIGHT",
+          crystal: [
+            {
               id: "",
               name: "寄生甲兽",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "mAtk + 5%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "mPie + 20",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "cspd - 15%",
-                  belongToModifiersListId: "",
-                },
-              ],
+              crystalType: "WEAPONCRYSTAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "寄生甲兽",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "mAtk + 5%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "mPie + 20",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "cspd - 15%",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-          {
-            id: "",
-            name: "死灵妖兔II",
-            crystalType: "WEAPONCRYSTAL",
-            front: 1,
-            modifiersList: {
+            {
               id: "",
               name: "死灵妖兔II",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "mAtk + 7%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "cspd + 14%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "maxHp - 15%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "am + 3",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-        ],
-        modifiersList: {
-          id: "",
-          name: "暴击残酷之翼属性",
-          modifiers: [
-            {
-              id: "",
-              formula: "mAtk + 6%",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "pCr + 25",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "pCd + 21",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "stro.DARK + 21",
-              belongToModifiersListId: "",
+              crystalType: "WEAPONCRYSTAL",
+              front: 1,
+              modifiersList: {
+                id: "",
+                name: "死灵妖兔II",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "mAtk + 7%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "cspd + 14%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "maxHp - 15%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "am + 3",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
           ],
-        },
-        modifiersListId: "",
-        createdAt: new Date(),
-        createdByUserId: "",
-        updatedAt: new Date(),
-        updatedByUserId: "",
-        extraDetails: "",
-        dataSources: "",
-        statistics: defaultSelectStatistics,
-        statisticsId: "",
-      },
-      mainWeaponId: "",
-      subWeapon: {
-        id: "",
-        name: "忍术卷轴·风遁术",
-        subWeaponType: "NO_WEAPON",
-        baseAtk: 0,
-        refinement: 0,
-        stability: 0,
-        element: "NO_ELEMENT",
-        modifiersList: {
-          id: "",
-          name: "忍术卷轴·风遁术属性",
-          modifiers: [
-            {
-              id: "",
-              formula: "aspd + 300",
-              belongToModifiersListId: "",
-            },
-          ],
-        },
-        modifiersListId: "",
-        createdAt: new Date(),
-        createdByUserId: "",
-        updatedAt: new Date(),
-        updatedByUserId: "",
-        extraDetails: "",
-        dataSources: "",
-        statistics: defaultSelectStatistics,
-        statisticsId: "",
-      },
-      subWeaponId: "",
-      bodyArmor: {
-        id: "",
-        name: "冒险者服装",
-        bodyArmorType: "NORMAL",
-        refinement: 0,
-        baseDef: 0,
-        crystal: [
-          {
+          modifiersList: {
             id: "",
-            name: "铁之女帝",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
+            name: "暴击残酷之翼属性",
+            modifiers: [
+              {
+                id: "",
+                formula: "mAtk + 6%",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "pCr + 25",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "pCd + 21",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "stro.DARK + 21",
+                belongToModifiersListId: "",
+              },
+            ],
+          },
+          modifiersListId: "",
+          createdAt: new Date(),
+          createdByUserId: "",
+          updatedAt: new Date(),
+          updatedByUserId: "",
+          extraDetails: "",
+          dataSources: "",
+          statistics: defaultSelectStatistics,
+          statisticsId: "",
+        },
+        mainWeaponId: "",
+        subWeapon: {
+          id: "",
+          name: "忍术卷轴·风遁术",
+          subWeaponType: "NO_WEAPON",
+          baseAtk: 0,
+          refinement: 0,
+          stability: 0,
+          element: "NO_ELEMENT",
+          modifiersList: {
+            id: "",
+            name: "忍术卷轴·风遁术属性",
+            modifiers: [
+              {
+                id: "",
+                formula: "aspd + 300",
+                belongToModifiersListId: "",
+              },
+            ],
+          },
+          modifiersListId: "",
+          createdAt: new Date(),
+          createdByUserId: "",
+          updatedAt: new Date(),
+          updatedByUserId: "",
+          extraDetails: "",
+          dataSources: "",
+          statistics: defaultSelectStatistics,
+          statisticsId: "",
+        },
+        subWeaponId: "",
+        bodyArmor: {
+          id: "",
+          name: "冒险者服装",
+          bodyArmorType: "NORMAL",
+          refinement: 0,
+          baseDef: 0,
+          crystal: [
+            {
               id: "",
               name: "铁之女帝",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "mAtk + 5%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "mPie + 10",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "cspd + 20%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "maxMp - 300",
-                  belongToModifiersListId: "",
-                },
-              ],
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "铁之女帝",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "mAtk + 5%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "mPie + 10",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "cspd + 20%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "maxMp - 300",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-          {
-            id: "",
-            name: "约尔拉兹",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
+            {
               id: "",
               name: "约尔拉兹",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "mAtk + 7%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "int + 3%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "cspd + 35%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "ampr + 10%",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-        ],
-        modifiersList: {
-          id: "",
-          name: "冒险者服装属性",
-          modifiers: [
-            {
-              id: "",
-              formula: "pCr + 25",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "pCd + 10%",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "pCd + 21",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "stro.DARK + 21",
-              belongToModifiersListId: "",
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "约尔拉兹",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "mAtk + 7%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "int + 3%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "cspd + 35%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "ampr + 10%",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
           ],
-        },
-        modifiersListId: "",
-        createdAt: new Date(),
-        createdByUserId: "",
-        updatedAt: new Date(),
-        updatedByUserId: "",
-        extraDetails: "",
-        dataSources: "",
-        statistics: defaultSelectStatistics,
-        statisticsId: "",
-      },
-      bodyArmorId: "",
-      additionalEquipment: {
-        id: "",
-        name: "饼干腰翼",
-        refinement: 0,
-        crystal: [
-          {
+          modifiersList: {
             id: "",
-            name: "深谋的青影",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
+            name: "冒险者服装属性",
+            modifiers: [
+              {
+                id: "",
+                formula: "pCr + 25",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "pCd + 10%",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "pCd + 21",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "stro.DARK + 21",
+                belongToModifiersListId: "",
+              },
+            ],
+          },
+          modifiersListId: "",
+          createdAt: new Date(),
+          createdByUserId: "",
+          updatedAt: new Date(),
+          updatedByUserId: "",
+          extraDetails: "",
+          dataSources: "",
+          statistics: defaultSelectStatistics,
+          statisticsId: "",
+        },
+        bodyArmorId: "",
+        additionalEquipment: {
+          id: "",
+          name: "饼干腰翼",
+          refinement: 0,
+          crystal: [
+            {
               id: "",
               name: "深谋的青影",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "nDis + 8%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "fDis + 8%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "maxMp - 150",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "uAtk + 8%",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-          {
-            id: "",
-            name: "蜜爱丽",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
-              id: "",
-              name: "蜜爱丽属性",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-        ],
-        modifiersList: {
-          id: "",
-          name: "饼干腰翼属性",
-          modifiers: [
-            {
-              id: "",
-              formula: "fDis + 10%",
-              belongToModifiersListId: "",
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "深谋的青影",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "nDis + 8%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "fDis + 8%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "maxMp - 150",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "uAtk + 8%",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
             {
               id: "",
-              formula: "dex + 5%",
-              belongToModifiersListId: "",
-            },
-            {
-              id: "",
-              formula: "mPie + isMAGIC_DEVICE(mainWeapon) ?  25 : 0",
-              belongToModifiersListId: "",
+              name: "蜜爱丽",
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "蜜爱丽属性",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
           ],
-        },
-        modifiersListId: "",
-        createdAt: new Date(),
-        createdByUserId: "",
-        updatedAt: new Date(),
-        updatedByUserId: "",
-        extraDetails: "",
-        dataSources: "",
-        statistics: defaultSelectStatistics,
-        statisticsId: "",
-      },
-      additionalEquipmentId: "",
-      specialEquipment: {
-        id: "",
-        name: "读星提灯",
-        crystal: [
-          {
+          modifiersList: {
             id: "",
-            name: "星之魔导士",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
+            name: "饼干腰翼属性",
+            modifiers: [
+              {
+                id: "",
+                formula: "fDis + 10%",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "dex + 5%",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "mPie + isMAGIC_DEVICE(mainWeapon) ?  25 : 0",
+                belongToModifiersListId: "",
+              },
+            ],
+          },
+          modifiersListId: "",
+          createdAt: new Date(),
+          createdByUserId: "",
+          updatedAt: new Date(),
+          updatedByUserId: "",
+          extraDetails: "",
+          dataSources: "",
+          statistics: defaultSelectStatistics,
+          statisticsId: "",
+        },
+        additionalEquipmentId: "",
+        specialEquipment: {
+          id: "",
+          name: "读星提灯",
+          crystal: [
+            {
               id: "",
               name: "星之魔导士",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "mAtk + 9%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "cspd + 9%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "anticipate + 9%",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-          {
-            id: "",
-            name: "塔图罗基特",
-            crystalType: "GENERAL",
-            front: 0,
-            modifiersList: {
-              id: "",
-              name: "塔图罗基特属性",
-              modifiers: [
-                {
-                  id: "",
-                  formula: "pAtk + 6%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "mAtk + 6%",
-                  belongToModifiersListId: "",
-                },
-                {
-                  id: "",
-                  formula: "am + 2",
-                  belongToModifiersListId: "",
-                },
-              ],
-            },
-            modifiersListId: "",
-            createdAt: new Date(),
-            createdByUserId: "",
-            updatedAt: new Date(),
-            updatedByUserId: "",
-            extraDetails: "",
-            dataSources: "",
-            statistics: defaultSelectStatistics,
-            statisticsId: "",
-          },
-        ],
-        modifiersList: {
-          id: "",
-          name: "读星提灯属性",
-          modifiers: [
-            {
-              id: "",
-              formula: "mPie + 10",
-              belongToModifiersListId: "",
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "星之魔导士",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "mAtk + 9%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "cspd + 9%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "anticipate + 9%",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
             {
               id: "",
-              formula: "maxMp + 300",
-              belongToModifiersListId: "",
+              name: "塔图罗基特",
+              crystalType: "GENERAL",
+              front: 0,
+              modifiersList: {
+                id: "",
+                name: "塔图罗基特属性",
+                modifiers: [
+                  {
+                    id: "",
+                    formula: "pAtk + 6%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "mAtk + 6%",
+                    belongToModifiersListId: "",
+                  },
+                  {
+                    id: "",
+                    formula: "am + 2",
+                    belongToModifiersListId: "",
+                  },
+                ],
+              },
+              modifiersListId: "",
+              createdAt: new Date(),
+              createdByUserId: "",
+              updatedAt: new Date(),
+              updatedByUserId: "",
+              extraDetails: "",
+              dataSources: "",
+              statistics: defaultSelectStatistics,
+              statisticsId: "",
             },
           ],
+          modifiersList: {
+            id: "",
+            name: "读星提灯属性",
+            modifiers: [
+              {
+                id: "",
+                formula: "mPie + 10",
+                belongToModifiersListId: "",
+              },
+              {
+                id: "",
+                formula: "maxMp + 300",
+                belongToModifiersListId: "",
+              },
+            ],
+          },
+          modifiersListId: "",
+          createdAt: new Date(),
+          createdByUserId: "",
+          updatedAt: new Date(),
+          updatedByUserId: "",
+          extraDetails: "",
+          dataSources: "",
+          statistics: defaultSelectStatistics,
+          statisticsId: "",
         },
-        modifiersListId: "",
+        specialEquipmentId: "",
+        fashion: defaultSelectModifiersList,
+        fashionModifiersListId: "",
+        cuisine: defaultSelectModifiersList,
+        CuisineModifiersListId: "",
+        consumableList: [defaultSelectConsumable],
+        skillList: [defaultSelectSkill],
+        combos: [],
+        pet: defaultSelectPet,
+        petId: defaultSelectPet.id,
+        modifiersList: defaultSelectModifiersList,
+        modifiersListId: defaultSelectModifiersList.id,
         createdAt: new Date(),
         createdByUserId: "",
         updatedAt: new Date(),
         updatedByUserId: "",
         extraDetails: "",
-        dataSources: "",
         statistics: defaultSelectStatistics,
         statisticsId: "",
-      },
-      specialEquipmentId: "",
-      fashion: defaultSelectModifiersList,
-      fashionModifiersListId: "",
-      cuisine: defaultSelectModifiersList,
-      CuisineModifiersListId: "",
-      consumableList: [defaultSelectConsumable],
-      skillList: [defaultSelectSkill],
-      combos: [],
-      pet: defaultSelectPet,
-      petId: defaultSelectPet.id,
-      modifiersList: defaultSelectModifiersList,
-      modifiersListId: defaultSelectModifiersList.id,
-      createdAt: new Date(),
-      createdByUserId: "",
-      updatedAt: new Date(),
-      updatedByUserId: "",
-      extraDetails: "",
-      statistics: defaultSelectStatistics,
-      statisticsId: "",
-      imageId: "",
-    } satisfies SelectCharacter,
+        imageId: "",
+      } satisfies SelectCharacter,
+      characterId: "",
+      flow: [
+        {
+          id: "systemStart",
+          componentType: "task",
+          type: "message",
+          name: "开始!",
+          properties: { message: "开始!" },
+        },
+        {
+          id: "systemEnd",
+          componentType: "task",
+          type: "message",
+          name: "结束",
+          properties: { message: "结束" },
+        },
+      ],
+    } satisfies SelectMember,
     monster: {
       id: "",
       image: defaultSelectImage,
@@ -1074,196 +1090,29 @@ export default function AnalyzerIndexClient() {
       ],
     } satisfies skillSequenceList,
   };
-  const [team, setTeam] = createSignal<computeInput["arg"]["team"]>([
-    {
-      config: test.character,
-      actionQueue: test.skillSequence1.data,
-    },
-    {
-      config: test.character,
-      actionQueue: test.skillSequence2.data,
-    },
-  ]);
-
-  function stringToColor(str: string): string {
-    // 预定义的颜色数组
-    const colors: string[] = [];
-    // 生成 14 个颜色值
-    for (let i = 0; i < 15; i++) {
-      const hue = math.floor((i * (360 / 15)) % 360); // 色相值，从蓝色开始逐渐增加
-      const saturation = "60%"; // 饱和度设置为 100%
-      const lightness = "50%"; // 亮度设置为 50%
-
-      // 将 HSL 颜色值转换为 CSS 格式的字符串
-      const color = `hsl(${hue}, ${saturation}, ${lightness})`;
-
-      colors.push(color);
-    }
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash += str.charCodeAt(i);
-    }
-
-    // 将散列值映射到颜色数组的索引范围内
-    const index = hash % colors.length;
-
-    // 返回对应索引的颜色值
-    return colors[index]!;
-  }
-
-  function generateResultDom(frameData: FrameData[]) {
-    const result = frameData;
-    const lastFrameData = result.at(-1);
-    const RemainingHp = lastFrameData ? dynamicTotalValue(lastFrameData.monsterData.hp) : 0;
-    const totalDamge = (lastFrameData?.monsterData.hp.baseValue ?? 0) - RemainingHp;
-    const totalDuration = result.length / 60;
-    const dps = totalDamge / totalDuration;
-    return (
-      <>
-        <div class="Result my-10 flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div class="DPS flex flex-col gap-2">
-            <span class="Key py-2 text-sm">DPS</span>
-            <span class="Value border-y-[1px] border-brand-color-1st p-4 text-6xl lg:border-none lg:p-0 lg:text-8xl lg:text-accent-color">
-              {math.floor(math.abs(dps))}
-            </span>
-          </div>
-          <div class="OtherData flex flex-1 gap-2">
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">总耗时</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(totalDuration))} 秒
-              </span>
-            </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">总伤害</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(totalDamge) / 10000)} 万
-              </span>
-            </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">怪物剩余HP</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(RemainingHp) / 10000)}万
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="TimeLine flex flex-col gap-4">
-          <div class="Title border-b-2 border-brand-color-1st p-2">
-            <span class="Key p-1">时间轴</span>
-          </div>
-          <div class="Content flex flex-1 flex-wrap gap-y-4 shadow-transition-color-20 drop-shadow-2xl">
-            {result.map((frameData, frame) => {
-              return (
-                <div class={`FrameData${frame} flex flex-col justify-around gap-1`}>
-                  {frameData.teamState.map((member, memberIndex) => {
-                    const color = stringToColor(member?.skillData.name ?? "");
-                    return frame === 0 ? (
-                      <button class="MemberName p-1 text-sm">{member?.name}</button>
-                    ) : (
-                      <button
-                        class={`MemberData group relative h-4 px-[1px]`}
-                        style={{
-                          "background-color": member ? color : "transparent",
-                        }}
-                        onClick={() => {
-                          console.log("点击了队员：", member?.name, "的第：", frame, "帧");
-                          if (member) {
-                            setDialogFrameData(frameData);
-                            setDialogState(true);
-                          }
-                        }}
-                      >
-                        {member ? (
-                          <div class="absolute -left-4 bottom-14 z-10 hidden w-fit min-w-[300px] flex-col gap-2 rounded bg-primary-color p-2 text-left shadow-2xl shadow-transition-color-20 backdrop-blur-xl lg:group-hover:z-20 lg:group-hover:flex">
-                            <div class="FrameAttr flex flex-col gap-1 bg-transition-color-8 p-1">
-                              <span class="Title font-bold">队员: {member?.name}</span>
-                              <span class="Content">
-                                第 {math.floor(frame / 60)} 秒的第 {frame % 60} 帧
-                                <br />
-                              </span>
-
-                              <span class="Content">
-                                技能 {(member?.actionIndex ?? 0) + 1} {member?.skillData.name} 的第：
-                                {member?.actionFrameIndex} / {member?.skillData.skillDuration} 帧
-                                <br />
-                              </span>
-                            </div>
-                          </div>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </>
-    );
-  }
 
   onMount(() => {
-    console.log("--ComboAnalyze Client Render");
-    setMonsterList(generateAugmentedMonsterList(defaultMonsterList(), dictionary()));
-    setCharacterList([defaultSelectCharacter, defaultSelectCharacter]);
-    setMonster(test.monster);
-    setCharacter(test.character);
+    console.log("--Analyzer Client Render");
 
     calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
       const { type, computeResult } = e.data;
-      switch (type) {
-        case "progress":
-          {
-            const result = computeResult as string;
-            setComputeResult(<div class="Result my-10 flex items-end">{result}</div>);
-          }
-          break;
-        case "success":
-          {
-            setComputeResult(generateResultDom(computeResult as FrameData[]));
-          }
-          break;
-        case "error":
-          {
-            setComputeResult(<div class="Result my-10 flex items-end">发生错误</div>);
-          }
-          break;
-        default:
-          break;
-      }
     };
     calculatorWorker.onerror = (error) => {
       console.error("Worker error:", error);
     };
 
     return () => {
-      console.log("--ComboAnalyze Client Unmount");
+      console.log("--Analyzer Client Unmount");
       if (calculatorWorker) {
         calculatorWorker.terminate();
       }
     };
   });
 
-  const startCompute = () => {
-    setComputeResult(null);
-    const workerMessage: computeInput = JSON.parse(
-      JSON.stringify({
-        type: "start",
-        arg: {
-          dictionary: dictionary(),
-          team: team(),
-          monster: monster,
-        },
-      }),
-    );
-    calculatorWorker.postMessage(workerMessage);
-  };
-
   return (
     <>
       <div class="Title flex flex-col p-3 lg:pt-12">
-        <div class="Content flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
+        <div class="Content flex flex-col items-center justify-between gap-10 py-3 lg:flex-row lg:justify-start lg:gap-4">
           <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{analyzer.name}</h1>
           <div class="Control flex gap-3">
             <Button icon={<Icon.Line.Share />}>{dictionary().ui.actions.generateImage}</Button>
@@ -1271,8 +1120,11 @@ export default function AnalyzerIndexClient() {
           </div>
         </div>
       </div>
+
       <div class="MobsConfig flex flex-col gap-3 p-3">
-        <div class="ModuleTitle flex text-xl h-12 w-full items-center">{dictionary().ui.analyzer.analyzerPage.monsterConfig.title}</div>
+        <div class="ModuleTitle flex h-12 w-full items-center text-xl">
+          {dictionary().ui.analyzer.analyzerPage.mobsConfig.title}
+        </div>
         <div class="ModuleContent flex flex-col gap-6">
           <For each={analyzer.mobs}>
             {(mob, index) => {
@@ -1283,8 +1135,8 @@ export default function AnalyzerIndexClient() {
               }
               return (
                 <div class="flex items-center gap-6 rounded bg-accent-color bg-right shadow-card shadow-transition-color-20">
-                  <div class="MobsName px-6 py-3 text-xl text-primary-color">{mob.monster.name}</div>
-                  <div class="MobsConfig flex flex-1 gap-6 px-6 py-3">
+                  <div class="MobsName z-10 px-6 py-3 text-xl text-primary-color">{mob.monster.name}</div>
+                  <div class="MobsConfig z-10 flex flex-1 gap-6 px-6 py-3">
                     <div
                       class="MobsAugment flex cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
                       onMouseEnter={() => setStarArr(0)}
@@ -1307,7 +1159,7 @@ export default function AnalyzerIndexClient() {
                       />
                       <Icon.Filled.Star
                         onMouseEnter={() => setStarArr(4)}
-                        class={`${starArray()[index()] >= 4 ? "text-transition-color" : "text-primary-color-30"} hover:text-primary-color`}
+                        class={`${starArray()[index()] >= 4 ? "text-brand-color-4th" : "text-primary-color-30"} hover:text-primary-color`}
                       />
                     </div>
                     <Button class="text-primary-color" icon={<Icon.Line.Swap />}>
@@ -1318,13 +1170,13 @@ export default function AnalyzerIndexClient() {
                     </Button>
                   </div>
                   <div
-                    class="MobsBG w-1/2 self-stretch rounded"
+                    class="MobsBG z-0 w-1/2 self-stretch rounded"
                     style={{
                       "background-image": `url(${mob?.monster?.image?.dataUrl})`,
                       "background-position-y": "40%",
                     }}
                   >
-                    <div class="Mask w-1/2 h-full bg-gradient-to-r from-accent-color to-accent-color-0"></div>
+                    <div class="Mask h-full w-1/2 bg-gradient-to-r from-accent-color to-accent-color-0"></div>
                   </div>
                 </div>
               );
@@ -1332,85 +1184,62 @@ export default function AnalyzerIndexClient() {
           </For>
         </div>
       </div>
-      {/* <FlowEditor /> */}
-      <Dialog state={dialogState()} setState={setDialogState}>
-        <div class="Content flex w-full flex-col overflow-y-auto p-2 lg:p-4">
-          <div class="Title flex items-center gap-6">
-            {/* <div class="h-[2px] flex-1 bg-accent-color"></div> */}
-            <span class="text-lg font-bold lg:text-2xl">当前帧属性</span>
-            <div class="h-[2px] flex-1 bg-accent-color"></div>
-          </div>
-          <div class="Content flex flex-col gap-4 overflow-y-auto">
-            <div class="FrameAttr mt-4 flex flex-col gap-1 bg-transition-color-8 p-2 lg:flex-row">
-              <span class="Content">
-                帧信息： {math.floor((dialogFrameData()?.frame ?? 0) / 60)} 秒的第{" "}
-                {(dialogFrameData()?.frame ?? 0) % 60} 帧
-              </span>
-            </div>
-            <div class="CharacterData flex flex-col gap-1">
-              <div class="Title sticky top-0 z-10 flex items-center gap-6 bg-primary-color pt-4">
-                <span class="Title text-base font-bold lg:text-xl">Character</span>
-                <div class="h-[1px] flex-1 bg-brand-color-1st"></div>
-              </div>
-              <div class="Content flex flex-wrap outline-[1px] lg:gap-1">
-                <div class="Tab flex flex-wrap gap-1">
-                  {dialogFrameData()?.teamState.map((member, memberIndex) => {
-                    return (
-                      <Button onClick={() => setDialogMeberIndex(memberIndex)} size="sm">
-                        {member?.name}
-                      </Button>
-                    );
-                  })}
+
+      <div class="TeamConfig flex flex-col gap-3 p-3">
+        <div class="ModuleTitle flex h-12 w-full items-center text-xl">
+          {dictionary().ui.analyzer.analyzerPage.teamConfig.title}
+        </div>
+        <div class="ModuleContent flex flex-wrap gap-3">
+          <For each={analyzer.team}>
+            {(member, index) => {
+              return (
+                <div class="Member flex border-b-2 border-accent-color p-1">
+                  <div
+                    onClick={() => {
+                      setDialogState(true);
+                      setMember(analyzer.team[index()]);
+                      // const newTeam = _.cloneDeep(analyzer.team);
+                      // newTeam.splice(index(), 1);
+                      // setStore("analyzer", "team", newTeam);
+                    }}
+                    class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-transition-color-20"
+                  >
+                    <div class="Info flex flex-col gap-2 px-3">
+                      <div class="MemberName text-lg font-bold">{member.character.name ?? ""}</div>
+                      <div class="MenberConfig flex flex-1 gap-1 text-accent-color-70">
+                        <span>{member.character.lv}</span>-
+                        <span>{dictionary().db.enums.MainWeaponType[member.character.mainWeapon.mainWeaponType]}</span>-
+                        <span>{dictionary().db.enums.SubWeaponType[member.character.subWeapon.subWeaponType]}</span>
+                      </div>
+                    </div>
+                    <div class="Funtion"></div>
+                  </div>
+                  <div class="FlowRow"></div>
                 </div>
-                {dialogFrameData()?.teamState.map((member, memberIndex) => {
-                  return (
-                    <ObjectRenderer
-                      data={member?.characterData}
-                      dictionary={dictionary()}
-                      display={dialogMeberIndex() === memberIndex}
-                    />
-                  );
-                })}
-                <div class="Title flex items-center gap-6 bg-primary-color pt-4">
-                  <span class="Title text-base font-bold">Skill</span>
-                  <div class="h-[1px] flex-1 bg-brand-color-1st"></div>
-                </div>
-                {dialogFrameData()?.teamState.map((member, memberIndex) => {
-                  return (
-                    <ObjectRenderer
-                      data={member?.skillData}
-                      dictionary={dictionary()}
-                      display={dialogMeberIndex() === memberIndex}
-                    />
-                  );
-                })}
+              );
+            }}
+          </For>
+
+          <div class="AddMember flex p-1">
+            <div
+              onClick={() => setStore("analyzer", "team", analyzer.team.length, test.member)}
+              class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-transition-color-8 p-2 hover:bg-transition-color-20"
+            >
+              <div class="Info flex flex-col items-center justify-center gap-2 px-3">
+                <Icon.Line.AddUser />
+                <span>
+                  {dictionary().ui.actions.add}
+                  {dictionary().db.models.character.selfName}
+                </span>
               </div>
             </div>
-            <div class="MonsterData flex flex-col gap-1">
-              <div class="Title sticky top-0 z-10 flex items-center gap-6 bg-primary-color pt-4">
-                <span class="Title text-base font-bold lg:text-xl">Monster</span>
-                <div class="h-[1px] flex-1 bg-brand-color-1st"></div>
-              </div>
-              <div class="Content flex flex-wrap outline-[1px] lg:gap-1">
-                {dialogFrameData() ? (
-                  <ObjectRenderer dictionary={dictionary()} data={dialogFrameData()?.monsterData} display />
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <div class="FunctionArea flex flex-col justify-end gap-4 bg-primary-color">
-            <div class="h-[1px] flex-none bg-brand-color-1st"></div>
-            <div class="btnGroup flex gap-2">
-              <Button
-                onClick={() => {
-                  setDialogState(false);
-                }}
-              >
-                {dictionary().ui.actions.close} [Esc]
-              </Button>
-            </div>
+            <div class="FlowRow"></div>
           </div>
         </div>
+      </div>
+      <Dialog state={dialogState()} setState={setDialogState}>
+        <FlowEditor sequence={defaultSelectMember.flow as JSON} />
+        {/* {JSON.stringify(member().flow, null, 2)} */}
       </Dialog>
     </>
   );
