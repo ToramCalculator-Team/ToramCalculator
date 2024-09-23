@@ -12,7 +12,7 @@ export default function Home(props: ParentProps) {
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
-        class="h-full w-full"
+        class="h-full w-full z-10"
       >
         <Motion.div
           animate={{ opacity: 1 }}

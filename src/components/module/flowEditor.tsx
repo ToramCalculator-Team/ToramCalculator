@@ -1,4 +1,4 @@
-import { Accessor, createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
@@ -155,7 +155,7 @@ function isLoopStep(step: CustomStateMachineStep): step is CustomSequentialStep 
 
 class Steps {
   static createMathStep(name: string, formula: string) {
-    return StateMachineSteps.createTaskStep(name, "calculation", {
+    return StateMachineSteps.createTaskStep(name + formula, "calculation", {
       formula,
     });
   }
@@ -173,7 +173,7 @@ class Steps {
     falseSteps?: CustomStateMachineStep[],
   ) {
     return StateMachineSteps.createIfStep(
-      name,
+      name + condition,
       {
         condition,
       },
@@ -184,7 +184,7 @@ class Steps {
 
   static createLoopStep(name: string, condition: string, steps?: CustomStateMachineStep[]) {
     return StateMachineSteps.createLoopStep(
-      name,
+      name + condition,
       {
         condition,
       },
@@ -201,7 +201,10 @@ interface WorkflowDefinition extends Definition {
 }
 
 interface FlowEditorProps {
-  sequence?: JSON;
+  sequence?: CustomStateMachineStep[];
+  setSequence: (sequence: CustomStateMachineStep[]) => void;
+  display: boolean;
+  setDisplay: (display: boolean) => void;
 }
 
 export default function FlowEditor(props: FlowEditorProps) {
@@ -211,44 +214,20 @@ export default function FlowEditor(props: FlowEditorProps) {
     setDictionary(getDictionary(store.settings.language));
   });
 
-  const [sequence, setSequence] = createSignal<CustomStateMachineStep[]>();
+  let mounted = false;
   const [placeholder, setPlaceholder] = createSignal<HTMLElement | null>(null);
-
-  const startDefinition: WorkflowDefinition = {
-    properties: {
-      speed: 300,
-    },
-    sequence: [
-      Steps.createTextStep("开始!"),
-      Steps.createMathStep("定义", "a = 1"),
-      Steps.createMathStep("定义", "b = 2"),
-      Steps.createLoopStep("循环", "a < 20", [
-        Steps.createMathStep("自增", "a = a + 2"),
-        Steps.createMathStep("自减", "a = a + b - 1"),
-        Steps.createIfStep("如果x大于50", "a < 10", [Steps.createTextStep("yes!")], [Steps.createTextStep("no...")]),
-      ]),
-      Steps.createTextStep("结束"),
-    ],
-  };
-
-  const [designer, setDesigner] = createSignal<Designer<WorkflowDefinition> | null>(null);
-  const [definition, setDefinition] = createSignal(wrapDefinition(startDefinition));
   const [isToolboxCollapsed, setIsToolboxCollapsed] = createSignal(false);
   const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
   const [isReadonly, setIsReadonly] = createSignal(false);
   const [selectedStepId, setSelectedStepId] = createSignal<string | null>(null);
-  const [isFollowingSelectedStep, setIsFollowingSelectedStep] = createSignal(false);
+  const [isFollowingSelectedStep, setIsFollowingSelectedStep] = createSignal(true);
 
-  createEffect(() => {
-    console.log(definition());
-  })
-
-  function forwardDefinition() {
-    if (designer()) {
-      const wd = wrapDefinition(designer()!.getDefinition(), designer()!.isValid());
-      setDefinition(wd);
-    }
-  }
+  // function forwardDefinition() {
+  //   if (designer()) {
+  //     const wd = wrapDefinition(designer()!.getDefinition(), designer()!.isValid());
+  //     setDefinition(wd);
+  //   }
+  // }
 
   function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
     const container = document.createElement("div");
@@ -289,7 +268,10 @@ export default function FlowEditor(props: FlowEditorProps) {
             <p>
               <label>名称</label>
               <Input
-                onInput={(e) => (step.name = e.target.value)}
+                onInput={(e) => {
+                  step.name = e.target.value;
+                  context.notifyNameChanged();
+                }}
                 value={step.name?.toString()}
                 readOnly={isReadonly}
                 type="text"
@@ -326,11 +308,11 @@ export default function FlowEditor(props: FlowEditorProps) {
     groups: [
       {
         name: "数学模块",
-        steps: [Steps.createMathStep("自定义公式", "x = 0"), Steps.createTextStep("消息模块")],
+        steps: [Steps.createMathStep("自定义公式", ""), Steps.createTextStep("消息模块")],
       },
       {
         name: "逻辑模块",
-        steps: [Steps.createIfStep("If", "x > 0"), Steps.createLoopStep("Loop", "x > 2")],
+        steps: [Steps.createIfStep("If", ""), Steps.createLoopStep("Loop", "")],
       },
     ],
   }));
@@ -476,6 +458,8 @@ export default function FlowEditor(props: FlowEditorProps) {
 
     afterStepExecution(step: Step) {
       setSelectedStepId(step.id);
+      designer()?.selectStepById(step.id);
+      isFollowingSelectedStep() && designer()?.moveViewportToStep(step.id);
     }
 
     onFinished() {}
@@ -485,9 +469,27 @@ export default function FlowEditor(props: FlowEditorProps) {
 
   let SM: StateMachine<WorkflowDefinition> | null = null;
 
-  onMount(() => {
-    setDesigner(
-      Designer.create(placeholder()!, definition().value, {
+  const designer = createMemo<Designer<WorkflowDefinition> | null>(() => {
+    console.log("designer", props.display, mounted);
+    const startDefinition = {
+      properties: {
+        speed: 300,
+      },
+      sequence: _.cloneDeep(props.sequence) ?? [
+        Steps.createTextStep("开始!"),
+        Steps.createMathStep("定义", "a = 1"),
+        Steps.createMathStep("定义", "b = 2"),
+        Steps.createLoopStep("循环", "a < 20", [
+          Steps.createMathStep("自增", "a = a + 2"),
+          Steps.createMathStep("自减", "a = a + b - 1"),
+          Steps.createIfStep("如果x大于50", "a < 10", [Steps.createTextStep("yes!")], [Steps.createTextStep("no...")]),
+        ]),
+        Steps.createTextStep("结束"),
+      ],
+    };
+    if (mounted) {
+      mounted = props.display || mounted;
+      return Designer.create(placeholder()!, startDefinition, {
         theme: "light",
         undoStackSize: 10,
         toolbox: toolboxConfiguration()
@@ -511,50 +513,65 @@ export default function FlowEditor(props: FlowEditorProps) {
         // extensions,
         // i18n,
         isReadonly: isReadonly(),
-      }),
-    );
-
-    SM = new StateMachine(designer()!.getDefinition());
-
-    if (selectedStepId()) {
-      designer()?.selectStepById(selectedStepId()!);
+      });
+    } else {
+      return null;
     }
+  });
 
-    // 由于不清楚subscribe内部执行逻辑，暂时保留其源生用法，作为Designer属性变化的副作用
-    // createEffect用于实时更新Designer属性
+  // 由于不清楚subscribe内部执行逻辑，暂时保留其源生用法，作为Designer属性变化的副作用
+  // createEffect用于实时更新Designer属性
 
-    designer()?.onReady.subscribe(forwardDefinition);
+  // designer()?.onReady.subscribe(forwardDefinition);
 
-    createEffect(() => {
-      definition().value &&
-        definition().value !== designer()?.getDefinition() &&
-        designer()?.replaceDefinition(definition().value);
-    });
-    designer()?.onDefinitionChanged.subscribe(forwardDefinition);
+  // createEffect(() => {
+  //   definition().value &&
+  //     definition().value !== designer()?.getDefinition() &&
+  //     designer()?.replaceDefinition(definition().value);
+  // });
 
-    createEffect(() => {
-      selectedStepId() && designer()?.selectStepById(selectedStepId()!);
-      isFollowingSelectedStep() && selectedStepId() && designer()?.moveViewportToStep(selectedStepId()!);
+  // createEffect(() => {
+  //   selectedStepId() && designer()?.selectStepById(selectedStepId()!);
+  //   isFollowingSelectedStep() && selectedStepId() && designer()?.moveViewportToStep(selectedStepId()!);
+  // });
+
+  // createEffect(() => {
+  //   isToolboxCollapsed() && designer()?.setIsToolboxCollapsed(isToolboxCollapsed());
+  // });
+
+  // createEffect(() => {
+  //   isEditorCollapsed() && designer()?.setIsEditorCollapsed(isEditorCollapsed());
+  // });
+
+  // createEffect(() => {
+  //   isReadonly() && designer()?.setIsReadonly(isReadonly());
+  // });
+
+  // createEffect(() => {
+  //   isFollowingSelectedStep() && selectedStepId() && designer()?.moveViewportToStep(selectedStepId()!);
+  // });
+
+  createEffect(() => {
+    designer()?.onDefinitionChanged.subscribe(() => {
+      const sequence = designer()?.getDefinition().sequence;
+      if (mounted && sequence) {
+        console.log("sequence 发生变化，更新序列");
+        props.setSequence(sequence);
+      } else {
+        console.log("sequence 未发生变化，不作处理");
+      }
     });
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
-
-    createEffect(() => {
-      isToolboxCollapsed() && designer()?.setIsToolboxCollapsed(isToolboxCollapsed());
-    });
     designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
-
-    createEffect(() => {
-      isEditorCollapsed() && designer()?.setIsEditorCollapsed(isEditorCollapsed());
-    });
     designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
+    if (designer()) {
+      SM = new StateMachine(designer()!.getDefinition());
+    }
+  });
 
-    createEffect(() => {
-      isReadonly() && designer()?.setIsReadonly(isReadonly());
-    });
+  onMount(() => {
+    console.log("FlowEditor onMount");
 
-    createEffect(() => {
-      isFollowingSelectedStep() && selectedStepId() && designer()?.moveViewportToStep(selectedStepId()!);
-    });
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -567,7 +584,6 @@ export default function FlowEditor(props: FlowEditorProps) {
     return () => {
       if (designer()) {
         designer()!.destroy();
-        setDesigner(null);
       }
       document.addEventListener("keydown", handleEscapeKeyPress);
     };
@@ -583,9 +599,19 @@ export default function FlowEditor(props: FlowEditorProps) {
           class={`FlowEditorBox fixed left-0 top-0 z-50 flex h-full w-full scale-[105%] flex-col bg-primary-color-90 opacity-0`}
           id="FlowEditor"
         >
-          <div ref={setPlaceholder} class="FlowEditor h-full w-full"></div>
-          <div class="FunctionArea flex gap-2 w-full p-3 border-t-2 border-accent-color">
-          <Button level="primary" icon={<Icon.Line.Gamepad />} onClick={() => SM?.start()}>测试运行</Button>
+          <div ref={setPlaceholder} id="sqd-placeholder" class="FlowEditor h-full w-full"></div>
+          <div class="FunctionArea flex w-full gap-2 border-t-2 border-accent-color p-3">
+            <Button
+              level="primary"
+              disabled={designer()?.isReadonly()}
+              icon={<Icon.Line.Gamepad />}
+              onClick={() => {
+                SM?.start();
+                designer()?.setIsReadonly(true);
+              }}
+            >
+              测试运行
+            </Button>
           </div>
         </Motion.div>
       </Show>

@@ -14,7 +14,7 @@ import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import FlowEditor from "~/components/module/flowEditor";
+import FlowEditor, { CustomStateMachineStep } from "~/components/module/flowEditor";
 import { SelectAnalyzer } from "~/schema/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
@@ -50,13 +50,14 @@ export default function AnalyzerIndexClient() {
   const analyzer = store.analyzer;
   const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
   const [member, setMember] = createSignal(analyzer.team[0]);
+  const [memberIndex, setMemberIndex] = createSignal(0);
 
   const defaultStarArray: number[] = [];
   analyzer.mobs.forEach((mob) => {
     defaultStarArray.push(mob.star);
   });
   const [starArray, setStarArray] = createSignal(defaultStarArray);
-  const [dialogState, setDialogState] = createSignal(true); // 避免流程设计器初始化因没有父级元素失败
+  const [dialogState, setDialogState] = createSignal(false); // 避免流程设计器初始化因没有父级元素失败
 
   const test = {
     member: {
@@ -1197,7 +1198,7 @@ export default function AnalyzerIndexClient() {
                   <div
                     onClick={() => {
                       setDialogState(true);
-                      setMember(analyzer.team[index()]);
+                      setMemberIndex(index());
                       // const newTeam = _.cloneDeep(analyzer.team);
                       // newTeam.splice(index(), 1);
                       // setStore("analyzer", "team", newTeam);
@@ -1237,9 +1238,17 @@ export default function AnalyzerIndexClient() {
           </div>
         </div>
       </div>
+      
       <Dialog state={dialogState()} setState={setDialogState}>
-        <FlowEditor sequence={defaultSelectMember.flow as JSON} />
-        {/* {JSON.stringify(member().flow, null, 2)} */}
+        <FlowEditor
+          display={dialogState()}
+          setDisplay={setDialogState}
+          sequence={analyzer.team[memberIndex()].flow as CustomStateMachineStep[]}
+          setSequence={(flow) => {
+            console.log("更新store");
+            setStore("analyzer", "team", memberIndex(), "flow", flow);
+          }}
+        />
       </Dialog>
     </>
   );

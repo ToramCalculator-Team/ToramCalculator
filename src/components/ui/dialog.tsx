@@ -1,4 +1,4 @@
-import { createEffect, JSX, onMount, Show } from "solid-js";
+import { JSX, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 
