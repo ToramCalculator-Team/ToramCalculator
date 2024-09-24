@@ -5,6 +5,7 @@ import { defaultSelectCrystal, SelectCrystal } from "./schema/crystal";
 import { defaultSelectSkill, SelectSkill } from "./schema/skill";
 import { defaultSelectCharacter, SelectCharacter } from "./schema/character";
 import { defaultSelectAnalyzer, SelectAnalyzer } from "./schema/analyzer";
+import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
 
@@ -145,4 +146,6 @@ const [store, setStore] = createStore<Store>(
     : initialStore,
 );
 
-export { store, setStore };
+const reset = () => setStore(initialStore);
+
+export { store, setStore, reset };

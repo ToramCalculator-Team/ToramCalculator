@@ -1,4 +1,3 @@
-import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
 import { SelectMonster } from "~/schema/monster";
@@ -8,13 +7,13 @@ import { defaultSelectModifiersList } from "~/schema/modifiers_list";
 import { defaultSelectConsumable } from "~/schema/consumable";
 import { defaultSelectSkill } from "~/schema/skill";
 import { defaultSelectPet } from "~/schema/pet";
-import { createEffect, createSignal, For, JSX, onMount, Show } from "solid-js";
+import { Accessor, createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import FlowEditor, { CustomStateMachineStep } from "~/components/module/flowEditor";
+import FlowEditor from "~/components/module/flowEditor";
 import { SelectAnalyzer } from "~/schema/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
@@ -22,11 +21,334 @@ import { defaultSelectImage } from "~/schema/image";
 import { defaultSelectMember, SelectMember } from "~/schema/member";
 import { $Enums } from "~/schema/enums";
 import * as _ from "lodash-es";
+import {
+  BranchedStep,
+  Definition,
+  Designer,
+  PropertyValue,
+  RootEditorContext,
+  SequentialStep,
+  Step,
+  StepEditorContext,
+  StepsConfiguration,
+  ToolboxConfiguration,
+  ValidatorConfiguration,
+} from "sequential-workflow-designer";
+import { createId } from "@paralleldrive/cuid2";
+import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
+import { RootEditorWrapperContext } from "~/components/module/flowEditor/RootEditorWrapper";
+import Input from "~/components/ui/input";
+import { render } from "solid-js/web";
+import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
+
+const externalEditorClassName = "sqd-editor-solid";
 
 export type skillSequenceList = {
   name: string;
   data: tSkill[];
 };
+
+// 随机种子设置
+const randomSeed: null | string = null;
+
+// 验证 `all` 是否为有效的 FactoryFunctionMap 对象
+if (!all) {
+  throw new Error("all is undefined. Make sure you are importing it correctly.");
+}
+
+const math = create(all, {
+  epsilon: 1e-12,
+  matrix: "Matrix",
+  number: "number",
+  precision: 64,
+  predictable: false,
+  randomSeed: randomSeed,
+});
+
+// math函数计算上下文
+const scope = new Map();
+// 自定义计算函数
+const cEvaluate = (formula: string) => {
+  const result = math.evaluate(formula, scope);
+  console.log({ formula, scope, result });
+  return result;
+};
+
+// 运算数据类型定义
+interface TextStepProperties extends Record<string, PropertyValue> {
+  message: string;
+}
+interface MathStepProperties extends Record<string, PropertyValue> {
+  formula: string;
+}
+interface BranchesStepProperties extends Record<string, PropertyValue> {
+  condition: string;
+}
+interface LoopStepProperties extends Record<string, PropertyValue> {
+  condition: string;
+}
+
+// 步骤属性定义
+interface CustomTextStep extends Step {
+  properties: TextStepProperties;
+}
+interface CustomMathStep extends Step {
+  properties: MathStepProperties;
+}
+interface CustomBranchStep extends BranchedStep {
+  properties: BranchesStepProperties;
+  branches: {
+    [branchName: string]: CustomStateMachineStep[];
+  };
+}
+interface CustomSequentialStep extends SequentialStep {
+  properties: LoopStepProperties;
+  sequence: CustomStateMachineStep[];
+}
+
+export type CustomStateMachineStep = Step | CustomMathStep | CustomBranchStep | CustomSequentialStep;
+
+export class StateMachineSteps {
+  static createIfStep(
+    name: string,
+    properties: BranchesStepProperties,
+    trueSteps: CustomStateMachineStep[],
+    falseSteps: CustomStateMachineStep[],
+  ): CustomBranchStep {
+    return {
+      id: createId(),
+      componentType: "switch",
+      type: "if",
+      name,
+      branches: {
+        true: trueSteps || [],
+        false: falseSteps || [],
+      },
+      properties,
+    };
+  }
+
+  static createLoopStep(
+    name: string,
+    properties: LoopStepProperties,
+    steps: CustomStateMachineStep[],
+  ): CustomSequentialStep {
+    return {
+      id: createId(),
+      componentType: "container",
+      type: "loop",
+      name,
+      sequence: steps ?? [],
+      properties,
+    };
+  }
+
+  static createTaskStep(name: string, type: string, properties: MathStepProperties | TextStepProperties): Step {
+    return {
+      id: createId(),
+      componentType: "task",
+      type,
+      name,
+      properties,
+    };
+  }
+}
+
+function isTextStep(step: CustomStateMachineStep): step is CustomTextStep {
+  let condition: boolean = "message" in step.properties;
+  condition = step.type === "message";
+  return condition;
+}
+function isMathStep(step: CustomStateMachineStep): step is CustomMathStep {
+  let condition: boolean = "formula" in step.properties;
+  return condition;
+}
+function isIfStep(step: CustomStateMachineStep): step is CustomBranchStep {
+  let condition: boolean = "branches" in step && step.type === "if";
+  return condition;
+}
+function isLoopStep(step: CustomStateMachineStep): step is CustomSequentialStep {
+  let condition: boolean = step.type === "loop";
+  return condition;
+}
+
+class Steps {
+  static createMathStep(name: string, formula: string) {
+    return StateMachineSteps.createTaskStep(name + formula, "calculation", {
+      formula,
+    });
+  }
+
+  static createTextStep(message: string) {
+    return StateMachineSteps.createTaskStep(message, "message", {
+      message: message,
+    });
+  }
+
+  static createIfStep(
+    name: string,
+    condition: string,
+    trueSteps?: CustomStateMachineStep[],
+    falseSteps?: CustomStateMachineStep[],
+  ) {
+    return StateMachineSteps.createIfStep(
+      name + condition,
+      {
+        condition,
+      },
+      trueSteps ?? [],
+      falseSteps ?? [],
+    );
+  }
+
+  static createLoopStep(name: string, condition: string, steps?: CustomStateMachineStep[]) {
+    return StateMachineSteps.createLoopStep(
+      name + condition,
+      {
+        condition,
+      },
+      steps ?? [],
+    );
+  }
+}
+
+class StateMachine<TDefinition extends Definition> {
+  designer: Designer<TDefinition>;
+  data: { [key: string]: number };
+  callstack: {
+    sequence: CustomStateMachineStep[];
+    index: number;
+    unwind: () => void;
+  }[];
+  isRunning: boolean;
+  isInterrupted = false;
+  consoles: string;
+
+  constructor(designer: Designer<TDefinition>) {
+    this.designer = designer;
+    this.data = {};
+    this.consoles = "Consoles:";
+    this.callstack = [
+      {
+        sequence: this.designer.getDefinition().sequence,
+        index: 0,
+        unwind: () => {},
+      },
+    ];
+    this.isRunning = false;
+  }
+
+  unwindStack() {
+    this.callstack.pop();
+  }
+
+  executeIfStep(step: CustomBranchStep) {
+    const value = this.executeIf(step);
+    this.callstack.push({
+      sequence: value ? step.branches.true : step.branches.false,
+      index: 0,
+      unwind: this.unwindStack.bind(this),
+    });
+  }
+
+  executeLoopStep(step: CustomSequentialStep) {
+    const program = {
+      sequence: step.sequence,
+      index: 0,
+      unwind: () => {
+        if (this.canReplyLoopStep(step)) {
+          program.index = 0;
+        } else {
+          this.unwindStack();
+        }
+      },
+    };
+    this.callstack.push(program);
+  }
+
+  executeStep(step: CustomStateMachineStep) {
+    if (isTextStep(step)) {
+      this.consoles += "\r\n" + step.properties.message;
+      return;
+    }
+    if (isMathStep(step)) {
+      const formula = step.properties.formula;
+      cEvaluate(formula);
+    }
+  }
+
+  execute() {
+    if (this.isInterrupted) {
+      this.onInterrupted();
+      return;
+    }
+
+    const depth = this.callstack.length - 1;
+    const program = this.callstack[depth];
+    if (program.sequence.length === program.index) {
+      if (depth > 0) {
+        program.unwind();
+        this.execute();
+      } else {
+        this.isRunning = false;
+        this.onFinished();
+      }
+      return;
+    }
+
+    const step = program.sequence[program.index];
+    program.index++;
+
+    switch (step.type) {
+      case "if":
+        isIfStep(step) && this.executeIfStep(step);
+        break;
+      case "loop":
+        isLoopStep(step) && this.executeLoopStep(step);
+        break;
+      default:
+        this.executeStep(step);
+        break;
+    }
+
+    // this.execute.bind(this);
+    setTimeout(this.execute.bind(this), this.designer.getDefinition().properties.speed as number);
+    this.afterStepExecution(step);
+  }
+
+  start() {
+    if (this.isRunning) {
+      throw new Error("Already running");
+    }
+    this.isRunning = true;
+    this.callstack[0].index = 0;
+    this.execute();
+  }
+
+  interrupt() {
+    if (!this.isRunning) {
+      throw new Error("Not running");
+    }
+    this.isInterrupted = true;
+  }
+
+  executeIf(step: CustomBranchStep) {
+    return cEvaluate(step.properties.condition) === true;
+  }
+
+  canReplyLoopStep(step: CustomSequentialStep) {
+    return cEvaluate(step.properties.condition) === true;
+  }
+
+  afterStepExecution(step: Step) {
+    this.designer.selectStepById(step.id);
+    this.designer.moveViewportToStep(step.id);
+  }
+
+  onFinished() {}
+
+  onInterrupted() {}
+}
 
 export default function AnalyzerIndexClient() {
   const params = useParams();
@@ -49,15 +371,121 @@ export default function AnalyzerIndexClient() {
   const setAnalyzeList = (value: SelectAnalyzer[]) => setStore("analyzerPage", "analyzerList", value);
   const analyzer = store.analyzer;
   const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
-  const [member, setMember] = createSignal(analyzer.team[0]);
   const [memberIndex, setMemberIndex] = createSignal(0);
+
+  const [designer, setDesigner] = createSignal<Designer<WorkflowDefinition> | null>(null);
+  const [placeholder, setPlaceholder] = createSignal<HTMLElement | null>(null);
+  const [isToolboxCollapsed, setIsToolboxCollapsed] = createSignal(false);
+  const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
+  const [isReadonly, setIsReadonly] = createSignal(false);
+
+  function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
+    const container = document.createElement("div");
+    container.className = externalEditorClassName;
+    render(
+      () => (
+        <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
+          <div class="RootEditor">
+            <h4>状态机信息</h4>
+            <p>
+              <label>速度(毫秒)</label>
+              <Input
+                onChange={(e) => {
+                  def.properties.speed = parseInt(e.target.value);
+                  context.notifyPropertiesChanged();
+                }}
+                value={def.properties.speed?.toString() ?? ""}
+                readOnly={isReadonly}
+                type="text"
+              />
+            </p>
+          </div>
+        </RootEditorWrapperContext>
+      ),
+      container,
+    );
+    return container;
+  }
+
+  function stepEditorProvider(step: Step, context: StepEditorContext, def: Definition, isReadonly: boolean) {
+    const container = document.createElement("div");
+    container.className = externalEditorClassName;
+    render(
+      () => (
+        <StepEditorWrapperContext step={step} definition={def} context={context} isReadonly={isReadonly}>
+          <div class="StepEditor">
+            <h4>{"Step " + step.type}</h4>
+            <p>
+              <label>名称</label>
+              <Input
+                onInput={(e) => {
+                  step.name = e.target.value;
+                  context.notifyNameChanged();
+                }}
+                value={step.name?.toString()}
+                readOnly={isReadonly}
+                type="text"
+              />
+            </p>
+            <For each={["formula", "condition", "message"]}>
+              {(key) => (
+                <Show when={step.properties[key] !== undefined}>
+                  <p>
+                    <label>{key}</label>
+                    <Input
+                      onInput={(e) => {
+                        step.properties[key] = e.target.value;
+                        context.notifyPropertiesChanged();
+                      }}
+                      value={step.properties[key]?.toString()}
+                      readOnly={isReadonly}
+                      type="text"
+                    />
+                  </p>
+                </Show>
+              )}
+            </For>
+          </div>
+        </StepEditorWrapperContext>
+      ),
+      container,
+    );
+
+    return container;
+  }
+
+  const toolboxConfiguration: Accessor<ToolboxConfiguration> = createMemo(() => ({
+    groups: [
+      {
+        name: "数学模块",
+        steps: [Steps.createMathStep("自定义公式", ""), Steps.createTextStep("消息模块")],
+      },
+      {
+        name: "逻辑模块",
+        steps: [Steps.createIfStep("If", ""), Steps.createLoopStep("Loop", "")],
+      },
+    ],
+  }));
+  const stepsConfiguration: Accessor<StepsConfiguration> = createMemo(() => ({
+    /* ... */
+  }));
+  const validatorConfiguration: Accessor<ValidatorConfiguration> = createMemo(() => ({
+    step: (step) => {
+      return Object.keys(step.properties).every((n) => !!step.properties[n]);
+    },
+    root: (definition) => {
+      return (definition.properties["speed"] as number) > 0;
+    },
+  }));
+
+  let SM: StateMachine<WorkflowDefinition> | null = null;
 
   const defaultStarArray: number[] = [];
   analyzer.mobs.forEach((mob) => {
     defaultStarArray.push(mob.star);
   });
   const [starArray, setStarArray] = createSignal(defaultStarArray);
-  const [dialogState, setDialogState] = createSignal(false); // 避免流程设计器初始化因没有父级元素失败
+  const [dialogState, setDialogState] = createSignal(true); // 避免流程设计器初始化因没有父级元素失败
 
   const test = {
     member: {
@@ -1092,8 +1520,76 @@ export default function AnalyzerIndexClient() {
     } satisfies skillSequenceList,
   };
 
+  interface WorkflowDefinition extends Definition {
+    properties: {
+      speed: number;
+    };
+    sequence: CustomStateMachineStep[];
+  }
+
+  const startDefinition = createMemo<WorkflowDefinition>(() => {
+    console.log("更新startDefinition");
+    return {
+      properties: {
+        speed: 300,
+      },
+      sequence: _.cloneDeep(analyzer.team[memberIndex()].flow as unknown as CustomStateMachineStep[]) ?? [
+        Steps.createTextStep("开始!"),
+        Steps.createMathStep("定义", "a = 1"),
+        Steps.createMathStep("定义", "b = 2"),
+        Steps.createLoopStep("循环", "a < 20", [
+          Steps.createMathStep("自增", "a = a + 2"),
+          Steps.createMathStep("自减", "a = a + b - 1"),
+          Steps.createIfStep("如果x大于50", "a < 10", [Steps.createTextStep("yes!")], [Steps.createTextStep("no...")]),
+        ]),
+        Steps.createTextStep("结束"),
+      ],
+    };
+  });
+
   onMount(() => {
     console.log("--Analyzer Client Render");
+    setDesigner(
+      Designer.create(placeholder()!, startDefinition(), {
+        theme: "light",
+        undoStackSize: 10,
+        toolbox: toolboxConfiguration()
+          ? {
+              ...toolboxConfiguration(),
+              isCollapsed: isToolboxCollapsed(),
+            }
+          : false,
+        steps: stepsConfiguration(),
+        validator: validatorConfiguration(),
+        controlBar: true,
+        contextMenu: true,
+        keyboard: true,
+        // preferenceStorage:,
+        editors: {
+          isCollapsed: isEditorCollapsed(),
+          rootEditorProvider,
+          stepEditorProvider,
+        },
+        customActionHandler: () => {},
+        // extensions,
+        // i18n,
+        isReadonly: isReadonly(),
+      }),
+    );
+    designer()!.onDefinitionChanged.subscribe(() => {
+      const sequence = designer()?.getDefinition().sequence;
+      if (sequence) {
+        setStore("analyzer", "team", memberIndex(), "flow", structuredClone(sequence));
+      }
+    });
+    designer()!.onSelectedStepIdChanged.subscribe((stepId) => {});
+    designer()!.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
+    designer()!.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
+    SM = new StateMachine<WorkflowDefinition>(designer()!);
+
+    setTimeout(() => {
+      setDialogState(false);
+    }, 1);
 
     calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
       const { type, computeResult } = e.data;
@@ -1199,6 +1695,7 @@ export default function AnalyzerIndexClient() {
                     onClick={() => {
                       setDialogState(true);
                       setMemberIndex(index());
+                      designer()?.replaceDefinition(startDefinition());
                       // const newTeam = _.cloneDeep(analyzer.team);
                       // newTeam.splice(index(), 1);
                       // setStore("analyzer", "team", newTeam);
@@ -1238,17 +1735,22 @@ export default function AnalyzerIndexClient() {
           </div>
         </div>
       </div>
-      
+
       <Dialog state={dialogState()} setState={setDialogState}>
-        <FlowEditor
-          display={dialogState()}
-          setDisplay={setDialogState}
-          sequence={analyzer.team[memberIndex()].flow as CustomStateMachineStep[]}
-          setSequence={(flow) => {
-            console.log("更新store");
-            setStore("analyzer", "team", memberIndex(), "flow", flow);
-          }}
-        />
+        <div ref={setPlaceholder} id="sqd-placeholder" class="FlowEditor h-full w-full"></div>
+        <div class="FunctionArea flex w-full gap-2 border-t-2 border-accent-color p-3">
+          <Button
+            level="primary"
+            disabled={designer()?.isReadonly()}
+            icon={<Icon.Line.Gamepad />}
+            onClick={() => {
+              SM?.start();
+              designer()?.setIsReadonly(true);
+            }}
+          >
+            测试运行
+          </Button>
+        </div>
       </Dialog>
     </>
   );

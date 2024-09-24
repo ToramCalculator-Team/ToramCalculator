@@ -214,7 +214,7 @@ export default function FlowEditor(props: FlowEditorProps) {
     setDictionary(getDictionary(store.settings.language));
   });
 
-  let mounted = false;
+  const [mounted, setMounted] = createSignal(false);
   const [placeholder, setPlaceholder] = createSignal<HTMLElement | null>(null);
   const [isToolboxCollapsed, setIsToolboxCollapsed] = createSignal(false);
   const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
@@ -469,9 +469,9 @@ export default function FlowEditor(props: FlowEditorProps) {
 
   let SM: StateMachine<WorkflowDefinition> | null = null;
 
-  const designer = createMemo<Designer<WorkflowDefinition> | null>(() => {
-    console.log("designer", props.display, mounted);
-    const startDefinition = {
+  const startDefinition = createMemo<WorkflowDefinition>(() => {
+    console.log("startDefinition memo");
+    return {
       properties: {
         speed: 300,
       },
@@ -487,37 +487,42 @@ export default function FlowEditor(props: FlowEditorProps) {
         Steps.createTextStep("结束"),
       ],
     };
-    if (mounted) {
-      mounted = props.display || mounted;
-      return Designer.create(placeholder()!, startDefinition, {
-        theme: "light",
-        undoStackSize: 10,
-        toolbox: toolboxConfiguration()
-          ? {
-              ...toolboxConfiguration(),
-              isCollapsed: isToolboxCollapsed(),
-            }
-          : false,
-        steps: stepsConfiguration(),
-        validator: validatorConfiguration(),
-        controlBar: true,
-        contextMenu: true,
-        keyboard: true,
-        // preferenceStorage:,
-        editors: {
-          isCollapsed: isEditorCollapsed(),
-          rootEditorProvider,
-          stepEditorProvider,
-        },
-        customActionHandler: () => {},
-        // extensions,
-        // i18n,
-        isReadonly: isReadonly(),
-      });
-    } else {
-      return null;
-    }
   });
+
+  const [designer, setDesigner] = createSignal<Designer<WorkflowDefinition> | null>(null);
+
+  // const designer = createMemo<Designer<WorkflowDefinition> | null>(() => {
+  //   console.log("designer memo");
+  //   if (document.getElementById("sqd-placeholder")) {
+  //     return Designer.create(placeholder()!, startDefinition(), {
+  //       theme: "light",
+  //       undoStackSize: 10,
+  //       toolbox: toolboxConfiguration()
+  //         ? {
+  //             ...toolboxConfiguration(),
+  //             isCollapsed: isToolboxCollapsed(),
+  //           }
+  //         : false,
+  //       steps: stepsConfiguration(),
+  //       validator: validatorConfiguration(),
+  //       controlBar: true,
+  //       contextMenu: true,
+  //       keyboard: true,
+  //       // preferenceStorage:,
+  //       editors: {
+  //         isCollapsed: isEditorCollapsed(),
+  //         rootEditorProvider,
+  //         stepEditorProvider,
+  //       },
+  //       customActionHandler: () => {},
+  //       // extensions,
+  //       // i18n,
+  //       isReadonly: isReadonly(),
+  //     });
+  //   } else {
+  //     return null;
+  //   }
+  // });
 
   // 由于不清楚subscribe内部执行逻辑，暂时保留其源生用法，作为Designer属性变化的副作用
   // createEffect用于实时更新Designer属性
@@ -554,7 +559,7 @@ export default function FlowEditor(props: FlowEditorProps) {
   createEffect(() => {
     designer()?.onDefinitionChanged.subscribe(() => {
       const sequence = designer()?.getDefinition().sequence;
-      if (mounted && sequence) {
+      if (mounted() && sequence) {
         console.log("sequence 发生变化，更新序列");
         props.setSequence(sequence);
       } else {
@@ -571,6 +576,32 @@ export default function FlowEditor(props: FlowEditorProps) {
 
   onMount(() => {
     console.log("FlowEditor onMount");
+
+    setDesigner(Designer.create(placeholder()!, startDefinition(), {
+      theme: "light",
+      undoStackSize: 10,
+      toolbox: toolboxConfiguration()
+        ? {
+            ...toolboxConfiguration(),
+            isCollapsed: isToolboxCollapsed(),
+          }
+        : false,
+      steps: stepsConfiguration(),
+      validator: validatorConfiguration(),
+      controlBar: true,
+      contextMenu: true,
+      keyboard: true,
+      // preferenceStorage:,
+      editors: {
+        isCollapsed: isEditorCollapsed(),
+        rootEditorProvider,
+        stepEditorProvider,
+      },
+      customActionHandler: () => {},
+      // extensions,
+      // i18n,
+      isReadonly: isReadonly(),
+    }))
 
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {
