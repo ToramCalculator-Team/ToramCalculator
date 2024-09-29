@@ -1066,13 +1066,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "
 		
 		`,
     );
-    await pg.electric.syncShapeToTable({
-      shape: {
-        url: "https://test.kiaclouth.com/v1/shape/user",
-      },
-      table: "user",
-      primaryKey: ["id"],
-    });
+    // await pg.electric.syncShapeToTable({
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/user",
+    //   },
+    //   table: "user",
+    //   primaryKey: ["id"],
+    // });
     // await pg.electric.syncShapeToTable({
     //   shape: {
     //     url: "https://test.kiaclouth.com/v1/shape/user_create_data",
@@ -1094,13 +1094,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "
     //   table: "monster",
     //   primaryKey: ["id"],
     // });
-    // await pg.waitReady;
-    // const db = drizzle(pg, { schema });
-    // const sql = db.query.monster.findMany().toSQL().sql;
-    // console.log(sql);
-    // pg.live.query(sql, [], (res) => {
-    //   console.log("live query result:", res);
-    // });
+    await pg.waitReady;
+    const db = drizzle(pg, { schema });
+    const sql = db.query.monster.findMany().toSQL().sql;
+    console.log(sql);
+    pg.live.query(sql, [], (res) => {
+      console.log("live query result:", res);
+    });
 
     return pg;
   },
