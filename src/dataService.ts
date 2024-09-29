@@ -9,13 +9,15 @@ import { dw } from "./worker/dataWorker";
 // console.log("dataService loaded");
 
 // 初始化本地数据库
-export const pg = await PGliteWorker.create(
+export const pgWorker = await PGliteWorker.create(
   new Worker(PGliteWorkerUrl, {
     type: "module",
   })
 );
 
+console.log(await pgWorker.exec("select * from public.user"));
+
 // 初始化数据层服务
 const DW = new dataWorker()
 export const DS = Comlink.wrap<typeof dw>(DW.port);
-export const proxiedPg = Comlink.proxy(pg); // 使用 proxy 包装
+export const proxiedPg = Comlink.proxy(pgWorker); // 使用 proxy 包装

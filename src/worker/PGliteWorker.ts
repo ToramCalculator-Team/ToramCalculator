@@ -16,7 +16,7 @@ worker({
       //   debug: 5,
       extensions: {
         live,
-        electric: electricSync({ debug: false }),
+        electric: electricSync({ debug: true }),
       },
     });
     await pg.exec(
@@ -1066,37 +1066,41 @@ CREATE UNIQUE INDEX IF NOT EXISTS "verification_token_identifier_token_key" ON "
 		
 		`,
     );
+    await pg.electric.syncShapeToTable({
+      shape: {
+        url: "https://test.kiaclouth.com/v1/shape/user",
+      },
+      table: "user",
+      primaryKey: ["id"],
+    });
     // await pg.electric.syncShapeToTable({
-    //   url: "https://test.kiaclouth.com/v1/shape/user",
-    //   table: "user",
-    //   primaryKey: ["id"],
-    // });
-    // await pg.electric.syncShapeToTable({
-    //   url: "https://test.kiaclouth.com/v1/shape/user_create_data",
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/user_create_data",
+    //   },
     //   table: "user_create_data",
     //   primaryKey: ["userId"],
     // });
     // await pg.electric.syncShapeToTable({
-    //   url: "https://test.kiaclouth.com/v1/shape/user_update_data",
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/user_update_data",
+    //   },
     //   table: "user_update_data",
     //   primaryKey: ["userId"],
     // });
-    // const shape = await pg.electric.syncShapeToTable({
-    //   url: "https://test.kiaclouth.com/v1/shape/monster",
+    // await pg.electric.syncShapeToTable({
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/monster",
+    //   },
     //   table: "monster",
     //   primaryKey: ["id"],
     // });
     // await pg.waitReady;
     // const db = drizzle(pg, { schema });
     // const sql = db.query.monster.findMany().toSQL().sql;
-    // // console.log("sql:" + sql);
-    // console.log("shapeId:" + shape.shapeId);
-    // console.log("lastOffset:" + shape.lastOffset);
+    // console.log(sql);
     // pg.live.query(sql, [], (res) => {
     //   console.log("live query result:", res);
     // });
-    // console.log("drizzle suery result:", db.query.monster.findMany());
-    // shape.unsubscribe();
 
     return pg;
   },

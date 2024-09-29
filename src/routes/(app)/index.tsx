@@ -378,6 +378,10 @@ export default function Index() {
     setDictionary(getDictionary(store.settings.language));
   });
 
+  // createEffect(async () => {
+  //   console.log(await dw.getMonsterList(proxiedPg));
+  // })
+
   onMount(() => {
     // 浏览器后退事件监听
     const handlePopState = () => {
