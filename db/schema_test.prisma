@@ -15,19 +15,19 @@ enum UserRole {
     ADMIN
 }
 
-model User {
+model user {
     id       String   @id
     name     String
     userRole UserRole
-    posts    Post[]
+    posts    post[]
 }
 
-model Post {
+model post {
     id          String   @id
     name        String
     createdAt   DateTime
     updatedAt   DateTime @updatedAt
-    createdBy   User     @relation(fields: [createdById], references: [id])
+    createdBy   user     @relation(fields: [createdById], references: [id])
     createdById String
 
     @@index([name])

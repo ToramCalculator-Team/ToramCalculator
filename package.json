@@ -15,22 +15,22 @@
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.14.8",
+    "autoprefixer": "^10.4.20",
     "drizzle-kit": "latest",
     "drizzle-prisma-generator": "latest",
     "husky": "^9.1.4",
-    "autoprefixer": "^10.4.20",
+    "pg": "^8.12.0",
     "postcss": "^8.4.41",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",
-    "prisma": "^5.18.0",
-    "pg": "^8.12.0"
+    "prisma": "^5.18.0"
   },
   "dependencies": {
     "@editorjs/editorjs": "^2.30.4",
     "@electric-sql/client": "latest",
     "@electric-sql/next": "latest",
     "@electric-sql/pglite": "latest",
-    "@electric-sql/pglite-sync": "latest",
+    "@electric-sql/pglite-sync": "0.2.07",
     "@paralleldrive/cuid2": "^2.2.2",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.14.1",

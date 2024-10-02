@@ -28,14 +28,14 @@ const Input = (props: MyInputProps) => {
 
   createEffect(() => {
     setDefaultInputClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center bg-transition-color-8 focus-within:bg-primary-color underline-offset-4 hover:underline ${config().sizeClass} `,
+      `${config().disableClass} flex flex-none items-center justify-center bg-transition-color-8 hover:outline-2 hover:outline-transition-color-20 focus-within:bg-primary-color ${config().sizeClass} `,
     );
   });
 
   return (
     <input
       {...props}
-      type={props.type ?? "button"}
+      type={props.type ?? "text"}
       ref={props.ref}
       class={` ` + props.class ? defaultInputClassNames() + props.class : defaultInputClassNames()}
     >
