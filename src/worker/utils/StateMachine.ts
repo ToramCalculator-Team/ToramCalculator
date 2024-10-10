@@ -25,7 +25,7 @@ const scope = new Map();
 // 自定义计算函数
 const cEvaluate = (formula: string) => {
   const result = math.evaluate(formula, scope);
-  console.log({ formula, scope, result });
+  // console.log({ formula, scope, result });
   return result;
 };
 
@@ -108,7 +108,7 @@ export class StateMachine {
   }
 
   setSequence(sequence: Sequence) {
-      this.sequence = sequence;
+    this.sequence = sequence;
   }
 
   unwindStack() {
@@ -183,8 +183,7 @@ export class StateMachine {
         this.executeStep(step);
         break;
     }
-
-    // this.execute.bind(this);
+    
     setTimeout(this.execute.bind(this), 300);
     this.afterStepExecution(step);
   }

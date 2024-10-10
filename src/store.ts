@@ -76,7 +76,7 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-  version: 0.001,
+  version: 0.002,
   theme: "light",
   settings: {
     userInterface: {

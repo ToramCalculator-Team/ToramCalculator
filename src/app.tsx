@@ -6,7 +6,7 @@ import * as _ from "lodash-es";
 import { initialStore, Store, store } from "./store";
 
 export default function App() {
-  // 实时更新主题
+  // 主题切换时
   createEffect(() => {
     document.documentElement.classList.add("transitionColorNone");
     document.documentElement.classList.remove("light", "dark");
@@ -16,43 +16,47 @@ export default function App() {
     }, 500);
   });
 
-  // 检查配置数据版本
-  onMount(() => {
-    const storage = localStorage.getItem("store") ?? "{}";
-    const oldConfig = JSON.parse(storage);
-    const newConfig = initialStore;
-    if (oldConfig.version && oldConfig.version === newConfig.version) {
-      // console.log(`配置数据版本${oldConfig.version}`);
-    } else {
-      console.log(`配置数据版本更新至${newConfig.version}`);
-
-      // 排除版本信息
-      const oldConfigWithoutVersion = _.omit(oldConfig, ["version"]);
-      const newConfigWithoutVersion = _.omit(newConfig, ["version"]);
-
-      // 合并对象
-      const mergedConfig = _.merge({}, oldConfigWithoutVersion, newConfigWithoutVersion);
-
-      // 加入新版本信息
-      mergedConfig.version = newConfig.version;
-
-      // console.log("旧对象：", oldConfig, "新对象：", newConfig, "合并结果：", mergedConfig);
-      localStorage.setItem("store", JSON.stringify(mergedConfig));
-    }
-  });
-
-  // 更新配置数据的本地存储
-  createEffect(() => {
-    document.documentElement.lang = store.settings.language;
-    document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
-    localStorage.setItem("store", JSON.stringify(store));
-  });
-
-  //
+  // 禁用、启用动画
   createEffect(() => {
     store.settings.userInterface.isAnimationEnabled
       ? document.documentElement.classList.remove("transitionNone")
       : document.documentElement.classList.add("transitionNone");
+  });
+
+  // 动态设置语言
+  createEffect(() => {
+    document.documentElement.lang = store.settings.language;
+    document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
+  });
+
+  // 实时更新本地存储
+  createEffect(() => {
+    localStorage.setItem("store", JSON.stringify(store));
+    console.log("本地存储已更新");
+  });
+
+  // 检查配置数据版本
+  onMount(() => {
+    const storage = localStorage.getItem("store") ?? "{}";
+    const oldStore = JSON.parse(storage);
+    const newStore = initialStore;
+    if (oldStore.version && oldStore.version === newStore.version) {
+      // console.log(`配置数据版本${oldStore.version}`);
+    } else {
+      // 排除版本信息
+      const oldStoreWithoutVersion = _.omit(oldStore, ["version"]);
+      const newStoreWithoutVersion = _.omit(newStore, ["version"]);
+
+      // 合并对象
+      const mergedStore = _.merge({}, oldStoreWithoutVersion, newStoreWithoutVersion);
+
+      // 加入新版本信息
+      mergedStore.version = newStore.version;
+
+      // 更新本地存储
+      localStorage.setItem("store", JSON.stringify(mergedStore));
+      console.log(`配置数据版本更新至${mergedStore.version}`);
+    }
   });
 
   return (
