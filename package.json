@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "schema:generate": "prisma generate --schema=./db/schema.prisma",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate --name=init",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "prisma studio --schema=./db/schema.prisma",

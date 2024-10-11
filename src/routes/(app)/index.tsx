@@ -322,7 +322,6 @@ export default function Index() {
 
   // 键盘事件
   const handleKeyPress = (e: KeyboardEvent) => {
-    console.log(e.key);
     switch (e.key) {
       case "Enter":
         {
@@ -377,10 +376,6 @@ export default function Index() {
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
   });
-
-  // createEffect(async () => {
-  //   console.log(await dw.getMonsterList(proxiedPg));
-  // })
 
   onMount(() => {
     // 浏览器后退事件监听

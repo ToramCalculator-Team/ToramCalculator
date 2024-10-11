@@ -1,7 +1,8 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
+import { live } from "@electric-sql/pglite/live";
 import * as Comlink from "comlink";
 
-import PGliteWorkerUrl from "~/worker/PGlite.worker?worker&url";
+import PGWorker from "~/worker/PGlite.worker?worker";
 import dataWorker from "~/worker/data.worker?sharedworker";
 
 import { DataWorkerApi } from "./worker/data.worker";
@@ -16,9 +17,11 @@ if ("serviceWorker" in navigator) {
 
 // 初始化本地数据库
 const pgWorker = await PGliteWorker.create(
-  new Worker(PGliteWorkerUrl, {
-    type: "module",
-  })
+  new PGWorker(), {
+    extensions: {
+      live
+    }
+  }
 );
 
 // 初始化数据层服务

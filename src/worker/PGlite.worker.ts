@@ -7,28 +7,27 @@ import { live } from "@electric-sql/pglite/live";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "~/../db/schema";
 import { createId } from "@paralleldrive/cuid2";
-import ddl from "~/../db/migrations/0000_mixed_blonde_phantom.sql?raw"
+import ddl from "~/../db/migrations/0000_init.sql?raw"
 
 worker({
   async init() {
     const pg = await PGlite.create({
-      dataDir: "idb://toram-calculator-db",
+      dataDir: "idb://toramCalculatorDB",
       relaxedDurability: true,
-      //   debug: 5,
       extensions: {
-        live,
-        electric: electricSync({ debug: false }),
+        // live,
+        sync: electricSync(),
       },
     });
     await pg.exec(ddl);
-    // await pg.electric.syncShapeToTable({
-    //   shape: {
-    //     url: "https://test.kiaclouth.com/v1/shape/user"
-    //   },
-    //   table: "user",
-    //   shapeKey: "users",
-    //   primaryKey: ["id"],
-    // });
+    await pg.sync.syncShapeToTable({
+      shape: {
+        url: "https://test.kiaclouth.com/v1/shape/user"
+      },
+      table: "user",
+      shapeKey: "users",
+      primaryKey: ["id"],
+    });
     // await pg.electric.syncShapeToTable({
     //   shape: {
     //     url: "https://test.kiaclouth.com/v1/shape/user_create_data"
