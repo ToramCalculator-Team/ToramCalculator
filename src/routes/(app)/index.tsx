@@ -55,19 +55,39 @@ export default function Index() {
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-  const [UserList, { refetch: refetchUserList }] = createResource(async () => await pgWorker.live.query<SelectUser>(`select * from public.user`, [], () => {
-    console.log("Live 插件检测到了user表变化");
-  }));
-  const [monsterList, { refetch:refetchMonsterList }] = createResource(async () => await pgWorker.query<SelectMonster>(`select * from monster`));
-  const [skillList, { refetch:refetchSkillList }] = createResource(async () => await pgWorker.query<SelectSkill>(`select * from skill`));
-  const [crystalList, { refetch:refetchCrystalList }] = createResource(async () => await pgWorker.query<SelectCrystal>(`select * from crystal`));
+  const [UserList, { refetch: refetchUserList }] = createResource(
+    async () =>
+      await pgWorker.live.query<SelectUser>(`select * from public.user`, [], () => {
+        console.log("Live 插件检测到了user表变化");
+      }),
+  );
+  const [monsterList, { refetch: refetchMonsterList }] = createResource(
+    async () =>
+      await pgWorker.live.query<SelectMonster>(`select * from monster`, [], (res) => {
+        console.log(res);
+      }),
+  );
+  const [skillList, { refetch: refetchSkillList }] = createResource(
+    async () => await pgWorker.query<SelectSkill>(`select * from skill`),
+  );
+  const [crystalList, { refetch: refetchCrystalList }] = createResource(
+    async () => await pgWorker.query<SelectCrystal>(`select * from crystal`),
+  );
 
-  createEffect(() => {
-    console.log("solid 检测到了user表变化", UserList()); // 1
-   })
+  // createEffect(() => {
+  //   // console.log("solid 检测到了user表变化", UserList()); // 1
+  //   console.log(monsterList());
+  //  })
 
   // 搜索函数
-  const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId", "image", "imageId"];
+  const monsterHiddenData: Array<keyof SelectMonster> = [
+    "id",
+    "updatedAt",
+    "updatedByUserId",
+    "createdByUserId",
+    "image",
+    "imageId",
+  ];
   const skillHiddenData: Array<keyof (SelectSkill & SelectSkillEffect & SelectSkillCost)> = [
     "id",
     "skillEffectId",
@@ -208,7 +228,7 @@ export default function Index() {
 
     const finalResult: FinalResult = {
       monsters: searchInList(
-        monsterList()?.rows ?? testMonsterQueryData,
+        monsterList()?.initialResults.rows ?? testMonsterQueryData,
         searchValue,
         dictionary().db.models.monster,
         monsterHiddenData,
@@ -236,7 +256,7 @@ export default function Index() {
       resultListSate.push(true);
     });
     setResultListState(resultListSate);
-  }
+  };
 
   // 生成搜索结果列表DOM
   const generateSearchResultDom = (dialogStatus: boolean) => {
@@ -740,7 +760,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/analyzer"}
+                  href={"/analyzer/test"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button

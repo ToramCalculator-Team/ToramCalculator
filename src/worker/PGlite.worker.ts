@@ -69,11 +69,11 @@ worker({
       shapeKey: "monsters",
       primaryKey: ["id"],
     });
-    const db = drizzle(pg, { schema });
-    const sql = db.query.user.findMany().toSQL().sql;
-    pg.live.query(sql, [], (res) => {
-      console.log("live query result:", res);
-    });
+    // const db = drizzle(pg, { schema });
+    // const sql = db.query.user.findMany().toSQL().sql;
+    // pg.live.query(sql, [], (res) => {
+    //   console.log("live query result:", res);
+    // });
 
     return pg;
   },
