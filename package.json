@@ -30,7 +30,7 @@
     "@electric-sql/client": "latest",
     "@electric-sql/next": "latest",
     "@electric-sql/pglite": "latest",
-    "@electric-sql/pglite-sync": "0.2.07",
+    "@electric-sql/pglite-sync": "latest",
     "@paralleldrive/cuid2": "^2.2.2",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.14.1",

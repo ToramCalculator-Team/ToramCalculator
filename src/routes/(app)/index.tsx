@@ -54,7 +54,7 @@ export default function Index() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   // 搜索函数
-  const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId"];
+  const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId", "image", "imageId"];
   const skillHiddenData: Array<keyof (SelectSkill & SelectSkillEffect & SelectSkillCost)> = [
     "id",
     "skillEffectId",
@@ -286,7 +286,7 @@ export default function Index() {
                           <div
                             class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded bg-transition-color-8 p-1`}
                           >
-                            {JSON.stringify(item?.data, null, 2)
+                            {JSON.stringify(_.omit(item?.data, monsterHiddenData), null, 2)
                               .split(",")
                               .map((line, index) => (
                                 <span class="text-left lg:basis-1/4">
