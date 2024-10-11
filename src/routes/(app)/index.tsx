@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
@@ -18,6 +18,9 @@ import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
+import { pgWorker } from "~/initialWorker";
+import { drizzle } from "drizzle-orm/pglite";
+import { SelectUser } from "~/schema/user";
 
 type Related =
   | {
@@ -52,6 +55,16 @@ export default function Index() {
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+  const [UserList, { refetch: refetchUserList }] = createResource(async () => await pgWorker.live.query<SelectUser>(`select * from public.user`, [], () => {
+    console.log("Live 插件检测到了user表变化");
+  }));
+  const [monsterList, { refetch:refetchMonsterList }] = createResource(async () => await pgWorker.query<SelectMonster>(`select * from monster`));
+  const [skillList, { refetch:refetchSkillList }] = createResource(async () => await pgWorker.query<SelectSkill>(`select * from skill`));
+  const [crystalList, { refetch:refetchCrystalList }] = createResource(async () => await pgWorker.query<SelectCrystal>(`select * from crystal`));
+
+  createEffect(() => {
+    console.log("solid 检测到了user表变化", UserList()); // 1
+   })
 
   // 搜索函数
   const monsterHiddenData: Array<keyof SelectMonster> = ["id", "updatedAt", "updatedByUserId", "createdByUserId", "image", "imageId"];
@@ -160,7 +173,7 @@ export default function Index() {
     if (typeof key === "string") {
       // 字典替换
       // 获取所有字典值
-      console.log(getAllValues(dictionary));
+      // console.log(getAllValues(dictionary));
     }
     const result: Result[] = [];
     list.forEach((item) => {
@@ -175,6 +188,55 @@ export default function Index() {
     // console.log("搜索结果：", result);
     return result;
   };
+
+  const search = () => {
+    setIsNullResult(true);
+    if (searchInputValue() === "" || searchInputValue() === null) {
+      // console.log("输入值为空，不处理");
+      setResultDialogOpened(false);
+      return;
+    }
+    if (!resultDialogOpened()) {
+      // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
+      setResultDialogOpened(true);
+      history.pushState({ popup: true }, "");
+    }
+
+    const parsedInput = parseFloat(searchInputValue());
+    const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
+    const searchValue = isNumber ? parsedInput : searchInputValue();
+
+    const finalResult: FinalResult = {
+      monsters: searchInList(
+        monsterList()?.rows ?? testMonsterQueryData,
+        searchValue,
+        dictionary().db.models.monster,
+        monsterHiddenData,
+      ),
+      skills: searchInList(
+        skillList()?.rows ?? testSkillQueryData,
+        searchValue,
+        dictionary().db.models.skill,
+        skillHiddenData,
+      ),
+      crystals: searchInList(
+        crystalList()?.rows ?? testCrystalQueryData,
+        searchValue,
+        dictionary().db.models.crystal,
+        crystalHiddenData,
+      ),
+    };
+    setSearchResult(finalResult);
+    // 动态初始化列表状态
+    const resultListSate: boolean[] = [];
+    Object.entries(finalResult).forEach(([_key, value]) => {
+      if (value.length > 0) {
+        setIsNullResult(false);
+      }
+      resultListSate.push(true);
+    });
+    setResultListState(resultListSate);
+  }
 
   // 生成搜索结果列表DOM
   const generateSearchResultDom = (dialogStatus: boolean) => {
@@ -516,54 +578,7 @@ export default function Index() {
                 ref={(el) => (searchButtonRef = el)}
                 icon={<Icon.Line.Search />}
                 class="text-accent-color-50 outline-none focus-within:outline-none group-hover:text-accent-color lg:bg-transparent"
-                onClick={() => {
-                  setIsNullResult(true);
-                  if (searchInputValue() === "" || searchInputValue() === null) {
-                    // console.log("输入值为空，不处理");
-                    setResultDialogOpened(false);
-                    return;
-                  }
-                  if (!resultDialogOpened()) {
-                    // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
-                    setResultDialogOpened(true);
-                    history.pushState({ popup: true }, "");
-                  }
-
-                  const parsedInput = parseFloat(searchInputValue());
-                  const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
-                  const searchValue = isNumber ? parsedInput : searchInputValue();
-
-                  const finalResult: FinalResult = {
-                    monsters: searchInList(
-                      testMonsterQueryData,
-                      searchValue,
-                      dictionary().db.models.monster,
-                      monsterHiddenData,
-                    ),
-                    skills: searchInList(
-                      testSkillQueryData,
-                      searchValue,
-                      dictionary().db.models.skill,
-                      skillHiddenData,
-                    ),
-                    crystals: searchInList(
-                      testCrystalQueryData,
-                      searchValue,
-                      dictionary().db.models.crystal,
-                      crystalHiddenData,
-                    ),
-                  };
-                  setSearchResult(finalResult);
-                  // 动态初始化列表状态
-                  const resultListSate: boolean[] = [];
-                  Object.entries(finalResult).forEach(([_key, value]) => {
-                    if (value.length > 0) {
-                      setIsNullResult(false);
-                    }
-                    resultListSate.push(true);
-                  });
-                  setResultListState(resultListSate);
-                }}
+                onClick={search}
               ></Button>
             </div>
             <div class="hidden w-60 flex-none lg:flex"></div>

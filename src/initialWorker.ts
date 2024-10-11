@@ -16,7 +16,7 @@ if ("serviceWorker" in navigator) {
 }
 
 // 初始化本地数据库
-const pgWorker = await PGliteWorker.create(
+export const pgWorker = await PGliteWorker.create(
   new PGWorker(), {
     extensions: {
       live
