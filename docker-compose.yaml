@@ -21,7 +21,7 @@ services:
   electric:
     image: electricsql/electric:canary
     environment:
-      DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:${PG_PORT}/${PG_DBNAME}
+      DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:${PG_PORT}/${PG_DBNAME}?sslmode=disable
     ports:
       - ${ELECTRIC_PORT}:3000
     depends_on:
