@@ -1,7 +1,7 @@
-import { type SelectStatistics } from "~/schema/statistics";
+import { type SelectStatistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type SelectModifiersList } from "~/schema/modifiers_list";
-import { SelectImage } from "~/schema/image";
+import { type SelectModifiersList } from "~/repositories/modifiers_list";
+import { SelectImage } from "~/repositories/image";
 
 const modifiersList: ConvertToAllString<SelectModifiersList> = {
   selfName: "補正項目リスト",

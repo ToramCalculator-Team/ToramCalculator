@@ -12,10 +12,10 @@ import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { setStore, store } from "~/store";
-import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
+import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/repositories/monster";
 import { createEffect, createSignal, For, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
-import { type $Enums } from "~/schema/enums";
+import { type $Enums } from "~/repositories/enums";
 import * as _ from "lodash-es";
 import Fuse from "fuse.js";
 

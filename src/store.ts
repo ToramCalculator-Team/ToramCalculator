@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { defaultSelectMonster, SelectMonster } from "./schema/monster";
-import { defaultSelectCrystal, SelectCrystal } from "./schema/crystal";
-import { defaultSelectSkill, SelectSkill } from "./schema/skill";
-import { defaultSelectCharacter, SelectCharacter } from "./schema/character";
-import { defaultSelectAnalyzer, SelectAnalyzer } from "./schema/analyzer";
+import { defaultSelectMonster, SelectMonster } from "./repositories/monster";
+import { defaultSelectCrystal, SelectCrystal } from "./repositories/crystal";
+import { defaultSelectSkill, SelectSkill } from "./repositories/skill";
+import { defaultSelectCharacter, SelectCharacter } from "./repositories/character";
+import { defaultSelectAnalyzer, SelectAnalyzer } from "./repositories/analyzer";
 import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"

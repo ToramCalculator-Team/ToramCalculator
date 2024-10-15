@@ -1,14 +1,14 @@
 /// <reference lib="webworker" />
 
 import * as _ from "lodash-es";
-import { ModifierType, type $Enums } from "~/schema/enums";
+import { ModifierType, type $Enums } from "~/repositories/enums";
 import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { type SelectCharacter } from "~/schema/character";
-import { type SelectMonster } from "~/schema/monster";
-import { type SelectSkillEffect } from "~/schema/skill_effect";
-import { type SelectModifiersList } from "~/schema/modifiers_list";
-import { SelectModifier } from "~/schema/modifier";
+import { type SelectCharacter } from "~/repositories/character";
+import { type SelectMonster } from "~/repositories/monster";
+import { type SelectSkillEffect } from "~/repositories/skill_effect";
+import { type SelectModifiersList } from "~/repositories/modifiers_list";
+import { SelectModifier } from "~/repositories/modifier";
 
 const fps = 60;
 

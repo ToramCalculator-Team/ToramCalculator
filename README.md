@@ -4,6 +4,11 @@
 
 - 出于兴趣为Toram Online开发的小工具￣ω￣=
 
+## 依赖说明
+
+- prisma model：生成中央数据库架构和本地数据DDL
+- prisma client：生成静态数据类型
+- electric：postgresql的同步引擎
 
 ### 分支规则说明
 
@@ -57,16 +62,12 @@ subject: 对 commit 的简短描述
 # 安装依赖
 pnpm install
 
-# generate drizzle schema
-# 生成drizzle模型
-pnpm schema:generate
-
 # generate DDL
-# 生成数据库定义语句
+# 生成中央数据库定义语句
 pnpm db:generate
 
 # database push
-# 推送数据库架构到数据库
+# 推送数据库架构到中央数据库
 pnpm db:push
 
 # start dev
@@ -94,5 +95,5 @@ pnpm start
 - Solid Start
 - TypeScript
 - Tailwind CSS
-- Prisma & Drizzle
+- Prisma
 - Electric & PGlite

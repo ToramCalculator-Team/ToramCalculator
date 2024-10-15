@@ -2,7 +2,7 @@ import Button from "~/components/ui/button";
 import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
-import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/schema/monster";
+import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/repositories/monster";
 import { createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import * as _ from "lodash-es";
@@ -10,7 +10,7 @@ import Fuse from "fuse.js";
 import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import { Column, createSolidTable, flexRender, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
-import { $Enums } from "~/schema/enums";
+import { $Enums } from "~/repositories/enums";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 

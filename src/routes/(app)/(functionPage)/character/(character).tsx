@@ -1,4 +1,4 @@
-import { defaultSelectCharacter, SelectCharacter } from "~/schema/character";
+import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";

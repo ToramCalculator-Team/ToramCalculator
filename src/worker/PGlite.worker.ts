@@ -4,8 +4,6 @@ import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
-import { drizzle } from "drizzle-orm/pglite";
-import * as schema from "~/../db/schema";
 import { createId } from "@paralleldrive/cuid2";
 import ddl from "~/../db/migrations/0000_init.sql?raw"
 

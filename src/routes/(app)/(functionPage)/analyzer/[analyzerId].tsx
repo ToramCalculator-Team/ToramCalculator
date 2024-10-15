@@ -1,12 +1,12 @@
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
-import { SelectMonster } from "~/schema/monster";
-import { defaultSelectCharacter, SelectCharacter } from "~/schema/character";
-import { defaultSelectStatistics } from "~/schema/statistics";
-import { defaultSelectModifiersList } from "~/schema/modifiers_list";
-import { defaultSelectConsumable } from "~/schema/consumable";
-import { defaultSelectSkill } from "~/schema/skill";
-import { defaultSelectPet } from "~/schema/pet";
+import { SelectMonster } from "~/repositories/monster";
+import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
+import { defaultSelectStatistics } from "~/repositories/statistics";
+import { defaultSelectModifiersList } from "~/repositories/modifiers_list";
+import { defaultSelectConsumable } from "~/repositories/consumable";
+import { defaultSelectSkill } from "~/repositories/skill";
+import { defaultSelectPet } from "~/repositories/pet";
 import { Accessor, createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -14,12 +14,12 @@ import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/until
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
-import { SelectAnalyzer } from "~/schema/analyzer";
+import { SelectAnalyzer } from "~/repositories/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
-import { defaultSelectImage } from "~/schema/image";
-import { defaultSelectMember, SelectMember } from "~/schema/member";
-import { $Enums } from "~/schema/enums";
+import { defaultSelectImage } from "~/repositories/image";
+import { defaultSelectMember, SelectMember } from "~/repositories/member";
+import { $Enums } from "~/repositories/enums";
 import * as _ from "lodash-es";
 import {
   Definition,

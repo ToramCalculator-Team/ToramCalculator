@@ -7,20 +7,19 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/lib/icon";
 import Button from "~/components/ui/button";
-import { testMonsterQueryData, type SelectMonster } from "~/schema/monster";
-import { testSkillQueryData, type SelectSkill } from "~/schema/skill";
-import { testCrystalQueryData, type SelectCrystal } from "~/schema/crystal";
+import { testMonsterQueryData, type SelectMonster } from "~/repositories/monster";
+import { testSkillQueryData, type SelectSkill } from "~/repositories/skill";
+import { testCrystalQueryData, type SelectCrystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
-import { type SelectSkillEffect } from "~/schema/skill_effect";
-import { type SelectSkillCost } from "~/schema/skill_cost";
+import { type SelectSkillEffect } from "~/repositories/skill_effect";
+import { type SelectSkillCost } from "~/repositories/skill_cost";
 import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import { pgWorker } from "~/initialWorker";
-import { drizzle } from "drizzle-orm/pglite";
-import { SelectUser } from "~/schema/user";
+import { SelectUser } from "~/repositories/user";
 
 type Related =
   | {

@@ -1,13 +1,18 @@
-// 由于drizzle本身的schema可读性较差，因此使用prisma的schema来构建数据库模型。
-// 此模型将用于生成drizzle的schema。
+// generator client {
+//     provider        = "prisma-client-js"
+//     previewFeatures = ["relationJoins"]
+// }
+
+generator kysely {
+    provider     = "prisma-kysely"
+    output       = "../src/repositories/db"
+    fileName     = "types.ts"
+    enumFileName = "enums.ts"
+}
+
 datasource db {
     provider = "postgresql"
     url      = env("PG_URL")
-}
-
-generator drizzle {
-    provider = "drizzle-prisma-generator"
-    output   = "./" // 输出目录（相对此文件）
 }
 
 enum UserRole {
@@ -465,7 +470,7 @@ model main_weapon {
     element         Element
     modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
     modifiersListId String
-    crystal         crystal[]
+    crystalList     crystal[]
 
     usedBy character[]
 
@@ -523,7 +528,7 @@ model body_armor {
     baseDef         Int
     modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
     modifiersListId String
-    crystal         crystal[]
+    crystalList     crystal[]
 
     usedBy character[]
 
@@ -550,7 +555,7 @@ model additional_equipment {
     refinement      Int
     modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
     modifiersListId String
-    crystal         crystal[]
+    crystalList     crystal[]
 
     usedBy character[]
 
@@ -576,7 +581,7 @@ model special_equipment {
     name            String
     modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
     modifiersListId String
-    crystal         crystal[]
+    crystalList     crystal[]
 
     usedBy character[]
 

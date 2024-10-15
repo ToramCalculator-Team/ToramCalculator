@@ -1,13 +1,13 @@
 import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
-import { SelectMonster } from "~/schema/monster";
-import { defaultSelectCharacter, SelectCharacter } from "~/schema/character";
-import { defaultSelectStatistics } from "~/schema/statistics";
-import { defaultSelectModifiersList } from "~/schema/modifiers_list";
-import { defaultSelectConsumable } from "~/schema/consumable";
-import { defaultSelectSkill } from "~/schema/skill";
-import { defaultSelectPet } from "~/schema/pet";
+import { SelectMonster } from "~/repositories/monster";
+import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
+import { defaultSelectStatistics } from "~/repositories/statistics";
+import { defaultSelectModifiersList } from "~/repositories/modifiers_list";
+import { defaultSelectConsumable } from "~/repositories/consumable";
+import { defaultSelectSkill } from "~/repositories/skill";
+import { defaultSelectPet } from "~/repositories/pet";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -15,8 +15,8 @@ import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
-import { SelectAnalyzer } from "~/schema/analyzer";
-import { defaultSelectImage } from "~/schema/image";
+import { SelectAnalyzer } from "~/repositories/analyzer";
+import { defaultSelectImage } from "~/repositories/image";
 
 export type skillSequenceList = {
   name: string;

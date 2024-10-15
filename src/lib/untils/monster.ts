@@ -1,4 +1,4 @@
-import { SelectMonster } from "~/schema/monster";
+import { SelectMonster } from "~/repositories/monster";
 import { dictionary } from "~/locales/dictionaries/type";
 
 type Star = 0 | 1 | 2 | 3 | 4;
