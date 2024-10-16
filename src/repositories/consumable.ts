@@ -1,41 +1,66 @@
-import { consumable as Consumable } from "~/../db/schema";
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import {
-  defaultSelectModifiersList,
-  InsertModifiersListSchema,
-  SelectModifiersList,
-  SelectModifiersListSchema,
-} from "./modifiers_list";
-import {
-  defaultSelectStatistics,
-  InsertStatisticsSchema,
-  SelectStatistics,
-  SelectStatisticsSchema,
-} from "./statistics";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, analyzer } from "~/repositories/db/types";
+import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 
-// TS
-export type SelectConsumable = InferSelectModel<typeof Consumable> & {
-  modifiersList: SelectModifiersList;
-  statistics: SelectStatistics;
-};
-export type InsertConsumable = InferInsertModel<typeof Consumable>;
+export type Consumable = Awaited<ReturnType<typeof findConsumableById>>;
+export type NewConsumable = Insertable<analyzer>;
+export type ConsumableUpdate = Updateable<analyzer>;
 
-// Zod
-export const SelectConsumableSchema = createSelectSchema(Consumable).extend({
-  modifiersList: SelectModifiersListSchema,
-  statistics: SelectStatisticsSchema,
-});
-export const InsertConsumableSchema = createInsertSchema(Consumable).extend({
-  modifiersList: InsertModifiersListSchema,
-  statistics: InsertStatisticsSchema,
-});
+export function ConsumableSubRelations(eb: ExpressionBuilder<DB, "consumable">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("usedB", "=", "body_armor.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "analyzer.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+  ];
+}
 
-export const defaultSelectConsumable: SelectConsumable = {
+export async function findConsumableById(id: string) {
+  return await db
+    .selectFrom("analyzer")
+    .where("id", "=", id)
+    .selectAll("analyzer")
+    .select((eb) => ConsumableSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateConsumable(id: string, updateWith: ConsumableUpdate) {
+  return await db.updateTable("analyzer").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createConsumable(newConsumable: NewConsumable) {
+  return await db.transaction().execute(async (trx) => {
+    const analyzer = await trx.insertInto("analyzer").values(newConsumable).returningAll().executeTakeFirstOrThrow();
+    const statistics = await trx
+      .insertInto("statistics")
+      .values(defaultStatistics)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return { ...analyzer, statistics };
+  });
+}
+
+export async function deleteConsumable(id: string) {
+  return await db.deleteFrom("analyzer").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export const defaultConsumable: Consumable = {
   id: "",
   name: "",
-  modifiersList: defaultSelectModifiersList,
-  modifiersListId: defaultSelectModifiersList.id,
+  modifiersList: defaultModifiersList,
+  modifiersListId: defaultModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -43,6 +68,6 @@ export const defaultSelectConsumable: SelectConsumable = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
+  statistics: defaultStatistics,
   statisticsId: "",
 };

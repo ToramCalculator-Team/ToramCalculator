@@ -423,10 +423,10 @@ model modifiers_list {
     usedByAdditionalEquipment additional_equipment[]
     usedBySpecialEquipment    special_equipment[]
     usedByCrystal             crystal[]
+    usedByConsumable          consumable[]
     usedByFashion             character?             @relation("FashionRelation")
     usedByCuisine             character?             @relation("CuisineRelation")
     usedByModifiersList       character?             @relation("ModifiersListRelation")
-    Consumable                consumable[]
 }
 
 // 锻晶模型
@@ -780,7 +780,7 @@ model character {
     skillList              skill[]
     consumableList         consumable[]
     combos                 combo[]
-    belongToMembers        memeber[]
+    belongToMembers        member[]
 
     extraDetails String
 
@@ -798,7 +798,7 @@ model character {
 }
 
 // 队伍成员模型
-model memeber {
+model member {
     id String @id
 
     character   character @relation(fields: [characterId], references: [id])
@@ -826,7 +826,7 @@ model analyzer {
 
     name String
     mobs mob[]
-    team memeber[]
+    team member[]
 
     extraDetails String?
 

@@ -1,46 +1,66 @@
-import { analyzer as Analyzer } from "~/../db/schema";
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import {
-  SelectStatistics,
-  SelectStatisticsSchema,
-  InsertStatisticsSchema,
-  defaultSelectStatistics,
-  InsertStatistics,
-} from "./statistics";
-import { defaultSelectMob, SelectMob } from "./mob";
-import { defaultSelectMember, SelectMember } from "./member";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, analyzer } from "~/repositories/db/types";
+import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 
-// TS
-export type SelectAnalyzer = InferSelectModel<typeof Analyzer> & {
-  mobs: SelectMob[];
-  team: SelectMember[];
-  statistics: SelectStatistics;
-};
-export type InsertAnalyzer = InferInsertModel<typeof Analyzer> & {
-  statistics: InsertStatistics;
-};
+export type Analyzer = Awaited<ReturnType<typeof findAnalyzerById>>;
+export type NewAnalyzer = Insertable<analyzer>;
+export type AnalyzerUpdate = Updateable<analyzer>;
 
-// Zod
-export const SelectAnalyzerSchema = createSelectSchema(Analyzer).extend({
-  statistics: SelectStatisticsSchema,
-});
-export const InsertAnalyzerSchema = createInsertSchema(Analyzer).extend({
-  statistics: InsertStatisticsSchema,
-});
+export function AnalyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "analyzer.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+  ];
+}
 
-export const defaultSelectAnalyzer: SelectAnalyzer = {
-  id: "defaultSelectAnalyzer",
+export async function findAnalyzerById(id: string) {
+  return await db
+    .selectFrom("analyzer")
+    .where("id", "=", id)
+    .selectAll("analyzer")
+    .select((eb) => AnalyzerSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
 
-  name: "defaultSelectAnalyzer",
-  mobs: [defaultSelectMob],
-  team: [defaultSelectMember],
+export async function updateAnalyzer(id: string, updateWith: AnalyzerUpdate) {
+  return await db.updateTable("analyzer").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createAnalyzer(newAnalyzer: NewAnalyzer) {
+  return await db.transaction().execute(async (trx) => {
+    const analyzer = await trx.insertInto("analyzer").values(newAnalyzer).returningAll().executeTakeFirstOrThrow();
+    const statistics = await trx
+      .insertInto("statistics")
+      .values(defaultStatistics)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return { ...analyzer, statistics };
+  });
+}
+
+export async function deleteAnalyzer(id: string) {
+  return await db.deleteFrom("analyzer").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export const defaultAnalyzer: Analyzer = {
+  id: "defaultAnalyzer",
+
+  name: "defaultAnalyzer",
+  mobs: [defaultMob],
+  team: [defaultMember],
   extraDetails: "",
 
   updatedAt: new Date(),
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
+  statistics: defaultStatistics,
   statisticsId: "",
 };

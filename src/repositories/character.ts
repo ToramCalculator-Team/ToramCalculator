@@ -1,62 +1,103 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import {
-  defaultSelectStatistics,
-  InsertStatistics,
-  InsertStatisticsSchema,
-  SelectStatistics,
-  SelectStatisticsSchema,
-} from "./statistics";
-import { character as Character } from "~/../db/schema";
-import { defaultSelectModifiersList, SelectModifiersList, SelectModifiersListSchema } from "./modifiers_list";
-import { defaultSelectSkill, SelectSkill, SelectSkillSchema } from "./skill";
-import { defaultSelectMainWeapon, SelectMainWeapon, SelectMainWeaponSchema } from "./main_weapon";
-import { defaultSelectSubWeapon, SelectSubWeapon, SelectSubWeaponSchema } from "./sub_weapon";
-import { defaultSelectBodyArmor, SelectBodyArmor, SelectBodyArmorSchema } from "./body_armor";
-import { defaultSelectAdditionalEquipment, SelectAdditionalEquipment, SelectAdditionalEquipmentSchema } from "./additional_equipment";
-import { defaultSelectSpecialEquipment, SelectSpecialEquipment, SelectSpecialEquipmentSchema } from "./special_equipment";
-import { defaultSelectPet, SelectPet, SelectPetSchema } from "./pet";
-import { defaultSelectConsumable, SelectConsumable, SelectConsumableSchema } from "./consumable";
-import { SelectCombo, SelectComboSchema } from "./combo";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, character } from "~/repositories/db/types";
+import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultCharacterEffect, characterEffectSubRelations } from "./character_effect";
+import { defaultCharacterYield } from "./character_yield";
+import { defaultCharacterCost } from "./character_cost";
+import { defaultAdditionalEquipment } from "./additional_equipment";
+import { defaultBodyArmor } from "./body_armor";
+import { defaultConsumable } from "./consumable";
+import { defaultMainWeapon } from "./main_weapon";
+import { defaultModifiersList } from "./modifiers_list";
+import { defaultPet } from "./pet";
+import { defaultSpecialEquipment } from "./special_equipment";
+import { defaultSubWeapon } from "./sub_weapon";
+import { defaultSkill } from "./skill";
 
-// TS
-export type SelectCharacter = InferSelectModel<typeof Character> & {
-  mainWeapon: SelectMainWeapon;
-  subWeapon: SelectSubWeapon;
-  bodyArmor: SelectBodyArmor;
-  additionalEquipment: SelectAdditionalEquipment;
-  specialEquipment: SelectSpecialEquipment;
-  fashion: SelectModifiersList;
-  cuisine: SelectModifiersList;
-  pet: SelectPet;
-  skillList: SelectSkill[];
-  consumableList: SelectConsumable[];
-  combos: SelectCombo[];
-  modifiersList: SelectModifiersList;
-  statistics: SelectStatistics;
+export type Character = Awaited<ReturnType<typeof findCharacterById>>;
+export type NewCharacter = Insertable<character>;
+export type CharacterUpdate = Updateable<character>;
+
+export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "character.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+  ];
 }
 
-export const SelectCharacterSchema = createSelectSchema(Character).extend({
-  mainWeapon: SelectMainWeaponSchema,
-  subWeapon: SelectSubWeaponSchema,
-  bodyArmor: SelectBodyArmorSchema,
-  additionalEquipment: SelectAdditionalEquipmentSchema,
-  specialEquipment: SelectSpecialEquipmentSchema,
-  fashion: SelectModifiersListSchema,
-  cuisine: SelectModifiersListSchema,
-  pet: SelectPetSchema,
-  skillList: SelectSkillSchema.array(),
-  consumableList: SelectConsumableSchema.array(),
-  combos: SelectComboSchema.array(),
-  modifiersList: SelectModifiersListSchema,
-  statistics: SelectStatisticsSchema,
-});
+export async function findCharacterById(id: string) {
+  return await db
+    .selectFrom("character")
+    .where("id", "=", id)
+    .selectAll("character")
+    .select((eb) => characterSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
 
-export const defaultSelectCharacter: SelectCharacter = {
-  id: "defaultSelectCharacter",
+export async function updateCharacter(id: string, updateWith: CharacterUpdate) {
+  return await db.updateTable("character").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createCharacter(newCharacter: NewCharacter) {
+  return await db.transaction().execute(async (trx) => {
+    const character = await trx.insertInto("character").values(newCharacter).returningAll().executeTakeFirstOrThrow();
+    const statistics = await trx
+      .insertInto("statistics")
+      .values({
+        ...defaultStatistics,
+        characterId: character.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    const characterEffect = await trx
+      .insertInto("character_effect")
+      .values({
+        ...defaultCharacterEffect,
+        belongTocharacterId: character.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    const characterYield = await trx.insertInto("character_yield").values({
+      ...defaultCharacterYield,
+      characterEffectId: characterEffect.id,
+    });
+
+    const characterCost = await trx.insertInto("character_cost").values({
+      ...defaultCharacterCost,
+      characterEffectId: characterEffect.id,
+    });
+    return {
+      ...character,
+      statistics,
+      characterEffect: [
+        {
+          ...characterEffect,
+          characterYield: [characterYield],
+          characterCost: [characterCost],
+        },
+      ],
+    };
+  });
+}
+
+export async function deleteCharacter(id: string) {
+  return await db.deleteFrom("character").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export const defaultCharacter: Character = {
+  id: "defaultCharacter",
   imageId: "",
   characterType: "Tank",
-  name: "defaultSelectCharacter",
+  name: "defaultCharacter",
   lv: 0,
   baseStr: 0,
   baseInt: 0,
@@ -65,33 +106,33 @@ export const defaultSelectCharacter: SelectCharacter = {
   baseDex: 0,
   specialAbiType: "NULL",
   specialAbiValue: 0,
-  mainWeapon: defaultSelectMainWeapon,
+  mainWeapon: defaultMainWeapon,
   mainWeaponId: "",
-  subWeapon: defaultSelectSubWeapon,
+  subWeapon: defaultSubWeapon,
   subWeaponId: "",
-  bodyArmor: defaultSelectBodyArmor,
+  bodyArmor: defaultBodyArmor,
   bodyArmorId: "",
-  additionalEquipment: defaultSelectAdditionalEquipment,
+  additionalEquipment: defaultAdditionalEquipment,
   additionalEquipmentId: "",
-  specialEquipment: defaultSelectSpecialEquipment,
+  specialEquipment: defaultSpecialEquipment,
   specialEquipmentId: "",
-  fashion: defaultSelectModifiersList,
+  fashion: defaultModifiersList,
   fashionModifiersListId: "", 
-  cuisine: defaultSelectModifiersList,
+  cuisine: defaultModifiersList,
   CuisineModifiersListId: "",
-  consumableList: [defaultSelectConsumable],
-  skillList: [defaultSelectSkill],
+  consumableList: [defaultConsumable],
+  skillList: [defaultSkill],
   combos: [],
-  pet: defaultSelectPet,
-  petId: defaultSelectPet.id,
-  modifiersList: defaultSelectModifiersList,
-  modifiersListId: defaultSelectModifiersList.id,
+  pet: defaultPet,
+  petId: defaultPet.id,
+  modifiersList: defaultModifiersList,
+  modifiersListId: defaultModifiersList.id,
   extraDetails: "",
 
   updatedAt: new Date(),
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
+  statistics: defaultStatistics,
   statisticsId: "",
 };

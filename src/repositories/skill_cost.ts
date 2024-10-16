@@ -1,25 +1,36 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { skill_cost as SkillCost } from "~/../db/schema";
+import { Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { skill_cost } from "~/repositories/db/types";
+import { defaultImage } from "./image";
 
-// TS
-export type SelectSkillCost = InferSelectModel<typeof SkillCost>;
-export type InsertSkillCost = InferInsertModel<typeof SkillCost>;
+export type SkillCost = Awaited<ReturnType<typeof findSkillCostById>>;
+export type NewSkillCost = Insertable<skill_cost>;
+export type SkillCostUpdate = Updateable<skill_cost>;
 
-// Zod
-export const SelectSkillCostSchema = createSelectSchema(SkillCost);
-export const InsertSkillCostSchema = createInsertSchema(SkillCost);
+export async function findSkillCostById(id: string) {
+  return await db
+    .selectFrom("skill_cost")
+    .where("id", "=", id)
+    .selectAll("skill_cost")
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateSkillCost(id: string, updateWith: SkillCostUpdate) {
+  return await db.updateTable("skill_cost").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createSkillCost(newSkillCost: NewSkillCost) {
+  return await db.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
+}
+
+export async function deleteSkillCost(id: string) {
+  return await db.deleteFrom("skill_cost").where("id", "=", id).returningAll().executeTakeFirst();
+}
 
 // default
-export const defaultSelectSkillCost: SelectSkillCost = {
-  id: "defaultSelectSkillCost",
-  name: "defaultSelectSkillCost",
+export const defaultSkillCost: SkillCost = {
+  id: "defaultSkillCost",
+  name: "defaultSkillCost",
   costFormula: "",
-  skillEffectId: "defaultSelectSkillEffect",
+  skillEffectId: "defaultSkillEffect",
 };
-export const defaultInsertSkillCost: InsertSkillCost = {
-  id: "defaultInsertSkillCost",
-  name: "defaultInsertSkillCost",
-  costFormula: "",
-  skillEffectId: "defaultSelectSkillEffect",
-}

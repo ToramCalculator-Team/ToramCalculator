@@ -47,7 +47,7 @@ export type analyzer = {
     createdByUserId: string | null;
     statisticsId: string;
 };
-export type analyzerTomemeber = {
+export type analyzerTomember = {
     A: string;
     B: string;
 };
@@ -187,7 +187,7 @@ export type main_weapon = {
     createdByUserId: string | null;
     statisticsId: string;
 };
-export type memeber = {
+export type member = {
     id: string;
     characterId: string;
     flow: unknown;
@@ -400,7 +400,7 @@ export type view_timestamp = {
 };
 export type DB = {
     _additional_equipmentTocrystal: additional_equipmentTocrystal;
-    _analyzerTomemeber: analyzerTomemeber;
+    _analyzerTomember: analyzerTomember;
     _analyzerTomob: analyzerTomob;
     _body_armorTocrystal: body_armorTocrystal;
     _characterTocombo: characterTocombo;
@@ -419,7 +419,7 @@ export type DB = {
     crystal: crystal;
     image: image;
     main_weapon: main_weapon;
-    memeber: memeber;
+    member: member;
     mob: mob;
     modifier: modifier;
     modifiers_list: modifiers_list;

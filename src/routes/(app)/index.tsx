@@ -7,19 +7,19 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/lib/icon";
 import Button from "~/components/ui/button";
-import { testMonsterQueryData, type SelectMonster } from "~/repositories/monster";
-import { testSkillQueryData, type SelectSkill } from "~/repositories/skill";
-import { testCrystalQueryData, type SelectCrystal } from "~/repositories/crystal";
+import { type Monster } from "~/repositories/monster";
+import { type Skill } from "~/repositories/skill";
+import { type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
-import { type SelectSkillEffect } from "~/repositories/skill_effect";
-import { type SelectSkillCost } from "~/repositories/skill_cost";
+import { type SkillEffect } from "~/repositories/skill_effect";
+import { type SkillCost } from "~/repositories/skill_cost";
 import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import { pgWorker } from "~/initialWorker";
-import { SelectUser } from "~/repositories/user";
+import { User } from "~/repositories/user";
 
 type Related =
   | {
@@ -32,7 +32,7 @@ type Result =
   | {
       name: string;
       relateds: Related[];
-      data: SelectMonster | SelectSkill | SelectCrystal;
+      data: Monster | Skill | Crystal;
     }
   | undefined;
 
@@ -56,21 +56,21 @@ export default function Index() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   const [UserList, { refetch: refetchUserList }] = createResource(
     async () =>
-      await pgWorker.live.query<SelectUser>(`select * from public.user`, [], () => {
+      await pgWorker.live.query<User>(`select * from public.user`, [], () => {
         console.log("Live 插件检测到了user表变化");
       }),
   );
   const [monsterList, { refetch: refetchMonsterList }] = createResource(
     async () =>
-      await pgWorker.live.query<SelectMonster>(`select * from monster`, [], (res) => {
+      await pgWorker.live.query<Monster>(`select * from monster`, [], (res) => {
         console.log(res);
       }),
   );
   const [skillList, { refetch: refetchSkillList }] = createResource(
-    async () => await pgWorker.query<SelectSkill>(`select * from skill`),
+    async () => await pgWorker.query<Skill>(`select * from skill`),
   );
   const [crystalList, { refetch: refetchCrystalList }] = createResource(
-    async () => await pgWorker.query<SelectCrystal>(`select * from crystal`),
+    async () => await pgWorker.query<Crystal>(`select * from crystal`),
   );
 
   // createEffect(() => {
@@ -79,7 +79,7 @@ export default function Index() {
   //  })
 
   // 搜索函数
-  const monsterHiddenData: Array<keyof SelectMonster> = [
+  const monsterHiddenData: Array<keyof Monster> = [
     "id",
     "updatedAt",
     "updatedByUserId",
@@ -87,7 +87,7 @@ export default function Index() {
     "image",
     "imageId",
   ];
-  const skillHiddenData: Array<keyof (SelectSkill & SelectSkillEffect & SelectSkillCost)> = [
+  const skillHiddenData: Array<keyof (Skill & SkillEffect & SkillCost)> = [
     "id",
     "skillEffectId",
     "belongToskillId",
@@ -96,7 +96,7 @@ export default function Index() {
     "createdAt",
     "createdByUserId",
   ];
-  const crystalHiddenData: Array<keyof SelectCrystal> = [
+  const crystalHiddenData: Array<keyof Crystal> = [
     "id",
     "front",
     "updatedAt",
@@ -182,7 +182,7 @@ export default function Index() {
     return values;
   }
 
-  const searchInList = <T extends SelectMonster | SelectSkill | SelectCrystal>(
+  const searchInList = <T extends Monster | Skill | Crystal>(
     list: T[],
     key: string | number,
     dictionary: ConvertToAllString<T>,
@@ -227,19 +227,19 @@ export default function Index() {
 
     const finalResult: FinalResult = {
       monsters: searchInList(
-        monsterList()?.initialResults.rows ?? testMonsterQueryData,
+        monsterList()?.initialResults.rows ?? [],
         searchValue,
         dictionary().db.models.monster,
         monsterHiddenData,
       ),
       skills: searchInList(
-        skillList()?.rows ?? testSkillQueryData,
+        skillList()?.rows ?? [],
         searchValue,
         dictionary().db.models.skill,
         skillHiddenData,
       ),
       crystals: searchInList(
-        crystalList()?.rows ?? testCrystalQueryData,
+        crystalList()?.rows ?? [],
         searchValue,
         dictionary().db.models.crystal,
         crystalHiddenData,

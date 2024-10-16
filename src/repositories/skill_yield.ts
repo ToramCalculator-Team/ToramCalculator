@@ -1,28 +1,37 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { skill_yield as SkillYield } from "~/../db/schema";
+import { Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { skill_yield } from "~/repositories/db/types";
 
-// TS
-export type SelectSkillYield = InferSelectModel<typeof SkillYield>;
-export type InsertSkillYield = InferInsertModel<typeof SkillYield>;
+export type SkillYield = Awaited<ReturnType<typeof findSkillYieldById>>;
+export type NewSkillYield = Insertable<skill_yield>;
+export type SkillYieldUpdate = Updateable<skill_yield>;
 
-// Zod
-export const SelectSkillYieldSchema = createSelectSchema(SkillYield);
-export const InsertSkillYieldSchema = createInsertSchema(SkillYield);
+export async function findSkillYieldById(id: string) {
+  return await db
+    .selectFrom("skill_yield")
+    .where("id", "=", id)
+    .selectAll("skill_yield")
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateSkillYield(id: string, updateWith: SkillYieldUpdate) {
+  return await db.updateTable("skill_yield").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createSkillYield(newSkillYield: NewSkillYield) {
+  return await db.insertInto("skill_yield").values(newSkillYield).returningAll().executeTakeFirstOrThrow();
+}
+
+export async function deleteSkillYield(id: string) {
+  return await db.deleteFrom("skill_yield").where("id", "=", id).returningAll().executeTakeFirst();
+}
 
 // default
-export const defaultSelectSkillYield: SelectSkillYield = {
-  id: "defaultSelectSkillYield",
-  name: "defaultSelectSkillYield",
+export const defaultSkillYield: SkillYield = {
+  id: "defaultSkillYieldId",
+  name: "defaultSkillYielfName",
   yieldType: "ImmediateEffect",
   mutationTimingFormula: "",
   yieldFormula: "",
-  skillEffectId: "defaultSelectSkillEffect",
+  skillEffectId: "defaultSkillEffect",
 };
-export const defaultInsertSkillYield: InsertSkillYield = {
-  id: "",
-  name: "",
-  yieldType: "ImmediateEffect",
-  mutationTimingFormula: "",
-  yieldFormula: "",
-}

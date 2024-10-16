@@ -430,12 +430,12 @@ CREATE TABLE "character" (
 );
 
 -- CreateTable
-CREATE TABLE "memeber" (
+CREATE TABLE "member" (
     "id" TEXT NOT NULL,
     "characterId" TEXT NOT NULL,
     "flow" JSONB NOT NULL,
 
-    CONSTRAINT "memeber_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "member_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -586,7 +586,7 @@ CREATE TABLE "_analyzerTomob" (
 );
 
 -- CreateTable
-CREATE TABLE "_analyzerTomemeber" (
+CREATE TABLE "_analyzerTomember" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -706,10 +706,10 @@ CREATE UNIQUE INDEX "_analyzerTomob_AB_unique" ON "_analyzerTomob"("A", "B");
 CREATE INDEX "_analyzerTomob_B_index" ON "_analyzerTomob"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_analyzerTomemeber_AB_unique" ON "_analyzerTomemeber"("A", "B");
+CREATE UNIQUE INDEX "_analyzerTomember_AB_unique" ON "_analyzerTomember"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_analyzerTomemeber_B_index" ON "_analyzerTomemeber"("B");
+CREATE INDEX "_analyzerTomember_B_index" ON "_analyzerTomember"("B");
 
 -- AddForeignKey
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -901,7 +901,7 @@ ALTER TABLE "character" ADD CONSTRAINT "character_statisticsId_fkey" FOREIGN KEY
 ALTER TABLE "character" ADD CONSTRAINT "character_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "image"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "memeber" ADD CONSTRAINT "memeber_characterId_fkey" FOREIGN KEY ("characterId") REFERENCES "character"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "member" ADD CONSTRAINT "member_characterId_fkey" FOREIGN KEY ("characterId") REFERENCES "character"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "mob" ADD CONSTRAINT "mob_monsterId_fkey" FOREIGN KEY ("monsterId") REFERENCES "monster"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -997,7 +997,7 @@ ALTER TABLE "_analyzerTomob" ADD CONSTRAINT "_analyzerTomob_A_fkey" FOREIGN KEY 
 ALTER TABLE "_analyzerTomob" ADD CONSTRAINT "_analyzerTomob_B_fkey" FOREIGN KEY ("B") REFERENCES "mob"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_analyzerTomemeber" ADD CONSTRAINT "_analyzerTomemeber_A_fkey" FOREIGN KEY ("A") REFERENCES "analyzer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_analyzerTomember" ADD CONSTRAINT "_analyzerTomember_A_fkey" FOREIGN KEY ("A") REFERENCES "analyzer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_analyzerTomemeber" ADD CONSTRAINT "_analyzerTomemeber_B_fkey" FOREIGN KEY ("B") REFERENCES "memeber"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_analyzerTomember" ADD CONSTRAINT "_analyzerTomember_B_fkey" FOREIGN KEY ("B") REFERENCES "member"("id") ON DELETE CASCADE ON UPDATE CASCADE;
