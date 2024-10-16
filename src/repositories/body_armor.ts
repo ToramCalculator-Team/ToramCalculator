@@ -1,50 +1,75 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import {
-  defaultSelectStatistics,
-  InsertStatistics,
-  InsertStatisticsSchema,
-  SelectStatistics,
-  SelectStatisticsSchema,
-} from "./statistics";
-import { body_armor as BodyArmor } from "~/../db/schema";
-import { SelectCrystal, InsertCrystal, SelectCrystalSchema, InsertCrystalSchema, defaultSelectCrystal } from "./crystal";
-import { SelectModifiersList, InsertModifiersList, SelectModifiersListSchema, InsertModifiersListSchema, defaultSelectModifiersList } from "./modifiers_list";
-import { z } from "zod";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, body_armor } from "~/repositories/db/types";
+import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
+import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { defaultCrystal, NewCrystal } from "./crystal";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
-// TS
-export type SelectBodyArmor = InferSelectModel<typeof BodyArmor> & {
-  modifiersList: SelectModifiersList;
-  crystal: SelectCrystal[];
-  statistics: SelectStatistics;
-};
-export type InsertBodyArmor = InferInsertModel<typeof BodyArmor> & {
-  modifiersList: InsertModifiersList;
-  crystal: InsertCrystal[];
-  statistics: InsertStatistics;
-};
+export type BodyArmor = Awaited<ReturnType<typeof findBodyArmorById>>;
+export type NewBodyArmor = Insertable<body_armor>;
+export type BodyArmorUpdate = Updateable<body_armor>;
 
-// Zod
-export const SelectBodyArmorSchema = createSelectSchema(BodyArmor).extend({
-  modifiersList: SelectModifiersListSchema,
-  crystal: z.array(SelectCrystalSchema),
-  statistics: SelectStatisticsSchema,
-})
-export const InsertBodyArmorSchema = createInsertSchema(BodyArmor).extend({
-  modifiersList: InsertModifiersListSchema,
-  crystal: z.array(InsertCrystalSchema),
-  statistics: InsertStatisticsSchema,
-})
+export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "body_armor">, id: Expression<string>) {
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("_body_armorTocrystal")
+        .innerJoin("crystal", "_body_armorTocrystal.B", "crystal.id")
+        .whereRef("_body_armorTocrystal.A", "=", "body_armor.id")
+        .selectAll("crystal"),
+    ).as("crystalList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "body_armor.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "body_armor.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+  ];
+}
 
-export const defaultSelectBodyArmor: SelectBodyArmor = {
-  id: "",
-  name: "",
-  bodyArmorType: "NORMAL",
+export async function findBodyArmorById(id: string) {
+  return await db
+    .selectFrom("body_armor")
+    .where("id", "=", id)
+    .selectAll("body_armor")
+    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateBodyArmor(id: string, updateWith: BodyArmorUpdate) {
+  return await db.updateTable("body_armor").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createBodyArmor(newBodyArmor: NewBodyArmor) {
+  return await db.transaction().execute(async (trx) => {
+    const body_armor = await trx.insertInto("body_armor").values(newBodyArmor).returningAll().executeTakeFirstOrThrow();
+    const modifiersList = await createModifiersList(defaultModifiersList);
+    const statistics = await createStatistics(defaultStatistics);
+    const crystalList: NewCrystal[] = [];
+    return { ...body_armor, modifiersList, crystalList, statistics };
+  });
+}
+
+export async function deleteBodyArmor(id: string) {
+  return await db.deleteFrom("body_armor").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+// default
+export const defaultBodyArmor: BodyArmor = {
+  id: "defaultBodyArmorId",
+  name: "defaultBodyArmorName",
   refinement: 0,
+  bodyArmorType: "NORMAL",
   baseDef: 0,
-  crystal: [defaultSelectCrystal],
-  modifiersList: defaultSelectModifiersList,
-  modifiersListId: defaultSelectModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -52,6 +77,10 @@ export const defaultSelectBodyArmor: SelectBodyArmor = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
-  statisticsId: "",
+  crystalList: [defaultCrystal],
+  modifiersList: defaultModifiersList,
+  modifiersListId: defaultModifiersList.id,
+
+  statistics: defaultStatistics,
+  statisticsId: defaultStatistics.id,
 };

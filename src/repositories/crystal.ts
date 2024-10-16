@@ -1,19 +1,39 @@
-import { Insertable, Selectable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { crystal } from "~/repositories/db/types";
-import { createStatistics, defaultStatistics, findStatisticsById } from "./statistics";
-import { createModifiersList, defaultModifiersList, findModifiersListById } from "./modifiers_list";
+import { crystal, DB } from "~/repositories/db/types";
+import { createStatistics, defaultStatistics, statisticsSubRelations } from "./statistics";
+import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Crystal = Awaited<ReturnType<typeof findCrystalById>>;
 export type NewCrystal = Insertable<crystal>;
 export type CrystalUpdate = Updateable<crystal>;
 
-export async function findCrystalById(id: string) {
-  const crystal = await db.selectFrom("crystal").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
-  const statistics = await findStatisticsById(crystal.statisticsId);
-  const modifiersList = await findModifiersListById(crystal.modifiersListId);
+export function crystalSubRelations(eb: ExpressionBuilder<DB, "crystal">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "crystal.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "crystal.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+  ];
+}
 
-  return { ...crystal, modifiersList, statistics };
+export async function findCrystalById(id: string) {
+  return await db.selectFrom("crystal")
+    .where("crystal.id", "=", id)
+    .selectAll("crystal")
+    .select((eb) => crystalSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }
 
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {

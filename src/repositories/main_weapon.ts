@@ -1,30 +1,48 @@
-import { Insertable, Selectable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { main_weapon } from "~/repositories/db/types";
-import { createStatistics, defaultStatistics } from "./statistics";
-import { createModifiersList, defaultModifiersList } from "./modifiers_list";
+import { DB, main_weapon } from "~/repositories/db/types";
+import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
+import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
 import { defaultCrystal, NewCrystal } from "./crystal";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type MainWeapon = Awaited<ReturnType<typeof findMainWeaponById>>;
 export type NewMainWeapon = Insertable<main_weapon>;
 export type MainWeaponUpdate = Updateable<main_weapon>;
 
+export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "main_weapon">, id: Expression<string>) {
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("_crystalTomain_weapon")
+        .innerJoin("crystal", "_crystalTomain_weapon.A", "crystal.id")
+        .whereRef("_crystalTomain_weapon.B", "=", "main_weapon.id")
+        .selectAll("crystal")
+    ).as("crystalList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "main_weapon.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "main_weapon.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+  ]
+}
+
 export async function findMainWeaponById(id: string) {
-  const main_weapon = await db.selectFrom("main_weapon").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
-  const modifiersList = await db.selectFrom("modifiers_list").where("id", "=", main_weapon.modifiersListId).selectAll().executeTakeFirst();
-  const crystalList = await db
-  .selectFrom("_crystalTomain_weapon")
-  .innerJoin("crystal", "_crystalTomain_weapon.A", "crystal.id")
-  .where("_crystalTomain_weapon.B", "=", main_weapon.id)
-  .selectAll(["crystal"])
-  .execute();
-  const statistics = await db
-    .selectFrom("statistics")
-    .where("id", "=", main_weapon.statisticsId)
-    .selectAll()
-    .executeTakeFirst();
-  
-  return { ...main_weapon, modifiersList, crystalList, statistics };
+  return await db
+    .selectFrom("main_weapon")
+    .where("id", "=", id)
+    .selectAll("main_weapon")
+    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }
 
 export async function updateMainWeapon(id: string, updateWith: MainWeaponUpdate) {

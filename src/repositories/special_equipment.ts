@@ -1,50 +1,81 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { special_equipment as SpecialEquipment } from "~/../db/schema";
-import {
-  defaultSelectModifiersList,
-  InsertModifiersList,
-  InsertModifiersListSchema,
-  SelectModifiersList,
-  SelectModifiersListSchema,
-} from "./modifiers_list";
-import {
-  defaultSelectStatistics,
-  InsertStatistics,
-  InsertStatisticsSchema,
-  SelectStatistics,
-  SelectStatisticsSchema,
-} from "./statistics";
-import { defaultSelectCrystal, InsertCrystal, SelectCrystal } from "./crystal";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, special_equipment } from "~/repositories/db/types";
+import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
+import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultCrystal } from "./crystal";
 
-// TS
-export type SelectSpecialEquipment = InferSelectModel<typeof SpecialEquipment> & {
-  crystal: SelectCrystal[];
-  modifiersList: SelectModifiersList;
-  statistics: SelectStatistics;
-};
-export type InsertSpecialEquipment = InferInsertModel<typeof SpecialEquipment> & {
-  srystal: InsertCrystal[];
-  modifiersList: InsertModifiersList;
-  statistics: InsertStatistics;
-};
+export type SpecialEquipment = Awaited<ReturnType<typeof findSpecialEquipmentById>>;
+export type NewSpecialEquipment = Insertable<special_equipment>;
+export type SpecialEquipmentUpdate = Updateable<special_equipment>;
 
-// Zod
-export const SelectSpecialEquipmentSchema = createSelectSchema(SpecialEquipment).extend({
-  modifiersList: SelectModifiersListSchema,
-  statistics: SelectStatisticsSchema,
-});
-export const InsertSpecialEquipmentSchema = createInsertSchema(SpecialEquipment).extend({
-  modifiersList: InsertModifiersListSchema,
-  statistics: InsertStatisticsSchema,
-});
+export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "special_equipment">, id: Expression<string>) {
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("_crystalTospecial_equipment")
+        .innerJoin("crystal", "_crystalTospecial_equipment.A", "crystal.id")
+        .whereRef("_crystalTospecial_equipment.B", "=", "special_equipment.id")
+        .selectAll("crystal"),
+    ).as("crystalList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "special_equipment.statisticsId")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "special_equipment.modifiersListId")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+  ];
+}
 
-export const defaultSelectSpecialEquipment: SelectSpecialEquipment = {
+export async function findSpecialEquipmentById(id: string) {
+  return await db
+    .selectFrom("special_equipment")
+    .where("id", "=", id)
+    .selectAll("special_equipment")
+    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateSpecialEquipment(id: string, updateWith: SpecialEquipmentUpdate) {
+  return await db
+    .updateTable("special_equipment")
+    .set(updateWith)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst();
+}
+
+export async function createSpecialEquipment(newSpecialEquipment: NewSpecialEquipment) {
+  return await db.transaction().execute(async (trx) => {
+    const special_equipment = await trx
+      .insertInto("special_equipment")
+      .values(newSpecialEquipment)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const modifiersList = await createModifiersList(defaultModifiersList);
+    const statistics = await createStatistics(defaultStatistics);
+    return { ...special_equipment, modifiersList, statistics };
+  });
+}
+
+export async function deleteSpecialEquipment(id: string) {
+  return await db.deleteFrom("special_equipment").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+// default
+export const defaultSpecialEquipment: SpecialEquipment = {
   id: "",
   name: "",
-  crystal: [defaultSelectCrystal],
-  modifiersList: defaultSelectModifiersList,
-  modifiersListId: defaultSelectModifiersList.id,
+  crystalList: [defaultCrystal],
+  modifiersList: defaultModifiersList,
+  modifiersListId: defaultModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -52,6 +83,7 @@ export const defaultSelectSpecialEquipment: SelectSpecialEquipment = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
+  statistics: defaultStatistics,
   statisticsId: "",
 };
+

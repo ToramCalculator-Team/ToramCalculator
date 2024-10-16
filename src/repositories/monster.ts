@@ -1,31 +1,39 @@
-import { Insertable, Selectable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { monster } from "~/repositories/db/types";
-import { defaultStatistics } from "./statistics";
+import { DB, monster } from "~/repositories/db/types";
+import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { defaultImage } from "./image";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Monster = Awaited<ReturnType<typeof findMonsterById>>;
 export type NewMonster = Insertable<monster>;
 export type MonsterUpdate = Updateable<monster>;
 
-export async function findMonsterById(id: string) {
-  const monster = await db.selectFrom("monster").where("id", "=", id).selectAll().executeTakeFirst();
-  if (!monster) {
-    return null;
-  }
-  const statistics = await db
-    .selectFrom("statistics")
-    .where("id", "=", monster.statisticsId)
-    .selectAll()
-    .executeTakeFirst();
-  
-  const image = await db
-    .selectFrom("image")
-    .where("id", "=", monster.imageId)
-    .selectAll()
-    .executeTakeFirst();
+export function MonsterSubRelations(eb: ExpressionBuilder<DB, "monster">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "monster.statisticsId")
+        .selectAll("statistics")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("image")
+        .where("id", "=", "monster.imageId")
+        .selectAll("image")
+    ).as("image"),
+  ];
+}
 
-  return { ...monster, statistics, image };
+export async function findMonsterById(id: string) {
+  return await db
+    .selectFrom("monster")
+    .where("id", "=", id)
+    .selectAll("monster")
+    .select((eb) => MonsterSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }
 
 export async function updateMonster(id: string, updateWith: MonsterUpdate) {
@@ -35,10 +43,14 @@ export async function updateMonster(id: string, updateWith: MonsterUpdate) {
 export async function createMonster(newMonster: NewMonster) {
   return await db.transaction().execute(async (trx) => {
     const monster = await trx.insertInto("monster").values(newMonster).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx.insertInto("statistics").values(defaultStatistics).returningAll().executeTakeFirstOrThrow();
+    const statistics = await trx
+      .insertInto("statistics")
+      .values(defaultStatistics)
+      .returningAll()
+      .executeTakeFirstOrThrow();
     const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
     return { ...monster, statistics, image };
-  })
+  });
 }
 
 export async function deleteMonster(id: string) {
@@ -81,4 +93,4 @@ export const defaultMonster: Monster = {
   statistics: defaultStatistics,
   imageId: "",
   image: defaultImage,
-}
+};

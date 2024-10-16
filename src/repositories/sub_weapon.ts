@@ -1,52 +1,72 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { sub_weapon as SubWeapon } from "~/../db/schema";
-import {
-  defaultSelectModifiersList,
-  InsertModifiersList,
-  InsertModifiersListSchema,
-  SelectModifiersList,
-  SelectModifiersListSchema,
-} from "./modifiers_list";
-import {
-  defaultSelectStatistics,
-  InsertStatistics,
-  InsertStatisticsSchema,
-  SelectStatistics,
-  SelectStatisticsSchema,
-} from "./statistics";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { db } from "./database";
+import { DB, sub_weapon } from "~/repositories/db/types";
+import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
+import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 
-// TS
-export type SelectSubWeapon = InferSelectModel<typeof SubWeapon> & {
-  modifiersList: SelectModifiersList;
-  statistics: SelectStatistics;
-};
-export type InsertSubWeapon = InferInsertModel<typeof SubWeapon> & {
-  modifiersList: InsertModifiersList;
-  statistics: InsertStatistics;
-};
+export type SubWeapon = Awaited<ReturnType<typeof findSubWeaponById>>;
+export type NewSubWeapon = Insertable<sub_weapon>;
+export type SubWeaponUpdate = Updateable<sub_weapon>;
 
-// Zod
-export const SelectSubWeaponSchema = createSelectSchema(SubWeapon).extend({
-  modifiersList: SelectModifiersListSchema,
-  statistics: SelectStatisticsSchema,
-});
-export const InsertSubWeaponSchema = createInsertSchema(SubWeapon).extend({
-  modifiersList: InsertModifiersListSchema,
-  statistics: InsertStatisticsSchema,
-});
+export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "sub_weapon">, id: Expression<string>) {
+  return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("statistics")
+        .whereRef("id", "=", "sub_weapon.statisticsId")
+        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+    ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "sub_weapon.modifiersListId")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+  ]
+}
 
-// Default
-export const defaultSelectSubWeapon: SelectSubWeapon = {
-  id: "",
-  name: "",
-  subWeaponType: "NO_WEAPON",
+export async function findSubWeaponById(id: string) {
+  return await db
+    .selectFrom("sub_weapon")
+    .where("id", "=", id)
+    .selectAll("sub_weapon")
+    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateSubWeapon(id: string, updateWith: SubWeaponUpdate) {
+  return await db.updateTable("sub_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createSubWeapon(newSubWeapon: NewSubWeapon) {
+  return await db.transaction().execute(async (trx) => {
+    const sub_weapon = await trx
+      .insertInto("sub_weapon")
+      .values(newSubWeapon)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const modifiersList = await createModifiersList(defaultModifiersList);
+    const statistics = await createStatistics(defaultStatistics);
+    return { ...sub_weapon, modifiersList, statistics };
+  });
+}
+
+export async function deleteSubWeapon(id: string) {
+  return await db.deleteFrom("sub_weapon").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+// default
+export const defaultSubWeapon: SubWeapon = {
+  id: "defaultSubWeaponId",
+  name: "defaultSubWeaponName",
+  subWeaponType: "MAGIC_DEVICE",
   baseAtk: 0,
   refinement: 0,
   stability: 0,
   element: "NO_ELEMENT",
-  modifiersList: defaultSelectModifiersList,
-  modifiersListId: defaultSelectModifiersList.id,
+  modifiersList: defaultModifiersList,
+  modifiersListId: defaultModifiersList.id,
   dataSources: "",
   extraDetails: "",
 
@@ -54,6 +74,6 @@ export const defaultSelectSubWeapon: SelectSubWeapon = {
   updatedByUserId: "",
   createdAt: new Date(),
   createdByUserId: "",
-  statistics: defaultSelectStatistics,
+  statistics: defaultStatistics,
   statisticsId: "",
 };

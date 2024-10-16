@@ -1,25 +1,31 @@
-import { Insertable, Selectable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { modifiers_list } from "~/repositories/db/types";
+import { DB, modifiers_list } from "~/repositories/db/types";
 import { defaultModifier, NewModifier } from "./modifier";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 
 export type ModifiersList = Awaited<ReturnType<typeof findModifiersListById>>;
 export type NewModifiersList = Insertable<modifiers_list>;
 export type ModifiersListUpdate = Updateable<modifiers_list>;
 
+export function modifiersListSubRelations(eb:ExpressionBuilder<DB, "modifiers_list">,modifiers_listId: Expression<string>) {
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("modifier")
+        .whereRef("modifier.belongToModifiersListId", "=", modifiers_listId)
+        .selectAll("modifier")
+    ).as("modifiers"),
+  ];
+}
+
 export async function findModifiersListById(id: string) {
-  const modifiers_list = await db
+  return await db
     .selectFrom("modifiers_list")
     .where("id", "=", id)
-    .selectAll()
+    .selectAll("modifiers_list")
+    .select((eb) => modifiersListSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-  const modifiers = await db
-    .selectFrom("modifier")
-    .where("belongToModifiersListId", "=", modifiers_list.id)
-    .selectAll()
-    .execute();
-
-  return { ...modifiers_list, modifiers };
 }
 
 export async function updateModifiersList(id: string, updateWith: ModifiersListUpdate) {
