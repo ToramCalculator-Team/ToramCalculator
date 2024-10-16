@@ -10,7 +10,7 @@ export type SpecialEquipment = Awaited<ReturnType<typeof findSpecialEquipmentByI
 export type NewSpecialEquipment = Insertable<special_equipment>;
 export type SpecialEquipmentUpdate = Updateable<special_equipment>;
 
-export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "special_equipment">, id: Expression<string>) {
+export function specialEquipmentSubRelations(eb: ExpressionBuilder<DB, "special_equipment">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -39,7 +39,7 @@ export async function findSpecialEquipmentById(id: string) {
     .selectFrom("special_equipment")
     .where("id", "=", id)
     .selectAll("special_equipment")
-    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .select((eb) => specialEquipmentSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

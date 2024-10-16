@@ -1,21 +1,9 @@
-import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { combo_step as ComboStep } from "~/../db/schema";
+import { Selectable } from 'kysely'
+import { combo_step } from '~/repositories/db/types'
 
-// TS
-export type SelectComboStep = InferSelectModel<typeof ComboStep> & {
-
-};
-export type InsertComboStep = InferInsertModel<typeof ComboStep> & {
-    
-}
-
-// Zod
-export const SelectComboStepSchema = createSelectSchema(ComboStep);
-export const InsertComboStepSchema = createInsertSchema(ComboStep);
-
+export type ComboStep = Selectable<combo_step>
 // default
-export const defaultSelectComboStep: SelectComboStep = {
+export const defaultComboStep: ComboStep = {
     id: "",
     comboId: "",
     order: 0,

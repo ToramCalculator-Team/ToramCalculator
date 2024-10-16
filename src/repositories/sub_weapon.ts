@@ -9,7 +9,7 @@ export type SubWeapon = Awaited<ReturnType<typeof findSubWeaponById>>;
 export type NewSubWeapon = Insertable<sub_weapon>;
 export type SubWeaponUpdate = Updateable<sub_weapon>;
 
-export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "sub_weapon">, id: Expression<string>) {
+export function subWeaponSubRelations(eb: ExpressionBuilder<DB, "sub_weapon">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
@@ -31,7 +31,7 @@ export async function findSubWeaponById(id: string) {
     .selectFrom("sub_weapon")
     .where("id", "=", id)
     .selectAll("sub_weapon")
-    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .select((eb) => subWeaponSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

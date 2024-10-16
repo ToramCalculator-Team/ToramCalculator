@@ -9,7 +9,7 @@ export type Monster = Awaited<ReturnType<typeof findMonsterById>>;
 export type NewMonster = Insertable<monster>;
 export type MonsterUpdate = Updateable<monster>;
 
-export function MonsterSubRelations(eb: ExpressionBuilder<DB, "monster">, id: Expression<string>) {
+export function monsterSubRelations(eb: ExpressionBuilder<DB, "monster">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
@@ -32,7 +32,7 @@ export async function findMonsterById(id: string) {
     .selectFrom("monster")
     .where("id", "=", id)
     .selectAll("monster")
-    .select((eb) => MonsterSubRelations(eb, eb.val(id)))
+    .select((eb) => monsterSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

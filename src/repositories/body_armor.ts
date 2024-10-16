@@ -10,7 +10,7 @@ export type BodyArmor = Awaited<ReturnType<typeof findBodyArmorById>>;
 export type NewBodyArmor = Insertable<body_armor>;
 export type BodyArmorUpdate = Updateable<body_armor>;
 
-export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "body_armor">, id: Expression<string>) {
+export function bodyArmorSubRelations(eb: ExpressionBuilder<DB, "body_armor">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -41,7 +41,7 @@ export async function findBodyArmorById(id: string) {
     .selectFrom("body_armor")
     .where("id", "=", id)
     .selectAll("body_armor")
-    .select((eb) => mainWeaponSubRelations(eb, eb.val(id)))
+    .select((eb) => bodyArmorSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

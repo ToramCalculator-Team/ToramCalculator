@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { defaultSelectMonster, SelectMonster } from "./repositories/monster";
-import { defaultSelectCrystal, SelectCrystal } from "./repositories/crystal";
-import { defaultSelectSkill, SelectSkill } from "./repositories/skill";
-import { defaultSelectCharacter, SelectCharacter } from "./repositories/character";
-import { defaultSelectAnalyzer, SelectAnalyzer } from "./repositories/analyzer";
+import { defaultMonster, Monster } from "./repositories/monster";
+import { defaultCrystal, Crystal } from "./repositories/crystal";
+import { defaultSkill, Skill } from "./repositories/skill";
+import { defaultCharacter, Character } from "./repositories/character";
+import { defaultAnalyzer, Analyzer } from "./repositories/analyzer";
 import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
@@ -33,42 +33,42 @@ export type Store = {
       };
     };
   };
-  monster: SelectMonster;
+  monster: Monster;
   indexPage: {
   };
   monsterPage: {
     augmented: boolean;
-    monsterList: SelectMonster[];
+    monsterList: Monster[];
     monsterDialogState: boolean;
     monsterFormState: FormSate;
     filterState: boolean;
   };
-  crystal: SelectCrystal;
+  crystal: Crystal;
   crystalPage: {
     augmented: boolean;
-    crystalList: SelectCrystal[];
+    crystalList: Crystal[];
     crystalDialogState: boolean;
     crystalFormState: FormSate;
     filterState: boolean;
   };
   skillPage: {
-    skillList: SelectSkill[];
-    skill: SelectSkill;
+    skillList: Skill[];
+    skill: Skill;
     skillDialogState: boolean;
     skillFormState: FormSate;
     filterState: boolean;
   };
-  character: SelectCharacter;
+  character: Character;
   characterPage: {
     augmented: boolean;
-    characterList: SelectCharacter[];
+    characterList: Character[];
     characterDialogState: boolean;
     characterFormState: FormSate;
     filterState: boolean;
   };
-  analyzer: SelectAnalyzer;
+  analyzer: Analyzer;
   analyzerPage: {
-    analyzerList: SelectAnalyzer[];
+    analyzerList: Analyzer[];
     analyzerDialogState: boolean;
     analyzerFormState: FormSate;
     filterState: boolean;
@@ -99,7 +99,7 @@ export const initialStore: Store = {
     },
   },
   settingsDialogState: false,
-  monster: defaultSelectMonster,
+  monster: defaultMonster,
   indexPage: {},
   monsterPage: {
     augmented: true,
@@ -108,7 +108,7 @@ export const initialStore: Store = {
     monsterFormState: "DISPLAY",
     filterState: false,
   },
-  crystal: defaultSelectCrystal,
+  crystal: defaultCrystal,
   crystalPage: {
     augmented: false,
     crystalList: [],
@@ -118,12 +118,12 @@ export const initialStore: Store = {
   },
   skillPage: {
     skillList: [],
-    skill: defaultSelectSkill,
+    skill: defaultSkill,
     skillDialogState: false,
     skillFormState: "CREATE",
     filterState: false
   },
-  character: defaultSelectCharacter,
+  character: defaultCharacter,
   characterPage: {
     augmented: false,
     characterList: [],
@@ -131,7 +131,7 @@ export const initialStore: Store = {
     characterFormState: "CREATE",
     filterState: false
   },
-  analyzer: defaultSelectAnalyzer,
+  analyzer: defaultAnalyzer,
   analyzerPage: {
     analyzerList: [],
     analyzerDialogState: false,

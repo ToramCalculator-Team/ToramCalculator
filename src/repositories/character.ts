@@ -3,18 +3,16 @@ import { db } from "./database";
 import { DB, character } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultCharacterEffect, characterEffectSubRelations } from "./character_effect";
-import { defaultCharacterYield } from "./character_yield";
-import { defaultCharacterCost } from "./character_cost";
-import { defaultAdditionalEquipment } from "./additional_equipment";
-import { defaultBodyArmor } from "./body_armor";
-import { defaultConsumable } from "./consumable";
-import { defaultMainWeapon } from "./main_weapon";
-import { defaultModifiersList } from "./modifiers_list";
-import { defaultPet } from "./pet";
-import { defaultSpecialEquipment } from "./special_equipment";
-import { defaultSubWeapon } from "./sub_weapon";
-import { defaultSkill } from "./skill";
+import { defaultAdditionalEquipment, additionalEquipmentSubRelations } from "./additional_equipment";
+import { bodyArmorSubRelations, defaultBodyArmor } from "./body_armor";
+import { consumableSubRelations, defaultConsumable } from "./consumable";
+import { defaultMainWeapon, mainWeaponSubRelations } from "./main_weapon";
+import { defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { defaultPet, petSubRelations } from "./pet";
+import { defaultSpecialEquipment, specialEquipmentSubRelations } from "./special_equipment";
+import { defaultSubWeapon, subWeaponSubRelations } from "./sub_weapon";
+import { defaultSkill, skillSubRelations } from "./skill";
+import { comboSubRelations } from "./combo";
 
 export type Character = Awaited<ReturnType<typeof findCharacterById>>;
 export type NewCharacter = Insertable<character>;
@@ -22,6 +20,93 @@ export type CharacterUpdate = Updateable<character>;
 
 export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {
   return [
+    jsonObjectFrom(
+      eb
+        .selectFrom("main_weapon")
+        .whereRef("id", "=", "character.mainWeaponId")
+        .selectAll("main_weapon")
+        .select((subEb) => mainWeaponSubRelations(subEb, subEb.val(id))),
+    ).as("mainWeapon"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("sub_weapon")
+        .whereRef("id", "=", "character.subWeaponId")
+        .selectAll("sub_weapon")
+        .select((subEb) => subWeaponSubRelations(subEb, subEb.val(id))),
+    ).as("subWeapon"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("body_armor")
+        .whereRef("id", "=", "character.bodyArmorId")
+        .selectAll("body_armor")
+        .select((subEb) => bodyArmorSubRelations(subEb, subEb.val(id))),
+    ).as("bodyArmor"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("additional_equipment")
+        .whereRef("id", "=", "character.additionalEquipmentId")
+        .selectAll("additional_equipment")
+        .select((subEb) => additionalEquipmentSubRelations(subEb, subEb.val(id))),
+    ).as("additionalEquipment"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("special_equipment")
+        .whereRef("id", "=", "character.specialEquipmentId")
+        .selectAll("special_equipment")
+        .select((subEb) => specialEquipmentSubRelations(subEb, subEb.val(id))),
+    ).as("specialEquipment"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_characterToconsumable")
+        .innerJoin("consumable", "_characterToconsumable.B", "consumable.id")
+        .whereRef("_characterToconsumable.A", "=", "character.id")
+        .selectAll("consumable")
+        .select((subEb) => consumableSubRelations(subEb, subEb.val(id))),
+    ).as("consumableList"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_characterToskill")
+        .innerJoin("skill", "_characterToskill.B", "skill.id")
+        .whereRef("_characterToskill.A", "=", "character.id")
+        .selectAll("skill")
+        .select((subEb) => skillSubRelations(subEb, subEb.val(id))),
+    ).as("skillList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "character.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
+    jsonObjectFrom(
+      eb
+      .selectFrom("modifiers_list")
+        .whereRef("id", "=", "character.fashionModifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("fashion"),
+    jsonObjectFrom(
+      eb
+      .selectFrom("modifiers_list")
+        .whereRef("id", "=", "character.CuisineModifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("cuisine"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_characterTocombo")
+        .innerJoin("combo", "_characterTocombo.B", "combo.id")
+        .whereRef("_characterTocombo.A", "=", "character.id")
+        .selectAll("combo")
+        .select((subEb) => comboSubRelations(subEb, subEb.val(id))),
+    ).as("combos"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("pet")
+        .whereRef("id", "=", "character.petId")
+        .selectAll("pet")
+        .select((subEb) => petSubRelations(subEb, subEb.val(id))),
+    ).as("pet"),
     jsonObjectFrom(
       eb
         .selectFrom("statistics")
@@ -43,50 +128,6 @@ export async function findCharacterById(id: string) {
 
 export async function updateCharacter(id: string, updateWith: CharacterUpdate) {
   return await db.updateTable("character").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function createCharacter(newCharacter: NewCharacter) {
-  return await db.transaction().execute(async (trx) => {
-    const character = await trx.insertInto("character").values(newCharacter).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
-      .values({
-        ...defaultStatistics,
-        characterId: character.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-
-    const characterEffect = await trx
-      .insertInto("character_effect")
-      .values({
-        ...defaultCharacterEffect,
-        belongTocharacterId: character.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-
-    const characterYield = await trx.insertInto("character_yield").values({
-      ...defaultCharacterYield,
-      characterEffectId: characterEffect.id,
-    });
-
-    const characterCost = await trx.insertInto("character_cost").values({
-      ...defaultCharacterCost,
-      characterEffectId: characterEffect.id,
-    });
-    return {
-      ...character,
-      statistics,
-      characterEffect: [
-        {
-          ...characterEffect,
-          characterYield: [characterYield],
-          characterCost: [characterCost],
-        },
-      ],
-    };
-  });
 }
 
 export async function deleteCharacter(id: string) {

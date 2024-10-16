@@ -118,7 +118,7 @@ export type characterToskill = {
 export type combo = {
     id: string;
     name: string;
-    userCreateUserId: string | null;
+    createdByUserId: string | null;
 };
 export type combo_step = {
     id: string;

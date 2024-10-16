@@ -728,9 +728,9 @@ model combo {
     name      String
     comboStep combo_step[]
 
-    usedBy           character[]
-    user_create_data user_create_data? @relation(fields: [userCreateUserId], references: [userId])
-    userCreateUserId String?
+    usedBy          character[]
+    createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
+    createdByUserId String?
 }
 
 model combo_step {

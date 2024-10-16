@@ -2,7 +2,9 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, analyzer } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
-import { jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultMob } from "./mob";
+import { defaultMember } from "./member";
 
 export type Analyzer = Awaited<ReturnType<typeof findAnalyzerById>>;
 export type NewAnalyzer = Insertable<analyzer>;
@@ -17,6 +19,20 @@ export function AnalyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
     ).as("statistics"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_analyzerTomember")
+        .innerJoin("member", "_analyzerTomember.A", "member.id")
+        .whereRef("_analyzerTomember.B", "=", "analyzer.id")
+        .selectAll("member")
+    ).as("team"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_analyzerTomob")
+        .innerJoin("mob", "_analyzerTomob.A", "mob.id")
+        .whereRef("_analyzerTomob.B", "=", "analyzer.id")
+        .selectAll("mob")
+    ).as("mobs"),
   ];
 }
 

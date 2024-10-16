@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { defaultSelectMonster } from "~/repositories/monster";
+import { defaultMonster } from "~/repositories/monster";
 
 (async (worker: ServiceWorkerGlobalScope) => {
 
@@ -9,7 +9,7 @@ import { defaultSelectMonster } from "~/repositories/monster";
   });
 
   worker.addEventListener("activate", (event) => {
-    console.log("SW: activate", defaultSelectMonster);
+    console.log("SW: activate", defaultMonster);
   });
   
   // worker.addEventListener("fetch", (event) => {

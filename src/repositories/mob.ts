@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/repositories/db/types";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultMonster, monsterSubRelations } from "./monster";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Mob = Awaited<ReturnType<typeof findMobById>>;
@@ -12,11 +12,11 @@ export function MobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "mob.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+        .selectFrom("monster")
+        .whereRef("id", "=", "mob.monsterId")
+        .selectAll("monster")
+        .select((subEb) => monsterSubRelations(subEb, subEb.val(id))),
+    ).as("monster"),
   ];
 }
 
@@ -35,13 +35,16 @@ export async function updateMob(id: string, updateWith: MobUpdate) {
 
 export async function createMob(newMob: NewMob) {
   return await db.transaction().execute(async (trx) => {
-    const mob = await trx.insertInto("mob").values(newMob).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
-      .values(defaultStatistics)
+    const monster = await trx
+      .insertInto("monster")
+      .values(defaultMonster)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { ...mob, statistics };
+    const mob = await trx.insertInto("mob").values({
+      ...newMob,
+      monsterId: monster.id,
+    }).returningAll().executeTakeFirstOrThrow();
+    return { ...mob, monster };
   });
 }
 

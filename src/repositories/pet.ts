@@ -8,7 +8,7 @@ export type Pet = Awaited<ReturnType<typeof findPetById>>;
 export type NewPet = Insertable<pet>;
 export type PetUpdate = Updateable<pet>;
 
-export function PetSubRelations(eb: ExpressionBuilder<DB, "pet">, id: Expression<string>) {
+export function petSubRelations(eb: ExpressionBuilder<DB, "pet">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
@@ -25,7 +25,7 @@ export async function findPetById(id: string) {
     .selectFrom("pet")
     .where("id", "=", id)
     .selectAll("pet")
-    .select((eb) => PetSubRelations(eb, eb.val(id)))
+    .select((eb) => petSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

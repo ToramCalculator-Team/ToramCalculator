@@ -1,59 +1,60 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, analyzer } from "~/repositories/db/types";
+import { DB, consumable } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
 
 export type Consumable = Awaited<ReturnType<typeof findConsumableById>>;
-export type NewConsumable = Insertable<analyzer>;
-export type ConsumableUpdate = Updateable<analyzer>;
+export type NewConsumable = Insertable<consumable>;
+export type ConsumableUpdate = Updateable<consumable>;
 
-export function ConsumableSubRelations(eb: ExpressionBuilder<DB, "consumable">, id: Expression<string>) {
+export function consumableSubRelations(eb: ExpressionBuilder<DB, "consumable">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("usedB", "=", "body_armor.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
-    jsonObjectFrom(
-      eb
         .selectFrom("statistics")
-        .whereRef("id", "=", "analyzer.statisticsId")
+        .whereRef("id", "=", "consumable.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
     ).as("statistics"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("modifiers_list")
+        .whereRef("id", "=", "consumable.modifiersListId")
+        .selectAll("modifiers_list")
+        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+    ).as("modifiersList"),
   ];
 }
 
 export async function findConsumableById(id: string) {
   return await db
-    .selectFrom("analyzer")
+    .selectFrom("consumable")
     .where("id", "=", id)
-    .selectAll("analyzer")
-    .select((eb) => ConsumableSubRelations(eb, eb.val(id)))
+    .selectAll("consumable")
+    .select((eb) => consumableSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
 export async function updateConsumable(id: string, updateWith: ConsumableUpdate) {
-  return await db.updateTable("analyzer").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+  return await db.updateTable("consumable").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function createConsumable(newConsumable: NewConsumable) {
   return await db.transaction().execute(async (trx) => {
-    const analyzer = await trx.insertInto("analyzer").values(newConsumable).returningAll().executeTakeFirstOrThrow();
+    const consumable = await trx.insertInto("consumable").values(newConsumable).returningAll().executeTakeFirstOrThrow();
     const statistics = await trx
       .insertInto("statistics")
       .values(defaultStatistics)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { ...analyzer, statistics };
+    return { ...consumable, statistics };
   });
 }
 
 export async function deleteConsumable(id: string) {
-  return await db.deleteFrom("analyzer").where("id", "=", id).returningAll().executeTakeFirst();
+  return await db.deleteFrom("consumable").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 export const defaultConsumable: Consumable = {

@@ -1,22 +1,22 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, member } from "~/repositories/db/types";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultCharacter, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Member = Awaited<ReturnType<typeof findMemberById>>;
 export type NewMember = Insertable<member>;
 export type MemberUpdate = Updateable<member>;
 
-export function MemberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
+export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "member.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+        .selectFrom("character")
+        .whereRef("id", "=", "member.characterId")
+        .selectAll("character")
+        .select((subEb) => characterSubRelations(subEb, subEb.val(id))),
+    ).as("character"),
   ];
 }
 
@@ -25,7 +25,7 @@ export async function findMemberById(id: string) {
     .selectFrom("member")
     .where("id", "=", id)
     .selectAll("member")
-    .select((eb) => MemberSubRelations(eb, eb.val(id)))
+    .select((eb) => memberSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
@@ -35,13 +35,16 @@ export async function updateMember(id: string, updateWith: MemberUpdate) {
 
 export async function createMember(newMember: NewMember) {
   return await db.transaction().execute(async (trx) => {
-    const member = await trx.insertInto("member").values(newMember).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
-      .values(defaultStatistics)
+    const character = await trx
+      .insertInto("character")
+      .values(defaultCharacter)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { ...member, statistics };
+    const member = await trx.insertInto("member").values({
+      ...newMember,
+      characterId: character.id,
+    }).returningAll().executeTakeFirstOrThrow();
+    return { ...member, character };
   });
 }
 

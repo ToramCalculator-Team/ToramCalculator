@@ -380,7 +380,7 @@ CREATE TABLE "consumable" (
 CREATE TABLE "combo" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "userCreateUserId" TEXT,
+    "createdByUserId" TEXT,
 
     CONSTRAINT "combo_pkey" PRIMARY KEY ("id")
 );
@@ -853,7 +853,7 @@ ALTER TABLE "consumable" ADD CONSTRAINT "consumable_createdByUserId_fkey" FOREIG
 ALTER TABLE "consumable" ADD CONSTRAINT "consumable_statisticsId_fkey" FOREIGN KEY ("statisticsId") REFERENCES "statistics"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "combo" ADD CONSTRAINT "combo_userCreateUserId_fkey" FOREIGN KEY ("userCreateUserId") REFERENCES "user_create_data"("userId") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "combo" ADD CONSTRAINT "combo_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "user_create_data"("userId") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "combo_step" ADD CONSTRAINT "combo_step_skillId_fkey" FOREIGN KEY ("skillId") REFERENCES "skill"("id") ON DELETE CASCADE ON UPDATE CASCADE;
