@@ -15,12 +15,14 @@ export function subWeaponSubRelations(eb: ExpressionBuilder<DB, "sub_weapon">, i
       eb
         .selectFrom("statistics")
         .whereRef("id", "=", "sub_weapon.statisticsId")
+        .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
     ).as("statistics"),
     jsonObjectFrom(
       eb
         .selectFrom("modifiers_list")
         .whereRef("id", "=", "sub_weapon.modifiersListId")
+        .selectAll("modifiers_list")
         .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
     ).as("modifiersList"),
   ]

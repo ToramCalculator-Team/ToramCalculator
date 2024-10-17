@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, body_armor } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
 import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
-import { defaultCrystal, NewCrystal } from "./crystal";
+import { crystalSubRelations, defaultCrystal, NewCrystal } from "./crystal";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type BodyArmor = Awaited<ReturnType<typeof findBodyArmorById>>;
@@ -17,7 +17,8 @@ export function bodyArmorSubRelations(eb: ExpressionBuilder<DB, "body_armor">, i
         .selectFrom("_body_armorTocrystal")
         .innerJoin("crystal", "_body_armorTocrystal.B", "crystal.id")
         .whereRef("_body_armorTocrystal.A", "=", "body_armor.id")
-        .selectAll("crystal"),
+        .selectAll("crystal")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
     ).as("crystalList"),
     jsonObjectFrom(
       eb

@@ -1,4 +1,4 @@
-import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
+import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -13,17 +13,17 @@ export default function CharacterIndexPage() {
 
   // 状态管理参数
   const characterList = store.characterPage.characterList;
-  const setCharacterList = (value: SelectCharacter[]) => setStore("characterPage", "characterList", value);
+  const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const character = store.character;
-  const setCharacter = (value: SelectCharacter) => setStore("character", value);
+  const setCharacter = (value: Character) => setStore("character", value);
 
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
   const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
 
   onMount(() => {
     console.log("--CharacterIndexPage Render");
-    setCharacterList([defaultSelectCharacter, defaultSelectCharacter]);
-    setCharacter(defaultSelectCharacter);
+    setCharacterList([defaultCharacter, defaultCharacter]);
+    setCharacter(defaultCharacter);
 
     return () => {
       console.log("--CharacterIndexPage Unmount");

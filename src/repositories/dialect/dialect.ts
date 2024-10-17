@@ -11,11 +11,12 @@ import {
   QueryCompiler,
   TransactionSettings,
 } from "kysely"
-import { PGlite } from "@electric-sql/pglite"
+// import { type PGlite } from "@electric-sql/pglite"
+import { type PGliteWorker } from "@electric-sql/pglite/worker"
 import { PGliteConnection } from "./connection"
 
 export class PGliteDialect implements Dialect {
-  constructor(private readonly pgLite: PGlite) { }
+  constructor(private readonly pgLite: PGliteWorker) { }
 
   createAdapter() {
     return new PostgresAdapter()
@@ -35,7 +36,7 @@ export class PGliteDialect implements Dialect {
 }
 
 class PGliteDriver implements Driver {
-  private client: PGlite | undefined
+  private client: PGliteWorker | undefined
   /**
    * Currently used connection.
    * If another acquireConnection() is called the request is queued till this connection has been released.
@@ -43,7 +44,7 @@ class PGliteDriver implements Driver {
   private connection: PGliteConnection | undefined;
   private queue: ((con: PGliteConnection) => void)[] = [];
 
-  constructor(pgLite: PGlite) {
+  constructor(pgLite: PGliteWorker) {
     this.client = pgLite
   }
 

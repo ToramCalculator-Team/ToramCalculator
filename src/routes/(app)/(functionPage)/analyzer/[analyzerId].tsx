@@ -1,12 +1,12 @@
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
-import { SelectMonster } from "~/repositories/monster";
-import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
-import { defaultSelectStatistics } from "~/repositories/statistics";
-import { defaultSelectModifiersList } from "~/repositories/modifiers_list";
-import { defaultSelectConsumable } from "~/repositories/consumable";
-import { defaultSelectSkill } from "~/repositories/skill";
-import { defaultSelectPet } from "~/repositories/pet";
+import { Monster } from "~/repositories/monster";
+import { defaultCharacter, Character } from "~/repositories/character";
+import { defaultStatistics } from "~/repositories/statistics";
+import { defaultModifiersList } from "~/repositories/modifiers_list";
+import { defaultConsumable } from "~/repositories/consumable";
+import { defaultSkill } from "~/repositories/skill";
+import { defaultPet } from "~/repositories/pet";
 import { Accessor, createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -14,12 +14,11 @@ import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/until
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
-import { SelectAnalyzer } from "~/repositories/analyzer";
+import { Analyzer } from "~/repositories/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
-import { defaultSelectImage } from "~/repositories/image";
-import { defaultSelectMember, SelectMember } from "~/repositories/member";
-import { $Enums } from "~/repositories/enums";
+import { defaultImage } from "~/repositories/image";
+import { defaultMember, Member } from "~/repositories/member";
 import * as _ from "lodash-es";
 import {
   Definition,
@@ -55,13 +54,13 @@ export default function AnalyzerIndexClient() {
 
   // 状态管理参数
   const monsterList = store.monsterPage.monsterList;
-  const setMonsterList = (value: SelectMonster[]) => setStore("monsterPage", "monsterList", value);
+  const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
   const characterList = store.characterPage.characterList;
-  const setCharacterList = (value: SelectCharacter[]) => setStore("characterPage", "characterList", value);
+  const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
-  const setAnalyzeList = (value: SelectAnalyzer[]) => setStore("analyzerPage", "analyzerList", value);
+  const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
   const analyzer = store.analyzer;
-  const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
+  const setAnalyze = (value: Analyzer) => setStore("analyzer", value);
   const [memberIndex, setMemberIndex] = createSignal(0);
 
   const [designer, setDesigner] = createSignal<Designer<WorkflowDefinition> | null>(null);
@@ -213,7 +212,7 @@ export default function AnalyzerIndexClient() {
           refinement: 15,
           stability: 70,
           element: "LIGHT",
-          crystal: [
+          crystalList: [
             {
               id: "",
               name: "寄生甲兽",
@@ -247,7 +246,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
             {
@@ -288,7 +287,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
           ],
@@ -325,7 +324,7 @@ export default function AnalyzerIndexClient() {
           updatedByUserId: "",
           extraDetails: "",
           dataSources: "",
-          statistics: defaultSelectStatistics,
+          statistics: defaultStatistics,
           statisticsId: "",
         },
         mainWeaponId: "",
@@ -355,7 +354,7 @@ export default function AnalyzerIndexClient() {
           updatedByUserId: "",
           extraDetails: "",
           dataSources: "",
-          statistics: defaultSelectStatistics,
+          statistics: defaultStatistics,
           statisticsId: "",
         },
         subWeaponId: "",
@@ -365,7 +364,7 @@ export default function AnalyzerIndexClient() {
           bodyArmorType: "NORMAL",
           refinement: 0,
           baseDef: 0,
-          crystal: [
+          crystalList: [
             {
               id: "",
               name: "铁之女帝",
@@ -404,7 +403,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
             {
@@ -445,7 +444,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
           ],
@@ -482,7 +481,7 @@ export default function AnalyzerIndexClient() {
           updatedByUserId: "",
           extraDetails: "",
           dataSources: "",
-          statistics: defaultSelectStatistics,
+          statistics: defaultStatistics,
           statisticsId: "",
         },
         bodyArmorId: "",
@@ -490,7 +489,7 @@ export default function AnalyzerIndexClient() {
           id: "",
           name: "饼干腰翼",
           refinement: 0,
-          crystal: [
+          crystalList: [
             {
               id: "",
               name: "深谋的青影",
@@ -529,7 +528,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
             {
@@ -555,7 +554,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
           ],
@@ -587,14 +586,14 @@ export default function AnalyzerIndexClient() {
           updatedByUserId: "",
           extraDetails: "",
           dataSources: "",
-          statistics: defaultSelectStatistics,
+          statistics: defaultStatistics,
           statisticsId: "",
         },
         additionalEquipmentId: "",
         specialEquipment: {
           id: "",
           name: "读星提灯",
-          crystal: [
+          crystalList: [
             {
               id: "",
               name: "星之魔导士",
@@ -628,7 +627,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
             {
@@ -664,7 +663,7 @@ export default function AnalyzerIndexClient() {
               updatedByUserId: "",
               extraDetails: "",
               dataSources: "",
-              statistics: defaultSelectStatistics,
+              statistics: defaultStatistics,
               statisticsId: "",
             },
           ],
@@ -691,30 +690,30 @@ export default function AnalyzerIndexClient() {
           updatedByUserId: "",
           extraDetails: "",
           dataSources: "",
-          statistics: defaultSelectStatistics,
+          statistics: defaultStatistics,
           statisticsId: "",
         },
         specialEquipmentId: "",
-        fashion: defaultSelectModifiersList,
+        fashion: defaultModifiersList,
         fashionModifiersListId: "",
-        cuisine: defaultSelectModifiersList,
+        cuisine: defaultModifiersList,
         CuisineModifiersListId: "",
-        consumableList: [defaultSelectConsumable],
-        skillList: [defaultSelectSkill],
+        consumableList: [defaultConsumable],
+        skillList: [defaultSkill],
         combos: [],
-        pet: defaultSelectPet,
-        petId: defaultSelectPet.id,
-        modifiersList: defaultSelectModifiersList,
-        modifiersListId: defaultSelectModifiersList.id,
+        pet: defaultPet,
+        petId: defaultPet.id,
+        modifiersList: defaultModifiersList,
+        modifiersListId: defaultModifiersList.id,
         createdAt: new Date(),
         createdByUserId: "",
         updatedAt: new Date(),
         updatedByUserId: "",
         extraDetails: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
         imageId: "",
-      } satisfies SelectCharacter,
+      } satisfies Character,
       characterId: "",
       flow: [
         {
@@ -732,10 +731,10 @@ export default function AnalyzerIndexClient() {
           properties: { message: "结束" },
         },
       ],
-    } satisfies SelectMember,
+    } satisfies Member,
     monster: {
       id: "",
-      image: defaultSelectImage,
+      image: defaultImage,
       imageId: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
@@ -766,9 +765,9 @@ export default function AnalyzerIndexClient() {
       updatedAt: new Date(),
       updatedByUserId: "",
       extraDetails: "",
-      statistics: defaultSelectStatistics,
+      statistics: defaultStatistics,
       statisticsId: "",
-    } satisfies SelectMonster,
+    } satisfies Monster,
     skillSequence1: {
       name: "skillSequence1",
       data: [
@@ -1325,7 +1324,7 @@ export default function AnalyzerIndexClient() {
               }
               return (
                 <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-transition-color-20 lg:flex-row lg:gap-6">
-                  <div class="MobsName z-10 px-6 py-3 text-xl text-primary-color">{mob.monster.name}</div>
+                  <div class="MobsName z-10 px-6 py-3 text-xl text-primary-color">{mob.monster?.name ?? ""}</div>
                   <div class="MobsConfig z-10 flex flex-1 flex-col gap-6 px-6 py-3 lg:flex-row">
                     <div
                       class="MobsAugment flex cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
@@ -1393,11 +1392,11 @@ export default function AnalyzerIndexClient() {
                     class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-transition-color-20"
                   >
                     <div class="Info flex flex-col gap-2 px-3">
-                      <div class="MemberName text-lg font-bold">{member.character.name ?? ""}</div>
+                      <div class="MemberName text-lg font-bold">{member.character?.name ?? "未知"}</div>
                       <div class="MenberConfig flex flex-1 gap-1 text-accent-color-70">
-                        <span>{member.character.lv}</span>-
-                        <span>{dictionary().db.enums.MainWeaponType[member.character.mainWeapon.mainWeaponType]}</span>-
-                        <span>{dictionary().db.enums.SubWeaponType[member.character.subWeapon.subWeaponType]}</span>
+                        <span>{member.character?.lv ?? "未知"}</span>-
+                        <span>{dictionary().db.enums.MainWeaponType[member.character?.mainWeapon?.mainWeaponType ?? "NO_WEAPON"]}</span>-
+                        <span>{dictionary().db.enums.SubWeaponType[member.character?.subWeapon?.subWeaponType ?? "NO_WEAPON"]}</span>
                       </div>
                     </div>
                     <div class="Funtion"></div>

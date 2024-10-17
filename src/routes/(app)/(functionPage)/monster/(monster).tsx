@@ -2,7 +2,8 @@ import Button from "~/components/ui/button";
 import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
-import { type SelectMonster, defaultSelectMonster, testMonsterQueryData } from "~/repositories/monster";
+import { type Monster, defaultMonster } from "~/repositories/monster";
+import type { $Enums } from "@prisma/client";
 import { createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import * as _ from "lodash-es";
@@ -10,7 +11,6 @@ import Fuse from "fuse.js";
 import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import { Column, createSolidTable, flexRender, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
-import { $Enums } from "~/repositories/enums";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
@@ -30,7 +30,7 @@ export default function MonsterIndexPage() {
       augmented: newAugmented,
     });
   };
-  const setMonsterList = (newList: SelectMonster[]): void => {
+  const setMonsterList = (newList: Monster[]): void => {
     setStore("monsterPage", {
       monsterList: newList,
     });
@@ -40,14 +40,14 @@ export default function MonsterIndexPage() {
       filterState: newState,
     });
   };
-  const setMonster = (newMonster: SelectMonster): void => {
+  const setMonster = (newMonster: Monster): void => {
     setStore("monster", newMonster);
   };
 
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   // table原始数据------------------------------------------------------------
-  const [rawMonsterList] = createSignal<SelectMonster[]>(testMonsterQueryData ?? []);
+  const [rawMonsterList] = createSignal<Monster[]>([]);
   // table
   const table = createSolidTable({
     data: rawMonsterList(),
@@ -151,9 +151,9 @@ export default function MonsterIndexPage() {
       ],
     },
   });
-  const monsterTableHiddenData: Array<keyof SelectMonster> = ["id", "address", "monsterType", "updatedByUserId"];
+  const monsterTableHiddenData: Array<keyof Monster> = ["id", "address", "monsterType", "updatedByUserId"];
   // 表头固定
-  const getCommonPinningStyles = (column: Column<SelectMonster>): JSX.CSSProperties => {
+  const getCommonPinningStyles = (column: Column<Monster>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
     const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
     const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
@@ -185,7 +185,7 @@ export default function MonsterIndexPage() {
 
   // 搜索框行为函数
   // 定义搜索时需要忽略的数据
-  const monsterSearchHiddenData: Array<keyof SelectMonster> = [
+  const monsterSearchHiddenData: Array<keyof Monster> = [
     "id",
     "experience",
     "radius",
@@ -199,11 +199,9 @@ export default function MonsterIndexPage() {
   ];
 
   // 搜索
-  const searchMonster = (value: string, list: SelectMonster[]) => {
+  const searchMonster = (value: string, list: Monster[]) => {
     const fuse = new Fuse(list, {
-      keys: Object.keys(defaultSelectMonster).filter(
-        (key) => !monsterSearchHiddenData.includes(key as keyof SelectMonster),
-      ),
+      keys: Object.keys(defaultMonster).filter((key) => !monsterSearchHiddenData.includes(key as keyof Monster)),
     });
     return fuse.search(value).map((result) => result.item);
   };
@@ -285,14 +283,10 @@ export default function MonsterIndexPage() {
   });
 
   return (
-    <main class="flex flex-col w-full overflow-hidden h-[calc(100dvh-67px)] lg:h-dvh">
+    <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
-          <Motion.div
-            animate={{ opacity: [0, 1] }}
-            exit={{ opacity: 0 }}
-            class="Title flex flex-col p-3 lg:pt-12"
-          >
+          <Motion.div animate={{ opacity: [0, 1] }} exit={{ opacity: 0 }} class="Title flex flex-col p-3 lg:pt-12">
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
               <h1 class="Text lg: text-left text-4xl leading-[50px] lg:bg-transparent lg:leading-[48px]">
                 {dictionary().ui.monster.pageTitle}
@@ -306,11 +300,10 @@ export default function MonsterIndexPage() {
               />
               <Button // 仅移动端显示
                 size="sm"
-               
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
-                  setStore("monster", defaultSelectMonster);
+                  setStore("monster", defaultMonster);
                   setStore("monsterPage", {
                     monsterDialogState: true,
                     monsterFormState: "CREATE",
@@ -318,11 +311,10 @@ export default function MonsterIndexPage() {
                 }}
               ></Button>
               <Button // 仅PC端显示
-               
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {
-                  setStore("monster", defaultSelectMonster);
+                  setStore("monster", defaultMonster);
                   setStore("monsterPage", {
                     monsterDialogState: true,
                     monsterFormState: "CREATE",
@@ -353,7 +345,9 @@ export default function MonsterIndexPage() {
       <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title flex h-12 w-full items-center gap-3">
-            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>{dictionary().ui.monster.table.title}</div>
+            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
+              {dictionary().ui.monster.table.title}
+            </div>
             <div
               class={`Description flex-1 rounded-md bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
@@ -378,7 +372,7 @@ export default function MonsterIndexPage() {
                         <For each={headerGroup.headers}>
                           {(header) => {
                             const { column } = header;
-                            if (monsterTableHiddenData.includes(column.id as keyof SelectMonster)) {
+                            if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
                               // 默认隐藏的数据
                               return;
                             }
@@ -427,19 +421,17 @@ export default function MonsterIndexPage() {
                             position: "absolute",
                             transform: `translateY(${virtualRow.start}px)`,
                           }}
-                          class={`group flex cursor-pointer border-y-[1px] border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold lg:border-y-1.5`}
+                          class={`lg:border-y-1.5 group flex cursor-pointer border-y-[1px] border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold`}
                           onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                         >
                           <For each={row.getVisibleCells()}>
                             {(cell) => {
                               const { column } = cell;
-                              if (monsterTableHiddenData.includes(column.id as keyof SelectMonster)) {
+                              if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
                                 // 默认隐藏的数据
                                 return;
                               }
-                              switch (
-                                cell.column.id as Exclude<keyof SelectMonster, keyof typeof monsterTableHiddenData>
-                              ) {
+                              switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
                                 case "name":
                                   return (
                                     <td
@@ -453,8 +445,7 @@ export default function MonsterIndexPage() {
                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                       </span>
                                       <span class="text-sm font-normal text-accent-color-70">
-                                        {(row.getValue("address") === ("" ?? undefined ?? null) && "不知名的地方") ||
-                                          row.getValue("address")}
+                                        {row.getValue("address") ?? "未知"}
                                       </span>
                                     </td>
                                   );
@@ -518,8 +509,8 @@ export default function MonsterIndexPage() {
                                         try {
                                           const content =
                                             dictionary().db.enums[
-                                              cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)
-                                            ][cell.getValue()];
+                                              (cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)) as keyof typeof $Enums
+                                            ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
                                           return content;
                                         } catch (error) {
                                           return flexRender(cell.column.columnDef.cell, cell.getContext());

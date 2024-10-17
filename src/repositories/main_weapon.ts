@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, main_weapon } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
 import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
-import { defaultCrystal, NewCrystal } from "./crystal";
+import { crystalSubRelations, defaultCrystal, NewCrystal } from "./crystal";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type MainWeapon = Awaited<ReturnType<typeof findMainWeaponById>>;
@@ -18,6 +18,7 @@ export function mainWeaponSubRelations(eb: ExpressionBuilder<DB, "main_weapon">,
         .innerJoin("crystal", "_crystalTomain_weapon.A", "crystal.id")
         .whereRef("_crystalTomain_weapon.B", "=", "main_weapon.id")
         .selectAll("crystal")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
     ).as("crystalList"),
     jsonObjectFrom(
       eb

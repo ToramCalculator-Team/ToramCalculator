@@ -4,7 +4,7 @@ import { DB, special_equipment } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
 import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultCrystal } from "./crystal";
+import { crystalSubRelations, defaultCrystal } from "./crystal";
 
 export type SpecialEquipment = Awaited<ReturnType<typeof findSpecialEquipmentById>>;
 export type NewSpecialEquipment = Insertable<special_equipment>;
@@ -17,18 +17,21 @@ export function specialEquipmentSubRelations(eb: ExpressionBuilder<DB, "special_
         .selectFrom("_crystalTospecial_equipment")
         .innerJoin("crystal", "_crystalTospecial_equipment.A", "crystal.id")
         .whereRef("_crystalTospecial_equipment.B", "=", "special_equipment.id")
-        .selectAll("crystal"),
+        .selectAll("crystal")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
     ).as("crystalList"),
     jsonObjectFrom(
       eb
         .selectFrom("statistics")
         .whereRef("id", "=", "special_equipment.statisticsId")
+        .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
     ).as("statistics"),
     jsonObjectFrom(
       eb
         .selectFrom("modifiers_list")
         .whereRef("id", "=", "special_equipment.modifiersListId")
+        .selectAll("modifiers_list")
         .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
     ).as("modifiersList"),
   ];

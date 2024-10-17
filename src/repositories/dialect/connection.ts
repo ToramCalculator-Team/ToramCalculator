@@ -1,10 +1,11 @@
 import { CompiledQuery, DatabaseConnection, QueryResult } from "kysely"
-import { PGlite } from "@electric-sql/pglite"
+import { type PGliteWorker } from "@electric-sql/pglite/worker"
+// import { PGlite } from "@electric-sql/pglite"
 
 export class PGliteConnection implements DatabaseConnection {
-  private readonly client: PGlite
+  private readonly client: PGliteWorker
 
-  constructor(client: PGlite) {
+  constructor(client: PGliteWorker) {
     this.client = client
   }
 

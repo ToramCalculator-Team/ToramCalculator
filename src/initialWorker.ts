@@ -19,9 +19,12 @@ if ("serviceWorker" in navigator) {
 export const pgWorker = await PGliteWorker.create(
   new PGWorker(), {
     extensions: {
-      live
-    }
-  }
+      live,
+    },
+    meta: {
+      dataDir: "idb://toramCalculatorDB",
+    },
+  },
 );
 
 // 初始化数据层服务

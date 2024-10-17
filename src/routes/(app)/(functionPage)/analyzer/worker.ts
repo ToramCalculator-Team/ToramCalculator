@@ -1,14 +1,15 @@
 /// <reference lib="webworker" />
 
 import * as _ from "lodash-es";
-import { ModifierType, type $Enums } from "~/repositories/enums";
+import { ModifierType } from "~/repositories/enums";
+import { type $Enums } from "@prisma/client";
 import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { type SelectCharacter } from "~/repositories/character";
-import { type SelectMonster } from "~/repositories/monster";
-import { type SelectSkillEffect } from "~/repositories/skill_effect";
-import { type SelectModifiersList } from "~/repositories/modifiers_list";
-import { SelectModifier } from "~/repositories/modifier";
+import { type Character } from "~/repositories/character";
+import { type Monster } from "~/repositories/monster";
+import { type SkillEffect } from "~/repositories/skill_effect";
+import { type ModifiersList } from "~/repositories/modifiers_list";
+import { Modifier } from "~/repositories/modifier";
 
 const fps = 60;
 
@@ -17,10 +18,10 @@ export type computeInput = {
   arg: {
     dictionary: ReturnType<typeof getDictionary>;
     team: {
-      config: SelectCharacter;
+      config: Character;
       actionQueue: tSkill[];
     }[];
-    monster: SelectMonster;
+    monster: Monster;
   };
 };
 
@@ -96,7 +97,7 @@ export type tSkill = {
   weaponElementDependencyType: string;
   element: string;
   skillType: string;
-  skillEffect: Omit<SelectSkillEffect, "condition">;
+  skillEffect: Omit<SkillEffect, "condition">;
 };
 
 enum EventStatus {
@@ -237,8 +238,8 @@ math.import({
   // 应用于SkillData环境的函数--------------------------------
 });
 
-// 类型谓词函数，用于检查对象是否符合SelectModifiersList类型
-function isSelectModifiersList(obj: unknown, currentPath?: string[]): obj is SelectModifiersList {
+// 类型谓词函数，用于检查对象是否符合ModifiersList类型
+function isModifiersList(obj: unknown, currentPath?: string[]): obj is ModifiersList {
   // 检查对象是否为目标类型
   const isModifiersList =
     typeof obj === "object" && obj !== null && "modifiers" in obj && typeof obj.modifiers === "object";
@@ -269,14 +270,14 @@ function isModifiers(obj: unknown, currentPath?: string[]): obj is modifiers {
 }
 
 // 角色加成项收集
-export const characterModifierCollector = (character: SelectCharacter): SelectModifiersList[] => {
+export const characterModifierCollector = (character: Character): ModifiersList[] => {
   console.log("开始收集角色配置中的加成项");
 
   // 递归收集对象中所有符合目标类型的属性
-  const result: SelectModifiersList[] = [];
+  const result: ModifiersList[] = [];
 
   function recurse(value: unknown, currentPath: string[]): void {
-    if (isSelectModifiersList(value, currentPath)) {
+    if (isModifiersList(value, currentPath)) {
       // console.log("收集到一个符合条件的对象：", value, "当前路径：", currentPath.join("."));
       result.push(value);
     }
@@ -440,7 +441,7 @@ const applyModifiers = (formula: string, origin: string, scope: object): void =>
 };
 
 // 角色属性应用
-export const characterModifiersApplicator = (character: SelectCharacter, characterData: CharacterData): void => {
+export const characterModifiersApplicator = (character: Character, characterData: CharacterData): void => {
   const modifiersListArray = characterModifierCollector(character);
   console.log("目前已收集的加成项列表：", modifiersListArray);
   console.log("开始将已收集的加成项应用至角色配置中");
@@ -866,7 +867,7 @@ export class CharacterData {
 
   [key: string]: object | string | number;
 
-  constructor(dictionary: ReturnType<typeof getDictionary>, config: SelectCharacter) {
+  constructor(dictionary: ReturnType<typeof getDictionary>, config: Character) {
     console.log("开始实例化CharacterData");
     const mainWeaponType = config.mainWeapon?.mainWeaponType ?? "NO_WEAPON";
     const subWeaponType = config.subWeapon?.subWeaponType ?? "NO_WEAPON";
@@ -1170,7 +1171,7 @@ export class MonsterData {
   mRes: modifiers;
   cRes: modifiers;
   [key: string]: object | string | number;
-  constructor(monster: SelectMonster) {
+  constructor(monster: Monster) {
     this.name = monster.name;
     this.lv = monster.baseLv ?? 0;
     this.pDef = new modifiers(ModifierType.DEFAULT, monster.physicalDefense ?? 0);
@@ -1370,7 +1371,7 @@ export class CharacterState {
   constructor(
     dictionary: ReturnType<typeof getDictionary>,
     scope: Scope,
-    character: SelectCharacter,
+    character: Character,
     skill: tSkill,
     frame: number,
     index: number,
@@ -1541,10 +1542,10 @@ type Scope = {
 export const compute = (
   dictionary: ReturnType<typeof getDictionary>,
   team: {
-    config: SelectCharacter;
+    config: Character;
     actionQueue: tSkill[];
   }[],
-  monster: SelectMonster,
+  monster: Monster,
 ) => {
   // 定义存储数据的结构
   let frame = 0;

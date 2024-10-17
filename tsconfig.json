@@ -19,9 +19,6 @@
       "~/*": [
         "./src/*"
       ],
-      "@/*": [
-        "./drizzle/*"
-      ],
       "expose": [
         "./node_modules/threads/worker.d.ts"
       ]

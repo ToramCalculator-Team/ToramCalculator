@@ -1,13 +1,13 @@
 import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
-import { SelectMonster } from "~/repositories/monster";
-import { defaultSelectCharacter, SelectCharacter } from "~/repositories/character";
-import { defaultSelectStatistics } from "~/repositories/statistics";
-import { defaultSelectModifiersList } from "~/repositories/modifiers_list";
-import { defaultSelectConsumable } from "~/repositories/consumable";
-import { defaultSelectSkill } from "~/repositories/skill";
-import { defaultSelectPet } from "~/repositories/pet";
+import { Monster } from "~/repositories/monster";
+import { defaultCharacter, Character } from "~/repositories/character";
+import { defaultStatistics } from "~/repositories/statistics";
+import { defaultModifiersList } from "~/repositories/modifiers_list";
+import { defaultConsumable } from "~/repositories/consumable";
+import { defaultSkill } from "~/repositories/skill";
+import { defaultPet } from "~/repositories/pet";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -15,8 +15,8 @@ import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import FlowEditor from "~/components/module/flowEditor";
-import { SelectAnalyzer } from "~/repositories/analyzer";
-import { defaultSelectImage } from "~/repositories/image";
+import { Analyzer } from "~/repositories/analyzer";
+import { defaultImage } from "~/repositories/image";
 
 export type skillSequenceList = {
   name: string;
@@ -36,17 +36,17 @@ export default function AnalyzerIndexClient() {
 
   // 状态管理参数
   const monsterList = store.monsterPage.monsterList;
-  const setMonsterList = (value: SelectMonster[]) => setStore("monsterPage", "monsterList", value);
+  const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
   const characterList = store.characterPage.characterList;
-  const setCharacterList = (value: SelectCharacter[]) => setStore("characterPage", "characterList", value);
+  const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
-  const setAnalyzeList = (value: SelectAnalyzer[]) => setStore("analyzerPage", "analyzerList", value);
+  const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
   const monster = store.monster;
-  const setMonster = (value: SelectMonster) => setStore("monster", value);
+  const setMonster = (value: Monster) => setStore("monster", value);
   const character = store.character;
-  const setCharacter = (value: SelectCharacter) => setStore("character", value);
+  const setCharacter = (value: Character) => setStore("character", value);
   const analyzer = store.analyzer;
-  const setAnalyze = (value: SelectAnalyzer) => setStore("analyzer", value);
+  const setAnalyze = (value: Analyzer) => setStore("analyzer", value);
 
   const [dialogState, setDialogState] = createSignal(false);
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
@@ -75,7 +75,7 @@ export default function AnalyzerIndexClient() {
         refinement: 15,
         stability: 70,
         element: "LIGHT",
-        crystal: [
+        crystalList: [
           {
             id: "",
             name: "寄生甲兽",
@@ -109,7 +109,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
           {
@@ -150,7 +150,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
         ],
@@ -187,7 +187,7 @@ export default function AnalyzerIndexClient() {
         updatedByUserId: "",
         extraDetails: "",
         dataSources: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
       },
       mainWeaponId: "",
@@ -217,7 +217,7 @@ export default function AnalyzerIndexClient() {
         updatedByUserId: "",
         extraDetails: "",
         dataSources: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
       },
       subWeaponId: "",
@@ -227,7 +227,7 @@ export default function AnalyzerIndexClient() {
         bodyArmorType: "NORMAL",
         refinement: 0,
         baseDef: 0,
-        crystal: [
+        crystalList: [
           {
             id: "",
             name: "铁之女帝",
@@ -266,7 +266,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
           {
@@ -307,7 +307,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
         ],
@@ -344,7 +344,7 @@ export default function AnalyzerIndexClient() {
         updatedByUserId: "",
         extraDetails: "",
         dataSources: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
       },
       bodyArmorId: "",
@@ -352,7 +352,7 @@ export default function AnalyzerIndexClient() {
         id: "",
         name: "饼干腰翼",
         refinement: 0,
-        crystal: [
+        crystalList: [
           {
             id: "",
             name: "深谋的青影",
@@ -391,7 +391,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
           {
@@ -417,7 +417,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
         ],
@@ -449,14 +449,14 @@ export default function AnalyzerIndexClient() {
         updatedByUserId: "",
         extraDetails: "",
         dataSources: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
       },
       additionalEquipmentId: "",
       specialEquipment: {
         id: "",
         name: "读星提灯",
-        crystal: [
+        crystalList: [
           {
             id: "",
             name: "星之魔导士",
@@ -490,7 +490,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
           {
@@ -526,7 +526,7 @@ export default function AnalyzerIndexClient() {
             updatedByUserId: "",
             extraDetails: "",
             dataSources: "",
-            statistics: defaultSelectStatistics,
+            statistics: defaultStatistics,
             statisticsId: "",
           },
         ],
@@ -553,33 +553,33 @@ export default function AnalyzerIndexClient() {
         updatedByUserId: "",
         extraDetails: "",
         dataSources: "",
-        statistics: defaultSelectStatistics,
+        statistics: defaultStatistics,
         statisticsId: "",
       },
       specialEquipmentId: "",
-      fashion: defaultSelectModifiersList,
+      fashion: defaultModifiersList,
       fashionModifiersListId: "",
-      cuisine: defaultSelectModifiersList,
+      cuisine: defaultModifiersList,
       CuisineModifiersListId: "",
-      consumableList: [defaultSelectConsumable],
-      skillList: [defaultSelectSkill],
+      consumableList: [defaultConsumable],
+      skillList: [defaultSkill],
       combos: [],
-      pet: defaultSelectPet,
-      petId: defaultSelectPet.id,
-      modifiersList: defaultSelectModifiersList,
-      modifiersListId: defaultSelectModifiersList.id,
+      pet: defaultPet,
+      petId: defaultPet.id,
+      modifiersList: defaultModifiersList,
+      modifiersListId: defaultModifiersList.id,
       createdAt: new Date(),
       createdByUserId: "",
       updatedAt: new Date(),
       updatedByUserId: "",
       extraDetails: "",
-      statistics: defaultSelectStatistics,
+      statistics: defaultStatistics,
       statisticsId: "",
       imageId: "",
-    } satisfies SelectCharacter,
+    } satisfies Character,
     monster: {
       id: "",
-      image: defaultSelectImage,
+      image: defaultImage,
       imageId: "",
       name: "岩龙菲尔岑 四星",
       monsterType: "COMMON_BOSS",
@@ -610,9 +610,9 @@ export default function AnalyzerIndexClient() {
       updatedAt: new Date(),
       updatedByUserId: "",
       extraDetails: "",
-      statistics: defaultSelectStatistics,
+      statistics: defaultStatistics,
       statisticsId: "",
-    } satisfies SelectMonster,
+    } satisfies Monster,
     skillSequence1: {
       name: "skillSequence1",
       data: [
@@ -1198,7 +1198,7 @@ export default function AnalyzerIndexClient() {
   onMount(() => {
     console.log("--ComboAnalyze Client Render");
     setMonsterList(generateAugmentedMonsterList(defaultMonsterList(), dictionary()));
-    setCharacterList([defaultSelectCharacter, defaultSelectCharacter]);
+    setCharacterList([defaultCharacter, defaultCharacter]);
     setMonster(test.monster);
     setCharacter(test.character);
 

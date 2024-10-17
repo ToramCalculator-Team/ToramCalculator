@@ -3,14 +3,14 @@ import { db } from "./database";
 import { DB, analyzer } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob } from "./mob";
-import { defaultMember } from "./member";
+import { defaultMob, MobSubRelations } from "./mob";
+import { defaultMember, memberSubRelations } from "./member";
 
 export type Analyzer = Awaited<ReturnType<typeof findAnalyzerById>>;
 export type NewAnalyzer = Insertable<analyzer>;
 export type AnalyzerUpdate = Updateable<analyzer>;
 
-export function AnalyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: Expression<string>) {
+export function analyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
@@ -25,6 +25,7 @@ export function AnalyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .innerJoin("member", "_analyzerTomember.A", "member.id")
         .whereRef("_analyzerTomember.B", "=", "analyzer.id")
         .selectAll("member")
+        .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
     ).as("team"),
     jsonArrayFrom(
       eb
@@ -32,6 +33,7 @@ export function AnalyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .innerJoin("mob", "_analyzerTomob.A", "mob.id")
         .whereRef("_analyzerTomob.B", "=", "analyzer.id")
         .selectAll("mob")
+        .select((subEb) => MobSubRelations(subEb, subEb.val(id))),
     ).as("mobs"),
   ];
 }
@@ -41,7 +43,7 @@ export async function findAnalyzerById(id: string) {
     .selectFrom("analyzer")
     .where("id", "=", id)
     .selectAll("analyzer")
-    .select((eb) => AnalyzerSubRelations(eb, eb.val(id)))
+    .select((eb) => analyzerSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

@@ -8,9 +8,11 @@ import { createId } from "@paralleldrive/cuid2";
 import ddl from "~/../prisma/ddl.sql?raw"
 
 worker({
-  async init() {
+  async init(options) {
+    console.log("pgWorker init", performance.now());
+    const meta = options.meta
     const pg = await PGlite.create({
-      dataDir: "idb://toramCalculatorDB",
+      dataDir: meta.dataDir,
       relaxedDurability: true,
       // debug: 1,
       extensions: {
@@ -18,6 +20,8 @@ worker({
         sync: electricSync({debug: false}),
       },
     });
+    console.log("pgWorker inited", performance.now());
+    // console.log(localStorage.getItem("store"));
     // await pg.exec(ddl);
     await pg.sync.syncShapeToTable({
       shape: {

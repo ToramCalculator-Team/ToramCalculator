@@ -4,12 +4,12 @@ import {
   type CharacterData,
   type modifiers,
 } from "~/routes/(app)/(functionPage)/analyzer/worker";
-import { type SelectCrystal } from "~/repositories/crystal";
-import { type SelectSkill } from "~/repositories/skill";
-import { type SelectCharacter } from "~/repositories/character";
-import { $Enums } from "~/repositories/enums";
-import { SelectMonster } from "~/repositories/monster";
-import { SelectUser } from "~/repositories/user";
+import { type Crystal } from "~/repositories/crystal";
+import { type Skill } from "~/repositories/skill";
+import { type Character } from "~/repositories/character";
+import type { $Enums } from "@prisma/client";
+import { Monster } from "~/repositories/monster";
+import { User } from "~/repositories/user";
 
 // 为了方便编辑器自动补全，这个方法可以递归地将对象的值类型转换为字符串
 export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<object> | number
@@ -26,7 +26,7 @@ export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<
       }
     : string;
 
-interface dictionary {
+export interface dictionary {
   ui: {
     searchPlaceholder: string;
     columnsHidden: string;
@@ -193,16 +193,16 @@ interface dictionary {
     };
   };
   db: {
-    enums: ConvertToAllString<$Enums>;
+    enums: ConvertToAllString<typeof $Enums>;
     models: {
-      monster: ConvertToAllString<SelectMonster>;
-      crystal: ConvertToAllString<SelectCrystal>;
-      skill: ConvertToAllString<SelectSkill>;
-      skillEffect: ConvertToAllString<SelectSkill["skillEffect"][0]>;
-      skillCost: ConvertToAllString<SelectSkill["skillEffect"][0]["skillCost"][0]>;
-      skillYield: ConvertToAllString<SelectSkill["skillEffect"][0]["skillYield"][0]>;
-      user: ConvertToAllString<SelectUser>;
-      character: ConvertToAllString<SelectCharacter>;
+      monster: ConvertToAllString<Monster>;
+      crystal: ConvertToAllString<Crystal>;
+      skill: ConvertToAllString<Skill>;
+      skillEffect: ConvertToAllString<Skill["skillEffect"][0]>;
+      skillCost: ConvertToAllString<Skill["skillEffect"][0]["skillCost"][0]>;
+      skillYield: ConvertToAllString<Skill["skillEffect"][0]["skillYield"][0]>;
+      user: ConvertToAllString<User>;
+      character: ConvertToAllString<Character>;
     };
   };
 }

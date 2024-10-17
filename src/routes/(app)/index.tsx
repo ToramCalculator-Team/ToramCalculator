@@ -67,11 +67,49 @@ export default function Index() {
       }),
   );
   const [skillList, { refetch: refetchSkillList }] = createResource(
-    async () => await pgWorker.query<Skill>(`select * from skill`),
+    async () => await pgWorker.live.query<Skill>(`select * from skill`, [], (res) => {
+      console.log(res);
+    }),
   );
   const [crystalList, { refetch: refetchCrystalList }] = createResource(
-    async () => await pgWorker.query<Crystal>(`select * from crystal`),
+    async () => await pgWorker.live.query<Crystal>(`select * from crystal`, [], (res) => {
+      console.log(res);
+    }),
   );
+
+  // const monsterList = (): {
+  //   initialResults: {
+  //     rows: Monster[];
+  //   };
+  // } => {
+  //   return {
+  //     initialResults: {
+  //       rows: [],
+  //     },
+  //   };
+  // };
+  // const skillList = (): {
+  //   initialResults: {
+  //     rows: Skill[];
+  //   };
+  // } => {
+  //   return {
+  //     initialResults: {
+  //       rows: [],
+  //     },
+  //   };
+  // };
+  // const crystalList = (): {
+  //   initialResults: {
+  //     rows: Crystal[];
+  //   };
+  // } => {
+  //   return {
+  //     initialResults: {
+  //       rows: [],
+  //     },
+  //   };
+  // };
 
   // createEffect(() => {
   //   // console.log("solid 检测到了user表变化", UserList()); // 1
@@ -232,18 +270,8 @@ export default function Index() {
         dictionary().db.models.monster,
         monsterHiddenData,
       ),
-      skills: searchInList(
-        skillList()?.rows ?? [],
-        searchValue,
-        dictionary().db.models.skill,
-        skillHiddenData,
-      ),
-      crystals: searchInList(
-        crystalList()?.rows ?? [],
-        searchValue,
-        dictionary().db.models.crystal,
-        crystalHiddenData,
-      ),
+      skills: searchInList(skillList()?.initialResults.rows ?? [], searchValue, dictionary().db.models.skill, skillHiddenData),
+      crystals: searchInList(crystalList()?.initialResults.rows ?? [], searchValue, dictionary().db.models.crystal, crystalHiddenData),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -459,6 +487,7 @@ export default function Index() {
   });
 
   onMount(() => {
+    console.log(performance.now());
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);
