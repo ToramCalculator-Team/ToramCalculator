@@ -5,11 +5,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import { createId } from "@paralleldrive/cuid2";
-import ddl from "~/../prisma/ddl.sql?raw"
 
 worker({
   async init(options) {
-    console.log("pgWorker init", performance.now());
     const meta = options.meta
     const pg = await PGlite.create({
       dataDir: meta.dataDir,
@@ -17,13 +15,11 @@ worker({
       // debug: 1,
       extensions: {
         live,
-        sync: electricSync({debug: false}),
+        sync: electricSync({debug: true}),
       },
     });
-    console.log("pgWorker inited", performance.now());
-    // console.log(localStorage.getItem("store"));
-    // await pg.exec(ddl);
-    await pg.sync.syncShapeToTable({
+    await pg.waitReady;
+    const userShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/user"
       },
@@ -31,7 +27,7 @@ worker({
       shapeKey: "users",
       primaryKey: ["id"],
     });
-    await pg.sync.syncShapeToTable({
+    const userCreateDataShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/user_create_data"
       },
@@ -39,7 +35,7 @@ worker({
       shapeKey: "user_create_datas",
       primaryKey: ["userId"],
     });
-    await pg.sync.syncShapeToTable({
+    const userUpdateDataShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/user_update_data"
       },
@@ -47,7 +43,7 @@ worker({
       shapeKey: "user_update_datas",
       primaryKey: ["userId"],
     });
-    await pg.sync.syncShapeToTable({
+    const statisticsShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/statistics"
       },
@@ -55,7 +51,7 @@ worker({
       shapeKey: "statisticss",
       primaryKey: ["id"],
     });
-    await pg.sync.syncShapeToTable({
+    const imageShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/image"
       },
@@ -63,7 +59,7 @@ worker({
       shapeKey: "images",
       primaryKey: ["id"],
     });
-    await pg.sync.syncShapeToTable({
+    const monsterShape = await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/monster"
       },
@@ -71,6 +67,30 @@ worker({
       shapeKey: "monsters",
       primaryKey: ["id"],
     });
+    // const modifierShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/modifier"
+    //   },
+    //   table: "modifier",
+    //   shapeKey: "modifier",
+    //   primaryKey: ["id"],
+    // });
+    // const modifiers_listShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/modifiers_list"
+    //   },
+    //   table: "modifiers_list",
+    //   shapeKey: "modifiers_list",
+    //   primaryKey: ["id"],
+    // });
+    // const crystalShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: "https://test.kiaclouth.com/v1/shape/crystal"
+    //   },
+    //   table: "crystal",
+    //   shapeKey: "crystal",
+    //   primaryKey: ["id"],
+    // });
 
     return pg;
   },

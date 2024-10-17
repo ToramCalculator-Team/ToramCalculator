@@ -11,6 +11,7 @@ export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
 
 export type Store = {
   version: number;
+  dbVersion: number;
   theme: "light" | "dark";
   settingsDialogState: boolean;
   settings: {
@@ -76,7 +77,8 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-  version: 0.002,
+  version: 0.001,
+  dbVersion: 0.001,
   theme: "light",
   settings: {
     userInterface: {
