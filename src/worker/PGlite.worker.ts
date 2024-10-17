@@ -18,7 +18,7 @@ worker({
         sync: electricSync({debug: false}),
       },
     });
-    await pg.exec(ddl);
+    // await pg.exec(ddl);
     await pg.sync.syncShapeToTable({
       shape: {
         url: "https://test.kiaclouth.com/v1/shape/user"
@@ -67,11 +67,6 @@ worker({
       shapeKey: "monsters",
       primaryKey: ["id"],
     });
-    // const db = drizzle(pg, { schema });
-    // const sql = db.query.user.findMany().toSQL().sql;
-    // pg.live.query(sql, [], (res) => {
-    //   console.log("live query result:", res);
-    // });
 
     return pg;
   },

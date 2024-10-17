@@ -28,6 +28,5 @@ gitignore
 .DS_Store
 Thumbs.db
 
-# db
-/db/schema.ts
-/db/migrations
+#prisma
+/prisma/migrations
