@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, NotNull, Updateable } from "
 import { db } from "./database";
 import { DB, additional_equipment } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
-import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations, defaultCrystal } from "./crystal";
 
@@ -29,11 +29,11 @@ export function additionalEquipmentSubRelations(eb: ExpressionBuilder<DB, "addit
     ).as("statistics"),
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("id", "=", "additional_equipment.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
+        .selectFrom("modifier_list")
+        .whereRef("id", "=", "additional_equipment.modifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
+    ).as("modifierList"),
   ];
 }
 
@@ -62,9 +62,9 @@ export async function createAdditionalEquipment(newAdditionalEquipment: NewAddit
       .values(newAdditionalEquipment)
       .returningAll()
       .executeTakeFirstOrThrow();
-    const modifiersList = await createModifiersList(defaultModifiersList);
+    const modifierList = await createModifierList(defaultModifierList);
     const statistics = await createStatistics(defaultStatistics);
-    return { ...additional_equipment, modifiersList, statistics };
+    return { ...additional_equipment, modifierList, statistics };
   });
 }
 
@@ -78,8 +78,8 @@ export const defaultAdditionalEquipment: AdditionalEquipment = {
   name: "defaultAdditionalEquipmentName",
   refinement: 0,
   crystalList: [defaultCrystal],
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifierList: defaultModifierList,
+  modifierListId: defaultModifierList.id,
   dataSources: "",
   extraDetails: "",
 

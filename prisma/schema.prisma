@@ -351,10 +351,10 @@ model user_update_data {
     pets                 pet[]
     skills               skill[]
     consumables          consumable[]
+    character            character[]
+    analyzer             analyzer[]
     belongToUser         user                   @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId               String                 @id
-    Character            character[]
-    Analyzer             analyzer[]
 }
 
 // 怪物模型
@@ -390,28 +390,29 @@ model monster {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image      @relation(fields: [imageId], references: [id])
+    imageId      String
+
     belongToMobs mob[]
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image             @relation(fields: [imageId], references: [id])
-    imageId         String
 }
 
 // 单项加成数据模型
 model modifier {
-    id                      String         @id
-    formula                 String
-    belongToModifiersList   modifiers_list @relation(fields: [belongToModifiersListId], references: [id])
-    belongToModifiersListId String
+    id                     String        @id
+    formula                String
+    belongToModifierList   modifier_list @relation(fields: [belongToModifierListId], references: [id])
+    belongToModifierListId String
 }
 
 // 加成项集（附魔等）模型
-model modifiers_list {
+model modifier_list {
     id String @id
 
     name      String
@@ -426,23 +427,18 @@ model modifiers_list {
     usedByConsumable          consumable[]
     usedByFashion             character?             @relation("FashionRelation")
     usedByCuisine             character?             @relation("CuisineRelation")
-    usedByModifiersList       character?             @relation("ModifiersListRelation")
+    usedByModifierList        character?             @relation("ModifierListRelation")
 }
 
 // 锻晶模型
 model crystal {
     id String @id
 
-    name            String
-    crystalType     CrystalType
-    front           Int
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-
-    usedByMainWeapon          main_weapon[]
-    usedByBodyArmor           body_armor[]
-    usedByAdditionalEquipment additional_equipment[]
-    usedBySpecialEquipment    special_equipment[]
+    name           String
+    crystalType    CrystalType
+    front          Int
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
 
     extraDetails String?
     dataSources  String?
@@ -450,29 +446,33 @@ model crystal {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+
+    usedByMainWeapon          main_weapon[]
+    usedByBodyArmor           body_armor[]
+    usedByAdditionalEquipment additional_equipment[]
+    usedBySpecialEquipment    special_equipment[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
 }
 
 // 主武器模型
 model main_weapon {
     id String @id
 
-    name            String
-    mainWeaponType  MainWeaponType
-    baseAtk         Int
-    refinement      Int
-    stability       Int
-    element         Element
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-    crystalList     crystal[]
-
-    usedBy character[]
+    name           String
+    mainWeaponType MainWeaponType
+    baseAtk        Int
+    refinement     Int
+    stability      Int
+    element        Element
+    modifierList   modifier_list  @relation(fields: [modifierListId], references: [id])
+    modifierListId String
+    crystalList    crystal[]
 
     extraDetails String
     dataSources  String
@@ -480,28 +480,30 @@ model main_weapon {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image[]
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image[]
 }
 
 // 副武器模型
 model sub_weapon {
     id String @id
 
-    name            String
-    subWeaponType   SubWeaponType
-    baseAtk         Int
-    refinement      Int
-    stability       Int
-    element         Element
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-    usedBy          character[]
+    name           String
+    subWeaponType  SubWeaponType
+    baseAtk        Int
+    refinement     Int
+    stability      Int
+    element        Element
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
 
     extraDetails String
     dataSources  String
@@ -509,28 +511,29 @@ model sub_weapon {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image[]
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image[]
 }
 
 // 身体装备模型
 model body_armor {
     id String @id
 
-    name            String
-    bodyArmorType   BodyArmorType
-    refinement      Int
-    baseDef         Int
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-    crystalList     crystal[]
-
-    usedBy character[]
+    name           String
+    bodyArmorType  BodyArmorType
+    refinement     Int
+    baseDef        Int
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
+    crystalList    crystal[]
 
     extraDetails String
     dataSources  String
@@ -538,26 +541,27 @@ model body_armor {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image[]
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image[]
 }
 
 // 追加装备模型
 model additional_equipment {
     id String @id
 
-    name            String
-    refinement      Int
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-    crystalList     crystal[]
-
-    usedBy character[]
+    name           String
+    refinement     Int
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
+    crystalList    crystal[]
 
     extraDetails String
     dataSources  String
@@ -565,25 +569,26 @@ model additional_equipment {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image[]
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image[]
 }
 
 // 特殊装备模型
 model special_equipment {
     id String @id
 
-    name            String
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-    crystalList     crystal[]
-
-    usedBy character[]
+    name           String
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
+    crystalList    crystal[]
 
     extraDetails String
     dataSources  String
@@ -591,13 +596,16 @@ model special_equipment {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image[]
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image[]
 }
 
 // 技能卡片模型
@@ -612,22 +620,23 @@ model skill {
     skillDescription            String?
     skillEffect                 skill_effect[]
 
-    usedBySkillList character[]
-    usedByComboStep combo_step[]
-    usedByStep      step[]
-
     extraDetails String
     dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+
+    usedBySkillList character[]
+    usedByComboStep combo_step[]
+    usedByStep      step[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
 }
 
 // 技能效果
@@ -681,31 +690,30 @@ model pet {
 
     name String
 
-    usedBy character[]
-
     extraDetails String
     dataSources  String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics      statistics        @relation(fields: [statisticsId], references: [id])
+    statisticsId    String            @unique
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
 }
 
 // 消耗品模型
 model consumable {
     id String @id
 
-    name            String
-    modifiersList   modifiers_list @relation(fields: [modifiersListId], references: [id])
-    modifiersListId String
-
-    usedBy character[]
+    name           String
+    modifierList   modifier_list @relation(fields: [modifierListId], references: [id])
+    modifierListId String
 
     extraDetails String
     dataSources  String
@@ -713,12 +721,15 @@ model consumable {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics      statistics        @relation(fields: [statisticsId], references: [id])
+    statisticsId    String            @unique
+
+    usedBy character[]
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
 }
 
 // 连击模型
@@ -729,6 +740,7 @@ model combo {
     comboStep combo_step[]
 
     usedBy          character[]
+
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
 }
@@ -751,50 +763,52 @@ model character {
     name          String
     characterType CharacterType
 
-    lv                     Int
-    baseStr                Int
-    baseInt                Int
-    baseVit                Int
-    baseAgi                Int
-    baseDex                Int
-    specialAbiType         SpecialAbiType
-    specialAbiValue        Int
-    mainWeapon             main_weapon          @relation(fields: [mainWeaponId], references: [id])
-    mainWeaponId           String
-    subWeapon              sub_weapon           @relation(fields: [subWeaponId], references: [id])
-    subWeaponId            String
-    bodyArmor              body_armor           @relation(fields: [bodyArmorId], references: [id])
-    bodyArmorId            String
-    additionalEquipment    additional_equipment @relation(fields: [additionalEquipmentId], references: [id])
-    additionalEquipmentId  String
-    specialEquipment       special_equipment    @relation(fields: [specialEquipmentId], references: [id])
-    specialEquipmentId     String
-    fashion                modifiers_list       @relation("FashionRelation", fields: [fashionModifiersListId], references: [id])
-    fashionModifiersListId String               @unique
-    cuisine                modifiers_list       @relation("CuisineRelation", fields: [CuisineModifiersListId], references: [id])
-    CuisineModifiersListId String               @unique
-    pet                    pet                  @relation(fields: [petId], references: [id])
-    petId                  String
-    modifiersList          modifiers_list       @relation("ModifiersListRelation", fields: [modifiersListId], references: [id])
-    modifiersListId        String               @unique
-    skillList              skill[]
-    consumableList         consumable[]
-    combos                 combo[]
-    belongToMembers        member[]
+    lv                    Int
+    baseStr               Int
+    baseInt               Int
+    baseVit               Int
+    baseAgi               Int
+    baseDex               Int
+    specialAbiType        SpecialAbiType
+    specialAbiValue       Int
+    mainWeapon            main_weapon          @relation(fields: [mainWeaponId], references: [id])
+    mainWeaponId          String
+    subWeapon             sub_weapon           @relation(fields: [subWeaponId], references: [id])
+    subWeaponId           String
+    bodyArmor             body_armor           @relation(fields: [bodyArmorId], references: [id])
+    bodyArmorId           String
+    additionalEquipment   additional_equipment @relation(fields: [additionalEquipmentId], references: [id])
+    additionalEquipmentId String
+    specialEquipment      special_equipment    @relation(fields: [specialEquipmentId], references: [id])
+    specialEquipmentId    String
+    fashion               modifier_list        @relation("FashionRelation", fields: [fashionModifierListId], references: [id])
+    fashionModifierListId String               @unique
+    cuisine               modifier_list        @relation("CuisineRelation", fields: [cuisineModifierListId], references: [id])
+    cuisineModifierListId String               @unique
+    pet                   pet                  @relation(fields: [petId], references: [id])
+    petId                 String
+    modifierList          modifier_list        @relation("ModifierListRelation", fields: [modifierListId], references: [id])
+    modifierListId        String               @unique
+    skillList             skill[]
+    consumableList        consumable[]
+    combos                combo[]
 
     extraDetails String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
-    updatedByUserId String?
-    createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
-    createdByUserId String?
     statistics      statistics        @relation(fields: [statisticsId], references: [id])
     statisticsId    String            @unique
     image           image             @relation(fields: [imageId], references: [id])
     imageId         String            @unique
+    
+    belongToMembers       member[]
+
+    updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
+    updatedByUserId String?
+    createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
+    createdByUserId String?
 }
 
 // 队伍成员模型
@@ -833,12 +847,13 @@ model analyzer {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
+    statistics      statistics        @relation(fields: [statisticsId], references: [id])
+    statisticsId    String            @unique
+
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
 }
 
 // 输出流程模型
@@ -886,9 +901,9 @@ model statistics {
     petId                       String?
     belongToConsumable          consumable?
     consumableId                String?
-    Character                   character?
+    character                   character?
     characterId                 String?
-    Analyzer                    analyzer?
+    analyzer                    analyzer?
     analyzerId                  String?
 }
 
@@ -897,7 +912,6 @@ model image {
 
     dataUrl String
 
-    usedByMonster               monster[]
     belongToMainWeapon          main_weapon?          @relation(fields: [main_weaponId], references: [id])
     main_weaponId               String?
     belongToSubWeapon           sub_weapon?           @relation(fields: [sub_weaponId], references: [id])
@@ -908,6 +922,7 @@ model image {
     additional_equipmentId      String?
     belongToSpecialEquipment    special_equipment?    @relation(fields: [special_equipmentId], references: [id])
     special_equipmentId         String?
+    usedByMonster               monster[]
     usedByCharacter             character[]
 }
 

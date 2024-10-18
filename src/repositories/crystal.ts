@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { crystal, DB } from "~/repositories/db/types";
 import { createStatistics, defaultStatistics, statisticsSubRelations } from "./statistics";
-import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Crystal = Awaited<ReturnType<typeof findCrystalById>>;
@@ -20,11 +20,11 @@ export function crystalSubRelations(eb: ExpressionBuilder<DB, "crystal">, id: Ex
     ).as("statistics"),
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("id", "=", "crystal.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
+        .selectFrom("modifier_list")
+        .whereRef("id", "=", "crystal.modifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
+    ).as("modifierList"),
   ];
 }
 
@@ -43,9 +43,9 @@ export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
 export async function createCrystal(newCrystal: NewCrystal) {
   return await db.transaction().execute(async (trx) => {
     const crystal = await trx.insertInto("crystal").values(newCrystal).returningAll().executeTakeFirstOrThrow();
-    const modifiersList = await createModifiersList(defaultModifiersList);
+    const modifierList = await createModifierList(defaultModifierList);
     const statistics = await createStatistics(defaultStatistics);
-    return { ...crystal, modifiersList, statistics };
+    return { ...crystal, modifierList, statistics };
   })
 }
 
@@ -59,8 +59,8 @@ export const defaultCrystal: Crystal = {
   name: "defaultCrystalName",
   crystalType: "GENERAL",
   front: 0,
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifierList: defaultModifierList,
+  modifierListId: defaultModifierList.id,
   dataSources: "",
   extraDetails: "",
 

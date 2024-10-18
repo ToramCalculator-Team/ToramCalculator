@@ -8,6 +8,8 @@ import { initialStore } from "./store";
 import * as _ from "lodash-es";
 import { pgWorker } from "./initialWorker";
 import ddl from "~/../prisma/ddl.sql?raw";
+import { findCrystalById } from "./repositories/crystal";
+import { createUser, defaultUser, findUserById } from "./repositories/user";
 
 const storage = localStorage.getItem("store");
 if (storage) {
@@ -44,3 +46,10 @@ if (storage) {
 
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
+
+try {
+  console.log(await findUserById(defaultUser.id));
+} catch (e) {
+  await createUser(defaultUser);
+  console.log(await findUserById(defaultUser.id));
+}

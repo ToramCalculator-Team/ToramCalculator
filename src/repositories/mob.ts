@@ -54,9 +54,9 @@ export async function deleteMob(id: string) {
 
 // Default
 export const defaultMob: Mob = {
-  id: "",
+  id: "defaultMobId",
   monster: defaultMonster,
-  monsterId: "",
-  star: 1,
+  monsterId: defaultMonster.id,
+  star: 4,
   flow: "",
 };

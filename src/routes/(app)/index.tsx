@@ -56,8 +56,8 @@ export default function Index() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   const [UserList, { refetch: refetchUserList }] = createResource(
     async () =>
-      await pgWorker.live.query<User>(`select * from public.user`, [], () => {
-        console.log("Live 插件检测到了user表变化");
+      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+        console.log(res);
       }),
   );
   const [monsterList, { refetch: refetchMonsterList }] = createResource(
@@ -141,7 +141,7 @@ export default function Index() {
     "updatedByUserId",
     "createdAt",
     "createdByUserId",
-    "modifiersListId",
+    "modifierListId",
   ];
 
   // 对象属性字符串匹配方法
