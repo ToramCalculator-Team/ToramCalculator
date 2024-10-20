@@ -22,54 +22,54 @@ worker({
       },
     });
     await pg.waitReady;
-    // const userShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/user`
-    //   },
-    //   table: "user",
-    //   shapeKey: "users",
-    //   primaryKey: ["id"],
-    // });
-    // const userCreateDataShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/user_create_data`
-    //   },
-    //   table: "user_create_data",
-    //   shapeKey: "user_create_datas",
-    //   primaryKey: ["userId"],
-    // });
-    // const userUpdateDataShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/user_update_data`
-    //   },
-    //   table: "user_update_data",
-    //   shapeKey: "user_update_datas",
-    //   primaryKey: ["userId"],
-    // });
-    // const statisticsShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/statistics`
-    //   },
-    //   table: "statistics",
-    //   shapeKey: "statisticss",
-    //   primaryKey: ["id"],
-    // });
-    // const imageShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/image`
-    //   },
-    //   table: "image",
-    //   shapeKey: "images",
-    //   primaryKey: ["id"],
-    // });
-    // const monsterShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/monster`
-    //   },
-    //   table: "monster",
-    //   shapeKey: "monsters",
-    //   primaryKey: ["id"],
-    // });
+    const userShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/user`
+      },
+      table: "user",
+      shapeKey: "users",
+      primaryKey: ["id"],
+    });
+    const userCreateDataShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/user_create_data`
+      },
+      table: "user_create_data",
+      shapeKey: "user_create_datas",
+      primaryKey: ["userId"],
+    });
+    const userUpdateDataShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/user_update_data`
+      },
+      table: "user_update_data",
+      shapeKey: "user_update_datas",
+      primaryKey: ["userId"],
+    });
+    const statisticsShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/statistics`
+      },
+      table: "statistics",
+      shapeKey: "statisticss",
+      primaryKey: ["id"],
+    });
+    const imageShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/image`
+      },
+      table: "image",
+      shapeKey: "images",
+      primaryKey: ["id"],
+    });
+    const monsterShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${host}/v1/shape/monster`
+      },
+      table: "monster",
+      shapeKey: "monsters",
+      primaryKey: ["id"],
+    });
 
     return pg;
   },

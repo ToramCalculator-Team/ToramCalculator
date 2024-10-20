@@ -84,14 +84,14 @@
 
 /* 当屏幕宽度小于或等于 1536px 时 */
 #mainContent {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 48px;
+  padding-right: 48px;
 }
 
 /* 当屏幕宽度大于 1536px 时 */
-@media (min-width: 1536px) {
+/* @media (min-width: 1536px) {
   #mainContent {
     padding-left: calc((100% - 1536px) / 2);
     padding-right: calc((100% - 1536px) / 2);
   }
-}
+} */
