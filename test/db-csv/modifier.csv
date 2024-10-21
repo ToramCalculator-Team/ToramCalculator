@@ -1,0 +1,9 @@
+6,aspd + 250,windScrollModifiersList
+1,element = FIRE,fireMDModifierList
+3,mAtk + 6%,fireMDModifierList
+2,stro.FIRE + 21%,fireMDModifierList
+4,pCr + 25,fireMDModifierList
+5,pCd + 21,fireMDModifierList
+ArmasitModifier1,mAtk + 5%,ArmasitModifiersList
+ArmasitModifier2,mPie + 20%,ArmasitModifiersList
+ArmasitModifier3,cspd - 15%,ArmasitModifiersList
