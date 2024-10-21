@@ -6,8 +6,8 @@ import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import { createId } from "@paralleldrive/cuid2";
 
-const host = "http://localhost:3000";
-// const host = "https://test.kiaclouth.com";
+// const host = "http://localhost:3000";
+const host = "https://test.kiaclouth.com";
 
 worker({
   async init(options) {
