@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, body_armor } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
-import { createModifiersList, defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
 import { crystalSubRelations, defaultCrystal, NewCrystal } from "./crystal";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
@@ -29,11 +29,11 @@ export function bodyArmorSubRelations(eb: ExpressionBuilder<DB, "body_armor">, i
     ).as("statistics"),
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("id", "=", "body_armor.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
+        .selectFrom("modifier_list")
+        .whereRef("id", "=", "body_armor.modifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
+    ).as("modifierList"),
   ];
 }
 
@@ -53,10 +53,10 @@ export async function updateBodyArmor(id: string, updateWith: BodyArmorUpdate) {
 export async function createBodyArmor(newBodyArmor: NewBodyArmor) {
   return await db.transaction().execute(async (trx) => {
     const body_armor = await trx.insertInto("body_armor").values(newBodyArmor).returningAll().executeTakeFirstOrThrow();
-    const modifiersList = await createModifiersList(defaultModifiersList);
+    const modifierList = await createModifierList(defaultModifierList);
     const statistics = await createStatistics(defaultStatistics);
     const crystalList: NewCrystal[] = [];
-    return { ...body_armor, modifiersList, crystalList, statistics };
+    return { ...body_armor, modifierList, crystalList, statistics };
   });
 }
 
@@ -79,8 +79,8 @@ export const defaultBodyArmor: BodyArmor = {
   createdAt: new Date(),
   createdByUserId: "",
   crystalList: [defaultCrystal],
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifierList: defaultModifierList,
+  modifierListId: defaultModifierList.id,
 
   statistics: defaultStatistics,
   statisticsId: defaultStatistics.id,

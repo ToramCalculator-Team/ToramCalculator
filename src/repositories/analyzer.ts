@@ -73,7 +73,7 @@ export const defaultAnalyzer: Analyzer = {
   name: "defaultAnalyzer",
   mobs: [defaultMob],
   team: [defaultMember],
-  extraDetails: "",
+  extraDetails: "defaultExtraDetails",
 
   updatedAt: new Date(),
   updatedByUserId: "",

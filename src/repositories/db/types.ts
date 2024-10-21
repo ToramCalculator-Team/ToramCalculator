@@ -24,14 +24,14 @@ export type additional_equipment = {
     id: string;
     name: string;
     refinement: number;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type additional_equipmentTocrystal = {
     A: string;
@@ -43,9 +43,9 @@ export type analyzer = {
     extraDetails: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type analyzerTomember = {
     A: string;
@@ -61,14 +61,14 @@ export type body_armor = {
     bodyArmorType: BodyArmorType;
     refinement: number;
     baseDef: number;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type body_armorTocrystal = {
     A: string;
@@ -91,17 +91,17 @@ export type character = {
     bodyArmorId: string;
     additionalEquipmentId: string;
     specialEquipmentId: string;
-    fashionModifiersListId: string;
-    CuisineModifiersListId: string;
+    fashionModifierListId: string;
+    cuisineModifierListId: string;
     petId: string;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
     statisticsId: string;
     imageId: string;
+    updatedByUserId: string | null;
+    createdByUserId: string | null;
 };
 export type characterTocombo = {
     A: string;
@@ -130,28 +130,28 @@ export type combo_step = {
 export type consumable = {
     id: string;
     name: string;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type crystal = {
     id: string;
     name: string;
     crystalType: CrystalType;
     front: number;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string | null;
     dataSources: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type crystalTomain_weapon = {
     A: string;
@@ -178,14 +178,14 @@ export type main_weapon = {
     refinement: number;
     stability: number;
     element: Element;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type member = {
     id: string;
@@ -201,9 +201,9 @@ export type mob = {
 export type modifier = {
     id: string;
     formula: string;
-    belongToModifiersListId: string;
+    belongToModifierListId: string;
 };
-export type modifiers_list = {
+export type modifier_list = {
     id: string;
     name: string;
 };
@@ -239,10 +239,10 @@ export type monster = {
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
     statisticsId: string;
     imageId: string;
+    updatedByUserId: string | null;
+    createdByUserId: string | null;
 };
 export type pet = {
     id: string;
@@ -251,9 +251,9 @@ export type pet = {
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type post = {
     id: string;
@@ -289,9 +289,9 @@ export type skill = {
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type skill_cost = {
     id: string;
@@ -324,14 +324,14 @@ export type skill_yield = {
 export type special_equipment = {
     id: string;
     name: string;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type statistics = {
     id: string;
@@ -362,14 +362,14 @@ export type sub_weapon = {
     refinement: number;
     stability: number;
     element: Element;
-    modifiersListId: string;
+    modifierListId: string;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    statisticsId: string;
     updatedByUserId: string | null;
     createdByUserId: string | null;
-    statisticsId: string;
 };
 export type usage_timestamp = {
     timestamp: Timestamp;
@@ -422,7 +422,7 @@ export type DB = {
     member: member;
     mob: mob;
     modifier: modifier;
-    modifiers_list: modifiers_list;
+    modifier_list: modifier_list;
     monster: monster;
     pet: pet;
     post: post;

@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, consumable } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { defaultModifierList, modifierListSubRelations } from "./modifier_list";
 
 export type Consumable = Awaited<ReturnType<typeof findConsumableById>>;
 export type NewConsumable = Insertable<consumable>;
@@ -20,11 +20,11 @@ export function consumableSubRelations(eb: ExpressionBuilder<DB, "consumable">, 
     ).as("statistics"),
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("id", "=", "consumable.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
+        .selectFrom("modifier_list")
+        .whereRef("id", "=", "consumable.modifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
+    ).as("modifierList"),
   ];
 }
 
@@ -60,8 +60,8 @@ export async function deleteConsumable(id: string) {
 export const defaultConsumable: Consumable = {
   id: "",
   name: "",
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifierList: defaultModifierList,
+  modifierListId: defaultModifierList.id,
   dataSources: "",
   extraDetails: "",
 

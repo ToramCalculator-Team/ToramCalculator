@@ -8,7 +8,7 @@ import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import { type Character } from "~/repositories/character";
 import { type Monster } from "~/repositories/monster";
 import { type SkillEffect } from "~/repositories/skill_effect";
-import { type ModifiersList } from "~/repositories/modifiers_list";
+import { type ModifierList } from "~/repositories/modifier_list";
 import { Modifier } from "~/repositories/modifier";
 
 const fps = 60;
@@ -238,20 +238,20 @@ math.import({
   // 应用于SkillData环境的函数--------------------------------
 });
 
-// 类型谓词函数，用于检查对象是否符合ModifiersList类型
-function isModifiersList(obj: unknown, currentPath?: string[]): obj is ModifiersList {
+// 类型谓词函数，用于检查对象是否符合ModifierList类型
+function isModifierList(obj: unknown, currentPath?: string[]): obj is ModifierList {
   // 检查对象是否为目标类型
-  const isModifiersList =
+  const isModifierList =
     typeof obj === "object" && obj !== null && "modifiers" in obj && typeof obj.modifiers === "object";
   // console.log(
   //   "当前路径：",
   //   _currentPath.join("."),
   //   "正在检查属性：",
   //   obj,
-  //   "是否符合ModifiersList类型，结论：",
-  //   isModifiersList,
+  //   "是否符合ModifierList类型，结论：",
+  //   isModifierList,
   // );
-  return isModifiersList;
+  return isModifierList;
 }
 
 // 类型谓词函数，用于检查对象是否符合modifiers类型
@@ -270,14 +270,14 @@ function isModifiers(obj: unknown, currentPath?: string[]): obj is modifiers {
 }
 
 // 角色加成项收集
-export const characterModifierCollector = (character: Character): ModifiersList[] => {
+export const characterModifierCollector = (character: Character): ModifierList[] => {
   console.log("开始收集角色配置中的加成项");
 
   // 递归收集对象中所有符合目标类型的属性
-  const result: ModifiersList[] = [];
+  const result: ModifierList[] = [];
 
   function recurse(value: unknown, currentPath: string[]): void {
-    if (isModifiersList(value, currentPath)) {
+    if (isModifierList(value, currentPath)) {
       // console.log("收集到一个符合条件的对象：", value, "当前路径：", currentPath.join("."));
       result.push(value);
     }
@@ -442,12 +442,12 @@ const applyModifiers = (formula: string, origin: string, scope: object): void =>
 
 // 角色属性应用
 export const characterModifiersApplicator = (character: Character, characterData: CharacterData): void => {
-  const modifiersListArray = characterModifierCollector(character);
-  console.log("目前已收集的加成项列表：", modifiersListArray);
+  const modifierListArray = characterModifierCollector(character);
+  console.log("目前已收集的加成项列表：", modifierListArray);
   console.log("开始将已收集的加成项应用至角色配置中");
-  modifiersListArray.forEach((modifiersListData) => {
-    const origin = modifiersListData.name ?? "未命名的加成项组"; // 用于显示的结果中标记属性来源
-    modifiersListData.modifiers.forEach((modifier) => {
+  modifierListArray.forEach((modifierListData) => {
+    const origin = modifierListData.name ?? "未命名的加成项组"; // 用于显示的结果中标记属性来源
+    modifierListData.modifiers.forEach((modifier) => {
       if (modifier.formula === "") return;
       console.log(`找到加成项： ${modifier.formula}, 来源于：${origin}`);
       // 属性添加

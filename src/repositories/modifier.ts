@@ -26,5 +26,5 @@ export async function deleteModifier(id: string) {
 export const defaultModifier: Modifier = {
   id: "",
   formula: "",
-  belongToModifiersListId: "",
+  belongToModifierListId: "",
 };

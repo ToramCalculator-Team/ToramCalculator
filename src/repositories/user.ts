@@ -7,18 +7,10 @@ export type NewUser = Insertable<user>
 export type UserUpdate = Updateable<user>
 
 export async function findUserById(id: string) {
-  const user = await db.selectFrom('user')
+  return await db.selectFrom('user')
     .where('id', '=', id)
     .selectAll()
-    .executeTakeFirst()
-  
-  const rates = await db
-    .selectFrom('rate')
-    .where('userId', '=', id)
-    .selectAll()
-    .execute()
-  
-  return { ...user, rates }
+    .executeTakeFirstOrThrow()
 }
 
 // export async function findPeople(criteria: Partial<user>) {
@@ -93,5 +85,4 @@ export const defaultUser: User = {
   emailVerified: null,
   image: null,
   userRole: "USER",
-  rates: [],
 };

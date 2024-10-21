@@ -7,7 +7,7 @@ import { defaultAdditionalEquipment, additionalEquipmentSubRelations } from "./a
 import { bodyArmorSubRelations, defaultBodyArmor } from "./body_armor";
 import { consumableSubRelations, defaultConsumable } from "./consumable";
 import { defaultMainWeapon, mainWeaponSubRelations } from "./main_weapon";
-import { defaultModifiersList, modifiersListSubRelations } from "./modifiers_list";
+import { defaultModifierList, modifierListSubRelations } from "./modifier_list";
 import { defaultPet, petSubRelations } from "./pet";
 import { defaultSpecialEquipment, specialEquipmentSubRelations } from "./special_equipment";
 import { defaultSubWeapon, subWeaponSubRelations } from "./sub_weapon";
@@ -73,24 +73,24 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
     ).as("skillList"),
     jsonObjectFrom(
       eb
-        .selectFrom("modifiers_list")
-        .whereRef("id", "=", "character.modifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
-    ).as("modifiersList"),
+        .selectFrom("modifier_list")
+        .whereRef("id", "=", "character.modifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
+    ).as("modifierList"),
     jsonObjectFrom(
       eb
-      .selectFrom("modifiers_list")
-        .whereRef("id", "=", "character.fashionModifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+      .selectFrom("modifier_list")
+        .whereRef("id", "=", "character.fashionModifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
     ).as("fashion"),
     jsonObjectFrom(
       eb
-      .selectFrom("modifiers_list")
-        .whereRef("id", "=", "character.CuisineModifiersListId")
-        .selectAll("modifiers_list")
-        .select((subEb) => modifiersListSubRelations(subEb, subEb.val(id))),
+      .selectFrom("modifier_list")
+        .whereRef("id", "=", "character.cuisineModifierListId")
+        .selectAll("modifier_list")
+        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
     ).as("cuisine"),
     jsonArrayFrom(
       eb
@@ -157,17 +157,17 @@ export const defaultCharacter: Character = {
   additionalEquipmentId: "",
   specialEquipment: defaultSpecialEquipment,
   specialEquipmentId: "",
-  fashion: defaultModifiersList,
-  fashionModifiersListId: "", 
-  cuisine: defaultModifiersList,
-  CuisineModifiersListId: "",
+  fashion: defaultModifierList,
+  fashionModifierListId: "", 
+  cuisine: defaultModifierList,
+  cuisineModifierListId: "",
   consumableList: [defaultConsumable],
   skillList: [defaultSkill],
   combos: [],
   pet: defaultPet,
   petId: defaultPet.id,
-  modifiersList: defaultModifiersList,
-  modifiersListId: defaultModifiersList.id,
+  modifierList: defaultModifierList,
+  modifierListId: defaultModifierList.id,
   extraDetails: "",
 
   updatedAt: new Date(),

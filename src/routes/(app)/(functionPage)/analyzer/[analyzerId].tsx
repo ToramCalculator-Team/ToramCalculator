@@ -3,7 +3,7 @@ import { ObjectRenderer } from "./objectRender";
 import { Monster } from "~/repositories/monster";
 import { defaultCharacter, Character } from "~/repositories/character";
 import { defaultStatistics } from "~/repositories/statistics";
-import { defaultModifiersList } from "~/repositories/modifiers_list";
+import { defaultModifierList } from "~/repositories/modifier_list";
 import { defaultConsumable } from "~/repositories/consumable";
 import { defaultSkill } from "~/repositories/skill";
 import { defaultPet } from "~/repositories/pet";
@@ -218,28 +218,28 @@ export default function AnalyzerIndexClient() {
               name: "寄生甲兽",
               crystalType: "WEAPONCRYSTAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "寄生甲兽",
                 modifiers: [
                   {
                     id: "",
                     formula: "mAtk + 5%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "mPie + 20",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "cspd - 15%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -254,33 +254,33 @@ export default function AnalyzerIndexClient() {
               name: "死灵妖兔II",
               crystalType: "WEAPONCRYSTAL",
               front: 1,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "死灵妖兔II",
                 modifiers: [
                   {
                     id: "",
                     formula: "mAtk + 7%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "cspd + 14%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "maxHp - 15%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "am + 3",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -291,33 +291,33 @@ export default function AnalyzerIndexClient() {
               statisticsId: "",
             },
           ],
-          modifiersList: {
+          modifierList: {
             id: "",
             name: "暴击残酷之翼属性",
             modifiers: [
               {
                 id: "",
                 formula: "mAtk + 6%",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "pCr + 25",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "pCd + 21",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "stro.DARK + 21",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
             ],
           },
-          modifiersListId: "",
+          modifierListId: "",
           createdAt: new Date(),
           createdByUserId: "",
           updatedAt: new Date(),
@@ -336,18 +336,18 @@ export default function AnalyzerIndexClient() {
           refinement: 0,
           stability: 0,
           element: "NO_ELEMENT",
-          modifiersList: {
+          modifierList: {
             id: "",
             name: "忍术卷轴·风遁术属性",
             modifiers: [
               {
                 id: "",
                 formula: "aspd + 300",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
             ],
           },
-          modifiersListId: "",
+          modifierListId: "",
           createdAt: new Date(),
           createdByUserId: "",
           updatedAt: new Date(),
@@ -370,33 +370,33 @@ export default function AnalyzerIndexClient() {
               name: "铁之女帝",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "铁之女帝",
                 modifiers: [
                   {
                     id: "",
                     formula: "mAtk + 5%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "mPie + 10",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "cspd + 20%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "maxMp - 300",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -411,33 +411,33 @@ export default function AnalyzerIndexClient() {
               name: "约尔拉兹",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "约尔拉兹",
                 modifiers: [
                   {
                     id: "",
                     formula: "mAtk + 7%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "int + 3%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "cspd + 35%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "ampr + 10%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -448,33 +448,33 @@ export default function AnalyzerIndexClient() {
               statisticsId: "",
             },
           ],
-          modifiersList: {
+          modifierList: {
             id: "",
             name: "冒险者服装属性",
             modifiers: [
               {
                 id: "",
                 formula: "pCr + 25",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "pCd + 10%",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "pCd + 21",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "stro.DARK + 21",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
             ],
           },
-          modifiersListId: "",
+          modifierListId: "",
           createdAt: new Date(),
           createdByUserId: "",
           updatedAt: new Date(),
@@ -495,33 +495,33 @@ export default function AnalyzerIndexClient() {
               name: "深谋的青影",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "深谋的青影",
                 modifiers: [
                   {
                     id: "",
                     formula: "nDis + 8%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "fDis + 8%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "maxMp - 150",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "uAtk + 8%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -536,18 +536,18 @@ export default function AnalyzerIndexClient() {
               name: "蜜爱丽",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "蜜爱丽属性",
                 modifiers: [
                   {
                     id: "",
                     formula: "",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -558,28 +558,28 @@ export default function AnalyzerIndexClient() {
               statisticsId: "",
             },
           ],
-          modifiersList: {
+          modifierList: {
             id: "",
             name: "饼干腰翼属性",
             modifiers: [
               {
                 id: "",
                 formula: "fDis + 10%",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "dex + 5%",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "mPie + isMAGIC_DEVICE(mainWeapon) ?  25 : 0",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
             ],
           },
-          modifiersListId: "",
+          modifierListId: "",
           createdAt: new Date(),
           createdByUserId: "",
           updatedAt: new Date(),
@@ -599,28 +599,28 @@ export default function AnalyzerIndexClient() {
               name: "星之魔导士",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "星之魔导士",
                 modifiers: [
                   {
                     id: "",
                     formula: "mAtk + 9%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "cspd + 9%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "anticipate + 9%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -635,28 +635,28 @@ export default function AnalyzerIndexClient() {
               name: "塔图罗基特",
               crystalType: "GENERAL",
               front: 0,
-              modifiersList: {
+              modifierList: {
                 id: "",
                 name: "塔图罗基特属性",
                 modifiers: [
                   {
                     id: "",
                     formula: "pAtk + 6%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "mAtk + 6%",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                   {
                     id: "",
                     formula: "am + 2",
-                    belongToModifiersListId: "",
+                    belongToModifierListId: "",
                   },
                 ],
               },
-              modifiersListId: "",
+              modifierListId: "",
               createdAt: new Date(),
               createdByUserId: "",
               updatedAt: new Date(),
@@ -667,23 +667,23 @@ export default function AnalyzerIndexClient() {
               statisticsId: "",
             },
           ],
-          modifiersList: {
+          modifierList: {
             id: "",
             name: "读星提灯属性",
             modifiers: [
               {
                 id: "",
                 formula: "mPie + 10",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
               {
                 id: "",
                 formula: "maxMp + 300",
-                belongToModifiersListId: "",
+                belongToModifierListId: "",
               },
             ],
           },
-          modifiersListId: "",
+          modifierListId: "",
           createdAt: new Date(),
           createdByUserId: "",
           updatedAt: new Date(),
@@ -694,17 +694,17 @@ export default function AnalyzerIndexClient() {
           statisticsId: "",
         },
         specialEquipmentId: "",
-        fashion: defaultModifiersList,
-        fashionModifiersListId: "",
-        cuisine: defaultModifiersList,
-        CuisineModifiersListId: "",
+        fashion: defaultModifierList,
+        fashionModifierListId: "",
+        cuisine: defaultModifierList,
+        cuisineModifierListId: "",
         consumableList: [defaultConsumable],
         skillList: [defaultSkill],
         combos: [],
         pet: defaultPet,
         petId: defaultPet.id,
-        modifiersList: defaultModifiersList,
-        modifiersListId: defaultModifiersList.id,
+        modifierList: defaultModifierList,
+        modifierListId: defaultModifierList.id,
         createdAt: new Date(),
         createdByUserId: "",
         updatedAt: new Date(),
