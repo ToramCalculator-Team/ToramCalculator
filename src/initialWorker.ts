@@ -8,7 +8,6 @@ import dataWorker from "~/worker/data.worker?sharedworker";
 import { DataWorkerApi } from "./worker/data.worker";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
 
-console.log("注册serviceWorker");
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register(serviceWorkerUrl, {
@@ -29,7 +28,6 @@ export const pgWorker = await PGliteWorker.create(
 );
 
 // 初始化数据层服务
-console.log("注册dataWorker");
 const DataWorker = new dataWorker();
 // DataWorker.port.onmessage = (e) => {
 //   console.log("data worker msg:", e.data);

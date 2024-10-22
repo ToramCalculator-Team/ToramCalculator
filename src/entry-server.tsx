@@ -10,7 +10,7 @@ const APP_DESCRIPTION = "Wiki、角色配置、连击计算等";
 export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
-      <html lang="zh-CN" class="">
+      <html lang="" class="">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -31,6 +31,21 @@ export default createHandler(() => (
           <meta name="twitter:description" content={APP_DESCRIPTION} />
           <link rel="manifest" href="/manifest.json" />
           {/* <meta name="baidu-site-verification" content={env.BAIDU_HTML_LABEL} /> */}
+          <script>
+            const storeStr = localStorage.getItem("store");
+            const storeCache = storeStr ? JSON.parse(storeStr) : undefined;
+            const root = document.documentElement;
+            let theme = "light";
+            if (storeCache) theme = storeCache.theme;
+            root.classList.add(theme);
+            let isAnimationEnabled = true;
+            if (storeCache) isAnimationEnabled = storeCache.settings.userInterface.isAnimationEnabled;
+            isAnimationEnabled ?? root.classList.add("transitionNone");
+            let language = "zh-CN";
+            if (storeCache) language = storeCache.settings.language;
+            root.lang = language;
+            document.cookie = "lang=" + language + "; path=/;max-age=31536000;";
+          </script>
           {assets}
         </head>
         <body>

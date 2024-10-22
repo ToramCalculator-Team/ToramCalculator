@@ -6,30 +6,54 @@ import { store } from "./store";
 
 export default function App() {
   // 主题切换时
-  createEffect(() => {
-    console.log("主题切换");
-    document.documentElement.classList.add("transitionColorNone");
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(store.theme);
-    setTimeout(() => {
-      document.documentElement.classList.remove("transitionColorNone");
-    }, 500);
-  });
+  createEffect(
+    on(
+      () => store.theme,
+      () => {
+        console.log("主题切换");
+        document.documentElement.classList.add("transitionColorNone");
+        document.documentElement.classList.remove("light", "dark");
+        document.documentElement.classList.add(store.theme);
+        setTimeout(() => {
+          document.documentElement.classList.remove("transitionColorNone");
+        }, 500);
+      },
+      {
+        defer: true,
+      }
+    ),
+  );
 
   // 禁用、启用动画
-  createEffect(() => {
-    console.log("动画禁用状态切换");
-    store.settings.userInterface.isAnimationEnabled
-      ? document.documentElement.classList.remove("transitionNone")
-      : document.documentElement.classList.add("transitionNone");
-  });
+  createEffect(
+    on(
+      () => store.settings.userInterface.isAnimationEnabled,
+      () => {
+        console.log("动画禁用状态切换");
+        store.settings.userInterface.isAnimationEnabled
+          ? document.documentElement.classList.remove("transitionNone")
+          : document.documentElement.classList.add("transitionNone");
+      },
+      {
+        defer: true,
+      }
+    ),
+  );
 
   // 动态设置语言
-  createEffect(() => {
-    console.log("语言切换");
-    document.documentElement.lang = store.settings.language;
-    document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
-  });
+  createEffect(
+    on(
+      () => store.settings.language,
+      () => {
+        console.log("语言切换");
+        document.documentElement.lang = store.settings.language;
+        document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
+      },
+      {
+        defer: true,
+      }
+    ),
+  );
 
   // 实时更新本地存储
   createEffect(() => {

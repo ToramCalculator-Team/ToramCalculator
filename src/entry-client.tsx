@@ -16,7 +16,7 @@ if (storage) {
   const oldStore = JSON.parse(storage);
   const newStore = initialStore;
   if (oldStore.version && oldStore.version === newStore.version) {
-    console.log(`配置数据版本未发生变化${oldStore.version}`);
+    // console.log(`配置数据版本未发生变化${oldStore.version}`);
   } else {
     // 排除版本信息
     const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
@@ -31,7 +31,7 @@ if (storage) {
   }
 
   if (oldStore.dbVersion && oldStore.dbVersion === newStore.dbVersion) {
-    console.log(`数据库版本未发生变化${oldStore.dbVersion}`);
+    // console.log(`数据库版本未发生变化${oldStore.dbVersion}`);
   } else {
     console.log(`数据库版本更新，将迁移数据库`);
     await pgWorker.waitReady;
@@ -47,6 +47,7 @@ if (storage) {
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
 
+// 测试kysely方法
 try {
   console.log(await findUserById(defaultUser.id));
 } catch (e) {

@@ -487,7 +487,6 @@ export default function Index() {
   });
 
   onMount(() => {
-    console.log(performance.now());
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);
@@ -514,7 +513,7 @@ export default function Index() {
         class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
       >
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
-          <span>MonsterList: 测试数据</span>
+          <span>MonsterList: {monsterList()?.initialResults.rows.length}</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
