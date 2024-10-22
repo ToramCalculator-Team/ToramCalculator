@@ -4,15 +4,23 @@ import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
 import { type Monster, defaultMonster } from "~/repositories/monster";
 import type { $Enums } from "@prisma/client";
-import { createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import * as _ from "lodash-es";
 import Fuse from "fuse.js";
 import { generateAugmentedMonsterList } from "~/lib/untils/monster";
-import { Column, createSolidTable, flexRender, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
+import {
+  Column,
+  ColumnDef,
+  createSolidTable,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+} from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import { pgWorker } from "~/initialWorker";
 
 export default function MonsterIndexPage() {
   // 状态管理参数
@@ -47,109 +55,121 @@ export default function MonsterIndexPage() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   // table原始数据------------------------------------------------------------
-  const [rawMonsterList] = createSignal<Monster[]>([]);
+
+  const [monsterList, { refetch: refetchMonsterList }] = createResource(
+    async () =>
+      await pgWorker.live.query<Monster>(`select * from monster`, [], (res) => {
+        console.log(res);
+      }),
+  );
   // table
-  const table = createSolidTable({
-    data: rawMonsterList(),
-    columns: [
-      {
-        accessorKey: "id",
-        header: () => dictionary().db.models.monster.id,
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "name",
-        header: () => dictionary().db.models.monster.name,
-        cell: (info) => info.getValue(),
-        size: 220,
-      },
-      {
-        accessorKey: "address",
-        header: () => dictionary().db.models.monster.address,
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "monsterType",
-        header: () => dictionary().db.models.monster.monsterType,
-        cell: (info) => dictionary().db.enums.MonsterType[info.getValue<$Enums.MonsterType>()],
-        size: 120,
-      },
-      {
-        accessorKey: "element",
-        header: () => dictionary().db.models.monster.element,
-        cell: (info) => dictionary().db.enums.Element[info.getValue<$Enums.Element>()],
-        size: 120,
-      },
-      {
-        accessorKey: "baseLv",
-        header: () => dictionary().db.models.monster.baseLv,
-        size: 120,
-      },
-      {
-        accessorKey: "experience",
-        header: () => dictionary().db.models.monster.experience,
-        size: 120,
-      },
-      {
-        accessorKey: "physicalDefense",
-        header: () => dictionary().db.models.monster.physicalDefense,
-        size: 120,
-      },
-      {
-        accessorKey: "physicalResistance",
-        header: () => dictionary().db.models.monster.physicalResistance,
-        size: 120,
-      },
-      {
-        accessorKey: "magicalDefense",
-        header: () => dictionary().db.models.monster.magicalDefense,
-        size: 120,
-      },
-      {
-        accessorKey: "magicalResistance",
-        header: () => dictionary().db.models.monster.magicalResistance,
-        size: 120,
-      },
-      {
-        accessorKey: "criticalResistance",
-        header: () => dictionary().db.models.monster.criticalResistance,
-        size: 120,
-      },
-      {
-        accessorKey: "avoidance",
-        header: () => dictionary().db.models.monster.avoidance,
-        size: 100,
-      },
-      {
-        accessorKey: "dodge",
-        header: () => dictionary().db.models.monster.dodge,
-        size: 100,
-      },
-      {
-        accessorKey: "block",
-        header: () => dictionary().db.models.monster.block,
-        size: 100,
-      },
-      {
-        accessorKey: "updatedAt",
-        header: dictionary().db.models.monster.updatedAt,
-        cell: (info) => info.getValue<Date>().toLocaleDateString(),
-        size: 100,
-      },
-    ],
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-    initialState: {
-      sorting: [
-        {
-          id: "experience",
-          desc: true, // 默认按热度降序排列
-        },
-      ],
+  const columns: ColumnDef<Monster>[] = [
+    {
+      accessorKey: "id",
+      header: () => dictionary().db.models.monster.id,
+      cell: (info) => info.getValue(),
+      size: 200,
     },
+    {
+      accessorKey: "name",
+      header: () => dictionary().db.models.monster.name,
+      cell: (info) => info.getValue(),
+      size: 220,
+    },
+    {
+      accessorKey: "address",
+      header: () => dictionary().db.models.monster.address,
+      cell: (info) => info.getValue(),
+      size: 150,
+    },
+    {
+      accessorKey: "monsterType",
+      header: () => dictionary().db.models.monster.monsterType,
+      cell: (info) => dictionary().db.enums.MonsterType[info.getValue<$Enums.MonsterType>()],
+      size: 120,
+    },
+    {
+      accessorKey: "element",
+      header: () => dictionary().db.models.monster.element,
+      cell: (info) => dictionary().db.enums.Element[info.getValue<$Enums.Element>()],
+      size: 120,
+    },
+    {
+      accessorKey: "baseLv",
+      header: () => dictionary().db.models.monster.baseLv,
+      size: 120,
+    },
+    {
+      accessorKey: "experience",
+      header: () => dictionary().db.models.monster.experience,
+      size: 120,
+    },
+    {
+      accessorKey: "physicalDefense",
+      header: () => dictionary().db.models.monster.physicalDefense,
+      size: 120,
+    },
+    {
+      accessorKey: "physicalResistance",
+      header: () => dictionary().db.models.monster.physicalResistance,
+      size: 120,
+    },
+    {
+      accessorKey: "magicalDefense",
+      header: () => dictionary().db.models.monster.magicalDefense,
+      size: 120,
+    },
+    {
+      accessorKey: "magicalResistance",
+      header: () => dictionary().db.models.monster.magicalResistance,
+      size: 120,
+    },
+    {
+      accessorKey: "criticalResistance",
+      header: () => dictionary().db.models.monster.criticalResistance,
+      size: 120,
+    },
+    {
+      accessorKey: "avoidance",
+      header: () => dictionary().db.models.monster.avoidance,
+      size: 100,
+    },
+    {
+      accessorKey: "dodge",
+      header: () => dictionary().db.models.monster.dodge,
+      size: 100,
+    },
+    {
+      accessorKey: "block",
+      header: () => dictionary().db.models.monster.block,
+      size: 100,
+    },
+    {
+      accessorKey: "updatedAt",
+      header: dictionary().db.models.monster.updatedAt,
+      cell: (info) => info.getValue<Date>().toLocaleDateString(),
+      size: 100,
+    },
+  ];
+  const table = createMemo(() => {
+    console.log("create table", monsterList()?.initialResults.rows.length);
+    return createSolidTable({
+      get data() {
+        return monsterList()?.initialResults.rows ?? []; // 使用 getter 确保表格能动态响应数据的变化
+      },
+      columns,
+      getCoreRowModel: getCoreRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+      debugTable: true,
+      initialState: {
+        sorting: [
+          {
+            id: "experience",
+            desc: true, // 默认按热度降序排列
+          },
+        ],
+      },
+    });
   });
   const monsterTableHiddenData: Array<keyof Monster> = ["id", "address", "monsterType", "updatedByUserId"];
   // 表头固定
@@ -173,15 +193,19 @@ export default function MonsterIndexPage() {
   // 列表虚拟化区域----------------------------------------------------------
   let virtualScrollElement: HTMLDivElement | undefined;
 
-  const virtualizer = createVirtualizer({
-    count: table.getRowModel().rows.length,
-    getScrollElement: () => virtualScrollElement ?? null,
-    estimateSize: () => 112,
-    overscan: 5,
+  const virtualizer = createMemo(() => {
+    return createVirtualizer({
+      get count() {
+        return table().getRowModel().rows.length
+      },
+      getScrollElement: () => virtualScrollElement ?? null,
+      estimateSize: () => 112,
+      overscan: 5,
+    })
   });
 
   // 搜索使用的基准列表--------------------------------------------------------
-  let actualList = generateAugmentedMonsterList(rawMonsterList(), dictionary());
+  let actualList = generateAugmentedMonsterList(monsterList()?.initialResults.rows ?? [], dictionary());
 
   // 搜索框行为函数
   // 定义搜索时需要忽略的数据
@@ -246,7 +270,7 @@ export default function MonsterIndexPage() {
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
         console.log(id);
-        const targetMonster = rawMonsterList().find((monster) => monster.id === id);
+        const targetMonster = (monsterList()?.initialResults.rows ?? []).find((monster) => monster.id === id);
         if (targetMonster) {
           setMonster(targetMonster);
           setDialogState(true);
@@ -366,7 +390,7 @@ export default function MonsterIndexPage() {
             <div ref={virtualScrollElement!} class="TableBox VirtualScroll flex-1">
               <table class="Table bg-transition-color-8 px-2 lg:bg-transparent">
                 <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
-                  <For each={table.getHeaderGroups()}>
+                  <For each={table().getHeaderGroups()}>
                     {(headerGroup) => (
                       <tr class="flex min-w-full gap-0 border-b-2">
                         <For each={headerGroup.headers}>
@@ -407,12 +431,12 @@ export default function MonsterIndexPage() {
                   </For>
                 </thead>
                 <tbody
-                  style={{ height: `${virtualizer.getTotalSize()}px` }}
+                  style={{ height: `${virtualizer().getTotalSize()}px` }}
                   class="TableBody relative mt-[54px] px-2 lg:mt-[84px]"
                 >
-                  <For each={virtualizer.getVirtualItems()}>
+                  <For each={virtualizer().getVirtualItems()}>
                     {(virtualRow) => {
-                      const row = table.getRowModel().rows[virtualRow.index];
+                      const row = table().getRowModel().rows[virtualRow.index];
                       return (
                         <tr
                           data-index={virtualRow.index}
@@ -509,7 +533,8 @@ export default function MonsterIndexPage() {
                                         try {
                                           const content =
                                             dictionary().db.enums[
-                                              (cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)) as keyof typeof $Enums
+                                              (cell.column.id.charAt(0).toLocaleUpperCase() +
+                                                cell.column.id.slice(1)) as keyof typeof $Enums
                                             ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
                                           return content;
                                         } catch (error) {

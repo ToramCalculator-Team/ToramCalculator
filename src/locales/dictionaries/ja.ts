@@ -1,16 +1,16 @@
-import { type SelectStatistics } from "~/repositories/statistics";
+import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type SelectModifierList } from "~/repositories/modifier_list";
-import { SelectImage } from "~/repositories/image";
+import { type ModifierList } from "~/repositories/modifier_list";
+import { Image } from "~/repositories/image";
 
-const modifierList: ConvertToAllString<SelectModifierList> = {
+const modifierList: ConvertToAllString<ModifierList> = {
   selfName: "補正項目リスト",
   name: "名前",
   modifiers: "補正項目",
   id: "ID",
 };
 
-const statistics: ConvertToAllString<SelectStatistics> = {
+const statistics: ConvertToAllString<Statistics> = {
   selfName: "統計情報",
   id: "ID",
   rates: "評価",
@@ -30,7 +30,7 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   analyzerId: "",
 };
 
-const image: ConvertToAllString<SelectImage> = {
+const image: ConvertToAllString<Image> = {
   selfName: "画像",
   id: "ID",
   dataUrl: "DataUrl",
@@ -314,6 +314,7 @@ const dictionary: dictionary = {
         EVENT_BOSS: "イベント固定ボス",
         EVENT_MINI_BOSS: "イベント野外ボス",
         EVENT_MOBS: "イベント雑魚",
+        selfName: "モンスタータイプ",
       },
       Element: {
         NO_ELEMENT: "無属性",
@@ -323,6 +324,7 @@ const dictionary: dictionary = {
         LIGHT: "光属性",
         WATER: "水属性",
         WIND: "風属性",
+        selfName: "属性",
       },
       SpecialAbiType: {
         NULL: "なし",
@@ -330,6 +332,7 @@ const dictionary: dictionary = {
         CRI: "クリティカル",
         TEC: "テクニック",
         MEN: "異常耐性",
+        selfName: "特殊能力値タイプ",
       },
       MainWeaponType: {
         NO_WEAPON: "なし",
@@ -342,6 +345,7 @@ const dictionary: dictionary = {
         HALBERD: "ハルバード",
         KATANA: "刀",
         BOWGUN: "ボウガン",
+        selfName: "メイン武器タイプ",
       },
       SubWeaponType: {
         NO_WEAPON: "なし",
@@ -353,11 +357,13 @@ const dictionary: dictionary = {
         DAGGER: "短剣",
         NINJUTSUSCROLL: "忍術の巻物",
         SHIELD: "盾",
+        selfName: "サブ武器タイプ",
       },
       BodyArmorType: {
         NORMAL: "通常",
         LIGHT: "軽装",
         HEAVY: "重装",
+        selfName: "防具タイプ",
       },
       CrystalType: {
         GENERAL: "汎用クリスタル",
@@ -365,10 +371,12 @@ const dictionary: dictionary = {
         BODYCRYSTAL: "防具クリスタル",
         ADDITIONALCRYSTAL: "追加クリスタル",
         SPECIALCRYSTAL: "特殊クリスタル",
+        selfName: "クリスタルタイプ",
       },
       SkillType: {
         ACTIVE_SKILL: "アクティブスキル",
         PASSIVE_SKILL: "パッシブスキル",
+        selfName: "スキルタイプ",
       },
       SkillTreeName: {
         BLADE: "剣系スキルツリー",
@@ -380,33 +388,41 @@ const dictionary: dictionary = {
         MONONOFU: "武士スキルツリー",
         CRUSHER: "クラッシャースキルツリー",
         SPRITE: "精霊スキルツリー",
+        selfName: "スキルツリー名",
       },
       UserRole: {
         USER: "一般ユーザー",
         ADMIN: "管理者",
+        selfName: "ユーザー権限",
       },
       YieldType: {
         ImmediateEffect: "即時効果（一度のみ適用）",
         PersistentEffect: "持続効果（削除されるまで有効）",
+        selfName: "効果タイプ",
       },
       WeaponElementDependencyType: {
-        TRUE: "継承",
-        FALSE: "継承しない",
+        EXTEND: "継承",
+        UNEXTEND: "継承しない",
+        selfName: "武器要素の属性を継承するかどうか",
       },
       ComboType: {
         NULL: "未設定",
+        selfName: "連擊タイプ",
       },
       SkillExtraActionType: {
         None: "なし",
         Chanting: "詠唱",
         Charging: "チャージ",
+        selfName: "スキルの追加動作タイプ",
       },
       CharacterType: {
         Tank: "タンク",
         Mage: "メイジ",
         Ranger: "レンジャー",
         Marksman: "マークスマン",
+        selfName: "キャラクタータイプ",
       },
+      selfName: "列挙型",
     },
     models: {
       monster: {
@@ -539,7 +555,7 @@ const dictionary: dictionary = {
         specialAbiValue: "特殊能力値",
         mainWeapon: {
           selfName: "メイン武器",
-          crystal: "クリスタル",
+          crystalList: "クリスタル",
           id: "ID",
           name: "名前",
           mainWeaponType: "メイン武器タイプ",
@@ -583,7 +599,7 @@ const dictionary: dictionary = {
         bodyArmor: {
           selfName: "身体装備",
           modifierList: modifierList,
-          crystal: "クリスタル",
+          crystalList: "クリスタル",
           id: "ID",
           name: "名前",
           bodyArmorType: "防具タイプ",
@@ -603,7 +619,7 @@ const dictionary: dictionary = {
         additionalEquipment: {
           selfName: "追加装備",
           modifierList: modifierList,
-          crystal: "クリスタル",
+          crystalList: "クリスタル",
           id: "ID",
           name: "名前",
           refinement: "精錬値",
@@ -621,7 +637,7 @@ const dictionary: dictionary = {
         specialEquipment: {
           selfName: "特殊装備",
           modifierList: modifierList,
-          crystal: "クリスタル",
+          crystalList: "クリスタル",
           id: "ID",
           name: "名前",
           modifierListId: "",

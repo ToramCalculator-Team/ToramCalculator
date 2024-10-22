@@ -1,15 +1,15 @@
-import { type SelectStatistics } from "~/repositories/statistics";
+import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type SelectModifierList } from "~/repositories/modifier_list";
-import { SelectImage } from "~/repositories/image";
+import { type ModifierList } from "~/repositories/modifier_list";
+import { Image } from "~/repositories/image";
 
-const modifierList: ConvertToAllString<SelectModifierList> = {
+const modifierList: ConvertToAllString<ModifierList> = {
   selfName: "Modifiers List",
   modifiers: "Modifiers",
   name:"Name",
   id: "ID"
 }
-const statistics: ConvertToAllString<SelectStatistics> = {
+const statistics: ConvertToAllString<Statistics> = {
   selfName: "Statistics",
   id: "ID",
   usageTimestamps: "UsageTimestamps",
@@ -29,7 +29,7 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   analyzerId: ""
 };
 
-const image: ConvertToAllString<SelectImage> = {
+const image: ConvertToAllString<Image> = {
   selfName: "Image",
   id: "ID",
   dataUrl: "DataUrl",
@@ -90,7 +90,7 @@ const dictionary: dictionary = {
       language: {
         title: "Language",
         selectedLanguage: {
-          title: "Select Language",
+          title: " Language",
           description: "Affects all interface texts, but cannot change data class texts.",
           zhCN: "简体中文",
           zhTW: "繁体中文",
@@ -309,6 +309,7 @@ const dictionary: dictionary = {
         EVENT_BOSS: "Event Boss",
         EVENT_MINI_BOSS: "Event mini Boss",
         EVENT_MOBS: "Event Mobs",
+        selfName: "Monster Type",
       },
       Element: {
         NO_ELEMENT: "No-Element",
@@ -318,6 +319,7 @@ const dictionary: dictionary = {
         LIGHT: "Light",
         WATER: "Water",
         WIND: "Wind",
+        selfName: "Element",
       },
       SpecialAbiType: {
         NULL: "Null",
@@ -325,6 +327,7 @@ const dictionary: dictionary = {
         CRI: "Cri",
         TEC: "Tec",
         MEN: "Men",
+        selfName: "Special Abi Type",
       },
       MainWeaponType: {
         NO_WEAPON: "no-weapon",
@@ -337,6 +340,7 @@ const dictionary: dictionary = {
         HALBERD: "halberd",
         KATANA: "katana",
         BOWGUN: "bowgun",
+        selfName: "Main Weapon Type",
       },
       SubWeaponType: {
         NO_WEAPON: "no-weapon",
@@ -348,11 +352,13 @@ const dictionary: dictionary = {
         DAGGER: "dagger",
         NINJUTSUSCROLL: "ninjutsu-scroll",
         SHIELD: "shield",
+        selfName: "Sub Weapon Type",
       },
       BodyArmorType: {
         NORMAL: "Normal",
         LIGHT: "Light",
         HEAVY: "Heavy",
+        selfName: "Body Armor Type",
       },
       CrystalType: {
         GENERAL: "General",
@@ -360,10 +366,12 @@ const dictionary: dictionary = {
         BODYCRYSTAL: "BodyCrystal",
         ADDITIONALCRYSTAL: "AdditionalCrystal",
         SPECIALCRYSTAL: "SpecialCrystal",
+        selfName: "Crystal Type",
       },
       SkillType: {
         ACTIVE_SKILL: "ActiveSkill",
         PASSIVE_SKILL: "PassiveSkill",
+        selfName: "Skill Type",
       },
       SkillTreeName: {
         BLADE: "Blade Skill",
@@ -375,33 +383,41 @@ const dictionary: dictionary = {
         MONONOFU: "Mononofu Skill",
         CRUSHER: "Crusher Skill",
         SPRITE: "Sprite Skill",
+        selfName: "Skill Tree Name",
       },
       UserRole: {
         USER: "User",
         ADMIN: "Admin",
+        selfName: "User Role",
       },
       WeaponElementDependencyType: {
-        TRUE: "yes",
-        FALSE: "no",
+        EXTEND: "extend",
+        UNEXTEND: "unextend",
+        selfName: "Weapon Element Dependency Type",
       },
       ComboType: {
         NULL: "Null",
+        selfName: "Combo Type",
       },
       YieldType: {
         ImmediateEffect: "ImmediateEffect",
         PersistentEffect: "PersistentEffect",
+        selfName: "Yield Type",
       },
       SkillExtraActionType: {
         None: "None",
         Chanting: "Chanting",
         Charging: "Charging",
+        selfName: "Skill Extra Action Type",
       },
       CharacterType: {
         Tank: "Tank",
         Mage: "",
         Ranger: "",
         Marksman: "",
+        selfName: "Character Type",
       },
+      selfName: "Enum",
     },
     models: {
       monster: {
@@ -534,7 +550,7 @@ const dictionary: dictionary = {
         specialAbiValue: "",
         mainWeapon: {
           selfName: "MainWeapon",
-          crystal: "",
+          crystalList: "",
           id: "ID",
           name: "",
           mainWeaponType: "",
@@ -578,7 +594,7 @@ const dictionary: dictionary = {
         bodyArmor: {
           selfName: "BodyArmor",
           modifierList: modifierList,
-          crystal: "",
+          crystalList: "",
           id: "ID",
           name: "",
           bodyArmorType: "",
@@ -598,7 +614,7 @@ const dictionary: dictionary = {
         additionalEquipment: {
           selfName: "AdditionalEquipment",
           modifierList: modifierList,
-          crystal: "",
+          crystalList: "",
           id: "ID",
           name: "",
           refinement: "",
@@ -616,7 +632,7 @@ const dictionary: dictionary = {
         specialEquipment: {
           selfName: "SpecialEquipment",
           modifierList: modifierList,
-          crystal: "",
+          crystalList: "",
           id: "ID",
           name: "",
           modifierListId: "",

@@ -23,13 +23,13 @@ export function statisticsSubRelations(eb:ExpressionBuilder<DB, "statistics">,st
         .selectFrom("view_timestamp")
         .whereRef("view_timestamp.statisticsId", "=", statisticsId)
         .selectAll("view_timestamp")
-    ).as("view_timestamps"),
+    ).as("viewTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("usage_timestamp")
         .whereRef("usage_timestamp.statisticsId", "=", statisticsId)
         .selectAll("usage_timestamp")
-    ).as("usage_timestamps"),
+    ).as("usageTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("rate")
@@ -64,19 +64,19 @@ export async function createStatistics(newStatistics: NewStatistics) {
 
     const rates = await trx.insertInto("rate").values(defaultRate).returningAll().execute();
 
-    const view_timestamps = await trx
+    const viewTimestamps = await trx
       .insertInto("view_timestamp")
       .values(defaultViewTimestamp)
       .returningAll()
       .execute();
 
-    const usage_timestamps = await trx
+    const usageTimestamps = await trx
       .insertInto("usage_timestamp")
       .values(defaultUsageTimestamp)
       .returningAll()
       .execute();
 
-    return { ...statistics, rates, view_timestamps, usage_timestamps };
+    return { ...statistics, rates, viewTimestamps, usageTimestamps };
   });
 }
 
@@ -88,8 +88,8 @@ export async function deleteStatistics(id: string) {
 export const defaultStatistics: Statistics = {
   id: "defaultStatisticsId",
   rates: [defaultRate],
-  view_timestamps: [defaultViewTimestamp],
-  usage_timestamps: [defaultUsageTimestamp],
+  viewTimestamps: [defaultViewTimestamp],
+  usageTimestamps: [defaultUsageTimestamp],
   monsterId: null,
   crystalId: null,
   mainWeaponId: null,

@@ -209,6 +209,11 @@ export const DurationType = {
     UNLIMITED: "UNLIMITED"
 } as const;
 export type DurationType = (typeof DurationType)[keyof typeof DurationType];
+export const WeaponElementDependencyType = {
+    EXTEND: "EXTEND",
+    UNEXTEND: "UNEXTEND"
+} as const;
+export type WeaponElementDependencyType = (typeof WeaponElementDependencyType)[keyof typeof WeaponElementDependencyType];
 export const ComboType = {
     NULL: "NULL"
 } as const;

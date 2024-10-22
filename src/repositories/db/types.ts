@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { UserRole, Element, MonsterType, ModifiersName, SpecialAbiType, CrystalType, MainWeaponType, SubWeaponType, BodyArmorType, SkillTreeName, SkillType, SkillExtraActionType, YieldType, DurationType, ComboType, CharacterType } from "./enums";
+import type { UserRole, Element, MonsterType, ModifiersName, SpecialAbiType, CrystalType, MainWeaponType, SubWeaponType, BodyArmorType, SkillTreeName, SkillType, SkillExtraActionType, YieldType, DurationType, WeaponElementDependencyType, ComboType, CharacterType } from "./enums";
 
 export type account = {
     id: string;
@@ -282,7 +282,7 @@ export type skill = {
     skillTreeName: SkillTreeName;
     name: string;
     skillType: SkillType;
-    weaponElementDependencyType: boolean;
+    weaponElementDependencyType: WeaponElementDependencyType;
     element: Element;
     skillDescription: string | null;
     extraDetails: string;

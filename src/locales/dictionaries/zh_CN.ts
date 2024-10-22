@@ -1,15 +1,15 @@
-import { type SelectStatistics } from "~/repositories/statistics";
+import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type SelectModifierList } from "~/repositories/modifier_list";
-import { SelectImage } from "~/repositories/image";
+import { type ModifierList } from "~/repositories/modifier_list";
+import { Image } from "~/repositories/image";
 
-const modifierList: ConvertToAllString<SelectModifierList> = {
+const modifierList: ConvertToAllString<ModifierList> = {
   name: "名称",
   modifiers: "加成项",
   id: "ID",
   selfName: "加成项列表",
 };
-const statistics: ConvertToAllString<SelectStatistics> = {
+const statistics: ConvertToAllString<Statistics> = {
   id: "ID",
   rates: "评分",
   usageTimestamps: "被使用记录",
@@ -29,7 +29,7 @@ const statistics: ConvertToAllString<SelectStatistics> = {
   selfName: "统计信息",
 };
 
-const image: ConvertToAllString<SelectImage> = {
+const image: ConvertToAllString<Image> = {
   id: "ID",
   dataUrl: "DataUrl",
   main_weaponId: "",
@@ -309,6 +309,7 @@ const dictionary: dictionary = {
         EVENT_BOSS: "活动定点王",
         EVENT_MINI_BOSS: "活动野王",
         EVENT_MOBS: "活动小怪",
+        selfName: "怪物类型",
       },
       Element: {
         NO_ELEMENT: "无属性",
@@ -318,6 +319,7 @@ const dictionary: dictionary = {
         LIGHT: "光属性",
         WATER: "水属性",
         WIND: "风属性",
+        selfName: "元素类型",
       },
       SpecialAbiType: {
         NULL: "无",
@@ -325,6 +327,7 @@ const dictionary: dictionary = {
         CRI: "暴击",
         TEC: "技巧",
         MEN: "异抗",
+        selfName: "特殊能力值类型",
       },
       MainWeaponType: {
         NO_WEAPON: "空",
@@ -337,6 +340,7 @@ const dictionary: dictionary = {
         HALBERD: "旋风枪",
         KATANA: "拔刀剑",
         BOWGUN: "弩",
+        selfName: "主武器类型",
       },
       SubWeaponType: {
         NO_WEAPON: "空",
@@ -348,11 +352,13 @@ const dictionary: dictionary = {
         DAGGER: "小刀",
         NINJUTSUSCROLL: "忍术卷轴",
         SHIELD: "盾牌",
+        selfName: "副武器类型",
       },
       BodyArmorType: {
         NORMAL: "一般",
         LIGHT: "轻化",
         HEAVY: "重化",
+        selfName: "防具类型",
       },
       CrystalType: {
         GENERAL: "通用锻晶",
@@ -360,10 +366,12 @@ const dictionary: dictionary = {
         BODYCRYSTAL: "防具锻晶",
         ADDITIONALCRYSTAL: "追加锻晶",
         SPECIALCRYSTAL: "特殊锻晶",
+        selfName: "锻晶类型",
       },
       SkillType: {
         ACTIVE_SKILL: "主动技能",
         PASSIVE_SKILL: "被动技能",
+        selfName: "技能类型",
       },
       SkillTreeName: {
         BLADE: "剑系技能树",
@@ -375,33 +383,41 @@ const dictionary: dictionary = {
         MONONOFU: "武士技能树",
         CRUSHER: "粉碎者技能树",
         SPRITE: "灵魂技能树",
+        selfName: "技能树名称",
       },
       UserRole: {
         USER: "常规用户",
         ADMIN: "管理员",
+        selfName: "用户角色",
       },
       YieldType: {
         ImmediateEffect: "即时效果（仅作用一次）",
         PersistentEffect: "持续型效果（在被删除前，一直有效）",
+        selfName: "效果类型",
       },
       WeaponElementDependencyType: {
-        TRUE: "继承",
-        FALSE: "不继承",
+        EXTEND: "继承",
+        UNEXTEND: "不继承",
+        selfName: "是否继承武器元素属性",
       },
       ComboType: {
         NULL: "未设置",
+        selfName: "连击类型",
       },
       SkillExtraActionType: {
         None: "无",
         Chanting: "咏唱",
         Charging: "蓄力",
+        selfName: "技能额外动作类型",
       },
       CharacterType: {
         Tank: "坦克",
         Mage: "",
         Ranger: "",
         Marksman: "",
+        selfName: "角色类型",
       },
+      selfName: "枚举类型",
     },
     models: {
       monster: {
@@ -532,7 +548,7 @@ const dictionary: dictionary = {
         specialAbiType: "特殊属性类型",
         specialAbiValue: "特殊属性值",
         mainWeapon: {
-          crystal: "锻晶",
+          crystalList: "锻晶",
           id: "ID",
           name: "名称",
           mainWeaponType: "主武器类型",
@@ -576,7 +592,7 @@ const dictionary: dictionary = {
         subWeaponId: "",
         bodyArmor: {
           modifierList: modifierList,
-          crystal: "锻晶",
+          crystalList: "锻晶",
           id: "ID",
           name: "名称",
           bodyArmorType: "防具类型",
@@ -596,7 +612,7 @@ const dictionary: dictionary = {
         bodyArmorId: "",
         additionalEquipment: {
           modifierList: modifierList,
-          crystal: "锻晶",
+          crystalList: "锻晶",
           id: "ID",
           name: "名称",
           refinement: "精炼值",
@@ -614,7 +630,7 @@ const dictionary: dictionary = {
         additionalEquipmentId: "",
         specialEquipment: {
           modifierList: modifierList,
-          crystal: "锻晶",
+          crystalList: "锻晶",
           id: "ID",
           name: "名称",
           modifierListId: "",

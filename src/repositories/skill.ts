@@ -98,7 +98,7 @@ export const defaultSkill: Skill = {
   skillDescription: "",
   skillTreeName: "BLADE",
   skillType: "ACTIVE_SKILL",
-  weaponElementDependencyType: true,
+  weaponElementDependencyType: "EXTEND",
   element: "NO_ELEMENT",
   skillEffect: [defaultSkillEffect],
   dataSources: "",

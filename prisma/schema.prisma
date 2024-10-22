@@ -307,6 +307,11 @@ enum DurationType {
     UNLIMITED
 }
 
+enum WeaponElementDependencyType {
+    EXTEND
+    UNEXTEND
+}
+
 // 连击效果类型
 enum ComboType {
     NULL
@@ -615,7 +620,7 @@ model skill {
     skillTreeName               SkillTreeName
     name                        String
     skillType                   SkillType
-    weaponElementDependencyType Boolean
+    weaponElementDependencyType WeaponElementDependencyType
     element                     Element
     skillDescription            String?
     skillEffect                 skill_effect[]
@@ -696,8 +701,8 @@ model pet {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
 
     usedBy character[]
 
@@ -721,8 +726,8 @@ model consumable {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
 
     usedBy character[]
 
@@ -739,7 +744,7 @@ model combo {
     name      String
     comboStep combo_step[]
 
-    usedBy          character[]
+    usedBy character[]
 
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
@@ -798,12 +803,12 @@ model character {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
-    image           image             @relation(fields: [imageId], references: [id])
-    imageId         String            @unique
-    
-    belongToMembers       member[]
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
+    image        image      @relation(fields: [imageId], references: [id])
+    imageId      String     @unique
+
+    belongToMembers member[]
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
@@ -847,8 +852,8 @@ model analyzer {
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics      statistics        @relation(fields: [statisticsId], references: [id])
-    statisticsId    String            @unique
+    statistics   statistics @relation(fields: [statisticsId], references: [id])
+    statisticsId String     @unique
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
