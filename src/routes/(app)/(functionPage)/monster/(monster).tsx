@@ -2,7 +2,7 @@ import Button from "~/components/ui/button";
 import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
-import { type Monster, defaultMonster } from "~/repositories/monster";
+import { type Monster, defaultMonster, findMonsters } from "~/repositories/monster";
 import type { $Enums } from "@prisma/client";
 import { createEffect, createMemo, createResource, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
@@ -20,7 +20,6 @@ import {
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { pgWorker } from "~/initialWorker";
 
 export default function MonsterIndexPage() {
   // 状态管理参数
@@ -57,10 +56,7 @@ export default function MonsterIndexPage() {
   // table原始数据------------------------------------------------------------
 
   const [monsterList, { refetch: refetchMonsterList }] = createResource(
-    async () =>
-      await pgWorker.live.query<Monster>(`select * from monster`, [], (res) => {
-        console.log(res);
-      }),
+    findMonsters,
   );
   // table
   const columns: ColumnDef<Monster>[] = [
@@ -152,10 +148,10 @@ export default function MonsterIndexPage() {
     },
   ];
   const table = createMemo(() => {
-    console.log("create table", monsterList()?.initialResults.rows.length);
+    console.log("create table", monsterList()?.length);
     return createSolidTable({
       get data() {
-        return monsterList()?.initialResults.rows ?? []; // 使用 getter 确保表格能动态响应数据的变化
+        return monsterList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
       },
       columns,
       getCoreRowModel: getCoreRowModel(),
@@ -205,7 +201,7 @@ export default function MonsterIndexPage() {
   });
 
   // 搜索使用的基准列表--------------------------------------------------------
-  let actualList = generateAugmentedMonsterList(monsterList()?.initialResults.rows ?? [], dictionary());
+  let actualList = generateAugmentedMonsterList(monsterList() ?? [], dictionary());
 
   // 搜索框行为函数
   // 定义搜索时需要忽略的数据
@@ -270,7 +266,7 @@ export default function MonsterIndexPage() {
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
         console.log(id);
-        const targetMonster = (monsterList()?.initialResults.rows ?? []).find((monster) => monster.id === id);
+        const targetMonster = (monsterList() ?? []).find((monster) => monster.id === id);
         if (targetMonster) {
           setMonster(targetMonster);
           setDialogState(true);

@@ -7,7 +7,7 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/lib/icon";
 import Button from "~/components/ui/button";
-import { type Monster } from "~/repositories/monster";
+import { findMonsters, type Monster } from "~/repositories/monster";
 import { type Skill } from "~/repositories/skill";
 import { type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
@@ -18,7 +18,7 @@ import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
-import { pgWorker } from "~/initialWorker";
+import { initialPGWorker } from "~/initialWorker";
 import { User } from "~/repositories/user";
 
 type Related =
@@ -54,28 +54,23 @@ export default function Index() {
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-  const [UserList, { refetch: refetchUserList }] = createResource(
-    async () =>
-      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-        console.log(res);
-      }),
-  );
-  const [monsterList, { refetch: refetchMonsterList }] = createResource(
-    async () =>
-      await pgWorker.live.query<Monster>(`select * from monster`, [], (res) => {
-        console.log(res);
-      }),
-  );
-  const [skillList, { refetch: refetchSkillList }] = createResource(
-    async () => await pgWorker.live.query<Skill>(`select * from skill`, [], (res) => {
-      console.log(res);
-    }),
-  );
-  const [crystalList, { refetch: refetchCrystalList }] = createResource(
-    async () => await pgWorker.live.query<Crystal>(`select * from crystal`, [], (res) => {
-      console.log(res);
-    }),
-  );
+  // const [UserList, { refetch: refetchUserList }] = createResource(
+  //   async () =>
+  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+  //       console.log(res);
+  //     }),
+  // );
+  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
+  // const [skillList, { refetch: refetchSkillList }] = createResource(
+  //   async () => await pgWorker.live.query<Skill>(`select * from skill`, [], (res) => {
+  //     console.log(res);
+  //   }),
+  // );
+  // const [crystalList, { refetch: refetchCrystalList }] = createResource(
+  //   async () => await pgWorker.live.query<Crystal>(`select * from crystal`, [], (res) => {
+  //     console.log(res);
+  //   }),
+  // );
 
   // const monsterList = (): {
   //   initialResults: {
@@ -88,28 +83,28 @@ export default function Index() {
   //     },
   //   };
   // };
-  // const skillList = (): {
-  //   initialResults: {
-  //     rows: Skill[];
-  //   };
-  // } => {
-  //   return {
-  //     initialResults: {
-  //       rows: [],
-  //     },
-  //   };
-  // };
-  // const crystalList = (): {
-  //   initialResults: {
-  //     rows: Crystal[];
-  //   };
-  // } => {
-  //   return {
-  //     initialResults: {
-  //       rows: [],
-  //     },
-  //   };
-  // };
+  const skillList = (): {
+    initialResults: {
+      rows: Skill[];
+    };
+  } => {
+    return {
+      initialResults: {
+        rows: [],
+      },
+    };
+  };
+  const crystalList = (): {
+    initialResults: {
+      rows: Crystal[];
+    };
+  } => {
+    return {
+      initialResults: {
+        rows: [],
+      },
+    };
+  };
 
   // createEffect(() => {
   //   // console.log("solid 检测到了user表变化", UserList()); // 1
@@ -265,13 +260,23 @@ export default function Index() {
 
     const finalResult: FinalResult = {
       monsters: searchInList(
-        monsterList()?.initialResults.rows ?? [],
+        monsterList() ?? [],
         searchValue,
         dictionary().db.models.monster,
         monsterHiddenData,
       ),
-      skills: searchInList(skillList()?.initialResults.rows ?? [], searchValue, dictionary().db.models.skill, skillHiddenData),
-      crystals: searchInList(crystalList()?.initialResults.rows ?? [], searchValue, dictionary().db.models.crystal, crystalHiddenData),
+      skills: searchInList(
+        skillList()?.initialResults.rows ?? [],
+        searchValue,
+        dictionary().db.models.skill,
+        skillHiddenData,
+      ),
+      crystals: searchInList(
+        crystalList()?.initialResults.rows ?? [],
+        searchValue,
+        dictionary().db.models.crystal,
+        crystalHiddenData,
+      ),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -513,7 +518,7 @@ export default function Index() {
         class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
       >
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
-          <span>MonsterList: {monsterList()?.initialResults.rows.length}</span>
+          <span>MonsterList: {monsterList()?.length}</span>
           <span>SkillList: 测试数据</span>
           <span>CrystalList: 测试数据</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>

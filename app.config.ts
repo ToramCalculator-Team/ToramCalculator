@@ -29,7 +29,7 @@ export default defineConfig({
     worker: {
       format: "es",
     },
-    ssr: { external: ["drizzle-orm"] },
+    ssr: { external: [] },
     optimizeDeps: {
       exclude: ["@electric-sql/pglite"],
     },

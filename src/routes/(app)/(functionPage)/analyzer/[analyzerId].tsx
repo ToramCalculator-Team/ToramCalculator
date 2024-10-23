@@ -35,7 +35,7 @@ import Input from "~/components/ui/input";
 import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
-import { DW } from "~/initialWorker";
+// import { DW } from "~/initialWorker";
 
 const externalEditorClassName = "sqd-editor-solid";
 
@@ -1430,7 +1430,7 @@ export default function AnalyzerIndexClient() {
         disabled={designer()?.isReadonly()}
         icon={<Icon.Line.Gamepad />}
         onClick={async () => {
-          (await DW.stateMachine).start();
+          // (await DW.stateMachine).start();
           // console.log((await DW.stateMachine).data)
         }}
       >

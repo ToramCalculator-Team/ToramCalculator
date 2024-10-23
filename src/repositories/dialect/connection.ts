@@ -1,3 +1,4 @@
+console.log("connection",performance.now(),self.constructor.name)
 import { CompiledQuery, DatabaseConnection, QueryResult } from "kysely"
 import { type PGliteWorker } from "@electric-sql/pglite/worker"
 // import { PGlite } from "@electric-sql/pglite"

@@ -1,10 +1,10 @@
 /// <reference lib="webworker" />
 
 import * as _ from "lodash-es";
-import { ModifierType } from "~/repositories/enums";
 import { type $Enums } from "@prisma/client";
 import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
+import { ModifierType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
 import { type Monster } from "~/repositories/monster";
 import { type SkillEffect } from "~/repositories/skill_effect";

@@ -18,12 +18,7 @@ export function monsterSubRelations(eb: ExpressionBuilder<DB, "monster">, id: Ex
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
     ).as("statistics"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("image")
-        .where("id", "=", "monster.imageId")
-        .selectAll("image")
-    ).as("image"),
+    jsonObjectFrom(eb.selectFrom("image").where("id", "=", "monster.imageId").selectAll("image")).as("image"),
   ];
 }
 
@@ -34,6 +29,14 @@ export async function findMonsterById(id: string) {
     .selectAll("monster")
     .select((eb) => monsterSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
+}
+
+export async function findMonsters() {
+  return await db
+    .selectFrom("monster")
+    .selectAll("monster")
+    .select((eb) => monsterSubRelations(eb, eb.val("monster.id")))
+    .execute();
 }
 
 export async function updateMonster(id: string, updateWith: MonsterUpdate) {
