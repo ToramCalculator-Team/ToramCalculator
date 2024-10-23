@@ -10,7 +10,6 @@ const APP_DESCRIPTION = "Wiki、角色配置、连击计算等";
 export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => {
-      console.log(scripts);
       return (
         <html lang="" class="">
           <head>
