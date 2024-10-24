@@ -5,8 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import { createId } from "@paralleldrive/cuid2";
-import { initialStore } from "~/store";
-import ddl from "~/../prisma/ddl.sql?raw";
+import ddl from "~/../prisma/ddl.sql?raw"
 
 // const host = "http://localhost:3000";
 const host = "https://test.kiaclouth.com";
@@ -26,16 +25,16 @@ worker({
     await pg.waitReady;
     if (meta.storage) {
       const oldStore = JSON.parse(meta.storage);
-      const newStore = initialStore;
+      const newStore = meta.initialStore;
       if (oldStore.dbVersion && oldStore.dbVersion === newStore.dbVersion) {
-        console.log(`数据库版本未发生变化${oldStore.dbVersion}`);
+        console.log(`数据库版本未发生变化${newStore.dbVersion}`);
       } else {
         console.log(`数据库版本更新，将迁移数据库`);
-        pg.exec(ddl);
+        await pg.exec(ddl);
       }
     } else {
-      console.log("配置数据缺失，执行初始化");
-      pg.exec(ddl);
+      console.log("配置数据缺失，初始化数据库");
+      await pg.exec(ddl);
     }
     const userShape = await pg.sync.syncShapeToTable({
       shape: {

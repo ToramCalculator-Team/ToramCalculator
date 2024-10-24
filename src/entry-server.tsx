@@ -40,7 +40,6 @@ export default createHandler(() => (
               root.classList.add("transitionNone"); let language = "zh-CN"; if (storeCache) language =
               storeCache.settings.language; root.lang = language; document.cookie = "lang=" + language + ";
               path=/;max-age=31536000;";
-              {/* debugger */}
             </script>
             {assets}
           </head>

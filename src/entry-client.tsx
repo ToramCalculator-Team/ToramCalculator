@@ -1,5 +1,4 @@
 // @refresh reload
-console.log("entry client",performance.now());
 import "~/styles/app.css";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
@@ -8,6 +7,7 @@ import { initialStore } from "./store";
 import * as _ from "lodash-es";
 import { createUser, defaultUser, findUserById } from "./repositories/user";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
+import { initialPGWorker } from "./initialWorker";
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -15,6 +15,9 @@ if ("serviceWorker" in navigator) {
     type: "module",
   });
 }
+
+// 初始化本地数据库
+initialPGWorker();
 
 const storage = localStorage.getItem("store");
 if (storage) {

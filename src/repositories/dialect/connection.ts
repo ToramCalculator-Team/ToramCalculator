@@ -5,7 +5,6 @@ export class PGliteConnection implements DatabaseConnection {
   private readonly client: PGliteWorker
 
   constructor(client: PGliteWorker) {
-    console.log("PGliteConnection", performance.now(), self.constructor.name)
     this.client = client
   }
 

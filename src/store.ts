@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { defaultMonster, Monster } from "./repositories/monster";
-import { defaultCrystal, Crystal } from "./repositories/crystal";
-import { defaultSkill, Skill } from "./repositories/skill";
-import { defaultCharacter, Character } from "./repositories/character";
-import { defaultAnalyzer, Analyzer } from "./repositories/analyzer";
+import { Monster } from "./repositories/monster";
+import { Crystal } from "./repositories/crystal";
+import { Skill } from "./repositories/skill";
+import { Character } from "./repositories/character";
+import { Analyzer } from "./repositories/analyzer";
 import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
@@ -34,7 +34,6 @@ export type Store = {
       };
     };
   };
-  monster: Monster;
   indexPage: {
   };
   monsterPage: {
@@ -44,7 +43,6 @@ export type Store = {
     monsterFormState: FormSate;
     filterState: boolean;
   };
-  crystal: Crystal;
   crystalPage: {
     augmented: boolean;
     crystalList: Crystal[];
@@ -54,12 +52,10 @@ export type Store = {
   };
   skillPage: {
     skillList: Skill[];
-    skill: Skill;
     skillDialogState: boolean;
     skillFormState: FormSate;
     filterState: boolean;
   };
-  character: Character;
   characterPage: {
     augmented: boolean;
     characterList: Character[];
@@ -67,7 +63,6 @@ export type Store = {
     characterFormState: FormSate;
     filterState: boolean;
   };
-  analyzer: Analyzer;
   analyzerPage: {
     analyzerList: Analyzer[];
     analyzerDialogState: boolean;
@@ -101,7 +96,6 @@ export const initialStore: Store = {
     },
   },
   settingsDialogState: false,
-  monster: defaultMonster,
   indexPage: {},
   monsterPage: {
     augmented: true,
@@ -110,7 +104,6 @@ export const initialStore: Store = {
     monsterFormState: "DISPLAY",
     filterState: false,
   },
-  crystal: defaultCrystal,
   crystalPage: {
     augmented: false,
     crystalList: [],
@@ -120,12 +113,10 @@ export const initialStore: Store = {
   },
   skillPage: {
     skillList: [],
-    skill: defaultSkill,
     skillDialogState: false,
     skillFormState: "CREATE",
     filterState: false
   },
-  character: defaultCharacter,
   characterPage: {
     augmented: false,
     characterList: [],
@@ -133,7 +124,6 @@ export const initialStore: Store = {
     characterFormState: "CREATE",
     filterState: false
   },
-  analyzer: defaultAnalyzer,
   analyzerPage: {
     analyzerList: [],
     analyzerDialogState: false,

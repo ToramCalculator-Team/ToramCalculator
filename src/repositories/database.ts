@@ -4,7 +4,6 @@ import { PGliteDialect } from "./dialect/dialect";
 import { initialPGWorker } from "~/initialWorker";
 
 const initialDatabase = async () => {
-  console.log("initialDatabase", performance.now(), self.constructor.name);
   return new Kysely<DB>({
   dialect: new PGliteDialect(await initialPGWorker()),
   })
