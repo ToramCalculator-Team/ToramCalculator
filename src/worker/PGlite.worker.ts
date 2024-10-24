@@ -44,6 +44,7 @@ worker({
       shapeKey: "users",
       primaryKey: ["id"],
     });
+    console.log("userShape sync done");
     const userCreateDataShape = await pg.sync.syncShapeToTable({
       shape: {
         url: `${host}/v1/shape/user_create_data`,
@@ -52,6 +53,7 @@ worker({
       shapeKey: "user_create_datas",
       primaryKey: ["userId"],
     });
+    console.log("userCreateDataShape sync done");
     const userUpdateDataShape = await pg.sync.syncShapeToTable({
       shape: {
         url: `${host}/v1/shape/user_update_data`,
@@ -60,6 +62,7 @@ worker({
       shapeKey: "user_update_datas",
       primaryKey: ["userId"],
     });
+    console.log("userUpdateDataShape sync done");
     const statisticsShape = await pg.sync.syncShapeToTable({
       shape: {
         url: `${host}/v1/shape/statistics`,
@@ -68,6 +71,7 @@ worker({
       shapeKey: "statisticss",
       primaryKey: ["id"],
     });
+    console.log("statisticsShape sync done");
     const imageShape = await pg.sync.syncShapeToTable({
       shape: {
         url: `${host}/v1/shape/image`,
@@ -76,6 +80,7 @@ worker({
       shapeKey: "images",
       primaryKey: ["id"],
     });
+    console.log("imageShape sync done");
     const monsterShape = await pg.sync.syncShapeToTable({
       shape: {
         url: `${host}/v1/shape/monster`,
@@ -84,6 +89,7 @@ worker({
       shapeKey: "monsters",
       primaryKey: ["id"],
     });
+    console.log("monsterShape sync done");
 
     return pg;
   },
