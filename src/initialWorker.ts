@@ -5,20 +5,20 @@ import PGWorker from "~/worker/PGlite.worker?worker";
 
 // 初始化本地数据库
 export const initialPGWorker = () => {
-  console.log("initialWorker", performance.now());
+  console.log("initialPGWorker", performance.now(), self.constructor.name);
   console.log(self.constructor.name);
-  if (typeof window !== "undefined" && typeof window.document !== "undefined") {
-    const storage = localStorage.getItem("store");
-    return PGliteWorker.create(new PGWorker(), {
-      extensions: {
-        live,
-      },
-      meta: {
-        dataDir: "idb://toramCalculatorDB",
-        storage: storage,
-      },
-    });
-  }
+  // if (typeof window !== "undefined" && typeof window.document !== "undefined") {
+  const storage = localStorage.getItem("store");
+  return PGliteWorker.create(new PGWorker(), {
+    extensions: {
+      live,
+    },
+    meta: {
+      dataDir: "idb://toramCalculatorDB",
+      storage: storage,
+    },
+  });
+  // }
 };
 
 // 初始化数据层服务

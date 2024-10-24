@@ -18,7 +18,6 @@ import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
-import { initialPGWorker } from "~/initialWorker";
 import { User } from "~/repositories/user";
 
 type Related =

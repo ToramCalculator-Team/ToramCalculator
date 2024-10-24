@@ -1,12 +1,11 @@
-console.log("connection",performance.now(),self.constructor.name)
 import { CompiledQuery, DatabaseConnection, QueryResult } from "kysely"
 import { type PGliteWorker } from "@electric-sql/pglite/worker"
-// import { PGlite } from "@electric-sql/pglite"
 
 export class PGliteConnection implements DatabaseConnection {
   private readonly client: PGliteWorker
 
   constructor(client: PGliteWorker) {
+    console.log("PGliteConnection", performance.now(), self.constructor.name)
     this.client = client
   }
 

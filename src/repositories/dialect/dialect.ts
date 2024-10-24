@@ -1,4 +1,3 @@
-console.log(self.constructor.name)
 import {
   CompiledQuery,
   DatabaseConnection,
