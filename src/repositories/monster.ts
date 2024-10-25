@@ -17,8 +17,8 @@ export function monsterSubRelations(eb: ExpressionBuilder<DB, "monster">, id: Ex
         .whereRef("id", "=", "monster.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
-    jsonObjectFrom(eb.selectFrom("image").where("id", "=", "monster.imageId").selectAll("image")).as("image"),
+    ).$notNull().as("statistics"),
+    jsonObjectFrom(eb.selectFrom("image").where("id", "=", "monster.imageId").selectAll("image")).$notNull().as("image"),
   ];
 }
 

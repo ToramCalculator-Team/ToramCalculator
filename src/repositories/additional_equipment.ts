@@ -19,21 +19,21 @@ export function additionalEquipmentSubRelations(eb: ExpressionBuilder<DB, "addit
         .whereRef("_additional_equipmentTocrystal.A", "=", "additional_equipment.id")
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
-    ).as("crystalList"),
+    ).$notNull().as("crystalList"),
     jsonObjectFrom(
       eb
         .selectFrom("statistics")
         .whereRef("id", "=", "additional_equipment.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
     jsonObjectFrom(
       eb
         .selectFrom("modifier_list")
         .whereRef("id", "=", "additional_equipment.modifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("modifierList"),
+    ).$notNull().as("modifierList"),
   ];
 }
 

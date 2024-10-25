@@ -17,14 +17,14 @@ export function subWeaponSubRelations(eb: ExpressionBuilder<DB, "sub_weapon">, i
         .whereRef("id", "=", "sub_weapon.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
     jsonObjectFrom(
       eb
         .selectFrom("modifier_list")
         .whereRef("id", "=", "sub_weapon.modifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("modifierList"),
+    ).$notNull().as("modifierList"),
   ]
 }
 

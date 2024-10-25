@@ -18,7 +18,7 @@ export function analyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .whereRef("id", "=", "analyzer.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
     jsonArrayFrom(
       eb
         .selectFrom("_analyzerTomember")
@@ -26,7 +26,7 @@ export function analyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .whereRef("_analyzerTomember.B", "=", "analyzer.id")
         .selectAll("member")
         .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
-    ).as("team"),
+    ).$notNull().as("team"),
     jsonArrayFrom(
       eb
         .selectFrom("_analyzerTomob")
@@ -34,7 +34,7 @@ export function analyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .whereRef("_analyzerTomob.B", "=", "analyzer.id")
         .selectAll("mob")
         .select((subEb) => MobSubRelations(subEb, subEb.val(id))),
-    ).as("mobs"),
+    ).$notNull().as("mobs"),
   ];
 }
 

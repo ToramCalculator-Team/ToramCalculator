@@ -13,10 +13,10 @@ export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect"
   return [
     jsonArrayFrom(
       eb.selectFrom("skill_yield").whereRef("skillEffectId", "=", "skill_effect.id").selectAll("skill_yield"),
-    ).as("skillYield"),
+    ).$notNull().as("skillYield"),
     jsonArrayFrom(
       eb.selectFrom("skill_cost").where("skillEffectId", "=", "skill_effect.id").selectAll("skill_cost"),
-    ).as("skillCost"),
+    ).$notNull().as("skillCost"),
   ];
 }
 

@@ -15,7 +15,7 @@ export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expres
         .selectFrom("combo_step")
         .whereRef("id", "=", id)
         .selectAll("combo_step")
-    ).as("comboStep"),
+    ).$notNull().as("comboStep"),
   ];
 }
 

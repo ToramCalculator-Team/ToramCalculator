@@ -23,19 +23,19 @@ export function statisticsSubRelations(eb:ExpressionBuilder<DB, "statistics">,st
         .selectFrom("view_timestamp")
         .whereRef("view_timestamp.statisticsId", "=", statisticsId)
         .selectAll("view_timestamp")
-    ).as("viewTimestamps"),
+    ).$notNull().as("viewTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("usage_timestamp")
         .whereRef("usage_timestamp.statisticsId", "=", statisticsId)
         .selectAll("usage_timestamp")
-    ).as("usageTimestamps"),
+    ).$notNull().as("usageTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("rate")
         .whereRef("rate.statisticsId", "=", statisticsId)
         .selectAll("rate")
-    ).as("rates"),
+    ).$notNull().as("rates"),
   ];
 }
 

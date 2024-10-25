@@ -16,7 +16,6 @@ const fps = 60;
 export type computeInput = {
   type: "start" | "stop";
   arg: {
-    dictionary: ReturnType<typeof getDictionary>;
     team: {
       config: Character;
       actionQueue: tSkill[];
@@ -80,9 +79,7 @@ const relationUpdata = (target: modifiers) => {
   if (target.relations && target.relations.length > 0) {
     target.relations.forEach((relationModifier) => {
       relationModifier.update?.();
-      if (relationModifier.relations && relationModifier.relations.length > 0) {
-        relationUpdata(relationModifier);
-      }
+      relationUpdata(relationModifier);
     });
   }
 };
@@ -867,7 +864,7 @@ export class CharacterData {
 
   [key: string]: object | string | number;
 
-  constructor(dictionary: ReturnType<typeof getDictionary>, config: Character) {
+  constructor(config: Character) {
     console.log("开始实例化CharacterData");
     const mainWeaponType = config.mainWeapon?.mainWeaponType ?? "NO_WEAPON";
     const subWeaponType = config.subWeapon?.subWeaponType ?? "NO_WEAPON";
@@ -914,11 +911,11 @@ export class CharacterData {
     this.mainWeaponAtk = new modifiers(ModifierType.DEFAULT);
     this.mainWeaponAtk.modifiers.static.fixed[0] = {
       value: this.mainWeapon.refinement,
-      origin: dictionary.ui.analyzer.dialogData.mainWeapon.refinement,
+      origin: "mainWeapon.refinement",
     };
     this.mainWeaponAtk.modifiers.static.percentage[0] = {
       value: Math.pow(this.mainWeapon.refinement, 2),
-      origin: dictionary.ui.analyzer.dialogData.mainWeapon.refinement,
+      origin: "mainWeapon.refinement",
     };
     this.mainWeaponAtk.update = () => {
       this.mainWeaponAtk.baseValue = dynamicTotalValue(this.mainWeapon.baseAtk);
@@ -1015,7 +1012,7 @@ export class CharacterData {
     this.pStab = new modifiers(ModifierType.DEFAULT, 0);
     this.pStab.modifiers.static.fixed[0] = {
       value: config.mainWeapon?.stability ?? 0,
-      origin: dictionary.ui.analyzer.dialogData.mainWeapon.stability,
+      origin: "mainWeapon.stability",
     };
     this.pStab.update = () => {
       this.pStab.modifiers.static.fixed[1] = {
@@ -1027,10 +1024,10 @@ export class CharacterData {
               CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.stabT * dynamicTotalValue(this.dex),
           ) ?? 0,
         origin: [
-          dictionary.ui.analyzer.dialogData.str,
-          dictionary.ui.analyzer.dialogData.int,
-          dictionary.ui.analyzer.dialogData.agi,
-          dictionary.ui.analyzer.dialogData.dex,
+          "str",
+          "int",
+          "agi",
+          "dex",
         ].join(" + "),
       };
     };
@@ -1075,7 +1072,7 @@ export class CharacterData {
     this.am.update = () => {
       this.am.modifiers.static.fixed[0] = {
         value: max(0, floor((dynamicTotalValue(this.aspd) - 1000) / 180)),
-        origin: dictionary.ui.analyzer.dialogData.aspd,
+        origin: "aspd",
       };
     };
     this.am.update();
@@ -1084,7 +1081,7 @@ export class CharacterData {
     this.cm.update = () => {
       this.cm.modifiers.static.fixed[0] = {
         value: min(50 + floor((dynamicTotalValue(this.cspd) - 1000) / 180), floor(dynamicTotalValue(this.cspd) / 20)),
-        origin: dictionary.ui.analyzer.dialogData.cspd,
+        origin: "cspd",
       };
     };
     this.cm.update();
@@ -1369,7 +1366,6 @@ export class CharacterState {
   eventSequence: eventSequenceType[];
   cEvaluate: (formula: string) => number | void;
   constructor(
-    dictionary: ReturnType<typeof getDictionary>,
     scope: Scope,
     character: Character,
     skill: tSkill,
@@ -1384,7 +1380,7 @@ export class CharacterState {
     this.actionIndex = 0;
     this.actionFrameIndex = 0;
     this.eventSequence = [];
-    this.characterData = new CharacterData(dictionary, character);
+    this.characterData = new CharacterData(character);
     this.scope = scope;
     // 将角色数据传入作用域
     this.scope.p = this.characterData;
@@ -1540,7 +1536,6 @@ type Scope = {
 };
 
 export const compute = (
-  dictionary: ReturnType<typeof getDictionary>,
   team: {
     config: Character;
     actionQueue: tSkill[];
@@ -1558,7 +1553,7 @@ export const compute = (
   };
   console.log("初始化teamData");
   const teamData = team.map((c, cIndex) => {
-    const characterState = new CharacterState(dictionary, scope, c.config, c.actionQueue[0]!, frame, cIndex);
+    const characterState = new CharacterState(scope, c.config, c.actionQueue[0]!, frame, cIndex);
     const actionQueue = c.actionQueue;
     return {
       characterState: characterState,
@@ -1635,9 +1630,9 @@ self.onmessage = (e: MessageEvent<computeInput>) => {
       {
         // 接收消息
         if (e.data.arg) {
-          const { dictionary, monster, team } = e.data.arg;
+          const { monster, team } = e.data.arg;
           // 执行计算
-          const result = compute(dictionary, team, monster);
+          const result = compute(team, monster);
           console.log("计算结果：", result);
           // 发送结果
           self.postMessage({

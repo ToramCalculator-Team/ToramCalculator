@@ -17,14 +17,14 @@ export function crystalSubRelations(eb: ExpressionBuilder<DB, "crystal">, id: Ex
         .whereRef("id", "=", "crystal.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
     jsonObjectFrom(
       eb
         .selectFrom("modifier_list")
         .whereRef("id", "=", "crystal.modifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("modifierList"),
+    ).$notNull().as("modifierList"),
   ];
 }
 

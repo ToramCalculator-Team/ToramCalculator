@@ -26,35 +26,35 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .whereRef("id", "=", "character.mainWeaponId")
         .selectAll("main_weapon")
         .select((subEb) => mainWeaponSubRelations(subEb, subEb.val(id))),
-    ).as("mainWeapon"),
+    ).$notNull().as("mainWeapon"),
     jsonObjectFrom(
       eb
         .selectFrom("sub_weapon")
         .whereRef("id", "=", "character.subWeaponId")
         .selectAll("sub_weapon")
         .select((subEb) => subWeaponSubRelations(subEb, subEb.val(id))),
-    ).as("subWeapon"),
+    ).$notNull().as("subWeapon"),
     jsonObjectFrom(
       eb
         .selectFrom("body_armor")
         .whereRef("id", "=", "character.bodyArmorId")
         .selectAll("body_armor")
         .select((subEb) => bodyArmorSubRelations(subEb, subEb.val(id))),
-    ).as("bodyArmor"),
+    ).$notNull().as("bodyArmor"),
     jsonObjectFrom(
       eb
         .selectFrom("additional_equipment")
         .whereRef("id", "=", "character.additionalEquipmentId")
         .selectAll("additional_equipment")
         .select((subEb) => additionalEquipmentSubRelations(subEb, subEb.val(id))),
-    ).as("additionalEquipment"),
+    ).$notNull().as("additionalEquipment"),
     jsonObjectFrom(
       eb
         .selectFrom("special_equipment")
         .whereRef("id", "=", "character.specialEquipmentId")
         .selectAll("special_equipment")
         .select((subEb) => specialEquipmentSubRelations(subEb, subEb.val(id))),
-    ).as("specialEquipment"),
+    ).$notNull().as("specialEquipment"),
     jsonArrayFrom(
       eb
         .selectFrom("_characterToconsumable")
@@ -62,7 +62,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .whereRef("_characterToconsumable.A", "=", "character.id")
         .selectAll("consumable")
         .select((subEb) => consumableSubRelations(subEb, subEb.val(id))),
-    ).as("consumableList"),
+    ).$notNull().as("consumableList"),
     jsonArrayFrom(
       eb
         .selectFrom("_characterToskill")
@@ -70,28 +70,28 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .whereRef("_characterToskill.A", "=", "character.id")
         .selectAll("skill")
         .select((subEb) => skillSubRelations(subEb, subEb.val(id))),
-    ).as("skillList"),
+    ).$notNull().as("skillList"),
     jsonObjectFrom(
       eb
         .selectFrom("modifier_list")
         .whereRef("id", "=", "character.modifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("modifierList"),
+    ).$notNull().as("modifierList"),
     jsonObjectFrom(
       eb
       .selectFrom("modifier_list")
         .whereRef("id", "=", "character.fashionModifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("fashion"),
+    ).$notNull().as("fashion"),
     jsonObjectFrom(
       eb
       .selectFrom("modifier_list")
         .whereRef("id", "=", "character.cuisineModifierListId")
         .selectAll("modifier_list")
         .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).as("cuisine"),
+    ).$notNull().as("cuisine"),
     jsonArrayFrom(
       eb
         .selectFrom("_characterTocombo")
@@ -99,21 +99,21 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .whereRef("_characterTocombo.A", "=", "character.id")
         .selectAll("combo")
         .select((subEb) => comboSubRelations(subEb, subEb.val(id))),
-    ).as("combos"),
+    ).$notNull().as("combos"),
     jsonObjectFrom(
       eb
         .selectFrom("pet")
         .whereRef("id", "=", "character.petId")
         .selectAll("pet")
         .select((subEb) => petSubRelations(subEb, subEb.val(id))),
-    ).as("pet"),
+    ).$notNull().as("pet"),
     jsonObjectFrom(
       eb
         .selectFrom("statistics")
         .whereRef("id", "=", "character.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
   ];
 }
 

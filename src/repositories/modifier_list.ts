@@ -15,7 +15,7 @@ export function modifierListSubRelations(eb:ExpressionBuilder<DB, "modifier_list
         .selectFrom("modifier")
         .whereRef("modifier.belongToModifierListId", "=", modifier_listId)
         .selectAll("modifier")
-    ).as("modifiers"),
+    ).$notNull().as("modifiers"),
   ];
 }
 

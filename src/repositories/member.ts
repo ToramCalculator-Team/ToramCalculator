@@ -16,7 +16,7 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
         .whereRef("id", "=", "member.characterId")
         .selectAll("character")
         .select((subEb) => characterSubRelations(subEb, subEb.val(id))),
-    ).as("character"),
+    ).$notNull().as("character"),
   ];
 }
 

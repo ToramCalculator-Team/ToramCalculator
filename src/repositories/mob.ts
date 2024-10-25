@@ -16,7 +16,7 @@ export function MobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
         .whereRef("id", "=", "mob.monsterId")
         .selectAll("monster")
         .select((subEb) => monsterSubRelations(subEb, subEb.val(id))),
-    ).as("monster"),
+    ).$notNull().as("monster"),
   ];
 }
 

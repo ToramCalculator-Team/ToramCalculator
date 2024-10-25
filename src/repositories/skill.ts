@@ -19,14 +19,14 @@ export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expres
         .whereRef("id", "=", "skill.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
     jsonArrayFrom(
       eb
         .selectFrom("skill_effect")
         .where("id", "=", "skill.imageId")
         .selectAll("skill_effect")
         .select((subEb) => skillEffectSubRelations(subEb, subEb.val(id))),
-    ).as("skillEffect"),
+    ).$notNull().as("skillEffect"),
   ];
 }
 

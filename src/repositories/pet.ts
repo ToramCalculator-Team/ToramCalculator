@@ -16,7 +16,7 @@ export function petSubRelations(eb: ExpressionBuilder<DB, "pet">, id: Expression
         .whereRef("id", "=", "pet.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).as("statistics"),
+    ).$notNull().as("statistics"),
   ];
 }
 

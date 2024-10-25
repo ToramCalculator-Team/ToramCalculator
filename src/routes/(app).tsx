@@ -4,6 +4,7 @@ import { store } from "~/store";
 import Setting from "~/components/module/setting-page";
 
 export default function AppMainContet(props: ParentProps) {
+
   return (
     <>
       <Motion.div
