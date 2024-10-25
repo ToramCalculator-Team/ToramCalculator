@@ -252,7 +252,7 @@ function isModifierList(obj: unknown, currentPath?: string[]): obj is ModifierLi
 }
 
 // 类型谓词函数，用于检查对象是否符合modifiers类型
-function isModifiers(obj: unknown, currentPath?: string[]): obj is modifiers {
+export function isModifiers(obj: unknown, currentPath?: string[]): obj is modifiers {
   // 检查对象是否为目标类型
   const isModifier = typeof obj === "object" && obj !== null && "baseValue" in obj && typeof obj.baseValue === "number";
   // console.log(
