@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { Monster } from "./repositories/monster";
-import { Crystal } from "./repositories/crystal";
-import { Skill } from "./repositories/skill";
-import { Character } from "./repositories/character";
-import { Analyzer } from "./repositories/analyzer";
+import { type Monster } from "./repositories/monster";
+import { type Crystal } from "./repositories/crystal";
+import { type Skill } from "./repositories/skill";
+import { type Character } from "./repositories/character";
+import { type Analyzer } from "./repositories/analyzer";
 import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
