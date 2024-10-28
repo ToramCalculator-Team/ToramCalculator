@@ -27,7 +27,6 @@ worker({
       const oldStore = JSON.parse(meta.storage);
       const newStore = meta.initialStore;
       if (oldStore.dbVersion && oldStore.dbVersion === newStore.dbVersion) {
-        console.log(`数据库版本未发生变化${newStore.dbVersion}`);
       } else {
         console.log(`数据库版本更新，将迁移数据库`);
         await pg.exec(ddl);

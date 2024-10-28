@@ -57,7 +57,7 @@ export class modifiers {
   relations?: modifiers[];
   update?: () => void;
   constructor(name: ModifierType | null, baseValue?: number) {
-    this.name = null;
+    this.name = name;
     this.baseValue = baseValue ?? 0;
     this.modifiers = {
       static: {
@@ -157,6 +157,9 @@ export const dynamicTotalValue = (m: modifiers): number => {
   const base = baseValue(m);
   const fixed = dynamicFixedValue(m);
   const percentage = dynamicPercentageValue(m);
+  if (m.name === ModifierType.MAGICAL_PIERCE || m.name === ModifierType.PHYSICAL_PIERCE) {
+    return floor(base * (1 + percentage / 100) + fixed - 100);
+  };
   return floor(base * (1 + percentage / 100) + fixed);
 };
 
@@ -831,10 +834,10 @@ export class CharacterData {
   pPie: modifiers;
   mPie: modifiers;
   pStab: modifiers;
-  nDis: modifiers;
-  fDis: modifiers;
-  crT: modifiers;
-  cdT: modifiers;
+  sDis: modifiers;
+  lDis: modifiers;
+  crC: modifiers;
+  cdC: modifiers;
   weaponPatkT: modifiers;
   weaponMatkT: modifiers;
   uAtk: modifiers;
@@ -873,28 +876,28 @@ export class CharacterData {
     // 计算基础值
     this.lv = config.lv;
     this.weaponMatkT = new modifiers(
-      ModifierType.DEFAULT,
+      ModifierType.WEAPON_MATK_CONVERSION_RATE,
       CharacterData.weaponAbiT[mainWeaponType].weaAtk_Matk_Convert,
     );
     this.weaponPatkT = new modifiers(
-      ModifierType.DEFAULT,
+      ModifierType.WEAPON_ATK_CONVERSION_RATE,
       CharacterData.weaponAbiT[mainWeaponType].weaAtk_Patk_Convert,
     );
     this.mainWeapon = {
       type: mainWeaponType,
-      baseAtk: new modifiers(ModifierType.DEFAULT, config.mainWeapon?.baseAtk ?? 0),
+      baseAtk: new modifiers(ModifierType.MAINWEAPON_BASE_VALUE, config.mainWeapon?.baseAtk ?? 0),
       refinement: config.mainWeapon?.refinement ?? 0,
       stability: config.mainWeapon?.stability ?? 0,
     };
     this.subWeapon = {
       type: subWeaponType,
-      baseAtk: new modifiers(ModifierType.DEFAULT, config.subWeapon?.baseAtk ?? 0),
+      baseAtk: new modifiers(ModifierType.SUBWEAPON_BASE_VALUE, config.subWeapon?.baseAtk ?? 0),
       refinement: config.subWeapon?.refinement ?? 0,
       stability: config.subWeapon?.stability ?? 0,
     };
     this.bodyArmor = {
       type: bodyArmorType,
-      baseDef: new modifiers(ModifierType.DEFAULT, config.bodyArmor?.baseDef ?? 0),
+      baseDef: new modifiers(ModifierType.BODYARMOR_BASE_VALUE, config.bodyArmor?.baseDef ?? 0),
       refinement: config.bodyArmor?.refinement ?? 0,
     };
     this.str = new modifiers(ModifierType.STR, config.baseStr ?? 0);
@@ -902,13 +905,13 @@ export class CharacterData {
     this.vit = new modifiers(ModifierType.VIT, config.baseVit ?? 0);
     this.agi = new modifiers(ModifierType.AGI, config.baseAgi ?? 0);
     this.dex = new modifiers(ModifierType.DEX, config.baseDex ?? 0);
-    this.luk = new modifiers(ModifierType.DEFAULT, config.specialAbiType === "LUK" ? (config.specialAbiValue ?? 0) : 0);
-    this.tec = new modifiers(ModifierType.DEFAULT, config.specialAbiType === "TEC" ? (config.specialAbiValue ?? 0) : 0);
-    this.men = new modifiers(ModifierType.DEFAULT, config.specialAbiType === "MEN" ? (config.specialAbiValue ?? 0) : 0);
-    this.cri = new modifiers(ModifierType.DEFAULT, config.specialAbiType === "CRI" ? (config.specialAbiValue ?? 0) : 0);
+    this.luk = new modifiers(ModifierType.LUK, config.specialAbiType === "LUK" ? (config.specialAbiValue ?? 0) : 0);
+    this.tec = new modifiers(ModifierType.TEC, config.specialAbiType === "TEC" ? (config.specialAbiValue ?? 0) : 0);
+    this.men = new modifiers(ModifierType.MEN, config.specialAbiType === "MEN" ? (config.specialAbiValue ?? 0) : 0);
+    this.cri = new modifiers(ModifierType.CRI, config.specialAbiType === "CRI" ? (config.specialAbiValue ?? 0) : 0);
 
     // 二级属性
-    this.mainWeaponAtk = new modifiers(ModifierType.DEFAULT);
+    this.mainWeaponAtk = new modifiers(ModifierType.MAINWEAPON_ATK);
     this.mainWeaponAtk.modifiers.static.fixed[0] = {
       value: this.mainWeapon.refinement,
       origin: "mainWeapon.refinement",
@@ -922,19 +925,19 @@ export class CharacterData {
     };
     this.mainWeaponAtk.update();
 
-    this.subWeaponAtk = new modifiers(ModifierType.DEFAULT);
+    this.subWeaponAtk = new modifiers(ModifierType.SUBWEAPON_ATK);
     this.subWeaponAtk.update = () => {
       this.subWeaponAtk.baseValue = dynamicTotalValue(this.subWeapon.baseAtk);
     };
     this.subWeaponAtk.update();
 
-    this.weaponAtk = new modifiers(ModifierType.DEFAULT);
+    this.weaponAtk = new modifiers(ModifierType.WEAPON_ATK);
     this.weaponAtk.update = () => {
       this.weaponAtk.baseValue = dynamicTotalValue(this.mainWeaponAtk) + dynamicTotalValue(this.subWeaponAtk);
     };
     this.weaponAtk.update();
 
-    this.pAtk = new modifiers(ModifierType.DEFAULT);
+    this.pAtk = new modifiers(ModifierType.PHYSICAL_ATK);
     this.pAtk.update = () => {
       this.pAtk.baseValue =
         this.lv +
@@ -946,7 +949,7 @@ export class CharacterData {
     };
     this.pAtk.update();
 
-    this.mAtk = new modifiers(ModifierType.DEFAULT);
+    this.mAtk = new modifiers(ModifierType.MAGICAL_ATK);
     this.mAtk.update = () => {
       this.mAtk.baseValue =
         this.lv +
@@ -974,7 +977,7 @@ export class CharacterData {
     };
     this.mAtk.update();
 
-    this.aspd = new modifiers(ModifierType.DEFAULT);
+    this.aspd = new modifiers(ModifierType.ASPD);
     this.aspd.update = () => {
       this.aspd.baseValue =
         CharacterData.weaponAbiT[mainWeaponType].baseAspd +
@@ -986,20 +989,20 @@ export class CharacterData {
     };
     this.aspd.update();
 
-    this.cspd = new modifiers(ModifierType.DEFAULT);
+    this.cspd = new modifiers(ModifierType.CSPD);
     this.cspd.update = () => {
       this.cspd.baseValue = this.lv + dynamicTotalValue(this.dex) * 2.94 + dynamicTotalValue(this.agi) * 1.16;
       // console.log(`=======基础咏唱速度= 等级:${this.lv} + 灵巧:${dynamicTotalValue(this.dex)} *2.94 + 敏捷:${dynamicTotalValue(this.agi)} * 1.16 = ${this.cspd.baseValue}`);
     };
     this.cspd.update();
 
-    this.pCr = new modifiers(ModifierType.DEFAULT);
+    this.pCr = new modifiers(ModifierType.PHYSICAL_CRITICAL_RATE);
     this.pCr.update = () => {
       this.pCr.baseValue = 25 + dynamicTotalValue(this.cri) / 5;
     };
     this.pCr.update();
 
-    this.pCd = new modifiers(ModifierType.DEFAULT);
+    this.pCd = new modifiers(ModifierType.PHYSICAL_CRITICAL_DAMAGE);
     this.pCd.update = () => {
       this.pCd.baseValue =
         150 +
@@ -1009,7 +1012,7 @@ export class CharacterData {
     };
     this.pCd.update();
 
-    this.pStab = new modifiers(ModifierType.DEFAULT, 0);
+    this.pStab = new modifiers(ModifierType.PHYSICAL_STABILITY, 0);
     this.pStab.modifiers.static.fixed[0] = {
       value: config.mainWeapon?.stability ?? 0,
       origin: "mainWeapon.stability",
@@ -1033,42 +1036,42 @@ export class CharacterData {
     };
     this.pStab.update();
 
-    this.maxHp = new modifiers(ModifierType.DEFAULT);
+    this.maxHp = new modifiers(ModifierType.MAX_HP);
     this.maxHp.update = () => {
       this.maxHp.baseValue = Math.floor(93 + this.lv * (127 / 17 + dynamicTotalValue(this.vit) / 3));
     };
     this.maxHp.update();
 
-    this.maxMp = new modifiers(ModifierType.DEFAULT);
+    this.maxMp = new modifiers(ModifierType.MAX_MP);
     this.maxMp.update = () => {
       this.maxMp.baseValue = Math.floor(99 + this.lv + dynamicTotalValue(this.int) / 10 + dynamicTotalValue(this.tec));
     };
     this.maxMp.update();
 
     // 系统属性
-    this.aggro = new modifiers(ModifierType.DEFAULT, 100);
+    this.aggro = new modifiers(ModifierType.AGGRO, 100);
     this.pPie = new modifiers(ModifierType.PHYSICAL_PIERCE, 0);
     this.mPie = new modifiers(ModifierType.MAGICAL_PIERCE, 0);
-    this.nDis = new modifiers(ModifierType.DEFAULT, 100);
-    this.fDis = new modifiers(ModifierType.DEFAULT, 100);
-    this.crT = new modifiers(ModifierType.DEFAULT, 0);
-    this.cdT = new modifiers(ModifierType.DEFAULT, 50);
+    this.sDis = new modifiers(ModifierType.SHORT_RANGE_DAMAGE, 100);
+    this.lDis = new modifiers(ModifierType.LONG_RANGE_DAMAGE, 100);
+    this.crC = new modifiers(ModifierType.MAGICAL_CRITICAL_RATE, 0);
+    this.cdC = new modifiers(ModifierType.MAGICAL_CRT_DAMAGE_CONVERSION_RATE, 50);
     this.stro = {
-      WATER: new modifiers(ModifierType.DEFAULT, 100),
-      FIRE: new modifiers(ModifierType.DEFAULT, 100),
-      EARTH: new modifiers(ModifierType.DEFAULT, 100),
-      WIND: new modifiers(ModifierType.DEFAULT, 100),
-      LIGHT: new modifiers(ModifierType.DEFAULT, 100),
-      DARK: new modifiers(ModifierType.DEFAULT, 100),
-      NO_ELEMENT: new modifiers(ModifierType.DEFAULT, 100),
+      WATER: new modifiers(ModifierType.STRONGER_AGAINST_WATER, 100),
+      FIRE: new modifiers(ModifierType.STRONGER_AGAINST_FIRE, 100),
+      EARTH: new modifiers(ModifierType.STRONGER_AGAINST_EARTH, 100),
+      WIND: new modifiers(ModifierType.STRONGER_AGAINST_WIND, 100),
+      LIGHT: new modifiers(ModifierType.STRONGER_AGAINST_LIGHT, 100),
+      DARK: new modifiers(ModifierType.STRONGER_AGAINST_DARK, 100),
+      NO_ELEMENT: new modifiers(ModifierType.STRONGER_AGAINST_NETURAL, 100),
     };
-    this.uAtk = new modifiers(ModifierType.DEFAULT, 100);
-    this.total = new modifiers(ModifierType.DEFAULT, 100);
-    this.final = new modifiers(ModifierType.DEFAULT, 100);
-    this.anticipate = new modifiers(ModifierType.DEFAULT, 0);
+    this.uAtk = new modifiers(ModifierType.UNSHEATHE_ATK, 100);
+    this.total = new modifiers(ModifierType.TOTAL_DAMAGE, 100);
+    this.final = new modifiers(ModifierType.FINAL_DAMAGE, 100);
+    this.anticipate = new modifiers(ModifierType.ANTICIPATE, 0);
 
     // 三级属性
-    this.am = new modifiers(ModifierType.DEFAULT, 0);
+    this.am = new modifiers(ModifierType.MSRD, 0);
     this.am.update = () => {
       this.am.modifiers.static.fixed[0] = {
         value: max(0, floor((dynamicTotalValue(this.aspd) - 1000) / 180)),
@@ -1077,7 +1080,7 @@ export class CharacterData {
     };
     this.am.update();
 
-    this.cm = new modifiers(ModifierType.DEFAULT, 0);
+    this.cm = new modifiers(ModifierType.CSRD, 0);
     this.cm.update = () => {
       this.cm.modifiers.static.fixed[0] = {
         value: min(50 + floor((dynamicTotalValue(this.cspd) - 1000) / 180), floor(dynamicTotalValue(this.cspd) / 20)),
@@ -1086,20 +1089,20 @@ export class CharacterData {
     };
     this.cm.update();
 
-    this.ampr = new modifiers(ModifierType.DEFAULT);
+    this.ampr = new modifiers(ModifierType.MP_ATK_REGEN);
     this.ampr.update = () => {
       this.ampr.baseValue = 10 + dynamicTotalValue(this.maxMp) / 100;
     };
     this.ampr.update();
 
     // 状态记录
-    this.hp = new modifiers(ModifierType.DEFAULT);
+    this.hp = new modifiers(ModifierType.HP);
     this.hp.update = () => {
       this.hp.baseValue = dynamicTotalValue(this.maxHp);
     };
     this.hp.update();
 
-    this.mp = new modifiers(ModifierType.DEFAULT);
+    this.mp = new modifiers(ModifierType.MP);
     this.mp.update = () => {
       this.mp.baseValue = dynamicTotalValue(this.maxMp);
     };
@@ -1136,10 +1139,10 @@ export class CharacterData {
     this.pPie.relations = [];
     this.mPie.relations = [];
     this.pStab.relations = [];
-    this.nDis.relations = [];
-    this.fDis.relations = [];
-    this.crT.relations = [];
-    this.cdT.relations = [];
+    this.sDis.relations = [];
+    this.lDis.relations = [];
+    this.crC.relations = [];
+    this.cdC.relations = [];
     this.uAtk.relations = [];
     this.total.relations = [];
     this.final.relations = [];
