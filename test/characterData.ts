@@ -1,6 +1,181 @@
 import { $Enums } from "@prisma/client";
-import { Character } from "~/repositories/character";
-import { ModifierType } from "~/repositories/enums";
+import { type Character } from "~/repositories/character";
+
+export enum CharacterAttrEnum {
+  LV, // 等级
+  // 能力值
+  STR, // 力量
+  INT, // 智力
+  VIT, // 耐力
+  AGI, // 敏捷
+  DEX, // 灵巧
+  LUK, // 幸运
+  TEC, // 技巧
+  MEN, // 异抗
+  CRI, // 暴击
+  // 基础属性
+  MAX_MP, // 最大MP
+  MP, // MP
+  AGGRO, // 仇恨值
+  WEAPON_RANGE, // 武器射程
+  HP_REGEN, // HP自然回复
+  MP_REGEN, // MP自然回复
+  MP_ATK_REGEN, // MP攻击回复
+  // 单次伤害增幅
+  PHYSICAL_ATK, // 物理攻击
+  MAGICAL_ATK, // 魔法攻击
+  WEAPON_ATK, // 武器攻击
+  UNSHEATHE_ATK, // 拔刀攻击
+  PHYSICAL_PIERCE, // 物理贯穿
+  MAGICAL_PIERCE, // 魔法贯穿
+  PHYSICAL_CRITICAL_RATE, // 暴击率
+  PHYSICAL_CRITICAL_DAMAGE, // 暴击伤害
+  MAGICAL_CRT_CONVERSION_RATE, // 魔法暴击转化率
+  MAGICAL_CRT_DAMAGE_CONVERSION_RATE, // 魔法爆伤转化率
+  MAGICAL_CRITICAL_RATE, // 魔法暴击率
+  MAGICAL_CRITICAL_DAMAGE, // 魔法暴击伤害
+  SHORT_RANGE_DAMAGE, // 近距离威力
+  LONG_RANGE_DAMAGE, // 远距离威力
+  STRONGER_AGAINST_NETURAL, // 对无属性增强
+  STRONGER_AGAINST_LIGHT, // 对光属性增强
+  STRONGER_AGAINST_DARK, // 对暗属性增强
+  STRONGER_AGAINST_WATER, // 对水属性增强
+  STRONGER_AGAINST_FIRE, // 对火属性增强
+  STRONGER_AGAINST_EARTH, // 对地属性增强
+  STRONGER_AGAINST_WIND, // 对风属性增强
+  TOTAL_DAMAGE, // 总伤害
+  FINAL_DAMAGE, // 最终伤害
+  PHYSICAL_STABILITY, // 稳定率
+  MAGIC_STABILITY, // 魔法稳定率
+  ACCURACY, // 命中
+  ADDITIONAL_PHYSICS, // 物理追击
+  ADDITIONAL_MAGIC, // 魔法追击
+  ANTICIPATE, // 看穿
+  GUARD_BREAK, // 破防
+  REFLECT, // 反弹伤害
+  ABSOLUTA_ACCURACY, // 绝对命中
+  ATK_UP_STR, // 物理攻击提升（力量）
+  ATK_UP_INT, // 物理攻击提升（智力）
+  ATK_UP_VIT, // 物理攻击提升（耐力）
+  ATK_UP_AGI, // 物理攻击提升（敏捷）
+  ATK_UP_DEX, // 物理攻击提升（灵巧）
+  MATK_UP_STR, // 魔法攻击提升（力量）
+  MATK_UP_INT, // 魔法攻击提升（智力）
+  MATK_UP_VIT, // 魔法攻击提升（耐力）
+  MATK_UP_AGI, // 魔法攻击提升（敏捷）
+  MATK_UP_DEX, // 魔法攻击提升（灵巧）
+  ATK_DOWN_STR, // 物理攻击下降（力量）
+  ATK_DOWN_INT, // 物理攻击下降（智力）
+  ATK_DOWN_VIT, // 物理攻击下降（耐力）
+  ATK_DOWN_AGI, // 物理攻击下降（敏捷）
+  ATK_DOWN_DEX, // 物理攻击下降（灵巧）
+  MATK_DOWN_STR, // 魔法攻击下降（力量）
+  MATK_DOWN_INT, // 魔法攻击下降（智力）
+  MATK_DOWN_VIT, // 魔法攻击下降（耐力）
+  MATK_DOWN_AGI, // 魔法攻击下降（敏捷）
+  MATK_DOWN_DEX, // 魔法攻击下降（灵巧）
+  // 生存能力加成
+  MAX_HP, // 最大HP
+  HP, // 当前HP
+  BODYARMOR_DEF, // 身体装备防御
+  PHYSICAL_DEF, // 物理防御
+  MAGICAL_DEF, // 魔法防御
+  PHYSICAL_RESISTANCE, // 物理抗性
+  MAGICAL_RESISTANCE, // 魔法抗性
+  NEUTRAL_RESISTANCE, // 无属性抗性
+  LIGHT_RESISTANCE, // 光属性抗性
+  DARK_RESISTANCE, // 暗属性抗性
+  WATER_RESISTANCE, // 水属性抗性
+  FIRE_RESISTANCE, // 火属性抗性
+  EARTH_RESISTANCE, // 地属性抗性
+  WIND_RESISTANCE, // 风属性抗性
+  DODGE, // 回避
+  AILMENT_RESISTANCE, // 异常抗性
+  GUARD_POWER, // 格挡力
+  GUARD_RECHANGE, // 格挡回复
+  EVASION_RECHARGE, // 闪躲回复
+  PHYSICAL_BARRIER, // 物理屏障
+  MAGICAL_BARRIER, // 魔法屏障
+  FRACTIONAL_BARRIER, // 百分比瓶屏障
+  BARRIER_COOLDOWN, // 屏障回复速度
+  REDUCE_DMG_FLOOR, // 地面伤害减轻（地刺）
+  REDUCE_DMG_METEOR, // 陨石伤害减轻（天火）
+  REDUCE_DMG_PLAYER_EPICENTER, // 范围伤害减轻（以玩家为中心的范围伤害）
+  REDUCE_DMG_FOE_EPICENTER, // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
+  REDUCE_DMG_BOWLING, // 贴地伤害减轻（剑气、风刃）
+  REDUCE_DMG_BULLET, // 子弹伤害减轻（各种球）
+  REDUCE_DMG_STRAIGHT_LINE, // 直线伤害减轻（激光）
+  REDUCE_DMG_CHARGE, // 冲撞伤害减轻（怪物的位移技能）
+  ABSOLUTE_DODGE, // 绝对回避
+  // 速度加成
+  ASPD, // 攻击速度
+  MSPD, // 行动速度
+  MSRD, // 动作缩减
+  CSPD, // 咏唱速度
+  CSRD, // 咏唱缩减
+  // 其他加成
+  DROP_RATE, // 掉宝率
+  REVIVE_TIME, // 复活时间
+  FLINCH_UNAVAILABLE, // 封印胆怯
+  TUMBLE_UNAVAILABLE, // 封印翻覆
+  STUN_UNAVAILABLE, // 封印昏厥
+  INVINCIBLE_AID, // 无敌急救
+  EXP_RATE, // 经验加成
+  PET_EXP, // 宠物经验
+  ITEM_COOLDOWN, // 道具冷却
+  RECOIL_DAMAGE, // 反作用伤害
+  GEM_POWDER_DROP, // 晶石粉末掉落
+  // 中间数值
+  WEAPON_MATK_CONVERSION_RATE, // 主武器魔法攻击转换率
+  WEAPON_ATK_CONVERSION_RATE, // 主武器物理攻击转换率
+  MAINWEAPON_BASE_VALUE, // 主武器基础值
+  MAINWEAPON_ATK, // 主武器攻击
+  SUBWEAPON_BASE_VALUE, // 副武器基础值
+  SUBWEAPON_ATK, // 副武器攻击
+  BODYARMOR_BASE_VALUE, // 防具基础值
+}
+
+export type CharacterAttrType = keyof typeof CharacterAttrEnum;
+
+export enum MonsterAttrEnum {
+  default,
+  physicalAtk, // 物理攻击
+  magicalAtk, // 魔法攻击
+  criticalRate, // 暴击率
+  criticalDamage, // 暴击伤害
+  stability, // 稳定率
+  accuracy, // 命中
+  maxHp, // 最大HP
+  physicalDef, // 物理防御
+  magicalDef, // 魔法防御
+  physicalResistance, // 物理抗性
+  magicalResistance, // 魔法抗性
+  neutralResistance, // 无属性抗性
+  lightResistance, // 光属性抗性
+  darkResistance, // 暗属性抗性
+  waterResistance, // 水属性抗性
+  fireResistance, // 火属性抗性
+  earthResistance, // 地属性抗性
+  windResistance, // 风属性抗性
+  dodge, // 回避
+  ailmentResistance, // 异常抗性
+  baseGuardPower, // 基础格挡力
+  guardPower, // 格挡力
+  baseGuardRecharge, // 基础格挡回复
+  guardRechange, // 格挡回复
+  evasionRecharge, // 闪躲回复
+  aspd, // 攻击速度
+  cspd, // 咏唱速度
+  mspd, // 行动速度
+}
+
+export type MonsterAttrType = keyof typeof MonsterAttrEnum;
+
+export enum SkillAttrEnum {}
+
+export type SkillModifierType = keyof typeof SkillAttrEnum;
+
+export type AttrType = CharacterAttrType | MonsterAttrType | SkillModifierType;
 
 const weaponAbiT: Record<
   $Enums.MainWeaponType,
@@ -11,7 +186,7 @@ const weaponAbiT: Record<
     weaAtk_Patk_Convert: number;
     abi_Attr_Convert: Record<
       "str" | "int" | "agi" | "dex",
-      { pAtkT: number; mAtkT: number; aspdT: number; stabT: number }
+      { pAtkC: number; mAtkC: number; aspdC: number; pStabC: number }
     >;
   }
 > = {
@@ -20,28 +195,28 @@ const weaponAbiT: Record<
     baseAspd: 100,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 2,
-        stabT: 0.025,
-        aspdT: 0.2,
-        mAtkT: 0,
+        pAtkC: 2,
+        pStabC: 0.025,
+        aspdC: 0.2,
+        mAtkC: 0,
       },
       int: {
-        mAtkT: 3,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 3,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 4.2,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 4.2,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 2,
-        stabT: 0.075,
-        mAtkT: 0,
-        aspdT: 0,
+        pAtkC: 2,
+        pStabC: 0.075,
+        mAtkC: 0,
+        aspdC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -52,28 +227,28 @@ const weaponAbiT: Record<
     baseAspd: 200,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 1.5,
-        stabT: 0.075,
-        aspdT: 0.3,
-        mAtkT: 0,
+        pAtkC: 1.5,
+        pStabC: 0.075,
+        aspdC: 0.3,
+        mAtkC: 0,
       },
       int: {
-        mAtkT: 1.5,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 1.5,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 3.9,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 3.9,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 2.5,
-        stabT: 0.025,
-        mAtkT: 0,
-        aspdT: 0,
+        pAtkC: 2.5,
+        pStabC: 0.025,
+        mAtkC: 0,
+        aspdC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -84,28 +259,28 @@ const weaponAbiT: Record<
     baseAspd: 50,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 3,
-        aspdT: 0.2,
-        mAtkT: 0,
-        stabT: 0,
+        pAtkC: 3,
+        aspdC: 0.2,
+        mAtkC: 0,
+        pStabC: 0,
       },
       int: {
-        mAtkT: 3,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 3,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 2.2,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 2.2,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 1,
-        stabT: 0.1,
-        mAtkT: 0,
-        aspdT: 0,
+        pAtkC: 1,
+        pStabC: 0.1,
+        mAtkC: 0,
+        aspdC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -116,28 +291,28 @@ const weaponAbiT: Record<
     baseAspd: 75,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 1,
-        stabT: 0.05,
-        mAtkT: 0,
-        aspdT: 0,
+        pAtkC: 1,
+        pStabC: 0.05,
+        mAtkC: 0,
+        aspdC: 0,
       },
       int: {
-        mAtkT: 3,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 3,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 3.1,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 3.1,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 3,
-        stabT: 0.05,
-        aspdT: 0.2,
-        mAtkT: 0,
+        pAtkC: 3,
+        pStabC: 0.05,
+        aspdC: 0.2,
+        mAtkC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -148,28 +323,28 @@ const weaponAbiT: Record<
     baseAspd: 100,
     abi_Attr_Convert: {
       str: {
-        stabT: 0.05,
-        pAtkT: 0,
-        mAtkT: 0,
-        aspdT: 0,
+        pStabC: 0.05,
+        pAtkC: 0,
+        mAtkC: 0,
+        aspdC: 0,
       },
       int: {
-        mAtkT: 3,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 3,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 2.2,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 2.2,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 4,
-        aspdT: 0.2,
-        mAtkT: 0,
-        stabT: 0,
+        pAtkC: 4,
+        aspdC: 0.2,
+        mAtkC: 0,
+        pStabC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -180,28 +355,28 @@ const weaponAbiT: Record<
     baseAspd: 60,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 3,
-        stabT: 0.05,
-        mAtkT: 0,
-        aspdT: 0,
+        pAtkC: 3,
+        pStabC: 0.05,
+        mAtkC: 0,
+        aspdC: 0,
       },
       int: {
-        mAtkT: 4,
-        pAtkT: 1,
-        aspdT: 0.2,
-        stabT: 0,
+        mAtkC: 4,
+        pAtkC: 1,
+        aspdC: 0.2,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 1.8,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 1.8,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        aspdT: 0.2,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 0.2,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
     },
     weaAtk_Matk_Convert: 1,
@@ -212,28 +387,28 @@ const weaponAbiT: Record<
     baseAspd: 90,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 0,
-        mAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        pAtkC: 0,
+        mAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       int: {
-        mAtkT: 4,
-        pAtkT: 2,
-        aspdT: 0.2,
-        stabT: 0,
+        mAtkC: 4,
+        pAtkC: 2,
+        aspdC: 0.2,
+        pStabC: 0,
       },
       agi: {
-        pAtkT: 2,
-        aspdT: 4,
-        mAtkT: 0,
-        stabT: 0,
+        pAtkC: 2,
+        aspdC: 4,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        stabT: 0.1,
-        pAtkT: 0,
-        mAtkT: 1,
-        aspdT: 0,
+        pStabC: 0.1,
+        pAtkC: 0,
+        mAtkC: 1,
+        aspdC: 0,
       },
     },
     weaAtk_Matk_Convert: 1,
@@ -244,28 +419,28 @@ const weaponAbiT: Record<
     baseAspd: 120,
     abi_Attr_Convert: {
       str: {
-        aspdT: 0.1,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 0.1,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       int: {
-        mAtkT: 4,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 4,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        pAtkT: 2,
-        aspdT: 4.6,
-        mAtkT: 0,
-        stabT: 0,
+        pAtkC: 2,
+        aspdC: 4.6,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 0.5,
-        stabT: 0.025,
-        mAtkT: 0,
-        aspdT: 0.1,
+        pAtkC: 0.5,
+        pStabC: 0.025,
+        mAtkC: 0,
+        aspdC: 0.1,
       },
     },
     weaAtk_Matk_Convert: 0.5,
@@ -276,28 +451,28 @@ const weaponAbiT: Record<
     baseAspd: 20,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 2.5,
-        stabT: 0.05,
-        aspdT: 0.2,
-        mAtkT: 0,
+        pAtkC: 2.5,
+        pStabC: 0.05,
+        aspdC: 0.2,
+        mAtkC: 0,
       },
       int: {
-        mAtkT: 2,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 2,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 3.5,
-        pAtkT: 1.5,
-        mAtkT: 1,
-        stabT: 0,
+        aspdC: 3.5,
+        pAtkC: 1.5,
+        mAtkC: 1,
+        pStabC: 0,
       },
       dex: {
-        stabT: 0.05,
-        pAtkT: 0,
-        mAtkT: 0,
-        aspdT: 0,
+        pStabC: 0.05,
+        pAtkC: 0,
+        mAtkC: 0,
+        aspdC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -308,28 +483,28 @@ const weaponAbiT: Record<
     baseAspd: 1000,
     abi_Attr_Convert: {
       str: {
-        pAtkT: 1,
-        mAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        pAtkC: 1,
+        mAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       int: {
-        mAtkT: 3,
-        pAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        mAtkC: 3,
+        pAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
       agi: {
-        aspdT: 9.6,
-        pAtkT: 0,
-        mAtkT: 0,
-        stabT: 0,
+        aspdC: 9.6,
+        pAtkC: 0,
+        mAtkC: 0,
+        pStabC: 0,
       },
       dex: {
-        pAtkT: 0,
-        mAtkT: 0,
-        aspdT: 0,
-        stabT: 0,
+        pAtkC: 0,
+        mAtkC: 0,
+        aspdC: 0,
+        pStabC: 0,
       },
     },
     weaAtk_Matk_Convert: 0,
@@ -351,90 +526,483 @@ const enum OriginType {
   dynamicPercentage,
 }
 
-// const characterData = (character: Character) => {
-//   return {
-//     [ModifierType.STR]: {
-//       type: ValueType.user,
-//       baseValue: character.baseStr,
-//       modifiers: {},
-//       relation: [
-//         {
-//           name: ModifierType.PHYSICAL_ATK,
-//           rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkT,
-//           originType: OriginType.baseValue,
-//         },
-//         {
-//           name: ModifierType.PHYSICAL_STABILITY,
-//           rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.stabT,
-//           originType: OriginType.baseValue,
-//         },
-//       ],
-//     },
-//   };
-// };
+interface ModifiersData {
+  static: {
+    fixed: {
+      value: number;
+      origin: string;
+    }[];
+    percentage: {
+      value: number;
+      origin: string;
+    }[];
+  };
+  dynamic: {
+    fixed: {
+      value: number;
+      origin: string;
+    }[];
+    percentage: {
+      value: number;
+      origin: string;
+    }[];
+  };
+}
+
+interface AttrData {
+  name: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum;
+  baseValue:
+    | number
+    | {
+        value: number;
+        sourceName: AttrType;
+        source: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum;
+      }[];
+  modifiers: ModifiersData;
+}
+
+interface CharacterAttrData extends AttrData {
+  type: ValueType;
+  name: CharacterAttrEnum;
+  baseValue:
+    | number
+    | {
+        value: number;
+        sourceName: CharacterAttrType;
+        source: CharacterAttrEnum;
+      }[];
+  relation: {
+    name: CharacterAttrType;
+    rate: number;
+    originType: OriginType;
+  }[];
+}
+
+const DefaultModifiersData: ModifiersData = {
+  static: {
+    fixed: [],
+    percentage: [],
+  },
+  dynamic: {
+    fixed: [],
+    percentage: [],
+  },
+};
+
+// 参数统计方法
+export const baseValue = (m: AttrData | undefined): number => {
+  if (!m) throw new Error("传入的属性无法计算");
+  if (m.name === CharacterAttrEnum.MAGICAL_PIERCE || m.name === CharacterAttrEnum.PHYSICAL_PIERCE) return 100;
+  if (typeof m.baseValue === "number") return m.baseValue;
+  let sum = 0;
+  for (let i = 0; i < m.baseValue.length; i++) {
+    sum += m.baseValue[i].value;
+  }
+  return sum;
+};
+export const staticFixedValue = (m: AttrData): number => {
+  const fixedArray = m.modifiers.static.fixed.map((mod) => mod.value);
+  return fixedArray.reduce((a, b) => a + b, 0);
+};
+export const dynamicFixedValue = (m: AttrData): number => {
+  let value = 0;
+  if (m.modifiers.dynamic?.fixed) {
+    const fixedArray = m.modifiers.dynamic.fixed.map((mod) => mod.value);
+    value = fixedArray.reduce((a, b) => a + b, 0) + staticFixedValue(m);
+  }
+  return value;
+};
+export const staticPercentageValue = (m: AttrData): number => {
+  const percentageArray = m.modifiers.static.percentage.map((mod) => mod.value);
+  return percentageArray.reduce((a, b) => a + b, 0);
+};
+export const dynamicPercentageValue = (m: AttrData): number => {
+  let value = 0;
+  if (m.modifiers.dynamic?.percentage) {
+    const percentageArray = m.modifiers.dynamic.percentage.map((mod) => mod.value);
+    value = percentageArray.reduce((a, b) => a + b, 0) + staticPercentageValue(m);
+  }
+  return value;
+};
+export const staticTotalValue = (m: AttrData): number => {
+  const base = baseValue(m);
+  const fixed = staticFixedValue(m);
+  const percentage = staticPercentageValue(m);
+  return base * (1 + percentage / 100) + fixed;
+};
+export const dynamicTotalValue = (m: AttrData | undefined): number => {
+  if (!m) throw new Error("传入的属性无法计算");
+  const base = baseValue(m);
+  const fixed = dynamicFixedValue(m);
+  const percentage = dynamicPercentageValue(m);
+  if (m.name === CharacterAttrEnum.MAGICAL_PIERCE || m.name === CharacterAttrEnum.PHYSICAL_PIERCE) {
+    return Math.floor(base * (1 + percentage / 100) + fixed - 100);
+  }
+  return Math.floor(base * (1 + percentage / 100) + fixed);
+};
 
 const characterData = (character: Character) => {
-  const characterMap = new Map<
-    ModifierType,
-    {
-      type: ValueType;
-      baseValue: number;
-      modifiers: {};
-      relation: {
-        name: ModifierType;
-        rate: number;
-        originType: OriginType;
-      }[];
-    }
-  >();
-  characterMap.set(ModifierType.STR, {
+  const characterMap = new Map<CharacterAttrEnum, CharacterAttrData>();
+  const d = (m: CharacterAttrEnum) => dynamicTotalValue(characterMap.get(m));
+  const b = (m: CharacterAttrEnum) => baseValue(characterMap.get(m));
+
+  //
+  characterMap.set(CharacterAttrEnum.MAINWEAPON_ATK, {
     type: ValueType.user,
-    baseValue: character.baseStr,
-    modifiers: {},
+    name: CharacterAttrEnum.MAINWEAPON_ATK,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
     relation: [
       {
-        name: ModifierType.PHYSICAL_ATK,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkT,
-        originType: OriginType.baseValue,
-      },
-      {
-        name: ModifierType.MAGICAL_ATK,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkT,
-        originType: OriginType.baseValue,
-      },
-      {
-        name: ModifierType.PHYSICAL_STABILITY,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.stabT,
-        originType: OriginType.baseValue,
-      },
-      {
-        name: ModifierType.ASPD,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdT,
-        originType: OriginType.baseValue,
-      },
-      {
-        name: ModifierType.PHYSICAL_CRITICAL_DAMAGE,
-        rate: (characterMap.get(ModifierType.STR) ?? 1) > (characterMap.get(ModifierType.AGI) ?? 1) ? 0.2 : 0,
+        name: "WEAPON_ATK",
+        rate: 1,
         originType: OriginType.baseValue,
       },
     ],
   });
-  characterMap.set(ModifierType.INT, {
+  characterMap.set(CharacterAttrEnum.SUBWEAPON_ATK, {
     type: ValueType.user,
-    baseValue: character.baseStr,
-    modifiers: {},
+    name: CharacterAttrEnum.SUBWEAPON_ATK,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
     relation: [
       {
-        name: ModifierType.PHYSICAL_ATK,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkT,
-        originType: OriginType.baseValue,
-      },
-      {
-        name: ModifierType.PHYSICAL_STABILITY,
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.stabT,
+        name: "WEAPON_ATK",
+        rate: 1,
         originType: OriginType.baseValue,
       },
     ],
   });
+  characterMap.set(CharacterAttrEnum.WEAPON_ATK, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.WEAPON_ATK,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Patk_Convert,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.BODYARMOR_DEF, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.BODYARMOR_DEF,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_DEF",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_DEF",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.ASPD, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.ASPD,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "MSPD",
+        rate: b(CharacterAttrEnum.ASPD) >= 1000 ? 1 / 180 : 0,
+        originType: OriginType.staticConstant,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.MSPD, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.MSPD,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.CSPD, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.CSPD,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+
+  // 基础属性
+  characterMap.set(CharacterAttrEnum.LV, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.LV,
+    baseValue: character.lv,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_ATK",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ASPD",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "CSPD",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "HP",
+        rate: 127 / 17,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MP",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ACCURACY",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "DODGE",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.STR, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.STR,
+    baseValue: character.baseStr,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_STABILITY",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ASPD",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_CRITICAL_DAMAGE",
+        rate: d(CharacterAttrEnum.STR) >= d(CharacterAttrEnum.AGI) ? 0.2 : 0,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.INT, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.INT,
+    baseValue: character.baseInt,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "MP",
+        rate: 0.1,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ASPD",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_STABILITY",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.VIT, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.VIT,
+    baseValue: character.baseVit,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "HP",
+        rate: d(CharacterAttrEnum.LV) / 3,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.AGI, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.AGI,
+    baseValue: character.baseAgi,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ASPD",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_STABILITY",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "CSPD",
+        rate: 1.16,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_CRITICAL_DAMAGE",
+        rate: d(CharacterAttrEnum.AGI) > d(CharacterAttrEnum.STR) ? 0.1 : 0,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.DEX, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.DEX,
+    baseValue: character.baseDex,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "PHYSICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "MAGICAL_ATK",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "ASPD",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "PHYSICAL_STABILITY",
+        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
+        originType: OriginType.baseValue,
+      },
+      {
+        name: "CSPD",
+        rate: 2.94,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.LUK, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.LUK,
+    baseValue: character.specialAbiType === "LUK" ? character.specialAbiValue : 0,
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.TEC, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.TEC,
+    baseValue: character.specialAbiType === "TEC" ? character.specialAbiValue : 0,
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.MEN, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.MEN,
+    baseValue: character.specialAbiType === "MEN" ? character.specialAbiValue : 0,
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.CRI, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.CRI,
+    baseValue: character.specialAbiType === "CRI" ? character.specialAbiValue : 0,
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.MAINWEAPON_BASE_VALUE, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.MAINWEAPON_BASE_VALUE,
+    baseValue: character.mainWeapon.baseAtk,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "MAINWEAPON_ATK",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.SUBWEAPON_BASE_VALUE, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.SUBWEAPON_BASE_VALUE,
+    baseValue: character.subWeapon.baseAtk,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "SUBWEAPON_ATK",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.BODYARMOR_BASE_VALUE, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.BODYARMOR_BASE_VALUE,
+    baseValue: character.bodyArmor.baseDef,
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "BODYARMOR_DEF",
+        rate: 1,
+        originType: OriginType.baseValue,
+      },
+    ],
+  });
+
   return characterMap;
 };
