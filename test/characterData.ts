@@ -1,5 +1,6 @@
 import { $Enums } from "@prisma/client";
 import { type Character } from "~/repositories/character";
+import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 
 export enum CharacterAttrEnum {
   LV, // 等级
@@ -134,9 +135,7 @@ export enum CharacterAttrEnum {
   SUBWEAPON_ATK, // 副武器攻击
   BODYARMOR_BASE_VALUE, // 防具基础值
 }
-
 export type CharacterAttrType = keyof typeof CharacterAttrEnum;
-
 export enum MonsterAttrEnum {
   default,
   physicalAtk, // 物理攻击
@@ -168,14 +167,11 @@ export enum MonsterAttrEnum {
   cspd, // 咏唱速度
   mspd, // 行动速度
 }
-
 export type MonsterAttrType = keyof typeof MonsterAttrEnum;
-
 export enum SkillAttrEnum {}
-
 export type SkillModifierType = keyof typeof SkillAttrEnum;
-
 export type AttrType = CharacterAttrType | MonsterAttrType | SkillModifierType;
+export type SourceName = AttrType | "SYSTEM";
 
 const weaponAbiT: Record<
   $Enums.MainWeaponType,
@@ -517,7 +513,6 @@ const enum ValueType {
   user,
   both,
 }
-
 const enum OriginType {
   baseValue,
   staticConstant,
@@ -555,12 +550,11 @@ interface AttrData {
     | number
     | {
         value: number;
-        sourceName: AttrType;
-        source: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum;
+        sourceName: SourceName;
+        source: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum | "SYSTEM";
       }[];
   modifiers: ModifiersData;
 }
-
 interface CharacterAttrData extends AttrData {
   type: ValueType;
   name: CharacterAttrEnum;
@@ -568,26 +562,15 @@ interface CharacterAttrData extends AttrData {
     | number
     | {
         value: number;
-        sourceName: CharacterAttrType;
-        source: CharacterAttrEnum;
+        sourceName: CharacterAttrType | "SYSTEM";
+        source: CharacterAttrEnum | "SYSTEM";
       }[];
   relation: {
     name: CharacterAttrType;
-    rate: number;
+    formula: number | string;
     originType: OriginType;
   }[];
 }
-
-const DefaultModifiersData: ModifiersData = {
-  static: {
-    fixed: [],
-    percentage: [],
-  },
-  dynamic: {
-    fixed: [],
-    percentage: [],
-  },
-};
 
 // 参数统计方法
 export const baseValue = (m: AttrData | undefined): number => {
@@ -636,15 +619,77 @@ export const dynamicTotalValue = (m: AttrData | undefined): number => {
   const fixed = dynamicFixedValue(m);
   const percentage = dynamicPercentageValue(m);
   if (m.name === CharacterAttrEnum.MAGICAL_PIERCE || m.name === CharacterAttrEnum.PHYSICAL_PIERCE) {
-    return Math.floor(base * (1 + percentage / 100) + fixed - 100);
+    return floor(base * (1 + percentage / 100) + fixed - 100);
   }
-  return Math.floor(base * (1 + percentage / 100) + fixed);
+  return floor(base * (1 + percentage / 100) + fixed);
+};
+
+const fps = 60;
+
+// 随机种子设置
+const randomSeed: null | string = null;
+// 向math中添加自定义方法
+// 验证 `all` 是否为有效的 FactoryFunctionMap 对象
+if (!all) {
+  throw new Error("all is undefined. Make sure you are importing it correctly.");
+}
+
+const math = create(all, {
+  epsilon: 1e-12,
+  matrix: "Matrix",
+  number: "number",
+  precision: 64,
+  predictable: false,
+  randomSeed: randomSeed,
+});
+
+type Scope = {
+  currentFrame: number;
+  team: CharacterAttrData[];
+};
+
+// 定义一个自定义节点转换函数
+function replaceNode(node: MathNode) {
+  // 如果节点是AccessorNode，替换成FunctionNode dynamicTotalValue(SymbolNode)
+  if ("isAccessorNode" in node && node.isAccessorNode) {
+    return new math.FunctionNode(new math.SymbolNode("dynamicTotalValue"), [node]);
+  }
+  // 遍历节点的子节点并递归替换
+  return node.map(replaceNode);
+}
+
+const DefaultModifiersData: ModifiersData = {
+  static: {
+    fixed: [],
+    percentage: [],
+  },
+  dynamic: {
+    fixed: [],
+    percentage: [],
+  },
 };
 
 const characterData = (character: Character) => {
   const characterMap = new Map<CharacterAttrEnum, CharacterAttrData>();
-  const d = (m: CharacterAttrEnum) => dynamicTotalValue(characterMap.get(m));
-  const b = (m: CharacterAttrEnum) => baseValue(characterMap.get(m));
+  const d = (m: CharacterAttrType) => dynamicTotalValue(characterMap.get(CharacterAttrEnum[m]));
+  const b = (m: CharacterAttrType) => baseValue(characterMap.get(CharacterAttrEnum[m]));
+
+  // 定义属性
+  // 末位属性（无下一级）
+  characterMap.set(CharacterAttrEnum.MSPD, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.MSPD,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.CSRD, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.CSRD,
+    baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
 
   //
   characterMap.set(CharacterAttrEnum.MAINWEAPON_ATK, {
@@ -655,7 +700,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "WEAPON_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -668,7 +713,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "WEAPON_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -681,12 +726,12 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Patk_Convert,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Patk_Convert,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
         originType: OriginType.baseValue,
       },
     ],
@@ -699,12 +744,12 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_DEF",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_DEF",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -717,22 +762,47 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "MSPD",
-        rate: b(CharacterAttrEnum.ASPD) >= 1000 ? 1 / 180 : 0,
+        formula: "max(0, floor((thisCharacter.ASPD - 1000) / 180))",
         originType: OriginType.staticConstant,
       },
     ],
-  });
-  characterMap.set(CharacterAttrEnum.MSPD, {
-    type: ValueType.user,
-    name: CharacterAttrEnum.MSPD,
-    baseValue: [],
-    modifiers: DefaultModifiersData,
-    relation: [],
   });
   characterMap.set(CharacterAttrEnum.CSPD, {
     type: ValueType.user,
     name: CharacterAttrEnum.CSPD,
     baseValue: [],
+    modifiers: DefaultModifiersData,
+    relation: [
+      {
+        name: "CSRD",
+        formula: "min(50 + floor((thisCharacter.CSPD - 1000) / 180), floor(thisCharacter.CSPD / 20))",
+        originType: OriginType.staticConstant,
+      },
+    ],
+  });
+  characterMap.set(CharacterAttrEnum.PHYSICAL_CRITICAL_DAMAGE, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.PHYSICAL_CRITICAL_DAMAGE,
+    baseValue: [
+      {
+        value: 150,
+        sourceName: "SYSTEM",
+        source: "SYSTEM",
+      },
+    ],
+    modifiers: DefaultModifiersData,
+    relation: [],
+  });
+  characterMap.set(CharacterAttrEnum.MAGICAL_CRITICAL_DAMAGE, {
+    type: ValueType.user,
+    name: CharacterAttrEnum.MAGICAL_CRITICAL_DAMAGE,
+    baseValue: [
+      {
+        value: 100 + ((d("PHYSICAL_CRITICAL_DAMAGE") - 100) * d("MAGICAL_CRT_DAMAGE_CONVERSION_RATE")) / 100,
+        sourceName: "SYSTEM",
+        source: "SYSTEM",
+      },
+    ],
     modifiers: DefaultModifiersData,
     relation: [],
   });
@@ -746,42 +816,42 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "CSPD",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "HP",
-        rate: 127 / 17,
+        formula: 127 / 17,
         originType: OriginType.baseValue,
       },
       {
         name: "MP",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "ACCURACY",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
       {
         name: "DODGE",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -794,27 +864,27 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_CRITICAL_DAMAGE",
-        rate: d(CharacterAttrEnum.STR) >= d(CharacterAttrEnum.AGI) ? 0.2 : 0,
+        formula: d("STR") >= d("AGI") ? 0.2 : 0,
         originType: OriginType.baseValue,
       },
     ],
@@ -827,27 +897,27 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "MP",
-        rate: 0.1,
+        formula: 0.1,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
         originType: OriginType.baseValue,
       },
     ],
@@ -860,7 +930,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "HP",
-        rate: d(CharacterAttrEnum.LV) / 3,
+        formula: d("LV") / 3,
         originType: OriginType.baseValue,
       },
     ],
@@ -873,32 +943,32 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
         originType: OriginType.baseValue,
       },
       {
         name: "CSPD",
-        rate: 1.16,
+        formula: 1.16,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_CRITICAL_DAMAGE",
-        rate: d(CharacterAttrEnum.AGI) > d(CharacterAttrEnum.STR) ? 0.1 : 0,
+        formula: d("AGI") > d("STR") ? 0.1 : 0,
         originType: OriginType.baseValue,
       },
     ],
@@ -911,27 +981,27 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        rate: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
+        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
         originType: OriginType.baseValue,
       },
       {
         name: "CSPD",
-        rate: 2.94,
+        formula: 2.94,
         originType: OriginType.baseValue,
       },
     ],
@@ -972,7 +1042,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "MAINWEAPON_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -985,7 +1055,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "SUBWEAPON_ATK",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
@@ -998,7 +1068,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "BODYARMOR_DEF",
-        rate: 1,
+        formula: 1,
         originType: OriginType.baseValue,
       },
     ],
