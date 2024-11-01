@@ -36,6 +36,14 @@ export async function findCrystalById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findCrystals() {
+  return await db
+    .selectFrom("crystal")
+    .selectAll("crystal")
+    .select((eb) => crystalSubRelations(eb, eb.val("defaultCrystalId")))
+    .execute();
+}
+
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
   return await db.updateTable("crystal").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }

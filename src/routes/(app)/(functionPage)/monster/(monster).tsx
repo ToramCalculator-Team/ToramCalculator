@@ -31,7 +31,6 @@ export default function MonsterIndexPage() {
       monsterFormState: newState,
     });
   };
-  const { monster } = store;
   const setAugmented = (newAugmented: boolean): void => {
     setStore("monsterPage", {
       augmented: newAugmented,
@@ -48,7 +47,7 @@ export default function MonsterIndexPage() {
     });
   };
   const setMonster = (newMonster: Monster): void => {
-    setStore("monster", newMonster);
+    setStore("monsterPage","monsterId", newMonster.id);
   };
 
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
@@ -323,7 +322,7 @@ export default function MonsterIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
-                  setStore("monster", defaultMonster);
+                  setMonster(defaultMonster);
                   setStore("monsterPage", {
                     monsterDialogState: true,
                     monsterFormState: "CREATE",
@@ -334,7 +333,7 @@ export default function MonsterIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {
-                  setStore("monster", defaultMonster);
+                  setMonster(defaultMonster);
                   setStore("monsterPage", {
                     monsterDialogState: true,
                     monsterFormState: "CREATE",

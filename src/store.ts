@@ -38,32 +38,35 @@ export type Store = {
   };
   monsterPage: {
     augmented: boolean;
+    monsterId: string;
     monsterList: Monster[];
     monsterDialogState: boolean;
     monsterFormState: FormSate;
     filterState: boolean;
   };
   crystalPage: {
-    augmented: boolean;
+    crystalId: string;
     crystalList: Crystal[];
     crystalDialogState: boolean;
     crystalFormState: FormSate;
     filterState: boolean;
   };
   skillPage: {
+    skillId: string;
     skillList: Skill[];
     skillDialogState: boolean;
     skillFormState: FormSate;
     filterState: boolean;
   };
   characterPage: {
-    augmented: boolean;
+    characterId: string;
     characterList: Character[];
     characterDialogState: boolean;
     characterFormState: FormSate;
     filterState: boolean;
   };
   analyzerPage: {
+    analyzerId: string;
     analyzerList: Analyzer[];
     analyzerDialogState: boolean;
     analyzerFormState: FormSate;
@@ -99,32 +102,35 @@ export const initialStore: Store = {
   indexPage: {},
   monsterPage: {
     augmented: true,
+    monsterId: "defaultMonsterId",
     monsterList: [],
     monsterDialogState: false,
     monsterFormState: "DISPLAY",
     filterState: false,
   },
   crystalPage: {
-    augmented: false,
+    crystalId: "defaultCrystalId",
     crystalList: [],
     crystalDialogState: false,
     crystalFormState: "CREATE",
     filterState: false
   },
   skillPage: {
+    skillId: "defaultSkillId",
     skillList: [],
     skillDialogState: false,
     skillFormState: "CREATE",
     filterState: false
   },
   characterPage: {
-    augmented: false,
+    characterId: "defaultCharacterId",
     characterList: [],
     characterDialogState: false,
     characterFormState: "CREATE",
     filterState: false
   },
   analyzerPage: {
+    analyzerId: "defaultAnalyzerId",
     analyzerList: [],
     analyzerDialogState: false,
     analyzerFormState: "CREATE",

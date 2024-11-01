@@ -1,24 +1,17 @@
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
 import { ObjectRenderer } from "./objectRender";
 import { Monster } from "~/repositories/monster";
-import { defaultCharacter, Character } from "~/repositories/character";
-import { defaultStatistics } from "~/repositories/statistics";
-import { defaultModifierList } from "~/repositories/modifier_list";
-import { defaultConsumable } from "~/repositories/consumable";
-import { defaultSkill } from "~/repositories/skill";
-import { defaultPet } from "~/repositories/pet";
-import { Accessor, createEffect, createMemo, createSignal, For, JSX, onMount, Show } from "solid-js";
+import { Character } from "~/repositories/character";
+import { Accessor, createEffect, createMemo, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { generateAugmentedMonsterList, generateMonsterByStar } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import FlowEditor from "~/components/module/flowEditor";
-import { Analyzer } from "~/repositories/analyzer";
+import { addMemberToAnalyzer, Analyzer, defaultAnalyzer, deleteMemberFromAnalyzer, findAnalyzerById } from "~/repositories/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
 import { defaultImage } from "~/repositories/image";
-import { defaultMember, Member } from "~/repositories/member";
+import { defaultMember, Member, updateMember } from "~/repositories/member";
 import * as _ from "lodash-es";
 import {
   Definition,
@@ -35,6 +28,7 @@ import Input from "~/components/ui/input";
 import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
+import { updateMob } from "~/repositories/mob";
 // import { DW } from "~/initialWorker";
 
 const externalEditorClassName = "sqd-editor-solid";
@@ -59,9 +53,11 @@ export default function AnalyzerIndexClient() {
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
   const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
-  const analyzer = store.analyzer;
-  const setAnalyze = (value: Analyzer) => setStore("analyzer", value);
+  const [analyzer, { refetch: refetchAnalyzer }] = createResource(
+    () => findAnalyzerById(params.analyzerId),
+  );
   const [memberIndex, setMemberIndex] = createSignal(0);
+  const [mobIndex, setMobIndex] = createSignal(0);
 
   const [designer, setDesigner] = createSignal<Designer<WorkflowDefinition> | null>(null);
   const [placeholder, setPlaceholder] = createSignal<HTMLElement | null>(null);
@@ -183,7 +179,7 @@ export default function AnalyzerIndexClient() {
   }));
 
   const defaultStarArray: number[] = [];
-  analyzer.mobs.forEach((mob) => {
+  analyzer()?.mobs.forEach((mob) => {
     defaultStarArray.push(mob.star);
   });
   const [starArray, setStarArray] = createSignal(defaultStarArray);
@@ -202,7 +198,7 @@ export default function AnalyzerIndexClient() {
       properties: {
         speed: 300,
       },
-      sequence: _.cloneDeep(analyzer.team[memberIndex()].flow as unknown as CustomStateMachineStep[]) ?? [
+      sequence: _.cloneDeep(analyzer()?.team[memberIndex()].flow as unknown as CustomStateMachineStep[]) ?? [
         ExecutableSteps.createTextStep("开始!"),
         ExecutableSteps.createMathStep("定义", "a = 1"),
         ExecutableSteps.createMathStep("定义", "b = 2"),
@@ -223,6 +219,7 @@ export default function AnalyzerIndexClient() {
 
   onMount(() => {
     console.log("--Analyzer Client Render");
+    console.log(analyzer());
     setDesigner(
       Designer.create(placeholder()!, startDefinition(), {
         theme: "light",
@@ -253,7 +250,9 @@ export default function AnalyzerIndexClient() {
     designer()?.onDefinitionChanged.subscribe(() => {
       const sequence = designer()?.getDefinition().sequence;
       if (sequence) {
-        setStore("analyzer", "team", memberIndex(), "flow", structuredClone(sequence));
+        // 更新数据库
+        analyzer() && updateMember(analyzer()!.team[memberIndex()].id, { flow: sequence });
+        // setStore("analyzer", "team", memberIndex(), "flow", structuredClone(sequence));
       }
     });
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
@@ -282,7 +281,7 @@ export default function AnalyzerIndexClient() {
           {dictionary().ui.analyzer.analyzerPage.mobsConfig.title}
         </div>
         <div class="ModuleContent flex flex-col gap-6">
-          <For each={analyzer.mobs}>
+          <For each={analyzer()?.mobs}>
             {(mob, index) => {
               function setStarArr(star: number) {
                 const newStarArray = [...starArray()];
@@ -299,7 +298,7 @@ export default function AnalyzerIndexClient() {
                       onMouseLeave={() => {
                         setStarArr(mob.star);
                       }}
-                      onClick={() => setStore("analyzer", "mobs", index(), "star", starArray()[index()])}
+                      onClick={() => updateMob(analyzer()!.mobs[index()].id, { star: starArray()[index()] })}
                     >
                       <Icon.Filled.Star
                         onMouseEnter={() => setStarArr(1)}
@@ -346,7 +345,7 @@ export default function AnalyzerIndexClient() {
           {dictionary().ui.analyzer.analyzerPage.teamConfig.title}
         </div>
         <div class="ModuleContent flex flex-wrap gap-3">
-          <For each={analyzer.team}>
+          <For each={analyzer()?.team}>
             {(member, index) => {
               return (
                 <div class="Member flex border-b-2 border-accent-color p-1">
@@ -376,7 +375,7 @@ export default function AnalyzerIndexClient() {
 
           <div class="AddMember flex p-1">
             <div
-              onClick={() => setStore("analyzer", "team", analyzer.team.length, test.member)}
+              onClick={async () => {analyzer() && addMemberToAnalyzer(analyzer()!.id, defaultMember)}}
               class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-transition-color-8 p-2 hover:bg-transition-color-20"
             >
               <div class="Info flex flex-col items-center justify-center gap-2 px-3">
@@ -422,9 +421,7 @@ export default function AnalyzerIndexClient() {
             icon={<Icon.Line.Gamepad />}
             onClick={() => {
               setDialogState(false);
-              const newTeam = _.cloneDeep(analyzer.team);
-              newTeam.splice(memberIndex(), 1);
-              setStore("analyzer", "team", newTeam);
+              deleteMemberFromAnalyzer(analyzer()!.id, analyzer()!.team[memberIndex()].id);
             }}
           >
             {dictionary().ui.actions.remove}

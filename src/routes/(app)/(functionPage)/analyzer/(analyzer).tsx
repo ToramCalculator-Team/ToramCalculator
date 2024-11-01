@@ -36,7 +36,7 @@ export default function AnalyzerIndexClient() {
   const analyzeList = store.analyzerPage.analyzerList;
   const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
   const monster = test.monster;
-  const character = test.character;
+  const character = test.member.character;
   const analyzer = test.analyzer;
 
   const [dialogState, setDialogState] = createSignal(false);
@@ -46,11 +46,11 @@ export default function AnalyzerIndexClient() {
   const [defaultMonsterList] = createSignal(store.monsterPage.monsterList);
   const [team, setTeam] = createSignal<computeInput["arg"]["team"]>([
     {
-      config: test.character,
+      config: test.member.character,
       actionQueue: test.skillSequence1.data,
     },
     {
-      config: test.character,
+      config: test.member.character,
       actionQueue: test.skillSequence2.data,
     },
   ]);

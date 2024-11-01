@@ -1,7 +1,6 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { live } from "@electric-sql/pglite/live";
 import PGWorker from "~/worker/PGlite.worker?worker";
-import { initialStore } from "./store";
 
 let pgWorker: Promise<PGliteWorker> | null = null
 
@@ -16,7 +15,6 @@ export const initialPGWorker = () => {
       meta: {
         dataDir: "idb://toramCalculatorDB",
         storage: storage,
-        initialStore: initialStore,
       },
     });
   }

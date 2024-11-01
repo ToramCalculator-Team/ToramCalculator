@@ -41,6 +41,9 @@ CREATE TYPE "YieldType" AS ENUM ('PersistentEffect', 'ImmediateEffect');
 CREATE TYPE "DurationType" AS ENUM ('FRAME', 'SKILL', 'UNLIMITED');
 
 -- CreateEnum
+CREATE TYPE "WeaponElementDependencyType" AS ENUM ('EXTEND', 'UNEXTEND');
+
+-- CreateEnum
 CREATE TYPE "ComboType" AS ENUM ('NULL');
 
 -- CreateEnum
@@ -291,7 +294,7 @@ CREATE TABLE "skill" (
     "skillTreeName" "SkillTreeName" NOT NULL,
     "name" TEXT NOT NULL,
     "skillType" "SkillType" NOT NULL,
-    "weaponElementDependencyType" BOOLEAN NOT NULL,
+    "weaponElementDependencyType" "WeaponElementDependencyType" NOT NULL,
     "element" "Element" NOT NULL,
     "skillDescription" TEXT,
     "extraDetails" TEXT NOT NULL,

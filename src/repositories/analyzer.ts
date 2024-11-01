@@ -4,7 +4,7 @@ import { DB, analyzer } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultMob, MobSubRelations } from "./mob";
-import { defaultMember, memberSubRelations } from "./member";
+import { createMember, defaultMember, deleteMember, Member, memberSubRelations } from "./member";
 
 export type Analyzer = Awaited<ReturnType<typeof findAnalyzerById>>;
 export type NewAnalyzer = Insertable<analyzer>;
@@ -44,7 +44,7 @@ export async function findAnalyzerById(id: string) {
     .where("id", "=", id)
     .selectAll("analyzer")
     .select((eb) => analyzerSubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
+    .executeTakeFirst();
 }
 
 export async function updateAnalyzer(id: string, updateWith: AnalyzerUpdate) {
@@ -65,6 +65,20 @@ export async function createAnalyzer(newAnalyzer: NewAnalyzer) {
 
 export async function deleteAnalyzer(id: string) {
   return await db.deleteFrom("analyzer").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function addMemberToAnalyzer(analyzerId: string, member: Member) {
+  const m = await createMember(member);
+  return await db
+    .insertInto("_analyzerTomember")
+    .values({ A: analyzerId, B: m.id })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteMemberFromAnalyzer(analyzerId: string, memberId: string) {
+  await db.deleteFrom("_analyzerTomember").where("A", "=", analyzerId).where("B", "=", memberId).returningAll().executeTakeFirst();
+  await deleteMember(memberId);
 }
 
 export const defaultAnalyzer: Analyzer = {

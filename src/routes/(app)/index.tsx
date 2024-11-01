@@ -9,7 +9,7 @@ import * as Icon from "~/lib/icon";
 import Button from "~/components/ui/button";
 import { findMonsters, type Monster } from "~/repositories/monster";
 import { type Skill } from "~/repositories/skill";
-import { type Crystal } from "~/repositories/crystal";
+import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/skill_effect";
@@ -65,11 +65,7 @@ export default function Index() {
   //     console.log(res);
   //   }),
   // );
-  // const [crystalList, { refetch: refetchCrystalList }] = createResource(
-  //   async () => await pgWorker.live.query<Crystal>(`select * from crystal`, [], (res) => {
-  //     console.log(res);
-  //   }),
-  // );
+  const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
 
   // const monsterList = (): {
   //   initialResults: {
@@ -82,27 +78,8 @@ export default function Index() {
   //     },
   //   };
   // };
-  const skillList = (): {
-    initialResults: {
-      rows: Skill[];
-    };
-  } => {
-    return {
-      initialResults: {
-        rows: [],
-      },
-    };
-  };
-  const crystalList = (): {
-    initialResults: {
-      rows: Crystal[];
-    };
-  } => {
-    return {
-      initialResults: {
-        rows: [],
-      },
-    };
+  const skillList = (): Skill[] => {
+    return [];
   };
 
   // createEffect(() => {
@@ -265,13 +242,13 @@ export default function Index() {
         monsterHiddenData,
       ),
       skills: searchInList(
-        skillList()?.initialResults.rows ?? [],
+        skillList() ?? [],
         searchValue,
         dictionary().db.models.skill,
         skillHiddenData,
       ),
       crystals: searchInList(
-        crystalList()?.initialResults.rows ?? [],
+        crystalList() ?? [],
         searchValue,
         dictionary().db.models.crystal,
         crystalHiddenData,
@@ -518,8 +495,8 @@ export default function Index() {
       >
         <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: {monsterList()?.length}</span>
-          <span>SkillList: 测试数据</span>
-          <span>CrystalList: 测试数据</span>
+          <span>SkillList: {skillList()?.length}</span>
+          <span>CrystalList: {crystalList()?.length}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
         </div>
         <Motion.div
@@ -791,7 +768,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/analyzer/test"}
+                  href={"/analyzer/testAnaylzerId"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
