@@ -324,7 +324,7 @@ const dictionary: dictionary = {
         selfName: "屬性",
       },
       SpecialAbiType: {
-        NULL: "無",
+        NOSPECIALABI: "無",
         LUK: "幸運",
         CRI: "暴擊",
         TEC: "技巧",

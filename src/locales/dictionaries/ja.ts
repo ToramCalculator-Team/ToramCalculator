@@ -327,7 +327,7 @@ const dictionary: dictionary = {
         selfName: "属性",
       },
       SpecialAbiType: {
-        NULL: "なし",
+        NOSPECIALABI: "なし",
         LUK: "運",
         CRI: "クリティカル",
         TEC: "テクニック",

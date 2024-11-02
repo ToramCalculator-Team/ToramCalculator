@@ -18,33 +18,49 @@ export function analyzerSubRelations(eb: ExpressionBuilder<DB, "analyzer">, id: 
         .whereRef("id", "=", "analyzer.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("statistics"),
+    )
+      .$notNull()
+      .as("statistics"),
     jsonArrayFrom(
       eb
         .selectFrom("_analyzerTomember")
-        .innerJoin("member", "_analyzerTomember.A", "member.id")
-        .whereRef("_analyzerTomember.B", "=", "analyzer.id")
+        .innerJoin("member", "_analyzerTomember.B", "member.id")
+        .whereRef("_analyzerTomember.A", "=", id)
         .selectAll("member")
         .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("team"),
+    )
+      .$notNull()
+      .as("team"),
     jsonArrayFrom(
       eb
         .selectFrom("_analyzerTomob")
-        .innerJoin("mob", "_analyzerTomob.A", "mob.id")
-        .whereRef("_analyzerTomob.B", "=", "analyzer.id")
+        .innerJoin("mob", "_analyzerTomob.B", "mob.id")
+        .whereRef("_analyzerTomob.A", "=", id)
         .selectAll("mob")
         .select((subEb) => MobSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("mobs"),
+    )
+      .$notNull()
+      .as("mobs"),
   ];
 }
 
 export async function findAnalyzerById(id: string) {
   return await db
+  .selectFrom("analyzer")
+  .where("id", "=", id)
+  .selectAll("analyzer")
+  .select((eb) => analyzerSubRelations(eb, eb.val(id)))
+  .executeTakeFirstOrThrow();
+}
+
+export async function findAnalyzers() {
+  const res = await db
     .selectFrom("analyzer")
-    .where("id", "=", id)
     .selectAll("analyzer")
-    .select((eb) => analyzerSubRelations(eb, eb.val(id)))
-    .executeTakeFirst();
+    .select((eb) => analyzerSubRelations(eb, eb.val("analyzer.id")))
+    .execute();
+  console.log("findAnalyzers", res);
+  return res;
 }
 
 export async function updateAnalyzer(id: string, updateWith: AnalyzerUpdate) {
@@ -77,7 +93,12 @@ export async function addMemberToAnalyzer(analyzerId: string, member: Member) {
 }
 
 export async function deleteMemberFromAnalyzer(analyzerId: string, memberId: string) {
-  await db.deleteFrom("_analyzerTomember").where("A", "=", analyzerId).where("B", "=", memberId).returningAll().executeTakeFirst();
+  await db
+    .deleteFrom("_analyzerTomember")
+    .where("A", "=", analyzerId)
+    .where("B", "=", memberId)
+    .returningAll()
+    .executeTakeFirst();
   await deleteMember(memberId);
 }
 

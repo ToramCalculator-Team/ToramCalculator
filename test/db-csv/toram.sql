@@ -312,7 +312,7 @@ ALTER TYPE public."SkillType" OWNER TO postgres;
 --
 
 CREATE TYPE public."SpecialAbiType" AS ENUM (
-    'NULL',
+    'NOSPECIALABI',
     'LUK',
     'CRI',
     'TEC',
@@ -1371,7 +1371,7 @@ testBodyArmor	测试-轻化法师对属衣服	NORMAL	0	0	lightArmorModifiersList
 --
 
 COPY public."character" (id, name, "characterType", lv, "baseStr", "baseInt", "baseVit", "baseAgi", "baseDex", "specialAbiType", "specialAbiValue", "mainWeaponId", "subWeaponId", "bodyArmorId", "additionalEquipmentId", "specialEquipmentId", "fashionModifierListId", "cuisineModifierListId", "petId", "modifierListId", "extraDetails", "updatedAt", "createdAt", "statisticsId", "imageId", "updatedByUserId", "createdByUserId") FROM stdin;
-testCharacterId	测试角色	Ranger	270	1	450	1	1	1	NULL	0	testMainWeaponMD	testSubWeapon	testBodyArmor	testTMNAddEquipment	testDXTDSpecialEquipment	testFashionModifiersList	testCuisineModifiersList	testPet	testCharacterModifiersList		2024-11-01 03:13:32.524	1970-01-01 00:00:00	testCharacterStatistics	system	\N	\N
+testCharacterId	测试角色	Ranger	270	1	450	1	1	1	NOSPECIALABI	0	testMainWeaponMD	testSubWeapon	testBodyArmor	testTMNAddEquipment	testDXTDSpecialEquipment	testFashionModifiersList	testCuisineModifiersList	testPet	testCharacterModifiersList		2024-11-01 03:13:32.524	1970-01-01 00:00:00	testCharacterStatistics	system	\N	\N
 \.
 
 

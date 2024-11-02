@@ -322,7 +322,7 @@ const dictionary: dictionary = {
         selfName: "Element",
       },
       SpecialAbiType: {
-        NULL: "Null",
+        NOSPECIALABI: "NoSpecialAbi",
         LUK: "Luk",
         CRI: "Cri",
         TEC: "Tec",

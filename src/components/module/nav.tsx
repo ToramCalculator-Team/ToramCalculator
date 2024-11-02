@@ -59,7 +59,7 @@ export default function Nav() {
     {
       btnName: dictionary().ui.nav.analyzer,
       icon: <Icon.Line.Filter />,
-      url: "/analyzer/testAnaylzerId",
+      url: "/analyzer/testAnalyzerId",
     },
   ]);
 

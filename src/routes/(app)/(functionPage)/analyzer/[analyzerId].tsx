@@ -2,12 +2,18 @@ import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, 
 import { ObjectRenderer } from "./objectRender";
 import { Monster } from "~/repositories/monster";
 import { Character } from "~/repositories/character";
-import { Accessor, createEffect, createMemo, createResource, createSignal, For, onMount, Show } from "solid-js";
+import { Accessor, createEffect, createMemo, createResource, createSignal, For, onMount, Show, JSX } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import { addMemberToAnalyzer, Analyzer, defaultAnalyzer, deleteMemberFromAnalyzer, findAnalyzerById } from "~/repositories/analyzer";
+import {
+  addMemberToAnalyzer,
+  Analyzer,
+  defaultAnalyzer,
+  deleteMemberFromAnalyzer,
+  findAnalyzerById,
+} from "~/repositories/analyzer";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
 import { defaultImage } from "~/repositories/image";
@@ -29,7 +35,6 @@ import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
 import { updateMob } from "~/repositories/mob";
-// import { DW } from "~/initialWorker";
 
 const externalEditorClassName = "sqd-editor-solid";
 
@@ -53,9 +58,13 @@ export default function AnalyzerIndexClient() {
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
   const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
-  const [analyzer, { refetch: refetchAnalyzer }] = createResource(
-    () => findAnalyzerById(params.analyzerId),
-  );
+  const [analyzerFetcher, { refetch: refetchAnalyzer }] = createResource(() => findAnalyzerById(params.analyzerId));
+  const [analyzer, setAnalyzer] = createSignal<Analyzer | null>(null);
+  createEffect(() => {
+    console.log("analyzer");
+    const newAnalyzer = analyzerFetcher();
+    newAnalyzer && setAnalyzer(newAnalyzer);
+  });
   const [memberIndex, setMemberIndex] = createSignal(0);
   const [mobIndex, setMobIndex] = createSignal(0);
 
@@ -194,32 +203,34 @@ export default function AnalyzerIndexClient() {
 
   const startDefinition = createMemo<WorkflowDefinition>(() => {
     console.log("更新startDefinition");
+    console.log(analyzer());
     return {
       properties: {
         speed: 300,
       },
-      sequence: _.cloneDeep(analyzer()?.team[memberIndex()].flow as unknown as CustomStateMachineStep[]) ?? [
-        ExecutableSteps.createTextStep("开始!"),
-        ExecutableSteps.createMathStep("定义", "a = 1"),
-        ExecutableSteps.createMathStep("定义", "b = 2"),
-        ExecutableSteps.createLoopStep("循环", "a < 20", [
-          ExecutableSteps.createMathStep("自增", "a = a + 2"),
-          ExecutableSteps.createMathStep("自减", "a = a + b - 1"),
-          ExecutableSteps.createIfStep(
-            "如果x大于50",
-            "a < 10",
-            [ExecutableSteps.createTextStep("yes!")],
-            [ExecutableSteps.createTextStep("no...")],
-          ),
-        ]),
-        ExecutableSteps.createTextStep("结束"),
-      ],
+      sequence: _.cloneDeep(
+        ((analyzer()?.team[memberIndex()].flow) ?? [
+          ExecutableSteps.createTextStep("开始!"),
+          ExecutableSteps.createMathStep("定义", "a = 1"),
+          ExecutableSteps.createMathStep("定义", "b = 2"),
+          ExecutableSteps.createLoopStep("循环", "a < 20", [
+            ExecutableSteps.createMathStep("自增", "a = a + 2"),
+            ExecutableSteps.createMathStep("自减", "a = a + b - 1"),
+            ExecutableSteps.createIfStep(
+              "如果x大于50",
+              "a < 10",
+              [ExecutableSteps.createTextStep("yes!")],
+              [ExecutableSteps.createTextStep("no...")],
+            ),
+          ]),
+          ExecutableSteps.createTextStep("结束"),
+        ]) as CustomStateMachineStep[]
+      ),
     };
   });
 
   onMount(() => {
     console.log("--Analyzer Client Render");
-    console.log(analyzer());
     setDesigner(
       Designer.create(placeholder()!, startDefinition(), {
         theme: "light",
@@ -264,11 +275,12 @@ export default function AnalyzerIndexClient() {
     }, 1);
   });
 
+
   return (
     <>
       <div class="Title flex flex-col p-3 lg:pt-12">
         <div class="Content flex flex-col items-center justify-between gap-10 py-3 lg:flex-row lg:justify-start lg:gap-4">
-          <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{analyzer.name}</h1>
+          <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{analyzer()?.name}</h1>
           <div class="Control flex gap-3">
             <Button icon={<Icon.Line.Share />}>{dictionary().ui.actions.generateImage}</Button>
             <Button icon={<Icon.Line.Save />}>{dictionary().ui.actions.save}</Button>
@@ -361,8 +373,21 @@ export default function AnalyzerIndexClient() {
                       <div class="MemberName text-lg font-bold">{member.character?.name ?? "未知"}</div>
                       <div class="MenberConfig flex flex-1 gap-1 text-accent-color-70">
                         <span>{member.character?.lv ?? "未知"}</span>-
-                        <span>{dictionary().db.enums.MainWeaponType[member.character?.mainWeapon?.mainWeaponType ?? "NO_WEAPON"]}</span>-
-                        <span>{dictionary().db.enums.SubWeaponType[member.character?.subWeapon?.subWeaponType ?? "NO_WEAPON"]}</span>
+                        <span>
+                          {
+                            dictionary().db.enums.MainWeaponType[
+                              member.character?.mainWeapon?.mainWeaponType ?? "NO_WEAPON"
+                            ]
+                          }
+                        </span>
+                        -
+                        <span>
+                          {
+                            dictionary().db.enums.SubWeaponType[
+                              member.character?.subWeapon?.subWeaponType ?? "NO_WEAPON"
+                            ]
+                          }
+                        </span>
                       </div>
                     </div>
                     <div class="Funtion"></div>
@@ -375,7 +400,9 @@ export default function AnalyzerIndexClient() {
 
           <div class="AddMember flex p-1">
             <div
-              onClick={async () => {analyzer() && addMemberToAnalyzer(analyzer()!.id, defaultMember)}}
+              onClick={async () => {
+                analyzer() && addMemberToAnalyzer(analyzer()!.id, defaultMember);
+              }}
               class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-transition-color-8 p-2 hover:bg-transition-color-20"
             >
               <div class="Info flex flex-col items-center justify-center gap-2 px-3">

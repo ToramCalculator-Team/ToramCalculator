@@ -129,7 +129,7 @@ export const ModifiersName = {
 } as const;
 export type ModifiersName = (typeof ModifiersName)[keyof typeof ModifiersName];
 export const SpecialAbiType = {
-    NULL: "NULL",
+    NOSPECIALABI: "NOSPECIALABI",
     LUK: "LUK",
     CRI: "CRI",
     TEC: "TEC",

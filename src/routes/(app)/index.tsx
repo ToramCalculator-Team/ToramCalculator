@@ -19,6 +19,7 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import { User } from "~/repositories/user";
+import { findAnalyzers } from "~/repositories/analyzer";
 
 type Related =
   | {
@@ -60,32 +61,13 @@ export default function Index() {
   //     }),
   // );
   const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
-  // const [skillList, { refetch: refetchSkillList }] = createResource(
-  //   async () => await pgWorker.live.query<Skill>(`select * from skill`, [], (res) => {
-  //     console.log(res);
-  //   }),
-  // );
   const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
+  const [analyzerList, { refetch: refetchAnalyzerList }] = createResource(findAnalyzers);
 
-  // const monsterList = (): {
-  //   initialResults: {
-  //     rows: Monster[];
-  //   };
-  // } => {
-  //   return {
-  //     initialResults: {
-  //       rows: [],
-  //     },
-  //   };
-  // };
+  
   const skillList = (): Skill[] => {
     return [];
   };
-
-  // createEffect(() => {
-  //   // console.log("solid 检测到了user表变化", UserList()); // 1
-  //   console.log(monsterList());
-  //  })
 
   // 搜索函数
   const monsterHiddenData: Array<keyof Monster> = [
@@ -467,7 +449,8 @@ export default function Index() {
     setDictionary(getDictionary(store.settings.language));
   });
 
-  onMount(() => {
+  onMount(async () => {
+    console.log(analyzerList())
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);
@@ -768,7 +751,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/analyzer/testAnaylzerId"}
+                  href={"/analyzer/testAnalyzerId"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button

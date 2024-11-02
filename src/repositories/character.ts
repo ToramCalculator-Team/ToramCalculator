@@ -145,7 +145,7 @@ export const defaultCharacter: Character = {
   baseVit: 0,
   baseAgi: 0,
   baseDex: 0,
-  specialAbiType: "NULL",
+  specialAbiType: "NOSPECIALABI",
   specialAbiValue: 0,
   mainWeapon: defaultMainWeapon,
   mainWeaponId: "",

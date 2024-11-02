@@ -322,7 +322,7 @@ const dictionary: dictionary = {
         selfName: "元素类型",
       },
       SpecialAbiType: {
-        NULL: "无",
+        NOSPECIALABI: "无",
         LUK: "幸运",
         CRI: "暴击",
         TEC: "技巧",
