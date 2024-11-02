@@ -37,14 +37,11 @@ export async function findCrystalById(id: string) {
 }
 
 export async function findCrystals() {
-  const res = await db
-    .selectFrom("crystal")
-    .selectAll("crystal")
-    .select((eb) => crystalSubRelations(eb, eb.val("crystal.id")))
-    .execute();
-  console.log("findCrystals", res);
-  // console.log(await findCrystalById("Armasit"))
-  return res
+  return await db
+  .selectFrom("crystal")
+  .selectAll("crystal")
+  .select((eb) => crystalSubRelations(eb, eb.val("crystal.id")))
+  .execute();
 }
 
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {

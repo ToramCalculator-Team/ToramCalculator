@@ -60,11 +60,24 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
-  const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
-  const [analyzerList, { refetch: refetchAnalyzerList }] = createResource(findAnalyzers);
+  const [monsterListFetcher, { refetch: refetchMonsterList }] = createResource(findMonsters);
+  const [crystalListFetcher, { refetch: refetchCrystalList }] = createResource(findCrystals);
 
-  
+  const [monsterList, setMonsterList] = createSignal<Monster[]>([]);
+  const [crystalList, setCrystalList] = createSignal<Crystal[]>([]);
+
+  createEffect(() => {
+    const newMonsterList = monsterListFetcher();
+    // console.log("refetching monster list", newMonsterList);
+    newMonsterList && setMonsterList(newMonsterList);
+  });
+
+  createEffect(() => {
+    const newCrystalList = crystalListFetcher();
+    // console.log("refetching crystal list", newCrystalList);
+    newCrystalList && setCrystalList(newCrystalList);
+  });
+
   const skillList = (): Skill[] => {
     return [];
   };
@@ -217,24 +230,9 @@ export default function Index() {
     const searchValue = isNumber ? parsedInput : searchInputValue();
 
     const finalResult: FinalResult = {
-      monsters: searchInList(
-        monsterList() ?? [],
-        searchValue,
-        dictionary().db.models.monster,
-        monsterHiddenData,
-      ),
-      skills: searchInList(
-        skillList() ?? [],
-        searchValue,
-        dictionary().db.models.skill,
-        skillHiddenData,
-      ),
-      crystals: searchInList(
-        crystalList() ?? [],
-        searchValue,
-        dictionary().db.models.crystal,
-        crystalHiddenData,
-      ),
+      monsters: searchInList(monsterList() ?? [], searchValue, dictionary().db.models.monster, monsterHiddenData),
+      skills: searchInList(skillList() ?? [], searchValue, dictionary().db.models.skill, skillHiddenData),
+      crystals: searchInList(crystalList() ?? [], searchValue, dictionary().db.models.crystal, crystalHiddenData),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -450,7 +448,6 @@ export default function Index() {
   });
 
   onMount(async () => {
-    console.log(analyzerList())
     // 浏览器后退事件监听
     const handlePopState = () => {
       setResultDialogOpened(false);

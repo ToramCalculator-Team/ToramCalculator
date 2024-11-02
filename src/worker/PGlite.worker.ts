@@ -20,7 +20,7 @@ worker({
       // debug: 1,
       extensions: {
         live,
-        sync: electricSync({ debug: true }),
+        sync: electricSync({ debug: false }),
       },
     });
     await pg.waitReady;
