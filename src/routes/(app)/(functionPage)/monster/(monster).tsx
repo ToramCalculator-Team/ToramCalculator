@@ -357,7 +357,7 @@ export default function MonsterIndexPage() {
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
-                class={`banner1 flex-none overflow-hidden rounded-md shadow-lg shadow-transition-color-20 ${activeBannerIndex() === 1 ? "active" : ""}`}
+                class={`banner1 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 1 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
                   "background-image": `url(${monsterList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -370,7 +370,7 @@ export default function MonsterIndexPage() {
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 2 ? "active" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 2 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
                   "background-image": `url(${monsterList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -383,7 +383,7 @@ export default function MonsterIndexPage() {
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 3 ? "active" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 3 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
                   "background-image": `url(${monsterList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
