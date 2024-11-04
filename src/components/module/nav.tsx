@@ -5,7 +5,6 @@ import { getDictionary } from "~/locales/i18n";
 import { createEffect, createMemo, createSignal, For, JSX } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import Button from "~/components/ui/button";
 
 export default function Nav() {
@@ -86,13 +85,7 @@ export default function Nav() {
           <div class="text-xs lg:hidden">{dictionary().ui.nav.home}</div>
         </a>
       </div>
-      <OverlayScrollbarsComponent
-        element="div"
-        options={{ scrollbars: { autoHide: "scroll" } }}
-        defer
-        class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4"
-      >
-        <div class="NavBtnList flex flex-1 items-center lg:flex-col lg:gap-4">
+        <div class="NavBtnList flex lg:flex-1 items-center lg:flex-col lg:gap-4">
           <For each={NavBtnConfig()}>
             {(config) => {
               if (config.icon !== undefined && config.url !== undefined) {
@@ -116,8 +109,7 @@ export default function Nav() {
             }}
           </For>
         </div>
-      </OverlayScrollbarsComponent>
-      <div class="FunctionGroup flex items-center justify-center gap-3 px-6 lg:flex-col lg:p-0">
+      <div class="FunctionGroup hidden items-center justify-center gap-3 px-6 lg:flex-col lg:p-0 lg:flex">
         <Button
           level="quaternary"
           class="rounded-full bg-transparent px-2 py-2"

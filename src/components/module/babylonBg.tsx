@@ -236,9 +236,9 @@ export default function BabylonBg(): JSX.Element {
   const theme = store.theme;
   // 场景材质初始主色
   const mainColor = {
-    light: new BABYLON.Color3(0, 0, 0).toLinearSpace(),
-    dark: new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace(),
-  }[store.theme];
+    dark: new BABYLON.Color3(0, 0, 0).toLinearSpace(),
+    light: new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace(),
+  }[theme];
   // new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace();
 
   // canvas引用
@@ -515,13 +515,13 @@ export default function BabylonBg(): JSX.Element {
           </h1>
           <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />
         </div>
-        {/* <div class="LoadingMask fixed left-0 top-0 h-dvh w-dvw bg-gradient-to-t from-primary-color from-5% to-[25%]"></div>
+        <div class="LoadingMask fixed left-0 top-0 h-dvh w-dvw bg-gradient-to-t from-primary-color from-5% to-[25%]"></div>
         <div class="LoadingState fixed left-[4dvw] top-[98%] flex -translate-y-full flex-col gap-3 lg:left-[10dvw] lg:top-[97%]">
           <h1 ref={progress!} class="animate-pulse">
             加载中...
           </h1>
           <LoadingBox />
-        </div> */}
+        </div>
       </div>
     </>
   );

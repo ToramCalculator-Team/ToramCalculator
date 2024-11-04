@@ -1,0 +1,18 @@
+.BannerContent>div {
+    flex-basis: 100%;
+}
+@media (min-width: 1024px) {
+  .BannerContent>div {
+    flex-basis: calc((100% * 1 / 6) - (16px / 3));
+  }
+  .BannerContent>div.active {
+    flex-basis: calc((100% * 4 / 6) - (16px / 3));
+  }
+  .BannerContent>div>.mask {
+    width: 100%;
+  }
+  .BannerContent>div.active>.mask {
+    width: 265px;
+    clip-path: polygon(0 0, 180px 0, 265px 100%, 0 100%);
+  }
+}

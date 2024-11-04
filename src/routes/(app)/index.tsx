@@ -20,6 +20,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import { User } from "~/repositories/user";
 import { findAnalyzers } from "~/repositories/analyzer";
+import BabylonBg from "~/components/module/babylonBg";
 
 type Related =
   | {
@@ -466,6 +467,7 @@ export default function Index() {
 
   return (
     <MetaProvider>
+      {/* <BabylonBg /> */}
       <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
       <Motion.div

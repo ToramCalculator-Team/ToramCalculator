@@ -3,7 +3,7 @@ import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/ui/button";
-import BabylonBg from "./babylonBg";
+import BabylonBg from "~/components/module/babylonBg";
 import { test } from "~/../test/testData";
 
 export default function CharacterIndexPage() {

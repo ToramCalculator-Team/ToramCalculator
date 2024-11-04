@@ -3,7 +3,7 @@ import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import { FormSate, setStore, store } from "~/store";
 import { type Monster, defaultMonster, findMonsters } from "~/repositories/monster";
-import type { $Enums } from "@prisma/client";
+import { $Enums } from "@prisma/client";
 import { createEffect, createMemo, createResource, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import * as _ from "lodash-es";
@@ -20,12 +20,14 @@ import {
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import { defaultImage } from "~/repositories/image";
 
 export default function MonsterIndexPage() {
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
   const [dialogState, setDialogState] = createSignal(false);
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
+  const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMonsterFormState = (newState: FormSate): void => {
     setStore("monsterPage", {
       monsterFormState: newState,
@@ -47,16 +49,18 @@ export default function MonsterIndexPage() {
     });
   };
   const setMonster = (newMonster: Monster): void => {
-    setStore("monsterPage","monsterId", newMonster.id);
+    setStore("monsterPage", "monsterId", newMonster.id);
   };
 
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
+  createEffect(() => {
+    setDictionary(getDictionary(store.settings.language));
+  });
+
   // table原始数据------------------------------------------------------------
 
-  const [monsterList, { refetch: refetchMonsterList }] = createResource(
-    findMonsters,
-  );
+  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
   // table
   const columns: ColumnDef<Monster>[] = [
     {
@@ -147,7 +151,9 @@ export default function MonsterIndexPage() {
     },
   ];
   const table = createMemo(() => {
-    console.log("create table", monsterList()?.length);
+    if (!monsterList()) {
+      return undefined;
+    }
     return createSolidTable({
       get data() {
         return monsterList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
@@ -191,12 +197,12 @@ export default function MonsterIndexPage() {
   const virtualizer = createMemo(() => {
     return createVirtualizer({
       get count() {
-        return table().getRowModel().rows.length
+        return table() ? table()!.getRowModel().rows.length : 0;
       },
       getScrollElement: () => virtualScrollElement ?? null,
-      estimateSize: () => 112,
+      estimateSize: () => 96,
       overscan: 5,
-    })
+    });
   });
 
   // 搜索使用的基准列表--------------------------------------------------------
@@ -297,24 +303,20 @@ export default function MonsterIndexPage() {
     };
   });
 
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
-
   return (
     <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div animate={{ opacity: [0, 1] }} exit={{ opacity: 0 }} class="Title flex flex-col p-3 lg:pt-12">
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
-              <h1 class="Text lg: text-left text-4xl leading-[50px] lg:bg-transparent lg:leading-[48px]">
+              <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
                 {dictionary().ui.monster.pageTitle}
               </h1>
               <input
                 id="MonsterSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-transition-color-20 bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-transition-color-20 bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 focus:border-accent-color-70 focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
@@ -354,9 +356,45 @@ export default function MonsterIndexPage() {
             class="Banner flex h-[260px] flex-initial gap-3 p-3 opacity-0"
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
-              <div class="banner1 flex-none basis-full rounded-md bg-brand-color-1st shadow-lg shadow-transition-color-20 lg:basis-[calc((100%*4/6)-(16px/3))]"></div>
-              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-2nd lg:basis-[calc((100%*1/6)-(16px/3))]"></div>
-              <div class="banner2 flex-none basis-full rounded-md bg-brand-color-3rd lg:basis-[calc((100%*1/6)-(16px/3))]"></div>
+              <div
+                class={`banner1 flex-none overflow-hidden rounded-md shadow-lg shadow-transition-color-20 ${activeBannerIndex() === 1 ? "active" : ""}`}
+                onMouseEnter={() => setActiveBannerIndex(1)}
+                style={{
+                  "background-image": `url(${monsterList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                }}
+              >
+                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color">
+                  <span class="text-3xl font-bold">Top.1</span>
+                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <span class="text-xl">{monsterList()?.[0]?.name}</span>
+                </div>
+              </div>
+              <div
+                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 2 ? "active" : ""}`}
+                onMouseEnter={() => setActiveBannerIndex(2)}
+                style={{
+                  "background-image": `url(${monsterList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                }}
+              >
+                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color">
+                  <span class="text-3xl font-bold">Top.2</span>
+                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <span class="text-xl">{monsterList()?.[1]?.name}</span>
+                </div>
+              </div>
+              <div
+                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 3 ? "active" : ""}`}
+                onMouseEnter={() => setActiveBannerIndex(3)}
+                style={{
+                  "background-image": `url(${monsterList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                }}
+              >
+                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color">
+                  <span class="text-3xl font-bold">Top.3</span>
+                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <span class="text-xl">{monsterList()?.[2]?.name}</span>
+                </div>
+              </div>
             </div>
           </Motion.div>
         </Show>
@@ -382,172 +420,153 @@ export default function MonsterIndexPage() {
             </Button>
           </div>
           <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}>
-            <div ref={virtualScrollElement!} class="TableBox VirtualScroll flex-1">
-              <table class="Table bg-transition-color-8 px-2 lg:bg-transparent">
-                <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
-                  <For each={table().getHeaderGroups()}>
-                    {(headerGroup) => (
-                      <tr class="flex min-w-full gap-0 border-b-2">
-                        <For each={headerGroup.headers}>
-                          {(header) => {
-                            const { column } = header;
-                            if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
-                              // 默认隐藏的数据
-                              return;
-                            }
-                            return (
-                              <th
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                  width: getCommonPinningStyles(column).width + "px",
-                                }}
-                                class="flex flex-col"
-                              >
-                                <div
-                                  {...{
-                                    onClick: header.column.getToggleSortingHandler(),
-                                  }}
-                                  class={`border-1 flex-1 border-transition-color-8 px-3 py-4 text-left hover:bg-transition-color-8 lg:py-6 ${
-                                    header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                                  }`}
-                                >
-                                  {flexRender(header.column.columnDef.header, header.getContext())}
-                                  {{
-                                    asc: " ↓",
-                                    desc: " ↑",
-                                  }[header.column.getIsSorted() as string] ?? null}
-                                </div>
-                              </th>
-                            );
-                          }}
-                        </For>
-                      </tr>
-                    )}
-                  </For>
-                </thead>
-                <tbody
-                  style={{ height: `${virtualizer().getTotalSize()}px` }}
-                  class="TableBody relative mt-[54px] px-2 lg:mt-[84px]"
-                >
-                  <For each={virtualizer().getVirtualItems()}>
-                    {(virtualRow) => {
-                      const row = table().getRowModel().rows[virtualRow.index];
-                      return (
-                        <tr
-                          data-index={virtualRow.index}
-                          // ref={(node) => virtualizer.measureElement(node)}
-                          style={{
-                            position: "absolute",
-                            transform: `translateY(${virtualRow.start}px)`,
-                          }}
-                          class={`lg:border-y-1.5 group flex cursor-pointer border-y-[1px] border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold`}
-                          onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                        >
-                          <For each={row.getVisibleCells()}>
-                            {(cell) => {
-                              const { column } = cell;
+            <Show when={table()}>
+              <div ref={virtualScrollElement!} class="TableBox VirtualScroll flex-1">
+                <table class="Table">
+                  <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
+                    <For each={table()!.getHeaderGroups()}>
+                      {(headerGroup) => (
+                        <tr class="flex min-w-full gap-0 border-b-2 border-transition-color-20">
+                          <For each={headerGroup.headers}>
+                            {(header) => {
+                              const { column } = header;
                               if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
                                 // 默认隐藏的数据
                                 return;
                               }
-                              switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
-                                case "name":
-                                  return (
-                                    <td
-                                      style={{
-                                        ...getCommonPinningStyles(column),
-                                        width: getCommonPinningStyles(column).width + "px",
-                                      }}
-                                      class="flex flex-col justify-center px-3 py-6 lg:py-8"
-                                    >
-                                      <span class="text-lg font-bold">
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                      </span>
-                                      <span class="text-sm font-normal text-accent-color-70">
-                                        {row.getValue("address") ?? "未知"}
-                                      </span>
-                                    </td>
-                                  );
-
-                                case "element": {
-                                  const icon =
-                                    {
-                                      WATER: <Icon.Element.Water class="h-12 w-12" />,
-                                      FIRE: <Icon.Element.Fire class="h-12 w-12" />,
-                                      EARTH: <Icon.Element.Earth class="h-12 w-12" />,
-                                      WIND: <Icon.Element.Wind class="h-12 w-12" />,
-                                      LIGHT: <Icon.Element.Light class="h-12 w-12" />,
-                                      DARK: <Icon.Element.Dark class="h-12 w-12" />,
-                                      NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
-                                    }[cell.getValue() as $Enums.Element] ?? undefined;
-                                  return (
-                                    <td
-                                      style={{
-                                        ...getCommonPinningStyles(column),
-                                        width: getCommonPinningStyles(column).width + "px",
-                                      }}
-                                      class={"flex flex-col justify-center px-3 py-6"}
-                                    >
-                                      {icon}
-                                    </td>
-                                  );
-                                }
-
-                                // 以下值需要添加百分比符号
-                                case "physicalResistance":
-                                case "magicalResistance":
-                                case "dodge":
-                                case "block":
-                                case "normalAttackResistanceModifier":
-                                case "physicalAttackResistanceModifier":
-                                case "magicalAttackResistanceModifier":
-                                  return (
-                                    <td
-                                      style={{
-                                        ...getCommonPinningStyles(column),
-                                        width: getCommonPinningStyles(column).width + "px",
-                                      }}
-                                      class={`flex flex-col justify-center px-3 py-6`}
-                                    >
-                                      {flexRender(cell.column.columnDef.cell, cell.getContext())}%
-                                    </td>
-                                  );
-
-                                case "criticalResistance":
-
-                                default:
-                                  return (
-                                    <td
-                                      style={{
-                                        ...getCommonPinningStyles(column),
-                                        width: getCommonPinningStyles(column).width + "px",
-                                      }}
-                                      class={`flex flex-col justify-center px-3 py-6`}
-                                    >
-                                      {((cell) => {
-                                        try {
-                                          const content =
-                                            dictionary().db.enums[
-                                              (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                                cell.column.id.slice(1)) as keyof typeof $Enums
-                                            ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
-                                          return content;
-                                        } catch (error) {
-                                          return flexRender(cell.column.columnDef.cell, cell.getContext());
-                                        }
-                                      })(cell)}
-                                    </td>
-                                  );
-                              }
+                              return (
+                                <th
+                                  style={{
+                                    ...getCommonPinningStyles(column),
+                                    width: getCommonPinningStyles(column).width + "px",
+                                  }}
+                                  class="flex flex-col"
+                                >
+                                  <div
+                                    {...{
+                                      onClick: header.column.getToggleSortingHandler(),
+                                    }}
+                                    class={`flex-1 py-4 text-left font-normal hover:bg-transition-color-8 ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                      header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                                    }`}
+                                  >
+                                    {dictionary().db.models.monster[column.id as keyof Monster] as string}
+                                    {{
+                                      asc: " ↓",
+                                      desc: " ↑",
+                                    }[header.column.getIsSorted() as string] ?? null}
+                                  </div>
+                                </th>
+                              );
                             }}
                           </For>
                         </tr>
-                      );
-                    }}
-                  </For>
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </For>
+                  </thead>
+                  <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class="TableBody relative">
+                    <For each={virtualizer().getVirtualItems()}>
+                      {(virtualRow) => {
+                        const row = table()!.getRowModel().rows[virtualRow.index];
+                        return (
+                          <tr
+                            data-index={virtualRow.index}
+                            // ref={(node) => virtualizer.measureElement(node)}
+                            style={{
+                              position: "absolute",
+                              transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                            class={`group flex cursor-pointer border-b border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold`}
+                            onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                          >
+                            <For each={row.getVisibleCells()}>
+                              {(cell) => {
+                                const { column } = cell;
+                                if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
+                                  // 默认隐藏的数据
+                                  return;
+                                }
+
+                                let tdContent: JSX.Element;
+
+                                switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
+                                  case "name":
+                                    tdContent = (
+                                      <>
+                                        <span class="pb-1">
+                                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </span>
+                                        <span class="text-sm font-normal text-accent-color-70">
+                                          {row.getValue("address") ?? "未知"}
+                                        </span>
+                                      </>
+                                    );
+                                    break;
+
+                                  case "element":
+                                    {
+                                      const icon =
+                                        {
+                                          WATER: <Icon.Element.Water class="h-12 w-12" />,
+                                          FIRE: <Icon.Element.Fire class="h-12 w-12" />,
+                                          EARTH: <Icon.Element.Earth class="h-12 w-12" />,
+                                          WIND: <Icon.Element.Wind class="h-12 w-12" />,
+                                          LIGHT: <Icon.Element.Light class="h-12 w-12" />,
+                                          DARK: <Icon.Element.Dark class="h-12 w-12" />,
+                                          NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
+                                        }[cell.getValue() as $Enums.Element] ?? undefined;
+                                      tdContent = icon;
+                                    }
+                                    break;
+
+                                  // 以下值需要添加百分比符号
+                                  case "physicalResistance":
+                                  case "magicalResistance":
+                                  case "dodge":
+                                  case "block":
+                                  case "normalAttackResistanceModifier":
+                                  case "physicalAttackResistanceModifier":
+                                  case "magicalAttackResistanceModifier":
+                                    tdContent = <>{flexRender(cell.column.columnDef.cell, cell.getContext())}%</>;
+                                    break;
+
+                                  case "criticalResistance":
+
+                                  default:
+                                    try {
+                                      const content =
+                                        dictionary().db.enums[
+                                          (cell.column.id.charAt(0).toLocaleUpperCase() +
+                                            cell.column.id.slice(1)) as keyof typeof $Enums
+                                        ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
+                                      tdContent = content;
+                                    } catch (error) {
+                                      tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+                                    }
+                                    break;
+                                }
+
+                                return (
+                                  <td
+                                    style={{
+                                      ...getCommonPinningStyles(column),
+                                      width: getCommonPinningStyles(column).width + "px",
+                                    }}
+                                    class={"flex flex-col justify-center py-6"}
+                                  >
+                                    {tdContent}
+                                  </td>
+                                );
+                              }}
+                            </For>
+                          </tr>
+                        );
+                      }}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
           </OverlayScrollbarsComponent>
         </div>
         <Presence exitBeforeEnter>
