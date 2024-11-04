@@ -2,7 +2,18 @@ import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, 
 import { ObjectRenderer } from "./objectRender";
 import { Monster } from "~/repositories/monster";
 import { Character } from "~/repositories/character";
-import { Accessor, createEffect, createMemo, createResource, createSignal, For, onMount, Show, JSX } from "solid-js";
+import {
+  Accessor,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  onMount,
+  Show,
+  JSX,
+  on,
+} from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/ui/button";
@@ -35,6 +46,7 @@ import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
 import { updateMob } from "~/repositories/mob";
+import { create } from "domain";
 
 const externalEditorClassName = "sqd-editor-solid";
 
@@ -58,13 +70,7 @@ export default function AnalyzerIndexClient() {
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.analyzerPage.analyzerList;
   const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
-  const [analyzerFetcher, { refetch: refetchAnalyzer }] = createResource(() => findAnalyzerById(params.analyzerId));
-  const [analyzer, setAnalyzer] = createSignal<Analyzer | null>(null);
-  createEffect(() => {
-    console.log("analyzer");
-    const newAnalyzer = analyzerFetcher();
-    newAnalyzer && setAnalyzer(newAnalyzer);
-  });
+  const [analyzer, { refetch: refetchAnalyzer }] = createResource(() => findAnalyzerById(params.analyzerId));
   const [memberIndex, setMemberIndex] = createSignal(0);
   const [mobIndex, setMobIndex] = createSignal(0);
 
@@ -187,11 +193,14 @@ export default function AnalyzerIndexClient() {
     },
   }));
 
-  const defaultStarArray: number[] = [];
-  analyzer()?.mobs.forEach((mob) => {
-    defaultStarArray.push(mob.star);
+  const [starArray, setStarArray] = createSignal<number[]>([]);
+  createEffect(() => {
+    const defaultStarArray: number[] = [];
+    analyzer()?.mobs.forEach((mob) => {
+      defaultStarArray.push(mob.star);
+    });
+    setStarArray(defaultStarArray);
   });
-  const [starArray, setStarArray] = createSignal(defaultStarArray);
   const [dialogState, setDialogState] = createSignal(true); // 避免流程设计器初始化因没有父级元素失败
 
   interface WorkflowDefinition extends Definition {
@@ -201,38 +210,40 @@ export default function AnalyzerIndexClient() {
     sequence: CustomStateMachineStep[];
   }
 
-  const startDefinition = createMemo<WorkflowDefinition>(() => {
+  const startDefinition = createMemo<WorkflowDefinition | undefined>(() => {
+    if (!analyzer()) {
+      return;
+    }
     console.log("更新startDefinition");
-    console.log(analyzer());
     return {
       properties: {
         speed: 300,
       },
       sequence: _.cloneDeep(
-        ((analyzer()?.team[memberIndex()].flow) ?? [
+        (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
           ExecutableSteps.createTextStep("开始!"),
-          ExecutableSteps.createMathStep("定义", "a = 1"),
-          ExecutableSteps.createMathStep("定义", "b = 2"),
-          ExecutableSteps.createLoopStep("循环", "a < 20", [
-            ExecutableSteps.createMathStep("自增", "a = a + 2"),
-            ExecutableSteps.createMathStep("自减", "a = a + b - 1"),
-            ExecutableSteps.createIfStep(
-              "如果x大于50",
-              "a < 10",
-              [ExecutableSteps.createTextStep("yes!")],
-              [ExecutableSteps.createTextStep("no...")],
-            ),
-          ]),
           ExecutableSteps.createTextStep("结束"),
-        ]) as CustomStateMachineStep[]
+        ],
       ),
     };
   });
 
+  createEffect(
+    on(
+      analyzer,
+      () => {
+        console.log("更新分析器", analyzer());
+      },
+      {
+        defer: true,
+      },
+    ),
+  );
+
   onMount(() => {
     console.log("--Analyzer Client Render");
     setDesigner(
-      Designer.create(placeholder()!, startDefinition(), {
+      Designer.create(placeholder()!, startDefinition()!, {
         theme: "light",
         undoStackSize: 10,
         toolbox: toolboxConfiguration()
@@ -275,7 +286,6 @@ export default function AnalyzerIndexClient() {
     }, 1);
   });
 
-
   return (
     <>
       <div class="Title flex flex-col p-3 lg:pt-12">
@@ -302,8 +312,10 @@ export default function AnalyzerIndexClient() {
               }
               return (
                 <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-transition-color-20 lg:flex-row lg:gap-6">
-                  <div class="MobsName z-10 px-6 py-3 text-xl text-primary-color">{mob.monster?.name ?? ""}</div>
-                  <div class="MobsConfig z-10 flex flex-1 flex-col gap-6 px-6 py-3 lg:flex-row">
+                  <div class="MobsName z-10 flex-shrink-0 px-6 py-3 text-xl text-primary-color">
+                    {mob.monster?.name ?? ""}
+                  </div>
+                  <div class="MobsConfig z-10 flex flex-1 flex-shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
                     <div
                       class="MobsAugment flex cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
                       onMouseEnter={() => setStarArr(0)}
@@ -365,7 +377,7 @@ export default function AnalyzerIndexClient() {
                     onClick={() => {
                       setDialogState(true);
                       setMemberIndex(index());
-                      designer()?.replaceDefinition(startDefinition());
+                      startDefinition() && designer()?.replaceDefinition(startDefinition()!);
                     }}
                     class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-transition-color-20"
                   >
