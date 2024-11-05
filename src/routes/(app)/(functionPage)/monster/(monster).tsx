@@ -357,39 +357,42 @@ export default function MonsterIndexPage() {
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
-                class={`banner1 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 1 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
                   "background-image": `url(${monsterList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-position": "center center",
                 }}
               >
-                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color">
+                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color">
                   <span class="text-3xl font-bold">Top.1</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[0]?.name}</span>
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 2 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
                   "background-image": `url(${monsterList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-position": "center center",
                 }}
               >
-                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color">
+                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color">
                   <span class="text-3xl font-bold">Top.2</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[1]?.name}</span>
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded-md ${activeBannerIndex() === 3 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-transition-color-20" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
                   "background-image": `url(${monsterList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-position": "center center",
                 }}
               >
-                <div class="mask flex h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color">
+                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color">
                   <span class="text-3xl font-bold">Top.3</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[2]?.name}</span>
@@ -406,7 +409,7 @@ export default function MonsterIndexPage() {
               {dictionary().ui.monster.table.title}
             </div>
             <div
-              class={`Description flex-1 rounded-md bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+              class={`Description flex-1 rounded bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.monster.table.description}
             </div>

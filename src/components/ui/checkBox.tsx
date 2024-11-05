@@ -23,7 +23,7 @@ const CheckBox = (props: MyButtonProps) => {
       }[props.size ?? "md"],
       state: props.state,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
-      stateClass: props.state ? "outline-brand-color-1st" : "outline-transition-color-20 text-accent-color-70",
+      stateClass: props.state ? "bg-brand-color-1st text-primary-color" : "bg-transition-color-8 text-accent-color-70",
     };
   });
 
@@ -33,7 +33,7 @@ const CheckBox = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 ${props.state ? "" : "focus-within:outline-transition-color-20"} hover:underline ${config().sizeClass} ${config().stateClass} `,
+      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 ${props.state ? "" : "focus-within:outline-none"} hover:underline ${config().sizeClass} ${config().stateClass} `,
     );
   });
 

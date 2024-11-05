@@ -1,4 +1,4 @@
-import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, JSX, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
@@ -30,17 +30,31 @@ export default function Setting() {
     };
   });
 
-  const SettingPageContentModule = (moduleName:string,labelName: string, title: string, description: string, children: JSX.Element) => (
-    <div class={`Module ${moduleName} bg-transition-color-8 flex flex-col gap-2 rounded p-1 lg:p-3`}>
-      <h2 class="ModuleTitle p-2 text-lg font-bold">{labelName}</h2>
+  const SettingPageContentModule = (
+    moduleName: string,
+    labelName: string,
+    content: {
+      title: string;
+      description: string;
+      children: JSX.Element;
+    }[],
+  ) => (
+    <div
+      class={`Module ${moduleName} flex flex-col border-b-[1px] border-transition-color-20 lg:gap-2 lg:rounded lg:border-none lg:bg-transition-color-8 lg:p-3`}
+    >
+      <h2 class="ModuleTitle py-2 text-lg font-bold lg:px-2">{labelName}</h2>
       <div class="LabelGroup flex flex-col gap-1">
-        <div class="Durtion border-1.5 border-transition-color-20 bg-primary-color flex flex-1 flex-col items-start justify-between gap-4 rounded p-3 lg:flex-row lg:items-center">
-          <div class="Description flex flex-1 flex-col gap-2">
-            <h3>{title}</h3>
-            <span class="text-accent-color-70 text-sm">{description}</span>
-          </div>
-          {children}
-        </div>
+        <For each={content}>
+          {({ title, description, children }) => (
+            <div class="Content border-1.5 flex flex-1 flex-col items-start justify-between gap-4 rounded border-transition-color-20 bg-primary-color pb-3 lg:flex-row lg:items-center lg:p-3">
+              <div class="Description flex flex-1 flex-col gap-2">
+                <h3>{title}</h3>
+                <span class="text-sm text-accent-color-70">{description}</span>
+              </div>
+              {children}
+            </div>
+          )}
+        </For>
       </div>
     </div>
   );
@@ -52,9 +66,9 @@ export default function Setting() {
           animate={{ transform: "scale(1)", opacity: [0, 1] }}
           exit={{ transform: "scale(1.05)", opacity: 0 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SettingBox bg-primary-color fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center`}
+          class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-primary-color`}
         >
-          <div class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-3 lg:max-w-7xl`}>
+          <div class={`SettingForm flex h-dvh flex-1 flex-col gap-3 rounded p-6 lg:max-w-7xl lg:p-3`}>
             <div class="FormTitle flex items-center justify-between">
               <h1 class="text-2xl font-bold">{dictionary().ui.settings.title}</h1>
               <Button onClick={() => setStore("settingsDialogState", false)}>
@@ -62,7 +76,7 @@ export default function Setting() {
               </Button>
             </div>
             <div class="FormContent flex flex-1 flex-row items-start overflow-hidden">
-              <div class="Nav bg-transition-color-8 mr-3 hidden w-fit min-w-60 flex-col rounded p-3 lg:flex">
+              <div class="Nav mr-3 hidden w-fit min-w-60 flex-col rounded bg-transition-color-8 p-3 lg:flex">
                 <Button class="bg-transparent">
                   <Icon.Line.Laptop />
                   <span class="w-full text-left">{dictionary().ui.settings.userInterface.title}</span>
@@ -94,152 +108,153 @@ export default function Setting() {
                 defer
                 class="h-full"
               >
-                <div class="List flex h-full flex-1 flex-col items-stretch gap-5 rounded lg:gap-3">
-                  {SettingPageContentModule(
-                    "UserInterface",
-                    dictionary().ui.settings.userInterface.title,
-                    dictionary().ui.settings.userInterface.isAnimationEnabled.title,
-                    dictionary().ui.settings.userInterface.isAnimationEnabled.description,
-                    <Toggle
-                      onclick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
-                      state={store.settings.userInterface.isAnimationEnabled}
-                    />,
-                  )}
-                  {SettingPageContentModule(
-                    "Language",
-                    dictionary().ui.settings.language.title,
-                    dictionary().ui.settings.language.selectedLanguage.title,
-                    dictionary().ui.settings.language.selectedLanguage.description,
-                    <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
-                      <CheckBox
-                        state={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
-                        onClick={() => setStore("settings", "language", "zh-CN")}
-                      >
-                        {dictionary().ui.settings.language.selectedLanguage.zhCN}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.language === "zh-TW"}
-                        onClick={() => setStore("settings", "language", "zh-TW")}
-                      >
-                        {dictionary().ui.settings.language.selectedLanguage.zhTW}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.language === "en-US" || store.settings.language === "en-GB"}
-                        onClick={() => setStore("settings", "language", "en-US")}
-                      >
-                        {dictionary().ui.settings.language.selectedLanguage.enUS}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.language === "ja"}
-                        onClick={() => setStore("settings", "language", "ja")}
-                      >
-                        {dictionary().ui.settings.language.selectedLanguage.jaJP}
-                      </CheckBox>
-                    </div>
-                  )}
-                  {SettingPageContentModule(
-                    "StatusAndSync",
-                    dictionary().ui.settings.statusAndSync.title,
-                    dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title,
-                    dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.description,
-                    <Toggle
-                      onclick={() =>
-                        setStore("settings", "statusAndSync", "restorePreviousStateOnStartup", (prev) => !prev)
-                      }
-                      state={store.settings.statusAndSync.restorePreviousStateOnStartup}
-                    />,
-                  )}
-                  {SettingPageContentModule(
-                    "Privacy",
-                    dictionary().ui.settings.privacy.title,
-                    dictionary().ui.settings.privacy.postVisibility.title,
-                    dictionary().ui.settings.privacy.postVisibility.description,
-                    <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
-                      <CheckBox
-                        state={store.settings.privacy.postVisibility === "everyone"}
-                        onClick={() => setStore("settings", "privacy", "postVisibility", "everyone")}
-                      >
-                        {dictionary().ui.settings.privacy.postVisibility.everyone}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.privacy.postVisibility === "friends"}
-                        onClick={() => setStore("settings", "privacy", "postVisibility", "friends")}
-                      >
-                        {dictionary().ui.settings.privacy.postVisibility.friends}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.privacy.postVisibility === "onlyMe"}
-                        onClick={() => setStore("settings", "privacy", "postVisibility", "onlyMe")}
-                      >
-                        {dictionary().ui.settings.privacy.postVisibility.onlyMe}
-                      </CheckBox>
-                    </div>
-                  )}
-                  {SettingPageContentModule(
-                    "Messages",
-                    dictionary().ui.settings.messages.title,
-                    dictionary().ui.settings.messages.notifyOnContentChange.title,
-                    dictionary().ui.settings.messages.notifyOnContentChange.description,
-                    <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
-                      <CheckBox
-                        state={store.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
-                        onClick={() =>
-                          setStore(
-                            "settings",
-                            "messages",
-                            "notifyOnContentChange",
-                            "notifyOnReferencedContentChange",
-                            (prev) => !prev,
-                          )
-                        }
-                      >
-                        {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.messages.notifyOnContentChange.notifyOnLike}
-                        onClick={() =>
-                          setStore("settings", "messages", "notifyOnContentChange", "notifyOnLike", (prev) => !prev)
-                        }
-                      >
-                        {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnLike}
-                      </CheckBox>
-                      <CheckBox
-                        state={store.settings.messages.notifyOnContentChange.notifyOnBookmark}
-                        onClick={() =>
-                          setStore(
-                            "settings",
-                            "messages",
-                            "notifyOnContentChange",
-                            "notifyOnBookmark",
-                            (prev) => !prev,
-                          )
-                        }
-                      >
-                        {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnBookmark}
-                      </CheckBox>
-                    </div>
-                  )}
-                  <div class="Module About bg-transition-color-8 flex flex-col gap-2 rounded p-1 lg:p-3">
-                    <h2 class="ModuleTitle p-2 text-lg font-bold">{dictionary().ui.settings.about.title}</h2>
-                    <div class="LabelGroup flex flex-col gap-1">
-                      <div class="Version border-1.5 border-transition-color-20 bg-primary-color flex flex-1 flex-col items-start justify-between gap-4 rounded p-3 lg:flex-row lg:items-center">
-                        <div class="Description flex flex-1 flex-col gap-2">
-                          <h3>{dictionary().ui.settings.about.version.title}</h3>
-                          <span class="text-accent-color-70 text-sm">
-                            {dictionary().ui.settings.about.version.description}
-                          </span>
+                <div class="List flex h-full flex-1 flex-col items-stretch gap-3 rounded">
+                  {SettingPageContentModule("UserInterface", dictionary().ui.settings.userInterface.title, [
+                    {
+                      title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
+                      description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
+                      children: (
+                        <Toggle
+                          onclick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
+                          state={store.settings.userInterface.isAnimationEnabled}
+                        />
+                      ),
+                    },
+                  ])}
+                  {SettingPageContentModule("Language", dictionary().ui.settings.language.title, [
+                    {
+                      title: dictionary().ui.settings.language.selectedLanguage.title,
+                      description: dictionary().ui.settings.language.selectedLanguage.description,
+                      children: (
+                        <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
+                          <CheckBox
+                            state={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
+                            onClick={() => setStore("settings", "language", "zh-CN")}
+                          >
+                            {dictionary().ui.settings.language.selectedLanguage.zhCN}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.language === "zh-TW"}
+                            onClick={() => setStore("settings", "language", "zh-TW")}
+                          >
+                            {dictionary().ui.settings.language.selectedLanguage.zhTW}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.language === "en-US" || store.settings.language === "en-GB"}
+                            onClick={() => setStore("settings", "language", "en-US")}
+                          >
+                            {dictionary().ui.settings.language.selectedLanguage.enUS}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.language === "ja"}
+                            onClick={() => setStore("settings", "language", "ja")}
+                          >
+                            {dictionary().ui.settings.language.selectedLanguage.jaJP}
+                          </CheckBox>
                         </div>
-                      </div>
-                      <div class="Description border-1.5 border-transition-color-20 bg-primary-color flex flex-1 flex-col items-start justify-between gap-4 rounded p-3 lg:flex-row lg:items-center">
-                        <div class="Description flex flex-1 flex-col gap-2">
-                          <h3>{dictionary().ui.settings.about.description.title}</h3>
-                          <span class="text-accent-color-70 text-sm">
-                            {dictionary().ui.settings.about.description.description}
-                          </span>
+                      ),
+                    },
+                  ])}
+                  {SettingPageContentModule("StatusAndSync", dictionary().ui.settings.statusAndSync.title, [
+                    {
+                      title: dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title,
+                      description: dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.description,
+                      children: (
+                        <Toggle
+                          onclick={() =>
+                            setStore("settings", "statusAndSync", "restorePreviousStateOnStartup", (prev) => !prev)
+                          }
+                          state={store.settings.statusAndSync.restorePreviousStateOnStartup}
+                        />
+                      ),
+                    },
+                  ])}
+                  {SettingPageContentModule("Privacy", dictionary().ui.settings.privacy.title, [
+                    {
+                      title: dictionary().ui.settings.privacy.postVisibility.title,
+                      description: dictionary().ui.settings.privacy.postVisibility.description,
+                      children: (
+                        <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
+                          <CheckBox
+                            state={store.settings.privacy.postVisibility === "everyone"}
+                            onClick={() => setStore("settings", "privacy", "postVisibility", "everyone")}
+                          >
+                            {dictionary().ui.settings.privacy.postVisibility.everyone}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.privacy.postVisibility === "friends"}
+                            onClick={() => setStore("settings", "privacy", "postVisibility", "friends")}
+                          >
+                            {dictionary().ui.settings.privacy.postVisibility.friends}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.privacy.postVisibility === "onlyMe"}
+                            onClick={() => setStore("settings", "privacy", "postVisibility", "onlyMe")}
+                          >
+                            {dictionary().ui.settings.privacy.postVisibility.onlyMe}
+                          </CheckBox>
                         </div>
-                      </div>
-                    </div>
-                  </div>
+                      ),
+                    },
+                  ])}
+                  {SettingPageContentModule("Messages", dictionary().ui.settings.messages.title, [
+                    {
+                      title: dictionary().ui.settings.messages.notifyOnContentChange.title,
+                      description: dictionary().ui.settings.messages.notifyOnContentChange.description,
+                      children: (
+                        <div class="Selector flex flex-wrap gap-2 lg:flex-nowrap">
+                          <CheckBox
+                            state={store.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
+                            onClick={() =>
+                              setStore(
+                                "settings",
+                                "messages",
+                                "notifyOnContentChange",
+                                "notifyOnReferencedContentChange",
+                                (prev) => !prev,
+                              )
+                            }
+                          >
+                            {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.messages.notifyOnContentChange.notifyOnLike}
+                            onClick={() =>
+                              setStore("settings", "messages", "notifyOnContentChange", "notifyOnLike", (prev) => !prev)
+                            }
+                          >
+                            {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnLike}
+                          </CheckBox>
+                          <CheckBox
+                            state={store.settings.messages.notifyOnContentChange.notifyOnBookmark}
+                            onClick={() =>
+                              setStore(
+                                "settings",
+                                "messages",
+                                "notifyOnContentChange",
+                                "notifyOnBookmark",
+                                (prev) => !prev,
+                              )
+                            }
+                          >
+                            {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnBookmark}
+                          </CheckBox>
+                        </div>
+                      ),
+                    },
+                  ])}
+                  {SettingPageContentModule("About", dictionary().ui.settings.about.title, [
+                    {
+                      title: dictionary().ui.settings.about.version.title,
+                      description: dictionary().ui.settings.about.version.description,
+                      children: <></>,
+                    },
+                    {
+                      title: dictionary().ui.settings.about.description.title,
+                      description: dictionary().ui.settings.about.description.description,
+                      children: <></>,
+                    },
+                  ])}
                 </div>
               </OverlayScrollbarsComponent>
             </div>

@@ -319,7 +319,7 @@ export default function Index() {
                     {value.map((item, index) => {
                       return (
                         <Motion.button
-                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded border border-transition-color-20 bg-primary-color p-3`}
+                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} outline-none focus-within:outline-none focus-within:bg-transition-color-8 rounded border border-transition-color-20 bg-primary-color p-3`}
                           animate={{
                             opacity: [0, 1],
                             transform: ["translateY(30px)", "translateY(0)"],
