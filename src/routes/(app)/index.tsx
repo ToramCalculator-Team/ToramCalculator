@@ -319,7 +319,7 @@ export default function Index() {
                     {value.map((item, index) => {
                       return (
                         <Motion.button
-                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} outline-none focus-within:outline-none focus-within:bg-transition-color-8 rounded border border-transition-color-20 bg-primary-color p-3`}
+                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded border border-transition-color-20 bg-primary-color p-3 outline-none focus-within:bg-transition-color-8 focus-within:outline-none`}
                           animate={{
                             opacity: [0, 1],
                             transform: ["translateY(30px)", "translateY(0)"],
@@ -467,15 +467,15 @@ export default function Index() {
 
   return (
     <MetaProvider>
-      {/* <BabylonBg /> */}
+      <BabylonBg />
       <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
       <Motion.div
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-        class={`Client flex h-dvh w-dvw flex-col justify-between opacity-0 lg:mx-auto lg:max-w-[1536px]`}
+        class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <div class="QueryStarus pointer-events-none fixed left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
+        <div class="QueryStarus pointer-events-none absolute left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
           <span>MonsterList: {monsterList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
@@ -484,7 +484,7 @@ export default function Index() {
         <Motion.div
           animate={{ opacity: [0, 1] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          class={`Config fixed right-3 top-3 flex gap-1`}
+          class={`Config absolute right-3 top-3 flex gap-1`}
         >
           <Button
             class="outline-none duration-150 focus-within:outline-none"
@@ -502,7 +502,7 @@ export default function Index() {
           </Button>
         </Motion.div>
         <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 lg:p-3`}
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${

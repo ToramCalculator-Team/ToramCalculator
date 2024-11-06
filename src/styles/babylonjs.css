@@ -2,6 +2,16 @@
 #scene-explorer-host,
 #strokeMiterlimit-host,
 #inspector-host  {
-  position: absolute !important;
+  /* position: fixed !important; */
   z-index: 100;
+}
+
+#inspector-host * {
+  transition: all 0ms !important;
+}
+
+#inspector-host input,
+#inspector-host select,
+#inspector-host textarea {
+  color: black;
 }

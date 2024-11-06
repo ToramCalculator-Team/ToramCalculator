@@ -1,5 +1,6 @@
 import * as BABYLON from "babylonjs";
 import "babylonjs-loaders";
+import "babylonjs-inspector";
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import LoadingBox from "~/components/ui/loadingBox";
 import { store } from "~/store";
@@ -227,18 +228,81 @@ function isPBRMaterial(mat: BABYLON.Nullable<BABYLON.Material>): mat is BABYLON.
   }
 }
 
+// ----------------------------------------预设内容-----------------------------------
+// 主题是定义
+const cssColors = {
+  white: [255, 255, 255],
+  geryWhite: [200, 200, 200],
+  grey: [55, 55, 55],
+  black: [0, 0, 0],
+  brown: [47, 26, 73],
+  navyBlue: [105, 145, 214],
+  greenBlue: [149, 207, 213],
+  yellow: [255, 166, 60],
+  orange: [253, 126, 80],
+  water: [0, 140, 229],
+  fire: [233, 62, 38],
+  earth: [255, 151, 54],
+  wind: [0, 143, 84],
+  light: [248, 193, 56],
+  dark: [141, 56, 240],
+};
+const rgb2Bcolor3 = (c: number[]) => new BABYLON.Color3(c[0] / 255, c[1] / 255, c[2] / 255);
+const themeColors = createMemo(
+  () =>
+    ({
+      light: {
+        accent: rgb2Bcolor3(cssColors.brown),
+        primary: rgb2Bcolor3(cssColors.white),
+        transition: rgb2Bcolor3(cssColors.navyBlue),
+        brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+        brand_2nd: rgb2Bcolor3(cssColors.yellow),
+        brand_3rd: rgb2Bcolor3(cssColors.orange),
+      },
+      dark: {
+        accent: rgb2Bcolor3(cssColors.white),
+        primary: rgb2Bcolor3(cssColors.grey),
+        transition: rgb2Bcolor3(cssColors.navyBlue),
+        brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+        brand_2nd: rgb2Bcolor3(cssColors.yellow),
+        brand_3rd: rgb2Bcolor3(cssColors.orange),
+      },
+    })[store.theme],
+);
+
+// y旋转动画
+const yRot = new BABYLON.Animation(
+  "yRot",
+  "rotation.y",
+  1,
+  BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+  BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE,
+);
+yRot.setKeys([
+  // 由于是匀速旋转动画，只有起始帧和终点帧
+  {
+    frame: 0,
+    value: 0,
+  },
+  {
+    frame: 96,
+    value: 2 * Math.PI,
+  },
+]);
+
 export default function BabylonBg(): JSX.Element {
   // 场景渲染状态代替图片加载状态
   const [loaderState, setLoaderState] = createSignal(false);
   // 模型加载进度展示标签引用
   let progress: HTMLDivElement;
-  // 主题获取
-  const theme = store.theme;
   // 场景材质初始主色
-  const mainColor = {
-    dark: new BABYLON.Color3(0, 0, 0).toLinearSpace(),
-    light: new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace(),
-  }[theme];
+  const mainColor = createMemo(
+    () =>
+      ({
+        dark: new BABYLON.Color3(0.5, 0.5, 0.5).toLinearSpace(),
+        light: new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace(),
+      })[store.theme],
+  );
   // new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace();
 
   // canvas引用
@@ -258,15 +322,14 @@ export default function BabylonBg(): JSX.Element {
   };
 
   // 测试模式配置函数
-  // function testModelOpen() {
-  //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-  //   void scene.debugLayer.show({
-  //     // embedMode: true
-  //   });
-  //   // 世界坐标轴显示
-  //   new BABYLON.AxesViewer(scene, 0.1);
-  // }
-  // testModelOpen();
+  function testModelOpen() {
+    // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void scene.debugLayer.show({
+      // embedMode: true
+    });
+    // 世界坐标轴显示
+    new BABYLON.AxesViewer(scene, 0.1);
+  }
 
   // 其他bbl内容
 
@@ -285,7 +348,8 @@ export default function BabylonBg(): JSX.Element {
     };
     scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(1, 0, 0, 1);
-    scene.ambientColor = mainColor;
+    scene.ambientColor = mainColor();
+    // testModelOpen();
 
     // 摄像机
     camera = new BABYLON.ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new BABYLON.Vector3(0, 0.43, 0), scene);
@@ -295,7 +359,7 @@ export default function BabylonBg(): JSX.Element {
     camera.wheelDeltaPercentage = 0.05;
     // camera.inputs.clear(); // -----------------------------------------------------相机输入禁用-----------------------
     // 注册鼠标移动事件来触发相机控制
-    // canvas !== null && canvas.addEventListener("mousemove", (e) => cameraControl(e, camera));
+    canvas !== null && window.addEventListener("mousemove", (e) => cameraControl(e, camera));
 
     // 后期处理
     new BABYLON.LensRenderingPipeline(
@@ -316,27 +380,6 @@ export default function BabylonBg(): JSX.Element {
       1.0,
       [camera],
     );
-
-    // ----------------------------------------预设内容-----------------------------------
-    // y旋转动画
-    const yRot = new BABYLON.Animation(
-      "yRot",
-      "rotation.y",
-      1,
-      BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-      BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE,
-    );
-    yRot.setKeys([
-      // 由于是匀速旋转动画，只有起始帧和终点帧
-      {
-        frame: 0,
-        value: 0,
-      },
-      {
-        frame: 96,
-        value: 2 * Math.PI,
-      },
-    ]);
 
     // -------------------------光照设置-------------------------
     // 设置顶部锥形光
@@ -391,9 +434,9 @@ export default function BabylonBg(): JSX.Element {
     const spsNumber = 1000; // 粒子数
 
     const SPS = new BABYLON.SolidParticleSystem("SPS", scene);
-    const tetra = BABYLON.MeshBuilder.CreateBox("tetra", {});
-    SPS.addShape(tetra, spsNumber);
-    tetra.dispose();
+    const particle = BABYLON.MeshBuilder.CreateBox("particle", {});
+    SPS.addShape(particle, spsNumber);
+    particle.dispose();
     const spsMesh = SPS.buildMesh();
     spsMesh.name = "spsMesh";
     spsMesh.rotation = new BABYLON.Vector3((Math.PI * -1) / 12, 0, 0);
@@ -449,17 +492,24 @@ export default function BabylonBg(): JSX.Element {
       const defauleMaterial = scene.getMaterialByName("__GLTFLoader._default");
       defauleMaterial && (defauleMaterial.backFaceCulling = false);
       if (isPBRMaterial(defauleMaterial)) {
-        defauleMaterial.albedoColor = mainColor;
+        defauleMaterial.albedoColor = mainColor();
+        createEffect(() => {
+          defauleMaterial.albedoColor = mainColor();
+        });
         defauleMaterial.ambientColor = new BABYLON.Color3(0.008, 0.01, 0.01);
       }
+      // 体积雾设置
       const mat: VolumetricFogPluginMaterial | undefined | null =
         defauleMaterial?.pluginManager?.getPlugin("VolumetricFog");
       if (mat) {
         mat.center = new BABYLON.Vector3(0, 0, -6);
         mat.isEnabled = true;
-        mat.color = mainColor;
+        mat.color = mainColor();
         mat.radius = 8;
         mat.density = 0.5;
+        createEffect(() => {
+          mat.color = mainColor();
+        });
       }
       // 材质添加
       scene.meshes.forEach((mesh) => {
@@ -485,10 +535,14 @@ export default function BabylonBg(): JSX.Element {
     });
   });
 
+  createEffect(() => {
+    scene.ambientColor = mainColor();
+  });
+
   onCleanup(() => {
     scene.dispose();
     engine.dispose();
-    canvas && canvas.removeEventListener("mousemove", (e) => cameraControl(e, camera));
+    canvas && window.removeEventListener("mousemove", (e) => cameraControl(e, camera));
     console.log("内存已清理");
   });
 
