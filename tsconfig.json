@@ -10,18 +10,10 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": [
-      "vinxi/types/client",
-      "node"
-    ],
+    "types": ["vinxi/types/client", "node"],
     "isolatedModules": true,
     "paths": {
-      "~/*": [
-        "./src/*"
-      ],
-      "expose": [
-        "./node_modules/threads/worker.d.ts"
-      ]
+      "~/*": ["./src/*"]
     }
   }
 }

@@ -9,19 +9,18 @@ export default defineConfig({
       sourcemap: true,
       rollupOptions: {
         external: [
-          'babylonjs',
-          'babylonjs-loaders',
-          'babylonjs/serializers',
-          'babylonjs/gui-editor',
-          'babylonjs/gui',
-          'babylonjs/materials',
-          // 'babylonjs/inspector'
+          "@babylonjs/core",
+          "@babylonjs/inspector",
+          "@babylonjs/loaders",
+          "@babylonjs/materials",
+          "@babylonjs/inspector",
         ],
         output: {
           paths: {
-            'babylonjs-loaders': 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
-            // 'babylonjs-inspector': 'https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js',
-            'babylonjs': 'https://cdn.babylonjs.com/babylon.js'
+            '@babylonjs/loaders': 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
+            '@babylonjs/inspector': 'https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js',
+            '@babylonjs/core': 'https://cdn.babylonjs.com/babylon.js',
+            '@babylonjs/materials': 'https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js',
           }
         }
       },

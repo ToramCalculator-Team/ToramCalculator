@@ -1,19 +1,43 @@
-import * as BABYLON from "babylonjs";
-import "babylonjs-loaders";
-import "babylonjs-inspector";
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
+import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
+import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
 import LoadingBox from "~/components/ui/loadingBox";
 import { store } from "~/store";
+import { Material } from "@babylonjs/core/Materials/material";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Scene } from "@babylonjs/core/scene";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Engine } from "@babylonjs/core/Engines/engine";
+import { SubMesh } from "@babylonjs/core/Meshes/subMesh";
+import { Color3, Color4 } from "@babylonjs/core/Maths/math";
+import { PBRBaseMaterial } from "@babylonjs/core/Materials/PBR/pbrBaseMaterial";
+import { MaterialDefines } from "@babylonjs/core/Materials/materialDefines";
+import { Nullable } from "@babylonjs/core/types";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
+import { Animation } from "@babylonjs/core/Animations/animation";
+import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
+import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
+import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
+import "@babylonjs/core/Rendering/depthRendererSceneComponent";
+import { SpotLight } from "@babylonjs/core/Lights/spotLight";
+import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
+import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
+import { RegisterMaterialPlugin } from "@babylonjs/core/Materials/materialPluginManager";
+import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { Scalar } from "@babylonjs/core/Maths/math.scalar";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 
-declare module "babylonjs" {
+declare module "@babylonjs/core" {
   interface Material {
     fogofwar?: FogOfWarPluginMaterial;
     volumetricFog?: VolumetricFogPluginMaterial;
   }
 }
 
-class FogOfWarPluginMaterial extends BABYLON.MaterialPluginBase {
-  constructor(material: BABYLON.Material) {
+class FogOfWarPluginMaterial extends MaterialPluginBase {
+  constructor(material: Material) {
     // last parameter is a priority, which lets you define the order multiple plugins are run.
     super(material, "FogOfWar", 200, { FogOfWar: false });
 
@@ -21,7 +45,7 @@ class FogOfWarPluginMaterial extends BABYLON.MaterialPluginBase {
     this.isEnabled = true;
   }
 
-  static fogCenter = new BABYLON.Vector3(1, 1, 0);
+  static fogCenter = new Vector3(1, 1, 0);
 
   get isEnabled() {
     return this._isEnabled;
@@ -40,7 +64,7 @@ class FogOfWarPluginMaterial extends BABYLON.MaterialPluginBase {
 
   // Also, you should always associate a define with your plugin because the list of defines (and their values)
   // is what triggers a recompilation of the shader: a shader is recompiled only if a value of a define changes.
-  prepareDefines(defines: Record<string, boolean>, scene: BABYLON.Scene, mesh: BABYLON.Mesh) {
+  prepareDefines(defines: Record<string, boolean>, scene: Scene, mesh: Mesh) {
     defines.FogOfWar = this._isEnabled;
   }
 
@@ -59,11 +83,11 @@ class FogOfWarPluginMaterial extends BABYLON.MaterialPluginBase {
 
   bindForSubMesh(
     uniformBuffer: {
-      updateVector3: (arg0: string, arg1: BABYLON.Vector3) => void;
+      updateVector3: (arg0: string, arg1: Vector3) => void;
     },
-    scene: BABYLON.Scene,
-    engine: BABYLON.Engine,
-    subMesh: BABYLON.SubMesh,
+    scene: Scene,
+    engine: Engine,
+    subMesh: SubMesh,
   ) {
     if (this._isEnabled) {
       uniformBuffer.updateVector3("fogCenter", FogOfWarPluginMaterial.fogCenter);
@@ -111,10 +135,10 @@ class FogOfWarPluginMaterial extends BABYLON.MaterialPluginBase {
   };
 }
 
-class VolumetricFogPluginMaterial extends BABYLON.MaterialPluginBase {
-  center = new BABYLON.Vector3(0, 0, 0);
+class VolumetricFogPluginMaterial extends MaterialPluginBase {
+  center = new Vector3(0, 0, 0);
   radius = 3;
-  color = new BABYLON.Color3(1, 1, 1);
+  color = new Color3(1, 1, 1);
   density = 4.5;
   _varColorName: string;
 
@@ -133,13 +157,13 @@ class VolumetricFogPluginMaterial extends BABYLON.MaterialPluginBase {
 
   _isEnabled = false;
 
-  constructor(material: BABYLON.Material) {
+  constructor(material: Material) {
     super(material, "VolumetricFog", 500, { VOLUMETRIC_FOG: false });
 
-    this._varColorName = material instanceof BABYLON.PBRBaseMaterial ? "finalColor" : "color";
+    this._varColorName = material instanceof PBRBaseMaterial ? "finalColor" : "color";
   }
 
-  prepareDefines(defines: BABYLON.MaterialDefines, scene: BABYLON.Scene, mesh: BABYLON.Mesh) {
+  prepareDefines(defines: MaterialDefines, scene: Scene, mesh: Mesh) {
     defines.VOLUMETRIC_FOG = this._isEnabled;
   }
 
@@ -162,13 +186,13 @@ class VolumetricFogPluginMaterial extends BABYLON.MaterialPluginBase {
 
   bindForSubMesh(
     uniformBuffer: {
-      updateVector3: (arg0: string, arg1: BABYLON.Vector3) => void;
+      updateVector3: (arg0: string, arg1: Vector3) => void;
       updateFloat: (arg0: string, arg1: number) => void;
-      updateColor3: (arg0: string, arg1: BABYLON.Color3) => void;
+      updateColor3: (arg0: string, arg1: Color3) => void;
     },
-    scene: BABYLON.Scene,
-    engine: BABYLON.Engine,
-    subMesh: BABYLON.SubMesh,
+    scene: Scene,
+    engine: Engine,
+    subMesh: SubMesh,
   ) {
     if (this._isEnabled) {
       uniformBuffer.updateVector3("volFogCenter", this.center);
@@ -220,7 +244,7 @@ class VolumetricFogPluginMaterial extends BABYLON.MaterialPluginBase {
  * 判断材质是否为PBRMaterial
  * @param mat 任意类型的babylon材质
  */
-function isPBRMaterial(mat: BABYLON.Nullable<BABYLON.Material>): mat is BABYLON.PBRMaterial {
+function isPBRMaterial(mat: Nullable<Material>): mat is PBRMaterial {
   if (mat !== null) {
     return mat.getClassName() === "PBRMaterial";
   } else {
@@ -247,37 +271,10 @@ const cssColors = {
   light: [248, 193, 56],
   dark: [141, 56, 240],
 };
-const rgb2Bcolor3 = (c: number[]) => new BABYLON.Color3(c[0] / 255, c[1] / 255, c[2] / 255);
-const themeColors = createMemo(
-  () =>
-    ({
-      light: {
-        accent: rgb2Bcolor3(cssColors.brown),
-        primary: rgb2Bcolor3(cssColors.white),
-        transition: rgb2Bcolor3(cssColors.navyBlue),
-        brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-        brand_2nd: rgb2Bcolor3(cssColors.yellow),
-        brand_3rd: rgb2Bcolor3(cssColors.orange),
-      },
-      dark: {
-        accent: rgb2Bcolor3(cssColors.white),
-        primary: rgb2Bcolor3(cssColors.grey),
-        transition: rgb2Bcolor3(cssColors.navyBlue),
-        brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-        brand_2nd: rgb2Bcolor3(cssColors.yellow),
-        brand_3rd: rgb2Bcolor3(cssColors.orange),
-      },
-    })[store.theme],
-);
+const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
 // y旋转动画
-const yRot = new BABYLON.Animation(
-  "yRot",
-  "rotation.y",
-  1,
-  BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-  BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE,
-);
+const yRot = new Animation("yRot", "rotation.y", 1, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CYCLE);
 yRot.setKeys([
   // 由于是匀速旋转动画，只有起始帧和终点帧
   {
@@ -291,30 +288,44 @@ yRot.setKeys([
 ]);
 
 export default function BabylonBg(): JSX.Element {
+  const themeColors = createMemo(
+    () =>
+      ({
+        light: {
+          accent: rgb2Bcolor3(cssColors.brown),
+          primary: rgb2Bcolor3(cssColors.white),
+          transition: rgb2Bcolor3(cssColors.navyBlue),
+          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+          brand_2nd: rgb2Bcolor3(cssColors.yellow),
+          brand_3rd: rgb2Bcolor3(cssColors.orange),
+        },
+        dark: {
+          accent: rgb2Bcolor3(cssColors.white),
+          primary: rgb2Bcolor3(cssColors.grey),
+          transition: rgb2Bcolor3(cssColors.navyBlue),
+          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+          brand_2nd: rgb2Bcolor3(cssColors.yellow),
+          brand_3rd: rgb2Bcolor3(cssColors.orange),
+        },
+      })[store.theme],
+  );
   // 场景渲染状态代替图片加载状态
   const [loaderState, setLoaderState] = createSignal(false);
   // 模型加载进度展示标签引用
   let progress: HTMLDivElement;
   // 场景材质初始主色
-  const mainColor = createMemo(
-    () =>
-      ({
-        dark: new BABYLON.Color3(0.5, 0.5, 0.5).toLinearSpace(),
-        light: new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace(),
-      })[store.theme],
-  );
-  // new BABYLON.Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace();
+  // new Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace();
 
   // canvas引用
   let canvas: HTMLCanvasElement;
   // 引擎定义
-  let engine: BABYLON.Engine;
+  let engine: AbstractEngine;
   // 场景定义
-  let scene: BABYLON.Scene;
+  let scene: Scene;
   // 相机定义
-  let camera: BABYLON.ArcRotateCamera;
+  let camera: ArcRotateCamera;
   // 相机控制
-  const cameraControl = (event: MouseEvent, camera: BABYLON.ArcRotateCamera): void => {
+  const cameraControl = (event: MouseEvent, camera: ArcRotateCamera): void => {
     if (event.buttons === 0) {
       camera.alpha -= event.movementX / 100000;
       camera.beta -= event.movementY / 100000;
@@ -323,18 +334,20 @@ export default function BabylonBg(): JSX.Element {
 
   // 测试模式配置函数
   function testModelOpen() {
-    // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void scene.debugLayer.show({
-      // embedMode: true
+    import("@babylonjs/inspector").then(() => {
+      // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+      void scene.debugLayer.show({
+        // embedMode: true
+      });
+      // 世界坐标轴显示
+      new AxesViewer(scene, 0.1);
     });
-    // 世界坐标轴显示
-    new BABYLON.AxesViewer(scene, 0.1);
   }
 
   // 其他bbl内容
 
   onMount(() => {
-    engine = new BABYLON.Engine(canvas, true);
+    engine = new Engine(canvas, true);
     //自定义加载动画
     engine.loadingScreen = {
       displayLoadingUI: (): void => {
@@ -346,23 +359,21 @@ export default function BabylonBg(): JSX.Element {
       loadingUIBackgroundColor: "#000000",
       loadingUIText: "Loading...",
     };
-    scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(1, 0, 0, 1);
-    scene.ambientColor = mainColor();
-    // testModelOpen();
+    scene = new Scene(engine);
+    scene.clearColor = new Color4(1, 0, 0, 1);
+    scene.ambientColor = themeColors().primary;
+    testModelOpen();
 
     // 摄像机
-    camera = new BABYLON.ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new BABYLON.Vector3(0, 0.43, 0), scene);
+    camera = new ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new Vector3(0, 0.43, 0), scene);
     camera.attachControl(canvas, false);
     camera.minZ = 0.1;
     camera.fov = 1;
     camera.wheelDeltaPercentage = 0.05;
     // camera.inputs.clear(); // -----------------------------------------------------相机输入禁用-----------------------
-    // 注册鼠标移动事件来触发相机控制
-    canvas !== null && window.addEventListener("mousemove", (e) => cameraControl(e, camera));
 
     // 后期处理
-    new BABYLON.LensRenderingPipeline(
+    new LensRenderingPipeline(
       "lens",
       {
         edge_blur: 1.0,
@@ -383,10 +394,10 @@ export default function BabylonBg(): JSX.Element {
 
     // -------------------------光照设置-------------------------
     // 设置顶部锥形光
-    const mainSpotLight = new BABYLON.SpotLight(
+    const mainSpotLight = new SpotLight(
       "mainSpotLight",
-      new BABYLON.Vector3(0, 30, 0),
-      new BABYLON.Vector3(0, -1, 0),
+      new Vector3(0, 30, 0),
+      new Vector3(0, -1, 0),
       Math.PI / 4,
       2,
       scene,
@@ -396,10 +407,10 @@ export default function BabylonBg(): JSX.Element {
     mainSpotLight.radius = 10;
 
     // 设置椭圆形舞台锥形光
-    const stageSpotLight = new BABYLON.SpotLight(
+    const stageSpotLight = new SpotLight(
       "stageSpotLight",
-      new BABYLON.Vector3(0, 4.5, 2.5),
-      new BABYLON.Vector3(0, -1, 0),
+      new Vector3(0, 4.5, 2.5),
+      new Vector3(0, -1, 0),
       Math.PI / 4,
       2,
       scene,
@@ -409,19 +420,19 @@ export default function BabylonBg(): JSX.Element {
     stageSpotLight.radius = 10;
 
     // 锥形光的阴影发生器---------------------
-    const shadowGenerator = new BABYLON.ShadowGenerator(1024, mainSpotLight);
+    const shadowGenerator = new ShadowGenerator(1024, mainSpotLight);
     shadowGenerator.bias = 0.000001;
     shadowGenerator.darkness = 0.5;
     shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     // 迷雾
-    // BABYLON.RegisterMaterialPlugin("FogOfWar", (material) => {
+    // RegisterMaterialPlugin("FogOfWar", (material) => {
     //   material.fogofwar = new FogOfWarPluginMaterial(material);
     //   return material.fogofwar;
     // });
 
     // 体积雾
-    BABYLON.RegisterMaterialPlugin("VolumetricFog", (material) => {
+    RegisterMaterialPlugin("VolumetricFog", (material) => {
       material.volumetricFog = new VolumetricFogPluginMaterial(material);
       return material.volumetricFog;
     });
@@ -433,38 +444,38 @@ export default function BabylonBg(): JSX.Element {
     const spsSizeY = 10; // 粒子柱高度
     const spsNumber = 1000; // 粒子数
 
-    const SPS = new BABYLON.SolidParticleSystem("SPS", scene);
-    const particle = BABYLON.MeshBuilder.CreateBox("particle", {});
+    const SPS = new SolidParticleSystem("SPS", scene);
+    const particle = MeshBuilder.CreateBox("particle", {});
     SPS.addShape(particle, spsNumber);
     particle.dispose();
     const spsMesh = SPS.buildMesh();
     spsMesh.name = "spsMesh";
-    spsMesh.rotation = new BABYLON.Vector3((Math.PI * -1) / 12, 0, 0);
+    spsMesh.rotation = new Vector3((Math.PI * -1) / 12, 0, 0);
     const particlePosY: number[] = [];
 
     SPS.initParticles = () => {
       for (let p = 0; p < SPS.nbParticles; p++) {
         const particle = SPS.particles[p]!;
         // 产生随机初始y坐标
-        const currY = BABYLON.Scalar.RandomRange(0, spsPositionL.y + spsSizeY);
+        const currY = Scalar.RandomRange(0, spsPositionL.y + spsSizeY);
         particlePosY.push(currY);
         if (p % 2 === 0) {
-          particle.position.x = BABYLON.Scalar.RandomRange(spsPositionL.x - spsSizeXZ, spsPositionL.x + spsSizeXZ);
-          particle.position.z = BABYLON.Scalar.RandomRange(spsPositionL.z - spsSizeXZ, spsPositionL.z + spsSizeXZ);
+          particle.position.x = Scalar.RandomRange(spsPositionL.x - spsSizeXZ, spsPositionL.x + spsSizeXZ);
+          particle.position.z = Scalar.RandomRange(spsPositionL.z - spsSizeXZ, spsPositionL.z + spsSizeXZ);
         } else {
-          particle.position.x = BABYLON.Scalar.RandomRange(spsPositionR.x - spsSizeXZ, spsPositionR.x + spsSizeXZ);
-          particle.position.z = BABYLON.Scalar.RandomRange(spsPositionR.z - spsSizeXZ, spsPositionR.z + spsSizeXZ);
+          particle.position.x = Scalar.RandomRange(spsPositionR.x - spsSizeXZ, spsPositionR.x + spsSizeXZ);
+          particle.position.z = Scalar.RandomRange(spsPositionR.z - spsSizeXZ, spsPositionR.z + spsSizeXZ);
         }
         particle.position.y = currY;
 
-        const scale = BABYLON.Scalar.RandomRange(0.15, 0.2);
+        const scale = Scalar.RandomRange(0.15, 0.2);
         particle.scale.x = scale;
         particle.scale.y = scale;
         particle.scale.z = scale;
 
-        particle.rotation.x = BABYLON.Scalar.RandomRange(0, Math.PI);
-        particle.rotation.y = BABYLON.Scalar.RandomRange(0, Math.PI);
-        particle.rotation.z = BABYLON.Scalar.RandomRange(0, Math.PI);
+        particle.rotation.x = Scalar.RandomRange(0, Math.PI);
+        particle.rotation.y = Scalar.RandomRange(0, Math.PI);
+        particle.rotation.z = Scalar.RandomRange(0, Math.PI);
       }
     };
 
@@ -485,31 +496,25 @@ export default function BabylonBg(): JSX.Element {
     });
 
     // 加载model
-    void BABYLON.SceneLoader.AppendAsync("/models/", "bg1.glb", scene, (event) => {
+    void SceneLoader.AppendAsync("/models/", "bg1.glb", scene, (event) => {
       // 加载进度计算
       if (progress) progress.innerHTML = "加载中..." + Math.floor((event.loaded / event.total) * 100).toString();
     }).then(() => {
       const defauleMaterial = scene.getMaterialByName("__GLTFLoader._default");
       defauleMaterial && (defauleMaterial.backFaceCulling = false);
       if (isPBRMaterial(defauleMaterial)) {
-        defauleMaterial.albedoColor = mainColor();
-        createEffect(() => {
-          defauleMaterial.albedoColor = mainColor();
-        });
-        defauleMaterial.ambientColor = new BABYLON.Color3(0.008, 0.01, 0.01);
+        defauleMaterial.albedoColor = themeColors().primary;
+        defauleMaterial.ambientColor = new Color3(0.008, 0.01, 0.01);
       }
       // 体积雾设置
       const mat: VolumetricFogPluginMaterial | undefined | null =
         defauleMaterial?.pluginManager?.getPlugin("VolumetricFog");
       if (mat) {
-        mat.center = new BABYLON.Vector3(0, 0, -6);
+        mat.center = new Vector3(0, 0, -6);
         mat.isEnabled = true;
-        mat.color = mainColor();
+        mat.color = themeColors().primary;
         mat.radius = 8;
         mat.density = 0.5;
-        createEffect(() => {
-          mat.color = mainColor();
-        });
       }
       // 材质添加
       scene.meshes.forEach((mesh) => {
@@ -533,16 +538,20 @@ export default function BabylonBg(): JSX.Element {
       // 通知loading
       setLoaderState(true);
     });
+
+    window.addEventListener("mousemove", (e) => cameraControl(e, camera));
+    window.addEventListener("resize", () => engine.resize());
   });
 
   createEffect(() => {
-    scene.ambientColor = mainColor();
+    scene.ambientColor = themeColors().primary;
   });
 
   onCleanup(() => {
     scene.dispose();
     engine.dispose();
-    canvas && window.removeEventListener("mousemove", (e) => cameraControl(e, camera));
+    window.removeEventListener("mousemove", (e) => cameraControl(e, camera));
+    window.removeEventListener("resize", () => engine.resize());
     console.log("内存已清理");
   });
 
@@ -568,13 +577,6 @@ export default function BabylonBg(): JSX.Element {
             加载中...
           </h1>
           <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />
-        </div>
-        <div class="LoadingMask fixed left-0 top-0 h-dvh w-dvw bg-gradient-to-t from-primary-color from-5% to-[25%]"></div>
-        <div class="LoadingState fixed left-[4dvw] top-[98%] flex -translate-y-full flex-col gap-3 lg:left-[10dvw] lg:top-[97%]">
-          <h1 ref={progress!} class="animate-pulse">
-            加载中...
-          </h1>
-          <LoadingBox />
         </div>
       </div>
     </>

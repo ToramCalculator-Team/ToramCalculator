@@ -25,6 +25,10 @@
     "zod-prisma-types": "latest"
   },
   "dependencies": {
+    "@babylonjs/core": "^7.32.5",
+    "@babylonjs/inspector": "^7.32.5",
+    "@babylonjs/loaders": "^7.32.5",
+    "@babylonjs/materials": "^7.32.5",
     "@editorjs/editorjs": "^2.30.4",
     "@electric-sql/client": "latest",
     "@electric-sql/next": "latest",
@@ -39,9 +43,6 @@
     "@tanstack/solid-virtual": "^3.9.0",
     "@types/d3": "^7.4.3",
     "@types/pg": "^8.11.10",
-    "babylonjs": "^7.30.0",
-    "babylonjs-inspector": "^7.32.5",
-    "babylonjs-loaders": "^7.30.0",
     "comlink": "^4.4.1",
     "d3": "^7.9.0",
     "fuse.js": "^7.0.0",
