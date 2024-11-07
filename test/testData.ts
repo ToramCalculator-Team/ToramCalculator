@@ -329,12 +329,12 @@ export const test: {
               modifiers: [
                 {
                   id: "",
-                  formula: "nDis + 8%",
+                  formula: "sDis + 8%",
                   belongToModifierListId: "",
                 },
                 {
                   id: "",
-                  formula: "fDis + 8%",
+                  formula: "lDis + 8%",
                   belongToModifierListId: "",
                 },
                 {
@@ -392,7 +392,7 @@ export const test: {
           modifiers: [
             {
               id: "",
-              formula: "fDis + 10%",
+              formula: "lDis + 10%",
               belongToModifierListId: "",
             },
             {

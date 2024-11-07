@@ -87,6 +87,10 @@ const dictionary: dictionary = {
           title: "是否開啟動畫",
           description: "將影響所有頁面的過渡和動畫效果持續時間。",
         },
+        is3DbackgroundDisabled: {
+          title: "是否禁用3D背景",
+          description: "可能會產生大量性能損耗，不推薦開啟。",
+        }
       },
       language: {
         title: "語言",
@@ -224,10 +228,10 @@ const dictionary: dictionary = {
         pPie: "物理貫穿",
         mPie: "魔法貫穿",
         pStab: "物理穩定",
-        nDis: "近距離威力",
-        fDis: "遠距離威力",
-        crT: "法術爆擊轉換率",
-        cdT: "法術爆傷轉換率",
+        sDis: "近距離威力",
+        lDis: "遠距離威力",
+        crC: "法術爆擊轉換率",
+        cdC: "法術爆傷轉換率",
         weaponPatkT: "武器攻擊轉換率（物理）",
         weaponMatkT: "武器攻擊轉換率（魔法）",
         uAtk: "拔刀攻擊",

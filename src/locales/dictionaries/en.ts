@@ -85,6 +85,10 @@ const dictionary: dictionary = {
         isAnimationEnabled: {
           title: "Enable Animation",
           description: "Will affect the duration of transitions and animations on all pages.",
+        },
+        is3DbackgroundDisabled: {
+          title: "Disable 3D Background",
+          description: "May cause a lot of performance loss, not recommended.",
         }
       },
       language: {
@@ -223,10 +227,10 @@ const dictionary: dictionary = {
         pPie: "p-Pie",
         mPie: "m-Pie",
         pStab: "p-Stab",
-        nDis: "n-Dis",
-        fDis: "f-Dis",
-        crT: "Cr-T",
-        cdT: "Cd-T",
+        sDis: "n-Dis",
+        lDis: "f-Dis",
+        crC: "Cr-T",
+        cdC: "Cd-T",
         weaponPatkT: "Wea-pAtk-T",
         weaponMatkT: "Wea-mAtk-T",
         uAtk: "Unsheathe-Atk",

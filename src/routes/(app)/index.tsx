@@ -20,7 +20,6 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import RandomBallBackground from "~/components/module/randomBallBg";
 import { User } from "~/repositories/user";
 import { findAnalyzers } from "~/repositories/analyzer";
-import BabylonBg from "~/components/module/babylonBg";
 
 type Related =
   | {
@@ -467,7 +466,6 @@ export default function Index() {
 
   return (
     <MetaProvider>
-      <BabylonBg />
       <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
       <Motion.div
@@ -634,7 +632,7 @@ export default function Index() {
               class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-transition-color-8 lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
-                class={`Content flex flex-wrap justify-center gap-3 overflow-hidden rounded lg:flex-1 lg:bg-transition-color-8 lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content flex flex-wrap lg:justify-center gap-3 overflow-hidden rounded lg:flex-1 lg:bg-transition-color-8 lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
                 <a
                   tabIndex={2}

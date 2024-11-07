@@ -88,6 +88,10 @@ const dictionary: dictionary = {
           description:
             "すべてのページの遷移とアニメーション効果の持続時間に影響します。このコンフィグで制御されていないアニメーションがある場合は、ご報告ください。",
         },
+        is3DbackgroundDisabled: {
+          title: "3D背景を無効にする",
+          description: "3D背景を無効にすると、大量の性能損失が発生しますが、推奨されません。",
+        },
       },
       language: {
         title: "言語",
@@ -228,10 +232,10 @@ const dictionary: dictionary = {
         pPie: "物理貫通",
         mPie: "魔法貫通",
         pStab: "物理安定",
-        nDis: "近距離威力",
-        fDis: "遠距離威力",
-        crT: "魔法クリティカル変換率",
-        cdT: "魔法クリティカルダメージ変換率",
+        sDis: "近距離威力",
+        lDis: "遠距離威力",
+        crC: "魔法クリティカル変換率",
+        cdC: "魔法クリティカルダメージ変換率",
         weaponPatkT: "武器攻撃変換率（物理）",
         weaponMatkT: "武器攻撃変換率（魔法）",
         uAtk: "抜刀攻撃",

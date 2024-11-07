@@ -5,7 +5,6 @@ import { type Crystal } from "./repositories/crystal";
 import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
 import { type Analyzer } from "./repositories/analyzer";
-import { init } from "@paralleldrive/cuid2";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
 
@@ -17,6 +16,7 @@ export type Store = {
   settings: {
     userInterface: {
       isAnimationEnabled: boolean;
+      is3DbackgroundDisabled: boolean;
     };
     language: Locale;
     statusAndSync: {
@@ -75,12 +75,13 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-  version: 0.001,
+  version: 20241107,
   dbVersion: 0.001,
   theme: "light",
   settings: {
     userInterface: {
-      isAnimationEnabled: true
+      isAnimationEnabled: true,
+      is3DbackgroundDisabled: false
     },
     language: "zh-CN",
     statusAndSync: {

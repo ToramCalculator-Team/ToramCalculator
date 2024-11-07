@@ -72,6 +72,10 @@ export interface dictionary {
           title: string;
           description: string;
         };
+        is3DbackgroundDisabled: {
+          title: string;
+          description: string;
+        };
       };
       language: {
         title: string;

@@ -120,6 +120,16 @@ export default function Setting() {
                         />
                       ),
                     },
+                    {
+                      title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
+                      description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
+                      children: (
+                        <Toggle
+                          onclick={() => setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)}
+                          state={store.settings.userInterface.is3DbackgroundDisabled}
+                        />
+                      ),
+                    },
                   ])}
                   {SettingPageContentModule("Language", dictionary().ui.settings.language.title, [
                     {
