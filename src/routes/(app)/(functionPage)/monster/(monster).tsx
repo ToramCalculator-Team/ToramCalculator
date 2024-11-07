@@ -307,7 +307,7 @@ export default function MonsterIndexPage() {
     <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
-          <Motion.div animate={{ opacity: [0, 1] }} exit={{ opacity: 0 }} class="Title flex flex-col p-3 lg:pt-12">
+          <Motion.div class="Title hidden lg:flex flex-col p-3 lg:pt-12" animate={{ opacity: [0, 1] }} exit={{ opacity: 0 }}>
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
               <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
                 {dictionary().ui.monster.pageTitle}
@@ -351,9 +351,9 @@ export default function MonsterIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
+            class="Banner hidden lg:flex h-[260px] flex-initial gap-3 p-3 opacity-0"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
-            class="Banner flex h-[260px] flex-initial gap-3 p-3 opacity-0"
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
@@ -364,7 +364,7 @@ export default function MonsterIndexPage() {
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color">
+                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.1</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[0]?.name}</span>
@@ -378,7 +378,7 @@ export default function MonsterIndexPage() {
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color">
+                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.2</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[1]?.name}</span>
@@ -392,7 +392,7 @@ export default function MonsterIndexPage() {
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden lg:flex h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color">
+                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.3</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
                   <span class="text-xl">{monsterList()?.[2]?.name}</span>
@@ -404,7 +404,7 @@ export default function MonsterIndexPage() {
       </Presence>
       <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
-          <div class="Title flex h-12 w-full items-center gap-3">
+          <div class="Title hidden lg:flex h-12 w-full items-center gap-3">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.monster.table.title}
             </div>
@@ -577,7 +577,7 @@ export default function MonsterIndexPage() {
             <Motion.div
               animate={{ opacity: [0, 1] }}
               exit={{ opacity: 0 }}
-              class="News flex w-[248px] flex-initial flex-col gap-2"
+              class="News hidden lg:flex w-[248px] flex-initial flex-col gap-2"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.monster.news.title}</div>
               <div class="Content flex flex-1 flex-col bg-transition-color-8"></div>

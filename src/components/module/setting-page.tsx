@@ -37,16 +37,24 @@ export default function Setting() {
       title: string;
       description: string;
       children: JSX.Element;
+      type?: string;
     }[],
   ) => (
     <div
-      class={`Module ${moduleName} flex flex-col border-b-[1px] border-transition-color-20 lg:gap-2 lg:rounded lg:border-none lg:bg-transition-color-8 lg:p-3`}
+      class={`Module ${moduleName} flex flex-col gap-1 lg:gap-2 lg:rounded lg:border-none lg:bg-transition-color-8 lg:p-3`}
     >
       <h2 class="ModuleTitle py-2 text-lg font-bold lg:px-2">{labelName}</h2>
-      <div class="LabelGroup flex flex-col gap-1">
+      <div class="LabelGroup flex flex-col gap-2 lg:gap-1">
         <For each={content}>
-          {({ title, description, children }) => (
-            <div class="Content border-1.5 flex flex-1 flex-col items-start justify-between gap-4 rounded border-transition-color-20 bg-primary-color pb-3 lg:flex-row lg:items-center lg:p-3">
+          {({ title, description, children, type }) => (
+            <div
+              class={`Content flex flex-1 focus-within:bg-transition-color-8 ${
+                type &&
+                {
+                  col: "flex-col",
+                }[type]
+              } justify-between gap-4 border-b-[1px] border-transition-color-20 bg-primary-color py-4 lg:flex-row lg:items-center lg:rounded lg:border lg:p-3`}
+            >
               <div class="Description flex flex-1 flex-col gap-2">
                 <h3>{title}</h3>
                 <span class="text-sm text-accent-color-70">{description}</span>
@@ -125,7 +133,9 @@ export default function Setting() {
                       description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
                       children: (
                         <Toggle
-                          onclick={() => setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)}
+                          onclick={() =>
+                            setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
+                          }
                           state={store.settings.userInterface.is3DbackgroundDisabled}
                         />
                       ),
@@ -163,6 +173,7 @@ export default function Setting() {
                           </CheckBox>
                         </div>
                       ),
+                      type: "col",
                     },
                   ])}
                   {SettingPageContentModule("StatusAndSync", dictionary().ui.settings.statusAndSync.title, [
@@ -205,6 +216,7 @@ export default function Setting() {
                           </CheckBox>
                         </div>
                       ),
+                      type: "col",
                     },
                   ])}
                   {SettingPageContentModule("Messages", dictionary().ui.settings.messages.title, [
@@ -251,6 +263,7 @@ export default function Setting() {
                           </CheckBox>
                         </div>
                       ),
+                      type: "col",
                     },
                   ])}
                   {SettingPageContentModule("About", dictionary().ui.settings.about.title, [
