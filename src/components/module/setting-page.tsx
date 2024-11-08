@@ -49,10 +49,11 @@ export default function Setting() {
           {({ title, description, children, type }) => (
             <div
               class={`Content flex flex-1 focus-within:bg-transition-color-8 ${
-                type &&
-                {
-                  col: "flex-col",
-                }[type]
+                type
+                  ? {
+                      col: "flex-col",
+                    }[type]
+                  : "items-center"
               } justify-between gap-4 border-b-[1px] border-transition-color-20 bg-primary-color py-4 lg:flex-row lg:items-center lg:rounded lg:border lg:p-3`}
             >
               <div class="Description flex flex-1 flex-col gap-2">
@@ -117,30 +118,6 @@ export default function Setting() {
                 class="h-full"
               >
                 <div class="List flex h-full flex-1 flex-col items-stretch gap-3 rounded">
-                  {SettingPageContentModule("UserInterface", dictionary().ui.settings.userInterface.title, [
-                    {
-                      title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
-                      description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
-                      children: (
-                        <Toggle
-                          onclick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
-                          state={store.settings.userInterface.isAnimationEnabled}
-                        />
-                      ),
-                    },
-                    {
-                      title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
-                      description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
-                      children: (
-                        <Toggle
-                          onclick={() =>
-                            setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
-                          }
-                          state={store.settings.userInterface.is3DbackgroundDisabled}
-                        />
-                      ),
-                    },
-                  ])}
                   {SettingPageContentModule("Language", dictionary().ui.settings.language.title, [
                     {
                       title: dictionary().ui.settings.language.selectedLanguage.title,
@@ -174,6 +151,30 @@ export default function Setting() {
                         </div>
                       ),
                       type: "col",
+                    },
+                  ])}
+                  {SettingPageContentModule("UserInterface", dictionary().ui.settings.userInterface.title, [
+                    {
+                      title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
+                      description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
+                      children: (
+                        <Toggle
+                          onclick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
+                          state={store.settings.userInterface.isAnimationEnabled}
+                        />
+                      ),
+                    },
+                    {
+                      title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
+                      description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
+                      children: (
+                        <Toggle
+                          onclick={() =>
+                            setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
+                          }
+                          state={store.settings.userInterface.is3DbackgroundDisabled}
+                        />
+                      ),
                     },
                   ])}
                   {SettingPageContentModule("StatusAndSync", dictionary().ui.settings.statusAndSync.title, [

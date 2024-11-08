@@ -5,9 +5,8 @@ import {
   dynamicTotalValue,
   isModifiers,
   modifiers,
-} from "~/routes/(app)/(functionPage)/analyzer/worker";
+} from "~/worker/evaluate.worker";
 import { Character } from "~/repositories/character";
-import { sankey } from "d3-sankey";
 import stringToColor from "~/lib/untils/stringToColor";
 
 function SankeyChart(props: { character: Character }) {

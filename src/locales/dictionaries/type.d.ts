@@ -3,7 +3,7 @@ import {
   type SkillData,
   type CharacterData,
   type modifiers,
-} from "~/routes/(app)/(functionPage)/analyzer/worker";
+} from "~/worker/evaluate.worker";
 import { type Crystal } from "~/repositories/crystal";
 import { type Skill } from "~/repositories/skill";
 import { type Character } from "~/repositories/character";

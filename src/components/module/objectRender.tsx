@@ -1,5 +1,5 @@
 import { getDictionary } from "~/locales/i18n";
-import { type modifiers, type CharacterData, type MonsterData, type SkillData, dynamicTotalValue } from "./worker";
+import { type modifiers, type CharacterData, type MonsterData, type SkillData, dynamicTotalValue } from "../../worker/evaluate.worker";
 
 // 类型谓词函数，用于检查对象是否符合目标类型
 function isTargetType(obj: unknown): obj is modifiers {

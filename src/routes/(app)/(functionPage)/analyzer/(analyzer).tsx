@@ -1,6 +1,6 @@
 import * as math from "mathjs";
-import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
-import { ObjectRenderer } from "./objectRender";
+import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "~/worker/evaluate.worker";
+import { ObjectRenderer } from "~/components/module/objectRender";
 import { Monster } from "~/repositories/monster";
 import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";

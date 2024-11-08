@@ -2,7 +2,7 @@ import { ParentProps, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
 import Setting from "~/components/module/setting-page";
-import BabylonBg from "~/components/module/babylonBg";
+import BabylonBg from "~/components/module/test";
 
 export default function AppMainContet(props: ParentProps) {
   return (

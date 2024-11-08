@@ -18,7 +18,7 @@ export default function Home(props: ParentProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
           id="mainContent"
-          class="Content flex w-full min-h-full flex-1 flex-col bg-primary-color opacity-0"
+          class="Content flex w-full min-h-full flex-1 flex-col opacity-0"
         >
           {props.children}
         </Motion.div>

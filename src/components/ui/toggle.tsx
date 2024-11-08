@@ -29,7 +29,7 @@ const Toggle = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultBoxClassNames(
-      `${config().disableClass} group cursor-pointer w-20 rounded-full flex flex-none items-center hover:underline ${config().sizeClass} ${config().activedClass} `,
+      `${config().disableClass} group cursor-pointer w-20 h-fit rounded-full flex flex-none items-center hover:underline ${config().sizeClass} ${config().activedClass} `,
     );
     setDefaultBallClassNames(
       `${config().disableClass} h-[34px] w-[34px] rounded-full bg-primary-color group-hover:scale-110`,

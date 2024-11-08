@@ -1,5 +1,5 @@
-import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "./worker";
-import { ObjectRenderer } from "./objectRender";
+import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "../../../../worker/evaluate.worker";
+import { ObjectRenderer } from "../../../../components/module/objectRender";
 import { Monster } from "~/repositories/monster";
 import { Character } from "~/repositories/character";
 import {
@@ -50,10 +50,10 @@ import { create } from "domain";
 
 const externalEditorClassName = "sqd-editor-solid";
 
-export type skillSequenceList = {
-  name: string;
-  data: tSkill[];
-};
+// export type skillSequenceList = {
+//   name: string;
+//   data: tSkill[];
+// };
 
 export default function AnalyzerIndexClient() {
   const params = useParams();
