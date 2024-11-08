@@ -11,6 +11,7 @@ import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import { Analyzer } from "~/repositories/analyzer";
 import { test } from "~/../test/testData";
+import evaluateWorker from "~/worker/evaluate.worker?worker";
 
 export type skillSequenceList = {
   name: string;
@@ -24,9 +25,7 @@ export default function AnalyzerIndexClient() {
     setDictionary(getDictionary(store.settings.language));
   });
 
-  const calculatorWorker = new Worker(new URL("./worker.ts", import.meta.url), {
-    type: "module",
-  });
+  const calculatorWorker = new evaluateWorker();
 
   // 状态管理参数
   const monsterList = store.monsterPage.monsterList;
