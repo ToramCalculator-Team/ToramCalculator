@@ -468,7 +468,7 @@ export default function Index() {
     <MetaProvider>
       <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
-      <Motion.div
+      {/* <Motion.div
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
@@ -478,7 +478,7 @@ export default function Index() {
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
-        </div>
+        </div> */}
         <Motion.div
           animate={{ opacity: [0, 1] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
@@ -499,7 +499,7 @@ export default function Index() {
             <Icon.Line.Settings />
           </Button>
         </Motion.div>
-        <div
+        {/* <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
           <div
@@ -767,7 +767,7 @@ export default function Index() {
           </Show>
         </Presence>
       </Motion.div>
-      <Filing />
+      <Filing /> */}
     </MetaProvider>
   );
 }

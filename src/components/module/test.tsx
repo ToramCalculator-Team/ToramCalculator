@@ -14,7 +14,6 @@ import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
-import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
@@ -23,6 +22,7 @@ import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import model_url from "/models/rocket.glb?url";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import * as _ from "lodash-es";
+import { Mesh, PointLight } from "@babylonjs/core";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -71,9 +71,6 @@ export default function BabylonBg(): JSX.Element {
   const [loaderState, setLoaderState] = createSignal(false);
   // 模型加载进度展示标签引用
   let progress: HTMLDivElement;
-  // 场景材质初始主色
-  // new Color3(234 / 255, 249 / 255, 254 / 255).toLinearSpace();
-
   // canvas引用
   let canvas: HTMLCanvasElement;
   // 引擎定义
@@ -91,16 +88,16 @@ export default function BabylonBg(): JSX.Element {
   };
 
   // 测试模式配置函数
-  // function testModelOpen() {
-  //   import("@babylonjs/inspector").then(() => {
-  //     // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-  //     void scene.debugLayer.show({
-  //       // embedMode: true
-  //     });
-  //     // 世界坐标轴显示
-  //     new AxesViewer(scene, 0.1);
-  //   });
-  // }
+  function testModelOpen() {
+    import("@babylonjs/inspector").then(() => {
+      // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+      void scene.debugLayer.show({
+        // embedMode: true
+      });
+      // 世界坐标轴显示
+      new AxesViewer(scene, 0.1);
+    });
+  }
 
   // 其他bbl内容
 
@@ -109,7 +106,7 @@ export default function BabylonBg(): JSX.Element {
     scene = new Scene(engine);
     scene.clearColor = new Color4(1, 1, 1, 1);
     scene.ambientColor = themeColors().primary;
-    // testModelOpen();
+    testModelOpen();
 
     // 摄像机
     camera = new ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new Vector3(0, 0.43, 0), scene);
@@ -120,76 +117,73 @@ export default function BabylonBg(): JSX.Element {
     // camera.inputs.clear(); // -----------------------------------------------------相机输入禁用-----------------------
 
     // 后期处理
-    new LensRenderingPipeline(
-      "lens",
-      {
-        edge_blur: 1.0,
-        chromatic_aberration: 1.0,
-        distortion: 0.2,
-        dof_focus_distance: 50,
-        dof_aperture: 0.05,
-        grain_amount: 1.0,
-        dof_pentagon: true,
-        dof_gain: 1.0,
-        dof_threshold: 1.0,
-        dof_darken: 0.125,
-      },
-      scene,
-      1.0,
-      [camera],
-    );
+    // new LensRenderingPipeline(
+    //   "lens",
+    //   {
+    //     edge_blur: 1.0,
+    //     chromatic_aberration: 1.0,
+    //     distortion: 0.2,
+    //     dof_focus_distance: 50,
+    //     dof_aperture: 0.05,
+    //     grain_amount: 1.0,
+    //     dof_pentagon: true,
+    //     dof_gain: 1.0,
+    //     dof_threshold: 1.0,
+    //     dof_darken: 0.125,
+    //   },
+    //   scene,
+    //   1.0,
+    //   [camera],
+    // );
 
     // -------------------------基本mesh设置-------------------------
     const groundPBR = new PBRMaterial("groundPBR", scene);
     groundPBR.ambientColor = new Color3(0.008, 0.01, 0.01);
     groundPBR.backFaceCulling = false;
-    groundPBR.metallic = 0.5;
+    groundPBR.metallic = 0.1;
     createEffect(() => {
-      groundPBR.ambientColor = themeColors().primary;
+      // groundPBR.ambientColor = themeColors().primary;
       groundPBR.albedoColor = themeColors().primary;
       if (store.theme === "light") {
-        groundPBR.emissiveColor = themeColors().primary;
-      } else { 
-        groundPBR.emissiveColor = new Color3(0, 0, 0);
+        // groundPBR.emissiveColor = themeColors().primary;
+      } else {
+        // groundPBR.emissiveColor = new Color3(0, 0, 0);
       }
     });
 
-    const sky = MeshBuilder.CreateSphere("sky", { diameter: 200 }, scene);
+    const sky = MeshBuilder.CreateSphere("sky", { diameter: 60, sideOrientation: Mesh.BACKSIDE }, scene);
     sky.material = groundPBR;
 
-    const ground = MeshBuilder.CreateGround("ground", { width: 280, height: 280 }, scene);
+    const ground = MeshBuilder.CreateGround("ground", { width: 72, height: 72 }, scene);
     ground.material = groundPBR;
     ground.receiveShadows = true;
 
     // -------------------------光照设置-------------------------
     // 设置顶部锥形光
-    const mainSpotLight = new SpotLight(
-      "mainSpotLight",
+    const mainPointLight = new PointLight(
+      "mainPointLight",
       new Vector3(0, 30, 0),
-      new Vector3(0, -1, 0),
-      Math.PI / 4,
-      2,
       scene,
     );
-    mainSpotLight.id = "mainSpotLight";
-    mainSpotLight.radius = 10;
+    mainPointLight.id = "mainPointLight";
+    mainPointLight.radius = 10;
     createEffect(() => {
       console.log(store.theme);
       switch (store.theme) {
         case "light":
-          mainSpotLight.intensity = 300;
+          mainPointLight.intensity = 3000;
           break;
         case "dark":
-          mainSpotLight.intensity = 100;
+          mainPointLight.intensity = 100;
           break;
       }
     });
 
     // 顶部锥形光的阴影发生器---------------------
-    const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-    mainSpotLightShadowGenerator.bias = 0.000001;
-    mainSpotLightShadowGenerator.darkness = 0.5;
-    mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    const mainPointLightShadowGenerator = new ShadowGenerator(1024, mainPointLight);
+    mainPointLightShadowGenerator.bias = 0.000001;
+    mainPointLightShadowGenerator.darkness = 0.5;
+    mainPointLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     // 加载model
     // void SceneLoader.AppendAsync(
@@ -208,79 +202,110 @@ export default function BabylonBg(): JSX.Element {
     //   scene.meshes.forEach((mesh) => {
     //     if (mesh.name === "__root__") return;
     //     // mesh.receiveShadows = true;
-    //     mainSpotLightShadowGenerator.addShadowCaster(mesh, true);
+    //     mainPointLightShadowGenerator.addShadowCaster(mesh, true);
     //   });
     // });
-    const ballPBR = new PBRMaterial("ballPBR1st", scene);
+    const ballPBR = new PBRMaterial("ballPBR", scene);
     ballPBR.metallic = 0;
-    ballPBR.albedoColor = themeColors().brand_1st
+    ballPBR.albedoColor = themeColors().brand_1st;
 
-    // 随机运动球粒子系统
-    const spsPosition = { x: 0, y: 0, z: 0 }; // 粒子柱中心坐标
-    const spsSizeXZ = 20; // 粒子柱宽度和厚度
-    const spsSizeY = 20; // 粒子柱高度
-    const spsNumber = 20; // 粒子数
-
-    const SPS = new SolidParticleSystem("SPS", scene);
-    const particle = MeshBuilder.CreateSphere("particle", {});
-    SPS.addShape(particle, spsNumber);
-    particle.dispose();
-    const spsMesh = SPS.buildMesh();
-    spsMesh.name = "spsMesh";
-    spsMesh.material = ballPBR;
-    const particlePosX: number[] = [];
-    const particlePosY: number[] = [];
-    const particlePosZ: number[] = [];
-
-    SPS.initParticles = () => {
-      for (let p = 0; p < SPS.nbParticles; p++) {
-        const particle = SPS.particles[p]!;
-        // 产生随机初始y坐标
-        const currX = _.random(spsPosition.x - spsSizeXZ, spsPosition.x + spsSizeXZ);
-        const currY = _.random(0, spsPosition.y + spsSizeY);
-        const currZ = _.random(spsPosition.z - spsSizeXZ, spsPosition.z + spsSizeXZ);
-        particlePosX.push(currX);
-        particlePosY.push(currY);
-        particlePosZ.push(currZ);
-        particle.position.x = currX;
-        particle.position.z = currZ;
-        particle.position.y = currY;
-
-        const scale = Math.random() * 0.6 + 0.15;
-        particle.scale.x = scale;
-        particle.scale.y = scale;
-        particle.scale.z = scale;
-
-        // switch (p % 3) {
-        //   case 0: particle.materialIndex
-        // }
-      }
+    const particleMesh = MeshBuilder.CreateSphere("particle", {});
+    const particles: {
+      theta: number[];
+      heightValue: number[];
+      rotationSpeed: number[];
+      elevationSpeed: number[];
+      radius: number[];
+      heightRange: number;
+      sps: SolidParticleSystem | null;
+    } = {
+      theta: [],
+      heightValue: [],
+      rotationSpeed: [],
+      elevationSpeed: [],
+      radius: [],
+      heightRange: 4,
+      sps: null,
     };
 
-    SPS.initParticles();
-    SPS.setParticles();
-    SPS.updateParticle = (particle) => {
-      if (particle.position.y >= spsSizeY) {
-        particle.position.y = (-Math.random() * spsSizeY * 1) / 2;
-      } else {
-        particle.position.y += (0.04 * particlePosY[spsNumber - particle.idx]! + 0.025) / engine.getFps();
-        particle.rotation.y += (0.05 * particlePosY[particle.idx]!) / engine.getFps();
-      }
-      return particle;
-    };
+    function lerpValue(x: number, y: number, target: number) {
+      return x + (y - x) * target;
+    }
 
-    scene.registerAfterRender(() => {
-      SPS.setParticles();
-    });
+    function createParticleSystem() {
+      particles.sps = new SolidParticleSystem("sps", scene, { useModelMaterial: true });
+      particles.sps.addShape(particleMesh, 20);
+      particles.sps.buildMesh();
+
+      // clean up original mesh
+      particleMesh.dispose();
+
+      particles.sps.initParticles = () => {
+        for (let p = 0; p < particles.sps!.nbParticles; p++) {
+          const particle = particles.sps!.particles[p]!;
+          // randomize initial rotation angle and store original value
+          let theta = Math.random() * Math.PI * 2;
+          particles.theta.push(theta);
+          particles.rotationSpeed.push(Math.random() * 0.0025 + 0.0025);
+          particles.radius.push(Math.random() * 0.75 + 1.25);
+
+          // randomize initial height and elevation speed and store original values
+          let height = Math.random();
+          particles.heightValue.push(height);
+          particles.elevationSpeed.push(Math.random() * 0.0003 + 0.0003);
+
+          // randomize initial scale
+          let scale = Math.random() * 0.2 + 0.3;
+
+          // set initial particle position and scale
+          particle.position = new Vector3(
+            particles.radius[p] * Math.sin(theta),
+            lerpValue(particles.heightRange * -0.5, particles.heightRange * 0.5, height),
+            particles.radius[p] * Math.cos(theta),
+          );
+          particle.scaling = new Vector3(scale, scale, scale);
+
+          // set initial particle color
+          particle.color = new Color3(Math.random(), Math.random(), Math.random()).toColor4(1);
+        }
+      };
+
+      // init particle system
+      particles.sps.initParticles();
+      particles.sps.setParticles();
+
+      // update particle system
+      particles.sps.updateParticle = (particle) => {
+        // increase rotation angle but keep it between 0 and 2PI
+        particles.theta[particle.idx] += particles.rotationSpeed[particle.idx] * Math.sign((particle.idx % 2) - 0.5);
+        if (particles.theta[particle.idx] > Math.PI * 2) particles.theta[particle.idx] -= Math.PI * 2;
+
+        // update particle position on X-Z plane based on rotation angle
+        particle.position.x = particles.radius[particle.idx] * Math.sin(particles.theta[particle.idx]);
+        particle.position.z = particles.radius[particle.idx] * Math.cos(particles.theta[particle.idx]);
+
+        // update particle height to slowly rise and fall
+        particles.heightValue[particle.idx] += particles.elevationSpeed[particle.idx];
+        particle.position.y = lerpValue(
+          particles.heightRange * -0.5,
+          particles.heightRange * 0.5,
+          Math.sin((particles.heightValue[particle.idx] % 1) * Math.PI),
+        );
+        return particle;
+      };
+
+      // update particle system before each render frame
+      scene.onBeforeRenderObservable.add(() => {
+        particles.sps!.setParticles();
+      });
+    }
+
+    createParticleSystem();
 
     // 当场景中资源加载和初始化完成后
     scene.executeWhenReady(() => {
       // 注册循环渲染函数
       engine.runRenderLoop(() => {
-        // 更新外围迷雾的中心坐标
-        // FogOfWarPluginMaterial.fogCenter.x = camera.position.x;
-        // FogOfWarPluginMaterial.fogCenter.y = camera.position.y;
-        // FogOfWarPluginMaterial.fogCenter.z = camera.position.z;
         scene.render();
       });
       // 通知loading
