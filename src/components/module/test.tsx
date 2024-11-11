@@ -22,7 +22,7 @@ import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import model_url from "/models/rocket.glb?url";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import * as _ from "lodash-es";
-import { Mesh } from "@babylonjs/core";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { PointLight } from "@babylonjs/core/Lights/pointLight"
 
 // ----------------------------------------预设内容-----------------------------------
