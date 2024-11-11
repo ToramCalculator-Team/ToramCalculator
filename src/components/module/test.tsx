@@ -138,9 +138,9 @@ export default function BabylonBg(): JSX.Element {
 
     // -------------------------基本mesh设置-------------------------
     const groundPBR = new PBRMaterial("groundPBR", scene);
-    groundPBR.ambientColor = new Color3(0.008, 0.01, 0.01);
     groundPBR.backFaceCulling = false;
-    groundPBR.metallic = 0.1;
+    groundPBR.metallic = 0.5;
+    groundPBR.environmentIntensity = 1;
     createEffect(() => {
       // groundPBR.ambientColor = themeColors().primary;
       groundPBR.albedoColor = themeColors().primary;
@@ -160,18 +160,13 @@ export default function BabylonBg(): JSX.Element {
 
     // -------------------------光照设置-------------------------
     // 设置顶部锥形光
-    const mainPointLight = new PointLight(
-      "mainPointLight",
-      new Vector3(0, 30, 0),
-      scene,
-    );
+    const mainPointLight = new PointLight("mainPointLight", new Vector3(0, 20, 0), scene);
     mainPointLight.id = "mainPointLight";
     mainPointLight.radius = 10;
     createEffect(() => {
-      console.log(store.theme);
       switch (store.theme) {
         case "light":
-          mainPointLight.intensity = 3000;
+          mainPointLight.intensity = 2000;
           break;
         case "dark":
           mainPointLight.intensity = 100;
@@ -205,11 +200,17 @@ export default function BabylonBg(): JSX.Element {
     //     mainPointLightShadowGenerator.addShadowCaster(mesh, true);
     //   });
     // });
-    const ballPBR = new PBRMaterial("ballPBR", scene);
-    ballPBR.metallic = 0;
-    ballPBR.albedoColor = themeColors().brand_1st;
+    const ballPBR1 = new PBRMaterial("ballPBR1", scene);
+    ballPBR1.metallic = 0;
+    ballPBR1.albedoColor = themeColors().brand_1st;
+    ballPBR1.environmentIntensity = 1;
+    const ballPBR2 = new PBRMaterial("ballPBR2", scene);
+    ballPBR2.metallic = 0;
+    ballPBR2.albedoColor = themeColors().brand_2nd;
+    const ballPBR3 = new PBRMaterial("ballPBR3", scene);
+    ballPBR3.metallic = 0;
+    ballPBR3.albedoColor = themeColors().brand_3rd;
 
-    const particleMesh = MeshBuilder.CreateSphere("particle", {});
     const particles: {
       theta: number[];
       heightValue: number[];
@@ -217,7 +218,8 @@ export default function BabylonBg(): JSX.Element {
       elevationSpeed: number[];
       radius: number[];
       heightRange: number;
-      sps: SolidParticleSystem | null;
+      nbParticles: number;
+      meshes: Mesh[];
     } = {
       theta: [],
       heightValue: [],
@@ -225,82 +227,77 @@ export default function BabylonBg(): JSX.Element {
       elevationSpeed: [],
       radius: [],
       heightRange: 4,
-      sps: null,
+      nbParticles: 20,
+      meshes: [],
     };
 
     function lerpValue(x: number, y: number, target: number) {
-      return x + (y - x) * target;
+      return x + (y - x) * target + 2;
     }
 
-    function createParticleSystem() {
-      particles.sps = new SolidParticleSystem("sps", scene, { useModelMaterial: true });
-      particles.sps.addShape(particleMesh, 20);
-      particles.sps.buildMesh();
+    // 创建随机球背景
+    for (let p = 0; p < particles.nbParticles; p++) {
+      const particle = MeshBuilder.CreateSphere(`particle${p}`, {});
+      particles.meshes.push(particle);
+      switch (p % 3) {
+        case 0:
+          particle.material = ballPBR1;
+          break;
+        case 1:
+          particle.material = ballPBR2;
+          break;
+        case 2:
+          particle.material = ballPBR3;
+          break;
+      }
+      // randomize initial rotation angle and store original value
+      let theta = Math.random() * Math.PI * 2;
+      particles.theta.push(theta);
+      particles.rotationSpeed.push(Math.random() * 0.00025 + 0.000025);
+      particles.radius.push(Math.random() * 0.75 + 1.25);
 
-      // clean up original mesh
-      particleMesh.dispose();
+      // randomize initial height and elevation speed and store original values
+      let height = Math.random();
+      particles.heightValue.push(height);
+      particles.elevationSpeed.push(Math.random() * 0.00001 + 0.00001);
 
-      particles.sps.initParticles = () => {
-        for (let p = 0; p < particles.sps!.nbParticles; p++) {
-          const particle = particles.sps!.particles[p]!;
-          // randomize initial rotation angle and store original value
-          let theta = Math.random() * Math.PI * 2;
-          particles.theta.push(theta);
-          particles.rotationSpeed.push(Math.random() * 0.0025 + 0.0025);
-          particles.radius.push(Math.random() * 0.75 + 1.25);
+      // randomize initial scale
+      let scale = Math.random() * 0.2 + 0.3;
 
-          // randomize initial height and elevation speed and store original values
-          let height = Math.random();
-          particles.heightValue.push(height);
-          particles.elevationSpeed.push(Math.random() * 0.0003 + 0.0003);
-
-          // randomize initial scale
-          let scale = Math.random() * 0.2 + 0.3;
-
-          // set initial particle position and scale
-          particle.position = new Vector3(
-            particles.radius[p] * Math.sin(theta),
-            lerpValue(particles.heightRange * -0.5, particles.heightRange * 0.5, height),
-            particles.radius[p] * Math.cos(theta),
-          );
-          particle.scaling = new Vector3(scale, scale, scale);
-
-          // set initial particle color
-          particle.color = new Color3(Math.random(), Math.random(), Math.random()).toColor4(1);
-        }
-      };
-
-      // init particle system
-      particles.sps.initParticles();
-      particles.sps.setParticles();
-
-      // update particle system
-      particles.sps.updateParticle = (particle) => {
-        // increase rotation angle but keep it between 0 and 2PI
-        particles.theta[particle.idx] += particles.rotationSpeed[particle.idx] * Math.sign((particle.idx % 2) - 0.5);
-        if (particles.theta[particle.idx] > Math.PI * 2) particles.theta[particle.idx] -= Math.PI * 2;
-
-        // update particle position on X-Z plane based on rotation angle
-        particle.position.x = particles.radius[particle.idx] * Math.sin(particles.theta[particle.idx]);
-        particle.position.z = particles.radius[particle.idx] * Math.cos(particles.theta[particle.idx]);
-
-        // update particle height to slowly rise and fall
-        particles.heightValue[particle.idx] += particles.elevationSpeed[particle.idx];
-        particle.position.y = lerpValue(
-          particles.heightRange * -0.5,
-          particles.heightRange * 0.5,
-          Math.sin((particles.heightValue[particle.idx] % 1) * Math.PI),
-        );
-        return particle;
-      };
-
-      // update particle system before each render frame
-      scene.onBeforeRenderObservable.add(() => {
-        particles.sps!.setParticles();
-      });
+      // set initial particle position and scale
+      particle.position = new Vector3(
+        particles.radius[p] * Math.sin(theta),
+        lerpValue(particles.heightRange * -0.5, particles.heightRange * 0.5, height),
+        particles.radius[p] * Math.cos(theta),
+      );
+      particle.scaling = new Vector3(scale, scale, scale);
     }
 
-    createParticleSystem();
+    const particlesUpdate = (particle: Mesh) => {
+      const particleIdx = parseInt(particle.name.replace("particle", ""), 10);
+      // increase rotation angle but keep it between 0 and 2PI
+      particles.theta[particleIdx] += particles.rotationSpeed[particleIdx] * Math.sign((particleIdx % 2) - 0.5);
+      if (particles.theta[particleIdx] > Math.PI * 2) particles.theta[particleIdx] -= Math.PI * 2;
+
+      // update particle position on X-Z plane based on rotation angle
+      particle.position.x = particles.radius[particleIdx] * Math.sin(particles.theta[particleIdx]);
+      particle.position.z = particles.radius[particleIdx] * Math.cos(particles.theta[particleIdx]);
+
+      // update particle height to slowly rise and fall
+      particles.heightValue[particleIdx] += particles.elevationSpeed[particleIdx];
+      particle.position.y = lerpValue(
+        particles.heightRange * -0.5,
+        particles.heightRange * 0.5,
+        Math.sin((particles.heightValue[particleIdx] % 1) * Math.PI),
+      );
+      return particle;
+    };
+
+    scene.onBeforeRenderObservable.add(() => {
+      particles.meshes.forEach((mesh) => {
+        particlesUpdate(mesh);
+      })
+    });
 
     // 当场景中资源加载和初始化完成后
     scene.executeWhenReady(() => {

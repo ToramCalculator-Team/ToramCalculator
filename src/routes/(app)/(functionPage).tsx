@@ -6,7 +6,7 @@ import { store } from "~/store";
 
 export default function Home(props: ParentProps) {
   return (
-    <Motion.main class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
+    <Motion.main class="flex h-full w-full flex-col-reverse lg:flex-row">
       <Nav />
       <OverlayScrollbarsComponent
         element="div"
