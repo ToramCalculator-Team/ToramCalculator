@@ -95,7 +95,7 @@ export default function BabylonBg(): JSX.Element {
         // embedMode: true
       });
       // 世界坐标轴显示
-      new AxesViewer(scene, 0.1);
+      // new AxesViewer(scene, 0.1);
     });
   }
 
