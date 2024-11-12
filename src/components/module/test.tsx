@@ -2,14 +2,11 @@ import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from 
 import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import LoadingBox from "~/components/ui/loadingBox";
 import { store } from "~/store";
-import { Material } from "@babylonjs/core/Materials/material";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math";
-import { Nullable } from "@babylonjs/core/types";
 import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
-import { Animation } from "@babylonjs/core/Animations/animation";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
@@ -20,10 +17,10 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import model_url from "/models/rocket.glb?url";
-import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import * as _ from "lodash-es";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { PointLight } from "@babylonjs/core/Lights/pointLight"
+import "@babylonjs/core/Debug/debugLayer";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
