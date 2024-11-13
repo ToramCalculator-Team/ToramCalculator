@@ -14,6 +14,7 @@ export default defineConfig({
           "@babylonjs/loaders",
           "@babylonjs/materials",
           "@babylonjs/inspector",
+          "/models/landscape.glb?url"
         ],
         output: {
           paths: {
