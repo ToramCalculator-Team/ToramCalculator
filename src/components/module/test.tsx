@@ -92,14 +92,14 @@ export default function BabylonBg(): JSX.Element {
   };
 
   // 测试模式配置函数
-  function testModelOpen() {
-    // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void scene.debugLayer.show({
-      // embedMode: true
-    });
-    // 世界坐标轴显示
-    // new AxesViewer(scene, 0.1);
-  }
+  // function testModelOpen() {
+  //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //   void scene.debugLayer.show({
+  //     // embedMode: true
+  //   });
+  //   // 世界坐标轴显示
+  //   // new AxesViewer(scene, 0.1);
+  // }
 
   // 其他bbl内容
 
@@ -133,7 +133,7 @@ export default function BabylonBg(): JSX.Element {
     scene.skipPointerMovePicking = true;
     scene.autoClear = false; // Color buffer
     scene.autoClearDepthAndStencil = false; // Depth and stencil, obviously
-    testModelOpen();
+    // testModelOpen();
 
     // 摄像机
     camera = new ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new Vector3(0, 0.43, 0), scene);
