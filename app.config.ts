@@ -13,12 +13,12 @@ export default defineConfig({
           "@babylonjs/inspector",
           "@babylonjs/loaders",
           "@babylonjs/materials",
-          // "@babylonjs/inspector",
+          "@babylonjs/inspector",
         ],
         output: {
           paths: {
             '@babylonjs/loaders': 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
-            // '@babylonjs/inspector': 'https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js',
+            '@babylonjs/inspector': 'https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js',
             '@babylonjs/core': 'https://cdn.babylonjs.com/babylon.js',
             '@babylonjs/materials': 'https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js',
           }

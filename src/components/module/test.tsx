@@ -22,6 +22,11 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+import { InstancedMesh } from "@babylonjs/core/Meshes/instancedMesh";
+import { SpotLight } from "@babylonjs/core/Lights/spotLight";
+import { GIRSM } from "@babylonjs/core/Rendering/GlobalIllumination/giRSM";
+import { ReflectiveShadowMap } from "@babylonjs/core/Rendering/reflectiveShadowMap";
+import { GIRSMManager } from "@babylonjs/core/Rendering/GlobalIllumination/giRSMManager";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -100,9 +105,34 @@ export default function BabylonBg(): JSX.Element {
 
   onMount(() => {
     engine = new Engine(canvas, true);
+    //自定义加载动画
+    engine.loadingScreen = {
+      displayLoadingUI: (): void => {
+        // console.log('display')
+      },
+      hideLoadingUI: (): void => {
+        // console.log('hidden')
+      },
+      loadingUIBackgroundColor: "#000000",
+      loadingUIText: "Loading...",
+    };
     scene = new Scene(engine);
     scene.clearColor = new Color4(1, 1, 1, 1);
     scene.ambientColor = themeColors().primary;
+    // 雾
+    // scene.fogMode = Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.01;
+    createEffect(() => {
+      if (store.theme === "light") {
+        scene.fogColor = new Color3(0.8, 0.8, 0.8);
+      } else {
+        scene.fogColor = new Color3(0.3, 0.3, 0.3);
+      }
+    });
+    // 性能优化
+    scene.skipPointerMovePicking = true;
+    scene.autoClear = false; // Color buffer
+    scene.autoClearDepthAndStencil = false; // Depth and stencil, obviously
     testModelOpen();
 
     // 摄像机
@@ -113,7 +143,7 @@ export default function BabylonBg(): JSX.Element {
     camera.wheelDeltaPercentage = 0.05;
     // camera.inputs.clear(); // -----------------------------------------------------相机输入禁用-----------------------
 
-    // 后期处理
+    // -----------------------------------后期处理-----------------------------------
     // new LensRenderingPipeline(
     //   "lens",
     //   {
@@ -133,10 +163,10 @@ export default function BabylonBg(): JSX.Element {
     //   [camera],
     // );
 
-    // -------------------------基本mesh设置-------------------------
+    // -------------------------基本场景构造-------------------------
     const groundPBR = new PBRMaterial("groundPBR", scene);
-    groundPBR.backFaceCulling = false;
-    groundPBR.metallic = 0.5;
+    // groundPBR.backFaceCulling = false;
+    groundPBR.metallic = 0.1;
     groundPBR.environmentIntensity = 1;
     createEffect(() => {
       // groundPBR.ambientColor = themeColors().primary;
@@ -148,34 +178,58 @@ export default function BabylonBg(): JSX.Element {
       }
     });
 
-    const sky = MeshBuilder.CreateSphere("sky", { diameter: 60, sideOrientation: Mesh.BACKSIDE }, scene);
+    const sky = MeshBuilder.CreateSphere("sky", { diameter: 20, sideOrientation: Mesh.BACKSIDE }, scene);
     sky.material = groundPBR;
+    sky.freezeWorldMatrix();
 
-    const ground = MeshBuilder.CreateGround("ground", { width: 72, height: 72 }, scene);
+    const ground = MeshBuilder.CreateGround("ground", { width: 20, height: 20 }, scene);
     ground.material = groundPBR;
     ground.receiveShadows = true;
+    ground.freezeWorldMatrix();
 
-    // -------------------------光照设置-------------------------
+    // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
-    const mainPointLight = new PointLight("mainPointLight", new Vector3(0, 20, 0), scene);
-    mainPointLight.id = "mainPointLight";
-    mainPointLight.radius = 10;
+    const mainSpotLight = new SpotLight(
+      "mainSpotLight",
+      new Vector3(0, 8, 0),
+      new Vector3(0, -1, 0),
+      Math.PI,
+      2,
+      scene,
+    );
+    mainSpotLight.id = "mainSpotLight";
+    mainSpotLight.radius = 10;
     createEffect(() => {
       switch (store.theme) {
         case "light":
-          mainPointLight.intensity = 2000;
+          mainSpotLight.intensity = 200;
           break;
         case "dark":
-          mainPointLight.intensity = 100;
+          mainSpotLight.intensity = 100;
           break;
       }
     });
+    // const mainSpotLight = new PointLight("mainSpotLight", new Vector3(0, 8, 0), scene);
+    // mainSpotLight.id = "mainSpotLight";
+    // mainSpotLight.radius = 10;
+    // createEffect(() => {
+    //   switch (store.theme) {
+    //     case "light":
+    //       mainSpotLight.intensity = 200;
+    //       break;
+    //     case "dark":
+    //       mainSpotLight.intensity = 100;
+    //       break;
+    //   }
+    // });
 
     // 顶部锥形光的阴影发生器---------------------
-    const mainPointLightShadowGenerator = new ShadowGenerator(1024, mainPointLight);
-    mainPointLightShadowGenerator.bias = 0.000001;
-    mainPointLightShadowGenerator.darkness = 0.5;
-    mainPointLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
+    mainSpotLightShadowGenerator.bias = 0.000001;
+    mainSpotLightShadowGenerator.darkness = 0.1;
+    mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+
+    // -----------------------------------------model--------------------------------------------
 
     // 加载model
     // void SceneLoader.AppendAsync(
@@ -190,23 +244,28 @@ export default function BabylonBg(): JSX.Element {
     //     root.position.y = 1;
     //     root.scaling = new Vector3(0.4, 0.4, 0.4);
     //   }
-    //   // 材质添加
-    //   scene.meshes.forEach((mesh) => {
-    //     if (mesh.name === "__root__") return;
-    //     // mesh.receiveShadows = true;
-    //     mainPointLightShadowGenerator.addShadowCaster(mesh, true);
-    //   });
     // });
-    const ballPBR1 = new PBRMaterial("ballPBR1", scene);
-    ballPBR1.metallic = 0;
-    ballPBR1.albedoColor = themeColors().brand_1st;
-    ballPBR1.environmentIntensity = 1;
-    const ballPBR2 = new PBRMaterial("ballPBR2", scene);
-    ballPBR2.metallic = 0;
-    ballPBR2.albedoColor = themeColors().brand_2nd;
-    const ballPBR3 = new PBRMaterial("ballPBR3", scene);
-    ballPBR3.metallic = 0;
-    ballPBR3.albedoColor = themeColors().brand_3rd;
+
+    // -----------------------------------------BG--------------------------------------------
+    // 背景动画球的母版
+    const particleColors: Color3[] = [themeColors().brand_1st, themeColors().brand_2nd, themeColors().brand_3rd];
+    const particleSourceMeshs: Mesh[] = [];
+
+    particleColors.forEach((color, index) => {
+      const particle = MeshBuilder.CreateSphere(`particleSourceMesh${index + 1}`, {});
+      const ballPBR = new PBRMaterial(`ballPBR${index + 1}`, scene);
+      ballPBR.metallic = 0;
+      // ballPBR.ambientColor = new Color3(1, 1, 1);
+      ballPBR.albedoColor = color;
+      ballPBR.environmentIntensity = 1;
+      particle.material = ballPBR;
+      // 性能优化
+      ballPBR.freeze();
+      particle.isVisible = false;
+      particle.scaling.set(0.001, 0.001, 0.001);
+      particle.freezeWorldMatrix();
+      particleSourceMeshs.push(particle);
+    });
 
     const particles: {
       theta: number[];
@@ -216,7 +275,7 @@ export default function BabylonBg(): JSX.Element {
       radius: number[];
       heightRange: number;
       nbParticles: number;
-      meshes: Mesh[];
+      meshes: InstancedMesh[];
     } = {
       theta: [],
       heightValue: [],
@@ -234,19 +293,19 @@ export default function BabylonBg(): JSX.Element {
 
     // 创建随机球背景
     for (let p = 0; p < particles.nbParticles; p++) {
-      const particle = MeshBuilder.CreateSphere(`particle${p}`, {});
-      particles.meshes.push(particle);
+      let particle: InstancedMesh | null = null;
       switch (p % 3) {
         case 0:
-          particle.material = ballPBR1;
+          particle = particleSourceMeshs[0].createInstance(`particle${p + 1}`);
           break;
         case 1:
-          particle.material = ballPBR2;
+          particle = particleSourceMeshs[1].createInstance(`particle${p + 1}`);
           break;
         case 2:
-          particle.material = ballPBR3;
+          particle = particleSourceMeshs[2].createInstance(`particle${p + 1}`);
           break;
       }
+      particle && particles.meshes.push(particle);
       // randomize initial rotation angle and store original value
       let theta = Math.random() * Math.PI * 2;
       particles.theta.push(theta);
@@ -262,15 +321,16 @@ export default function BabylonBg(): JSX.Element {
       let scale = Math.random() * 0.2 + 0.3;
 
       // set initial particle position and scale
-      particle.position = new Vector3(
-        particles.radius[p] * Math.sin(theta),
-        lerpValue(particles.heightRange * -0.5, particles.heightRange * 0.5, height),
-        particles.radius[p] * Math.cos(theta),
-      );
-      particle.scaling = new Vector3(scale, scale, scale);
+      particle &&
+        (particle.position = new Vector3(
+          particles.radius[p] * Math.sin(theta),
+          lerpValue(particles.heightRange * -0.5, particles.heightRange * 0.5, height),
+          particles.radius[p] * Math.cos(theta),
+        ));
+      particle && (particle.scaling = new Vector3(scale, scale, scale));
     }
 
-    const particlesUpdate = (particle: Mesh) => {
+    const particlesUpdate = (particle: InstancedMesh) => {
       const particleIdx = parseInt(particle.name.replace("particle", ""), 10);
       // increase rotation angle but keep it between 0 and 2PI
       particles.theta[particleIdx] += particles.rotationSpeed[particleIdx] * Math.sign((particleIdx % 2) - 0.5);
@@ -295,6 +355,70 @@ export default function BabylonBg(): JSX.Element {
         particlesUpdate(mesh);
       });
     });
+
+    // -----------------------------------------GI--------------------------------------------
+    // const defaultRSMTextureRatio = 8;
+    // const defaultGITextureRatio = 2;
+
+    // const outputDimensions = {
+    //   width: engine.getRenderWidth(true),
+    //   height: engine.getRenderHeight(true),
+    // };
+
+    // const rsmTextureDimensions = {
+    //   width: Math.floor(engine.getRenderWidth(true) / defaultRSMTextureRatio),
+    //   height: Math.floor(engine.getRenderHeight(true) / defaultRSMTextureRatio),
+    // };
+
+    // const giTextureDimensions = {
+    //   width: Math.floor(engine.getRenderWidth(true) / defaultGITextureRatio),
+    //   height: Math.floor(engine.getRenderHeight(true) / defaultGITextureRatio),
+    // };
+
+    // const giRSMs: GIRSM[] = [];
+
+    // giRSMs.push(new GIRSM(new ReflectiveShadowMap(scene, mainSpotLight, rsmTextureDimensions)));
+
+    // // giRSMs.forEach((girsm) => (girsm.rsm.forceUpdateLightParameters = true)); // for the demo, don't do this in production!
+
+    // const giRSMMgr = new GIRSMManager(scene, outputDimensions, giTextureDimensions, 2048);
+
+    // giRSMMgr.addGIRSM(giRSMs);
+
+    // giRSMMgr.enable = true;
+
+    // giRSMs.forEach((girsm) => girsm.rsm.addMesh());
+    // giRSMMgr.addMaterial(); // add all materials in the scene
+
+    if (mainSpotLightShadowGenerator) {
+      scene.meshes.forEach((mesh) => {
+        if (mesh.getTotalVertices() > 0 && mesh.isEnabled() && mesh.name !== "__root__") {
+          mesh.receiveShadows = true;
+          mainSpotLightShadowGenerator.getShadowMap()?.renderList?.push(mesh);
+          // mainSpotLightShadowGenerator.addShadowCaster(mesh, true);
+        }
+      });
+    }
+
+    // scene.onDisposeObservable.add(() => {
+    //   giRSMs.forEach((rsm) => rsm.dispose());
+    //   giRSMMgr.dispose();
+    // });
+
+    // const resize = () => {
+    //   outputDimensions.width = engine.getRenderWidth(true);
+    //   outputDimensions.height = engine.getRenderHeight(true);
+
+    //   giRSMs.forEach((girsm) => girsm.rsm.setTextureDimensions(rsmTextureDimensions));
+    //   giRSMMgr.setOutputDimensions(outputDimensions);
+    //   giRSMMgr.setGITextureDimensions(giTextureDimensions);
+    // };
+
+    // resize();
+
+    // engine.onResizeObservable.add(() => {
+    //   resize();
+    // });
 
     // 当场景中资源加载和初始化完成后
     scene.executeWhenReady(() => {
