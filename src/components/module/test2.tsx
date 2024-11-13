@@ -11,6 +11,7 @@ import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
+import model_url from "/models/landscape.glb?url";
 import * as _ from "lodash-es";
 import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
@@ -18,7 +19,6 @@ import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
-const model_url = "/models/landscape.glb";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义

@@ -20,8 +20,8 @@ import model_url from "/models/rocket.glb?url";
 import * as _ from "lodash-es";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
-import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
-import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+// import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
+// import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import { InstancedMesh } from "@babylonjs/core/Meshes/instancedMesh";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { GIRSM } from "@babylonjs/core/Rendering/GlobalIllumination/giRSM";
