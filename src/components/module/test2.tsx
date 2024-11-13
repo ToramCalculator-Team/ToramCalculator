@@ -11,7 +11,6 @@ import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import model_url from "/models/landscape.glb?url";
 import * as _ from "lodash-es";
 import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
@@ -19,6 +18,7 @@ import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
+const model_url = "/models/landscape.glb";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -222,77 +222,77 @@ export default function BabylonBg(): JSX.Element {
           );
           mesh.isVisible = false;
           mesh.checkCollisions = true;
-          const texture = nodeMaterial.getActiveTextures()[0];
-          texture.readPixels()?.then((data) => {
-          //   function findPixel(
-          //     textureData: number[],
-          //     textureSize: number,
-          //     planeSize: number,
-          //     x: number,
-          //     y: number
-          // ): number[] {
-          //     // Convert coordinates to texture space
-          //     let xCrd = ScalarMath.Map(x, -planeSize, planeSize, 0, textureSize);
-          //     let yCrd = ScalarMath.Map(y, -planeSize, planeSize, 0, textureSize);
+          // const texture = nodeMaterial.getActiveTextures()[0];
+          // texture.readPixels()?.then((data) => {
+          // //   function findPixel(
+          // //     textureData: number[],
+          // //     textureSize: number,
+          // //     planeSize: number,
+          // //     x: number,
+          // //     y: number
+          // // ): number[] {
+          // //     // Convert coordinates to texture space
+          // //     let xCrd = ScalarMath.Map(x, -planeSize, planeSize, 0, textureSize);
+          // //     let yCrd = ScalarMath.Map(y, -planeSize, planeSize, 0, textureSize);
           
-          //     // Determine integer and fractional parts for linear interpolation
-          //     const x0 = Math.floor(xCrd);
-          //     const y0 = Math.floor(yCrd);
-          //     const dx = xCrd - x0;
-          //     const dy = yCrd - y0;
+          // //     // Determine integer and fractional parts for linear interpolation
+          // //     const x0 = Math.floor(xCrd);
+          // //     const y0 = Math.floor(yCrd);
+          // //     const dx = xCrd - x0;
+          // //     const dy = yCrd - y0;
           
-          //     // Function to get pixel color, considering array boundaries
-          //     const getPixel = (x: number, y: number): number[] => {
-          //         const clampedX = Math.max(0, Math.min(textureSize - 1, x));
-          //         const clampedY = Math.max(0, Math.min(textureSize - 1, y));
-          //         const index = (clampedY * textureSize + clampedX) * 4;
-          //         return textureData.slice(index, index + 4);
-          //     };
+          // //     // Function to get pixel color, considering array boundaries
+          // //     const getPixel = (x: number, y: number): number[] => {
+          // //         const clampedX = Math.max(0, Math.min(textureSize - 1, x));
+          // //         const clampedY = Math.max(0, Math.min(textureSize - 1, y));
+          // //         const index = (clampedY * textureSize + clampedX) * 4;
+          // //         return textureData.slice(index, index + 4);
+          // //     };
           
-          //     // Get color values for neighboring pixels
-          //     const topLeft = getPixel(x0, y0);
-          //     const topRight = getPixel(x0 + 1, y0);
-          //     const bottomLeft = getPixel(x0, y0 + 1);
-          //     const bottomRight = getPixel(x0 + 1, y0 + 1);
+          // //     // Get color values for neighboring pixels
+          // //     const topLeft = getPixel(x0, y0);
+          // //     const topRight = getPixel(x0 + 1, y0);
+          // //     const bottomLeft = getPixel(x0, y0 + 1);
+          // //     const bottomRight = getPixel(x0 + 1, y0 + 1);
           
-          //     // Linear interpolation
-          //     const interpolate = (a: number[], b: number[], t: number) =>
-          //         a.map((v, i) => v * (1 - t) + b[i] * t);
+          // //     // Linear interpolation
+          // //     const interpolate = (a: number[], b: number[], t: number) =>
+          // //         a.map((v, i) => v * (1 - t) + b[i] * t);
           
-          //     // Interpolate by x between top and bottom pixels
-          //     const top = interpolate(topLeft, topRight, dx);
-          //     const bottom = interpolate(bottomLeft, bottomRight, dx);
+          // //     // Interpolate by x between top and bottom pixels
+          // //     const top = interpolate(topLeft, topRight, dx);
+          // //     const bottom = interpolate(bottomLeft, bottomRight, dx);
           
-          //     // Interpolate by y between the results
-          //     const result = interpolate(top, bottom, dy);
+          // //     // Interpolate by y between the results
+          // //     const result = interpolate(top, bottom, dy);
           
-          //     // Round values to get integer results
-          //     return result.map(value => Math.round(value));
-          // }
-          //   scene.onBeforeRenderObservable.add(() => {
-          //     mesh.position.x = Math.round(camera!.globalPosition.x / colliderStep) * colliderStep || 0;
-          //     mesh.position.z = Math.round(camera!.globalPosition.z / colliderStep) * colliderStep || 0;
+          // //     // Round values to get integer results
+          // //     return result.map(value => Math.round(value));
+          // // }
+          // //   scene.onBeforeRenderObservable.add(() => {
+          // //     mesh.position.x = Math.round(camera!.globalPosition.x / colliderStep) * colliderStep || 0;
+          // //     mesh.position.z = Math.round(camera!.globalPosition.z / colliderStep) * colliderStep || 0;
 
-          //     const positions = mesh.getVerticesData(VertexBuffer.PositionKind)!;
-          //     const numberOfVertices = positions.length / 3;
+          // //     const positions = mesh.getVerticesData(VertexBuffer.PositionKind)!;
+          // //     const numberOfVertices = positions.length / 3;
 
-          //     for (let i = 0; i < numberOfVertices; i++) {
-          //       let px = findPixel(
-          //         numberArray,
-          //         textureSize,
-          //         groundSize,
-          //         positions[i * 3] + mesh.position.x,
-          //         positions[i * 3 + 2] + mesh.position.z,
-          //       );
+          // //     for (let i = 0; i < numberOfVertices; i++) {
+          // //       let px = findPixel(
+          // //         numberArray,
+          // //         textureSize,
+          // //         groundSize,
+          // //         positions[i * 3] + mesh.position.x,
+          // //         positions[i * 3 + 2] + mesh.position.z,
+          // //       );
 
-          //       const normalizedPixelValue = ScalarMath.Map(px[0], 0, 255, 0, 1);
+          // //       const normalizedPixelValue = ScalarMath.Map(px[0], 0, 255, 0, 1);
 
-          //       positions[i * 3 + 1] = ScalarMath.Map(normalizedPixelValue, 0, 1, -elevationMin, elevationMax);
-          //     }
-          //     mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
-          //     mesh.refreshBoundingInfo();
-          //   });
-          });
+          // //       positions[i * 3 + 1] = ScalarMath.Map(normalizedPixelValue, 0, 1, -elevationMin, elevationMax);
+          // //     }
+          // //     mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
+          // //     mesh.refreshBoundingInfo();
+          // //   });
+          // });
         });
       }
     });
