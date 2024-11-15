@@ -23,9 +23,9 @@ import { DracoCompression } from "@babylonjs/core/Meshes/Compression/dracoCompre
 // 设置解码器路径
 DracoCompression.Configuration = {
   decoder: {
-    wasmUrl: "https://cdn.babylonjs.com/draco_wasm_wrapper_gltf.js",
-    wasmBinaryUrl: "https://cdn.babylonjs.com/draco_decoder_gltf.wasm",
-    fallbackUrl: "https://cdn.babylonjs.com/draco_decoder_gltf.js",
+    wasmUrl: "http://cdn.babylonjs.com/draco_wasm_wrapper_gltf.js",
+    wasmBinaryUrl: "http://cdn.babylonjs.com/draco_decoder_gltf.wasm",
+    fallbackUrl: "http://cdn.babylonjs.com/draco_decoder_gltf.js",
   },
 };
 
