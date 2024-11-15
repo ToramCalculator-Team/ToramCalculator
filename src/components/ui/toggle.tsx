@@ -37,7 +37,7 @@ const Toggle = (props: MyButtonProps) => {
   });
 
   return (
-    <div ref={switchRef} {...rest} class={` ` + rest.class ? defaultBoxClassNames() + rest.class : defaultBoxClassNames()}>
+    <div tabIndex={0} role="switch" onKeyDown={(e) => e.key === "Enter" && switchRef?.click()} ref={switchRef} {...rest} class={` ` + rest.class ? defaultBoxClassNames() + rest.class : defaultBoxClassNames()}>
       <div class={defaultBallClassNames()}></div>
     </div>
   );

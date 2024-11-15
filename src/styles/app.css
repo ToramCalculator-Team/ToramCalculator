@@ -60,6 +60,11 @@
   transition: all 150ms;
 }
 
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
 .transitionColorNone * {
   transition: color 0s, background-color 0s, border-color 0s, opacity 0s !important;
   transition-delay: 0s !important;
@@ -79,7 +84,7 @@
   outline-style: solid;
 }
 
-*:focus {
+*:focus-visible {
   outline-width: 2px;
   outline-color: rgb(var(--brand-1st));
 }

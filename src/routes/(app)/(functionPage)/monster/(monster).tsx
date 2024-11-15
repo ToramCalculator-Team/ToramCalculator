@@ -26,7 +26,7 @@ import Button from "~/components/ui/button";
 
 export default function MonsterIndexPage() {
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
+  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
@@ -424,11 +424,11 @@ export default function MonsterIndexPage() {
               {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-          <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}>
             <Show when={table()}>
+            {/* <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}> */}
               <div ref={virtualScrollElement!} class="TableBox VirtualScroll flex-1">
-                <table class="Table">
-                  <thead class="TableHead sticky top-0 z-10 flex bg-primary-color">
+                <table class="Table w-full relative">
+                  <thead class={`TableHead sticky top-0 z-10 flex`}>
                     <For each={table()!.getHeaderGroups()}>
                       {(headerGroup) => (
                         <tr class="flex min-w-full gap-0 border-b-2 border-transition-color-20">
@@ -469,7 +469,7 @@ export default function MonsterIndexPage() {
                       )}
                     </For>
                   </thead>
-                  <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class="TableBody relative">
+                  <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class={`TableBodyrelative`}>
                     <For each={virtualizer().getVirtualItems()}>
                       {(virtualRow) => {
                         const row = table()!.getRowModel().rows[virtualRow.index];
@@ -571,8 +571,8 @@ export default function MonsterIndexPage() {
                   </tbody>
                 </table>
               </div>
+              {/* </OverlayScrollbarsComponent> */}
             </Show>
-          </OverlayScrollbarsComponent>
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isFormFullscreen()}>

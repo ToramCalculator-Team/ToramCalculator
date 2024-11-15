@@ -27,7 +27,7 @@ const Button = (props: MyButtonProps) => {
         primary: "bg-accent-color text-primary-color hover:bg-accent-color-80",
         secondary: "bg-primary-color hover:bg-accent-color hover:text-primary-color",
         default: "bg-transition-color-8 hover:bg-transition-color-20",
-        quaternary: "bg-transparent hover:bg-transition-color-8 outline-none focus-within:outline-none",
+        quaternary: "bg-transparent hover:bg-transition-color-8 outline-none",
       }[props.level ?? "default"],
       active: props.active,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",

@@ -48,7 +48,7 @@ export default function Setting() {
         <For each={content}>
           {({ title, description, children, type }) => (
             <div
-              class={`Content flex flex-1 focus-within:bg-transition-color-8 ${
+              class={`Content flex flex-1 ${
                 type
                   ? {
                       col: "flex-col",
