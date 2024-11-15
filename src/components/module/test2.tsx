@@ -18,6 +18,16 @@ import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
+import { DracoCompression } from "@babylonjs/core/Meshes/Compression/dracoCompression";
+
+// 设置解码器路径
+DracoCompression.Configuration = {
+  decoder: {
+    wasmUrl: "https://cdn.babylonjs.com/draco_wasm_wrapper_gltf.js",
+    wasmBinaryUrl: "https://cdn.babylonjs.com/draco_decoder_gltf.wasm",
+    fallbackUrl: "https://cdn.babylonjs.com/draco_decoder_gltf.js",
+  },
+};
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
