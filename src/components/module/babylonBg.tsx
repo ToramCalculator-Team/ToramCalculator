@@ -16,7 +16,7 @@ import { Nullable } from "@babylonjs/core/types";
 import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { Animation } from "@babylonjs/core/Animations/animation";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
+// import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";

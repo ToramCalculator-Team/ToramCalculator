@@ -8,7 +8,7 @@ import { Engine } from "@babylonjs/core/Engines/engine";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math";
 import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
+// import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
