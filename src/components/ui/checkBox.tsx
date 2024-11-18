@@ -23,7 +23,7 @@ const CheckBox = (props: MyButtonProps) => {
       }[props.size ?? "md"],
       state: props.state,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
-      stateClass: props.state ? "bg-brand-color-1st text-primary-color" : "bg-transition-color-8 text-accent-color-70",
+      stateClass: props.state ? "bg-brand-color-1st text-primary-color" : "bg-area-color text-mainText-color",
     };
   });
 

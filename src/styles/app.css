@@ -10,16 +10,17 @@
 @layer base {
   /* 颜色署名 */
   :root {
+    /* 背景色 */
     --white: 255 255 255;
-    --geryWhite: 200 200 200;
-    --grey: 55 55 55;
-    --black: 0 0 0;
+    --grey: 40 40 40;
+    /* 对比度控制颜色 */
     --brown: 47 26 73;
-    --navyBlue: 105 145 214;
+    /* 品牌色 */
+    --navyBlue: 80 128 210;
     --greenBlue: 149 207 213;
     --yellow: 255 166 60;
     --orange: 253 126 80;
-
+    /* 装饰色 */
     --water: 0 140 229;
     --fire: 233 62 38;
     --earth: 255 151 54;
@@ -43,7 +44,7 @@
   .dark {
     --accent: var(--white);
     --primary: var(--grey);
-    --transition: var(--geryWhite);
+    --transition: var(--white);
     --brand-1st: var(--greenBlue);
     --brand-2nd: var(--yellow);
     --brand-3rd: var(--orange);

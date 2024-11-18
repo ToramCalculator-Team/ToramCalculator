@@ -19,7 +19,7 @@ const Toggle = (props: MyButtonProps) => {
         lg: "p-2",
       }[props.size ?? "md"],
       disableClass: rest.disabled ? "pointer-events-none opacity-50" : "",
-      activedClass: props.state ? "justify-start bg-brand-color-1st" : "justify-end bg-transition-color-20",
+      activedClass: props.state ? "justify-start bg-brand-color-1st" : "justify-end bg-dividing-color",
     };
   })
 

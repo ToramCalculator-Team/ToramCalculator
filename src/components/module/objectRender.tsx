@@ -15,11 +15,11 @@ const hiddenKey: (keyof keyObj)[] = [
 ];
 
 const actualValueClass = "Value text-nowrap rounded-sm px-1 flex-1 flex items-center ";
-const baseValueClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 flex-1 flex items-center ";
-const modifierStaticClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
-const modifierDynamicClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
+const baseValueClass = " Value text-nowrap rounded-sm px-1 text-mainText-color flex-1 flex items-center ";
+const modifierStaticClass = " Value text-nowrap rounded-sm px-1 text-mainText-color ";
+const modifierDynamicClass = " Value text-nowrap rounded-sm px-1 text-mainText-color ";
 const originClass =
-  "Origin buttom-full absolute left-0 z-10 hidden rounded-sm bg-primary-color p-2 text-sm text-accent-color-70 shadow-xl shadow-transition-color-8 group-hover:flex pointer-events-none";
+  "Origin buttom-full absolute left-0 z-10 hidden rounded-sm bg-primary-color p-2 text-sm text-mainText-color shadow-xl shadow-area-color group-hover:flex pointer-events-none";
 // 由于tailwind编译时生成对应class，此处class将不会生效
 // const columns = 8;
 const columnsWidth = " lg:w-[calc((100%-16px)/5)] ";
@@ -53,7 +53,7 @@ export const ObjectRenderer = (props: {
         if (!isTargetType(value)) {
           return (
             <div
-              class={`key=${currentPath} Object flex flex-col gap-1 rounded-sm border-[1px] border-transition-color-20 p-1 ${!currentPath.includes(".") && columnsWidth}`}
+              class={`key=${currentPath} Object flex flex-col gap-1 rounded-sm border-[1px] border-dividing-color p-1 ${!currentPath.includes(".") && columnsWidth}`}
             >
               <span class="text-brand-color-2nd">{currentPath}</span>
               {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
@@ -62,7 +62,7 @@ export const ObjectRenderer = (props: {
         } else {
           return (
             <div
-              class={`key=${currentPath} Modifiers flex w-full flex-none flex-col gap-1 rounded-sm bg-transition-color-8 p-1 ${!(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0 || value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && !currentPath.includes(".") && columnsWidth}`}
+              class={`key=${currentPath} Modifiers flex w-full flex-none flex-col gap-1 rounded-sm bg-area-color p-1 ${!(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0 || value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && !currentPath.includes(".") && columnsWidth}`}
             >
               <div class="Key w-full p-1 text-sm font-bold">
                 {(d[key] as string | number) ?? key}：
@@ -71,27 +71,27 @@ export const ObjectRenderer = (props: {
               value.modifiers.static.percentage.length > 0 ||
               value.modifiers.dynamic.fixed.length > 0 ||
               value.modifiers.dynamic.percentage.length > 0 ? (
-                <div class="Values flex flex-1 flex-wrap gap-1 border-t-[1px] border-transition-color-20 lg:gap-4">
+                <div class="Values flex flex-1 flex-wrap gap-1 border-t-[1px] border-dividing-color lg:gap-4">
                   <div
                     class={`TotalValue flex flex-col rounded-sm p-1 ${!(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0 || value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && "w-full"}`}
                   >
-                    <div class="Key text-sm text-accent-color-70">{dictionary.ui.analyzer.actualValue}</div>
+                    <div class="Key text-sm text-mainText-color">{dictionary.ui.analyzer.actualValue}</div>
                     <div class={`` + actualValueClass}>{dynamicTotalValue(value)}</div>
                   </div>
                   <div class="BaseVlaue flex w-[25%] flex-col rounded-sm p-1 lg:w-[10%]">
-                    <span class="BaseValueName text-sm text-accent-color-70">
+                    <span class="BaseValueName text-sm text-mainText-color">
                       {dictionary.ui.analyzer.baseValue}
                     </span>
                     <span class={`` + baseValueClass}>{value.baseValue}</span>
                   </div>
                   <div class="ModifierVlaue flex w-full flex-1 flex-col rounded-sm p-1">
-                    <span class="ModifierValueName px-1 text-sm text-accent-color-70">
+                    <span class="ModifierValueName px-1 text-sm text-mainText-color">
                       {dictionary.ui.analyzer.modifiers}
                     </span>
                     <div class="ModifierValueContent flex gap-1">
                       {(value.modifiers.static.fixed.length > 0 || value.modifiers.static.percentage.length > 0) && (
                         <div class="ModifierStaticBox flex flex-1 items-center px-1">
-                          <span class="ModifierStaticName text-sm text-accent-color-70">
+                          <span class="ModifierStaticName text-sm text-mainText-color">
                             {dictionary.ui.analyzer.staticModifiers}
                           </span>
                           <div class="ModifierStaticContent flex flex-wrap gap-1 text-nowrap rounded-sm p-1">
@@ -100,7 +100,7 @@ export const ObjectRenderer = (props: {
                                 {value.modifiers.static.fixed.map((mod, index) => {
                                   return (
                                     <div
-                                      class={`key=${"ModifierStaticFixed" + index} ModifierStaticFixed group relative flex items-center gap-1 rounded-sm bg-transition-color-20 px-1 py-0.5`}
+                                      class={`key=${"ModifierStaticFixed" + index} ModifierStaticFixed group relative flex items-center gap-1 rounded-sm bg-dividing-color px-1 py-0.5`}
                                     >
                                       <span class={`` + modifierStaticClass}>{mod.value}</span>
                                       <span class={`` + originClass}>来源：{mod.origin}</span>
@@ -114,7 +114,7 @@ export const ObjectRenderer = (props: {
                                 {value.modifiers.static.percentage.map((mod, index) => {
                                   return (
                                     <div
-                                      class={`key=${"ModifierStaticPercentage" + index} ModifierStaticPercentage group relative flex items-center gap-1 rounded-sm bg-transition-color-20 px-1 py-0.5`}
+                                      class={`key=${"ModifierStaticPercentage" + index} ModifierStaticPercentage group relative flex items-center gap-1 rounded-sm bg-dividing-color px-1 py-0.5`}
                                     >
                                       <span class={`` + modifierStaticClass}>{mod.value}%</span>
                                       <span class={`` + originClass}>来源：{mod.origin}</span>
@@ -128,7 +128,7 @@ export const ObjectRenderer = (props: {
                       )}
                       {(value.modifiers.dynamic.fixed.length > 0 || value.modifiers.dynamic.percentage.length > 0) && (
                         <div class="ModifierDynamicBox flex flex-1 items-center px-1">
-                          <span class="ModifierDynamicName text-sm text-accent-color-70">
+                          <span class="ModifierDynamicName text-sm text-mainText-color">
                             {dictionary.ui.analyzer.dynamicModifiers}
                           </span>
                           <div class="ModifierDynamicContent flex flex-wrap gap-1 text-nowrap rounded-sm p-1">
@@ -137,7 +137,7 @@ export const ObjectRenderer = (props: {
                                 {value.modifiers.dynamic.fixed.map((mod, index) => {
                                   return (
                                     <div
-                                      class={`key=${"ModifierDynamicFixed" + index} ModifierDynamicFixed group relative flex items-center gap-1 rounded-sm bg-transition-color-20 px-1 py-0.5`}
+                                      class={`key=${"ModifierDynamicFixed" + index} ModifierDynamicFixed group relative flex items-center gap-1 rounded-sm bg-dividing-color px-1 py-0.5`}
                                     >
                                       <span class={`` + modifierDynamicClass}>{mod.value}</span>
                                       <span class={`` + originClass}>来源：{mod.origin}</span>
@@ -151,7 +151,7 @@ export const ObjectRenderer = (props: {
                                 {value.modifiers.dynamic.percentage.map((mod, index) => {
                                   return (
                                     <div
-                                      class={`key=${"ModifierDynamicPercentage" + index} ModifierDynamicPercentage group relative flex items-center gap-1 rounded-sm bg-transition-color-20 px-1 py-0.5`}
+                                      class={`key=${"ModifierDynamicPercentage" + index} ModifierDynamicPercentage group relative flex items-center gap-1 rounded-sm bg-dividing-color px-1 py-0.5`}
                                     >
                                       <span class={`` + modifierDynamicClass}>{mod.value}%</span>
                                       <span class={`` + originClass}>来源：{mod.origin}</span>
@@ -175,7 +175,7 @@ export const ObjectRenderer = (props: {
       } else {
         return (
           <div
-            class={`String flex w-full flex-none flex-col gap-1 rounded-sm bg-transition-color-8 p-1 lg:gap-4 ${!currentPath.includes(".") && columnsWidth}`}
+            class={`String flex w-full flex-none flex-col gap-1 rounded-sm bg-area-color p-1 lg:gap-4 ${!currentPath.includes(".") && columnsWidth}`}
           >
             <div class="Key w-full p-1 text-sm font-bold">
               {(d[key] as string | number) ?? key}：

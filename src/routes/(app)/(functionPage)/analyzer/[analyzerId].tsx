@@ -311,7 +311,7 @@ export default function AnalyzerIndexClient() {
                 setStarArray(newStarArray);
               }
               return (
-                <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-transition-color-20 lg:flex-row lg:gap-6">
+                <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-dividing-color lg:flex-row lg:gap-6">
                   <div class="MobsName z-10 flex-shrink-0 px-6 py-3 text-xl text-primary-color">
                     {mob.monster?.name ?? ""}
                   </div>
@@ -379,11 +379,11 @@ export default function AnalyzerIndexClient() {
                       setMemberIndex(index());
                       startDefinition() && designer()?.replaceDefinition(startDefinition()!);
                     }}
-                    class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-transition-color-20"
+                    class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-dividing-color"
                   >
                     <div class="Info flex flex-col gap-2 px-3">
                       <div class="MemberName text-lg font-bold">{member.character?.name ?? "未知"}</div>
-                      <div class="MenberConfig flex flex-1 gap-1 text-accent-color-70">
+                      <div class="MenberConfig flex flex-1 gap-1 text-mainText-color">
                         <span>{member.character?.lv ?? "未知"}</span>-
                         <span>
                           {
@@ -415,7 +415,7 @@ export default function AnalyzerIndexClient() {
               onClick={async () => {
                 analyzer() && addMemberToAnalyzer(analyzer()!.id, defaultMember);
               }}
-              class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-transition-color-8 p-2 hover:bg-transition-color-20"
+              class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-area-color p-2 hover:bg-dividing-color"
             >
               <div class="Info flex flex-col items-center justify-center gap-2 px-3">
                 <Icon.Line.AddUser />

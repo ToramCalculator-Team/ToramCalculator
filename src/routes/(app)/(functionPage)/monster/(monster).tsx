@@ -318,7 +318,7 @@ export default function MonsterIndexPage() {
                 id="MonsterSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-transition-color-20 bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 focus:border-accent-color-70 focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-mainText-color focus:border-mainText-color focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
@@ -359,7 +359,7 @@ export default function MonsterIndexPage() {
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
-                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
                   "background-image": `url(${monsterList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -373,7 +373,7 @@ export default function MonsterIndexPage() {
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
                   "background-image": `url(${monsterList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -387,7 +387,7 @@ export default function MonsterIndexPage() {
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-transition-color-20" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
                   "background-image": `url(${monsterList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -411,7 +411,7 @@ export default function MonsterIndexPage() {
               {dictionary().ui.monster.table.title}
             </div>
             <div
-              class={`Description flex-1 rounded bg-transition-color-8 p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+              class={`Description flex-1 rounded bg-area-color p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.monster.table.description}
             </div>
@@ -426,12 +426,12 @@ export default function MonsterIndexPage() {
           </div>
             <Show when={table()}>
             {/* <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}> */}
-              <div ref={virtualScrollElement!} class="TableBox VirtualScroll flex-1">
+              <div ref={virtualScrollElement!} class="TableBox VirtualScroll overflow-auto flex-1">
                 <table class="Table w-full relative">
                   <thead class={`TableHead sticky top-0 z-10 flex`}>
                     <For each={table()!.getHeaderGroups()}>
                       {(headerGroup) => (
-                        <tr class="flex min-w-full gap-0 border-b-2 border-transition-color-20">
+                        <tr class="flex min-w-full gap-0 border-b-2 border-dividing-color">
                           <For each={headerGroup.headers}>
                             {(header) => {
                               const { column } = header;
@@ -451,7 +451,7 @@ export default function MonsterIndexPage() {
                                     {...{
                                       onClick: header.column.getToggleSortingHandler(),
                                     }}
-                                    class={`flex-1 py-4 text-left font-normal hover:bg-transition-color-8 ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                    class={`flex-1 py-4 text-left font-normal hover:bg-area-color ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
                                       header.column.getCanSort() ? "cursor-pointer select-none" : ""
                                     }`}
                                   >
@@ -481,7 +481,7 @@ export default function MonsterIndexPage() {
                               position: "absolute",
                               transform: `translateY(${virtualRow.start}px)`,
                             }}
-                            class={`group flex cursor-pointer border-b border-transition-color-8 transition-none hover:rounded hover:border-transparent hover:bg-transition-color-8 hover:font-bold`}
+                            class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
                             onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                           >
                             <For each={row.getVisibleCells()}>
@@ -501,7 +501,7 @@ export default function MonsterIndexPage() {
                                         <span class="pb-1">
                                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </span>
-                                        <span class="text-sm font-normal text-accent-color-70">
+                                        <span class="text-sm font-normal text-mainText-color">
                                           {row.getValue("address") ?? "未知"}
                                         </span>
                                       </>
@@ -582,7 +582,7 @@ export default function MonsterIndexPage() {
               class="News hidden lg:flex w-[248px] flex-initial flex-col gap-2"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.monster.news.title}</div>
-              <div class="Content flex flex-1 flex-col bg-transition-color-8"></div>
+              <div class="Content flex flex-1 flex-col bg-area-color"></div>
             </Motion.div>
           </Show>
         </Presence>

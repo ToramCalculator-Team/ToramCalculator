@@ -8,8 +8,8 @@ import { createId } from "@paralleldrive/cuid2";
 import ddl from "~/../prisma/ddl.sql?raw"
 import { initialStore } from "~/store";
 
-// const host = "http://localhost:3000";
-const host = "https://test.kiaclouth.com";
+const host = "http://localhost:3000";
+// const host = "https://test.kiaclouth.com";
 
 worker({
   async init(options) {

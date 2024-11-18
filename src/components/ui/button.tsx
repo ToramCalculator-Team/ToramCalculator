@@ -24,10 +24,10 @@ const Button = (props: MyButtonProps) => {
         xl: "gap-2 rounded-xl px-4 py-3",
       }[props.size ?? "default"],
       levelClass: {
-        primary: "bg-accent-color text-primary-color hover:bg-accent-color-80",
+        primary: "bg-accent-color text-primary-color hover:bg-accent-color-0",
         secondary: "bg-primary-color hover:bg-accent-color hover:text-primary-color",
-        default: "bg-transition-color-8 hover:bg-transition-color-20",
-        quaternary: "bg-transparent hover:bg-transition-color-8 outline-none",
+        default: "bg-area-color hover:bg-dividing-color",
+        quaternary: "bg-transparent hover:bg-area-color outline-none",
       }[props.level ?? "default"],
       active: props.active,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",

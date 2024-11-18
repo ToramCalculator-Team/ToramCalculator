@@ -97,20 +97,20 @@ export default function AnalyzerIndexClient() {
             </span>
           </div>
           <div class="OtherData flex flex-1 gap-2">
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">总耗时</span>
+            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+              <span class="Key p-1 text-sm text-mainText-color">总耗时</span>
               <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
                 {math.floor(math.abs(totalDuration))} 秒
               </span>
             </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">总伤害</span>
+            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+              <span class="Key p-1 text-sm text-mainText-color">总伤害</span>
               <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
                 {math.floor(math.abs(totalDamge) / 10000)} 万
               </span>
             </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-transition-color-8 lg:p-4">
-              <span class="Key p-1 text-sm text-accent-color-70">怪物剩余HP</span>
+            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+              <span class="Key p-1 text-sm text-mainText-color">怪物剩余HP</span>
               <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
                 {math.floor(math.abs(RemainingHp) / 10000)}万
               </span>
@@ -121,7 +121,7 @@ export default function AnalyzerIndexClient() {
           <div class="Title border-b-2 border-brand-color-1st p-2">
             <span class="Key p-1">时间轴</span>
           </div>
-          <div class="Content flex flex-1 flex-wrap gap-y-4 shadow-transition-color-20 drop-shadow-2xl">
+          <div class="Content flex flex-1 flex-wrap gap-y-4 shadow-dividing-color drop-shadow-2xl">
             {result.map((frameData, frame) => {
               return (
                 <div class={`FrameData${frame} flex flex-col justify-around gap-1`}>
@@ -144,8 +144,8 @@ export default function AnalyzerIndexClient() {
                         }}
                       >
                         {member ? (
-                          <div class="absolute -left-4 bottom-14 z-10 hidden w-fit min-w-[300px] flex-col gap-2 rounded bg-primary-color p-2 text-left shadow-2xl shadow-transition-color-20 backdrop-blur-xl lg:group-hover:z-20 lg:group-hover:flex">
-                            <div class="FrameAttr flex flex-col gap-1 bg-transition-color-8 p-1">
+                          <div class="absolute -left-4 bottom-14 z-10 hidden w-fit min-w-[300px] flex-col gap-2 rounded bg-primary-color p-2 text-left shadow-2xl shadow-dividing-color backdrop-blur-xl lg:group-hover:z-20 lg:group-hover:flex">
+                            <div class="FrameAttr flex flex-col gap-1 bg-area-color p-1">
                               <span class="Title font-bold">队员: {member?.name}</span>
                               <span class="Content">
                                 第 {math.floor(frame / 60)} 秒的第 {frame % 60} 帧
@@ -236,11 +236,11 @@ export default function AnalyzerIndexClient() {
             <input
               type="search"
               placeholder={dictionary().ui.searchPlaceholder}
-              class="lg:border-b-1.5 w-full flex-1 rounded-sm border-transition-color-20 bg-transition-color-8 px-3 py-2 backdrop-blur-xl placeholder:text-accent-color-50 hover:border-accent-color-70 hover:bg-transition-color-8 focus:border-accent-color-70 focus:outline-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:px-5 lg:font-normal"
+              class="lg:border-b-1.5 w-full flex-1 rounded-sm border-dividing-color bg-area-color px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-mainText-color hover:bg-area-color focus:border-mainText-color focus:outline-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:px-5 lg:font-normal"
             />
           </div>
         </div>
-        <div class="Discription my-3 hidden rounded-sm bg-transition-color-8 p-3 lg:block">
+        <div class="Discription my-3 hidden rounded-sm bg-area-color p-3 lg:block">
           {dictionary().ui.analyzer.description}
         </div>
       </div>
@@ -257,7 +257,7 @@ export default function AnalyzerIndexClient() {
           <div class="Content flex flex-col">
             {team().map((member, index) => {
               return (
-                <div class="Member flex flex-col gap-4 border-b border-transition-color-20 p-4 lg:flex-row lg:items-center">
+                <div class="Member flex flex-col gap-4 border-b border-dividing-color p-4 lg:flex-row lg:items-center">
                   <div class="CharacterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
                     <div class="Title flex gap-4">
                       <span class="Key">角色：</span>
@@ -293,7 +293,7 @@ export default function AnalyzerIndexClient() {
             <div class="h-[2px] flex-1 bg-accent-color"></div>
           </div>
           <div class="Content flex flex-col gap-4 overflow-y-auto">
-            <div class="FrameAttr mt-4 flex flex-col gap-1 bg-transition-color-8 p-2 lg:flex-row">
+            <div class="FrameAttr mt-4 flex flex-col gap-1 bg-area-color p-2 lg:flex-row">
               <span class="Content">
                 帧信息： {math.floor((dialogFrameData()?.frame ?? 0) / 60)} 秒的第{" "}
                 {(dialogFrameData()?.frame ?? 0) % 60} 帧

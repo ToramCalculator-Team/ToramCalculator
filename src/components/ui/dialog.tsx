@@ -38,7 +38,7 @@ export default function Dialog(props: { children: JSX.Element; state: boolean; s
             animate={isPc() ? { transform: "translateX(0)" } : { transform: "scale(1)" }}
             exit={isPc() ? { transform: "translateX(2.5rem)" } : { transform: "scale(0.95)" }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-            class={`DialogContent flex max-h-[100dvh] min-h-[40dvh] w-full max-w-[100dvw] basis-4/5 flex-col items-center overflow-y-auto bg-primary-color shadow-2xl shadow-transition-color-20 ${isPc() ? "translate-x-10" : "scale-95"}`}
+            class={`DialogContent flex max-h-[100dvh] min-h-[40dvh] w-full max-w-[100dvw] basis-4/5 flex-col items-center overflow-y-auto bg-primary-color shadow-2xl shadow-dividing-color ${isPc() ? "translate-x-10" : "scale-95"}`}
           >
             {props.children}
           </Motion.div>
