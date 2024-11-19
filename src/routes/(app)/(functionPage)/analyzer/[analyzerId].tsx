@@ -48,6 +48,13 @@ import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/wo
 import { updateMob } from "~/repositories/mob";
 import { create } from "domain";
 
+interface WorkflowDefinition extends Definition {
+  properties: {
+    speed: number;
+  };
+  sequence: CustomStateMachineStep[];
+}
+
 const externalEditorClassName = "sqd-editor-solid";
 
 // export type skillSequenceList = {
@@ -194,57 +201,47 @@ export default function AnalyzerIndexClient() {
   }));
 
   const [starArray, setStarArray] = createSignal<number[]>([]);
-  createEffect(() => {
-    const defaultStarArray: number[] = [];
-    analyzer()?.mobs.forEach((mob) => {
-      defaultStarArray.push(mob.star);
-    });
-    setStarArray(defaultStarArray);
-  });
-  const [dialogState, setDialogState] = createSignal(true); // 避免流程设计器初始化因没有父级元素失败
-
-  interface WorkflowDefinition extends Definition {
-    properties: {
-      speed: number;
-    };
-    sequence: CustomStateMachineStep[];
-  }
-
-  const startDefinition = createMemo<WorkflowDefinition | undefined>(() => {
-    if (!analyzer()) {
-      return;
+  createEffect(on(
+    () => analyzer()?.mobs,
+    () => {
+      console.log("更新星级");
+      const defaultStarArray: number[] = [];
+      analyzer()?.mobs.forEach((mob) => {
+        defaultStarArray.push(mob.star);
+      });
+      setStarArray(defaultStarArray);
     }
-    console.log("更新startDefinition");
-    return {
-      properties: {
-        speed: 300,
-      },
-      sequence: _.cloneDeep(
-        (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
-          ExecutableSteps.createTextStep("开始!"),
-          ExecutableSteps.createTextStep("结束"),
-        ],
-      ),
-    };
-  });
+  ));
+  const [dialogState, setDialogState] = createSignal(false);
+  // analyzer更新后未重新获取，待解决
+  // createEffect(
+  //   on(
+  //     dialogState,
+  //     () => {
+  //       console.log("重新获取分析器");
+  //       refetchAnalyzer();
+  //     }, {
+  //       defer: true,
+  //     }
+  //   )
+  // )
 
-  createEffect(
-    on(
-      analyzer,
-      () => {
-        console.log("更新分析器", analyzer());
-      },
-      {
-        defer: true,
-      },
-    ),
-  );
-
-  onMount(() => {
-    console.log("--Analyzer Client Render");
+  const showDesigner = (indexOfMember: number) => {
+    setDialogState(true);
+    setMemberIndex(indexOfMember);
     setDesigner(
-      Designer.create(placeholder()!, startDefinition()!, {
-        theme: "light",
+      Designer.create(placeholder()!, {
+        properties: {
+          speed: 300,
+        },
+        sequence: _.cloneDeep(
+          (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
+            ExecutableSteps.createTextStep("开始!"),
+            ExecutableSteps.createTextStep("结束"),
+          ],
+        ),
+      }, {
+        theme: store.theme,
         undoStackSize: 10,
         toolbox: toolboxConfiguration()
           ? {
@@ -280,10 +277,10 @@ export default function AnalyzerIndexClient() {
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
     designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
     designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
+  }
 
-    setTimeout(() => {
-      setDialogState(false);
-    }, 1);
+  onMount(() => {
+    console.log("--Analyzer Client Render");
   });
 
   return (
@@ -374,11 +371,7 @@ export default function AnalyzerIndexClient() {
               return (
                 <div class="Member flex border-b-2 border-accent-color p-1">
                   <div
-                    onClick={() => {
-                      setDialogState(true);
-                      setMemberIndex(index());
-                      startDefinition() && designer()?.replaceDefinition(startDefinition()!);
-                    }}
+                    onClick={() => showDesigner(index())}
                     class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-dividing-color"
                   >
                     <div class="Info flex flex-col gap-2 px-3">
@@ -445,7 +438,7 @@ export default function AnalyzerIndexClient() {
       <Dialog state={dialogState()} setState={setDialogState}>
         <div ref={setPlaceholder} id="sqd-placeholder" class="FlowEditor h-full w-full"></div>
         <div class="FunctionArea flex w-full gap-2 border-t-2 border-accent-color p-3">
-          {/* <Button
+          <Button
             level="primary"
             disabled={designer()?.isReadonly()}
             icon={<Icon.Line.Gamepad />}
@@ -454,7 +447,7 @@ export default function AnalyzerIndexClient() {
             }}
           >
             测试运行
-          </Button> */}
+          </Button>
           <Button
             disabled={designer()?.isReadonly()}
             icon={<Icon.Line.Gamepad />}

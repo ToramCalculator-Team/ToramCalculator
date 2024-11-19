@@ -36,7 +36,6 @@ export default function RandomBallBackground() {
 
   onMount(() => {
     createEffect(() => {
-      console.log(store.theme);
       store.theme === "dark" ?
         ballsRef.forEach((ball, i) => {
           ball.style.filter = "drop-shadow(0 0 " + ballsSize[i] * 2 + "px currentcolor)";
