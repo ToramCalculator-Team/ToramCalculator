@@ -466,7 +466,6 @@ export default function Index() {
 
   return (
     <MetaProvider>
-      <RandomBallBackground />
       <Title>ToramCalculator 首页</Title>
       <Motion.div
         animate={{ opacity: [0, 1] }}

@@ -75,7 +75,7 @@ export default function Setting() {
           animate={{ transform: "scale(1)", opacity: [0, 1] }}
           exit={{ transform: "scale(1.05)", opacity: 0 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-primary-color`}
+          class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center`}
         >
           <div class={`SettingForm flex h-dvh flex-1 flex-col gap-3 rounded p-6 lg:max-w-7xl lg:p-3`}>
             <div class="FormTitle flex items-center justify-between">
@@ -164,18 +164,18 @@ export default function Setting() {
                         />
                       ),
                     },
-                    {
-                      title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
-                      description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
-                      children: (
-                        <Toggle
-                          onclick={() =>
-                            setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
-                          }
-                          state={store.settings.userInterface.is3DbackgroundDisabled}
-                        />
-                      ),
-                    },
+                    // {
+                    //   title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
+                    //   description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
+                    //   children: (
+                    //     <Toggle
+                    //       onclick={() =>
+                    //         setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
+                    //       }
+                    //       state={store.settings.userInterface.is3DbackgroundDisabled}
+                    //     />
+                    //   ),
+                    // },
                   ])}
                   {SettingPageContentModule("StatusAndSync", dictionary().ui.settings.statusAndSync.title, [
                     {
