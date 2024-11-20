@@ -30,7 +30,7 @@ export const test: {
       baseVit: 1,
       baseAgi: 1,
       baseDex: 247,
-      specialAbiType: "NULL",
+      specialAbiType: "NOSPECIALABI",
       specialAbiValue: 0,
       mainWeapon: {
         id: "",

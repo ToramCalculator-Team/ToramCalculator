@@ -314,7 +314,7 @@ export default function AnalyzerIndexClient() {
                   </div>
                   <div class="MobsConfig z-10 flex flex-1 flex-shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
                     <div
-                      class="MobsAugment flex cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
+                      class="MobsAugment flex flex-shrink-0 cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
                       onMouseEnter={() => setStarArr(0)}
                       onMouseLeave={() => {
                         setStarArr(mob.star);

@@ -2,7 +2,7 @@ import { createEffect, For, JSX, onMount } from "solid-js";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
 
-export const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
+const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
   const toCss = (cssObject: JSX.CSSProperties | string) =>
     typeof cssObject === "string"
       ? cssObject

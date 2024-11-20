@@ -17,7 +17,6 @@ import { type SkillCost } from "~/repositories/skill_cost";
 import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import RandomBallBackground from "~/components/module/randomBallBg";
 import { User } from "~/repositories/user";
 import { findAnalyzers } from "~/repositories/analyzer";
 
@@ -472,7 +471,7 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <div class="QueryStarus pointer-events-none absolute left-10 top-10 hidden flex-col text-xs text-accent-color-30 lg:flex">
+        <div class="QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs lg:flex">
           <span>MonsterList: {monsterList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
@@ -499,7 +498,7 @@ export default function Index() {
           </Button>
         </Motion.div>
         <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} duration-700 w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} w-full duration-700 lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
@@ -567,7 +566,7 @@ export default function Index() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-dividing-color focus-within:outline-none focus:placeholder:text-accent-color-0 dark:mix-blend-normal lg:flex lg:bg-transparent"
+                class="focus:placeholder:text-accent-color-0 hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-boundary-color focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
               />
               <input
                 id="searchInput-Mobile"
@@ -579,13 +578,14 @@ export default function Index() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="w-full flex-1 rounded bg-area-color px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-dividing-color dark:mix-blend-normal lg:hidden"
+                class="w-full flex-1 rounded bg-area-color px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-boundary-color dark:mix-blend-normal lg:hidden"
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
                 icon={<Icon.Line.Search />}
-                class="text-dividing-color outline-none focus-within:outline-none group-hover:text-accent-color lg:bg-transparent"
+                class="group-hover:text-accent-color lg:bg-transparent"
                 onClick={search}
+                tabindex={1}
               ></Button>
             </div>
             <div class="hidden w-60 flex-none lg:flex"></div>
@@ -631,15 +631,15 @@ export default function Index() {
               class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-area-color lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
-                class={`Content flex flex-wrap lg:justify-center gap-3 overflow-hidden rounded lg:flex-1 lg:bg-area-color lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:bg-area-color lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
                 <a
                   tabIndex={2}
-                  href={"/monster"}
+                  href={"/wiki/monster"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -651,11 +651,11 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/skill"}
+                  href={"/wiki/skill"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -667,11 +667,11 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/equipment"}
+                  href={"/wiki/equipment"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -683,11 +683,11 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/crystal"}
+                  href={"/wiki/crystal"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -699,11 +699,11 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/pet"}
+                  href={"/wiki/pet"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -719,7 +719,7 @@ export default function Index() {
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -735,7 +735,7 @@ export default function Index() {
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={
@@ -751,7 +751,7 @@ export default function Index() {
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
-                    class="group w-full flex-col dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
+                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
                     level="primary"
                     tabIndex={-1}
                     icon={

@@ -7,60 +7,45 @@ import { setStore, store } from "~/store";
 import { Motion } from "solid-motionone";
 import Button from "~/components/ui/button";
 
+const NavBtn = (props: {
+  config: {
+    btnName: string;
+    icon: JSX.Element;
+    url: string;
+  };
+  active: (path: string) => string;
+  class?: string;
+}) => {
+  return (
+    <a
+      href={props.config.url}
+      tabIndex={0}
+      class={
+        `NavBtn btn-${props.config.btnName} group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:gap-1` +
+        " " +
+        props.class
+      }
+    >
+      <div
+        class={`iconArea rounded-full px-4 py-1 ${props.active(props.config.url)} group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st`}
+      >
+        {props.config.icon}
+      </div>
+      <div class="text-xs">{props.config.btnName}</div>
+    </a>
+  );
+};
+
+const Divider = () => (
+  <div class={"Divider hidden py-2 lg:block"}>
+    <div class="Line h-[2px] w-12 bg-brand-color-1st"></div>
+  </div>
+);
+
 export default function Nav() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
   const location = useLocation();
   const active = (path: string) => (location.pathname.includes(path) ? "bg-brand-color-1st" : "");
-  const NavBtnConfig = createMemo<
-    {
-      btnName: string;
-      icon: JSX.Element | undefined;
-      url: string | undefined;
-    }[]
-  >(() => [
-    {
-      btnName: dictionary().ui.nav.monsters,
-      icon: <Icon.Line.Calendar />,
-      url: "/monster",
-    },
-    { btnName: "LineA", icon: undefined, url: undefined },
-    {
-      btnName: dictionary().ui.nav.skills,
-      icon: <Icon.Line.Basketball />,
-      url: "/skill",
-    },
-    {
-      btnName: dictionary().ui.nav.equipments,
-      icon: <Icon.Line.Category2 />,
-      url: "/equipment",
-    },
-    {
-      btnName: dictionary().ui.nav.crystals,
-      icon: <Icon.Line.Box2 />,
-      url: "/crystal",
-    },
-    {
-      btnName: dictionary().ui.nav.pets,
-      icon: <Icon.Line.Money />,
-      url: "/pet",
-    },
-    {
-      btnName: dictionary().ui.nav.items,
-      icon: <Icon.Line.Coins />,
-      url: "/building",
-    },
-    { btnName: "LineB", icon: undefined, url: undefined },
-    {
-      btnName: dictionary().ui.nav.character,
-      icon: <Icon.Line.Gamepad />,
-      url: "/character",
-    },
-    {
-      btnName: dictionary().ui.nav.analyzer,
-      icon: <Icon.Line.Filter />,
-      url: "/analyzer/testAnalyzerId",
-    },
-  ]);
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
@@ -70,12 +55,12 @@ export default function Nav() {
     <Motion.div
       animate={{ transform: "none", opacity: 1 }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav border-t-1 z-10 flex w-dvw flex-shrink-0 translate-y-full overflow-x-auto border-dividing-color opacity-0 lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:gap-10 lg:border-none lg:bg-area-color lg:py-5`}
+      class={`Nav z-10 flex w-dvw flex-shrink-0 translate-y-full items-center justify-between bg-area-color opacity-0 lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:py-5`}
     >
-      <div class="LogoOrHomeflex items-center justify-center lg:flex-none">
+      <div class="NavBtnGroup flex flex-1 items-center lg:flex-col lg:gap-0">
         <a
           href={"/"}
-          class="Home group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:p-0"
+          class="Home group flex w-[25dvw] lg:w-auto flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:p-0"
           tabIndex={1}
         >
           <div class="iconArea rounded-full px-4 py-1 group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st lg:hidden">
@@ -84,32 +69,89 @@ export default function Nav() {
           <Icon.Line.Logo class="hidden lg:block" />
           <div class="text-xs lg:hidden">{dictionary().ui.nav.home}</div>
         </a>
-      </div>
-      <div class="NavBtnList flex items-center lg:flex-1 lg:flex-col lg:gap-4">
-        <For each={NavBtnConfig()}>
-          {(config) => {
-            if (config.icon !== undefined && config.url !== undefined) {
-              return (
-                <a
-                  href={config.url}
-                  tabIndex={0}
-                  class={`NavBtn btn-${config.btnName} group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:gap-1 lg:p-0`}
-                >
-                  <div
-                    class={`iconArea rounded-full px-4 py-1 ${active(config.url)} group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st`}
-                  >
-                    {config.icon}
-                  </div>
-                  <div class="text-xs">{config.btnName}</div>
-                </a>
-              );
-            } else {
-              return <div class={"Line h-[1px] flex-none lg:w-12 lg:bg-brand-color-1st"}></div>;
-            }
+        <div class="WikiGroup flex-shrink-0 lg:pt-6">
+          <NavBtn
+            config={{
+              btnName: "Wiki",
+              icon: <Icon.Line.Category2 />,
+              url: "/wiki",
+            }}
+            active={active}
+            class="lg:hidden w-[25dvw] lg:w-auto"
+          />
+          <div class="SubGroup hidden flex-col items-center lg:flex">
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.monsters,
+                icon: <Icon.Line.Calendar />,
+                url: "/wiki/monster",
+              }}
+              active={active}
+            />
+            <Divider />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.skills,
+                icon: <Icon.Line.Basketball />,
+                url: "/wiki/skill",
+              }}
+              active={active}
+            />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.equipments,
+                icon: <Icon.Line.Category2 />,
+                url: "/wiki/equipment",
+              }}
+              active={active}
+            />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.crystals,
+                icon: <Icon.Line.Box2 />,
+                url: "/wiki/crystal",
+              }}
+              active={active}
+            />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.pets,
+                icon: <Icon.Line.Money />,
+                url: "/wiki/pet",
+              }}
+              active={active}
+            />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.items,
+                icon: <Icon.Line.Coins />,
+                url: "/wiki/building",
+              }}
+              active={active}
+            />
+            <Divider />
+          </div>
+        </div>
+        <NavBtn
+          config={{
+            btnName: dictionary().ui.nav.character,
+            icon: <Icon.Line.Gamepad />,
+            url: "/character/testCharacterId",
           }}
-        </For>
+          active={active}
+          class=" w-[25dvw] lg:w-auto"
+        />
+        <NavBtn
+          config={{
+            btnName: dictionary().ui.nav.analyzer,
+            icon: <Icon.Line.Filter />,
+            url: "/analyzer/testAnalyzerId",
+          }}
+          active={active}
+          class=" w-[25dvw] lg:w-auto"
+        />
       </div>
-      <div class="FunctionGroup hidden items-center justify-center gap-3 px-6 lg:flex lg:flex-col lg:p-0">
+      <div class="FunBtnGroup hidden lg:flex items-center justify-center gap-3 px-6 lg:flex-col lg:p-0">
         <Button
           level="quaternary"
           class="rounded-full bg-transparent px-2 py-2"

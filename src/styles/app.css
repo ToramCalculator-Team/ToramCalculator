@@ -80,13 +80,13 @@ img, picture, video, canvas, svg {
 }
 
 * {
-  outline: 1.5px;
+  outline-width: 2px;
   outline-color: transparent;
   outline-style: solid;
+  outline-offset: -2px;
 }
 
 *:focus-visible {
-  outline-width: 2px;
   outline-color: rgb(var(--brand-1st));
 }
 

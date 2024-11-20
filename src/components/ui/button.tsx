@@ -24,14 +24,16 @@ const Button = (props: MyButtonProps) => {
         xl: "gap-2 rounded-xl px-4 py-3",
       }[props.size ?? "default"],
       levelClass: {
-        primary: "bg-accent-color text-primary-color hover:bg-accent-color-0",
-        secondary: "bg-primary-color hover:bg-accent-color hover:text-primary-color",
-        default: "bg-area-color hover:bg-dividing-color",
-        quaternary: "bg-transparent hover:bg-area-color outline-none",
+        primary: `bg-accent-color text-primary-color hover:bg-accent-color-0`,
+        secondary: `bg-primary-color hover:bg-accent-color hover:text-primary-color`,
+        default: props.active
+          ? `bg-accent-color text-primary-color`
+          : `bg-area-color hover:bg-dividing-color active:bg-accent-color active:text-primary-color`,
+        quaternary: props.active
+        ? `bg-accent-color text-primary-color`
+        : `bg-transparent hover:bg-area-color`,
       }[props.level ?? "default"],
-      active: props.active,
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
-      activedClass: props.active ? "outline-2 outline-brand-color-1st" : "",
     };
   });
 
@@ -39,7 +41,7 @@ const Button = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().activedClass} `,
+      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass}`,
     );
   });
 
@@ -47,7 +49,7 @@ const Button = (props: MyButtonProps) => {
     <button
       {...props}
       type={props.type ?? "button"}
-      class={` ` + props.class ? defaultButtonClassNames() + props.class : defaultButtonClassNames()}
+      class={` ` + props.class ? defaultButtonClassNames() + " " + props.class : defaultButtonClassNames()}
     >
       {config().icon}
       {config().children}

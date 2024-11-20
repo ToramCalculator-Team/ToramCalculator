@@ -1,52 +1,76 @@
 import { createEffect, createMemo, createSignal, JSX } from "solid-js";
 import * as _ from "lodash-es";
 
-type Size = "sm" | "md" | "lg";
-type Level = "primary" | "secondary" | "tertiary" | "quaternary";
+type Size = "sm" | "md" | "default" | "lg";
 
-interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-  children?: JSX.Element;
+interface CheckBoxProps extends JSX.HTMLAttributes<HTMLInputElement> {
   size?: Size;
-  state?: boolean;
-  ref?: (el: HTMLButtonElement) => void;
+  checked?: boolean;
+  disabled?: boolean;
 }
 
-const CheckBox = (props: MyButtonProps) => {
-  const rest = _.omit(props, "children", "icon", "size", "level", "state");
+const CheckBox = (props: CheckBoxProps) => {
   const config = createMemo(() => {
     return {
-      children: props.children,
       sizeClass: {
-        sm: "gap-1 rounded px-4 py-1",
-        md: "gap-2 rounded px-4 py-2",
-        lg: "gap-3 rounded-lg px-6 py-3",
-      }[props.size ?? "md"],
-      state: props.state,
+        sm: {
+          text: "gap-1 rounded px-4 py-1",
+          iconContainer: "",
+        },
+        md: {
+          text: "gap-1 rounded px-4 py-1",
+          iconContainer: "",
+        },
+        default: {
+          text: "p-2 pr-3 gap-3 rounded",
+          iconContainer: "w-8 h-8",
+        },
+        lg: {
+          text: "gap-1 rounded px-4 py-1",
+          iconContainer: "",
+        },
+      }[props.size ?? "default"],
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
-      stateClass: props.state ? "bg-brand-color-1st text-primary-color" : "bg-area-color text-mainText-color",
+      stateClass: props.checked
+        ? {
+            text: "gap-1 rounded px-4 py-1",
+            iconContainer: "",
+          }
+        : {
+            text: "gap-1 rounded px-4 py-1",
+            iconContainer: "",
+          },
     };
   });
 
-  const [defaultButtonClassNames, setDefaultButtonClassNames] = createSignal(
-    ``
-  );
-
-  createEffect(() => {
-    setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 outline-2 ${props.state ? "" : ""} hover:underline ${config().sizeClass} ${config().stateClass} `,
-    );
+  const [defaultCheckBoxClassNames, setDefaultCheckBoxClassNames] = createSignal({
+    text: "",
+    iconContainer: "",
   });
 
-  let buttonRef: HTMLButtonElement | undefined;
+  createEffect(() => {
+    setDefaultCheckBoxClassNames({
+      text: `${config().disableClass} cursor-pointer flex flex-none items-center underline-offset-4 ${props.checked ? "" : ""} hover:underline ${config().sizeClass} ${config().stateClass} `,
+      iconContainer: `flex items-center`,
+    });
+  });
 
   return (
-    <button
-      ref={buttonRef}
-      {...rest}
-      class={` ` + rest.class ? defaultButtonClassNames() + rest.class : defaultButtonClassNames()}
-    >
-      {config().children}
-    </button>
+    <label class={defaultCheckBoxClassNames().text}>
+      <div class={`IconContainer ${defaultCheckBoxClassNames().iconContainer}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="9" viewBox="0 0 12 9" fill="none">
+          <path
+            d="M1.5 4.5L4.5 7.5L10.5 1.5"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+      {props.children}
+      <input {...props} type="checkbox" class={"hidden"} />
+    </label>
   );
 };
 
