@@ -46,8 +46,8 @@ import { initialStore } from "~/store";
 //   }
 // }
 
-const ELECTRIC_HOST = "http://localhost:3000";
-// const ELECTRIC_HOST = "https://test.kiaclouth.com";
+// const ELECTRIC_HOST = "http://localhost:3000";
+const ELECTRIC_HOST = "https://test.kiaclouth.com";
 
 worker({
   async init(options) {
