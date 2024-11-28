@@ -2,23 +2,27 @@ import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { live } from "@electric-sql/pglite/live";
 import PGWorker from "~/worker/PGlite.worker?worker";
 
-let pgWorker: Promise<PGliteWorker> | null = null
+let pgWorker: PGliteWorker | undefined = undefined;
 
 // 初始化本地数据库
-export const initialPGWorker = () => {
-  if (pgWorker === null) {
-    const storage = localStorage.getItem("store");
-    pgWorker = PGliteWorker.create(new PGWorker(), {
-      extensions: {
-        live,
-      },
-      meta: {
-        dataDir: "idb://toramCalculatorDB",
-        storage: storage,
-      },
-    });
+export const initialPGWorker = async (): Promise<PGliteWorker> => {
+  const storage = localStorage.getItem("store");
+  pgWorker = await PGliteWorker.create(new PGWorker(), {
+    extensions: { live },
+    meta: {
+      dataDir: "idb://toramCalculatorDB",
+      storage: storage,
+    },
+  });
+  return pgWorker;
+};
+
+// 获取已初始化的 pgWorker
+export const getPGWorker = (): PGliteWorker => {
+  if (!pgWorker) {
+    throw new Error("PGliteWorker尚未初始化");
   }
-  return pgWorker
+  return pgWorker;
 };
 
 // 初始化数据层服务

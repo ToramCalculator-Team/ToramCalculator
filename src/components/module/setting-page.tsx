@@ -9,6 +9,7 @@ import Toggle from "~/components/ui/toggle";
 import CheckBox from "~/components/ui/checkBox";
 import Input, { InputComponentType } from "../ui/input";
 import Switch from "../ui/switch";
+import Radio from "../ui/radio";
 
 export default function Setting() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
@@ -114,31 +115,35 @@ export default function Setting() {
                       title: dictionary().ui.settings.language.selectedLanguage.title,
                       description: dictionary().ui.settings.language.selectedLanguage.description,
                       children: (
-                        <div class="Selector flex flex-col gap-2">
-                          <CheckBox
+                        <div class="Selector flex flex-col">
+                          <Radio
+                            name={"zh-CN&zh-HK"}
                             checked={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
                             onClick={() => setStore("settings", "language", "zh-CN")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.zhCN}
-                          </CheckBox>
-                          <CheckBox
+                          </Radio>
+                          <Radio
+                            name="zh-TW"
                             checked={store.settings.language === "zh-TW"}
                             onClick={() => setStore("settings", "language", "zh-TW")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.zhTW}
-                          </CheckBox>
-                          <CheckBox
+                          </Radio>
+                          <Radio
+                            name="en-US&en-GB"
                             checked={store.settings.language === "en-US" || store.settings.language === "en-GB"}
                             onClick={() => setStore("settings", "language", "en-US")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.enUS}
-                          </CheckBox>
-                          <CheckBox
+                          </Radio>
+                          <Radio
+                            name="ja"
                             checked={store.settings.language === "ja"}
                             onClick={() => setStore("settings", "language", "ja")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.jaJP}
-                          </CheckBox>
+                          </Radio>
                         </div>
                       ),
                     },
@@ -191,25 +196,28 @@ export default function Setting() {
                       title: dictionary().ui.settings.privacy.postVisibility.title,
                       description: dictionary().ui.settings.privacy.postVisibility.description,
                       children: (
-                        <div class="Selector flex flex-col gap-2">
-                          <CheckBox
+                        <div class="Selector flex flex-col">
+                          <Radio
+                            name="everyone"
                             checked={store.settings.privacy.postVisibility === "everyone"}
                             onClick={() => setStore("settings", "privacy", "postVisibility", "everyone")}
                           >
                             {dictionary().ui.settings.privacy.postVisibility.everyone}
-                          </CheckBox>
-                          <CheckBox
+                          </Radio>
+                          <Radio
+                            name="friends"
                             checked={store.settings.privacy.postVisibility === "friends"}
                             onClick={() => setStore("settings", "privacy", "postVisibility", "friends")}
                           >
                             {dictionary().ui.settings.privacy.postVisibility.friends}
-                          </CheckBox>
-                          <CheckBox
+                          </Radio>
+                          <Radio
+                            name="onlyMe"
                             checked={store.settings.privacy.postVisibility === "onlyMe"}
                             onClick={() => setStore("settings", "privacy", "postVisibility", "onlyMe")}
                           >
                             {dictionary().ui.settings.privacy.postVisibility.onlyMe}
-                          </CheckBox>
+                          </Radio>
                         </div>
                       ),
                     },
@@ -220,8 +228,9 @@ export default function Setting() {
                       title: dictionary().ui.settings.messages.notifyOnContentChange.title,
                       description: dictionary().ui.settings.messages.notifyOnContentChange.description,
                       children: (
-                        <div class="Selector flex flex-col gap-2">
+                        <div class="Selector flex flex-col">
                           <CheckBox
+                            name="notifyOnReferencedContentChange"
                             checked={store.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
                             onClick={() =>
                               setStore(
@@ -236,6 +245,7 @@ export default function Setting() {
                             {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnReferencedContentChange}
                           </CheckBox>
                           <CheckBox
+                            name="notifyOnLike"
                             checked={store.settings.messages.notifyOnContentChange.notifyOnLike}
                             onClick={() =>
                               setStore("settings", "messages", "notifyOnContentChange", "notifyOnLike", (prev) => !prev)
@@ -244,6 +254,7 @@ export default function Setting() {
                             {dictionary().ui.settings.messages.notifyOnContentChange.notifyOnLike}
                           </CheckBox>
                           <CheckBox
+                            name="notifyOnBookmark"
                             checked={store.settings.messages.notifyOnContentChange.notifyOnBookmark}
                             onClick={() =>
                               setStore(

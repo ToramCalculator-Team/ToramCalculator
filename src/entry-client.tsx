@@ -8,6 +8,23 @@ import * as _ from "lodash-es";
 import { createUser, defaultUser, findUserById } from "./repositories/user";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
 import { initialPGWorker } from "./initialWorker";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// const genAI = new GoogleGenerativeAI("AIzaSyCSruoIJZnsE2zh4ZKxbuTzeLCeLE59HvM");
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// async function run() {
+//   // The Gemini 1.5 models are versatile and work with both text-only and multimodal prompts
+//   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+
+//   const prompt = "你知道托拉姆物语吗？";
+
+//   const result = await model.generateContent(prompt);
+//   const response = result.response;
+//   const text = response.text();
+//   console.log(text);
+// }
+
+// run();
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -17,7 +34,7 @@ if ("serviceWorker" in navigator) {
 }
 
 // 初始化本地数据库
-initialPGWorker();
+await initialPGWorker();
 
 const storage = localStorage.getItem("store");
 if (storage) {

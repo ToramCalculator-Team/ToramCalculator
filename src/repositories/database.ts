@@ -1,7 +1,7 @@
 import { DB } from "~/repositories/db/types";
 import { Kysely, PostgresDialect } from "kysely";
 import { PGliteDialect } from "./dialect/dialect";
-import { initialPGWorker } from "~/initialWorker";
+import { getPGWorker } from "~/initialWorker";
 import { Pool } from "pg";
 
 // const PGdialect = new PostgresDialect({
@@ -18,10 +18,11 @@ import { Pool } from "pg";
 //   dialect: PGdialect,
 // })
 
-const initialDatabase = async () => {
+// debugger
+const initialDatabase = () => {
   return new Kysely<DB>({
-  dialect: new PGliteDialect(await initialPGWorker()),
-  })
+    dialect: new PGliteDialect(getPGWorker()),
+  });
 };
 
-export const db = await initialDatabase();
+export const db = initialDatabase();

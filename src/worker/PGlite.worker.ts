@@ -5,11 +5,49 @@ import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import { createId } from "@paralleldrive/cuid2";
-import ddl from "~/../prisma/ddl.sql?raw"
+import ddl from "~/../prisma/ddl.sql?raw";
+// import ddl from "~/../test/db-csv/toram.sql?raw";
 import { initialStore } from "~/store";
+// import m1 from "../db/migrations/01-create_tables.sql?raw";
+// import m2 from "../db/migrations/02-add_items.sql?raw";
 
-// const host = "http://localhost:3000";
-const host = "https://test.kiaclouth.com";
+// const migrations = [
+//   { name: "01-create_tables", sql: m1 },
+//   { name: "02-add_items", sql: m2 },
+// ];
+
+// export async function migrate(pg: PGlite) {
+//   // Create migrations table if it doesn't exist
+//   await pg.exec(`
+//     CREATE TABLE IF NOT EXISTS migrations (
+//       id SERIAL PRIMARY KEY,
+//       name TEXT NOT NULL UNIQUE,
+//       applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+//     );
+//   `);
+
+//   // Get list of applied migrations
+//   const result = await pg.exec(`SELECT name FROM migrations ORDER BY id;`);
+//   const appliedMigrations = result.rows.map((row) => row[0]);
+
+//   // Apply new migrations
+//   for (const migration of migrations) {
+//     if (!appliedMigrations.includes(migration.name)) {
+//       await pg.exec(migration.sql);
+//       await pg.exec(
+//         `
+//         INSERT INTO migrations (name) 
+//         VALUES ($1);
+//       `,
+//         [migration.name],
+//       );
+//       console.log(`Applied migration: ${migration.name}`);
+//     }
+//   }
+// }
+
+const ELECTRIC_HOST = "http://localhost:3000";
+// const ELECTRIC_HOST = "https://test.kiaclouth.com";
 
 worker({
   async init(options) {
@@ -20,10 +58,10 @@ worker({
       // debug: 1,
       extensions: {
         live,
-        sync: electricSync({ debug: true }),
+        sync: electricSync({ debug: false }),
       },
     });
-    await pg.waitReady;
+    // await migrate(pg);
     if (meta.storage) {
       const oldStore = JSON.parse(meta.storage);
       const newStore = initialStore;
@@ -36,17 +74,17 @@ worker({
       console.log("配置数据缺失，初始化数据库");
       await pg.exec(ddl);
     }
-    // const userShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${host}/v1/shape/user`,
-    //   },
-    //   table: "user",
-    //   shapeKey: "users",
-    //   primaryKey: ["id"],
-    // });
+    const userShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
+      },
+      table: "user",
+      shapeKey: "users",
+      primaryKey: ["id"],
+    });
     const userCreateDataShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"user_create_data"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="user_create_data"`,
       },
       table: "user_create_data",
       shapeKey: "user_create_datas",
@@ -54,7 +92,7 @@ worker({
     });
     const userUpdateDataShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"user_update_data"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="user_update_data"`,
       },
       table: "user_update_data",
       shapeKey: "user_update_datas",
@@ -62,7 +100,7 @@ worker({
     });
     const statisticsShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"statistics"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="statistics"`,
       },
       table: "statistics",
       shapeKey: "statisticss",
@@ -70,7 +108,7 @@ worker({
     });
     const imageShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"image"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
       },
       table: "image",
       shapeKey: "images",
@@ -78,7 +116,7 @@ worker({
     });
     const monsterShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"monster"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="monster"`,
       },
       table: "monster",
       shapeKey: "monsters",
@@ -86,7 +124,7 @@ worker({
     });
     const modifierListShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"modifier_list"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="modifier_list"`,
       },
       table: "modifier_list",
       shapeKey: "modifier_lists",
@@ -94,7 +132,7 @@ worker({
     })
     const modifierShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"modifier"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="modifier"`,
       },
       table: "modifier",
       shapeKey: "modifiers",
@@ -102,7 +140,7 @@ worker({
     })
     const crystalShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"crystal"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="crystal"`,
       },
       table: "crystal",
       shapeKey: "crystals",
@@ -110,7 +148,7 @@ worker({
     })
     const mainWeaponShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"main_weapon"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="main_weapon"`,
       },
       table: "main_weapon",
       shapeKey: "main_weapons",
@@ -118,7 +156,7 @@ worker({
     })
     const subWeaponShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"sub_weapon"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="sub_weapon"`,
       },
       table: "sub_weapon",
       shapeKey: "sub_weapons",
@@ -126,7 +164,7 @@ worker({
     })
     const bodyArmorShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"body_armor"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="body_armor"`,
       },
       table: "body_armor",
       shapeKey: "body_armors",
@@ -134,7 +172,7 @@ worker({
     })
     const additionalEquipmentShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"additional_equipment"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="additional_equipment"`,
       },
       table: "additional_equipment",
       shapeKey: "additional_equipments",
@@ -142,7 +180,7 @@ worker({
     })
     const specialEquipmentShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"special_equipment"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="special_equipment"`,
       },
       table: "special_equipment",
       shapeKey: "special_equipments",
@@ -150,7 +188,7 @@ worker({
     })
     const petShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"pet"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="pet"`,
       },
       table: "pet",
       shapeKey: "pets",
@@ -158,7 +196,7 @@ worker({
     })
     const skillShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"skill"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="skill"`,
       },
       table: "skill",
       shapeKey: "skills",
@@ -166,7 +204,7 @@ worker({
     })
     const consumableShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"consumable"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="consumable"`,
       },
       table: "consumable",
       shapeKey: "consumables",
@@ -174,7 +212,7 @@ worker({
     })
     const characterShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"character"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="character"`,
       },
       table: "character",
       shapeKey: "characters",
@@ -182,7 +220,7 @@ worker({
     })
     const _analyzerTomemberShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"_analyzerTomember"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="_analyzerTomember"`,
       },
       table: "_analyzerTomember",
       shapeKey: "_analyzerTomembers",
@@ -190,7 +228,7 @@ worker({
     })
     const memberShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"member"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="member"`,
       },
       table: "member",
       shapeKey: "members",
@@ -198,7 +236,7 @@ worker({
     })
     const _analyzerTomobShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"_analyzerTomob"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="_analyzerTomob"`,
       },
       table: "_analyzerTomob",
       shapeKey: "_analyzerTomobs",
@@ -206,7 +244,7 @@ worker({
     })
     const mobShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"mob"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
       },
       table: "mob",
       shapeKey: "mobs",
@@ -214,7 +252,7 @@ worker({
     })
     const analyzerShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${host}/v1/shape/"analyzer"`,
+        url: `${ELECTRIC_HOST}/v1/shape?table="analyzer"`,
       },
       table: "analyzer",
       shapeKey: "analyzers",

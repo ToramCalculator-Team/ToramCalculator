@@ -83,18 +83,18 @@ const dictionary: dictionary = {
       userInterface: {
         title: "外观",
         isAnimationEnabled: {
-          title: "是否开启动画",
+          title: "开启动画与过渡效果",
           description: "将影响所有页面的过渡和动画效果持续时间。",
         },
         is3DbackgroundDisabled: {
-          title: "是否开启3D背景",
+          title: "开启3D效果",
           description: "可能会产生大量性能损耗，不推荐开启。",
         },
       },
       language: {
-        title: "语言",
+        title: "语言偏好",
         selectedLanguage: {
-          title: "选择语言",
+          title: "系统语言",
           description: "影响所有的界面文本，但是无法改变数据类文本。",
           zhCN: "简体中文",
           zhTW: "繁体中文",

@@ -59,23 +59,8 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const [monsterListFetcher, { refetch: refetchMonsterList }] = createResource(findMonsters);
-  const [crystalListFetcher, { refetch: refetchCrystalList }] = createResource(findCrystals);
-
-  const [monsterList, setMonsterList] = createSignal<Monster[]>([]);
-  const [crystalList, setCrystalList] = createSignal<Crystal[]>([]);
-
-  createEffect(() => {
-    const newMonsterList = monsterListFetcher();
-    // console.log("refetching monster list", newMonsterList);
-    newMonsterList && setMonsterList(newMonsterList);
-  });
-
-  createEffect(() => {
-    const newCrystalList = crystalListFetcher();
-    // console.log("refetching crystal list", newCrystalList);
-    newCrystalList && setCrystalList(newCrystalList);
-  });
+  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
+  const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
 
   const skillList = (): Skill[] => {
     return [];

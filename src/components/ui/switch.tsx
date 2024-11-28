@@ -21,7 +21,7 @@ const Switch = (props: SwitchProps) => {
           track: "gap-2 rounded px-4 py-2",
         },
         default: {
-          thumb: "top-1 w-8 h-8 rounded-sm bg-primary-color",
+          thumb: "top-1 w-8 h-8 rounded-md bg-primary-color",
           track: "w-20 h-10 p-1 rounded",
         },
         lg: {
@@ -42,7 +42,7 @@ const Switch = (props: SwitchProps) => {
   });
 
   return (
-    <label class={"Track flex items-center " + config().sizeClass.track + " " + config().stateClass.track}>
+    <label class={"Track flex items-center cursor-pointer " + config().sizeClass.track + " " + config().stateClass.track}>
       <div class={"Thumb " + config().sizeClass.thumb + " " + config().stateClass.thumb}></div>
       <input {...props} type="radio" class={"hidden"} />
     </label>

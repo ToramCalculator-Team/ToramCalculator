@@ -19,7 +19,7 @@ services:
       - wal_level=logical
 
   electric:
-    image: electricsql/electric:canary
+    image: electricsql/electric:0.9.3
     environment:
       DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:${PG_PORT}/${PG_DBNAME}?sslmode=disable
     ports:
