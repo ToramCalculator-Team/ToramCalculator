@@ -289,10 +289,7 @@ export default function MonsterIndexPage() {
     }
   };
 
-  // u键监听
-  onMount(() => {
-    console.log("--Monster Client Render");
-    // u键监听
+  createEffect(() => {
     setVirtualizer(
       createVirtualizer({
         get count() {
@@ -305,6 +302,12 @@ export default function MonsterIndexPage() {
         overscan: 5,
       }),
     );
+  });
+
+  // u键监听
+  onMount(() => {
+    console.log("--Monster Client Render");
+    // u键监听
     document.addEventListener("keydown", handleUKeyPress);
   });
 
