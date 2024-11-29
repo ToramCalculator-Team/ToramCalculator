@@ -1,5 +1,4 @@
-
-import { createEffect, createMemo, createResource, createSignal, For, JSX, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import Fuse from "fuse.js";
 import {
   Column,
@@ -9,9 +8,10 @@ import {
   getCoreRowModel,
   getSortedRowModel,
 } from "@tanstack/solid-table";
-import { createVirtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer, Virtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/image";
@@ -194,18 +194,11 @@ export default function MonsterIndexPage() {
   };
 
   // 列表虚拟化区域----------------------------------------------------------
-  let virtualScrollElement: HTMLDivElement | undefined;
+  const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
+    undefined,
+  );
 
-  const virtualizer = createMemo(() => {
-    return createVirtualizer({
-      get count() {
-        return table() ? table()!.getRowModel().rows.length : 0;
-      },
-      getScrollElement: () => virtualScrollElement ?? null,
-      estimateSize: () => 96,
-      overscan: 5,
-    });
-  });
+  const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | undefined>(undefined);
 
   // 搜索使用的基准列表--------------------------------------------------------
   let actualList = generateAugmentedMonsterList(monsterList() ?? [], dictionary());
@@ -259,11 +252,12 @@ export default function MonsterIndexPage() {
       if (isDragging) {
         e.preventDefault();
         e.stopPropagation();
-        if (virtualScrollElement?.parentElement) {
-          virtualScrollElement.style.transition = "none";
-          virtualScrollElement.parentElement.style.transition = "none";
-          // virtualScrollElement.scrollTop -= offsetY / 100;
-          virtualScrollElement.scrollLeft += offsetX / 100;
+        const parent = virtualScrollElement()?.osInstance()?.elements().viewport?.parentElement;
+        if (parent) {
+          parent.style.transition = "none";
+          parent.style.transition = "none";
+          // parent.scrollTop -= offsetY / 100;
+          parent.scrollLeft += offsetX / 100;
         }
       }
     };
@@ -286,30 +280,48 @@ export default function MonsterIndexPage() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const handleUKeyPress = (e: KeyboardEvent) => {
+    if (e.key === "u") {
+      setStore("monsterPage", {
+        monsterDialogState: true,
+        monsterFormState: "CREATE",
+      });
+    }
+  };
+
   // u键监听
   onMount(() => {
     console.log("--Monster Client Render");
     // u键监听
-    const handleUKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "u") {
-        setStore("monsterPage", {
-          monsterDialogState: true,
-          monsterFormState: "CREATE",
-        });
-      }
-    };
+    setVirtualizer(
+      createVirtualizer({
+        get count() {
+          return table()?.getRowCount() ?? 0;
+        },
+        getScrollElement: () => {
+          return virtualScrollElement()?.osInstance()?.elements().viewport ?? null;
+        },
+        estimateSize: () => 96,
+        overscan: 5,
+      }),
+    );
     document.addEventListener("keydown", handleUKeyPress);
-    return () => {
-      console.log("--Monster Client Unmount");
-      document.removeEventListener("keydown", handleUKeyPress);
-    };
+  });
+
+  onCleanup(() => {
+    console.log("--Monster Client Unmount");
+    document.removeEventListener("keydown", handleUKeyPress);
   });
 
   return (
     <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
-          <Motion.div class="Title hidden lg:flex flex-col p-3 lg:pt-12" animate={{ opacity: [0, 1] }} exit={{ opacity: 0 }}>
+          <Motion.div
+            class="Title hidden flex-col p-3 lg:flex lg:pt-12"
+            animate={{ opacity: [0, 1] }}
+            exit={{ opacity: 0 }}
+          >
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
               <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
                 {dictionary().ui.monster.pageTitle}
@@ -353,7 +365,7 @@ export default function MonsterIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
-            class="Banner hidden lg:flex h-[260px] flex-initial gap-3 p-3 opacity-0"
+            class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
           >
@@ -406,7 +418,7 @@ export default function MonsterIndexPage() {
       </Presence>
       <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
-          <div class="Title hidden lg:flex h-12 w-full items-center gap-3">
+          <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.monster.table.title}
             </div>
@@ -424,162 +436,166 @@ export default function MonsterIndexPage() {
               {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-            <Show when={table()}>
-            {/* <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}> */}
-              <div ref={virtualScrollElement!} class="TableBox VirtualScroll overflow-auto flex-1">
-                <table class="Table w-full relative">
-                  <thead class={`TableHead sticky top-0 z-10 flex`}>
-                    <For each={table()!.getHeaderGroups()}>
-                      {(headerGroup) => (
-                        <tr class="flex min-w-full gap-0 border-b-2 border-dividing-color">
-                          <For each={headerGroup.headers}>
-                            {(header) => {
-                              const { column } = header;
+          <Show when={table()}>
+            <OverlayScrollbarsComponent
+              element="div"
+              options={{ scrollbars: { autoHide: "scroll" } }}
+              ref={setVirtualScrollElement}
+            >
+              {/* <div ref={virtualScrollElement!} class="TableBox VirtualScroll overflow-auto flex-1"> */}
+              <table class="Table relative w-full">
+                <thead class={`TableHead sticky top-0 z-10 flex`}>
+                  <For each={table()!.getHeaderGroups()}>
+                    {(headerGroup) => (
+                      <tr class="flex min-w-full gap-0 border-b-2 border-dividing-color">
+                        <For each={headerGroup.headers}>
+                          {(header) => {
+                            const { column } = header;
+                            if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
+                              // 默认隐藏的数据
+                              return;
+                            }
+                            return (
+                              <th
+                                style={{
+                                  ...getCommonPinningStyles(column),
+                                  width: getCommonPinningStyles(column).width + "px",
+                                }}
+                                class="flex flex-col"
+                              >
+                                <div
+                                  {...{
+                                    onClick: header.column.getToggleSortingHandler(),
+                                  }}
+                                  class={`flex-1 py-4 text-left font-normal hover:bg-area-color ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                    header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                                  }`}
+                                >
+                                  {dictionary().db.models.monster[column.id as keyof Monster] as string}
+                                  {{
+                                    asc: " ↓",
+                                    desc: " ↑",
+                                  }[header.column.getIsSorted() as string] ?? null}
+                                </div>
+                              </th>
+                            );
+                          }}
+                        </For>
+                      </tr>
+                    )}
+                  </For>
+                </thead>
+                <tbody style={{ height: `${virtualizer()?.getTotalSize()}px` }} class={`TableBodyrelative`}>
+                  <For each={virtualizer()?.getVirtualItems()}>
+                    {(virtualRow) => {
+                      const row = table()!.getRowModel().rows[virtualRow.index];
+                      return (
+                        <tr
+                          data-index={virtualRow.index}
+                          // ref={(node) => virtualizer.measureElement(node)}
+                          style={{
+                            position: "absolute",
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                          class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
+                          onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                        >
+                          <For each={row.getVisibleCells()}>
+                            {(cell) => {
+                              const { column } = cell;
                               if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
                                 // 默认隐藏的数据
                                 return;
                               }
+
+                              let tdContent: JSX.Element;
+
+                              switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
+                                case "name":
+                                  tdContent = (
+                                    <>
+                                      <span class="pb-1">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                      </span>
+                                      <span class="text-sm font-normal text-mainText-color">
+                                        {row.getValue("address") ?? "未知"}
+                                      </span>
+                                    </>
+                                  );
+                                  break;
+
+                                case "element":
+                                  {
+                                    const icon =
+                                      {
+                                        WATER: <Icon.Element.Water class="h-12 w-12" />,
+                                        FIRE: <Icon.Element.Fire class="h-12 w-12" />,
+                                        EARTH: <Icon.Element.Earth class="h-12 w-12" />,
+                                        WIND: <Icon.Element.Wind class="h-12 w-12" />,
+                                        LIGHT: <Icon.Element.Light class="h-12 w-12" />,
+                                        DARK: <Icon.Element.Dark class="h-12 w-12" />,
+                                        NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
+                                      }[cell.getValue() as $Enums.Element] ?? undefined;
+                                    tdContent = icon;
+                                  }
+                                  break;
+
+                                // 以下值需要添加百分比符号
+                                case "physicalResistance":
+                                case "magicalResistance":
+                                case "dodge":
+                                case "block":
+                                case "normalAttackResistanceModifier":
+                                case "physicalAttackResistanceModifier":
+                                case "magicalAttackResistanceModifier":
+                                  tdContent = <>{flexRender(cell.column.columnDef.cell, cell.getContext())}%</>;
+                                  break;
+
+                                case "criticalResistance":
+
+                                default:
+                                  try {
+                                    const content =
+                                      dictionary().db.enums[
+                                        (cell.column.id.charAt(0).toLocaleUpperCase() +
+                                          cell.column.id.slice(1)) as keyof typeof $Enums
+                                      ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
+                                    tdContent = content;
+                                  } catch (error) {
+                                    tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+                                  }
+                                  break;
+                              }
+
                               return (
-                                <th
+                                <td
                                   style={{
                                     ...getCommonPinningStyles(column),
                                     width: getCommonPinningStyles(column).width + "px",
                                   }}
-                                  class="flex flex-col"
+                                  class={"flex flex-col justify-center py-6"}
                                 >
-                                  <div
-                                    {...{
-                                      onClick: header.column.getToggleSortingHandler(),
-                                    }}
-                                    class={`flex-1 py-4 text-left font-normal hover:bg-area-color ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
-                                      header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                                    }`}
-                                  >
-                                    {dictionary().db.models.monster[column.id as keyof Monster] as string}
-                                    {{
-                                      asc: " ↓",
-                                      desc: " ↑",
-                                    }[header.column.getIsSorted() as string] ?? null}
-                                  </div>
-                                </th>
+                                  {tdContent}
+                                </td>
                               );
                             }}
                           </For>
                         </tr>
-                      )}
-                    </For>
-                  </thead>
-                  <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class={`TableBodyrelative`}>
-                    <For each={virtualizer().getVirtualItems()}>
-                      {(virtualRow) => {
-                        const row = table()!.getRowModel().rows[virtualRow.index];
-                        return (
-                          <tr
-                            data-index={virtualRow.index}
-                            // ref={(node) => virtualizer.measureElement(node)}
-                            style={{
-                              position: "absolute",
-                              transform: `translateY(${virtualRow.start}px)`,
-                            }}
-                            class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
-                            onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                          >
-                            <For each={row.getVisibleCells()}>
-                              {(cell) => {
-                                const { column } = cell;
-                                if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
-                                  // 默认隐藏的数据
-                                  return;
-                                }
-
-                                let tdContent: JSX.Element;
-
-                                switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
-                                  case "name":
-                                    tdContent = (
-                                      <>
-                                        <span class="pb-1">
-                                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </span>
-                                        <span class="text-sm font-normal text-mainText-color">
-                                          {row.getValue("address") ?? "未知"}
-                                        </span>
-                                      </>
-                                    );
-                                    break;
-
-                                  case "element":
-                                    {
-                                      const icon =
-                                        {
-                                          WATER: <Icon.Element.Water class="h-12 w-12" />,
-                                          FIRE: <Icon.Element.Fire class="h-12 w-12" />,
-                                          EARTH: <Icon.Element.Earth class="h-12 w-12" />,
-                                          WIND: <Icon.Element.Wind class="h-12 w-12" />,
-                                          LIGHT: <Icon.Element.Light class="h-12 w-12" />,
-                                          DARK: <Icon.Element.Dark class="h-12 w-12" />,
-                                          NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
-                                        }[cell.getValue() as $Enums.Element] ?? undefined;
-                                      tdContent = icon;
-                                    }
-                                    break;
-
-                                  // 以下值需要添加百分比符号
-                                  case "physicalResistance":
-                                  case "magicalResistance":
-                                  case "dodge":
-                                  case "block":
-                                  case "normalAttackResistanceModifier":
-                                  case "physicalAttackResistanceModifier":
-                                  case "magicalAttackResistanceModifier":
-                                    tdContent = <>{flexRender(cell.column.columnDef.cell, cell.getContext())}%</>;
-                                    break;
-
-                                  case "criticalResistance":
-
-                                  default:
-                                    try {
-                                      const content =
-                                        dictionary().db.enums[
-                                          (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                            cell.column.id.slice(1)) as keyof typeof $Enums
-                                        ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
-                                      tdContent = content;
-                                    } catch (error) {
-                                      tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
-                                    }
-                                    break;
-                                }
-
-                                return (
-                                  <td
-                                    style={{
-                                      ...getCommonPinningStyles(column),
-                                      width: getCommonPinningStyles(column).width + "px",
-                                    }}
-                                    class={"flex flex-col justify-center py-6"}
-                                  >
-                                    {tdContent}
-                                  </td>
-                                );
-                              }}
-                            </For>
-                          </tr>
-                        );
-                      }}
-                    </For>
-                  </tbody>
-                </table>
-              </div>
-              {/* </OverlayScrollbarsComponent> */}
-            </Show>
+                      );
+                    }}
+                  </For>
+                </tbody>
+              </table>
+              {/* </div> */}
+            </OverlayScrollbarsComponent>
+          </Show>
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isFormFullscreen()}>
             <Motion.div
               animate={{ opacity: [0, 1] }}
               exit={{ opacity: 0 }}
-              class="News hidden lg:flex w-[248px] flex-initial flex-col gap-2"
+              class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.monster.news.title}</div>
               <div class="Content flex flex-1 flex-col bg-area-color"></div>

@@ -456,7 +456,7 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <div class="QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs lg:flex">
+        <div class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${resultDialogOpened() ? "" : "lg:flex"}`}>
           <span>MonsterList: {monsterList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
