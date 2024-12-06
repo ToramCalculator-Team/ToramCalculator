@@ -1,4 +1,10 @@
-import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "../../../../worker/evaluate.worker";
+import {
+  type computeInput,
+  type computeOutput,
+  type tSkill,
+  dynamicTotalValue,
+  type FrameData,
+} from "../../../../worker/evaluate.worker";
 import { ObjectRenderer } from "../../../../components/module/objectRender";
 import { Monster } from "~/repositories/monster";
 import { Character } from "~/repositories/character";
@@ -41,7 +47,7 @@ import {
 } from "sequential-workflow-designer";
 import * as Comlink from "comlink";
 import { RootEditorWrapperContext } from "~/components/module/flowEditor/RootEditorWrapper";
-import Input from "~/components/ui/input";
+import Input, { InputComponentType } from "~/components/ui/input";
 import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
@@ -87,29 +93,58 @@ export default function AnalyzerIndexClient() {
   const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
   const [isReadonly, setIsReadonly] = createSignal(false);
 
+  const SettingPageContentModule = (
+    moduleName: string,
+    labelName: string,
+    content: {
+      title: string;
+      description: string;
+      children: JSX.Element;
+      type?: InputComponentType;
+    }[],
+  ) => (
+    <div class={`Module ${moduleName} flex flex-col gap-1 lg:gap-2 lg:px-3`}>
+      <h2 class="ModuleTitle py-2 text-xl font-bold lg:px-2">{labelName}</h2>
+      <div class="LabelGroup flex flex-col gap-2">
+        <For each={content}>
+          {({ title, description, children }) => (
+            <Input title={title} description={description}>
+              {children}
+            </Input>
+          )}
+        </For>
+      </div>
+    </div>
+  );
+
+  const Divider = () => <div class="Divider h-[1px] w-full flex-none bg-dividing-color"></div>;
+
   function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
     const container = document.createElement("div");
     container.className = externalEditorClassName;
     render(
       () => (
         <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
-          <div class="RootEditor">
-            <h4>状态机信息</h4>
-            <p>
-              <label>
-                速度(毫秒)
-                <Input
-                  name="speed"
-                  onChange={(e) => {
-                    def.properties.speed = parseInt(e.target.value);
-                    context.notifyPropertiesChanged();
-                  }}
-                  value={def.properties.speed?.toString() ?? ""}
-                  readOnly={isReadonly}
-                  type="text"
-                />
-              </label>
-            </p>
+          <div class="List flex h-full flex-1 flex-col gap-6 rounded">
+            {SettingPageContentModule("Language", dictionary().ui.settings.language.title, [
+              {
+                title: dictionary().ui.settings.language.selectedLanguage.title,
+                description: dictionary().ui.settings.language.selectedLanguage.description,
+                children: (
+                  <input
+                    name="speed"
+                    onChange={(e) => {
+                      def.properties.speed = parseInt(e.target.value);
+                      context.notifyPropertiesChanged();
+                    }}
+                    value={def.properties.speed?.toString() ?? ""}
+                    readOnly={isReadonly}
+                    type="text"
+                  />
+                ),
+              },
+            ])}
+            <Divider />
           </div>
         </RootEditorWrapperContext>
       ),
@@ -134,7 +169,7 @@ export default function AnalyzerIndexClient() {
             <p>
               <label>
                 名称
-                <Input
+                <input
                   name="name"
                   onInput={(e) => {
                     step.name = e.target.value;
@@ -152,7 +187,7 @@ export default function AnalyzerIndexClient() {
                   <p>
                     <label>
                       {key}
-                      <Input
+                      <input
                         name={key}
                         onInput={(e) => {
                           step.properties[key] = e.target.value;
@@ -201,17 +236,19 @@ export default function AnalyzerIndexClient() {
   }));
 
   const [starArray, setStarArray] = createSignal<number[]>([]);
-  createEffect(on(
-    () => analyzer()?.mobs,
-    () => {
-      console.log("更新星级");
-      const defaultStarArray: number[] = [];
-      analyzer()?.mobs.forEach((mob) => {
-        defaultStarArray.push(mob.star);
-      });
-      setStarArray(defaultStarArray);
-    }
-  ));
+  createEffect(
+    on(
+      () => analyzer()?.mobs,
+      () => {
+        console.log("更新星级");
+        const defaultStarArray: number[] = [];
+        analyzer()?.mobs.forEach((mob) => {
+          defaultStarArray.push(mob.star);
+        });
+        setStarArray(defaultStarArray);
+      },
+    ),
+  );
   const [dialogState, setDialogState] = createSignal(false);
   // analyzer更新后未重新获取，待解决
   // createEffect(
@@ -230,41 +267,45 @@ export default function AnalyzerIndexClient() {
     setDialogState(true);
     setMemberIndex(indexOfMember);
     setDesigner(
-      Designer.create(placeholder()!, {
-        properties: {
-          speed: 300,
+      Designer.create(
+        placeholder()!,
+        {
+          properties: {
+            speed: 300,
+          },
+          sequence: _.cloneDeep(
+            (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
+              ExecutableSteps.createTextStep("开始!"),
+              ExecutableSteps.createTextStep("结束"),
+            ],
+          ),
         },
-        sequence: _.cloneDeep(
-          (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
-            ExecutableSteps.createTextStep("开始!"),
-            ExecutableSteps.createTextStep("结束"),
-          ],
-        ),
-      }, {
-        theme: store.theme,
-        undoStackSize: 10,
-        toolbox: toolboxConfiguration()
-          ? {
-              ...toolboxConfiguration(),
-              isCollapsed: isToolboxCollapsed(),
-            }
-          : false,
-        steps: stepsConfiguration(),
-        validator: validatorConfiguration(),
-        controlBar: true,
-        contextMenu: true,
-        keyboard: true,
-        // preferenceStorage:,
-        editors: {
-          isCollapsed: isEditorCollapsed(),
-          rootEditorProvider,
-          stepEditorProvider,
+        {
+          theme: store.theme,
+          undoStackSize: 10,
+          toolbox: toolboxConfiguration()
+            ? {
+                ...toolboxConfiguration(),
+                isCollapsed: isToolboxCollapsed(),
+              }
+            : false,
+          steps: stepsConfiguration(),
+          validator: validatorConfiguration(),
+          controlBar: true,
+          contextMenu: true,
+          keyboard: true,
+          // preferenceStorage:,
+          editors: {
+            isCollapsed: isEditorCollapsed(),
+            rootEditorProvider,
+            stepEditorProvider,
+          },
+          customActionHandler: () => {},
+          // extensions,
+          // i18n,
+          isReadonly: isReadonly(),
         },
-        customActionHandler: () => {},
-        // extensions,
-        // i18n,
-        isReadonly: isReadonly(),
-      }),
+      ),
     );
     designer()?.onDefinitionChanged.subscribe(() => {
       const sequence = designer()?.getDefinition().sequence;
@@ -277,7 +318,7 @@ export default function AnalyzerIndexClient() {
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
     designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
     designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
-  }
+  };
 
   onMount(() => {
     console.log("--Analyzer Client Render");
@@ -352,7 +393,7 @@ export default function AnalyzerIndexClient() {
                       "background-position-y": "40%",
                     }}
                   >
-                    <div class="Mask h-full w-1/2 bg-gradient-to-r from-accent-color to-accent-color-0"></div>
+                    <div class="Mask to-accent-color-0 h-full w-1/2 bg-gradient-to-r from-accent-color"></div>
                   </div>
                 </div>
               );
