@@ -2,7 +2,9 @@
 
 ## 项目信息
 
-- 出于兴趣为Toram Online开发的小工具￣ω￣=
+- 概述：出于兴趣为Toram Online开发的小工具￣ω￣=
+- 数据架构：这是一个localfirst应用，服务端负责分发资源和广播数据库变更（由ElectricSQL引擎完成），客户端订阅对应数据表接口，实现本地数据同步
+- 
 
 ## 依赖说明
 
@@ -10,31 +12,22 @@
 - prisma client：生成静态数据类型
 - electric：postgresql的同步引擎
 
-### 分支规则说明
-
-- master 分支为最新稳定版本的代码
-- dev 分支项目负责人才有合并权限
-- 其他开发成员分支命名规则为 dev-feat-xxx，xxx 代表开发者名称拼音小写首字母
-- 开发版本分支名称 v1.0-dev
-- 发布版本分支名称 v1.0-release
-- 每个版本封版后需要打一个 tag
-
 ### 目录说明
 
 - .husky: git hooks
-- db: 存放Prisma模型和drizzle模型以及迁移信息
+- prisma: 存放服务端数据库架构的Prisma模型
 - public: 公共静态资源
-- src: 项目文件夹
+- src: 前端项目文件夹
 - - components: 页面组件
-- - styles: 项目公用样式、动画、主题、变量等
 - - lib：工具函数库
-- - routes: 应用程序路由
-- - schema: 应用程序数据结构定义
 - - locales: 国际化相关
+- - repositories：本地数据库交互方法
+- - routes: 应用程序路由
+- - styles: 项目公用样式、动画、主题、变量等
+- - worker: 工作线程文件
+- test：测试文件
 
 ### Commit 规范
-
-<type>(<scope>): <subject>
 
 type: 类型
 
@@ -55,20 +48,28 @@ type: 类型
 scope: 可选,影响范围
 subject: 对 commit 的简短描述
 
-### Build Setup
+### 项目构建流程
 
+首先确保具备docker和node环境
+
+#### 启动后端服务
+```bash
+# 启动postgreSQL和Electric服务
+docker compose up
+
+# 填充测试数据(将此sql文件中的架构和数据填充到postgres数据库)
+psql -U postgres -h localhost -d postgres -f .\test\db-csv\toram.sql 
+```
+
+#### 启动前端应用
 ```bash
 # install dependencies
 # 安装依赖
 pnpm install
 
-# generate DDL
-# 生成中央数据库定义语句
-pnpm db:generate
-
-# database push
-# 推送数据库架构到中央数据库
-pnpm db:push
+# generate types
+# 生成静态数据类型
+pnpm dbGenerate：type
 
 # start dev
 # 以开发模式试运行
@@ -83,17 +84,10 @@ pnpm build
 pnpm start
 ```
 
-### 引入新的 pnpm 包
-
-- devDependencies 预编译时用到的模块，生产环境用不上
-  `pnpm install -d moduleName`
-- dependencies 实际运行时要用到的模块，生产环境也要用到
-  `pnpm install moduleName`
-
 ### 开发概要
 
 - Solid Start
 - TypeScript
 - Tailwind CSS
-- Prisma
+- Prisma & Kysely
 - Electric & PGlite

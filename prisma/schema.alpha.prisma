@@ -304,11 +304,13 @@ enum DurationType {
     UNLIMITED
 }
 
+// 技能是否继承武器元素
 enum WeaponElementDependencyType {
     EXTEND
     UNEXTEND
 }
 
+// 怪物星级
 enum MobDifficultyFlag {
     Easy
     Normal
@@ -317,7 +319,8 @@ enum MobDifficultyFlag {
     Ultimate
 }
 
-enum MobAttackType {
+// 怪物伤害类型
+enum MobDamageType {
     Physics
     Magic
     CurrentRate
@@ -382,6 +385,7 @@ model world {
     addresses address[]
 }
 
+// 地点类型（普通地点，限时地点）
 enum AddressType {
     Normal
     Limited
@@ -439,6 +443,7 @@ model task {
     npcId       String
 }
 
+// 素材类型
 enum PtType {
     Metal
     Cloth
@@ -448,7 +453,7 @@ enum PtType {
     Magic
 }
 
-// 素材物品模型
+// 素材物品
 model material {
     id String @id
 
@@ -468,6 +473,7 @@ model mob {
     difficultyFlag                   MobDifficultyFlag // 仅当怪物类型为Boss时生效
     baseLv                           Int
     experience                       Int
+    partsExperience Int
     address                          String
     element                          Element
     radius                           Int
@@ -808,11 +814,56 @@ model skill_yield {
     skillEffectId       String?
 }
 
+// 宠物性格
+enum Persona {
+    Fervent
+    Intelligent
+    Mild
+    Swift
+    Justice
+    Devoted
+    Impulsive
+    Calm
+    Sly
+    Timid
+    Brave
+    Active
+    Sturdy
+    Steady
+    Max
+}
+
+// 宠物类型
+enum PetType {
+    AllTrades
+    PhysicalAttack
+    MagicAttack
+    PhysicalDefense
+    MagicDefensem
+    Avoidance
+    Hit
+    SkillsEnhancement
+    Genius
+}
+
 // 宠物模型
 model pet {
     id String @id
 
     name String
+    pStr Int
+    pInt Int
+    pVit Int
+    pAgi Int
+    pDex Int
+    str  Int
+    int Int
+    vit Int
+    agi Int
+    dex Int
+    weaponType MainWeaponType
+    persona Persona
+    type PetType
 
     extraDetails String
     dataSources  String
