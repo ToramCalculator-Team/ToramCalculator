@@ -2,6 +2,66 @@ import { $Enums } from "@prisma/client";
 import { type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 
+export enum TemporaryPlayerStatus {
+  Lv,
+  EqAtk,
+  SubEqAtk,
+  EqDef,
+
+  Str,
+  Int,
+  Vit,
+  Agi,
+  Dex,
+  Crt,
+  Luk,
+  Tec,
+  Men,
+
+  Stable,
+  SubStable,
+
+  MaxHp,
+  HpRecovery,
+  MaxMp,
+  MpRecovery,
+
+  Atk,
+  SubAtk,
+  Def,
+  Matk,
+  SubMatk,
+  Mdef,
+
+  AntiVirus,
+
+  AtkMpRecovery,
+
+  Aspd,
+  Cspd,
+  
+  Avoid,
+  AvoidTired,
+  AvoidSpeed,
+
+  Guard,
+  GuardPower,
+  GuardSpeed,
+
+  Critical,
+  CriticalDmg,
+  CriticalMagicDmg,
+
+  ElementPower,
+
+  Flee,
+  Hit,
+
+  DamageReductionRate,
+
+  Respawn,
+}
+
 export enum CharacterAttrEnum {
   LV, // 等级
   // 能力值

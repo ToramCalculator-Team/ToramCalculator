@@ -100,29 +100,29 @@ enum MobType {
     Boss
 }
 
-// 加成值名称枚举
-enum ModifiersName {
+// 加成值类型枚举
+enum ModifierType {
     // 能力值
-    STR // 力量
-    INT // 智力
-    VIT // 耐力
-    AGI // 敏捷
-    DEX // 灵巧
+    Str // 力量
+    Int // 智力
+    Vit // 耐力
+    Agi // 敏捷
+    Dex // 灵巧
     // 基础属性
-    MAX_MP // 最大MP
-    AGGRO // 仇恨值
-    WEAPON_RANGE // 武器射程
-    HP_REGEN // HP自然回复
-    MP_REGEN // MP自然回复
+    MaxHp // 最大MP
+    Aggro // 仇恨值
+    WeaponRange // 武器射程
+    HpRegen // HP自然回复
+    MpRegen // MP自然回复
     // 单次伤害增幅
-    PHYSICAL_ATK // 物理攻击
-    MAGICAL_ATK // 魔法攻击
-    WEAPON_ATK // 武器攻击
-    UNSHEATHE_ATK // 拔刀攻击
-    PHYSICAL_PIERCE // 物理贯穿
-    MAGICAL_PIERCE // 魔法贯穿
-    CRITICAL_RATE // 暴击率
-    CRITICAL_DAMAGE // 暴击伤害
+    PhysicalAtk // 物理攻击
+    MagicalAtk // 魔法攻击
+    WeaponAtk // 武器攻击
+    UnsheatheAtk // 拔刀攻击
+    PhysicalPierce // 物理贯穿
+    MagicalPierce // 魔法贯穿
+    Critical // 暴击率
+    CriticalDmg // 暴击伤害
     MAGIC_CRT_CONVERSION_RATE // 魔法暴击转化率
     MAGIC_CRT_DAMAGE_CONVERSION_RATE // 魔法爆伤转化率
     SHORT_RANGE_DAMAGE // 近距离威力
@@ -181,7 +181,7 @@ enum ModifiersName {
     GUARD_POWER // 格挡力
     BASE_GUARD_RECHARGE // 基础格挡回复
     GUARD_RECHANGE // 格挡回复
-    EVASION_RECHARGE // 闪躲回复
+    Flee_RECHARGE // 闪躲回复
     PHYSICAL_BARRIER // 物理屏障
     MAGICAL_BARRIER // 魔法屏障
     FRACTIONAL_BARRIER // 百分比瓶屏障
@@ -285,7 +285,7 @@ enum SkillType {
 }
 
 // 技能额外动作类型枚举（咏唱、蓄力）
-enum SkillExtraActionType {
+enum ChargingType {
     None
     Chanting
     Charging
@@ -354,7 +354,7 @@ model user_create_data {
     skills               skill[]
     consumables          consumable[]
     combos               combo[]
-    analyzers            analyzer[]
+    simulators            simulator[]
     belongToUser         user                   @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId               String                 @id
 }
@@ -372,7 +372,7 @@ model user_update_data {
     skills               skill[]
     consumables          consumable[]
     character            character[]
-    analyzer             analyzer[]
+    simulator             simulator[]
     belongToUser         user                   @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId               String                 @id
 }
@@ -464,6 +464,57 @@ model material {
 
 }
 
+// 异常状态枚举
+enum AbnormalType {
+    MagicFlinch
+    None
+    Flinch
+    Tumble
+    Stun
+    KnockBack
+    Poison
+    PoisonLevel1
+    PoisonLevel2
+    Paralysis
+    Blindness
+    Ignition
+    Freeze
+    Breaking
+    Slow
+    Stop
+    Fear
+    Dizzy
+    Weak
+    Collapse
+    Confusion
+    Silent
+    Bleed
+    Sleep
+    Rage
+    Tiredness
+    Blessing
+    SystemInvincibility
+    BestState
+    Invincibility
+    Suction
+    Taming
+    Curse
+    Flash
+    Runaway
+    MagicalExplosion
+    Sick
+    Malgravity
+    Dispel
+    Inversion
+    Mineralization
+    NoTools
+    Enhance
+    ComboInvincibility
+    DeathTorqueShot
+    SystemAddHate
+    Recovery
+}
+
 // 怪物模型
 model mob {
     id String @id
@@ -490,6 +541,9 @@ model mob {
     physicalAttackResistanceModifier Int
     magicalAttackResistanceModifier  Int
     flow                             String
+
+    drops drop[]
+
     difficultyOfTank                 Int
     difficultyOfMelee                Int
     difficultyOfRanged               Int
@@ -505,7 +559,7 @@ model mob {
     image        image      @relation(fields: [imageId], references: [id])
     imageId      String
 
-    belongToMobs analyzer[]
+    belongToMobs simulator[]
     belongToMap  zone[]
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
@@ -514,41 +568,54 @@ model mob {
     createdByUserId String?
 }
 
-// 掉落物模型
-model drops_list {
-    id String @id
-
-    crystal crystal[]
-    mainWeapon main_weapon[]
-    subWeapon sub_weapon[]
-    bodyArmor body_armor[]
-    additionalEquipment additional_equipment[]
-    specialEquipment special_equipment[]
-    consumable consumable[]
-    material material[]
+// 部位破坏奖励
+enum PartBreakReward {
+    None
+    CanDrop
+    DropUp
 }
 
-// 道具需求列表
-model item_requirements_list {
+// 部位枚举
+enum MobPart {
+    A
+    B
+    C
+}
+
+// 掉落物模型
+model drop {
     id String @id
+
+    itemId String
+    tableName String
+    difficulty Int
+    relatedPart MobPart
+    relatedPartInfo String
+    breakReward PartBreakReward
+
+    dropBy mob[]
 }
 
 // 单项加成数据模型
 model modifier {
     id                     String        @id
-    formula                String
+
+    modifierType           ModifierType
+    value                  Int
     belongToModifierList   modifier_list @relation(fields: [belongToModifierListId], references: [id])
     belongToModifierListId String
+    belongToMainWeaponVersion main_weapon_version @relation(fields: [belongToMainWeaponVersionId], references: [id])
+    belongToMainWeaponVersionId String
 }
 
-// 加成项集（附魔等）模型
+// 加成项集（附魔）模型
 model modifier_list {
     id String @id
 
     name      String
     modifiers modifier[]
 
-    usedByMainWeapon          main_weapon[]
+    usedByCustomMainWeapon    custom_main_weapon[]
     usedBySubWeapon           sub_weapon[]
     usedByBodyArmor           body_armor[]
     usedByAdditionalEquipment additional_equipment[]
@@ -558,6 +625,7 @@ model modifier_list {
     usedByFashion             character?             @relation("FashionRelation")
     usedByCuisine             character?             @relation("CuisineRelation")
     usedByModifierList        character?             @relation("ModifierListRelation")
+    usedByMember               member[]
 }
 
 // 锻晶模型
@@ -579,7 +647,7 @@ model crystal {
     statistics   statistics @relation(fields: [statisticsId], references: [id])
     statisticsId String     @unique
 
-    usedByMainWeapon          main_weapon[]
+    usedByMainWeapon          main_weapon_version[]
     usedByBodyArmor           body_armor[]
     usedByAdditionalEquipment additional_equipment[]
     usedBySpecialEquipment    special_equipment[]
@@ -590,22 +658,41 @@ model crystal {
     createdByUserId String?
 }
 
-// 主武器模型
+// 道具需求列表
+model requirement {
+    id String @id
+
+    itemId String
+    tableName String
+    count  Int
+
+    belongToMainWeaponVersion main_weapon_version @relation(fields: [belongToMainWeaponVersionId], references: [id])
+    belongToMainWeaponVersionId String
+}
+
+// 道具取得方式
+enum AcquisitionMethodType {
+    Drop
+    Craft
+}
+
+// 活动武器与常态武器模型
+enum AvailabilityType {
+    permanent
+    event
+}
+
+// 基本主武器模型
 model main_weapon {
     id String @id
 
     name           String
-    mainWeaponType MainWeaponType
+    weaponType MainWeaponType
+    availability   AvailabilityType
     baseAtk        Int
-    refinement     Int
     stability      Int
-    element        Element
-    modifierList   modifier_list  @relation(fields: [modifierListId], references: [id])
-    modifierListId String
-    crystalList    crystal[]
-
-    extraDetails String
     dataSources  String
+    extraDetails String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -613,13 +700,58 @@ model main_weapon {
     statistics   statistics @relation(fields: [statisticsId], references: [id])
     statisticsId String     @unique
     image        image[]
+    version      main_weapon_version[]
 
-    usedBy character[]
-
+    usedBy custom_main_weapon[]
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
+}
+
+// 染色信息模型
+model color {
+    colorA Int
+    colorB Int
+    colorC Int
+
+    belongToMainWeaponVersion main_weapon_version @relation(fields: [belongToMainWeaponVersionId], references: [id])
+    belongToMainWeaponVersionId String @id
+}
+
+// 不同版本的武器属性模型
+model main_weapon_version {
+    id String @id
+    
+    acquisitionMethod AcquisitionMethodType
+    defaultCrystalList    crystal[]
+    modifiers modifier[]
+    color color?
+
+    requirement requirement[]
+
+    belongToMainWeapon main_weapon @relation(fields: [belongToMainWeaponId], references: [id])
+    belongToMainWeaponId String
+}
+
+// 玩家自定义主武器模型
+model custom_main_weapon {
+    id String @id
+
+    name           String
+    atk            Int
+    template       main_weapon  @relation(fields: [templateId], references: [id])
+    templateId     String
+    refinement     Int
+    modifierList   modifier_list  @relation(fields: [modifierListId], references: [id])
+    modifierListId String
+
+    updatedAt DateTime @updatedAt
+    createdAt DateTime
+
+    extraDetails String
+
+    usedBy character[]
 }
 
 // 副武器模型
@@ -738,11 +870,12 @@ model special_equipment {
     createdByUserId String?
 }
 
-// 技能卡片模型
+// 技能模型
 model skill {
     id String @id
 
     skillTreeName               SkillTreeName
+    tier                        Int
     name                        String
     skillType                   SkillType
     weaponElementDependencyType WeaponElementDependencyType
@@ -775,13 +908,13 @@ model skill_effect {
 
     condition                         String
     description                       String
-    actionBaseDurationFormula         String
-    actionModifiableDurationFormula   String
-    skillExtraActionType              SkillExtraActionType
+    motionBaseDurationFormula         String
+    motionModifiableDurationFormula   String
+    chargingType              ChargingType
     chantingBaseDurationFormula       String
     chantingModifiableDurationFormula String
-    chargingBaseDurationFormula       String
-    chargingModifiableDurationFormula String
+    ReservoirBaseDurationFormula       String
+    ReservoirModifiableDurationFormula String
     skillStartupFramesFormula         String
     skillCost                         skill_cost[]
     skillYield                        skill_yield[]
@@ -864,6 +997,7 @@ model pet {
     weaponType MainWeaponType
     persona Persona
     type PetType
+    weaponAtk Int
 
     extraDetails String
     dataSources  String
@@ -873,8 +1007,6 @@ model pet {
 
     statistics   statistics @relation(fields: [statisticsId], references: [id])
     statisticsId String     @unique
-
-    usedBy character[]
 
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
@@ -946,7 +1078,7 @@ model character {
     baseDex               Int
     specialAbiType        SpecialAbiType
     specialAbiValue       Int
-    mainWeapon            main_weapon          @relation(fields: [mainWeaponId], references: [id])
+    mainWeapon            custom_main_weapon          @relation(fields: [mainWeaponId], references: [id])
     mainWeaponId          String
     subWeapon             sub_weapon           @relation(fields: [subWeaponId], references: [id])
     subWeaponId           String
@@ -960,8 +1092,6 @@ model character {
     fashionModifierListId String               @unique
     cuisine               modifier_list        @relation("CuisineRelation", fields: [cuisineModifierListId], references: [id])
     cuisineModifierListId String               @unique
-    pet                   pet                  @relation(fields: [petId], references: [id])
-    petId                 String
     modifierList          modifier_list        @relation("ModifierListRelation", fields: [modifierListId], references: [id])
     modifierListId        String               @unique
     skillList             skill[]
@@ -978,27 +1108,34 @@ model character {
     image        image      @relation(fields: [imageId], references: [id])
     imageId      String     @unique
 
-    belongToMembers member[]
-
     updatedBy       user_update_data? @relation(fields: [updatedByUserId], references: [userId])
     updatedByUserId String?
     createdBy       user_create_data? @relation(fields: [createdByUserId], references: [userId])
     createdByUserId String?
 }
 
+// 成员类型
+enum MemberType {
+    Mercenary
+    Player
+    Pet
+}
+
 // 队伍成员模型
 model member {
     id String @id
 
-    character   character @relation(fields: [characterId], references: [id])
-    characterId String
+    memberId String
+    memberTpye MemberType
     flow        Json
+    guildBuffList          modifier_list?        @relation( fields: [guildBuffListId], references: [id])
+    guildBuffListId        String               @unique
 
-    belongToAnalyzers analyzer[]
+    belongToAnalyzers simulator[]
 }
 
-// 分析器模型
-model analyzer {
+// 模拟模型
+model simulator {
     id String @id
 
     name String
@@ -1066,8 +1203,8 @@ model statistics {
     consumableId                String?
     character                   character?
     characterId                 String?
-    analyzer                    analyzer?
-    analyzerId                  String?
+    simulator                    simulator?
+    simulatorId                  String?
 }
 
 model image {
