@@ -283,6 +283,96 @@ export enum MonsterModifierType {
   mspd, // 行动速度
 }
 
-export enum SkillModifierType {
-    
-}
+// export enum SkillModifierType {
+
+//  }
+
+// 任务奖励类型
+export type TaskRewardType = "Exp" | "Money" | Item;
+
+// 素材
+export type MaterialType = "Metal" | "Cloth" | "Beast" | "Wood" | "Drug" | "Magic";
+
+// 道具
+export type Item = EquipType | CrystalType;
+
+// 锻晶
+export type CrystalType =
+  | "Normal"
+  | "Weapon"
+  | "Armor"
+  | "AddEquip"
+  | "Special"
+  | "PowerUpNormal"
+  | "PowerUpWeapon"
+  | "PowerUpArmor"
+  | "PowerUpAddEquip"
+  | "PowerUpSpecial";
+
+// 装备
+export type EquipType = WeaponType | SubWeaponType | "Armor" | "AddEquip" | "SpecialEquip";
+
+// 主武器
+export type WeaponType =
+  | "OneHandSword"
+  | "TwoHandSword"
+  | "Bow"
+  | "Bowgun"
+  | "Rod"
+  | "Magictool"
+  | "Knuckle"
+  | "Halberd"
+  | "Katana";
+
+// 副武器
+export type SubWeaponType = "Arrow" | "ShortSword" | "NinjutsuScroll" | "Shield";
+
+// 异常状态
+export type AbnormalType =
+  | "MagicFlinch"
+  | "None"
+  | "Flinch"
+  | "Tumble"
+  | "Stun"
+  | "KnockBack"
+  | "Poison"
+  | "PoisonLevel1"
+  | "PoisonLevel2"
+  | "Paralysis"
+  | "Blindness"
+  | "Ignition"
+  | "Freeze"
+  | "Breaking"
+  | "Slow"
+  | "Stop"
+  | "Fear"
+  | "Dizzy"
+  | "Weak"
+  | "Collapse"
+  | "Confusion"
+  | "Silent"
+  | "Bleed"
+  | "Sleep"
+  | "Rage"
+  | "Tiredness"
+  | "Blessing"
+  | "SystemInvincibility"
+  | "BestState"
+  | "Invincibility"
+  | "Suction"
+  | "Taming"
+  | "Curse"
+  | "Flash"
+  | "Runaway"
+  | "MagicalExplosion"
+  | "Sick"
+  | "Malgravity"
+  | "Dispel"
+  | "Inversion"
+  | "Mineralization"
+  | "NoTools"
+  | "Enhance"
+  | "ComboInvincibility"
+  | "DeathTorqueShot"
+  | "SystemAddHate"
+  | "Recovery";
