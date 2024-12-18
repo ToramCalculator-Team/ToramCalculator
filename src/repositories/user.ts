@@ -1,16 +1,17 @@
-import { Insertable, Selectable, Updateable } from 'kysely'
-import { db } from './database'
-import { user } from '~/repositories/db/types'
+import { Insertable, Selectable, Updateable } from "kysely";
+import { db } from "./database";
+import { user } from "~/repositories/db/types";
 
-export type User = Awaited<ReturnType<typeof findUserById>>
-export type NewUser = Insertable<user>
-export type UserUpdate = Updateable<user>
+const USER_ROLES = ["Admin", "User"] as const;
+
+export type UserRoleType = (typeof USER_ROLES)[number];
+
+export type User = Awaited<ReturnType<typeof findUserById>>;
+export type NewUser = Insertable<user>;
+export type UserUpdate = Updateable<user>;
 
 export async function findUserById(id: string) {
-  return await db.selectFrom('user')
-    .where('id', '=', id)
-    .selectAll()
-    .executeTakeFirstOrThrow()
+  return await db.selectFrom("user").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
 }
 
 // export async function findPeople(criteria: Partial<user>) {
@@ -45,36 +46,18 @@ export async function findUserById(id: string) {
 
 export async function updateUser(id: string, updateWith: UserUpdate) {
   return await db.transaction().execute(async (trx) => {
-    const user = await trx
-      .updateTable('user')
-      .set(updateWith)
-      .where('id', '=', id)
-      .returningAll()
-      .executeTakeFirst()
-    
-    const rates = await trx
-      .updateTable('rate')
-      .set(updateWith)
-      .where('userId', '=', id)
-      .returningAll()
-      .execute()
-    
-    return { ...user, rates }
-  })
+    const user = await trx.updateTable("user").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+    return user;
+  });
   // await db.updateTable('user').set(updateWith).where('id', '=', id).execute()
 }
 
 export async function createUser(user: NewUser) {
-  return await db.insertInto('user')
-    .values(user)
-    .returningAll()
-    .executeTakeFirstOrThrow()
+  return await db.insertInto("user").values(user).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteUser(id: string) {
-  return await db.deleteFrom('user').where('id', '=', id)
-    .returningAll()
-    .executeTakeFirst()
+  return await db.deleteFrom("user").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default

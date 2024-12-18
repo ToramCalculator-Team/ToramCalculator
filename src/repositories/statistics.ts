@@ -21,21 +21,21 @@ export function statisticsSubRelations(eb:ExpressionBuilder<DB, "statistics">,st
     jsonArrayFrom(
       eb
         .selectFrom("view_timestamp")
-        .whereRef("view_timestamp.statisticsId", "=", statisticsId)
+        .where("view_timestamp.statisticsId", "=", statisticsId)
         .selectAll("view_timestamp")
-    ).$notNull().as("viewTimestamps"),
+    ).as("viewTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("usage_timestamp")
-        .whereRef("usage_timestamp.statisticsId", "=", statisticsId)
+        .where("usage_timestamp.statisticsId", "=", statisticsId)
         .selectAll("usage_timestamp")
-    ).$notNull().as("usageTimestamps"),
+    ).as("usageTimestamps"),
     jsonArrayFrom(
       eb
         .selectFrom("rate")
         .whereRef("rate.statisticsId", "=", statisticsId)
         .selectAll("rate")
-    ).$notNull().as("rates"),
+    ).as("rates"),
   ];
 }
 
@@ -90,16 +90,13 @@ export const defaultStatistics: Statistics = {
   rates: [defaultRate],
   viewTimestamps: [defaultViewTimestamp],
   usageTimestamps: [defaultUsageTimestamp],
-  monsterId: null,
-  crystalId: null,
-  mainWeaponId: null,
-  subWeaponId: null,
-  bodyArmorId: null,
-  additionalEquipmentId: null,
-  specialEquipmentId: null,
-  skillId: null,
-  petId: null,
-  consumableId: null,
-  characterId: null,
-  analyzerId: null,
 };
+
+export const statisticsGenerateById = (id: string) => {
+  return {
+    id: id,
+    rates: [defaultRate],
+    viewTimestamps: [defaultViewTimestamp],
+    usageTimestamps: [defaultUsageTimestamp],
+  } satisfies Statistics
+}

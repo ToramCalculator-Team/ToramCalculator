@@ -1,3 +1,6 @@
+
+export type AccountType = "Admin" | "User";
+
 export enum ModifierType {
   DEFAULT = "default",
   // 能力值
@@ -290,9 +293,6 @@ export enum MonsterModifierType {
 // 任务奖励类型
 export type TaskRewardType = "Exp" | "Money" | Item;
 
-// 素材
-export type MaterialType = "Metal" | "Cloth" | "Beast" | "Wood" | "Drug" | "Magic";
-
 // 道具
 export type Item = EquipType | CrystalType;
 
@@ -312,8 +312,11 @@ export type CrystalType =
 // 装备
 export type EquipType = WeaponType | SubWeaponType | "Armor" | "AddEquip" | "SpecialEquip";
 
+// 武器
+export type WeaponType = MainWeaponType | SubWeaponType;
+
 // 主武器
-export type WeaponType =
+export type MainWeaponType =
   | "OneHandSword"
   | "TwoHandSword"
   | "Bow"
@@ -376,3 +379,74 @@ export type AbnormalType =
   | "DeathTorqueShot"
   | "SystemAddHate"
   | "Recovery";
+
+// export type SkillType = "Unknown"
+//   | "Attack" // 攻击
+//   | "Mastery" 
+//   | "Support" // 辅助
+//   | "Buffer" // buff
+//   | "Circle" // 圈
+//   | "Object" // 对象
+//   | "Heal" //   治疗
+//   | 'Special' // 特殊技能
+//   | "Extra" // 额外 
+
+export type SkillTreeType =
+  | "BladeSkill" // 剑术技能
+  | "ShootSkill" // 射击技能
+  | "MagicSkill" // 魔法技能
+  | "MarshallSkill" // 格斗技能
+  | "DualSwordSkill" // 双剑技能
+  | "HalberdSkill" // 斧枪技能
+  | "MononofuSkill" // 武士技能
+  | "CrusherSkill" // 粉碎者技能
+  | "FeatheringSkill" // 灵魂技能
+  | "GuardSkill" // 格挡技能
+  | "ShieldSkill" // 护盾技能
+  | "KnifeSkill" // 小刀技能
+  | "KnightSkill" // 骑士技能
+  | "HunterSkill" // 狩猎技能
+  | "PriestSkill" // 祭司技能
+  | "AssassinSkill" // 暗杀技能
+  | "WizardSkill" // 巫师技能
+  //
+  | "SupportSkill" // 辅助技能
+  | "BattleSkill" // 好战分子
+  | "SurvivalSkill" // 生存本能
+  //
+  | "SmithSkill" // 锻冶大师
+  | "AlchemySkill" // 炼金术士
+  | "TamerSkill" // 驯兽天分
+  //
+  | "DarkPowerSkill" // 暗黑之力
+  | "MagicBladeSkill" // 魔剑技能
+  | "DancerSkill" // 舞者技能
+  | "MinstrelSkill" // 诗人技能
+  | "BareHandSkill" // 空手技能
+  | "NinjaSkill" // 忍者技能
+  | "PartisanSkill" // 游击队技能
+  //
+  | "LuckSkill"
+  | "MerchantSkill" // 商人技能
+  | "PetSkill"; // 宠物技能
+
+// 玩家技能攻击类型
+export type SkillAttackType = "None" | "Physical" | "Magic" | "SkillNormal";
+
+// 连击效果类型
+export type SkillComboType =
+  | "None"
+  | "Start"
+  | "Rengeki" // 连击
+  | "ThirdEye" // 心眼
+  | "Filling" // 补位
+  | "Quick" // 迅速
+  | "HardHit" // 增幅
+  | "Tenacity" // 执着
+  | "Invincible" // 无敌
+  | "BloodSucking" // 吸血
+  | "Tough" // 强韧
+  | "AMomentaryWalk"
+  | "Reflection" // 反射
+  | "Illusion"
+  | "Max";

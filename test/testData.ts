@@ -4,7 +4,7 @@ import { defaultConsumable } from "~/repositories/consumable";
 import { defaultImage } from "~/repositories/image";
 import { defaultMember, Member } from "~/repositories/member";
 import { defaultMob } from "~/repositories/mob";
-import { defaultModifierList } from "~/repositories/modifier_list";
+import { defaultModifierList } from "~/repositories/weaponEncAttrs";
 import { Monster } from "~/repositories/monster";
 import { defaultPet } from "~/repositories/pet";
 import { defaultSkill } from "~/repositories/skill";

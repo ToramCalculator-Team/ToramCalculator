@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, sub_weapon } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
-import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
+import { createModifierList, defaultModifierList, modifierListSubRelations } from "./weaponEncAttrs";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type SubWeapon = Awaited<ReturnType<typeof findSubWeaponById>>;

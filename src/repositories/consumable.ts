@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, consumable } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultModifierList, modifierListSubRelations } from "./modifier_list";
+import { defaultModifierList, modifierListSubRelations } from "./weaponEncAttrs";
 
 export type Consumable = Awaited<ReturnType<typeof findConsumableById>>;
 export type NewConsumable = Insertable<consumable>;

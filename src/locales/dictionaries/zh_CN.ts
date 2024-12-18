@@ -1,6 +1,6 @@
 import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type ModifierList } from "~/repositories/modifier_list";
+import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Image } from "~/repositories/image";
 
 const modifierList: ConvertToAllString<ModifierList> = {

@@ -8,7 +8,7 @@ import { ModifierType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
 import { type Monster } from "~/repositories/monster";
 import { type SkillEffect } from "~/repositories/skill_effect";
-import { type ModifierList } from "~/repositories/modifier_list";
+import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Modifier } from "~/repositories/modifier";
 
 const fps = 60;

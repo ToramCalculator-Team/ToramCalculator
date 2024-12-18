@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { UserRole, Element, MonsterType, ModifiersName, SpecialAbiType, CrystalType, MainWeaponType, SubWeaponType, BodyArmorType, SkillTreeName, SkillType, SkillExtraActionType, YieldType, DurationType, WeaponElementDependencyType, ComboType, CharacterType } from "./enums";
+import type { UserRole, Element, MobType, SpecialAbiType, ArmorType, SkillType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, CharacterType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType } from "./enums";
 
 export type account = {
     id: string;
@@ -18,59 +18,61 @@ export type account = {
     scope: string | null;
     id_token: string | null;
     session_state: string | null;
-    userId: string;
+    accountId: string;
+};
+export type account_create_data = {
+    accountId: string;
+};
+export type account_update_data = {
+    accountId: string;
 };
 export type additional_equipment = {
-    id: string;
     name: string;
-    refinement: number;
-    modifierListId: string;
-    extraDetails: string;
-    dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    baseDef: number;
+    availability: AvailabilityType;
+    acquisitionMethod: AcquisitionMethodType;
+    modifiers: string[];
+    colorA: number;
+    colorB: number;
+    colorC: number;
+    itemId: string;
 };
 export type additional_equipmentTocrystal = {
     A: string;
     B: string;
 };
-export type analyzer = {
+export type address = {
     id: string;
     name: string;
-    extraDetails: string | null;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    type: AddressType;
+    x: number;
+    y: number;
+    worldId: string;
 };
-export type analyzerTomember = {
-    A: string;
-    B: string;
-};
-export type analyzerTomob = {
-    A: string;
-    B: string;
-};
-export type body_armor = {
-    id: string;
+export type armor = {
     name: string;
-    bodyArmorType: BodyArmorType;
-    refinement: number;
     baseDef: number;
-    modifierListId: string;
-    extraDetails: string;
-    dataSources: string;
+    availability: AvailabilityType;
+    acquisitionMethod: AcquisitionMethodType;
+    modifiers: string[];
+    colorA: number;
+    colorB: number;
+    colorC: number;
+    itemId: string;
+};
+export type armor_enchantment_attributes = {
+    id: string;
+    name: string;
+    flow: unknown;
+    extraDetails: string | null;
+    dataSources: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
     statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
 };
-export type body_armorTocrystal = {
+export type armorTocrystal = {
     A: string;
     B: string;
 };
@@ -86,22 +88,29 @@ export type character = {
     baseDex: number;
     specialAbiType: SpecialAbiType;
     specialAbiValue: number;
-    mainWeaponId: string;
+    weaponId: string;
     subWeaponId: string;
-    bodyArmorId: string;
-    additionalEquipmentId: string;
-    specialEquipmentId: string;
-    fashionModifierListId: string;
-    cuisineModifierListId: string;
-    petId: string;
-    modifierListId: string;
+    armorId: string;
+    addEquipId: string;
+    speEquipId: string;
+    fashion: string[];
+    cuisine: string[];
+    ExtraAttrs: string[];
+    masterId: string;
     extraDetails: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
     statisticsId: string;
     imageId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+};
+export type character_skill = {
+    id: string;
+    lv: number;
+    templateId: string;
+};
+export type characterTocharacter_skill = {
+    A: string;
+    B: string;
 };
 export type characterTocombo = {
     A: string;
@@ -111,49 +120,35 @@ export type characterToconsumable = {
     A: string;
     B: string;
 };
-export type characterToskill = {
-    A: string;
-    B: string;
-};
 export type combo = {
     id: string;
     name: string;
-    createdByUserId: string | null;
-};
-export type combo_step = {
-    id: string;
-    order: number;
-    comboType: ComboType;
-    skillId: string;
-    comboId: string;
+    combo: unknown;
 };
 export type consumable = {
     id: string;
     name: string;
-    modifierListId: string;
-    extraDetails: string;
-    dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    modifiers: string[];
 };
 export type crystal = {
-    id: string;
     name: string;
-    crystalType: CrystalType;
-    front: number;
-    modifierListId: string;
-    extraDetails: string | null;
-    dataSources: string | null;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    crystalType: string;
+    modifiers: string[];
+    itemId: string;
 };
-export type crystalTomain_weapon = {
+export type crystalTocustom_additional_equipment = {
+    A: string;
+    B: string;
+};
+export type crystalTocustom_armor = {
+    A: string;
+    B: string;
+};
+export type crystalTocustom_special_equipment = {
+    A: string;
+    B: string;
+};
+export type crystalTocustom_weapon = {
     A: string;
     B: string;
 };
@@ -161,61 +156,143 @@ export type crystalTospecial_equipment = {
     A: string;
     B: string;
 };
+export type crystalToweapon = {
+    A: string;
+    B: string;
+};
+export type custom_additional_equipment = {
+    id: string;
+    name: string;
+    def: number;
+    templateId: string;
+    refinement: number;
+    masterId: string;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    extraDetails: string;
+};
+export type custom_armor = {
+    id: string;
+    name: string;
+    def: number;
+    armorType: ArmorType;
+    templateId: string;
+    refinement: number;
+    enchantmentAttributesId: string;
+    masterId: string;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    extraDetails: string;
+};
+export type custom_pet = {
+    id: string;
+    templateId: string;
+    pStr: number;
+    pInt: number;
+    pVit: number;
+    pAgi: number;
+    pDex: number;
+    str: number;
+    int: number;
+    vit: number;
+    agi: number;
+    dex: number;
+    weaponType: string;
+    persona: Persona;
+    type: PetType;
+    weaponAtk: number;
+    masterId: string;
+};
+export type custom_special_equipment = {
+    id: string;
+    name: string;
+    def: number;
+    templateId: string;
+    refinement: number;
+    masterId: string;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    extraDetails: string;
+};
+export type custom_weapon = {
+    id: string;
+    name: string;
+    extraAbi: number;
+    templateId: string;
+    refinement: number;
+    enchantmentAttributesId: string;
+    masterId: string;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    extraDetails: string;
+};
+export type drop_item = {
+    id: string;
+    itemId: string;
+    probability: number;
+    relatedPart: MobPart;
+    relatedPartInfo: string;
+    breakReward: PartBreakReward;
+    dropById: string;
+};
 export type image = {
     id: string;
     dataUrl: string;
-    main_weaponId: string | null;
-    sub_weaponId: string | null;
-    body_armorId: string | null;
-    additional_equipmentId: string | null;
-    special_equipmentId: string | null;
+    npcId: string | null;
 };
-export type main_weapon = {
+export type imageToitem = {
+    A: string;
+    B: string;
+};
+export type item = {
     id: string;
     name: string;
-    mainWeaponType: MainWeaponType;
-    baseAtk: number;
-    refinement: number;
-    stability: number;
-    element: Element;
-    modifierListId: string;
-    extraDetails: string;
     dataSources: string;
+    extraDetails: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
     statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
+};
+export type material = {
+    id: string;
+    name: string;
+    material: MaterialType;
+    ptValue: number;
+    price: number;
 };
 export type member = {
     id: string;
-    characterId: string;
     flow: unknown;
+    characterId: string;
+    mobId: string;
+};
+export type memberTosimulator = {
+    A: string;
+    B: string;
+};
+export type mercenary = {
+    id: string;
+    type: MercenaryType;
+    templateId: string;
+    masterId: string;
+    skillAId: string;
+    skillAType: MercenarySkillType;
+    skillBId: string;
+    skillBType: MercenarySkillType;
 };
 export type mob = {
-    id: string;
-    monsterId: string;
-    star: number;
-    flow: string;
-};
-export type modifier = {
-    id: string;
-    formula: string;
-    belongToModifierListId: string;
-};
-export type modifier_list = {
-    id: string;
-    name: string;
-};
-export type monster = {
     id: string;
     /**
      * @zod.string.min(2, { message: "最少2个字符" })
      */
     name: string;
-    monsterType: MonsterType;
+    mobType: MobType;
+    difficultyFlag: MobDifficultyFlag;
     baseLv: number;
     experience: number;
+    partsExperience: number;
     address: string;
     element: Element;
     radius: number;
@@ -231,6 +308,7 @@ export type monster = {
     normalAttackResistanceModifier: number;
     physicalAttackResistanceModifier: number;
     magicalAttackResistanceModifier: number;
+    flow: string;
     difficultyOfTank: number;
     difficultyOfMelee: number;
     difficultyOfRanged: number;
@@ -241,19 +319,29 @@ export type monster = {
     createdAt: Timestamp;
     statisticsId: string;
     imageId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
+};
+export type mobTozone = {
+    A: string;
+    B: string;
+};
+export type npc = {
+    id: string;
+    name: string;
+    zoneId: string;
 };
 export type pet = {
     id: string;
     name: string;
+    maxLv: number;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
     statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
 };
 export type post = {
     id: string;
@@ -262,55 +350,78 @@ export type post = {
     updatedAt: Timestamp;
     createdById: string;
 };
-export type process = {
-    id: string;
-};
 export type rate = {
     id: string;
     rate: number;
-    userId: string;
+    accountId: string;
     statisticsId: string;
+};
+export type recipeIngredient = {
+    id: string;
+    type: string;
+    count: number;
+    itemId: string | null;
+    belongToItemId: string;
+};
+export type reward = {
+    id: string;
+    type: string;
+    value: number;
+    probability: number;
+    itemId: string | null;
+    taskId: string;
 };
 export type session = {
     id: string;
     sessionToken: string;
     expires: Timestamp;
-    userId: string;
+    accountId: string;
+};
+export type simulator = {
+    id: string;
+    name: string;
+    extraDetails: string | null;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    statisticsId: string;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
 };
 export type skill = {
     id: string;
-    skillTreeName: SkillTreeName;
+    skillTreeName: string;
+    posX: number;
+    posY: number;
+    tier: number;
     name: string;
     skillType: SkillType;
-    weaponElementDependencyType: WeaponElementDependencyType;
-    element: Element;
+    weaponElementDependencyType: boolean;
+    defaultElement: Element | null;
+    chargingType: SkillChargingType;
+    distanceResist: SkillDistanceResistType;
     skillDescription: string | null;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
     statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
-};
-export type skill_cost = {
-    id: string;
-    name: string | null;
-    costFormula: string;
-    skillEffectId: string | null;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
 };
 export type skill_effect = {
     id: string;
-    condition: string;
+    mainHand: string;
+    subHand: string;
+    armor: string;
     description: string;
-    actionBaseDurationFormula: string;
-    actionModifiableDurationFormula: string;
-    skillExtraActionType: SkillExtraActionType;
+    motionBaseDurationFormula: string;
+    motionModifiableDurationFormula: string;
     chantingBaseDurationFormula: string;
     chantingModifiableDurationFormula: string;
-    chargingBaseDurationFormula: string;
-    chargingModifiableDurationFormula: string;
+    ReservoirBaseDurationFormula: string;
+    ReservoirModifiableDurationFormula: string;
     skillStartupFramesFormula: string;
+    costFormula: string;
     belongToskillId: string;
 };
 export type skill_yield = {
@@ -322,54 +433,21 @@ export type skill_yield = {
     skillEffectId: string | null;
 };
 export type special_equipment = {
-    id: string;
     name: string;
-    modifierListId: string;
-    extraDetails: string;
-    dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    baseDef: number;
+    availability: AvailabilityType;
+    acquisitionMethod: AcquisitionMethodType;
+    modifiers: string[];
+    itemId: string;
 };
 export type statistics = {
     id: string;
-    monsterId: string | null;
-    crystalId: string | null;
-    mainWeaponId: string | null;
-    subWeaponId: string | null;
-    bodyArmorId: string | null;
-    additionalEquipmentId: string | null;
-    specialEquipmentId: string | null;
-    skillId: string | null;
-    petId: string | null;
-    consumableId: string | null;
-    characterId: string | null;
-    analyzerId: string | null;
 };
-export type step = {
+export type task = {
     id: string;
-    order: number;
-    skillId: string;
-    processId: string;
-};
-export type sub_weapon = {
-    id: string;
+    lv: number;
     name: string;
-    subWeaponType: SubWeaponType;
-    baseAtk: number;
-    refinement: number;
-    stability: number;
-    element: Element;
-    modifierListId: string;
-    extraDetails: string;
-    dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByUserId: string | null;
-    createdByUserId: string | null;
+    npcId: string;
 };
 export type usage_timestamp = {
     timestamp: Timestamp;
@@ -383,12 +461,6 @@ export type user = {
     image: string | null;
     userRole: UserRole;
 };
-export type user_create_data = {
-    userId: string;
-};
-export type user_update_data = {
-    userId: string;
-};
 export type verification_token = {
     identifier: string;
     token: string;
@@ -398,49 +470,101 @@ export type view_timestamp = {
     timestamp: Timestamp;
     statisticsId: string | null;
 };
+export type weapon = {
+    name: string;
+    type: string;
+    availability: AvailabilityType;
+    acquisitionMethod: AcquisitionMethodType;
+    baseAbi: number;
+    stability: number;
+    modifiers: string[];
+    colorA: number;
+    colorB: number;
+    colorC: number;
+    itemId: string;
+};
+export type weapon_enchantment_attributes = {
+    id: string;
+    name: string;
+    flow: unknown;
+    extraDetails: string | null;
+    dataSources: string | null;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
+    statisticsId: string;
+    updatedByAccountId: string | null;
+    createdByAccountId: string | null;
+};
+export type world = {
+    id: string;
+    name: string;
+};
+export type zone = {
+    id: string;
+    name: string | null;
+    linkZone: string[];
+    rewardNodes: number;
+    addressId: string;
+};
 export type DB = {
     _additional_equipmentTocrystal: additional_equipmentTocrystal;
-    _analyzerTomember: analyzerTomember;
-    _analyzerTomob: analyzerTomob;
-    _body_armorTocrystal: body_armorTocrystal;
+    _armorTocrystal: armorTocrystal;
+    _characterTocharacter_skill: characterTocharacter_skill;
     _characterTocombo: characterTocombo;
     _characterToconsumable: characterToconsumable;
-    _characterToskill: characterToskill;
-    _crystalTomain_weapon: crystalTomain_weapon;
+    _crystalTocustom_additional_equipment: crystalTocustom_additional_equipment;
+    _crystalTocustom_armor: crystalTocustom_armor;
+    _crystalTocustom_special_equipment: crystalTocustom_special_equipment;
+    _crystalTocustom_weapon: crystalTocustom_weapon;
     _crystalTospecial_equipment: crystalTospecial_equipment;
+    _crystalToweapon: crystalToweapon;
+    _imageToitem: imageToitem;
+    _memberTosimulator: memberTosimulator;
+    _mobTozone: mobTozone;
     account: account;
+    account_create_data: account_create_data;
+    account_update_data: account_update_data;
     additional_equipment: additional_equipment;
-    analyzer: analyzer;
-    body_armor: body_armor;
+    address: address;
+    armor: armor;
+    armor_enchantment_attributes: armor_enchantment_attributes;
     character: character;
+    character_skill: character_skill;
     combo: combo;
-    combo_step: combo_step;
     consumable: consumable;
     crystal: crystal;
+    custom_additional_equipment: custom_additional_equipment;
+    custom_armor: custom_armor;
+    custom_pet: custom_pet;
+    custom_special_equipment: custom_special_equipment;
+    custom_weapon: custom_weapon;
+    drop_item: drop_item;
     image: image;
-    main_weapon: main_weapon;
+    item: item;
+    material: material;
     member: member;
+    mercenary: mercenary;
     mob: mob;
-    modifier: modifier;
-    modifier_list: modifier_list;
-    monster: monster;
+    npc: npc;
     pet: pet;
     post: post;
-    process: process;
     rate: rate;
+    recipeIngredient: recipeIngredient;
+    reward: reward;
     session: session;
+    simulator: simulator;
     skill: skill;
-    skill_cost: skill_cost;
     skill_effect: skill_effect;
     skill_yield: skill_yield;
     special_equipment: special_equipment;
     statistics: statistics;
-    step: step;
-    sub_weapon: sub_weapon;
+    task: task;
     usage_timestamp: usage_timestamp;
     user: user;
-    user_create_data: user_create_data;
-    user_update_data: user_update_data;
     verification_token: verification_token;
     view_timestamp: view_timestamp;
+    weapon: weapon;
+    weapon_enchantment_attributes: weapon_enchantment_attributes;
+    world: world;
+    zone: zone;
 };

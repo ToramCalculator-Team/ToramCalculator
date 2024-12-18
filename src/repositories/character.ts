@@ -7,7 +7,7 @@ import { defaultAdditionalEquipment, additionalEquipmentSubRelations } from "./a
 import { bodyArmorSubRelations, defaultBodyArmor } from "./body_armor";
 import { consumableSubRelations, defaultConsumable } from "./consumable";
 import { defaultMainWeapon, mainWeaponSubRelations } from "./main_weapon";
-import { defaultModifierList, modifierListSubRelations } from "./modifier_list";
+import { defaultModifierList, modifierListSubRelations } from "./weaponEncAttrs";
 import { defaultPet, petSubRelations } from "./pet";
 import { defaultSpecialEquipment, specialEquipmentSubRelations } from "./special_equipment";
 import { defaultSubWeapon, subWeaponSubRelations } from "./sub_weapon";

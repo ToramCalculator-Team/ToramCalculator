@@ -1,6 +1,7 @@
 import { $Enums } from "@prisma/client";
 import { type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
+import { WeaponType } from "~/repositories/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,
@@ -233,8 +234,10 @@ export type SkillModifierType = keyof typeof SkillAttrEnum;
 export type AttrType = CharacterAttrType | MonsterAttrType | SkillModifierType;
 export type SourceName = AttrType | "SYSTEM";
 
+type MainHandWeaponType = WeaponType | "None";
+
 const weaponAbiT: Record<
-  $Enums.MainWeaponType,
+MainHandWeaponType,
   {
     baseHit: number;
     baseAspd: number;
@@ -246,7 +249,7 @@ const weaponAbiT: Record<
     >;
   }
 > = {
-  ONE_HAND_SWORD: {
+  OneHandSword: {
     baseHit: 0.25,
     baseAspd: 100,
     abi_Attr_Convert: {
@@ -278,7 +281,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  KATANA: {
+  Katana: {
     baseHit: 0.3,
     baseAspd: 200,
     abi_Attr_Convert: {
@@ -310,7 +313,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  TWO_HANDS_SWORD: {
+  TwoHandSword: {
     baseHit: 0.15,
     baseAspd: 50,
     abi_Attr_Convert: {
@@ -342,7 +345,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  BOW: {
+  Bow: {
     baseHit: 0.1,
     baseAspd: 75,
     abi_Attr_Convert: {
@@ -374,7 +377,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  BOWGUN: {
+  Bowgun: {
     baseHit: 0.05,
     baseAspd: 100,
     abi_Attr_Convert: {
@@ -406,7 +409,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  STAFF: {
+  Rod: {
     baseHit: 0.3,
     baseAspd: 60,
     abi_Attr_Convert: {
@@ -438,7 +441,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 1,
     weaAtk_Patk_Convert: 1,
   },
-  MAGIC_DEVICE: {
+  Magictool: {
     baseHit: 0.1,
     baseAspd: 90,
     abi_Attr_Convert: {
@@ -470,7 +473,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 1,
     weaAtk_Patk_Convert: 1,
   },
-  KNUCKLE: {
+  Knuckle: {
     baseHit: 0.1,
     baseAspd: 120,
     abi_Attr_Convert: {
@@ -502,7 +505,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0.5,
     weaAtk_Patk_Convert: 1,
   },
-  HALBERD: {
+  Halberd: {
     baseHit: 0.25,
     baseAspd: 20,
     abi_Attr_Convert: {
@@ -534,7 +537,7 @@ const weaponAbiT: Record<
     weaAtk_Matk_Convert: 0,
     weaAtk_Patk_Convert: 1,
   },
-  NO_WEAPON: {
+  None: {
     baseHit: 50,
     baseAspd: 1000,
     abi_Attr_Convert: {
@@ -786,7 +789,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Patk_Convert,
+        formula: weaponAbiT[character.mainWeapon.weaponType].weaAtk_Patk_Convert,
         originType: OriginType.baseValue,
       },
       {

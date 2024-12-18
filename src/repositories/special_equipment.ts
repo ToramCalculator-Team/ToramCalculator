@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, special_equipment } from "~/repositories/db/types";
 import { statisticsSubRelations, createStatistics, defaultStatistics } from "./statistics";
-import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
+import { createModifierList, defaultModifierList, modifierListSubRelations } from "./weaponEncAttrs";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations, defaultCrystal } from "./crystal";
 

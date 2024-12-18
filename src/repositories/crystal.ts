@@ -2,7 +2,6 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { crystal, DB } from "~/repositories/db/types";
 import { createStatistics, defaultStatistics, statisticsSubRelations } from "./statistics";
-import { createModifierList, defaultModifierList, modifierListSubRelations } from "./modifier_list";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Crystal = Awaited<ReturnType<typeof findCrystalById>>;
@@ -17,19 +16,15 @@ export function crystalSubRelations(eb: ExpressionBuilder<DB, "crystal">, id: Ex
         .whereRef("id", "=", "crystal.statisticsId")
         .selectAll("statistics")
         .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("statistics"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("modifier_list")
-        .whereRef("id", "=", "crystal.modifierListId")
-        .selectAll("modifier_list")
-        .select((subEb) => modifierListSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("modifierList"),
+    )
+      .$notNull()
+      .as("statistics"),
   ];
 }
 
 export async function findCrystalById(id: string) {
-  return await db.selectFrom("crystal")
+  return await db
+    .selectFrom("crystal")
     .where("crystal.id", "=", id)
     .selectAll("crystal")
     .select((eb) => crystalSubRelations(eb, eb.val(id)))
@@ -38,10 +33,10 @@ export async function findCrystalById(id: string) {
 
 export async function findCrystals() {
   return await db
-  .selectFrom("crystal")
-  .selectAll("crystal")
-  .select((eb) => crystalSubRelations(eb, eb.val("crystal.id")))
-  .execute();
+    .selectFrom("crystal")
+    .selectAll("crystal")
+    .select((eb) => crystalSubRelations(eb, eb.val("crystal.id")))
+    .execute();
 }
 
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
@@ -54,7 +49,7 @@ export async function createCrystal(newCrystal: NewCrystal) {
     const modifierList = await createModifierList(defaultModifierList);
     const statistics = await createStatistics(defaultStatistics);
     return { ...crystal, modifierList, statistics };
-  })
+  });
 }
 
 export async function deleteCrystal(id: string) {
