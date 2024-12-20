@@ -99,12 +99,12 @@ export enum CharacterAttrEnum {
   SHORT_RANGE_DAMAGE, // 近距离威力
   LONG_RANGE_DAMAGE, // 远距离威力
   STRONGER_AGAINST_NETURAL, // 对无属性增强
-  STRONGER_AGAINST_LIGHT, // 对光属性增强
-  STRONGER_AGAINST_DARK, // 对暗属性增强
-  STRONGER_AGAINST_WATER, // 对水属性增强
-  STRONGER_AGAINST_FIRE, // 对火属性增强
-  STRONGER_AGAINST_EARTH, // 对地属性增强
-  STRONGER_AGAINST_WIND, // 对风属性增强
+  STRONGER_AGAINST_Light, // 对光属性增强
+  STRONGER_AGAINST_Dark, // 对暗属性增强
+  STRONGER_AGAINST_Water, // 对水属性增强
+  STRONGER_AGAINST_Fire, // 对火属性增强
+  STRONGER_AGAINST_Earth, // 对地属性增强
+  STRONGER_AGAINST_Wind, // 对风属性增强
   TOTAL_DAMAGE, // 总伤害
   FINAL_DAMAGE, // 最终伤害
   PHYSICAL_STABILITY, // 稳定率
@@ -145,12 +145,12 @@ export enum CharacterAttrEnum {
   PHYSICAL_RESISTANCE, // 物理抗性
   MAGICAL_RESISTANCE, // 魔法抗性
   NEUTRAL_RESISTANCE, // 无属性抗性
-  LIGHT_RESISTANCE, // 光属性抗性
-  DARK_RESISTANCE, // 暗属性抗性
-  WATER_RESISTANCE, // 水属性抗性
-  FIRE_RESISTANCE, // 火属性抗性
-  EARTH_RESISTANCE, // 地属性抗性
-  WIND_RESISTANCE, // 风属性抗性
+  Light_RESISTANCE, // 光属性抗性
+  Dark_RESISTANCE, // 暗属性抗性
+  Water_RESISTANCE, // 水属性抗性
+  Fire_RESISTANCE, // 火属性抗性
+  Earth_RESISTANCE, // 地属性抗性
+  Wind_RESISTANCE, // 风属性抗性
   DODGE, // 回避
   AILMENT_RESISTANCE, // 异常抗性
   GUARD_POWER, // 格挡力

@@ -15,7 +15,7 @@ const statistics: ConvertToAllString<Statistics> = {
   usageTimestamps: "UsageTimestamps",
   viewTimestamps: "ViewTimestamps",
   rates: "Rates",
-  monsterId: "",
+  mobId: "",
   crystalId: "",
   mainWeaponId: "",
   subWeaponId: "",
@@ -26,7 +26,7 @@ const statistics: ConvertToAllString<Statistics> = {
   petId: "",
   consumableId: "",
   characterId: "",
-  analyzerId: ""
+  simulatorId: ""
 };
 
 const image: ConvertToAllString<Image> = {
@@ -66,14 +66,14 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "Home",
-      monsters: "Monsters",
+      mobs: "Mobs",
       skills: "Skills",
       equipments: "Equipments",
       crystals: "Crystas",
       pets: "Pets",
       items: "Items",
       character: "Character",
-      analyzer: "Combo",
+      simulator: "Combo",
     },
     errorPage: {
       tips: "You have no knowledge of the desert. Click the screen to return",
@@ -117,7 +117,7 @@ const dictionary: dictionary = {
         title: "Privacy",
         postVisibility: {
           title: "Post Visibility",
-          description: "Post Visibility includes: Character, Monstors, Crystas, Main Weapon, Sub Weapon, Body Armor, Additional Equipment, Special Equipment, Skills, Consumables, Combo, Analyzer.",
+          description: "Post Visibility includes: Character, Monstors, Crystas, Main Weapon, Sub Weapon, Body Armor, Additional Equipment, Special Equipment, Skills, Consumables, Combo, Simulator.",
           everyone: "Everyone",
           friends: "Friends",
           onlyMe: "Only Me"
@@ -153,10 +153,10 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "Can not find anything!",
       nullSearchResultTips: "Emmm..."
     },
-    monster: {
-      pageTitle: "Monster",
+    mob: {
+      pageTitle: "Mob",
       table: {
-        title: "Monsters Table",
+        title: "Mobs Table",
         description: "Emmm..............",
       },
       news: {
@@ -164,14 +164,14 @@ const dictionary: dictionary = {
       },
       augmented: "Show All Stars",
       canNotModify: "System Generated",
-      monsterDegreeOfDifficulty: {
+      mobDegreeOfDifficulty: {
         0: "☆☆☆☆",
         1: "★☆☆☆",
         2: "★★☆☆",
         3: "★★★☆",
         4: "★★★★",
       },
-      monsterForm: {
+      mobForm: {
         description:
           "When uploading fixed-point boss data, please use one-star data, and the system will automatically calculate the data for other star levels according to the rules.",
       },
@@ -188,8 +188,8 @@ const dictionary: dictionary = {
       pageTitle: "Skill",
       description: "Emmm..............",
     },
-    analyzer: {
-      pageTitle: "Analyzer",
+    simulator: {
+      pageTitle: "Simulator",
       description: "Emmm..............",
       modifiers: "Modifiers",
       dialogData: {
@@ -236,13 +236,13 @@ const dictionary: dictionary = {
         uAtk: "Unsheathe-Atk",
         stro: {
           selfName: "Stro",
-          LIGHT: "Strong against Light",
-          NO_ELEMENT: "Strong against No Element",
-          DARK: "Strong against Dark",
-          WATER: "Strong against Water",
-          FIRE: "Strong against Fire",
-          EARTH: "Strong against Earth",
-          WIND: "Strong against Wind",
+          Light: "Strong against Light",
+          Normal: "Strong against No Element",
+          Dark: "Strong against Dark",
+          Water: "Strong against Water",
+          Fire: "Strong against Fire",
+          Earth: "Strong against Earth",
+          Wind: "Strong against Wind",
         },
         total: "Total",
         final: "Final",
@@ -290,7 +290,7 @@ const dictionary: dictionary = {
       baseValue: "Base",
       staticModifiers: "StaticModifiers",
       dynamicModifiers: "DynamicModifiers",
-      analyzerPage: {
+      simulatorPage: {
         mobsConfig: {
           title: "Mobs Config",
         },
@@ -306,23 +306,23 @@ const dictionary: dictionary = {
   },
   db: {
     enums: {
-      MonsterType: {
+      MobType: {
         COMMON_BOSS: "Common Boss",
         COMMON_MINI_BOSS: "Common mini Boss",
         COMMON_MOBS: "Common Mobs",
         EVENT_BOSS: "Event Boss",
         EVENT_MINI_BOSS: "Event mini Boss",
         EVENT_MOBS: "Event Mobs",
-        selfName: "Monster Type",
+        selfName: "Mob Type",
       },
       Element: {
-        NO_ELEMENT: "No-Element",
-        DARK: "Dark",
-        EARTH: "Earth",
-        FIRE: "Fire",
-        LIGHT: "Light",
-        WATER: "Water",
-        WIND: "Wind",
+        Normal: "No-Element",
+        Dark: "Dark",
+        Earth: "Earth",
+        Fire: "Fire",
+        Light: "Light",
+        Water: "Water",
+        Wind: "Wind",
         selfName: "Element",
       },
       SpecialAbiType: {
@@ -360,7 +360,7 @@ const dictionary: dictionary = {
       },
       BodyArmorType: {
         NORMAL: "Normal",
-        LIGHT: "Light",
+        Light: "Light",
         HEAVY: "Heavy",
         selfName: "Body Armor Type",
       },
@@ -424,11 +424,11 @@ const dictionary: dictionary = {
       selfName: "Enum",
     },
     models: {
-      monster: {
-        selfName: "Monster",
+      mob: {
+        selfName: "Mob",
         id: "ID",
         name: "Name",
-        monsterType: "Type",
+        mobType: "Type",
         baseLv: "Lv",
         experience: "Exp",
         address: "Address",
@@ -452,8 +452,8 @@ const dictionary: dictionary = {
         possibilityOfRunningAround: "PossibilityOfRunningAround",
         extraDetails: "SpecialBehavior",
         dataSources: "DataSources",
-        createdByUserId: "CreatedByUserId",
-        updatedByUserId: "UpdatedByUserId",
+        createdByAccountId: "CreatedByUserId",
+        updatedByAccountId: "UpdatedByUserId",
         createdAt: "CreatedAt",
         updatedAt: "UpdatedAt",
         statistics: statistics,
@@ -471,8 +471,8 @@ const dictionary: dictionary = {
         modifierListId: "",
         extraDetails: "SpecialBehavior",
         dataSources: "DataSources",
-        createdByUserId: "CreatedByUserId",
-        updatedByUserId: "UpdatedByUserId",
+        createdByAccountId: "CreatedByUserId",
+        updatedByAccountId: "UpdatedByUserId",
         createdAt: "CreatedAt",
         updatedAt: "UpdatedAt",
         statistics: statistics,
@@ -490,8 +490,8 @@ const dictionary: dictionary = {
         skillDescription: "",
         extraDetails: "SpecialBehavior",
         dataSources: "DataSources",
-        createdByUserId: "CreatedByUserId",
-        updatedByUserId: "UpdatedByUserId",
+        createdByAccountId: "CreatedByUserId",
+        updatedByAccountId: "UpdatedByUserId",
         createdAt: "CreatedAt",
         updatedAt: "UpdatedAt",
         statistics: statistics,
@@ -566,8 +566,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -587,8 +587,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -607,8 +607,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -625,8 +625,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -642,8 +642,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -663,8 +663,8 @@ const dictionary: dictionary = {
           name: "",
           extraDetails: "SpecialBehavior",
           dataSources: "DataSources",
-          createdByUserId: "CreatedByUserId",
-          updatedByUserId: "UpdatedByUserId",
+          createdByAccountId: "CreatedByUserId",
+          updatedByAccountId: "UpdatedByUserId",
           createdAt: "CreatedAt",
           updatedAt: "UpdatedAt",
           statistics: statistics,
@@ -674,8 +674,8 @@ const dictionary: dictionary = {
         modifierList: modifierList,
         modifierListId: "",
         extraDetails: "SpecialBehavior",
-        createdByUserId: "CreatedByUserId",
-        updatedByUserId: "UpdatedByUserId",
+        createdByAccountId: "CreatedByUserId",
+        updatedByAccountId: "UpdatedByUserId",
         createdAt: "CreatedAt",
         updatedAt: "UpdatedAt",
         statistics: statistics,

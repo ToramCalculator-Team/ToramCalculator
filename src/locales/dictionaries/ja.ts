@@ -1,14 +1,6 @@
 import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Image } from "~/repositories/image";
-
-const modifierList: ConvertToAllString<ModifierList> = {
-  selfName: "補正項目リスト",
-  name: "名前",
-  modifiers: "補正項目",
-  id: "ID",
-};
 
 const statistics: ConvertToAllString<Statistics> = {
   selfName: "統計情報",
@@ -16,29 +8,13 @@ const statistics: ConvertToAllString<Statistics> = {
   rates: "評価",
   usageTimestamps: "使用記録",
   viewTimestamps: "閲覧記録",
-  monsterId: "",
-  crystalId: "",
-  mainWeaponId: "",
-  subWeaponId: "",
-  bodyArmorId: "",
-  additionalEquipmentId: "",
-  specialEquipmentId: "",
-  skillId: "",
-  petId: "",
-  consumableId: "",
-  characterId: "",
-  analyzerId: "",
 };
 
 const image: ConvertToAllString<Image> = {
   selfName: "画像",
   id: "ID",
   dataUrl: "DataUrl",
-  main_weaponId: "",
-  sub_weaponId: "",
-  body_armorId: "",
-  additional_equipmentId: "",
-  special_equipmentId: ""
+  npcId: "",
 }
 
 const dictionary: dictionary = {
@@ -67,14 +43,14 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "ホーム",
-      monsters: "モンスター",
+      mobs: "モンスター",
       skills: "スキル",
       equipments: "装備",
       crystals: "クリスタル",
       pets: "ペット",
       items: "消耗品",
       character: "キャラクター",
-      analyzer: "コンボ分析",
+      simulator: "コンボ分析",
     },
     errorPage: {
       tips: "あなたは知識の荒野にいるが、クリックして戻ります",
@@ -158,7 +134,7 @@ const dictionary: dictionary = {
       nullSearchResultTips:
         "強くなる旅には困難が待ち受け、知識を求める道には障害物が散らばっています\nしかし、ここにはありません\n検索結果にないということは、存在しないということです",
     },
-    monster: {
+    mob: {
       pageTitle: "モンスター",
       table: {
         title: "モンスター",
@@ -169,14 +145,14 @@ const dictionary: dictionary = {
       },
       augmented: "すべての星級データを表示",
       canNotModify: "システムによって生成され、修正不可",
-      monsterDegreeOfDifficulty: {
+      mobDegreeOfDifficulty: {
         0: "ゼロ星",
         1: "一星",
         2: "二星",
         3: "三星",
         4: "四星",
       },
-      monsterForm: {
+      mobForm: {
         description:
           "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
       },
@@ -193,7 +169,7 @@ const dictionary: dictionary = {
       pageTitle: "スキル情報テーブル",
       description: "このページは開発中です。使用しないでください。",
     },
-    analyzer: {
+    simulator: {
       pageTitle: "プロセス計算機",
       description: "開発中です。使用しないでください。",
       modifiers: "補正項目",
@@ -240,13 +216,13 @@ const dictionary: dictionary = {
         weaponMatkT: "武器攻撃変換率（魔法）",
         uAtk: "抜刀攻撃",
         stro: {
-          LIGHT: "",
-          NO_ELEMENT: "",
-          DARK: "",
-          WATER: "",
-          FIRE: "",
-          EARTH: "",
-          WIND: "",
+          Light: "",
+          Normal: "",
+          Dark: "",
+          Water: "",
+          Fire: "",
+          Earth: "",
+          Wind: "",
           selfName: "攻撃タイプ",
         },
         total: "総ダメージ上昇",
@@ -295,7 +271,7 @@ const dictionary: dictionary = {
       baseValue: "基本値",
       staticModifiers: "常時補正",
       dynamicModifiers: "一時補正",
-      analyzerPage: {
+      simulatorPage: {
         mobsConfig: {
           title: "モンスター設定",
         },
@@ -311,31 +287,28 @@ const dictionary: dictionary = {
   },
   db: {
     enums: {
-      MonsterType: {
-        COMMON_BOSS: "固定ボス",
-        COMMON_MINI_BOSS: "野外ボス",
-        COMMON_MOBS: "雑魚",
-        EVENT_BOSS: "イベント固定ボス",
-        EVENT_MINI_BOSS: "イベント野外ボス",
-        EVENT_MOBS: "イベント雑魚",
+      MobType: {
+        Boss: "固定ボス",
+        MiniBoss: "野外ボス",
+        Mob: "雑魚",
         selfName: "モンスタータイプ",
       },
       Element: {
-        NO_ELEMENT: "無属性",
-        DARK: "闇属性",
-        EARTH: "地属性",
-        FIRE: "火属性",
-        LIGHT: "光属性",
-        WATER: "水属性",
-        WIND: "風属性",
+        Normal: "無属性",
+        Dark: "闇属性",
+        Earth: "地属性",
+        Fire: "火属性",
+        Light: "光属性",
+        Water: "水属性",
+        Wind: "風属性",
         selfName: "属性",
       },
       SpecialAbiType: {
-        NOSPECIALABI: "なし",
-        LUK: "運",
-        CRI: "クリティカル",
-        TEC: "テクニック",
-        MEN: "異常耐性",
+        None: "なし",
+        Luk: "運",
+        Cri: "クリティカル",
+        Tec: "テクニック",
+        Men: "異常耐性",
         selfName: "特殊能力値タイプ",
       },
       MainWeaponType: {
@@ -365,7 +338,7 @@ const dictionary: dictionary = {
       },
       BodyArmorType: {
         NORMAL: "通常",
-        LIGHT: "軽装",
+        Light: "軽装",
         HEAVY: "重装",
         selfName: "防具タイプ",
       },
@@ -378,8 +351,8 @@ const dictionary: dictionary = {
         selfName: "クリスタルタイプ",
       },
       SkillType: {
-        ACTIVE_SKILL: "アクティブスキル",
-        PASSIVE_SKILL: "パッシブスキル",
+        Active: "アクティブスキル",
+        Passive: "パッシブスキル",
         selfName: "スキルタイプ",
       },
       SkillTreeName: {
@@ -429,11 +402,11 @@ const dictionary: dictionary = {
       selfName: "列挙型",
     },
     models: {
-      monster: {
+      mob: {
         selfName: "モンスター",
         id: "ID",
         name: "名前",
-        monsterType: "タイプ",
+        mobType: "タイプ",
         baseLv: "レベル",
         experience: "経験値",
         address: "所在地",
@@ -457,8 +430,8 @@ const dictionary: dictionary = {
         possibilityOfRunningAround: "移動頻度",
         extraDetails: "追加詳細",
         dataSources: "データソース",
-        createdByUserId: "作成者ID",
-        updatedByUserId: "更新者ID",
+        createdByAccountId: "作成者ID",
+        updatedByAccountId: "更新者ID",
         createdAt: "作成日時",
         updatedAt: "更新日時",
         statistics: statistics,
@@ -476,8 +449,8 @@ const dictionary: dictionary = {
         modifierListId: "補正リストID",
         extraDetails: "追加詳細",
         dataSources: "データソース",
-        createdByUserId: "作成者ID",
-        updatedByUserId: "更新者ID",
+        createdByAccountId: "作成者ID",
+        updatedByAccountId: "更新者ID",
         createdAt: "作成日時",
         updatedAt: "更新日時",
         statistics: statistics,
@@ -495,8 +468,8 @@ const dictionary: dictionary = {
         skillDescription: "スキル説明",
         extraDetails: "追加詳細",
         dataSources: "データソース",
-        createdByUserId: "作成者ID",
-        updatedByUserId: "更新者ID",
+        createdByAccountId: "作成者ID",
+        updatedByAccountId: "更新者ID",
         createdAt: "作成日時",
         updatedAt: "更新日時",
         statistics: statistics,
@@ -571,8 +544,8 @@ const dictionary: dictionary = {
           modifierListId: "補正リストID",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -592,8 +565,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -612,8 +585,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -630,8 +603,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -647,8 +620,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -668,8 +641,8 @@ const dictionary: dictionary = {
           name: "名前",
           extraDetails: "追加詳細",
           dataSources: "データソース",
-          createdByUserId: "作成者ID",
-          updatedByUserId: "更新者ID",
+          createdByAccountId: "作成者ID",
+          updatedByAccountId: "更新者ID",
           createdAt: "作成日時",
           updatedAt: "更新日時",
           statistics: statistics,
@@ -679,8 +652,8 @@ const dictionary: dictionary = {
         modifierList: modifierList,
         modifierListId: "追加補正ID",
         extraDetails: "追加詳細",
-        createdByUserId: "作成者ID",
-        updatedByUserId: "更新者ID",
+        createdByAccountId: "作成者ID",
+        updatedByAccountId: "更新者ID",
         createdAt: "作成日時",
         updatedAt: "更新日時",
         statistics: statistics,

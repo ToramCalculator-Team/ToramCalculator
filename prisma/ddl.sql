@@ -2,37 +2,25 @@
 CREATE TYPE "UserRole" AS ENUM ('USER', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "Element" AS ENUM ('NO_ELEMENT', 'LIGHT', 'DARK', 'WATER', 'FIRE', 'EARTH', 'WIND');
+CREATE TYPE "Element" AS ENUM ('Normal', 'Light', 'Dark', 'Water', 'Fire', 'Earth', 'Wind');
 
 -- CreateEnum
-CREATE TYPE "MonsterType" AS ENUM ('COMMON_MOBS', 'COMMON_MINI_BOSS', 'COMMON_BOSS', 'EVENT_MOBS', 'EVENT_MINI_BOSS', 'EVENT_BOSS');
+CREATE TYPE "MobType" AS ENUM ('Mob', 'MiniBoss', 'Boss');
 
 -- CreateEnum
-CREATE TYPE "ModifiersName" AS ENUM ('STR', 'INT', 'VIT', 'AGI', 'DEX', 'MAX_MP', 'AGGRO', 'WEAPON_RANGE', 'HP_REGEN', 'MP_REGEN', 'PHYSICAL_ATK', 'MAGICAL_ATK', 'WEAPON_ATK', 'UNSHEATHE_ATK', 'PHYSICAL_PIERCE', 'MAGICAL_PIERCE', 'CRITICAL_RATE', 'CRITICAL_DAMAGE', 'MAGIC_CRT_CONVERSION_RATE', 'MAGIC_CRT_DAMAGE_CONVERSION_RATE', 'SHORT_RANGE_DAMAGE', 'LONG_RANGE_DAMAGE', 'STRONGER_AGAINST_NETURAL', 'STRONGER_AGAINST_LIGHT', 'STRONGER_AGAINST_DARK', 'STRONGER_AGAINST_WATER', 'STRONGER_AGAINST_FIRE', 'STRONGER_AGAINST_EARTH', 'STRONGER_AGAINST_WIND', 'STABILITY', 'ACCURACY', 'ADDITIONAL_PHYSICS', 'ADDITIONAL_MAGIC', 'ANTICIPATE', 'GUARD_BREAK', 'REFLECT', 'ABSOLUTA_ACCURACY', 'ATK_UP_STR', 'ATK_UP_INT', 'ATK_UP_VIT', 'ATK_UP_AGI', 'ATK_UP_DEX', 'MATK_UP_STR', 'MATK_UP_INT', 'MATK_UP_VIT', 'MATK_UP_AGI', 'MATK_UP_DEX', 'ATK_DOWN_STR', 'ATK_DOWN_INT', 'ATK_DOWN_VIT', 'ATK_DOWN_AGI', 'ATK_DOWN_DEX', 'MATK_DOWN_STR', 'MATK_DOWN_INT', 'MATK_DOWN_VIT', 'MATK_DOWN_AGI', 'MATK_DOWN_DEX', 'MAX_HP', 'PHYSICAL_DEF', 'MAGICAL_DEF', 'PHYSICAL_RESISTANCE', 'MAGICAL_RESISTANCE', 'NEUTRAL_RESISTANCE', 'LIGHT_RESISTANCE', 'DARK_RESISTANCE', 'WATER_RESISTANCE', 'FIRE_RESISTANCE', 'EARTH_RESISTANCE', 'WIND_RESISTANCE', 'DODGE', 'AILMENT_RESISTANCE', 'BASE_GUARD_POWER', 'GUARD_POWER', 'BASE_GUARD_RECHARGE', 'GUARD_RECHANGE', 'EVASION_RECHARGE', 'PHYSICAL_BARRIER', 'MAGICAL_BARRIER', 'FRACTIONAL_BARRIER', 'BARRIER_COOLDOWN', 'REDUCE_DMG_FLOOR', 'REDUCE_DMG_METEOR', 'REDUCE_DMG_PLAYER_EPICENTER', 'REDUCE_DMG_FOE_EPICENTER', 'REDUCE_DMG_BOWLING', 'REDUCE_DMG_BULLET', 'REDUCE_DMG_STRAIGHT_LINE', 'REDUCE_DMG_CHARGE', 'ABSOLUTE_DODGE', 'ASPD', 'CSPD', 'MSPD', 'DROP_RATE', 'REVIVE_TIME', 'FLINCH_UNAVAILABLE', 'TUMBLE_UNAVAILABLE', 'STUN_UNAVAILABLE', 'INVINCIBLE_AID', 'EXP_RATE', 'PET_EXP', 'ITEM_COOLDOWN', 'RECOIL_DAMAGE', 'GEM_POWDER_DROP');
+CREATE TYPE "SpecialAbiType" AS ENUM ('None', 'Luk', 'Cri', 'Tec', 'Men');
 
 -- CreateEnum
-CREATE TYPE "SpecialAbiType" AS ENUM ('NOSPECIALABI', 'LUK', 'CRI', 'TEC', 'MEN');
+CREATE TYPE "ArmorType" AS ENUM ('Normal', 'Light', 'Heavy');
 
 -- CreateEnum
-CREATE TYPE "CrystalType" AS ENUM ('GENERAL', 'WEAPONCRYSTAL', 'BODYCRYSTAL', 'ADDITIONALCRYSTAL', 'SPECIALCRYSTAL');
+CREATE TYPE "SkillType" AS ENUM ('Active', 'Passive');
 
 -- CreateEnum
-CREATE TYPE "MainWeaponType" AS ENUM ('NO_WEAPON', 'ONE_HAND_SWORD', 'TWO_HANDS_SWORD', 'BOW', 'BOWGUN', 'STAFF', 'MAGIC_DEVICE', 'KNUCKLE', 'HALBERD', 'KATANA');
+CREATE TYPE "SkillTargetType" AS ENUM ('None', 'Self', 'Player', 'Enemy');
 
 -- CreateEnum
-CREATE TYPE "SubWeaponType" AS ENUM ('NO_WEAPON', 'ONE_HAND_SWORD', 'MAGIC_DEVICE', 'KNUCKLE', 'KATANA', 'ARROW', 'DAGGER', 'NINJUTSUSCROLL', 'SHIELD');
-
--- CreateEnum
-CREATE TYPE "BodyArmorType" AS ENUM ('NORMAL', 'LIGHT', 'HEAVY');
-
--- CreateEnum
-CREATE TYPE "SkillTreeName" AS ENUM ('BLADE', 'SHOT', 'MAGIC', 'MARTIAL', 'DUALSWORD', 'HALBERD', 'MONONOFU', 'CRUSHER', 'SPRITE');
-
--- CreateEnum
-CREATE TYPE "SkillType" AS ENUM ('ACTIVE_SKILL', 'PASSIVE_SKILL');
-
--- CreateEnum
-CREATE TYPE "SkillExtraActionType" AS ENUM ('None', 'Chanting', 'Charging');
+CREATE TYPE "SkillChargingType" AS ENUM ('None', 'Chanting', 'Reservoir');
 
 -- CreateEnum
 CREATE TYPE "YieldType" AS ENUM ('PersistentEffect', 'ImmediateEffect');
@@ -41,13 +29,49 @@ CREATE TYPE "YieldType" AS ENUM ('PersistentEffect', 'ImmediateEffect');
 CREATE TYPE "DurationType" AS ENUM ('FRAME', 'SKILL', 'UNLIMITED');
 
 -- CreateEnum
-CREATE TYPE "WeaponElementDependencyType" AS ENUM ('EXTEND', 'UNEXTEND');
+CREATE TYPE "MobDifficultyFlag" AS ENUM ('Easy', 'Normal', 'Hard', 'Lunatic', 'Ultimate');
+
+-- CreateEnum
+CREATE TYPE "MobDamageType" AS ENUM ('Physics', 'Magic', 'CurrentRate', 'MaxRate');
 
 -- CreateEnum
 CREATE TYPE "ComboType" AS ENUM ('NULL');
 
 -- CreateEnum
 CREATE TYPE "CharacterType" AS ENUM ('Tank', 'Mage', 'Ranger', 'Marksman');
+
+-- CreateEnum
+CREATE TYPE "AddressType" AS ENUM ('Normal', 'Limited');
+
+-- CreateEnum
+CREATE TYPE "MaterialType" AS ENUM ('Metal', 'Cloth', 'Beast', 'Wood', 'Drug', 'Magic');
+
+-- CreateEnum
+CREATE TYPE "PartBreakReward" AS ENUM ('None', 'CanDrop', 'DropUp');
+
+-- CreateEnum
+CREATE TYPE "MobPart" AS ENUM ('A', 'B', 'C');
+
+-- CreateEnum
+CREATE TYPE "AvailabilityType" AS ENUM ('permanent', 'event');
+
+-- CreateEnum
+CREATE TYPE "AcquisitionMethodType" AS ENUM ('Drop', 'Craft');
+
+-- CreateEnum
+CREATE TYPE "SkillDistanceResistType" AS ENUM ('None', 'Long', 'Short', 'Both');
+
+-- CreateEnum
+CREATE TYPE "Persona" AS ENUM ('Fervent', 'Intelligent', 'Mild', 'Swift', 'Justice', 'Devoted', 'Impulsive', 'Calm', 'Sly', 'Timid', 'Brave', 'Active', 'Sturdy', 'Steady', 'Max');
+
+-- CreateEnum
+CREATE TYPE "PetType" AS ENUM ('AllTrades', 'PhysicalAttack', 'MagicAttack', 'PhysicalDefense', 'MagicDefensem', 'Avoidance', 'Hit', 'SkillsEnhancement', 'Genius');
+
+-- CreateEnum
+CREATE TYPE "MercenaryType" AS ENUM ('Tank', 'Dps');
+
+-- CreateEnum
+CREATE TYPE "MercenarySkillType" AS ENUM ('Active', 'Passive');
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -74,7 +98,7 @@ CREATE TABLE "account" (
     "scope" TEXT,
     "id_token" TEXT,
     "session_state" TEXT,
-    "userId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
 
     CONSTRAINT "account_pkey" PRIMARY KEY ("id")
 );
@@ -84,7 +108,7 @@ CREATE TABLE "session" (
     "id" TEXT NOT NULL,
     "sessionToken" TEXT NOT NULL,
     "expires" TIMESTAMP(3) NOT NULL,
-    "userId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
 
     CONSTRAINT "session_pkey" PRIMARY KEY ("id")
 );
@@ -108,26 +132,126 @@ CREATE TABLE "post" (
 );
 
 -- CreateTable
-CREATE TABLE "user_create_data" (
-    "userId" TEXT NOT NULL,
+CREATE TABLE "account_create_data" (
+    "accountId" TEXT NOT NULL,
 
-    CONSTRAINT "user_create_data_pkey" PRIMARY KEY ("userId")
+    CONSTRAINT "account_create_data_pkey" PRIMARY KEY ("accountId")
 );
 
 -- CreateTable
-CREATE TABLE "user_update_data" (
-    "userId" TEXT NOT NULL,
+CREATE TABLE "account_update_data" (
+    "accountId" TEXT NOT NULL,
 
-    CONSTRAINT "user_update_data_pkey" PRIMARY KEY ("userId")
+    CONSTRAINT "account_update_data_pkey" PRIMARY KEY ("accountId")
 );
 
 -- CreateTable
-CREATE TABLE "monster" (
+CREATE TABLE "world" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "monsterType" "MonsterType" NOT NULL,
+
+    CONSTRAINT "world_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "address" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" "AddressType" NOT NULL,
+    "x" INTEGER NOT NULL,
+    "y" INTEGER NOT NULL,
+    "worldId" TEXT NOT NULL,
+
+    CONSTRAINT "address_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "zone" (
+    "id" TEXT NOT NULL,
+    "name" TEXT,
+    "linkZone" TEXT[],
+    "rewardNodes" INTEGER NOT NULL,
+    "addressId" TEXT NOT NULL,
+
+    CONSTRAINT "zone_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "npc" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "zoneId" TEXT NOT NULL,
+
+    CONSTRAINT "npc_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "item" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "dataSources" TEXT NOT NULL,
+    "extraDetails" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "statisticsId" TEXT NOT NULL,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
+
+    CONSTRAINT "item_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "recipeIngredient" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "count" INTEGER NOT NULL,
+    "itemId" TEXT,
+    "belongToItemId" TEXT NOT NULL,
+
+    CONSTRAINT "recipeIngredient_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "task" (
+    "id" TEXT NOT NULL,
+    "lv" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "npcId" TEXT NOT NULL,
+
+    CONSTRAINT "task_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "reward" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "value" INTEGER NOT NULL,
+    "probability" INTEGER NOT NULL,
+    "itemId" TEXT,
+    "taskId" TEXT NOT NULL,
+
+    CONSTRAINT "reward_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "material" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "material" "MaterialType" NOT NULL,
+    "ptValue" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL,
+
+    CONSTRAINT "material_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "mob" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "mobType" "MobType" NOT NULL,
     "baseLv" INTEGER NOT NULL,
     "experience" INTEGER NOT NULL,
+    "partsExperience" INTEGER NOT NULL,
     "address" TEXT NOT NULL,
     "element" "Element" NOT NULL,
     "radius" INTEGER NOT NULL,
@@ -143,6 +267,7 @@ CREATE TABLE "monster" (
     "normalAttackResistanceModifier" INTEGER NOT NULL,
     "physicalAttackResistanceModifier" INTEGER NOT NULL,
     "magicalAttackResistanceModifier" INTEGER NOT NULL,
+    "flow" TEXT NOT NULL,
     "difficultyOfTank" INTEGER NOT NULL,
     "difficultyOfMelee" INTEGER NOT NULL,
     "difficultyOfRanged" INTEGER NOT NULL,
@@ -153,187 +278,241 @@ CREATE TABLE "monster" (
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
     "imageId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
-    CONSTRAINT "monster_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "mob_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "modifier" (
+CREATE TABLE "drop_item" (
     "id" TEXT NOT NULL,
-    "formula" TEXT NOT NULL,
-    "belongToModifierListId" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "probability" INTEGER NOT NULL,
+    "relatedPart" "MobPart" NOT NULL,
+    "relatedPartInfo" TEXT NOT NULL,
+    "breakReward" "PartBreakReward" NOT NULL,
+    "dropById" TEXT NOT NULL,
 
-    CONSTRAINT "modifier_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "drop_item_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "modifier_list" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-
-    CONSTRAINT "modifier_list_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "crystal" (
+CREATE TABLE "weapon_enchantment_attributes" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "crystalType" "CrystalType" NOT NULL,
-    "front" INTEGER NOT NULL,
-    "modifierListId" TEXT NOT NULL,
+    "flow" JSONB NOT NULL,
     "extraDetails" TEXT,
     "dataSources" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
-    CONSTRAINT "crystal_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "weapon_enchantment_attributes_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "main_weapon" (
+CREATE TABLE "armor_enchantment_attributes" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "mainWeaponType" "MainWeaponType" NOT NULL,
-    "baseAtk" INTEGER NOT NULL,
-    "refinement" INTEGER NOT NULL,
-    "stability" INTEGER NOT NULL,
-    "element" "Element" NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
+    "flow" JSONB NOT NULL,
+    "extraDetails" TEXT,
+    "dataSources" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
-    CONSTRAINT "main_weapon_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "armor_enchantment_attributes_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "sub_weapon" (
+CREATE TABLE "crystal" (
+    "name" TEXT NOT NULL,
+    "crystalType" TEXT NOT NULL,
+    "modifiers" TEXT[],
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "crystal_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "weapon" (
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "availability" "AvailabilityType" NOT NULL,
+    "acquisitionMethod" "AcquisitionMethodType" NOT NULL,
+    "baseAbi" INTEGER NOT NULL,
+    "stability" INTEGER NOT NULL,
+    "modifiers" TEXT[],
+    "colorA" INTEGER NOT NULL,
+    "colorB" INTEGER NOT NULL,
+    "colorC" INTEGER NOT NULL,
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "weapon_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "custom_weapon" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "subWeaponType" "SubWeaponType" NOT NULL,
-    "baseAtk" INTEGER NOT NULL,
+    "extraAbi" INTEGER NOT NULL,
+    "templateId" TEXT NOT NULL,
     "refinement" INTEGER NOT NULL,
-    "stability" INTEGER NOT NULL,
-    "element" "Element" NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
+    "enchantmentAttributesId" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "extraDetails" TEXT NOT NULL,
 
-    CONSTRAINT "sub_weapon_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "custom_weapon_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "body_armor" (
-    "id" TEXT NOT NULL,
+CREATE TABLE "armor" (
     "name" TEXT NOT NULL,
-    "bodyArmorType" "BodyArmorType" NOT NULL,
-    "refinement" INTEGER NOT NULL,
     "baseDef" INTEGER NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
+    "availability" "AvailabilityType" NOT NULL,
+    "acquisitionMethod" "AcquisitionMethodType" NOT NULL,
+    "modifiers" TEXT[],
+    "colorA" INTEGER NOT NULL,
+    "colorB" INTEGER NOT NULL,
+    "colorC" INTEGER NOT NULL,
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "armor_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "custom_armor" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "def" INTEGER NOT NULL,
+    "armorType" "ArmorType" NOT NULL,
+    "templateId" TEXT NOT NULL,
+    "refinement" INTEGER NOT NULL,
+    "enchantmentAttributesId" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "extraDetails" TEXT NOT NULL,
 
-    CONSTRAINT "body_armor_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "custom_armor_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "additional_equipment" (
+    "name" TEXT NOT NULL,
+    "baseDef" INTEGER NOT NULL,
+    "availability" "AvailabilityType" NOT NULL,
+    "acquisitionMethod" "AcquisitionMethodType" NOT NULL,
+    "modifiers" TEXT[],
+    "colorA" INTEGER NOT NULL,
+    "colorB" INTEGER NOT NULL,
+    "colorC" INTEGER NOT NULL,
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "additional_equipment_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "custom_additional_equipment" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "def" INTEGER NOT NULL,
+    "templateId" TEXT NOT NULL,
     "refinement" INTEGER NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "extraDetails" TEXT NOT NULL,
 
-    CONSTRAINT "additional_equipment_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "custom_additional_equipment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "special_equipment" (
+    "name" TEXT NOT NULL,
+    "baseDef" INTEGER NOT NULL,
+    "availability" "AvailabilityType" NOT NULL,
+    "acquisitionMethod" "AcquisitionMethodType" NOT NULL,
+    "modifiers" TEXT[],
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "special_equipment_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "custom_special_equipment" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
+    "def" INTEGER NOT NULL,
+    "templateId" TEXT NOT NULL,
+    "refinement" INTEGER NOT NULL,
+    "masterId" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "extraDetails" TEXT NOT NULL,
 
-    CONSTRAINT "special_equipment_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "custom_special_equipment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "skill" (
     "id" TEXT NOT NULL,
-    "skillTreeName" "SkillTreeName" NOT NULL,
+    "skillTreeName" TEXT NOT NULL,
+    "posX" INTEGER NOT NULL,
+    "posY" INTEGER NOT NULL,
+    "tier" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "skillType" "SkillType" NOT NULL,
-    "weaponElementDependencyType" "WeaponElementDependencyType" NOT NULL,
-    "element" "Element" NOT NULL,
+    "weaponElementDependencyType" BOOLEAN NOT NULL,
+    "defaultElement" "Element",
+    "chargingType" "SkillChargingType" NOT NULL,
+    "distanceResist" "SkillDistanceResistType" NOT NULL,
     "skillDescription" TEXT,
     "extraDetails" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
     CONSTRAINT "skill_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "skill_effect" (
+CREATE TABLE "character_skill" (
     "id" TEXT NOT NULL,
-    "condition" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "actionBaseDurationFormula" TEXT NOT NULL,
-    "actionModifiableDurationFormula" TEXT NOT NULL,
-    "skillExtraActionType" "SkillExtraActionType" NOT NULL,
-    "chantingBaseDurationFormula" TEXT NOT NULL,
-    "chantingModifiableDurationFormula" TEXT NOT NULL,
-    "chargingBaseDurationFormula" TEXT NOT NULL,
-    "chargingModifiableDurationFormula" TEXT NOT NULL,
-    "skillStartupFramesFormula" TEXT NOT NULL,
-    "belongToskillId" TEXT NOT NULL,
+    "lv" INTEGER NOT NULL,
+    "templateId" TEXT NOT NULL,
 
-    CONSTRAINT "skill_effect_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "character_skill_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "skill_cost" (
+CREATE TABLE "skill_effect" (
     "id" TEXT NOT NULL,
-    "name" TEXT,
+    "mainHand" TEXT NOT NULL,
+    "subHand" TEXT NOT NULL,
+    "armor" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "motionBaseDurationFormula" TEXT NOT NULL,
+    "motionModifiableDurationFormula" TEXT NOT NULL,
+    "chantingBaseDurationFormula" TEXT NOT NULL,
+    "chantingModifiableDurationFormula" TEXT NOT NULL,
+    "ReservoirBaseDurationFormula" TEXT NOT NULL,
+    "ReservoirModifiableDurationFormula" TEXT NOT NULL,
+    "skillStartupFramesFormula" TEXT NOT NULL,
     "costFormula" TEXT NOT NULL,
-    "skillEffectId" TEXT,
+    "belongToskillId" TEXT NOT NULL,
 
-    CONSTRAINT "skill_cost_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "skill_effect_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -352,29 +531,46 @@ CREATE TABLE "skill_yield" (
 CREATE TABLE "pet" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "maxLv" INTEGER NOT NULL,
     "extraDetails" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
     CONSTRAINT "pet_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "custom_pet" (
+    "id" TEXT NOT NULL,
+    "templateId" TEXT NOT NULL,
+    "pStr" INTEGER NOT NULL,
+    "pInt" INTEGER NOT NULL,
+    "pVit" INTEGER NOT NULL,
+    "pAgi" INTEGER NOT NULL,
+    "pDex" INTEGER NOT NULL,
+    "str" INTEGER NOT NULL,
+    "int" INTEGER NOT NULL,
+    "vit" INTEGER NOT NULL,
+    "agi" INTEGER NOT NULL,
+    "dex" INTEGER NOT NULL,
+    "weaponType" TEXT NOT NULL,
+    "persona" "Persona" NOT NULL,
+    "type" "PetType" NOT NULL,
+    "weaponAtk" INTEGER NOT NULL,
+    "masterId" TEXT NOT NULL,
+
+    CONSTRAINT "custom_pet_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "consumable" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "modifierListId" TEXT NOT NULL,
-    "extraDetails" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
-    "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "modifiers" TEXT[],
 
     CONSTRAINT "consumable_pkey" PRIMARY KEY ("id")
 );
@@ -383,20 +579,9 @@ CREATE TABLE "consumable" (
 CREATE TABLE "combo" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "createdByUserId" TEXT,
+    "combo" JSONB NOT NULL,
 
     CONSTRAINT "combo_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "combo_step" (
-    "id" TEXT NOT NULL,
-    "order" INTEGER NOT NULL,
-    "comboType" "ComboType" NOT NULL,
-    "skillId" TEXT NOT NULL,
-    "comboId" TEXT NOT NULL,
-
-    CONSTRAINT "combo_step_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -412,91 +597,66 @@ CREATE TABLE "character" (
     "baseDex" INTEGER NOT NULL,
     "specialAbiType" "SpecialAbiType" NOT NULL,
     "specialAbiValue" INTEGER NOT NULL,
-    "mainWeaponId" TEXT NOT NULL,
+    "weaponId" TEXT NOT NULL,
     "subWeaponId" TEXT NOT NULL,
-    "bodyArmorId" TEXT NOT NULL,
-    "additionalEquipmentId" TEXT NOT NULL,
-    "specialEquipmentId" TEXT NOT NULL,
-    "fashionModifierListId" TEXT NOT NULL,
-    "cuisineModifierListId" TEXT NOT NULL,
-    "petId" TEXT NOT NULL,
-    "modifierListId" TEXT NOT NULL,
+    "armorId" TEXT NOT NULL,
+    "addEquipId" TEXT NOT NULL,
+    "speEquipId" TEXT NOT NULL,
+    "fashion" TEXT[],
+    "cuisine" TEXT[],
+    "ExtraAttrs" TEXT[],
+    "masterId" TEXT NOT NULL,
     "extraDetails" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
     "imageId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
 
     CONSTRAINT "character_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "mercenary" (
+    "id" TEXT NOT NULL,
+    "type" "MercenaryType" NOT NULL,
+    "templateId" TEXT NOT NULL,
+    "masterId" TEXT NOT NULL,
+    "skillAId" TEXT NOT NULL,
+    "skillAType" "MercenarySkillType" NOT NULL,
+    "skillBId" TEXT NOT NULL,
+    "skillBType" "MercenarySkillType" NOT NULL,
+
+    CONSTRAINT "mercenary_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "member" (
     "id" TEXT NOT NULL,
-    "characterId" TEXT NOT NULL,
     "flow" JSONB NOT NULL,
+    "characterId" TEXT NOT NULL,
+    "mobId" TEXT NOT NULL,
+    "mobDifficultyFlag" "MobDifficultyFlag" NOT NULL,
 
     CONSTRAINT "member_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "mob" (
-    "id" TEXT NOT NULL,
-    "monsterId" TEXT NOT NULL,
-    "star" INTEGER NOT NULL,
-    "flow" TEXT NOT NULL,
-
-    CONSTRAINT "mob_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "analyzer" (
+CREATE TABLE "simulator" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "extraDetails" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticsId" TEXT NOT NULL,
-    "updatedByUserId" TEXT,
-    "createdByUserId" TEXT,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
-    CONSTRAINT "analyzer_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "process" (
-    "id" TEXT NOT NULL,
-
-    CONSTRAINT "process_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "step" (
-    "id" TEXT NOT NULL,
-    "order" INTEGER NOT NULL,
-    "skillId" TEXT NOT NULL,
-    "processId" TEXT NOT NULL,
-
-    CONSTRAINT "step_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "simulator_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "statistics" (
     "id" TEXT NOT NULL,
-    "monsterId" TEXT,
-    "crystalId" TEXT,
-    "mainWeaponId" TEXT,
-    "subWeaponId" TEXT,
-    "bodyArmorId" TEXT,
-    "additionalEquipmentId" TEXT,
-    "specialEquipmentId" TEXT,
-    "skillId" TEXT,
-    "petId" TEXT,
-    "consumableId" TEXT,
-    "characterId" TEXT,
-    "analyzerId" TEXT,
 
     CONSTRAINT "statistics_pkey" PRIMARY KEY ("id")
 );
@@ -505,11 +665,7 @@ CREATE TABLE "statistics" (
 CREATE TABLE "image" (
     "id" TEXT NOT NULL,
     "dataUrl" TEXT NOT NULL,
-    "main_weaponId" TEXT,
-    "sub_weaponId" TEXT,
-    "body_armorId" TEXT,
-    "additional_equipmentId" TEXT,
-    "special_equipmentId" TEXT,
+    "npcId" TEXT,
 
     CONSTRAINT "image_pkey" PRIMARY KEY ("id")
 );
@@ -518,7 +674,7 @@ CREATE TABLE "image" (
 CREATE TABLE "rate" (
     "id" TEXT NOT NULL,
     "rate" INTEGER NOT NULL,
-    "userId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
     "statisticsId" TEXT NOT NULL,
 
     CONSTRAINT "rate_pkey" PRIMARY KEY ("id")
@@ -541,7 +697,31 @@ CREATE TABLE "view_timestamp" (
 );
 
 -- CreateTable
-CREATE TABLE "_crystalTomain_weapon" (
+CREATE TABLE "_mobTozone" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "_crystalToweapon" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "_crystalTocustom_weapon" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "_crystalTocustom_armor" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "_crystalTocustom_additional_equipment" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -553,7 +733,13 @@ CREATE TABLE "_crystalTospecial_equipment" (
 );
 
 -- CreateTable
-CREATE TABLE "_body_armorTocrystal" (
+CREATE TABLE "_crystalTocustom_special_equipment" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "_armorTocrystal" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -565,7 +751,7 @@ CREATE TABLE "_additional_equipmentTocrystal" (
 );
 
 -- CreateTable
-CREATE TABLE "_characterToskill" (
+CREATE TABLE "_characterTocharacter_skill" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -583,13 +769,13 @@ CREATE TABLE "_characterTocombo" (
 );
 
 -- CreateTable
-CREATE TABLE "_analyzerTomob" (
+CREATE TABLE "_memberTosimulator" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
 
 -- CreateTable
-CREATE TABLE "_analyzerTomember" (
+CREATE TABLE "_imageToitem" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -613,25 +799,16 @@ CREATE UNIQUE INDEX "verification_token_identifier_token_key" ON "verification_t
 CREATE INDEX "post_name_idx" ON "post"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "monster_statisticsId_key" ON "monster"("statisticsId");
+CREATE UNIQUE INDEX "item_statisticsId_key" ON "item"("statisticsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "crystal_statisticsId_key" ON "crystal"("statisticsId");
+CREATE UNIQUE INDEX "mob_statisticsId_key" ON "mob"("statisticsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "main_weapon_statisticsId_key" ON "main_weapon"("statisticsId");
+CREATE UNIQUE INDEX "weapon_enchantment_attributes_statisticsId_key" ON "weapon_enchantment_attributes"("statisticsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "sub_weapon_statisticsId_key" ON "sub_weapon"("statisticsId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "body_armor_statisticsId_key" ON "body_armor"("statisticsId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "additional_equipment_statisticsId_key" ON "additional_equipment"("statisticsId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "special_equipment_statisticsId_key" ON "special_equipment"("statisticsId");
+CREATE UNIQUE INDEX "armor_enchantment_attributes_statisticsId_key" ON "armor_enchantment_attributes"("statisticsId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "skill_statisticsId_key" ON "skill"("statisticsId");
@@ -640,31 +817,46 @@ CREATE UNIQUE INDEX "skill_statisticsId_key" ON "skill"("statisticsId");
 CREATE UNIQUE INDEX "pet_statisticsId_key" ON "pet"("statisticsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "consumable_statisticsId_key" ON "consumable"("statisticsId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "character_fashionModifierListId_key" ON "character"("fashionModifierListId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "character_cuisineModifierListId_key" ON "character"("cuisineModifierListId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "character_modifierListId_key" ON "character"("modifierListId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "character_statisticsId_key" ON "character"("statisticsId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "character_imageId_key" ON "character"("imageId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "analyzer_statisticsId_key" ON "analyzer"("statisticsId");
+CREATE UNIQUE INDEX "simulator_statisticsId_key" ON "simulator"("statisticsId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_crystalTomain_weapon_AB_unique" ON "_crystalTomain_weapon"("A", "B");
+CREATE UNIQUE INDEX "image_npcId_key" ON "image"("npcId");
 
 -- CreateIndex
-CREATE INDEX "_crystalTomain_weapon_B_index" ON "_crystalTomain_weapon"("B");
+CREATE UNIQUE INDEX "_mobTozone_AB_unique" ON "_mobTozone"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_mobTozone_B_index" ON "_mobTozone"("B");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_crystalToweapon_AB_unique" ON "_crystalToweapon"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_crystalToweapon_B_index" ON "_crystalToweapon"("B");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_crystalTocustom_weapon_AB_unique" ON "_crystalTocustom_weapon"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_crystalTocustom_weapon_B_index" ON "_crystalTocustom_weapon"("B");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_crystalTocustom_armor_AB_unique" ON "_crystalTocustom_armor"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_crystalTocustom_armor_B_index" ON "_crystalTocustom_armor"("B");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_crystalTocustom_additional_equipment_AB_unique" ON "_crystalTocustom_additional_equipment"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_crystalTocustom_additional_equipment_B_index" ON "_crystalTocustom_additional_equipment"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_crystalTospecial_equipment_AB_unique" ON "_crystalTospecial_equipment"("A", "B");
@@ -673,10 +865,16 @@ CREATE UNIQUE INDEX "_crystalTospecial_equipment_AB_unique" ON "_crystalTospecia
 CREATE INDEX "_crystalTospecial_equipment_B_index" ON "_crystalTospecial_equipment"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_body_armorTocrystal_AB_unique" ON "_body_armorTocrystal"("A", "B");
+CREATE UNIQUE INDEX "_crystalTocustom_special_equipment_AB_unique" ON "_crystalTocustom_special_equipment"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_body_armorTocrystal_B_index" ON "_body_armorTocrystal"("B");
+CREATE INDEX "_crystalTocustom_special_equipment_B_index" ON "_crystalTocustom_special_equipment"("B");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_armorTocrystal_AB_unique" ON "_armorTocrystal"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_armorTocrystal_B_index" ON "_armorTocrystal"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_additional_equipmentTocrystal_AB_unique" ON "_additional_equipmentTocrystal"("A", "B");
@@ -685,10 +883,10 @@ CREATE UNIQUE INDEX "_additional_equipmentTocrystal_AB_unique" ON "_additional_e
 CREATE INDEX "_additional_equipmentTocrystal_B_index" ON "_additional_equipmentTocrystal"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_characterToskill_AB_unique" ON "_characterToskill"("A", "B");
+CREATE UNIQUE INDEX "_characterTocharacter_skill_AB_unique" ON "_characterTocharacter_skill"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_characterToskill_B_index" ON "_characterToskill"("B");
+CREATE INDEX "_characterTocharacter_skill_B_index" ON "_characterTocharacter_skill"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_characterToconsumable_AB_unique" ON "_characterToconsumable"("A", "B");
@@ -703,13 +901,13 @@ CREATE UNIQUE INDEX "_characterTocombo_AB_unique" ON "_characterTocombo"("A", "B
 CREATE INDEX "_characterTocombo_B_index" ON "_characterTocombo"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_analyzerTomob_AB_unique" ON "_analyzerTomob"("A", "B");
+CREATE UNIQUE INDEX "_memberTosimulator_AB_unique" ON "_memberTosimulator"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_analyzerTomob_B_index" ON "_analyzerTomob"("B");
+CREATE INDEX "_memberTosimulator_B_index" ON "_memberTosimulator"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_analyzerTomember_AB_unique" ON "_analyzerTomember"("A", "B");
+CREATE UNIQUE INDEX "_imageToitem_AB_unique" ON "_imageToitem"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_analyzerTomember_B_index" ON "_analyzerTomember"("B");
+CREATE INDEX "_imageToitem_B_index" ON "_imageToitem"("B");

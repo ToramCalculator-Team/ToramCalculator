@@ -15,7 +15,7 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/image";
-import { type Monster, defaultMonster, findMonsters } from "~/repositories/monster";
+import { type Monster, defaultMonster, findMonsters } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
 import { $Enums } from "@prisma/client";
 import { getDictionary } from "~/locales/i18n";
@@ -174,7 +174,7 @@ export default function MonsterIndexPage() {
       },
     });
   });
-  const monsterTableHiddenData: Array<keyof Monster> = ["id", "address", "monsterType", "updatedByUserId"];
+  const monsterTableHiddenData: Array<keyof Monster> = ["id", "address", "monsterType", "updatedByAccountId"];
   // 表头固定
   const getCommonPinningStyles = (column: Column<Monster>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -213,9 +213,9 @@ export default function MonsterIndexPage() {
     "difficultyOfRanged",
     "difficultyOfTank",
     "updatedAt",
-    "updatedByUserId",
+    "updatedByAccountId",
     "createdAt",
-    "createdByUserId",
+    "createdByAccountId",
   ];
 
   // 搜索
@@ -531,13 +531,13 @@ export default function MonsterIndexPage() {
                                   {
                                     const icon =
                                       {
-                                        WATER: <Icon.Element.Water class="h-12 w-12" />,
-                                        FIRE: <Icon.Element.Fire class="h-12 w-12" />,
-                                        EARTH: <Icon.Element.Earth class="h-12 w-12" />,
-                                        WIND: <Icon.Element.Wind class="h-12 w-12" />,
-                                        LIGHT: <Icon.Element.Light class="h-12 w-12" />,
-                                        DARK: <Icon.Element.Dark class="h-12 w-12" />,
-                                        NO_ELEMENT: <Icon.Element.NoElement class="h-12 w-12" />,
+                                        Water: <Icon.Element.Water class="h-12 w-12" />,
+                                        Fire: <Icon.Element.Fire class="h-12 w-12" />,
+                                        Earth: <Icon.Element.Earth class="h-12 w-12" />,
+                                        Wind: <Icon.Element.Wind class="h-12 w-12" />,
+                                        Light: <Icon.Element.Light class="h-12 w-12" />,
+                                        Dark: <Icon.Element.Dark class="h-12 w-12" />,
+                                        Normal: <Icon.Element.NoElement class="h-12 w-12" />,
                                       }[cell.getValue() as $Enums.Element] ?? undefined;
                                     tdContent = icon;
                                   }

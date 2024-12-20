@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { type Monster } from "./repositories/monster";
+import { type Monster } from "./repositories/mob";
 import { type Crystal } from "./repositories/crystal";
 import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
-import { type Analyzer } from "./repositories/analyzer";
+import { type Simulator } from "./repositories/simulator";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
 
@@ -65,11 +65,11 @@ export type Store = {
     characterFormState: FormSate;
     filterState: boolean;
   };
-  analyzerPage: {
-    analyzerId: string;
-    analyzerList: Analyzer[];
-    analyzerDialogState: boolean;
-    analyzerFormState: FormSate;
+  simulatorPage: {
+    simulatorId: string;
+    simulatorList: Simulator[];
+    simulatorDialogState: boolean;
+    simulatorFormState: FormSate;
     filterState: boolean;
   };
 };
@@ -130,11 +130,11 @@ export const initialStore: Store = {
     characterFormState: "CREATE",
     filterState: false
   },
-  analyzerPage: {
-    analyzerId: "defaultAnalyzerId",
-    analyzerList: [],
-    analyzerDialogState: false,
-    analyzerFormState: "CREATE",
+  simulatorPage: {
+    simulatorId: "defaultSimulatorId",
+    simulatorList: [],
+    simulatorDialogState: false,
+    simulatorFormState: "CREATE",
     filterState: false
   }
 };

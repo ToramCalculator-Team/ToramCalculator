@@ -1,7 +1,7 @@
 import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "~/worker/evaluate.worker";
 import { ObjectRenderer } from "~/components/module/objectRender";
-import { Monster } from "~/repositories/monster";
+import { Monster } from "~/repositories/mob";
 import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
@@ -9,7 +9,7 @@ import { setStore, store } from "~/store";
 import { generateAugmentedMonsterList } from "~/lib/untils/monster";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import { Analyzer } from "~/repositories/analyzer";
+import { Simulator } from "~/repositories/simulator";
 import { test } from "~/../test/testData";
 import evaluateWorker from "~/worker/evaluate.worker?worker";
 
@@ -18,7 +18,7 @@ export type skillSequenceList = {
   data: tSkill[];
 };
 
-export default function AnalyzerIndexClient() {
+export default function SimulatorIndexClient() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   createEffect(() => {
@@ -32,11 +32,11 @@ export default function AnalyzerIndexClient() {
   const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
-  const analyzeList = store.analyzerPage.analyzerList;
-  const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
+  const analyzeList = store.simulatorPage.simulatorList;
+  const setAnalyzeList = (value: Simulator[]) => setStore("simulatorPage", "simulatorList", value);
   const monster = test.monster;
   const character = test.member.character;
-  const analyzer = test.analyzer;
+  const simulator = test.simulator;
 
   const [dialogState, setDialogState] = createSignal(false);
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
@@ -231,7 +231,7 @@ export default function AnalyzerIndexClient() {
     <>
       <div class="Title sticky left-0 mt-3 flex flex-col gap-9 p-3 py-5 lg:pt-12">
         <div class="Row flex flex-col items-center justify-between gap-10 lg:flex-row lg:justify-start lg:gap-4">
-          <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary().ui.analyzer.pageTitle}</h1>
+          <h1 class="Text text-left text-3xl lg:bg-transparent lg:text-4xl">{dictionary().ui.simulator.pageTitle}</h1>
           <div class="Control flex flex-1 gap-2">
             <input
               type="search"
@@ -241,7 +241,7 @@ export default function AnalyzerIndexClient() {
           </div>
         </div>
         <div class="Discription my-3 hidden rounded-sm bg-area-color p-3 lg:block">
-          {dictionary().ui.analyzer.description}
+          {dictionary().ui.simulator.description}
         </div>
       </div>
       <div class="Content flex flex-col gap-4 p-3">
@@ -281,7 +281,7 @@ export default function AnalyzerIndexClient() {
         <Button size="sm" level="primary" onClick={startCompute}>
           开始计算
         </Button>
-        <a href="./analyzer/sss">configPage</a>
+        <a href="./simulator/sss">configPage</a>
         {computeResult()}
       </div>
       {/* <FlowEditor /> */}

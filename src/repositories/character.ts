@@ -171,9 +171,9 @@ export const defaultCharacter: Character = {
   extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByUserId: "",
+  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByUserId: "",
+  createdByAccountId: "",
   statistics: defaultStatistics,
   statisticsId: "",
 };

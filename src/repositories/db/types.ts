@@ -267,6 +267,7 @@ export type member = {
     flow: unknown;
     characterId: string;
     mobId: string;
+    mobDifficultyFlag: MobDifficultyFlag;
 };
 export type memberTosimulator = {
     A: string;
@@ -289,7 +290,6 @@ export type mob = {
      */
     name: string;
     mobType: MobType;
-    difficultyFlag: MobDifficultyFlag;
     baseLv: number;
     experience: number;
     partsExperience: number;

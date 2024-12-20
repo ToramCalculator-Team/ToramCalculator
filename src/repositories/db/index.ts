@@ -90,7 +90,7 @@ export const RewardScalarFieldEnumSchema = z.enum(['id','type','value','probabil
 
 export const MaterialScalarFieldEnumSchema = z.enum(['id','name','material','ptValue','price']);
 
-export const MobScalarFieldEnumSchema = z.enum(['id','name','mobType','difficultyFlag','baseLv','experience','partsExperience','address','element','radius','maxhp','physicalDefense','physicalResistance','magicalDefense','magicalResistance','criticalResistance','avoidance','dodge','block','normalAttackResistanceModifier','physicalAttackResistanceModifier','magicalAttackResistanceModifier','flow','difficultyOfTank','difficultyOfMelee','difficultyOfRanged','possibilityOfRunningAround','extraDetails','dataSources','updatedAt','createdAt','statisticsId','imageId','updatedByAccountId','createdByAccountId']);
+export const MobScalarFieldEnumSchema = z.enum(['id','name','mobType','baseLv','experience','partsExperience','address','element','radius','maxhp','physicalDefense','physicalResistance','magicalDefense','magicalResistance','criticalResistance','avoidance','dodge','block','normalAttackResistanceModifier','physicalAttackResistanceModifier','magicalAttackResistanceModifier','flow','difficultyOfTank','difficultyOfMelee','difficultyOfRanged','possibilityOfRunningAround','extraDetails','dataSources','updatedAt','createdAt','statisticsId','imageId','updatedByAccountId','createdByAccountId']);
 
 export const Drop_itemScalarFieldEnumSchema = z.enum(['id','itemId','probability','relatedPart','relatedPartInfo','breakReward','dropById']);
 
@@ -136,7 +136,7 @@ export const CharacterScalarFieldEnumSchema = z.enum(['id','name','characterType
 
 export const MercenaryScalarFieldEnumSchema = z.enum(['id','type','templateId','masterId','skillAId','skillAType','skillBId','skillBType']);
 
-export const MemberScalarFieldEnumSchema = z.enum(['id','flow','characterId','mobId']);
+export const MemberScalarFieldEnumSchema = z.enum(['id','flow','characterId','mobId','mobDifficultyFlag']);
 
 export const SimulatorScalarFieldEnumSchema = z.enum(['id','name','extraDetails','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
 
@@ -491,7 +491,6 @@ export type material = z.infer<typeof materialSchema>
 
 export const mobSchema = z.object({
   mobType: MobTypeSchema,
-  difficultyFlag: MobDifficultyFlagSchema,
   element: ElementSchema,
   id: z.string(),
   name: z.string().min(2, { message: "最少2个字符" }),
@@ -945,6 +944,7 @@ export type mercenary = z.infer<typeof mercenarySchema>
 /////////////////////////////////////////
 
 export const memberSchema = z.object({
+  mobDifficultyFlag: MobDifficultyFlagSchema,
   id: z.string(),
   flow: JsonValueSchema,
   characterId: z.string(),

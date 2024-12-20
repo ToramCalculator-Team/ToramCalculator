@@ -19,10 +19,10 @@ import { Pool } from "pg";
 // })
 
 // debugger
-const initialDatabase = () => {
+const initialDatabase = async() => {
   return new Kysely<DB>({
-    dialect: new PGliteDialect(getPGWorker()),
+    dialect: new PGliteDialect(await getPGWorker()),
   });
 };
 
-export const db = initialDatabase();
+export const db = await initialDatabase();

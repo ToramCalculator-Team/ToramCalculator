@@ -6,7 +6,7 @@ import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import { ModifierType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
-import { type Monster } from "~/repositories/monster";
+import { type Monster } from "~/repositories/mob";
 import { type SkillEffect } from "~/repositories/skill_effect";
 import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Modifier } from "~/repositories/modifier";
@@ -1057,13 +1057,13 @@ export class CharacterData {
     this.crC = new modifiers(ModifierType.MAGICAL_CRITICAL_RATE, 0);
     this.cdC = new modifiers(ModifierType.MAGICAL_CRT_DAMAGE_CONVERSION_RATE, 50);
     this.stro = {
-      WATER: new modifiers(ModifierType.STRONGER_AGAINST_WATER, 100),
-      FIRE: new modifiers(ModifierType.STRONGER_AGAINST_FIRE, 100),
-      EARTH: new modifiers(ModifierType.STRONGER_AGAINST_EARTH, 100),
-      WIND: new modifiers(ModifierType.STRONGER_AGAINST_WIND, 100),
-      LIGHT: new modifiers(ModifierType.STRONGER_AGAINST_LIGHT, 100),
-      DARK: new modifiers(ModifierType.STRONGER_AGAINST_DARK, 100),
-      NO_ELEMENT: new modifiers(ModifierType.STRONGER_AGAINST_NETURAL, 100),
+      Water: new modifiers(ModifierType.STRONGER_AGAINST_Water, 100),
+      Fire: new modifiers(ModifierType.STRONGER_AGAINST_Fire, 100),
+      Earth: new modifiers(ModifierType.STRONGER_AGAINST_Earth, 100),
+      Wind: new modifiers(ModifierType.STRONGER_AGAINST_Wind, 100),
+      Light: new modifiers(ModifierType.STRONGER_AGAINST_Light, 100),
+      Dark: new modifiers(ModifierType.STRONGER_AGAINST_Dark, 100),
+      Normal: new modifiers(ModifierType.STRONGER_AGAINST_NETURAL, 100),
     };
     this.uAtk = new modifiers(ModifierType.UNSHEATHE_ATK, 100);
     this.total = new modifiers(ModifierType.TOTAL_DAMAGE, 100);

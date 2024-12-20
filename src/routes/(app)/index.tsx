@@ -7,7 +7,7 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/lib/icon";
 import Button from "~/components/ui/button";
-import { findMonsters, type Monster } from "~/repositories/monster";
+import { findMobs, type Mob } from "~/repositories/mob";
 import { type Skill } from "~/repositories/skill";
 import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
@@ -18,7 +18,7 @@ import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";
-import { findAnalyzers } from "~/repositories/analyzer";
+import { findSimulators } from "~/repositories/simulator";
 
 type Related =
   | {
@@ -31,7 +31,7 @@ type Result =
   | {
       name: string;
       relateds: Related[];
-      data: Monster | Skill | Crystal;
+      data: Mob | Skill | Crystal;
     }
   | undefined;
 
@@ -40,11 +40,11 @@ export default function Index() {
   let searchInputPCRef: HTMLInputElement;
   let searchInputMobileRef: HTMLInputElement;
 
-  type FinalResult = Partial<Record<"monsters" | "skills" | "crystals", Result[]>>;
+  type FinalResult = Partial<Record<"mobs" | "skills" | "crystals", Result[]>>;
 
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
-    monsters: [],
+    mobs: [],
     skills: [],
     crystals: [],
   });
@@ -59,7 +59,7 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
+  const [mobList, { refetch: refetchMobList }] = createResource(findMobs);
   const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
 
   const skillList = (): Skill[] => {
@@ -67,32 +67,24 @@ export default function Index() {
   };
 
   // 搜索函数
-  const monsterHiddenData: Array<keyof Monster> = [
+  const mobHiddenData: Array<keyof Mob> = [
     "id",
     "updatedAt",
-    "updatedByUserId",
-    "createdByUserId",
     "image",
     "imageId",
+    "updatedByAccountId",
+    "createdByAccountId",
   ];
   const skillHiddenData: Array<keyof (Skill & SkillEffect & SkillCost)> = [
     "id",
     "skillEffectId",
     "belongToskillId",
     "updatedAt",
-    "updatedByUserId",
     "createdAt",
-    "createdByUserId",
+    "updatedByAccountId",
+    "createdByAccountId",
   ];
-  const crystalHiddenData: Array<keyof Crystal> = [
-    "id",
-    "front",
-    "updatedAt",
-    "updatedByUserId",
-    "createdAt",
-    "createdByUserId",
-    "modifierListId",
-  ];
+  const crystalHiddenData: Array<keyof Crystal> = [];
 
   // 对象属性字符串匹配方法
   const keyWordSearch = <T extends Record<string, unknown>>(
@@ -170,7 +162,7 @@ export default function Index() {
     return values;
   }
 
-  const searchInList = <T extends Monster | Skill | Crystal>(
+  const searchInList = <T extends Mob | Skill | Crystal>(
     list: T[],
     key: string | number,
     dictionary: ConvertToAllString<T>,
@@ -214,7 +206,7 @@ export default function Index() {
     const searchValue = isNumber ? parsedInput : searchInputValue();
 
     const finalResult: FinalResult = {
-      monsters: searchInList(monsterList() ?? [], searchValue, dictionary().db.models.monster, monsterHiddenData),
+      mobs: searchInList(mobList() ?? [], searchValue, dictionary().db.models.mob, mobHiddenData),
       skills: searchInList(skillList() ?? [], searchValue, dictionary().db.models.skill, skillHiddenData),
       crystals: searchInList(crystalList() ?? [], searchValue, dictionary().db.models.crystal, crystalHiddenData),
     };
@@ -267,9 +259,9 @@ export default function Index() {
                 icon = <Icon.Line.Box2 />;
                 groupName = dictionary().ui.nav.crystals;
                 break;
-              case "monsters":
+              case "mobs":
                 icon = <Icon.Line.Calendar />;
-                groupName = dictionary().ui.nav.monsters;
+                groupName = dictionary().ui.nav.mobs;
                 break;
               default:
                 break;
@@ -340,7 +332,7 @@ export default function Index() {
                           <div
                             class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} w-full flex-1 flex-wrap rounded bg-area-color p-1`}
                           >
-                            {JSON.stringify(_.omit(item?.data, monsterHiddenData), null, 2)
+                            {JSON.stringify(_.omit(item?.data, mobHiddenData), null, 2)
                               .split(",")
                               .map((line, index) => (
                                 <span class="text-left lg:basis-1/4">
@@ -457,7 +449,7 @@ export default function Index() {
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
         <div class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${resultDialogOpened() ? "" : "lg:flex"}`}>
-          <span>MonsterList: {monsterList()?.length}</span>
+          <span>MobList: {mobList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
           <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
@@ -620,7 +612,7 @@ export default function Index() {
               >
                 <a
                   tabIndex={2}
-                  href={"/wiki/monster"}
+                  href={"/wiki/mob"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
@@ -631,7 +623,7 @@ export default function Index() {
                       <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
-                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.monsters}</span>
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.mobs}</span>
                   </Button>
                 </a>
                 <a
@@ -732,7 +724,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/analyzer/testAnalyzerId"}
+                  href={"/simulator/testSimulatorId"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
@@ -743,7 +735,7 @@ export default function Index() {
                       <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
-                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.analyzer}</span>
+                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.simulator}</span>
                   </Button>
                 </a>
               </div>

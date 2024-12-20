@@ -68,9 +68,9 @@ export const defaultCrystal: Crystal = {
   extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByUserId: "",
+  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByUserId: "",
+  createdByAccountId: "",
   statistics: defaultStatistics,
   statisticsId: defaultStatistics.id,
 };

@@ -52,5 +52,5 @@ export const defaultCombo: Combo = {
   id: "defaultComboId",
   name: "defaultComboName",
   comboStep: [defaultComboStep],
-  createdByUserId: "",
+  createdByAccountId: "",
 };

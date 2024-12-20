@@ -83,9 +83,9 @@ export const defaultSpecialEquipment: SpecialEquipment = {
   extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByUserId: "",
+  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByUserId: "",
+  createdByAccountId: "",
   statistics: defaultStatistics,
   statisticsId: "",
 };

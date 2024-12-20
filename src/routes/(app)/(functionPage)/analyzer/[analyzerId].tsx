@@ -6,7 +6,7 @@ import {
   type FrameData,
 } from "../../../../worker/evaluate.worker";
 import { ObjectRenderer } from "../../../../components/module/objectRender";
-import { Monster } from "~/repositories/monster";
+import { Monster } from "~/repositories/mob";
 import { Character } from "~/repositories/character";
 import {
   Accessor,
@@ -25,12 +25,12 @@ import { setStore, store } from "~/store";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import {
-  addMemberToAnalyzer,
-  Analyzer,
-  defaultAnalyzer,
-  deleteMemberFromAnalyzer,
-  findAnalyzerById,
-} from "~/repositories/analyzer";
+  addMemberToSimulator,
+  Simulator,
+  defaultSimulator,
+  deleteMemberFromSimulator,
+  findSimulatorById,
+} from "~/repositories/simulator";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/lib/icon";
 import { defaultImage } from "~/repositories/image";
@@ -68,7 +68,7 @@ const externalEditorClassName = "sqd-editor-solid";
 //   data: tSkill[];
 // };
 
-export default function AnalyzerIndexClient() {
+export default function SimulatorIndexClient() {
   const params = useParams();
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
@@ -81,9 +81,9 @@ export default function AnalyzerIndexClient() {
   const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
-  const analyzeList = store.analyzerPage.analyzerList;
-  const setAnalyzeList = (value: Analyzer[]) => setStore("analyzerPage", "analyzerList", value);
-  const [analyzer, { refetch: refetchAnalyzer }] = createResource(() => findAnalyzerById(params.analyzerId));
+  const analyzeList = store.simulatorPage.simulatorList;
+  const setAnalyzeList = (value: Simulator[]) => setStore("simulatorPage", "simulatorList", value);
+  const [simulator, { refetch: refetchSimulator }] = createResource(() => findSimulatorById(params.simulatorId));
   const [memberIndex, setMemberIndex] = createSignal(0);
   const [mobIndex, setMobIndex] = createSignal(0);
 
@@ -238,11 +238,11 @@ export default function AnalyzerIndexClient() {
   const [starArray, setStarArray] = createSignal<number[]>([]);
   createEffect(
     on(
-      () => analyzer()?.mobs,
+      () => simulator()?.mobs,
       () => {
         console.log("更新星级");
         const defaultStarArray: number[] = [];
-        analyzer()?.mobs.forEach((mob) => {
+        simulator()?.mobs.forEach((mob) => {
           defaultStarArray.push(mob.star);
         });
         setStarArray(defaultStarArray);
@@ -250,13 +250,13 @@ export default function AnalyzerIndexClient() {
     ),
   );
   const [dialogState, setDialogState] = createSignal(false);
-  // analyzer更新后未重新获取，待解决
+  // simulator更新后未重新获取，待解决
   // createEffect(
   //   on(
   //     dialogState,
   //     () => {
   //       console.log("重新获取分析器");
-  //       refetchAnalyzer();
+  //       refetchSimulator();
   //     }, {
   //       defer: true,
   //     }
@@ -274,7 +274,7 @@ export default function AnalyzerIndexClient() {
             speed: 300,
           },
           sequence: _.cloneDeep(
-            (analyzer()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
+            (simulator()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
               ExecutableSteps.createTextStep("开始!"),
               ExecutableSteps.createTextStep("结束"),
             ],
@@ -311,8 +311,8 @@ export default function AnalyzerIndexClient() {
       const sequence = designer()?.getDefinition().sequence;
       if (sequence) {
         // 更新数据库
-        analyzer() && updateMember(analyzer()!.team[memberIndex()].id, { flow: sequence });
-        // setStore("analyzer", "team", memberIndex(), "flow", structuredClone(sequence));
+        simulator() && updateMember(simulator()!.team[memberIndex()].id, { flow: sequence });
+        // setStore("simulator", "team", memberIndex(), "flow", structuredClone(sequence));
       }
     });
     designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
@@ -321,14 +321,14 @@ export default function AnalyzerIndexClient() {
   };
 
   onMount(() => {
-    console.log("--Analyzer Client Render");
+    console.log("--Simulator Client Render");
   });
 
   return (
     <>
       <div class="Title flex flex-col p-3 lg:pt-12">
         <div class="Content flex flex-col items-center justify-between gap-10 py-3 lg:flex-row lg:justify-start lg:gap-4">
-          <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{analyzer()?.name}</h1>
+          <h1 class="Text flex-1 text-left text-3xl lg:bg-transparent lg:text-4xl">{simulator()?.name}</h1>
           <div class="Control flex gap-3">
             <Button icon={<Icon.Line.Share />}>{dictionary().ui.actions.generateImage}</Button>
             <Button icon={<Icon.Line.Save />}>{dictionary().ui.actions.save}</Button>
@@ -338,10 +338,10 @@ export default function AnalyzerIndexClient() {
 
       <div class="MobsConfig flex flex-col gap-3 p-3">
         <div class="ModuleTitle flex h-12 w-full items-center text-xl">
-          {dictionary().ui.analyzer.analyzerPage.mobsConfig.title}
+          {dictionary().ui.simulator.simulatorPage.mobsConfig.title}
         </div>
         <div class="ModuleContent flex flex-col gap-6">
-          <For each={analyzer()?.mobs}>
+          <For each={simulator()?.mobs}>
             {(mob, index) => {
               function setStarArr(star: number) {
                 const newStarArray = [...starArray()];
@@ -360,7 +360,7 @@ export default function AnalyzerIndexClient() {
                       onMouseLeave={() => {
                         setStarArr(mob.star);
                       }}
-                      onClick={() => updateMob(analyzer()!.mobs[index()].id, { star: starArray()[index()] })}
+                      onClick={() => updateMob(simulator()!.mobs[index()].id, { star: starArray()[index()] })}
                     >
                       <Icon.Filled.Star
                         onMouseEnter={() => setStarArr(1)}
@@ -404,10 +404,10 @@ export default function AnalyzerIndexClient() {
 
       <div class="TeamConfig flex flex-col gap-3 p-3">
         <div class="ModuleTitle flex h-12 w-full items-center text-xl">
-          {dictionary().ui.analyzer.analyzerPage.teamConfig.title}
+          {dictionary().ui.simulator.simulatorPage.teamConfig.title}
         </div>
         <div class="ModuleContent flex flex-wrap gap-3">
-          <For each={analyzer()?.team}>
+          <For each={simulator()?.team}>
             {(member, index) => {
               return (
                 <div class="Member flex border-b-2 border-accent-color p-1">
@@ -447,7 +447,7 @@ export default function AnalyzerIndexClient() {
           <div class="AddMember flex p-1">
             <div
               onClick={async () => {
-                analyzer() && addMemberToAnalyzer(analyzer()!.id, defaultMember);
+                simulator() && addMemberToSimulator(simulator()!.id, defaultMember);
               }}
               class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-area-color p-2 hover:bg-dividing-color"
             >
@@ -494,7 +494,7 @@ export default function AnalyzerIndexClient() {
             icon={<Icon.Line.Gamepad />}
             onClick={() => {
               setDialogState(false);
-              deleteMemberFromAnalyzer(analyzer()!.id, analyzer()!.team[memberIndex()].id);
+              deleteMemberFromSimulator(simulator()!.id, simulator()!.team[memberIndex()].id);
             }}
           >
             {dictionary().ui.actions.remove}

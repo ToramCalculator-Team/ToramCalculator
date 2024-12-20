@@ -1,18 +1,12 @@
-import {
-  type MonsterData,
-  type SkillData,
-  type CharacterData,
-  type modifiers,
-} from "~/worker/evaluate.worker";
 import { type Crystal } from "~/repositories/crystal";
 import { type Skill } from "~/repositories/skill";
 import { type Character } from "~/repositories/character";
 import type { $Enums } from "@prisma/client";
-import { Monster } from "~/repositories/monster";
+import { Mob } from "~/repositories/mob";
 import { User } from "~/repositories/user";
 
 // 为了方便编辑器自动补全，这个方法可以递归地将对象的值类型转换为字符串
-export type ConvertToAllString<T> = T extends Date | Date[] | modifiers | Array<object> | number
+export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | number
   ? string
   : T extends Record<string, unknown>
     ? {
@@ -52,14 +46,14 @@ export interface dictionary {
     };
     nav: {
       home: string;
-      monsters: string;
+      mobs: string;
       skills: string;
       equipments: string;
       crystals: string;
       pets: string;
       items: string;
       character: string;
-      analyzer: string;
+      simulator: string;
     };
     errorPage: {
       tips: string;
@@ -139,7 +133,7 @@ export interface dictionary {
       nullSearchResultWarring: string;
       nullSearchResultTips: string;
     };
-    monster: {
+    mob: {
       pageTitle: string;
       table: {
         title: string;
@@ -150,14 +144,14 @@ export interface dictionary {
       };
       augmented: string;
       canNotModify: string;
-      monsterDegreeOfDifficulty: {
+      mobDegreeOfDifficulty: {
         0: string;
         1: string;
         2: string;
         3: string;
         4: string;
       };
-      monsterForm: {
+      mobForm: {
         description: string;
       };
     };
@@ -173,7 +167,7 @@ export interface dictionary {
       pageTitle: string;
       description: string;
     };
-    analyzer: {
+    simulator: {
       pageTitle: string;
       description: string;
       actualValue: string;
@@ -182,7 +176,7 @@ export interface dictionary {
       staticModifiers: string;
       dynamicModifiers: string;
       dialogData: ConvertToAllString<CharacterData>;
-      analyzerPage: {
+      simulatorPage: {
         mobsConfig: {
           title: string;
         };
@@ -199,7 +193,7 @@ export interface dictionary {
   db: {
     enums: ConvertToAllString<typeof $Enums>;
     models: {
-      monster: ConvertToAllString<Monster>;
+      mob: ConvertToAllString<Mob>;
       crystal: ConvertToAllString<Crystal>;
       skill: ConvertToAllString<Skill>;
       skillEffect: ConvertToAllString<Skill["skillEffect"][0]>;

@@ -76,7 +76,7 @@ export const defaultMainWeapon: MainWeapon = {
   baseAtk: 0,
   refinement: 0,
   stability: 0,
-  element: "NO_ELEMENT",
+  element: "Normal",
   crystalList: [defaultCrystal],
   modifierList: defaultModifierList,
   modifierListId: defaultModifierList.id,
@@ -84,9 +84,9 @@ export const defaultMainWeapon: MainWeapon = {
   extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByUserId: "",
+  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByUserId: "",
+  createdByAccountId: "",
   statistics: defaultStatistics,
   statisticsId: "",
 };

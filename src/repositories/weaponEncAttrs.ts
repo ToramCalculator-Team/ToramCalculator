@@ -49,6 +49,6 @@ export const defaultWeaponEncAttributes: WeaponEncAttributes = {
   updatedAt: new Date(),
   createdAt: new Date(),
   statisticsId: "",
-  updatedByUserId: defaultUser.id,
-  createdByUserId: defaultUser.id
+  updatedByAccountId: defaultUser.id,
+  createdByAccountId: defaultUser.id
 };

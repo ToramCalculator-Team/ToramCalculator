@@ -99,15 +99,15 @@ export const defaultSkill: Skill = {
   skillTreeName: "BLADE",
   skillType: "ACTIVE_SKILL",
   weaponElementDependencyType: "EXTEND",
-  element: "NO_ELEMENT",
+  element: "Normal",
   skillEffect: [defaultSkillEffect],
   dataSources: "",
   extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByUserId: "",
+  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByUserId: "",
+  createdByAccountId: "",
   statistics: defaultStatistics,
   statisticsId: "",
 };

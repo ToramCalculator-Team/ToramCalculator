@@ -74,190 +74,190 @@ worker({
       console.log("配置数据缺失，初始化数据库");
       await pg.exec(ddl);
     }
-    const userShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
-      },
-      table: "user",
-      shapeKey: "users",
-      primaryKey: ["id"],
-    });
-    const userCreateDataShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="user_create_data"`,
-      },
-      table: "user_create_data",
-      shapeKey: "user_create_datas",
-      primaryKey: ["userId"],
-    });
-    const userUpdateDataShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="user_update_data"`,
-      },
-      table: "user_update_data",
-      shapeKey: "user_update_datas",
-      primaryKey: ["userId"],
-    });
-    const statisticsShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="statistics"`,
-      },
-      table: "statistics",
-      shapeKey: "statisticss",
-      primaryKey: ["id"],
-    });
-    const imageShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
-      },
-      table: "image",
-      shapeKey: "images",
-      primaryKey: ["id"],
-    });
-    const monsterShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="monster"`,
-      },
-      table: "monster",
-      shapeKey: "monsters",
-      primaryKey: ["id"],
-    });
-    const modifierListShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="modifier_list"`,
-      },
-      table: "modifier_list",
-      shapeKey: "modifier_lists",
-      primaryKey: ["id"],
-    })
-    const modifierShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="modifier"`,
-      },
-      table: "modifier",
-      shapeKey: "modifiers",
-      primaryKey: ["id"],
-    })
-    const crystalShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="crystal"`,
-      },
-      table: "crystal",
-      shapeKey: "crystals",
-      primaryKey: ["id"],
-    })
-    const mainWeaponShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="main_weapon"`,
-      },
-      table: "main_weapon",
-      shapeKey: "main_weapons",
-      primaryKey: ["id"],
-    })
-    const subWeaponShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="sub_weapon"`,
-      },
-      table: "sub_weapon",
-      shapeKey: "sub_weapons",
-      primaryKey: ["id"],
-    })
-    const bodyArmorShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="body_armor"`,
-      },
-      table: "body_armor",
-      shapeKey: "body_armors",
-      primaryKey: ["id"],
-    })
-    const additionalEquipmentShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="additional_equipment"`,
-      },
-      table: "additional_equipment",
-      shapeKey: "additional_equipments",
-      primaryKey: ["id"],
-    })
-    const specialEquipmentShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="special_equipment"`,
-      },
-      table: "special_equipment",
-      shapeKey: "special_equipments",
-      primaryKey: ["id"],
-    })
-    const petShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="pet"`,
-      },
-      table: "pet",
-      shapeKey: "pets",
-      primaryKey: ["id"],
-    })
-    const skillShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="skill"`,
-      },
-      table: "skill",
-      shapeKey: "skills",
-      primaryKey: ["id"],
-    })
-    const consumableShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="consumable"`,
-      },
-      table: "consumable",
-      shapeKey: "consumables",
-      primaryKey: ["id"],
-    })
-    const characterShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="character"`,
-      },
-      table: "character",
-      shapeKey: "characters",
-      primaryKey: ["id"],
-    })
-    const _analyzerTomemberShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="_analyzerTomember"`,
-      },
-      table: "_analyzerTomember",
-      shapeKey: "_analyzerTomembers",
-      primaryKey: ["analyzerId", "memberId"],
-    })
-    const memberShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="member"`,
-      },
-      table: "member",
-      shapeKey: "members",
-      primaryKey: ["id"],
-    })
-    const _analyzerTomobShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="_analyzerTomob"`,
-      },
-      table: "_analyzerTomob",
-      shapeKey: "_analyzerTomobs",
-      primaryKey: ["analyzerId", "mobId"],
-    })
-    const mobShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
-      },
-      table: "mob",
-      shapeKey: "mobs",
-      primaryKey: ["id"],
-    })
-    const analyzerShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="analyzer"`,
-      },
-      table: "analyzer",
-      shapeKey: "analyzers",
-      primaryKey: ["id"],
-    });
+    // const userShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
+    //   },
+    //   table: "user",
+    //   shapeKey: "users",
+    //   primaryKey: ["id"],
+    // });
+    // const userCreateDataShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="user_create_data"`,
+    //   },
+    //   table: "user_create_data",
+    //   shapeKey: "user_create_datas",
+    //   primaryKey: ["userId"],
+    // });
+    // const userUpdateDataShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="user_update_data"`,
+    //   },
+    //   table: "user_update_data",
+    //   shapeKey: "user_update_datas",
+    //   primaryKey: ["userId"],
+    // });
+    // const statisticsShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="statistics"`,
+    //   },
+    //   table: "statistics",
+    //   shapeKey: "statisticss",
+    //   primaryKey: ["id"],
+    // });
+    // const imageShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
+    //   },
+    //   table: "image",
+    //   shapeKey: "images",
+    //   primaryKey: ["id"],
+    // });
+    // const monsterShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="monster"`,
+    //   },
+    //   table: "monster",
+    //   shapeKey: "monsters",
+    //   primaryKey: ["id"],
+    // });
+    // const modifierListShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="modifier_list"`,
+    //   },
+    //   table: "modifier_list",
+    //   shapeKey: "modifier_lists",
+    //   primaryKey: ["id"],
+    // })
+    // const modifierShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="modifier"`,
+    //   },
+    //   table: "modifier",
+    //   shapeKey: "modifiers",
+    //   primaryKey: ["id"],
+    // })
+    // const crystalShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="crystal"`,
+    //   },
+    //   table: "crystal",
+    //   shapeKey: "crystals",
+    //   primaryKey: ["id"],
+    // })
+    // const mainWeaponShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="main_weapon"`,
+    //   },
+    //   table: "main_weapon",
+    //   shapeKey: "main_weapons",
+    //   primaryKey: ["id"],
+    // })
+    // const subWeaponShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="sub_weapon"`,
+    //   },
+    //   table: "sub_weapon",
+    //   shapeKey: "sub_weapons",
+    //   primaryKey: ["id"],
+    // })
+    // const bodyArmorShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="body_armor"`,
+    //   },
+    //   table: "body_armor",
+    //   shapeKey: "body_armors",
+    //   primaryKey: ["id"],
+    // })
+    // const additionalEquipmentShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="additional_equipment"`,
+    //   },
+    //   table: "additional_equipment",
+    //   shapeKey: "additional_equipments",
+    //   primaryKey: ["id"],
+    // })
+    // const specialEquipmentShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="special_equipment"`,
+    //   },
+    //   table: "special_equipment",
+    //   shapeKey: "special_equipments",
+    //   primaryKey: ["id"],
+    // })
+    // const petShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="pet"`,
+    //   },
+    //   table: "pet",
+    //   shapeKey: "pets",
+    //   primaryKey: ["id"],
+    // })
+    // const skillShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="skill"`,
+    //   },
+    //   table: "skill",
+    //   shapeKey: "skills",
+    //   primaryKey: ["id"],
+    // })
+    // const consumableShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="consumable"`,
+    //   },
+    //   table: "consumable",
+    //   shapeKey: "consumables",
+    //   primaryKey: ["id"],
+    // })
+    // const characterShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="character"`,
+    //   },
+    //   table: "character",
+    //   shapeKey: "characters",
+    //   primaryKey: ["id"],
+    // })
+    // const _simulatorTomemberShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="_simulatorTomember"`,
+    //   },
+    //   table: "_simulatorTomember",
+    //   shapeKey: "_simulatorTomembers",
+    //   primaryKey: ["simulatorId", "memberId"],
+    // })
+    // const memberShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="member"`,
+    //   },
+    //   table: "member",
+    //   shapeKey: "members",
+    //   primaryKey: ["id"],
+    // })
+    // const _simulatorTomobShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="_simulatorTomob"`,
+    //   },
+    //   table: "_simulatorTomob",
+    //   shapeKey: "_simulatorTomobs",
+    //   primaryKey: ["simulatorId", "mobId"],
+    // })
+    // const mobShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
+    //   },
+    //   table: "mob",
+    //   shapeKey: "mobs",
+    //   primaryKey: ["id"],
+    // })
+    // const simulatorShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}/v1/shape?table="simulator"`,
+    //   },
+    //   table: "simulator",
+    //   shapeKey: "simulators",
+    //   primaryKey: ["id"],
+    // });
 
     return pg;
   },

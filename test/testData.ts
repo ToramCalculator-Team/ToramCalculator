@@ -1,20 +1,20 @@
-import { Analyzer } from "~/repositories/analyzer";
+import { Simulator } from "~/repositories/simulator";
 import { Character } from "~/repositories/character";
 import { defaultConsumable } from "~/repositories/consumable";
 import { defaultImage } from "~/repositories/image";
 import { defaultMember, Member } from "~/repositories/member";
 import { defaultMob } from "~/repositories/mob";
 import { defaultModifierList } from "~/repositories/weaponEncAttrs";
-import { Monster } from "~/repositories/monster";
+import { Monster } from "~/repositories/mob";
 import { defaultPet } from "~/repositories/pet";
 import { defaultSkill } from "~/repositories/skill";
 import { defaultStatistics } from "~/repositories/statistics";
-import { skillSequenceList } from "~/routes/(app)/(functionPage)/analyzer/(analyzer)";
+import { skillSequenceList } from "~/routes/(app)/(functionPage)/simulator/(simulator)";
 
 export const test: {
   member: Member;
   monster: Monster;
-  analyzer: Analyzer;
+  simulator: Simulator;
   skillSequence1: skillSequenceList;
   skillSequence2: skillSequenceList;
 } = {
@@ -39,7 +39,7 @@ export const test: {
         baseAtk: 194,
         refinement: 15,
         stability: 70,
-        element: "LIGHT",
+        element: "Light",
         crystalList: [
           {
             id: "",
@@ -69,9 +69,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -110,9 +110,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -140,16 +140,16 @@ export const test: {
             },
             {
               id: "",
-              formula: "stro.DARK + 21",
+              formula: "stro.Dark + 21",
               belongToModifierListId: "",
             },
           ],
         },
         modifierListId: "",
         createdAt: new Date(),
-        createdByUserId: "",
+        createdByAccountId: "",
         updatedAt: new Date(),
-        updatedByUserId: "",
+        updatedByAccountId: "",
         extraDetails: "",
         dataSources: "",
         statistics: defaultStatistics,
@@ -163,7 +163,7 @@ export const test: {
         baseAtk: 0,
         refinement: 0,
         stability: 0,
-        element: "NO_ELEMENT",
+        element: "Normal",
         modifierList: {
           id: "",
           name: "忍术卷轴·风遁术属性",
@@ -177,9 +177,9 @@ export const test: {
         },
         modifierListId: "",
         createdAt: new Date(),
-        createdByUserId: "",
+        createdByAccountId: "",
         updatedAt: new Date(),
-        updatedByUserId: "",
+        updatedByAccountId: "",
         extraDetails: "",
         dataSources: "",
         statistics: defaultStatistics,
@@ -226,9 +226,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -267,9 +267,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -297,16 +297,16 @@ export const test: {
             },
             {
               id: "",
-              formula: "stro.DARK + 21",
+              formula: "stro.Dark + 21",
               belongToModifierListId: "",
             },
           ],
         },
         modifierListId: "",
         createdAt: new Date(),
-        createdByUserId: "",
+        createdByAccountId: "",
         updatedAt: new Date(),
-        updatedByUserId: "",
+        updatedByAccountId: "",
         extraDetails: "",
         dataSources: "",
         statistics: defaultStatistics,
@@ -351,9 +351,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -377,9 +377,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -409,9 +409,9 @@ export const test: {
         },
         modifierListId: "",
         createdAt: new Date(),
-        createdByUserId: "",
+        createdByAccountId: "",
         updatedAt: new Date(),
-        updatedByUserId: "",
+        updatedByAccountId: "",
         extraDetails: "",
         dataSources: "",
         statistics: defaultStatistics,
@@ -450,9 +450,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -486,9 +486,9 @@ export const test: {
             },
             modifierListId: "",
             createdAt: new Date(),
-            createdByUserId: "",
+            createdByAccountId: "",
             updatedAt: new Date(),
-            updatedByUserId: "",
+            updatedByAccountId: "",
             extraDetails: "",
             dataSources: "",
             statistics: defaultStatistics,
@@ -513,9 +513,9 @@ export const test: {
         },
         modifierListId: "",
         createdAt: new Date(),
-        createdByUserId: "",
+        createdByAccountId: "",
         updatedAt: new Date(),
-        updatedByUserId: "",
+        updatedByAccountId: "",
         extraDetails: "",
         dataSources: "",
         statistics: defaultStatistics,
@@ -534,9 +534,9 @@ export const test: {
       modifierList: defaultModifierList,
       modifierListId: defaultModifierList.id,
       createdAt: new Date(),
-      createdByUserId: "",
+      createdByAccountId: "",
       updatedAt: new Date(),
-      updatedByUserId: "",
+      updatedByAccountId: "",
       extraDetails: "",
       statistics: defaultStatistics,
       statisticsId: "",
@@ -569,7 +569,7 @@ export const test: {
     baseLv: 251,
     experience: 0,
     address: "",
-    element: "EARTH",
+    element: "Earth",
     radius: 2,
     maxhp: 31710000,
     physicalDefense: 6330,
@@ -589,9 +589,9 @@ export const test: {
     possibilityOfRunningAround: 0,
     dataSources: "",
     createdAt: new Date(),
-    createdByUserId: "",
+    createdByAccountId: "",
     updatedAt: new Date(),
-    updatedByUserId: "",
+    updatedByAccountId: "",
     extraDetails: "",
     statistics: defaultStatistics,
     statisticsId: "",
@@ -607,7 +607,7 @@ export const test: {
         skillDescription: "",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -657,7 +657,7 @@ export const test: {
         skillDescription: "",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -707,7 +707,7 @@ export const test: {
         skillDescription: "",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -757,7 +757,7 @@ export const test: {
         skillDescription: "",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -807,7 +807,7 @@ export const test: {
         skillDescription: "",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -865,7 +865,7 @@ export const test: {
         skillDescription: "",
         level: 7,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -914,7 +914,7 @@ export const test: {
         name: "爆能",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillDescription: "",
         skillEffect: {
@@ -962,7 +962,7 @@ export const test: {
         skillDescription: "",
         level: 7,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillEffect: {
           id: "",
@@ -1011,7 +1011,7 @@ export const test: {
         name: "爆能",
         level: 10,
         weaponElementDependencyType: "TRUE",
-        element: "NO_ELEMENT",
+        element: "Normal",
         skillType: "ACTIVE_SKILL",
         skillDescription: "",
         skillEffect: {
@@ -1048,22 +1048,22 @@ export const test: {
       },
     ],
   },
-  analyzer: {
-    id: "defaultAnalyzer",
-    name: "defaultAnalyzer",
+  simulator: {
+    id: "defaultSimulator",
+    name: "defaultSimulator",
     mobs: [],
     team: [],
     extraDetails: "defaultExtraDetails",
     updatedAt: new Date(),
-    updatedByUserId: "",
+    updatedByAccountId: "",
     createdAt: new Date(),
-    createdByUserId: "",
+    createdByAccountId: "",
     statistics: defaultStatistics,
     statisticsId: "",
   },
 };
 
-test.analyzer.mobs = [
+test.simulator.mobs = [
   {
     id: "testMobId",
     monster: test.monster,
@@ -1073,4 +1073,4 @@ test.analyzer.mobs = [
   },
 ];
 
-test.analyzer.team = [test.member];
+test.simulator.team = [test.member];

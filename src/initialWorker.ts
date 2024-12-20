@@ -5,7 +5,7 @@ import PGWorker from "~/worker/PGlite.worker?worker";
 let pgWorker: PGliteWorker | undefined = undefined;
 
 // 初始化本地数据库
-export const initialPGWorker = async (): Promise<PGliteWorker> => {
+const initialPGWorker = async (): Promise<PGliteWorker> => {
   const storage = localStorage.getItem("store");
   pgWorker = await PGliteWorker.create(new PGWorker(), {
     extensions: { live },
@@ -18,9 +18,10 @@ export const initialPGWorker = async (): Promise<PGliteWorker> => {
 };
 
 // 获取已初始化的 pgWorker
-export const getPGWorker = (): PGliteWorker => {
+export const getPGWorker = async(): Promise<PGliteWorker> => {
   if (!pgWorker) {
-    throw new Error("PGliteWorker尚未初始化");
+    console.log("PGliteWorker正在初始化");
+    return initialPGWorker();
   }
   return pgWorker;
 };

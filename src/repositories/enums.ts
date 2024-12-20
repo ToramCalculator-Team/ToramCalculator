@@ -1,3 +1,4 @@
+import { $Enums } from "@prisma/client";
 
 export type AccountType = "Admin" | "User";
 
@@ -37,12 +38,12 @@ export enum ModifierType {
   SHORT_RANGE_DAMAGE = "shortRangeDamage", // 近距离威力
   LONG_RANGE_DAMAGE = "longRangeDamage", // 远距离威力
   STRONGER_AGAINST_NETURAL = "strongerAgainstNetural", // 对无属性增强
-  STRONGER_AGAINST_LIGHT = "strongerAgainstLight", // 对光属性增强
-  STRONGER_AGAINST_DARK = "strongerAgainstDark", // 对暗属性增强
-  STRONGER_AGAINST_WATER = "strongerAgainstWater", // 对水属性增强
-  STRONGER_AGAINST_FIRE = "strongerAgainstFire", // 对火属性增强
-  STRONGER_AGAINST_EARTH = "strongerAgainstEarth", // 对地属性增强
-  STRONGER_AGAINST_WIND = "strongerAgainstWind", // 对风属性增强
+  STRONGER_AGAINST_Light = "strongerAgainstLight", // 对光属性增强
+  STRONGER_AGAINST_Dark = "strongerAgainstDark", // 对暗属性增强
+  STRONGER_AGAINST_Water = "strongerAgainstWater", // 对水属性增强
+  STRONGER_AGAINST_Fire = "strongerAgainstFire", // 对火属性增强
+  STRONGER_AGAINST_Earth = "strongerAgainstEarth", // 对地属性增强
+  STRONGER_AGAINST_Wind = "strongerAgainstWind", // 对风属性增强
   TOTAL_DAMAGE = "totalDamage", // 总伤害
   FINAL_DAMAGE = "finalDamage", // 最终伤害
   PHYSICAL_STABILITY = "stability", // 稳定率
@@ -82,12 +83,12 @@ export enum ModifierType {
   PHYSICAL_RESISTANCE = "physicalResistance", // 物理抗性
   MAGICAL_RESISTANCE = "magicalResistance", // 魔法抗性
   NEUTRAL_RESISTANCE = "neutralResistance", // 无属性抗性
-  LIGHT_RESISTANCE = "lightResistance", // 光属性抗性
-  DARK_RESISTANCE = "darkResistance", // 暗属性抗性
-  WATER_RESISTANCE = "waterResistance", // 水属性抗性
-  FIRE_RESISTANCE = "fireResistance", // 火属性抗性
-  EARTH_RESISTANCE = "earthResistance", // 地属性抗性
-  WIND_RESISTANCE = "windResistance", // 风属性抗性
+  Light_RESISTANCE = "lightResistance", // 光属性抗性
+  Dark_RESISTANCE = "darkResistance", // 暗属性抗性
+  Water_RESISTANCE = "waterResistance", // 水属性抗性
+  Fire_RESISTANCE = "fireResistance", // 火属性抗性
+  Earth_RESISTANCE = "earthResistance", // 地属性抗性
+  Wind_RESISTANCE = "windResistance", // 风属性抗性
   DODGE = "dodge", // 回避
   AILMENT_RESISTANCE = "ailmentResistance", // 异常抗性
   BASE_GUARD_POWER = "baseGuardPower", // 基础格挡力
@@ -164,12 +165,12 @@ export enum CharacterModifierType {
   SHORT_RANGE_DAMAGE = "shortRangeDamage", // 近距离威力
   LONG_RANGE_DAMAGE = "longRangeDamage", // 远距离威力
   STRONGER_AGAINST_NETURAL = "strongerAgainstNetural", // 对无属性增强
-  STRONGER_AGAINST_LIGHT = "strongerAgainstLight", // 对光属性增强
-  STRONGER_AGAINST_DARK = "strongerAgainstDark", // 对暗属性增强
-  STRONGER_AGAINST_WATER = "strongerAgainstWater", // 对水属性增强
-  STRONGER_AGAINST_FIRE = "strongerAgainstFire", // 对火属性增强
-  STRONGER_AGAINST_EARTH = "strongerAgainstEarth", // 对地属性增强
-  STRONGER_AGAINST_WIND = "strongerAgainstWind", // 对风属性增强
+  STRONGER_AGAINST_Light = "strongerAgainstLight", // 对光属性增强
+  STRONGER_AGAINST_Dark = "strongerAgainstDark", // 对暗属性增强
+  STRONGER_AGAINST_Water = "strongerAgainstWater", // 对水属性增强
+  STRONGER_AGAINST_Fire = "strongerAgainstFire", // 对火属性增强
+  STRONGER_AGAINST_Earth = "strongerAgainstEarth", // 对地属性增强
+  STRONGER_AGAINST_Wind = "strongerAgainstWind", // 对风属性增强
   TOTAL_DAMAGE = "totalDamage", // 总伤害
   FINAL_DAMAGE = "finalDamage", // 最终伤害
   STABILITY = "stability", // 稳定率
@@ -207,12 +208,12 @@ export enum CharacterModifierType {
   PHYSICAL_RESISTANCE = "physicalResistance", // 物理抗性
   MAGICAL_RESISTANCE = "magicalResistance", // 魔法抗性
   NEUTRAL_RESISTANCE = "neutralResistance", // 无属性抗性
-  LIGHT_RESISTANCE = "lightResistance", // 光属性抗性
-  DARK_RESISTANCE = "darkResistance", // 暗属性抗性
-  WATER_RESISTANCE = "waterResistance", // 水属性抗性
-  FIRE_RESISTANCE = "fireResistance", // 火属性抗性
-  EARTH_RESISTANCE = "earthResistance", // 地属性抗性
-  WIND_RESISTANCE = "windResistance", // 风属性抗性
+  Light_RESISTANCE = "lightResistance", // 光属性抗性
+  Dark_RESISTANCE = "darkResistance", // 暗属性抗性
+  Water_RESISTANCE = "waterResistance", // 水属性抗性
+  Fire_RESISTANCE = "fireResistance", // 火属性抗性
+  Earth_RESISTANCE = "earthResistance", // 地属性抗性
+  Wind_RESISTANCE = "windResistance", // 风属性抗性
   DODGE = "dodge", // 回避
   AILMENT_RESISTANCE = "ailmentResistance", // 异常抗性
   BASE_GUARD_POWER = "baseGuardPower", // 基础格挡力

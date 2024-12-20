@@ -150,7 +150,7 @@ export default function WikiPage() {
             </a>
             <a
               tabIndex={2}
-              href={"/analyzer/testAnalyzerId"}
+              href={"/simulator/testSimulatorId"}
               class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
             >
               <Button
@@ -161,7 +161,7 @@ export default function WikiPage() {
                   <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.analyzer}</span>
+                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.simulator}</span>
               </Button>
             </a>
           </div>

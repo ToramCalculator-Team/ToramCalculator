@@ -1,20 +1,13 @@
 import { type Statistics } from "~/repositories/statistics";
 import { type ConvertToAllString, type dictionary } from "./type";
-import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Image } from "~/repositories/image";
 
-const modifierList: ConvertToAllString<ModifierList> = {
-  name: "名称",
-  modifiers: "加成项",
-  id: "ID",
-  selfName: "加成项列表",
-};
 const statistics: ConvertToAllString<Statistics> = {
   id: "ID",
   rates: "评分",
   usageTimestamps: "被使用记录",
   viewTimestamps: "被查看记录",
-  monsterId: "",
+  belongToMbId: "",
   crystalId: "",
   mainWeaponId: "",
   subWeaponId: "",
@@ -25,7 +18,7 @@ const statistics: ConvertToAllString<Statistics> = {
   petId: "",
   consumableId: "",
   characterId: "",
-  analyzerId: "",
+  simulatorId: "",
   selfName: "统计信息",
 };
 
@@ -66,14 +59,14 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "首页",
-      monsters: "怪物",
+      mobs: "怪物",
       skills: "技能",
       equipments: "装备",
       crystals: "锻晶",
       pets: "宠物",
       items: "消耗品",
       character: "角色配置",
-      analyzer: "流程模拟",
+      simulator: "流程模拟",
     },
     errorPage: {
       tips: "你来到了没有知识的荒原~，点击屏幕返回",
@@ -154,7 +147,7 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "没有找到相关内容!!!∑(ﾟДﾟノ)ノ",
       nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有",
     },
-    monster: {
+    mob: {
       pageTitle: "怪物",
       table: {
         title: "怪物表",
@@ -165,14 +158,14 @@ const dictionary: dictionary = {
       },
       augmented: "是否展示全部星级数据",
       canNotModify: "系统生成，不可修改",
-      monsterDegreeOfDifficulty: {
+      mobDegreeOfDifficulty: {
         0: "零星",
         1: "一星",
         2: "二星",
         3: "三星",
         4: "四星",
       },
-      monsterForm: {
+      mobForm: {
         description: "上传定点boss数据时请使用一星数据，系统将按规则自动计算其余星级数据。",
       },
     },
@@ -188,7 +181,7 @@ const dictionary: dictionary = {
       pageTitle: "技能信息表",
       description: "此页面正在开发中，请勿使用",
     },
-    analyzer: {
+    simulator: {
       pageTitle: "流程计算器",
       description: "正在开发中，请勿使用",
       modifiers: "加成项",
@@ -235,13 +228,13 @@ const dictionary: dictionary = {
           weaponMatkT: "武器攻击转化率（魔法）",
           uAtk: "拔刀攻击",
           stro: {
-            LIGHT: "对光属性增强",
-            NO_ELEMENT: "对无属性增强",
-            DARK: "对暗属性增强",
-            WATER: "对水属性增强",
-            FIRE: "对火属性增强",
-            EARTH: "对地属性增强",
-            WIND: "对风属性增强",
+            Light: "对光属性增强",
+            Normal: "对无属性增强",
+            Dark: "对暗属性增强",
+            Water: "对水属性增强",
+            Fire: "对火属性增强",
+            Earth: "对地属性增强",
+            Wind: "对风属性增强",
             selfName: "对属性增强列表",
           },
           total: "总伤害提升",
@@ -290,7 +283,7 @@ const dictionary: dictionary = {
       baseValue: "基础值",
       staticModifiers: "常态加成",
       dynamicModifiers: "临时加成",
-      analyzerPage: {
+      simulatorPage: {
         mobsConfig: {
           title: "目标怪物",
         },
@@ -306,7 +299,7 @@ const dictionary: dictionary = {
   },
   db: {
     enums: {
-      MonsterType: {
+      MobType: {
         COMMON_BOSS: "定点王",
         COMMON_MINI_BOSS: "野王",
         COMMON_MOBS: "小怪",
@@ -316,13 +309,13 @@ const dictionary: dictionary = {
         selfName: "怪物类型",
       },
       Element: {
-        NO_ELEMENT: "无属性",
-        DARK: "暗属性",
-        EARTH: "地属性",
-        FIRE: "火属性",
-        LIGHT: "光属性",
-        WATER: "水属性",
-        WIND: "风属性",
+        Normal: "无属性",
+        Dark: "暗属性",
+        Earth: "地属性",
+        Fire: "火属性",
+        Light: "光属性",
+        Water: "水属性",
+        Wind: "风属性",
         selfName: "元素类型",
       },
       SpecialAbiType: {
@@ -360,7 +353,7 @@ const dictionary: dictionary = {
       },
       BodyArmorType: {
         NORMAL: "一般",
-        LIGHT: "轻化",
+        Light: "轻化",
         HEAVY: "重化",
         selfName: "防具类型",
       },
@@ -424,10 +417,10 @@ const dictionary: dictionary = {
       selfName: "枚举类型",
     },
     models: {
-      monster: {
+      mob: {
         id: "ID",
         name: "名称",
-        monsterType: "类型",
+        mobType: "类型",
         baseLv: "等级",
         experience: "经验",
         address: "所在地址",
@@ -451,8 +444,8 @@ const dictionary: dictionary = {
         possibilityOfRunningAround: "好动程度",
         extraDetails: "额外说明",
         dataSources: "数据来源",
-        createdByUserId: "创建者Id",
-        updatedByUserId: "更新者Id",
+        createdByAccountId: "创建者Id",
+        updatedByAccountId: "更新者Id",
         createdAt: "创建于",
         updatedAt: "更新于",
         statistics: statistics,
@@ -470,8 +463,8 @@ const dictionary: dictionary = {
         modifierListId: "加成项列表ID",
         extraDetails: "额外说明",
         dataSources: "数据来源",
-        createdByUserId: "创建者Id",
-        updatedByUserId: "更新者Id",
+        createdByAccountId: "创建者Id",
+        updatedByAccountId: "更新者Id",
         createdAt: "创建于",
         updatedAt: "更新于",
         statistics: statistics,
@@ -489,8 +482,8 @@ const dictionary: dictionary = {
         skillDescription: "技能说明",
         extraDetails: "额外说明",
         dataSources: "数据来源",
-        createdByUserId: "创建者Id",
-        updatedByUserId: "更新者Id",
+        createdByAccountId: "创建者Id",
+        updatedByAccountId: "更新者Id",
         createdAt: "创建于",
         updatedAt: "更新于",
         statistics: statistics,
@@ -564,8 +557,8 @@ const dictionary: dictionary = {
           modifierListId: "附魔ID",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -585,8 +578,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -605,8 +598,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -623,8 +616,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -640,8 +633,8 @@ const dictionary: dictionary = {
           modifierListId: "",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -661,8 +654,8 @@ const dictionary: dictionary = {
           name: "名称",
           extraDetails: "额外说明",
           dataSources: "数据来源",
-          createdByUserId: "创建者Id",
-          updatedByUserId: "更新者Id",
+          createdByAccountId: "创建者Id",
+          updatedByAccountId: "更新者Id",
           createdAt: "创建于",
           updatedAt: "更新于",
           statistics: statistics,
@@ -673,8 +666,8 @@ const dictionary: dictionary = {
         modifierList: modifierList,
         modifierListId: "额外加成Id",
         extraDetails: "额外说明",
-        createdByUserId: "创建者Id",
-        updatedByUserId: "更新者Id",
+        createdByAccountId: "创建者Id",
+        updatedByAccountId: "更新者Id",
         createdAt: "创建于",
         updatedAt: "更新于",
         statistics: statistics,

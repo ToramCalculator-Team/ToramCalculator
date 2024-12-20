@@ -143,9 +143,9 @@ export default function Nav() {
         />
         <NavBtn
           config={{
-            btnName: dictionary().ui.nav.analyzer,
+            btnName: dictionary().ui.nav.simulator,
             icon: <Icon.Line.Filter />,
-            url: "/analyzer/testAnalyzerId",
+            url: "/simulator/testSimulatorId",
           }}
           active={active}
           class=" w-[25dvw] lg:w-auto"

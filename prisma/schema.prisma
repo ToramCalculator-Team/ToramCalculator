@@ -131,12 +131,6 @@ enum ArmorType {
     Heavy
 }
 
-// 技能类型枚举（主动技能，被动技能）
-enum SkillType {
-    Active
-    Passive
-}
-
 // 技能目标类型
 enum SkillTargetType {
     None
@@ -195,7 +189,7 @@ enum CharacterType {
     Marksman
 }
 
-// 用户创建内容
+// 账户创建内容
 model account_create_data {
     mobs            mob[]
     items           item[]
@@ -208,7 +202,7 @@ model account_create_data {
     accountId       String                          @id
 }
 
-// 账户资产更新内容
+// 账户更新内容
 model account_update_data {
     mobs            mob[]
     items           item[]
@@ -281,11 +275,13 @@ model item {
     id   String @id
     name String
 
-    weapon   weapon?
-    armor    armor?
-    addEquip additional_equipment?
-    speEquip special_equipment?
-    crystal  crystal?
+    weapon     weapon?
+    armor      armor?
+    addEquip   additional_equipment?
+    speEquip   special_equipment?
+    crystal    crystal?
+    consumable consumable?
+    gem        gem?
 
     image         image[]
     recipeEntries recipeIngredient[] @relation("ownRecipe")
@@ -370,13 +366,27 @@ model material {
     price    Int
 }
 
+// enum MobTypeFlag {
+//     Mob
+//     Boss
+//     Dungeon
+//     Defence
+//     Wave
+//     Rezero
+//     TreasureHunt
+//     NewWave
+//     HighRaid
+//     GuildRaid
+//     Moba
+//     Entourage
+// }
+
 // 怪物
 model mob {
     id String @id
 
     name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
     mobType                          MobType
-    difficultyFlag                   MobDifficultyFlag // 仅当怪物类型为Boss时生效
     baseLv                           Int
     experience                       Int
     partsExperience                  Int
@@ -397,7 +407,7 @@ model mob {
     magicalAttackResistanceModifier  Int
     flow                             String
 
-    drop_items drop_item[]
+    drops drop_item[]
 
     difficultyOfTank           Int
     difficultyOfMelee          Int
@@ -500,7 +510,6 @@ model armor_enchantment_attributes {
 
 // 锻晶
 model crystal {
-    name        String
     crystalType String
     modifiers   String[]
 
@@ -531,7 +540,6 @@ enum AcquisitionMethodType {
 
 // 武器
 model weapon {
-    name               String
     type               String
     availability       AvailabilityType
     acquisitionMethod  AcquisitionMethodType
@@ -576,7 +584,6 @@ model custom_weapon {
 
 // 身体装备
 model armor {
-    name               String
     baseDef            Int
     availability       AvailabilityType
     acquisitionMethod  AcquisitionMethodType
@@ -619,7 +626,6 @@ model custom_armor {
 
 // 追加装备
 model additional_equipment {
-    name               String
     baseDef            Int
     availability       AvailabilityType
     acquisitionMethod  AcquisitionMethodType
@@ -659,7 +665,6 @@ model custom_additional_equipment {
 
 // 特殊装备
 model special_equipment {
-    name               String
     baseDef            Int
     availability       AvailabilityType
     acquisitionMethod  AcquisitionMethodType
@@ -706,18 +711,16 @@ enum SkillDistanceResistType {
 model skill {
     id String @id
 
-    skillTreeName               String
-    posX                        Int
-    posY                        Int
-    tier                        Int
-    name                        String
-    skillType                   SkillType
-    weaponElementDependencyType Boolean
-    defaultElement              Element?
-    chargingType                SkillChargingType
-    distanceResist              SkillDistanceResistType
-    skillDescription            String?
-    skillEffect                 skill_effect[]
+    treeName       String
+    posX           Int
+    posY           Int
+    tier           Int
+    name           String
+    isPassive      Boolean
+    element        String
+    chargingType   SkillChargingType
+    distanceResist SkillDistanceResistType
+    effect         skill_effect[]
 
     extraDetails String
     dataSources  String
@@ -865,12 +868,22 @@ model custom_pet {
 
 // 消耗品
 model consumable {
-    id String @id
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
 
-    name      String
     modifiers String[]
 
     usedBy character[]
+}
+
+// 晶石
+model gem {
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+
+    effect String[]
+
+    usedBy team[]
 }
 
 // 连击
@@ -963,21 +976,33 @@ model mercenary {
 model member {
     id String @id
 
-    flow        Json
-    character   character @relation(fields: [characterId], references: [id])
-    characterId String
-    mob         mob       @relation(fields: [mobId], references: [id])
-    mobId       String
+    flow              Json
+    character         character         @relation(fields: [characterId], references: [id])
+    characterId       String
+    mob               mob               @relation(fields: [mobId], references: [id])
+    mobId             String
+    mobDifficultyFlag MobDifficultyFlag // 仅当类型为Boss时生效
 
-    belongToAnalyzers simulator[]
+    belongToTeams team[]
+}
+
+// 队伍
+model team {
+    id String @id
+
+    name    String?
+    members member[]
+    gems    gem[]
+
+    belongToSimulators simulator[]
 }
 
 // 模拟器
 model simulator {
     id String @id
 
-    name    String
-    members member[]
+    name  String
+    teams team[]
 
     extraDetails String?
 
@@ -1015,9 +1040,10 @@ model image {
 
     dataUrl String
 
+    belongToNpc npc?    @relation(fields: [npcId], references: [id])
+    npcId       String? @unique
+
     usedByItem      item[]
-    belongToNpc     npc?        @relation(fields: [npcId], references: [id])
-    npcId           String?     @unique
     usedByMob       mob[]
     usedByCharacter character[]
 }
