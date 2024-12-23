@@ -18,33 +18,33 @@ export type AccountUpdate = Updateable<account>;
 
 export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
   return [
-    jsonArrayFrom(eb.selectFrom("character").where("character.masterId", "=", accountId).selectAll("character")).as(
-      "characters",
-    ),
-    jsonArrayFrom(eb.selectFrom("mercenary").where("mercenary.masterId", "=", accountId).selectAll("mercenary")).as(
-      "mercenarys",
-    ),
-    jsonArrayFrom(eb.selectFrom("custom_pet").where("custom_pet.masterId", "=", accountId).selectAll("custom_pet")).as(
-      "customPets",
-    ),
-    jsonArrayFrom(
-      eb.selectFrom("custom_weapon").where("custom_weapon.masterId", "=", accountId).selectAll("custom_weapon"),
-    ).as("weapons"),
-    jsonArrayFrom(
-      eb.selectFrom("custom_armor").where("custom_armor.masterId", "=", accountId).selectAll("custom_armor"),
-    ).as("armors"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("custom_additional_equipment")
-        .where("custom_additional_equipment.masterId", "=", accountId)
-        .selectAll("custom_additional_equipment"),
-    ).as("addEquips"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("custom_special_equipment")
-        .where("custom_special_equipment.masterId", "=", accountId)
-        .selectAll("custom_special_equipment"),
-    ).as("speEquips"),
+    // jsonArrayFrom(eb.selectFrom("character").where("character.masterId", "=", accountId).selectAll("character")).as(
+    //   "characters",
+    // ),
+    // jsonArrayFrom(eb.selectFrom("mercenary").where("mercenary.masterId", "=", accountId).selectAll("mercenary")).as(
+    //   "mercenarys",
+    // ),
+    // jsonArrayFrom(eb.selectFrom("custom_pet").where("custom_pet.masterId", "=", accountId).selectAll("custom_pet")).as(
+    //   "customPets",
+    // ),
+    // jsonArrayFrom(
+    //   eb.selectFrom("custom_weapon").where("custom_weapon.masterId", "=", accountId).selectAll("custom_weapon"),
+    // ).as("weapons"),
+    // jsonArrayFrom(
+    //   eb.selectFrom("custom_armor").where("custom_armor.masterId", "=", accountId).selectAll("custom_armor"),
+    // ).as("armors"),
+    // jsonArrayFrom(
+    //   eb
+    //     .selectFrom("custom_additional_equipment")
+    //     .where("custom_additional_equipment.masterId", "=", accountId)
+    //     .selectAll("custom_additional_equipment"),
+    // ).as("addEquips"),
+    // jsonArrayFrom(
+    //   eb
+    //     .selectFrom("custom_special_equipment")
+    //     .where("custom_special_equipment.masterId", "=", accountId)
+    //     .selectAll("custom_special_equipment"),
+    // ).as("speEquips"),
     jsonObjectFrom(
       eb
         .selectFrom("account_create_data")
@@ -108,14 +108,7 @@ export const defaultAccount: Account = {
   scope: null,
   id_token: null,
   session_state: null,
-  accountId: "",
-  characters: [],
-  mercenarys: [],
-  customPets: [],
-  weapons: [],
-  armors: [],
-  addEquips: [],
-  speEquips: [],
+  userId: "",
   create: {
     accountId: "defaultAccount",
   },

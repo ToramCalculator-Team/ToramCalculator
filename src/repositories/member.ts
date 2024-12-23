@@ -3,6 +3,7 @@ import { db } from "./database";
 import { DB, member } from "~/repositories/db/types";
 import { defaultCharacter, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultMob } from "./mob";
 
 export type Member = Awaited<ReturnType<typeof findMemberById>>;
 export type NewMember = Insertable<member>;
@@ -16,9 +17,14 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
         .whereRef("id", "=", "member.characterId")
         .selectAll("character")
         .select((subEb) => characterSubRelations(subEb, subEb.val(id))),
-    )
-      .$notNull()
-      .as("character"),
+    ).as("character"),
+    jsonObjectFrom(eb.selectFrom("mercenary").whereRef("id", "=", "member.mercenaryId").selectAll("mercenary")).as(
+      "mercenary",
+    ),
+    jsonObjectFrom(eb.selectFrom("mercenary").whereRef("id", "=", "member.partnerId").selectAll("mercenary")).as(
+      "partner",
+    ),
+    jsonObjectFrom(eb.selectFrom("mob").whereRef("id", "=", "member.mobId").selectAll("mob")).as("mob"),
   ];
 }
 
@@ -37,20 +43,15 @@ export async function updateMember(id: string, updateWith: MemberUpdate) {
 
 export async function createMember(newMember: NewMember) {
   return await db.transaction().execute(async (trx) => {
-    const character = await trx
-      .insertInto("character")
-      .values(defaultCharacter)
-      .returningAll()
-      .executeTakeFirstOrThrow();
     const member = await trx
       .insertInto("member")
       .values({
         ...newMember,
-        characterId: character.id,
+        // characterId: character.id,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { ...member, character };
+    return member;
   });
 }
 
@@ -162,4 +163,11 @@ export const defaultMember: Member = {
       },
     },
   ],
+  mob: defaultMob,
+  mobId: defaultMob.id,
+  mobDifficultyFlag: "Easy",
+  mercenary: null,
+  mercenaryId: null,
+  partner: null,
+  partnerId: null,
 };

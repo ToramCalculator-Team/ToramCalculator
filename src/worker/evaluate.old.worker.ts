@@ -2,11 +2,14 @@
 
 import * as _ from "lodash-es";
 import { type $Enums } from "@prisma/client";
+import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MainWeaponType, ModifierType, SubWeaponType, WeaponType } from "~/repositories/enums";
+import { ModifierType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
-import { type Mob } from "~/repositories/mob";
+import { type Monster } from "~/repositories/mob";
 import { type SkillEffect } from "~/repositories/skill_effect";
+import { type ModifierList } from "~/repositories/weaponEncAttrs";
+import { Modifier } from "~/repositories/modifier";
 
 const fps = 60;
 
@@ -79,6 +82,19 @@ const relationUpdata = (target: modifiers) => {
       relationUpdata(relationModifier);
     });
   }
+};
+
+export type tSkill = {
+  id: string;
+  state: string;
+  skillTreeName: string;
+  name: string;
+  skillDescription: string;
+  level: number;
+  weaponElementDependencyType: string;
+  element: string;
+  skillType: string;
+  skillEffect: Omit<SkillEffect, "condition">;
 };
 
 enum EventStatus {
@@ -175,48 +191,48 @@ function replaceNode(node: MathNode) {
 }
 
 // 导入自定义方法
-// 此处需要考虑参数的上下文环境，静态加成的上下文环境为Player，动态加成的上下文环境为computeArgType
+// 此处需要考虑参数的上下文环境，静态加成的上下文环境为CharacterData，动态加成的上下文环境为computeArgType
 math.import({
   dynamicTotalValue: dynamicTotalValue,
-  // 应用于Player环境的函数--------------------------------
+  // 应用于CharacterData环境的函数--------------------------------
   // 判断主武器类型是否为无
-  isNO_WEAPON: function (mainWeapon: Player["mainWeapon"]) {
+  isNO_WEAPON: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "NO_WEAPON";
   },
   // 判断主武器类型是否为单手剑
-  isONE_HAND_SWORD: function (mainWeapon: Player["mainWeapon"]) {
+  isONE_HAND_SWORD: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "ONE_HAND_SWORD";
   },
   // 判断主武器类型是否为双手剑
-  isTWO_HANDS_SWORD: function (mainWeapon: Player["mainWeapon"]) {
+  isTWO_HANDS_SWORD: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "TWO_HANDS_SWORD";
   },
   // 判断主武器类型是否为弓
-  isBOW: function (mainWeapon: Player["mainWeapon"]) {
+  isBOW: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "BOW";
   },
   // 判断主武器类型是否为弩
-  isBOWGUN: function (mainWeapon: Player["mainWeapon"]) {
+  isBOWGUN: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "BOWGUN";
   },
   // 判断主武器类型是否为法杖
-  isSTAFF: function (mainWeapon: Player["mainWeapon"]) {
+  isSTAFF: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "STAFF";
   },
   // 判断主武器类型是否为魔导具
-  isMAGIC_DEVICE: function (mainWeapon: Player["mainWeapon"]) {
+  isMAGIC_DEVICE: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "MAGIC_DEVICE";
   },
   // 判断主武器类型是否为拳套
-  isKNUCKLE: function (mainWeapon: Player["mainWeapon"]) {
+  isKNUCKLE: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "KNUCKLE";
   },
   // 判断主武器类型是否为旋风枪
-  isHALBERD: function (mainWeapon: Player["mainWeapon"]) {
+  isHALBERD: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "HALBERD";
   },
   // 判断主武器类型是否为拔刀剑
-  isKATANA: function (mainWeapon: Player["mainWeapon"]) {
+  isKATANA: function (mainWeapon: CharacterData["mainWeapon"]) {
     return mainWeapon.type === "KATANA";
   },
   // 应用于SkillData环境的函数--------------------------------
@@ -425,7 +441,7 @@ const applyModifiers = (formula: string, origin: string, scope: object): void =>
 };
 
 // 角色属性应用
-export const characterModifiersApplicator = (character: Character, player: Player): void => {
+export const characterModifiersApplicator = (character: Character, characterData: CharacterData): void => {
   const modifierListArray = characterModifierCollector(character);
   console.log("目前已收集的加成项列表：", modifierListArray);
   console.log("开始将已收集的加成项应用至角色配置中");
@@ -444,15 +460,15 @@ export const characterModifiersApplicator = (character: Character, player: Playe
         return;
       }
       // 非赋值表达式说明该行为是对当前角色已有属性进行增减,从第一个加减号开始分解表达式
-      applyModifiers(modifier.formula, origin, player);
+      applyModifiers(modifier.formula, origin, characterData);
     });
   });
 };
 
-export class Player {
+export class CharacterData {
   // 武器的能力值-属性转化率
   static weaponAbiT: Record<
-    MainWeaponType,
+    $Enums.MainWeaponType,
     {
       baseHit: number;
       baseAspd: number;
@@ -464,7 +480,7 @@ export class Player {
       >;
     }
   > = {
-    OneHandSword: {
+    ONE_HAND_SWORD: {
       baseHit: 0.25,
       baseAspd: 100,
       abi_Attr_Convert: {
@@ -496,7 +512,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    Katana: {
+    KATANA: {
       baseHit: 0.3,
       baseAspd: 200,
       abi_Attr_Convert: {
@@ -528,7 +544,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    TwoHandSword: {
+    TWO_HANDS_SWORD: {
       baseHit: 0.15,
       baseAspd: 50,
       abi_Attr_Convert: {
@@ -560,7 +576,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    Bow: {
+    BOW: {
       baseHit: 0.1,
       baseAspd: 75,
       abi_Attr_Convert: {
@@ -592,7 +608,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    Bowgun: {
+    BOWGUN: {
       baseHit: 0.05,
       baseAspd: 100,
       abi_Attr_Convert: {
@@ -624,7 +640,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    Rod: {
+    STAFF: {
       baseHit: 0.3,
       baseAspd: 60,
       abi_Attr_Convert: {
@@ -656,7 +672,7 @@ export class Player {
       weaAtk_Matk_Convert: 1,
       weaAtk_Patk_Convert: 1,
     },
-    Magictool: {
+    MAGIC_DEVICE: {
       baseHit: 0.1,
       baseAspd: 90,
       abi_Attr_Convert: {
@@ -688,7 +704,7 @@ export class Player {
       weaAtk_Matk_Convert: 1,
       weaAtk_Patk_Convert: 1,
     },
-    Knuckle: {
+    KNUCKLE: {
       baseHit: 0.1,
       baseAspd: 120,
       abi_Attr_Convert: {
@@ -720,7 +736,7 @@ export class Player {
       weaAtk_Matk_Convert: 0.5,
       weaAtk_Patk_Convert: 1,
     },
-    Halberd: {
+    HALBERD: {
       baseHit: 0.25,
       baseAspd: 20,
       abi_Attr_Convert: {
@@ -752,7 +768,7 @@ export class Player {
       weaAtk_Matk_Convert: 0,
       weaAtk_Patk_Convert: 1,
     },
-    Empty: {
+    NO_WEAPON: {
       baseHit: 50,
       baseAspd: 1000,
       abi_Attr_Convert: {
@@ -789,19 +805,19 @@ export class Player {
   // 自由数值：玩家可定义基础值和加成项的，不由其他数值转化而来，但是会参与衍生属性计算的数值
   lv: number;
   mainWeapon: {
-    type: MainWeaponType;
+    type: $Enums.MainWeaponType;
     baseAtk: modifiers;
     refinement: number;
     stability: number;
   };
   subWeapon: {
-    type: SubWeaponType;
+    type: $Enums.SubWeaponType;
     baseAtk: modifiers;
     refinement: number;
     stability: number;
   };
   bodyArmor: {
-    type: $Enums.ArmorType;
+    type: $Enums.BodyArmorType;
     baseDef: modifiers;
     refinement: number;
   };
@@ -852,20 +868,20 @@ export class Player {
   [key: string]: object | string | number;
 
   constructor(config: Character) {
-    console.log("开始实例化Player");
-    const mainWeaponType: MainWeaponType = config.mainWeapon.weaponType ?? "Empty";
-    const subWeaponType: SubWeaponType = config.subWeapon.weaponType ?? "Empty";
-    const bodyArmorType: $Enums.ArmorType = config.bodyArmor.armorType ?? "Light";
+    console.log("开始实例化CharacterData");
+    const mainWeaponType = config.mainWeapon?.mainWeaponType ?? "NO_WEAPON";
+    const subWeaponType = config.subWeapon?.subWeaponType ?? "NO_WEAPON";
+    const bodyArmorType = config.bodyArmor?.bodyArmorType ?? "NORMAL";
 
     // 计算基础值
     this.lv = config.lv;
     this.weaponMatkT = new modifiers(
       ModifierType.WEAPON_MATK_CONVERSION_RATE,
-      Player.weaponAbiT[mainWeaponType].weaAtk_Matk_Convert,
+      CharacterData.weaponAbiT[mainWeaponType].weaAtk_Matk_Convert,
     );
     this.weaponPatkT = new modifiers(
       ModifierType.WEAPON_ATK_CONVERSION_RATE,
-      Player.weaponAbiT[mainWeaponType].weaAtk_Patk_Convert,
+      CharacterData.weaponAbiT[mainWeaponType].weaAtk_Patk_Convert,
     );
     this.mainWeapon = {
       type: mainWeaponType,
@@ -926,10 +942,10 @@ export class Player {
       this.pAtk.baseValue =
         this.lv +
         dynamicTotalValue(this.weaponAtk) * dynamicTotalValue(this.weaponPatkT) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.pAtkT * dynamicTotalValue(this.str) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.pAtkT * dynamicTotalValue(this.int) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.pAtkT * dynamicTotalValue(this.agi) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.pAtkT * dynamicTotalValue(this.dex);
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.pAtkT * dynamicTotalValue(this.str) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.pAtkT * dynamicTotalValue(this.int) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.pAtkT * dynamicTotalValue(this.agi) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.pAtkT * dynamicTotalValue(this.dex);
     };
     this.pAtk.update();
 
@@ -938,10 +954,10 @@ export class Player {
       this.mAtk.baseValue =
         this.lv +
         dynamicTotalValue(this.weaponAtk) * dynamicTotalValue(this.weaponMatkT) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.mAtkT * dynamicTotalValue(this.str) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.mAtkT * dynamicTotalValue(this.int) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.mAtkT * dynamicTotalValue(this.agi) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.mAtkT * dynamicTotalValue(this.dex);
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.mAtkT * dynamicTotalValue(this.str) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.mAtkT * dynamicTotalValue(this.int) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.mAtkT * dynamicTotalValue(this.agi) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.mAtkT * dynamicTotalValue(this.dex);
       // console.log(
       //   `
       //   =========================================
@@ -950,10 +966,10 @@ export class Player {
       //   等级： ${this.lv}
       //   总武器攻击： ${dynamicTotalValue(this.weaponAtk) * dynamicTotalValue(this.weaponMatkT)}
       //   当前武器类型： ${mainWeaponType} 的转化率如下
-      //   str - 魔攻转化率：${Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.mAtkT} * 总str:${dynamicTotalValue(this.str)}
-      //   int - 魔攻转化率：${Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.mAtkT} * 总int:${dynamicTotalValue(this.int)}
-      //   agi - 魔攻转化率：${Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.mAtkT} * 总agi:${dynamicTotalValue(this.agi)}
-      //   dex - 魔攻转化率：${Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.mAtkT} * 总dex:${dynamicTotalValue(this.dex)}
+      //   str - 魔攻转化率：${CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.mAtkT} * 总str:${dynamicTotalValue(this.str)}
+      //   int - 魔攻转化率：${CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.mAtkT} * 总int:${dynamicTotalValue(this.int)}
+      //   agi - 魔攻转化率：${CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.mAtkT} * 总agi:${dynamicTotalValue(this.agi)}
+      //   dex - 魔攻转化率：${CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.mAtkT} * 总dex:${dynamicTotalValue(this.dex)}
       //   魔攻 = ${this.mAtk.baseValue}
       //   =========================================
       //   `,
@@ -964,12 +980,12 @@ export class Player {
     this.aspd = new modifiers(ModifierType.ASPD);
     this.aspd.update = () => {
       this.aspd.baseValue =
-        Player.weaponAbiT[mainWeaponType].baseAspd +
+        CharacterData.weaponAbiT[mainWeaponType].baseAspd +
         this.lv +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.aspdT * dynamicTotalValue(this.str) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.aspdT * dynamicTotalValue(this.int) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.aspdT * dynamicTotalValue(this.agi) +
-        Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.aspdT * dynamicTotalValue(this.dex);
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.aspdT * dynamicTotalValue(this.str) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.aspdT * dynamicTotalValue(this.int) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.aspdT * dynamicTotalValue(this.agi) +
+        CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.aspdT * dynamicTotalValue(this.dex);
     };
     this.aspd.update();
 
@@ -1005,10 +1021,10 @@ export class Player {
       this.pStab.modifiers.static.fixed[1] = {
         value:
           floor(
-            Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.stabT * dynamicTotalValue(this.str) +
-              Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.stabT * dynamicTotalValue(this.int) +
-              Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.stabT * dynamicTotalValue(this.agi) +
-              Player.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.stabT * dynamicTotalValue(this.dex),
+            CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.str.stabT * dynamicTotalValue(this.str) +
+              CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.int.stabT * dynamicTotalValue(this.int) +
+              CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.agi.stabT * dynamicTotalValue(this.agi) +
+              CharacterData.weaponAbiT[mainWeaponType].abi_Attr_Convert.dex.stabT * dynamicTotalValue(this.dex),
           ) ?? 0,
         origin: [
           "str",
@@ -1141,7 +1157,7 @@ export class Player {
 
     // 添加加成项
     characterModifiersApplicator(config, this);
-    console.log("Player实例化完毕：", _.cloneDeep(this));
+    console.log("CharacterData实例化完毕：", _.cloneDeep(this));
   }
 }
 
@@ -1198,7 +1214,7 @@ export class SkillData {
   constructor(
     Index: number,
     skill: tSkill,
-    scope: { p: Player } & Scope,
+    scope: { p: CharacterData } & Scope,
     passedFrames: number,
     eventSequence: eventSequenceType[],
   ) {
@@ -1348,7 +1364,7 @@ export class CharacterState {
   scope: Scope;
   actionIndex: number;
   actionFrameIndex: number;
-  player: Player;
+  characterData: CharacterData;
   skillData: SkillData;
   eventSequence: eventSequenceType[];
   cEvaluate: (formula: string) => number | void;
@@ -1367,14 +1383,14 @@ export class CharacterState {
     this.actionIndex = 0;
     this.actionFrameIndex = 0;
     this.eventSequence = [];
-    this.player = new Player(character);
+    this.characterData = new CharacterData(character);
     this.scope = scope;
     // 将角色数据传入作用域
-    this.scope.p = this.player;
+    this.scope.p = this.characterData;
     this.skillData = new SkillData(
       this.actionIndex,
       skill,
-      scope as { p: Player } & Scope,
+      scope as { p: CharacterData } & Scope,
       scope.frame,
       this.eventSequence,
     );
@@ -1491,7 +1507,7 @@ export class CharacterState {
 
   public nextAction(actionQueue: tSkill[]) {
     this.state = characterStatus.Startup;
-    this.scope.p = this.player;
+    this.scope.p = this.characterData;
     this.actionIndex += 1;
     this.actionFrameIndex = 0;
     const skill = actionQueue[this.actionIndex];
@@ -1499,7 +1515,7 @@ export class CharacterState {
       this.skillData = new SkillData(
         this.actionIndex,
         skill,
-        this.scope as { p: Player } & Scope,
+        this.scope as { p: CharacterData } & Scope,
         this.scope.frame,
         this.eventSequence,
       );
@@ -1517,7 +1533,7 @@ export type FrameData = {
 
 type Scope = {
   frame: number;
-  p?: Player;
+  p?: CharacterData;
   m: MonsterData;
   s?: SkillData;
 };
@@ -1569,7 +1585,7 @@ export const compute = (
       const actionQueue = c.actionQueue;
       console.log("第 " + cIndex + " 位角色：", characterState.name);
       // 向scope中添加角色数据
-      scope.p = c.characterState.player;
+      scope.p = c.characterState.characterData;
       characterState.actionFrameIndex++;
       if (scope.p) {
         // 先执行事件队列

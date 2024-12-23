@@ -1,69 +1,73 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
-import { crystalSubRelations, defaultCrystal, NewCrystal } from "./crystal";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultStatistics } from "./statistics";
+import { defaultAccount } from "./account";
 
-export type Armor = Awaited<ReturnType<typeof findArmorById>>;
-export type NewArmor = Insertable<armor>;
-export type ArmorUpdate = Updateable<armor>;
+export type Item = Awaited<ReturnType<typeof findItemById>>;
+export type NewItem = Insertable<item>;
+export type ItemUpdate = Updateable<item>;
 
-export function armorSubRelations(eb: ExpressionBuilder<DB, "armor">, id: Expression<string>) {
+export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
+    jsonObjectFrom(eb.selectFrom("statistics").whereRef("id", "=", "item.statisticsId").selectAll("statistics"))
+      .$notNull()
+      .as("statistics"),
     jsonArrayFrom(
       eb
-        .selectFrom("_armorTocrystal")
-        .innerJoin("crystal", "_armorTocrystal.B", "crystal.itemId")
-        .where("_armorTocrystal.A", "=", id)
-        .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
-    ).as("defaultCrystalList"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("item")
-        .innerJoin("drop_item", "drop_item.itemId", "item.id")
+        .selectFrom("drop_item")
         .innerJoin("mob", "drop_item.dropById", "mob.id")
-        .where("item.id", "=", id)
-        .select("mob.name"),
+        .where("drop_item.itemId", "=", id)
+        .select(["mob.id", "mob.name"]),
     ).as("dropBy"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("reward")
+        .innerJoin("task", "reward.taskId", "task.id")
+        .innerJoin("npc", "task.npcId", "npc.id")
+        .where("reward.itemId", "=", id)
+        .select(["npc.id", "npc.name", "task.id", "task.name"]),
+    ).as("rewardBy"),
   ];
 }
 
-export async function findArmorById(id: string) {
+export async function findItemById(id: string) {
   return await db
-    .selectFrom("armor")
-    .where("armor.itemId", "=", id)
-    .selectAll("armor")
-    .select((eb) => armorSubRelations(eb, eb.val(id)))
+    .selectFrom("item")
+    .where("id", "=", id)
+    .selectAll("item")
+    .select((eb) => itemSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateArmor(id: string, updateWith: ArmorUpdate) {
-  return await db.updateTable("armor").set(updateWith).where("armor.itemId", "=", id).returningAll().executeTakeFirst();
+export async function updateItem(id: string, updateWith: ItemUpdate) {
+  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createArmor(newArmor: NewArmor) {
+export async function createItem(newItem: NewItem) {
   return await db.transaction().execute(async (trx) => {
-    const armor = await trx.insertInto("armor").values(newArmor).returningAll().executeTakeFirstOrThrow();
-    return armor;
+    const item = await trx.insertInto("item").values(newItem).returningAll().executeTakeFirstOrThrow();
+    return item;
   });
 }
 
-export async function deleteArmor(id: string) {
-  return await db.deleteFrom("armor").where("armor.itemId", "=", id).returningAll().executeTakeFirst();
+export async function deleteItem(id: string) {
+  return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultArmor: Armor = {
-  name: "defaultArmorName",
-  baseDef: 0,
-  availability: "permanent",
-  acquisitionMethod: "Drop",
-  modifiers: [],
-  defaultCrystalList: [],
+export const defaultItem: Item = {
+  id: "defaultItemId",
+  name: "默认道具（缺省值）",
+  dataSources: "",
+  extraDetails: "",
   dropBy: [],
-  colorA: 0,
-  colorB: 0,
-  colorC: 0,
-  itemId: "",
+  rewardBy: [],
+  updatedAt: new Date(),
+  createdAt: new Date(),
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
+  statistics: defaultStatistics,
+  statisticsId: defaultStatistics.id,
 };

@@ -1,76 +1,78 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { crystal, DB } from "~/repositories/db/types";
-import { createStatistics, defaultStatistics, statisticsSubRelations } from "./statistics";
-import { jsonObjectFrom } from "kysely/helpers/postgres";
+import { DB, item } from "~/repositories/db/types";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { defaultStatistics } from "./statistics";
+import { defaultAccount } from "./account";
+import { itemSubRelations } from "./item";
 
 export type Crystal = Awaited<ReturnType<typeof findCrystalById>>;
-export type NewCrystal = Insertable<crystal>;
-export type CrystalUpdate = Updateable<crystal>;
+export type NewCrystal = Insertable<item>;
+export type CrystalUpdate = Updateable<item>;
 
-export function crystalSubRelations(eb: ExpressionBuilder<DB, "crystal">, id: Expression<string>) {
+export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
-    jsonObjectFrom(
+    jsonArrayFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "crystal.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    )
-      .$notNull()
-      .as("statistics"),
+        .selectFrom("_FrontRelation")
+        .innerJoin("crystal", "_FrontRelation.B", "crystal.itemId")
+        .where("_FrontRelation.A", "=", id)
+        .selectAll("crystal"),
+    ).as("front"),
+    jsonArrayFrom(
+      eb
+
+        .selectFrom("_BackRelation")
+        .innerJoin("crystal", "_BackRelation.B", "crystal.itemId")
+        .where("_BackRelation.A", "=", id)
+        .selectAll("crystal"),
+    ).as("back"),
   ];
 }
 
 export async function findCrystalById(id: string) {
   return await db
-    .selectFrom("crystal")
-    .where("crystal.id", "=", id)
-    .selectAll("crystal")
+    .selectFrom("item")
+    .innerJoin("crystal", "item.id", "crystal.itemId")
+    .where("id", "=", id)
+    .selectAll(["item", "crystal"])
     .select((eb) => crystalSubRelations(eb, eb.val(id)))
+    .select((eb) => itemSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function findCrystals() {
-  return await db
-    .selectFrom("crystal")
-    .selectAll("crystal")
-    .select((eb) => crystalSubRelations(eb, eb.val("crystal.id")))
-    .execute();
-}
-
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
-  return await db.updateTable("crystal").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function createCrystal(newCrystal: NewCrystal) {
   return await db.transaction().execute(async (trx) => {
-    const crystal = await trx.insertInto("crystal").values(newCrystal).returningAll().executeTakeFirstOrThrow();
-    const modifierList = await createModifierList(defaultModifierList);
-    const statistics = await createStatistics(defaultStatistics);
-    return { ...crystal, modifierList, statistics };
+    const item = await trx.insertInto("item").values(newCrystal).returningAll().executeTakeFirstOrThrow();
+    return item;
   });
 }
 
 export async function deleteCrystal(id: string) {
-  return await db.deleteFrom("crystal").where("id", "=", id).returningAll().executeTakeFirst();
+  return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
 export const defaultCrystal: Crystal = {
+  name: "默认锻晶（缺省值）",
   id: "defaultCrystalId",
-  name: "defaultCrystalName",
-  crystalType: "GENERAL",
-  front: 0,
-  modifierList: defaultModifierList,
-  modifierListId: defaultModifierList.id,
+  modifiers: [],
+  itemId: "defaultCrystalId",
+  front: [],
+  back: [],
+  crystalType: "",
   dataSources: "",
   extraDetails: "",
-
+  dropBy: [],
+  rewardBy: [],
   updatedAt: new Date(),
-  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByAccountId: "",
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
   statistics: defaultStatistics,
   statisticsId: defaultStatistics.id,
 };

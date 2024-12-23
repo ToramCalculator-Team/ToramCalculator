@@ -5,7 +5,7 @@ import {
   dynamicTotalValue,
   isModifiers,
   modifiers,
-} from "~/worker/evaluate.worker";
+} from "~/worker/evaluate.old.worker";
 import { Character } from "~/repositories/character";
 import stringToColor from "~/lib/untils/stringToColor";
 

@@ -4,7 +4,7 @@ import {
   type tSkill,
   dynamicTotalValue,
   type FrameData,
-} from "../../../../worker/evaluate.worker";
+} from "../../../../worker/evaluate.old.worker";
 import { ObjectRenderer } from "../../../../components/module/objectRender";
 import { Monster } from "~/repositories/mob";
 import { Character } from "~/repositories/character";

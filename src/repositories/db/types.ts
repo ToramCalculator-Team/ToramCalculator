@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { UserRole, Element, MobType, SpecialAbiType, ArmorType, SkillType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, CharacterType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType } from "./enums";
+import type { UserRole, Element, MobType, SpecialAbiType, ArmorType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, CharacterType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType, Visibility } from "./enums";
 
 export type account = {
     id: string;
@@ -18,7 +18,7 @@ export type account = {
     scope: string | null;
     id_token: string | null;
     session_state: string | null;
-    accountId: string;
+    userId: string;
 };
 export type account_create_data = {
     accountId: string;
@@ -26,11 +26,13 @@ export type account_create_data = {
 export type account_update_data = {
     accountId: string;
 };
+export type activity = {
+    id: string;
+    name: string;
+};
 export type additional_equipment = {
     name: string;
     baseDef: number;
-    availability: AvailabilityType;
-    acquisitionMethod: AcquisitionMethodType;
     modifiers: string[];
     colorA: number;
     colorB: number;
@@ -38,6 +40,10 @@ export type additional_equipment = {
     itemId: string;
 };
 export type additional_equipmentTocrystal = {
+    A: string;
+    B: string;
+};
+export type additional_equipmentToimage = {
     A: string;
     B: string;
 };
@@ -52,8 +58,6 @@ export type address = {
 export type armor = {
     name: string;
     baseDef: number;
-    availability: AvailabilityType;
-    acquisitionMethod: AcquisitionMethodType;
     modifiers: string[];
     colorA: number;
     colorB: number;
@@ -76,6 +80,25 @@ export type armorTocrystal = {
     A: string;
     B: string;
 };
+export type armorToimage = {
+    A: string;
+    B: string;
+};
+export type avatar = {
+    id: string;
+    name: string;
+    type: string;
+    modifiers: string[];
+    playerId: string;
+};
+export type avatarTocharacter = {
+    A: string;
+    B: string;
+};
+export type BackRelation = {
+    A: string;
+    B: string;
+};
 export type character = {
     id: string;
     name: string;
@@ -93,9 +116,12 @@ export type character = {
     armorId: string;
     addEquipId: string;
     speEquipId: string;
-    fashion: string[];
     cuisine: string[];
     ExtraAttrs: string[];
+    partnerSkillA: string;
+    partnerSkillAType: MercenarySkillType;
+    partnerSkillB: string;
+    partnerSkillBType: MercenarySkillType;
     masterId: string;
     extraDetails: string;
     updatedAt: Timestamp;
@@ -126,9 +152,11 @@ export type combo = {
     combo: unknown;
 };
 export type consumable = {
-    id: string;
     name: string;
-    modifiers: string[];
+    itemId: string;
+    type: string;
+    effectDuration: number;
+    effects: string[];
 };
 export type crystal = {
     name: string;
@@ -235,12 +263,16 @@ export type drop_item = {
     breakReward: PartBreakReward;
     dropById: string;
 };
+export type FrontRelation = {
+    A: string;
+    B: string;
+};
 export type image = {
     id: string;
     dataUrl: string;
     npcId: string | null;
 };
-export type imageToitem = {
+export type imageToweapon = {
     A: string;
     B: string;
 };
@@ -256,8 +288,8 @@ export type item = {
     createdByAccountId: string | null;
 };
 export type material = {
-    id: string;
     name: string;
+    itemId: string;
     material: MaterialType;
     ptValue: number;
     price: number;
@@ -265,16 +297,17 @@ export type material = {
 export type member = {
     id: string;
     flow: unknown;
-    characterId: string;
-    mobId: string;
+    characterId: string | null;
+    partnerId: string | null;
+    mercenaryId: string | null;
+    mobId: string | null;
     mobDifficultyFlag: MobDifficultyFlag;
 };
-export type memberTosimulator = {
+export type memberToteam = {
     A: string;
     B: string;
 };
 export type mercenary = {
-    id: string;
     type: MercenaryType;
     templateId: string;
     masterId: string;
@@ -343,6 +376,11 @@ export type pet = {
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
+export type player = {
+    id: string;
+    name: string;
+    accountId: string;
+};
 export type post = {
     id: string;
     name: string;
@@ -356,12 +394,21 @@ export type rate = {
     accountId: string;
     statisticsId: string;
 };
-export type recipeIngredient = {
+export type recipe = {
+    id: string;
+    weaponId: string | null;
+    armorId: string | null;
+    addEquipId: string | null;
+    speEquipId: string | null;
+    consumableId: string | null;
+    activityId: string | null;
+};
+export type recipe_ingredient = {
     id: string;
     type: string;
     count: number;
     itemId: string | null;
-    belongToItemId: string;
+    recipeId: string;
 };
 export type reward = {
     id: string;
@@ -380,6 +427,7 @@ export type session = {
 export type simulator = {
     id: string;
     name: string;
+    visibility: Visibility;
     extraDetails: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
@@ -387,19 +435,21 @@ export type simulator = {
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
+export type simulatorToteam = {
+    A: string;
+    B: string;
+};
 export type skill = {
     id: string;
-    skillTreeName: string;
+    treeName: string;
     posX: number;
     posY: number;
     tier: number;
     name: string;
-    skillType: SkillType;
-    weaponElementDependencyType: boolean;
-    defaultElement: Element | null;
+    isPassive: boolean;
+    element: string;
     chargingType: SkillChargingType;
     distanceResist: SkillDistanceResistType;
-    skillDescription: string | null;
     extraDetails: string;
     dataSources: string;
     updatedAt: Timestamp;
@@ -414,19 +464,18 @@ export type skill_effect = {
     subHand: string;
     armor: string;
     description: string;
-    motionBaseDurationFormula: string;
-    motionModifiableDurationFormula: string;
-    chantingBaseDurationFormula: string;
-    chantingModifiableDurationFormula: string;
-    ReservoirBaseDurationFormula: string;
-    ReservoirModifiableDurationFormula: string;
-    skillStartupFramesFormula: string;
-    costFormula: string;
+    motionFixed: string;
+    motionModified: string;
+    chantingFixed: string;
+    chantingModified: string;
+    ReservoirFixed: string;
+    ReservoirModified: string;
+    startupFrames: string;
+    cost: string;
     belongToskillId: string;
 };
 export type skill_yield = {
     id: string;
-    name: string;
     yieldType: YieldType;
     yieldFormula: string;
     mutationTimingFormula: string | null;
@@ -435,8 +484,6 @@ export type skill_yield = {
 export type special_equipment = {
     name: string;
     baseDef: number;
-    availability: AvailabilityType;
-    acquisitionMethod: AcquisitionMethodType;
     modifiers: string[];
     itemId: string;
 };
@@ -448,6 +495,11 @@ export type task = {
     lv: number;
     name: string;
     npcId: string;
+};
+export type team = {
+    id: string;
+    name: string | null;
+    gems: string[];
 };
 export type usage_timestamp = {
     timestamp: Timestamp;
@@ -473,8 +525,6 @@ export type view_timestamp = {
 export type weapon = {
     name: string;
     type: string;
-    availability: AvailabilityType;
-    acquisitionMethod: AcquisitionMethodType;
     baseAbi: number;
     stability: number;
     modifiers: string[];
@@ -504,11 +554,16 @@ export type zone = {
     name: string | null;
     linkZone: string[];
     rewardNodes: number;
+    activityId: string | null;
     addressId: string;
 };
 export type DB = {
     _additional_equipmentTocrystal: additional_equipmentTocrystal;
+    _additional_equipmentToimage: additional_equipmentToimage;
     _armorTocrystal: armorTocrystal;
+    _armorToimage: armorToimage;
+    _avatarTocharacter: avatarTocharacter;
+    _BackRelation: BackRelation;
     _characterTocharacter_skill: characterTocharacter_skill;
     _characterTocombo: characterTocombo;
     _characterToconsumable: characterToconsumable;
@@ -518,16 +573,20 @@ export type DB = {
     _crystalTocustom_weapon: crystalTocustom_weapon;
     _crystalTospecial_equipment: crystalTospecial_equipment;
     _crystalToweapon: crystalToweapon;
-    _imageToitem: imageToitem;
-    _memberTosimulator: memberTosimulator;
+    _FrontRelation: FrontRelation;
+    _imageToweapon: imageToweapon;
+    _memberToteam: memberToteam;
     _mobTozone: mobTozone;
+    _simulatorToteam: simulatorToteam;
     account: account;
     account_create_data: account_create_data;
     account_update_data: account_update_data;
+    activity: activity;
     additional_equipment: additional_equipment;
     address: address;
     armor: armor;
     armor_enchantment_attributes: armor_enchantment_attributes;
+    avatar: avatar;
     character: character;
     character_skill: character_skill;
     combo: combo;
@@ -547,9 +606,11 @@ export type DB = {
     mob: mob;
     npc: npc;
     pet: pet;
+    player: player;
     post: post;
     rate: rate;
-    recipeIngredient: recipeIngredient;
+    recipe: recipe;
+    recipe_ingredient: recipe_ingredient;
     reward: reward;
     session: session;
     simulator: simulator;
@@ -559,6 +620,7 @@ export type DB = {
     special_equipment: special_equipment;
     statistics: statistics;
     task: task;
+    team: team;
     usage_timestamp: usage_timestamp;
     user: user;
     verification_token: verification_token;

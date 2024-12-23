@@ -33,11 +33,6 @@ export const ArmorType = {
     Heavy: "Heavy"
 } as const;
 export type ArmorType = (typeof ArmorType)[keyof typeof ArmorType];
-export const SkillType = {
-    Active: "Active",
-    Passive: "Passive"
-} as const;
-export type SkillType = (typeof SkillType)[keyof typeof SkillType];
 export const SkillTargetType = {
     None: "None",
     Self: "Self",
@@ -171,3 +166,8 @@ export const MercenarySkillType = {
     Passive: "Passive"
 } as const;
 export type MercenarySkillType = (typeof MercenarySkillType)[keyof typeof MercenarySkillType];
+export const Visibility = {
+    Public: "Public",
+    Private: "Private"
+} as const;
+export type Visibility = (typeof Visibility)[keyof typeof Visibility];

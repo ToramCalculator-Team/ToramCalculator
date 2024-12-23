@@ -326,10 +326,11 @@ export type MainWeaponType =
   | "Magictool"
   | "Knuckle"
   | "Halberd"
-  | "Katana";
+  | "Katana"
+  | "Empty"
 
 // 副武器
-export type SubWeaponType = "Arrow" | "ShortSword" | "NinjutsuScroll" | "Shield";
+export type SubWeaponType = "Arrow" | "ShortSword" | "NinjutsuScroll" | "Shield" | "Empty";
 
 // 异常状态
 export type AbnormalType =

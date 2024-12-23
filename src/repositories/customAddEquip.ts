@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, custom_additional_equipment } from "~/repositories/db/types";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { defaultAddEquip } from "./addEquip";
 import { defaultAccount } from "./account";
@@ -10,16 +10,26 @@ export type CustomAddEquip = Awaited<ReturnType<typeof findCustomAddEquipById>>;
 export type NewCustomAddEquip = Insertable<custom_additional_equipment>;
 export type CustomAddEquipUpdate = Updateable<custom_additional_equipment>;
 
-export function customAddEquipSubRelations(eb: ExpressionBuilder<DB, "custom_additional_equipment">, id: Expression<string>) {
+export function customAddEquipSubRelations(
+  eb: ExpressionBuilder<DB, "custom_additional_equipment">,
+  id: Expression<string>,
+) {
   return [
     jsonArrayFrom(
       eb
         .selectFrom("_crystalTocustom_additional_equipment")
-        .innerJoin("crystal", "_crystalTocustom_additional_equipment.A", "crystal.id")
+        .innerJoin("crystal", "_crystalTocustom_additional_equipment.A", "crystal.itemId")
+        // .innerJoin("item", "crystal.itemId", "item.id")
         .where("_crystalTocustom_additional_equipment.B", "=", id)
-        .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("crystalList")
+        .selectAll("crystal"),
+      // .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id"))),
+    ).as("crystalList"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("additional_equipment")
+        .whereRef("additional_equipment.itemId", "=", "custom_additional_equipment.templateId")
+        .selectAll("additional_equipment"),
+    ).$notNull().as("template"),
   ];
 }
 
@@ -61,6 +71,7 @@ export const defaultCustomAddEquip: CustomAddEquip = {
   id: "defaultAddEquipId",
   name: "默认自定义追加装备（缺省值）",
   def: 0,
+  template: defaultAddEquip,
   templateId: defaultAddEquip.id,
   refinement: 0,
   crystalList: [],

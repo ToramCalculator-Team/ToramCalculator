@@ -4,6 +4,7 @@ import { DB, mob } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { defaultImage } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultAccount } from "./account";
 
 export type Mob = Awaited<ReturnType<typeof findMobById>>;
 export type NewMob = Insertable<mob>;
@@ -80,7 +81,7 @@ export async function deleteMob(id: string) {
 // default
 export const defaultMob: Mob = {
   id: "defaultMobId",
-  name: "defaultMobName",
+  name: "默认怪物（缺省值）",
   mobType: "Boss",
   flow: "",
   baseLv: 0,
@@ -115,6 +116,6 @@ export const defaultMob: Mob = {
   statistics: defaultStatistics,
   imageId: defaultImage.id,
   image: defaultImage,
-  updatedByAccountId: null,
-  createdByAccountId: null,
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
 };

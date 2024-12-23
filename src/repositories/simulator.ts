@@ -3,8 +3,8 @@ import { db } from "./database";
 import { DB, simulator } from "~/repositories/db/types";
 import { defaultStatistics, statisticsSubRelations } from "./statistics";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob, MobSubRelations } from "./mob";
-import { createMember, defaultMember, deleteMember, Member, memberSubRelations } from "./member";
+import { teamSubRelations } from "./team";
+import { defaultAccount } from "./account";
 
 export type Simulator = Awaited<ReturnType<typeof findSimulatorById>>;
 export type NewSimulator = Insertable<simulator>;
@@ -23,34 +23,24 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
       .as("statistics"),
     jsonArrayFrom(
       eb
-        .selectFrom("_simulatorTomember")
-        .innerJoin("member", "_simulatorTomember.B", "member.id")
-        .whereRef("_simulatorTomember.A", "=", id)
-        .selectAll("member")
-        .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
+        .selectFrom("_simulatorToteam")
+        .innerJoin("team", "_simulatorToteam.B", "team.id")
+        .whereRef("_simulatorToteam.A", "=", id)
+        .selectAll("team")
+        .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
     )
       .$notNull()
       .as("team"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_simulatorTomob")
-        .innerJoin("mob", "_simulatorTomob.B", "mob.id")
-        .whereRef("_simulatorTomob.A", "=", id)
-        .selectAll("mob")
-        .select((subEb) => MobSubRelations(subEb, subEb.val(id))),
-    )
-      .$notNull()
-      .as("mobs"),
   ];
 }
 
 export async function findSimulatorById(id: string) {
   return await db
-  .selectFrom("simulator")
-  .where("id", "=", id)
-  .selectAll("simulator")
-  .select((eb) => simulatorSubRelations(eb, eb.val(id)))
-  .executeTakeFirstOrThrow();
+    .selectFrom("simulator")
+    .where("id", "=", id)
+    .selectAll("simulator")
+    .select((eb) => simulatorSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }
 
 export async function findSimulators() {
@@ -70,12 +60,7 @@ export async function updateSimulator(id: string, updateWith: SimulatorUpdate) {
 export async function createSimulator(newSimulator: NewSimulator) {
   return await db.transaction().execute(async (trx) => {
     const simulator = await trx.insertInto("simulator").values(newSimulator).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
-      .values(defaultStatistics)
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return { ...simulator, statistics };
+    return simulator;
   });
 }
 
@@ -83,37 +68,18 @@ export async function deleteSimulator(id: string) {
   return await db.deleteFrom("simulator").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function addMemberToSimulator(simulatorId: string, member: Member) {
-  const m = await createMember(member);
-  return await db
-    .insertInto("_simulatorTomember")
-    .values({ A: simulatorId, B: m.id })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-export async function deleteMemberFromSimulator(simulatorId: string, memberId: string) {
-  await db
-    .deleteFrom("_simulatorTomember")
-    .where("A", "=", simulatorId)
-    .where("B", "=", memberId)
-    .returningAll()
-    .executeTakeFirst();
-  await deleteMember(memberId);
-}
-
 export const defaultSimulator: Simulator = {
   id: "defaultSimulator",
 
-  name: "defaultSimulator",
-  mobs: [defaultMob],
-  team: [defaultMember],
-  extraDetails: "defaultExtraDetails",
+  name: "默认模拟器（缺省值）",
+  visibility: "Public",
+  team: [],
+  extraDetails: "",
 
   updatedAt: new Date(),
-  updatedByAccountId: "",
   createdAt: new Date(),
-  createdByAccountId: "",
   statistics: defaultStatistics,
-  statisticsId: "",
+  statisticsId: defaultStatistics.id,
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
 };

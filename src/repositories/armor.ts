@@ -1,14 +1,18 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, armor } from "~/repositories/db/types";
-import { crystalSubRelations, defaultCrystal, NewCrystal } from "./crystal";
+import { DB, item } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultStatistics } from "./statistics";
+import { defaultAccount } from "./account";
+import { crystalSubRelations } from "./crystal";
+import { itemSubRelations } from "./item";
+import { defaultRecipes, recipeSubRelations } from "./recipe";
 
 export type Armor = Awaited<ReturnType<typeof findArmorById>>;
-export type NewArmor = Insertable<armor>;
-export type ArmorUpdate = Updateable<armor>;
+export type NewArmor = Insertable<item>;
+export type ArmorUpdate = Updateable<item>;
 
-export function armorSubRelations(eb: ExpressionBuilder<DB, "armor">, id: Expression<string>) {
+export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -16,54 +20,62 @@ export function armorSubRelations(eb: ExpressionBuilder<DB, "armor">, id: Expres
         .innerJoin("crystal", "_armorTocrystal.B", "crystal.itemId")
         .where("_armorTocrystal.A", "=", id)
         .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val(id))),
-    ).as("defaultCrystalList"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("item")
-        .innerJoin("drop_item", "drop_item.itemId", "item.id")
-        .innerJoin("mob", "drop_item.dropById", "mob.id")
-        .where("item.id", "=", id)
-        .select("mob.name"),
+        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("dropBy"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("recipe")
+        .where("recipe.armorId", "=", id)
+        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
+    ).as("recipe"),
   ];
 }
 
 export async function findArmorById(id: string) {
   return await db
-    .selectFrom("armor")
-    .where("armor.itemId", "=", id)
-    .selectAll("armor")
+    .selectFrom("item")
+    .innerJoin("armor", "item.id", "armor.itemId")
+    .where("id", "=", id)
+    .selectAll(["item", "armor"])
     .select((eb) => armorSubRelations(eb, eb.val(id)))
+    .select((eb) => itemSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
 export async function updateArmor(id: string, updateWith: ArmorUpdate) {
-  return await db.updateTable("armor").set(updateWith).where("armor.itemId", "=", id).returningAll().executeTakeFirst();
+  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function createArmor(newArmor: NewArmor) {
   return await db.transaction().execute(async (trx) => {
-    const armor = await trx.insertInto("armor").values(newArmor).returningAll().executeTakeFirstOrThrow();
-    return armor;
+    const item = await trx.insertInto("item").values(newArmor).returningAll().executeTakeFirstOrThrow();
+    return item;
   });
 }
 
 export async function deleteArmor(id: string) {
-  return await db.deleteFrom("armor").where("armor.itemId", "=", id).returningAll().executeTakeFirst();
+  return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
 export const defaultArmor: Armor = {
-  name: "defaultArmorName",
-  baseDef: 0,
-  availability: "permanent",
-  acquisitionMethod: "Drop",
+  name: "默认防具（缺省值）",
+  id: "defaultArmorId",
   modifiers: [],
-  defaultCrystalList: [],
-  dropBy: [],
+  itemId: "defaultArmorId",
+  baseDef: 0,
   colorA: 0,
   colorB: 0,
   colorC: 0,
-  itemId: "",
+  dataSources: "",
+  extraDetails: "",
+  dropBy: [],
+  rewardBy: [],
+  recipe: defaultRecipes.armorRecipe,
+  updatedAt: new Date(),
+  createdAt: new Date(),
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
+  statistics: defaultStatistics,
+  statisticsId: defaultStatistics.id,
 };

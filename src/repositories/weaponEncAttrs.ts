@@ -42,7 +42,7 @@ export async function deleteEncAttributes(id: string) {
 // default
 export const defaultWeaponEncAttributes: WeaponEncAttributes = {
   id: "defaultSelectEncAttributes",
-  name: "defaultSelectEncAttributes",
+  name: "默认武器附魔（缺省值）",
   flow: [],
   extraDetails: "",
   dataSources: "",

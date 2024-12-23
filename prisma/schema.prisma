@@ -42,7 +42,7 @@ model user {
 }
 
 model account {
-    id                String                        @id
+    id                String   @id
     type              String
     provider          String
     providerAccountId String
@@ -53,17 +53,12 @@ model account {
     scope             String?
     id_token          String?
     session_state     String?
-    user              user                          @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    accountId         String
-    characters        character[]
-    mercenarys        mercenary[]
-    customPets        custom_pet[]
-    weapons           custom_weapon[]
-    armors            custom_armor[]
-    addEquips         custom_additional_equipment[]
-    speEquips         custom_special_equipment[]
-    create            account_create_data?
-    update            account_update_data?
+    user              user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId            String
+    players           player[]
+
+    create account_create_data?
+    update account_update_data?
 
     @@unique([provider, providerAccountId])
 }
@@ -215,12 +210,39 @@ model account_update_data {
     accountId       String                          @id
 }
 
+model player {
+    id String @id
+
+    name String
+
+    characters character[]
+    mercenarys mercenary[]
+    customPets custom_pet[]
+    weapons    custom_weapon[]
+    armors     custom_armor[]
+    addEquips  custom_additional_equipment[]
+    speEquips  custom_special_equipment[]
+    avatars    avatar[]
+
+    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String
+}
+
 // 世界
 model world {
     id String @id
 
     name      String
     addresses address[]
+}
+
+// 活动
+model activity {
+    id   String @id
+    name String
+
+    zones   zone[]
+    recipes recipe[]
 }
 
 // 地点类型（普通地点，限时地点）
@@ -244,7 +266,7 @@ model address {
     worldId       String
 }
 
-// 地图
+// 地点区域
 model zone {
     id String @id
 
@@ -254,8 +276,10 @@ model zone {
     mobs        mob[]
     npcs        npc[]
 
-    belongToAddress address @relation(fields: [addressId], references: [id])
-    addressId       String
+    belongToActivity activity? @relation(fields: [activityId], references: [id])
+    activityId       String?
+    belongToAddress  address   @relation(fields: [addressId], references: [id])
+    addressId        String
 }
 
 // NPC
@@ -272,21 +296,19 @@ model npc {
 
 // 道具
 model item {
-    id   String @id
-    name String
+    id String @id
 
+    name       String
     weapon     weapon?
     armor      armor?
     addEquip   additional_equipment?
     speEquip   special_equipment?
     crystal    crystal?
     consumable consumable?
-    gem        gem?
+    material   material?
 
-    image         image[]
-    recipeEntries recipeIngredient[] @relation("ownRecipe")
-    dataSources   String
-    extraDetails  String
+    dataSources  String
+    extraDetails String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -303,21 +325,42 @@ model item {
     createdByAccountId String?
 
     // 道具可以作为其他道具的配方原料
-    usedInRecipes recipeIngredient[] @relation("usedInRecipes")
+    usedInIngredient recipe_ingredient[]
 }
 
 // 配方项
-model recipeIngredient {
+model recipe_ingredient {
     id String @id
 
     type   String
     count  Int
-    item   item?   @relation("usedInRecipes", fields: [itemId], references: [id])
+    item   item?   @relation(fields: [itemId], references: [id])
     itemId String?
 
     // 从属于配方
-    belongToItem   item   @relation("ownRecipe", fields: [belongToItemId], references: [id])
-    belongToItemId String
+    belongTorecipe recipe @relation(fields: [recipeId], references: [id])
+    recipeId       String
+}
+
+// 配方
+model recipe {
+    id String @id
+
+    recipeEntries recipe_ingredient[]
+
+    belongToWeapon     weapon?               @relation(fields: [weaponId], references: [itemId])
+    weaponId           String?               @unique
+    belongToArmor      armor?                @relation(fields: [armorId], references: [itemId])
+    armorId            String?               @unique
+    belongToAddEquip   additional_equipment? @relation(fields: [addEquipId], references: [itemId])
+    addEquipId         String?               @unique
+    belongToSpeEquip   special_equipment?    @relation(fields: [speEquipId], references: [itemId])
+    speEquipId         String?               @unique
+    belongToConsumable consumable?           @relation(fields: [consumableId], references: [itemId])
+    consumableId       String?               @unique
+
+    inActivity activity? @relation(fields: [activityId], references: [id])
+    activityId String?
 }
 
 // 任务
@@ -358,9 +401,10 @@ enum MaterialType {
 
 // 素材物品
 model material {
-    id String @id
+    name         String
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
 
-    name     String
     material MaterialType
     ptValue  Int
     price    Int
@@ -510,8 +554,12 @@ model armor_enchantment_attributes {
 
 // 锻晶
 model crystal {
+    name        String
     crystalType String
     modifiers   String[]
+
+    front crystal[] @relation("FrontRelation")
+    back  crystal[] @relation("BackRelation")
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -524,6 +572,9 @@ model crystal {
     usedByCustomAddEquip custom_additional_equipment[]
     usedBySpeEquip       special_equipment[]
     usedByCustomSpeEquip custom_special_equipment[]
+
+    frontRelated crystal[] @relation("FrontRelation")
+    backRelated  crystal[] @relation("BackRelation")
 }
 
 // 活动武器与常态武器
@@ -540,16 +591,17 @@ enum AcquisitionMethodType {
 
 // 武器
 model weapon {
-    type               String
-    availability       AvailabilityType
-    acquisitionMethod  AcquisitionMethodType
-    baseAbi            Int
-    stability          Int
-    defaultCrystalList crystal[]
-    modifiers          String[]
-    colorA             Int
-    colorB             Int
-    colorC             Int
+    name            String
+    type            String
+    baseAbi         Int
+    stability       Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    recipe          recipe?
 
     usedBy custom_weapon[]
 
@@ -570,7 +622,7 @@ model custom_weapon {
     enchantmentAttributesId String
     crystals                crystal[]
 
-    master   account @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id])
     masterId String
 
     updatedAt DateTime @updatedAt
@@ -584,14 +636,15 @@ model custom_weapon {
 
 // 身体装备
 model armor {
-    baseDef            Int
-    availability       AvailabilityType
-    acquisitionMethod  AcquisitionMethodType
-    defaultCrystalList crystal[]
-    modifiers          String[]
-    colorA             Int
-    colorB             Int
-    colorC             Int
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    recipe          recipe?
 
     usedBy custom_armor[]
 
@@ -613,7 +666,7 @@ model custom_armor {
     enchantmentAttributesId String
     crystals                crystal[]
 
-    master   account @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id])
     masterId String
 
     updatedAt DateTime @updatedAt
@@ -626,14 +679,15 @@ model custom_armor {
 
 // 追加装备
 model additional_equipment {
-    baseDef            Int
-    availability       AvailabilityType
-    acquisitionMethod  AcquisitionMethodType
-    defaultCrystalList crystal[]
-    modifiers          String[]
-    colorA             Int
-    colorB             Int
-    colorC             Int
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    recipe          recipe?
 
     usedBy custom_additional_equipment[]
 
@@ -652,7 +706,7 @@ model custom_additional_equipment {
     refinement Int
     crystals   crystal[]
 
-    master   account @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id])
     masterId String
 
     updatedAt DateTime @updatedAt
@@ -665,11 +719,11 @@ model custom_additional_equipment {
 
 // 特殊装备
 model special_equipment {
-    baseDef            Int
-    availability       AvailabilityType
-    acquisitionMethod  AcquisitionMethodType
-    defaultCrystalList crystal[]
-    modifiers          String[]
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    recipe          recipe?
 
     usedBy custom_special_equipment[]
 
@@ -688,7 +742,7 @@ model custom_special_equipment {
     refinement Int
     crystals   crystal[]
 
-    master   account @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id])
     masterId String
 
     updatedAt DateTime @updatedAt
@@ -754,19 +808,19 @@ model character_skill {
 model skill_effect {
     id String @id
 
-    mainHand                           String
-    subHand                            String
-    armor                              String
-    description                        String
-    motionBaseDurationFormula          String
-    motionModifiableDurationFormula    String
-    chantingBaseDurationFormula        String
-    chantingModifiableDurationFormula  String
-    ReservoirBaseDurationFormula       String
-    ReservoirModifiableDurationFormula String
-    skillStartupFramesFormula          String
-    costFormula                        String
-    skillYield                         skill_yield[]
+    mainHand          String
+    subHand           String
+    armor             String
+    description       String
+    motionFixed       String
+    motionModified    String
+    chantingFixed     String
+    chantingModified  String
+    ReservoirFixed    String
+    ReservoirModified String
+    startupFrames     String
+    cost              String
+    yield             skill_yield[]
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
     belongToskillId String
@@ -776,7 +830,6 @@ model skill_effect {
 model skill_yield {
     id String @id
 
-    name                  String
     yieldType             YieldType
     yieldFormula          String
     mutationTimingFormula String?
@@ -862,28 +915,22 @@ model custom_pet {
     type       PetType
     weaponAtk  Int
 
-    master   account @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id])
     masterId String
 }
 
 // 消耗品
 model consumable {
+    name         String
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 
-    modifiers String[]
+    type           String
+    effectDuration Int
+    effects        String[]
+    recipe         recipe?
 
     usedBy character[]
-}
-
-// 晶石
-model gem {
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
-
-    effect String[]
-
-    usedBy team[]
 }
 
 // 连击
@@ -896,45 +943,62 @@ model combo {
     usedBy character[]
 }
 
+// 时装
+model avatar {
+    id String @id
+
+    name           String
+    type           String
+    modifiers      String[]
+    belongToPlayer player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+    playerId       String
+
+    usedBy character[]
+}
+
 // 机体
 model character {
     id            String        @id
     name          String
     characterType CharacterType
 
-    lv              Int
-    baseStr         Int
-    baseInt         Int
-    baseVit         Int
-    baseAgi         Int
-    baseDex         Int
-    specialAbiType  SpecialAbiType
-    specialAbiValue Int
-    weapon          custom_weapon               @relation("weapon", fields: [weaponId], references: [id])
-    weaponId        String
-    subWeapon       custom_weapon               @relation("subWeapon", fields: [subWeaponId], references: [id])
-    subWeaponId     String
-    armor           custom_armor                @relation(fields: [armorId], references: [id])
-    armorId         String
-    addEquip        custom_additional_equipment @relation(fields: [addEquipId], references: [id])
-    addEquipId      String
-    speEquip        custom_special_equipment    @relation(fields: [speEquipId], references: [id])
-    speEquipId      String
-    fashion         String[]
-    cuisine         String[]
-    ExtraAttrs      String[]
-    skillList       character_skill[]
-    consumableList  consumable[]
-    combos          combo[]
-    master          account                     @relation(fields: [masterId], references: [id])
-    masterId        String
+    lv                Int
+    baseStr           Int
+    baseInt           Int
+    baseVit           Int
+    baseAgi           Int
+    baseDex           Int
+    specialAbiType    SpecialAbiType
+    specialAbiValue   Int
+    weapon            custom_weapon               @relation("weapon", fields: [weaponId], references: [id])
+    weaponId          String
+    subWeapon         custom_weapon               @relation("subWeapon", fields: [subWeaponId], references: [id])
+    subWeaponId       String
+    armor             custom_armor                @relation(fields: [armorId], references: [id])
+    armorId           String
+    addEquip          custom_additional_equipment @relation(fields: [addEquipId], references: [id])
+    addEquipId        String
+    speEquip          custom_special_equipment    @relation(fields: [speEquipId], references: [id])
+    speEquipId        String
+    fashion           avatar[]
+    cuisine           String[]
+    ExtraAttrs        String[]
+    skillList         character_skill[]
+    partnerSkillA     String
+    partnerSkillAType MercenarySkillType
+    partnerSkillB     String
+    partnerSkillBType MercenarySkillType
+    consumableList    consumable[]
+    combos            combo[]
+    master            player                      @relation(fields: [masterId], references: [id])
+    masterId          String
 
     extraDetails String
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
+    usedByMember member[]
 
-    usedByMember    member[]
+    updatedAt       DateTime    @updatedAt
+    createdAt       DateTime
     usedByMercenary mercenary[]
 
     statistics   statistics @relation(fields: [statisticsId], references: [id])
@@ -957,19 +1021,20 @@ enum MercenarySkillType {
 
 // 佣兵
 model mercenary {
-    id String @id
-
     type       MercenaryType
     template   character     @relation(fields: [templateId], references: [id])
     templateId String
 
-    master   account @relation(fields: [masterId], references: [id])
-    masterId String
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String @id
 
     skillAId   String
     skillAType MercenarySkillType
     skillBId   String
     skillBType MercenarySkillType
+
+    usedByMemberPartner   member[] @relation("partner")
+    usedByMemberMercenary member[] @relation("mercenary")
 }
 
 // 队伍成员
@@ -977,10 +1042,14 @@ model member {
     id String @id
 
     flow              Json
-    character         character         @relation(fields: [characterId], references: [id])
-    characterId       String
-    mob               mob               @relation(fields: [mobId], references: [id])
-    mobId             String
+    character         character?        @relation(fields: [characterId], references: [id])
+    characterId       String?
+    partner           mercenary?        @relation("partner", fields: [partnerId], references: [masterId])
+    partnerId         String?
+    mercenary         mercenary?        @relation("mercenary", fields: [mercenaryId], references: [masterId])
+    mercenaryId       String?
+    mob               mob?              @relation(fields: [mobId], references: [id])
+    mobId             String?
     mobDifficultyFlag MobDifficultyFlag // 仅当类型为Boss时生效
 
     belongToTeams team[]
@@ -992,17 +1061,24 @@ model team {
 
     name    String?
     members member[]
-    gems    gem[]
+    gems    String[]
 
     belongToSimulators simulator[]
+}
+
+// 其他用户可见性
+enum Visibility {
+    Public
+    Private
 }
 
 // 模拟器
 model simulator {
     id String @id
 
-    name  String
-    teams team[]
+    name       String
+    visibility Visibility
+    teams      team[]
 
     extraDetails String?
 
@@ -1043,9 +1119,11 @@ model image {
     belongToNpc npc?    @relation(fields: [npcId], references: [id])
     npcId       String? @unique
 
-    usedByItem      item[]
-    usedByMob       mob[]
-    usedByCharacter character[]
+    belongToWeapon   weapon[]
+    belongToArmor    armor[]
+    belongToAddEquip additional_equipment[]
+    usedByMob        mob[]
+    usedByCharacter  character[]
 }
 
 // 评分
