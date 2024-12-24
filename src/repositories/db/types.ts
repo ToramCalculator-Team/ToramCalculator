@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { UserRole, Element, MobType, SpecialAbiType, ArmorType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, CharacterType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType, Visibility } from "./enums";
+import type { UserRole, Element, MobType, PersonalityType, ArmorType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType, Visibility } from "./enums";
 
 export type account = {
     id: string;
@@ -102,22 +102,21 @@ export type BackRelation = {
 export type character = {
     id: string;
     name: string;
-    characterType: CharacterType;
     lv: number;
-    baseStr: number;
-    baseInt: number;
-    baseVit: number;
-    baseAgi: number;
-    baseDex: number;
-    specialAbiType: SpecialAbiType;
-    specialAbiValue: number;
+    str: number;
+    int: number;
+    vit: number;
+    agi: number;
+    dex: number;
+    personalityType: PersonalityType;
+    personalityValue: number;
     weaponId: string;
     subWeaponId: string;
     armorId: string;
     addEquipId: string;
     speEquipId: string;
-    cuisine: string[];
-    ExtraAttrs: string[];
+    cooking: string[];
+    modifiers: string[];
     partnerSkillA: string;
     partnerSkillAType: MercenarySkillType;
     partnerSkillB: string;
@@ -296,8 +295,7 @@ export type material = {
 };
 export type member = {
     id: string;
-    flow: unknown;
-    characterId: string | null;
+    playerId: string | null;
     partnerId: string | null;
     mercenaryId: string | null;
     mobId: string | null;
@@ -310,7 +308,6 @@ export type memberToteam = {
 export type mercenary = {
     type: MercenaryType;
     templateId: string;
-    masterId: string;
     skillAId: string;
     skillAType: MercenarySkillType;
     skillBId: string;
@@ -323,10 +320,10 @@ export type mob = {
      */
     name: string;
     mobType: MobType;
+    captureable: boolean;
     baseLv: number;
     experience: number;
     partsExperience: number;
-    address: string;
     element: Element;
     radius: number;
     maxhp: number;
@@ -341,7 +338,7 @@ export type mob = {
     normalAttackResistanceModifier: number;
     physicalAttackResistanceModifier: number;
     magicalAttackResistanceModifier: number;
-    flow: string;
+    actions: unknown;
     difficultyOfTank: number;
     difficultyOfMelee: number;
     difficultyOfRanged: number;
@@ -364,21 +361,11 @@ export type npc = {
     name: string;
     zoneId: string;
 };
-export type pet = {
-    id: string;
-    name: string;
-    maxLv: number;
-    extraDetails: string;
-    dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    statisticsId: string;
-    updatedByAccountId: string | null;
-    createdByAccountId: string | null;
-};
 export type player = {
     id: string;
     name: string;
+    useIn: string;
+    actions: unknown;
     accountId: string;
 };
 export type post = {
@@ -605,7 +592,6 @@ export type DB = {
     mercenary: mercenary;
     mob: mob;
     npc: npc;
-    pet: pet;
     player: player;
     post: post;
     rate: rate;

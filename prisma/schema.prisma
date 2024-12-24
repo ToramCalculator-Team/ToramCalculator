@@ -111,7 +111,7 @@ enum MobType {
 }
 
 // 特殊能力值类型枚举
-enum SpecialAbiType {
+enum PersonalityType {
     None
     Luk
     Cri
@@ -176,21 +176,12 @@ enum ComboType {
     NULL
 }
 
-// 角色类型
-enum CharacterType {
-    Tank
-    Mage
-    Ranger
-    Marksman
-}
-
 // 账户创建内容
 model account_create_data {
     mobs            mob[]
     items           item[]
     weaponEncAttrs  weapon_enchantment_attributes[]
     armorEncAttrs   armor_enchantment_attributes[]
-    pets            pet[]
     skills          skill[]
     simulators      simulator[]
     belongToAccount account                         @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -203,29 +194,10 @@ model account_update_data {
     items           item[]
     weaponEncAttrs  weapon_enchantment_attributes[]
     armorEncAttrs   armor_enchantment_attributes[]
-    pets            pet[]
     skills          skill[]
     simulator       simulator[]
     belongToAccount account                         @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId       String                          @id
-}
-
-model player {
-    id String @id
-
-    name String
-
-    characters character[]
-    mercenarys mercenary[]
-    customPets custom_pet[]
-    weapons    custom_weapon[]
-    armors     custom_armor[]
-    addEquips  custom_additional_equipment[]
-    speEquips  custom_special_equipment[]
-    avatars    avatar[]
-
-    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    accountId       String
 }
 
 // 世界
@@ -431,10 +403,10 @@ model mob {
 
     name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
     mobType                          MobType
+    captureable                      Boolean
     baseLv                           Int
     experience                       Int
     partsExperience                  Int
-    address                          String
     element                          Element
     radius                           Int
     maxhp                            Int
@@ -449,7 +421,7 @@ model mob {
     normalAttackResistanceModifier   Int
     physicalAttackResistanceModifier Int
     magicalAttackResistanceModifier  Int
-    flow                             String
+    actions                          Json
 
     drops drop_item[]
 
@@ -468,8 +440,9 @@ model mob {
     image        image      @relation(fields: [imageId], references: [id])
     imageId      String
 
-    belongToMembers member[]
-    belongToMap     zone[]
+    belongToZones    zone[]
+    usedByMembers    member[]
+    usedByCustomPets custom_pet[]
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
     updatedByAccountId String?
@@ -870,35 +843,11 @@ enum PetType {
     Genius
 }
 
-// 宠物
-model pet {
-    id String @id
-
-    name  String
-    maxLv Int
-
-    extraDetails String
-    dataSources  String
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
-
-    usedBy custom_pet[]
-
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
-    updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
-    createdByAccountId String?
-}
-
 // 自定义宠物
 model custom_pet {
     id String @id
 
-    template   pet     @relation(fields: [templateId], references: [id])
+    template   mob     @relation(fields: [templateId], references: [id])
     templateId String
     pStr       Int
     pInt       Int
@@ -956,20 +905,41 @@ model avatar {
     usedBy character[]
 }
 
+// 资产归属和操作实体
+model player {
+    id String @id
+
+    name    String
+    useIn   String
+    actions Json
+
+    characters character[]
+    customPets custom_pet[]
+    weapons    custom_weapon[]
+    armors     custom_armor[]
+    addEquips  custom_additional_equipment[]
+    speEquips  custom_special_equipment[]
+    avatars    avatar[]
+
+    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String
+
+    usedByMember member[]
+}
+
 // 机体
 model character {
-    id            String        @id
-    name          String
-    characterType CharacterType
+    id   String @id
+    name String
 
     lv                Int
-    baseStr           Int
-    baseInt           Int
-    baseVit           Int
-    baseAgi           Int
-    baseDex           Int
-    specialAbiType    SpecialAbiType
-    specialAbiValue   Int
+    str               Int
+    int               Int
+    vit               Int
+    agi               Int
+    dex               Int
+    personalityType   PersonalityType
+    personalityValue  Int
     weapon            custom_weapon               @relation("weapon", fields: [weaponId], references: [id])
     weaponId          String
     subWeapon         custom_weapon               @relation("subWeapon", fields: [subWeaponId], references: [id])
@@ -980,10 +950,10 @@ model character {
     addEquipId        String
     speEquip          custom_special_equipment    @relation(fields: [speEquipId], references: [id])
     speEquipId        String
-    fashion           avatar[]
-    cuisine           String[]
-    ExtraAttrs        String[]
-    skillList         character_skill[]
+    avatars           avatar[]
+    cooking           String[]
+    modifiers         String[]
+    skills            character_skill[]
     partnerSkillA     String
     partnerSkillAType MercenarySkillType
     partnerSkillB     String
@@ -995,11 +965,9 @@ model character {
 
     extraDetails String
 
-    usedByMember member[]
-
-    updatedAt       DateTime    @updatedAt
+    updatedAt       DateTime   @updatedAt
     createdAt       DateTime
-    usedByMercenary mercenary[]
+    usedInMercenary mercenary?
 
     statistics   statistics @relation(fields: [statisticsId], references: [id])
     statisticsId String     @unique
@@ -1023,10 +991,7 @@ enum MercenarySkillType {
 model mercenary {
     type       MercenaryType
     template   character     @relation(fields: [templateId], references: [id])
-    templateId String
-
-    master   player @relation(fields: [masterId], references: [id])
-    masterId String @id
+    templateId String        @id
 
     skillAId   String
     skillAType MercenarySkillType
@@ -1041,12 +1006,11 @@ model mercenary {
 model member {
     id String @id
 
-    flow              Json
-    character         character?        @relation(fields: [characterId], references: [id])
-    characterId       String?
-    partner           mercenary?        @relation("partner", fields: [partnerId], references: [masterId])
+    player            player?           @relation(fields: [playerId], references: [id])
+    playerId          String?
+    partner           mercenary?        @relation("partner", fields: [partnerId], references: [templateId])
     partnerId         String?
-    mercenary         mercenary?        @relation("mercenary", fields: [mercenaryId], references: [masterId])
+    mercenary         mercenary?        @relation("mercenary", fields: [mercenaryId], references: [templateId])
     mercenaryId       String?
     mob               mob?              @relation(fields: [mobId], references: [id])
     mobId             String?
@@ -1106,7 +1070,6 @@ model statistics {
     belongToMob           mob?
     belongToItem          item?
     belongToSkill         skill?
-    belongToPet           pet?
     character             character?
     simulator             simulator?
 }

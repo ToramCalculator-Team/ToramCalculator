@@ -19,14 +19,14 @@ export const MobType = {
     Boss: "Boss"
 } as const;
 export type MobType = (typeof MobType)[keyof typeof MobType];
-export const SpecialAbiType = {
+export const PersonalityType = {
     None: "None",
     Luk: "Luk",
     Cri: "Cri",
     Tec: "Tec",
     Men: "Men"
 } as const;
-export type SpecialAbiType = (typeof SpecialAbiType)[keyof typeof SpecialAbiType];
+export type PersonalityType = (typeof PersonalityType)[keyof typeof PersonalityType];
 export const ArmorType = {
     Normal: "Normal",
     Light: "Light",
@@ -76,13 +76,6 @@ export const ComboType = {
     NULL: "NULL"
 } as const;
 export type ComboType = (typeof ComboType)[keyof typeof ComboType];
-export const CharacterType = {
-    Tank: "Tank",
-    Mage: "Mage",
-    Ranger: "Ranger",
-    Marksman: "Marksman"
-} as const;
-export type CharacterType = (typeof CharacterType)[keyof typeof CharacterType];
 export const AddressType = {
     Normal: "Normal",
     Limited: "Limited"

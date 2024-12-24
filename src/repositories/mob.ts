@@ -17,7 +17,7 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
         .innerJoin("zone", "_mobTozone.B", "zone.id")
         .where("_mobTozone.A", "=", id)
       .select("zone.name")
-    ).as("usedInZones"),
+    ).as("belongToZones"),
     jsonArrayFrom(
       eb
         .selectFrom("drop_item")
@@ -83,10 +83,10 @@ export const defaultMob: Mob = {
   id: "defaultMobId",
   name: "默认怪物（缺省值）",
   mobType: "Boss",
-  flow: "",
+  captureable: false,
+  actions: [],
   baseLv: 0,
   experience: 0,
-  address: "defaultAddress",
   element: "Normal",
   radius: 0,
   maxhp: 0,
@@ -106,7 +106,7 @@ export const defaultMob: Mob = {
   difficultyOfMelee: 0,
   difficultyOfRanged: 0,
   possibilityOfRunningAround: 0,
-  usedInZones: [],
+  belongToZones: [],
   dropItems: [],
   extraDetails: "defaultExtraDetails",
   dataSources: "defaultDataSources",
