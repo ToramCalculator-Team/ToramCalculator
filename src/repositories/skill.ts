@@ -1,13 +1,16 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, skill } from "~/repositories/db/types";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, skillEffectSubRelations } from "./skill_effect";
 import { defaultSkillYield } from "./skill_yield";
-import { defaultSkillCost } from "./skill_cost";
+import { ModifyKeys } from "./untils";
+import { SkillTreeType } from "./enums";
 
-export type Skill = Awaited<ReturnType<typeof findSkillById>>;
+export type Skill = ModifyKeys<Awaited<ReturnType<typeof findSkillById>>, {
+  treeName: SkillTreeType
+}>;
 export type NewSkill = Insertable<skill>;
 export type SkillUpdate = Updateable<skill>;
 
@@ -15,11 +18,11 @@ export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expres
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "skill.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("statistics"),
+        .selectFrom("statistic")
+        .whereRef("id", "=", "skill.statisticId")
+        .selectAll("statistic")
+        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
+    ).$notNull().as("statistic"),
     jsonArrayFrom(
       eb
         .selectFrom("skill_effect")
@@ -45,15 +48,17 @@ export async function updateSkill(id: string, updateWith: SkillUpdate) {
 
 export async function createSkill(newSkill: NewSkill) {
   return await db.transaction().execute(async (trx) => {
-    const skill = await trx.insertInto("skill").values(newSkill).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
+    const statistic = await trx
+      .insertInto("statistic")
       .values({
-        ...defaultStatistics,
-        skillId: skill.id,
+        ...defaultStatistic,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
+    const skill = await trx.insertInto("skill").values({
+      ...newSkill,
+      statisticId: statistic.id,
+    }).returningAll().executeTakeFirstOrThrow();
 
     const skillEffect = await trx
       .insertInto("skill_effect")
@@ -67,20 +72,14 @@ export async function createSkill(newSkill: NewSkill) {
     const skillYield = await trx.insertInto("skill_yield").values({
       ...defaultSkillYield,
       skillEffectId: skillEffect.id,
-    });
-
-    const skillCost = await trx.insertInto("skill_cost").values({
-      ...defaultSkillCost,
-      skillEffectId: skillEffect.id,
-    });
+    }).returningAll().executeTakeFirstOrThrow();
     return {
       ...skill,
-      statistics,
+      statistic,
       skillEffect: [
         {
           ...skillEffect,
           skillYield: [skillYield],
-          skillCost: [skillCost],
         },
       ],
     };
@@ -95,19 +94,22 @@ export async function deleteSkill(id: string) {
 export const defaultSkill: Skill = {
   id: "",
   name: "defaultSkill",
-  skillDescription: "",
-  skillTreeName: "BLADE",
-  skillType: "ACTIVE_SKILL",
-  weaponElementDependencyType: "EXTEND",
+  treeName: "MagicSkill",
+  posX: 0,
+  posY: 0,
+  tier: 0,
+  isPassive: false,
+  chargingType: "None",
+  distanceResist: "None",
   element: "Normal",
   skillEffect: [defaultSkillEffect],
   dataSources: "",
-  extraDetails: "",
+  details: "",
 
   updatedAt: new Date(),
   updatedByAccountId: "",
   createdAt: new Date(),
   createdByAccountId: "",
-  statistics: defaultStatistics,
-  statisticsId: "",
+  statistic: defaultStatistic,
+  statisticId: "",
 };

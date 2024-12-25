@@ -279,8 +279,8 @@ model item {
     consumable consumable?
     material   material?
 
-    dataSources  String
-    extraDetails String
+    dataSources String
+    details     String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
@@ -288,8 +288,8 @@ model item {
     usedByDropItem   drop_item[]
     usedByRewardItem reward[]
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
     updatedByAccountId String?
@@ -429,16 +429,16 @@ model mob {
     difficultyOfMelee          Int
     difficultyOfRanged         Int
     possibilityOfRunningAround Int
-    extraDetails               String
+    details                    String
     dataSources                String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
-    image        image      @relation(fields: [imageId], references: [id])
-    imageId      String
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+    image       image     @relation(fields: [imageId], references: [id])
+    imageId     String
 
     belongToZones    zone[]
     usedByMembers    member[]
@@ -483,16 +483,16 @@ model drop_item {
 model weapon_enchantment_attributes {
     id String @id
 
-    name         String
-    flow         Json
-    extraDetails String?
-    dataSources  String?
+    name        String
+    flow        Json
+    details     String?
+    dataSources String?
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
 
     usedByCustomWeapon custom_weapon[]
 
@@ -506,16 +506,16 @@ model weapon_enchantment_attributes {
 model armor_enchantment_attributes {
     id String @id
 
-    name         String
-    flow         Json
-    extraDetails String?
-    dataSources  String?
+    name        String
+    flow        Json
+    details     String?
+    dataSources String?
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
 
     usedByCustomArmor custom_armor[]
 
@@ -588,20 +588,15 @@ model custom_weapon {
 
     name                    String
     extraAbi                Int
-    template                weapon                        @relation(fields: [templateId], references: [itemId])
+    template                weapon                         @relation(fields: [templateId], references: [itemId])
     templateId              String
     refinement              Int
-    enchantmentAttributes   weapon_enchantment_attributes @relation(fields: [enchantmentAttributesId], references: [id])
-    enchantmentAttributesId String
+    enchantmentAttributes   weapon_enchantment_attributes? @relation(fields: [enchantmentAttributesId], references: [id])
+    enchantmentAttributesId String?
     crystals                crystal[]
 
     master   player @relation(fields: [masterId], references: [id])
     masterId String
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
-    extraDetails String
 
     usedByMainHand character[] @relation("weapon")
     usedBySubHand  character[] @relation("subWeapon")
@@ -632,20 +627,15 @@ model custom_armor {
     name                    String
     def                     Int
     armorType               ArmorType
-    template                armor                        @relation(fields: [templateId], references: [itemId])
+    template                armor                         @relation(fields: [templateId], references: [itemId])
     templateId              String
     refinement              Int
-    enchantmentAttributes   armor_enchantment_attributes @relation(fields: [enchantmentAttributesId], references: [id])
-    enchantmentAttributesId String
+    enchantmentAttributes   armor_enchantment_attributes? @relation(fields: [enchantmentAttributesId], references: [id])
+    enchantmentAttributesId String?
     crystals                crystal[]
 
     master   player @relation(fields: [masterId], references: [id])
     masterId String
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
-    extraDetails String
 
     usedBy character[]
 }
@@ -682,11 +672,6 @@ model custom_additional_equipment {
     master   player @relation(fields: [masterId], references: [id])
     masterId String
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
-    extraDetails String
-
     usedBy character[]
 }
 
@@ -718,11 +703,6 @@ model custom_special_equipment {
     master   player @relation(fields: [masterId], references: [id])
     masterId String
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
-    extraDetails String
-
     usedBy character[]
 }
 
@@ -749,14 +729,14 @@ model skill {
     distanceResist SkillDistanceResistType
     effect         skill_effect[]
 
-    extraDetails String
-    dataSources  String
+    details     String
+    dataSources String
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
 
     usedBy character_skill[]
 
@@ -803,6 +783,7 @@ model skill_effect {
 model skill_yield {
     id String @id
 
+    name                  String
     yieldType             YieldType
     yieldFormula          String
     mutationTimingFormula String?
@@ -963,16 +944,16 @@ model character {
     master            player                      @relation(fields: [masterId], references: [id])
     masterId          String
 
-    extraDetails String
+    details String
 
     updatedAt       DateTime   @updatedAt
     createdAt       DateTime
     usedInMercenary mercenary?
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
-    image        image      @relation(fields: [imageId], references: [id])
-    imageId      String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+    image       image     @relation(fields: [imageId], references: [id])
+    imageId     String    @unique
 }
 
 // 佣兵类型
@@ -1044,13 +1025,13 @@ model simulator {
     visibility Visibility
     teams      team[]
 
-    extraDetails String?
+    details String?
 
     updatedAt DateTime @updatedAt
     createdAt DateTime
 
-    statistics   statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId String     @unique
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
     updatedByAccountId String?
@@ -1059,7 +1040,7 @@ model simulator {
 }
 
 // 统计字段
-model statistics {
+model statistic {
     id              String            @id
     usageTimestamps usage_timestamp[]
     viewTimestamps  view_timestamp[]
@@ -1091,24 +1072,24 @@ model image {
 
 // 评分
 model rate {
-    id                 String     @id
+    id                 String    @id
     rate               Int
-    belongToUser       user       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    belongToUser       user      @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId          String
-    belongToStatistics statistics @relation(fields: [statisticsId], references: [id])
-    statisticsId       String
+    belongToStatistics statistic @relation(fields: [statisticId], references: [id])
+    statisticId        String
 }
 
 // 使用记录时间戳
 model usage_timestamp {
-    timestamp        DateTime    @id
-    usedByStatistics statistics? @relation(fields: [statisticsId], references: [id])
-    statisticsId     String?
+    timestamp        DateTime   @id
+    usedByStatistics statistic? @relation(fields: [statisticId], references: [id])
+    statisticId      String?
 }
 
 // 查看记录时间戳
 model view_timestamp {
-    timestamp        DateTime    @id
-    usedByStatistics statistics? @relation(fields: [statisticsId], references: [id])
-    statisticsId     String?
+    timestamp        DateTime   @id
+    usedByStatistics statistic? @relation(fields: [statisticId], references: [id])
+    statisticId      String?
 }

@@ -1,12 +1,12 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistics";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
-import { defaultRecipe } from "./recipe";
+import { defaultRecipes, recipeSubRelations } from "./recipe";
 
 export type SpeEquip = Awaited<ReturnType<typeof findSpeEquipById>>;
 export type NewSpeEquip = Insertable<item>;
@@ -20,8 +20,14 @@ export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expr
         .innerJoin("crystal", "_crystalTocustom_special_equipment.A", "crystal.itemId")
         .where("_crystalTocustom_special_equipment.B", "=", id)
         .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId")))
+        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("dropBy"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("recipe")
+        .where("recipe.speEquipId", "=", id)
+        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
+    ).as("recipe"),
   ];
 }
 
@@ -59,14 +65,14 @@ export const defaultSpeEquip: SpeEquip = {
   itemId: "defaultSpeEquipId",
   baseDef: 0,
   dataSources: "",
-  extraDetails: "",
+  details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipe,
+  recipe: defaultRecipes.speEquip,
   updatedAt: new Date(),
   createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
 };

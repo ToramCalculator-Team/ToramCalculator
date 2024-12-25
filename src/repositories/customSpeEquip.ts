@@ -75,9 +75,5 @@ export const defaultCustomSpeEquip: CustomSpeEquip = {
   templateId: defaultSpeEquip.id,
   refinement: 0,
   crystalList: [],
-  extraDetails: "",
-
-  updatedAt: new Date(),
-  createdAt: new Date(),
   masterId: defaultAccount.id,
 };

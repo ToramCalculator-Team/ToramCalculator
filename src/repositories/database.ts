@@ -19,9 +19,15 @@ import { Pool } from "pg";
 // })
 
 // debugger
-const initialDatabase = async() => {
+const initialDatabase = async () => {
   return new Kysely<DB>({
     dialect: new PGliteDialect(await getPGWorker()),
+    log(event) {
+      if (event.level === "query") {
+        console.log(event.query.sql); // SQL 查询
+        console.log(event.query.parameters); // 绑定参数
+      }
+    },
   });
 };
 

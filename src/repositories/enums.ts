@@ -1,7 +1,5 @@
 import { $Enums } from "@prisma/client";
 
-export type AccountType = "Admin" | "User";
-
 export enum ModifierType {
   DEFAULT = "default",
   // 能力值
@@ -291,164 +289,184 @@ export enum MonsterModifierType {
 
 //  }
 
-// 任务奖励类型
-export type TaskRewardType = "Exp" | "Money" | Item;
+// 账号类型
+const ACCOUNT_TYPES = ["Admin", "User"] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
-// 道具
-export type Item = EquipType | CrystalType;
-
-// 锻晶
-export type CrystalType =
-  | "Normal"
-  | "Weapon"
-  | "Armor"
-  | "AddEquip"
-  | "Special"
-  | "PowerUpNormal"
-  | "PowerUpWeapon"
-  | "PowerUpArmor"
-  | "PowerUpAddEquip"
-  | "PowerUpSpecial";
-
-// 装备
-export type EquipType = WeaponType | SubWeaponType | "Armor" | "AddEquip" | "SpecialEquip";
-
-// 武器
-export type WeaponType = MainWeaponType | SubWeaponType;
-
-// 主武器
-export type MainWeaponType =
-  | "OneHandSword"
-  | "TwoHandSword"
-  | "Bow"
-  | "Bowgun"
-  | "Rod"
-  | "Magictool"
-  | "Knuckle"
-  | "Halberd"
-  | "Katana"
-  | "Empty"
+// 主武器类型
+const MAIN_WEAPON_TYPE = [
+  "OneHandSword",
+  "TwoHandSword",
+  "Bow",
+  "Bowgun",
+  "Rod",
+  "Magictool",
+  "Knuckle",
+  "Halberd",
+  "Katana",
+] as const;
+export type MainWeaponType = (typeof MAIN_WEAPON_TYPE)[number];
 
 // 副武器
-export type SubWeaponType = "Arrow" | "ShortSword" | "NinjutsuScroll" | "Shield" | "Empty";
+const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
+export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
+
+// 武器
+const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
+export type WeaponType = (typeof WEAPON_TYPE)[number];
+
+// 装备
+const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "AddEquip", "SpecialEquip"] as const;
+export type EquipType = (typeof EQUIP_TYPE)[number];
+
+// 锻晶
+const CRYSTAL_TYPE = [
+  "Normal",
+  "Weapon",
+  "Armor",
+  "AddEquip",
+  "Special",
+  "PowerUpNormal",
+  "PowerUpWeapon",
+  "PowerUpArmor",
+  "PowerUpAddEquip",
+  "PowerUpSpecial",
+] as const;
+export type CrystalType = (typeof CRYSTAL_TYPE)[number];
+
+// 道具
+const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE] as const;
+export type Item = (typeof ITEM_TYPE)[number];
+
+// 任务奖励
+const TASK_REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
+export type TaskRewardType = (typeof TASK_REWARD_TYPE)[number];
 
 // 异常状态
-export type AbnormalType =
-  | "MagicFlinch"
-  | "None"
-  | "Flinch"
-  | "Tumble"
-  | "Stun"
-  | "KnockBack"
-  | "Poison"
-  | "PoisonLevel1"
-  | "PoisonLevel2"
-  | "Paralysis"
-  | "Blindness"
-  | "Ignition"
-  | "Freeze"
-  | "Breaking"
-  | "Slow"
-  | "Stop"
-  | "Fear"
-  | "Dizzy"
-  | "Weak"
-  | "Collapse"
-  | "Confusion"
-  | "Silent"
-  | "Bleed"
-  | "Sleep"
-  | "Rage"
-  | "Tiredness"
-  | "Blessing"
-  | "SystemInvincibility"
-  | "BestState"
-  | "Invincibility"
-  | "Suction"
-  | "Taming"
-  | "Curse"
-  | "Flash"
-  | "Runaway"
-  | "MagicalExplosion"
-  | "Sick"
-  | "Malgravity"
-  | "Dispel"
-  | "Inversion"
-  | "Mineralization"
-  | "NoTools"
-  | "Enhance"
-  | "ComboInvincibility"
-  | "DeathTorqueShot"
-  | "SystemAddHate"
-  | "Recovery";
+const ABNORMAL_TYPE = [
+  "MagicFlinch",
+  "None",
+  "Flinch",
+  "Tumble",
+  "Stun",
+  "KnockBack",
+  "Poison",
+  "PoisonLevel1",
+  "PoisonLevel2",
+  "Paralysis",
+  "Blindness",
+  "Ignition",
+  "Freeze",
+  "Breaking",
+  "Slow",
+  "Stop",
+  "Fear",
+  "Dizzy",
+  "Weak",
+  "Collapse",
+  "Confusion",
+  "Silent",
+  "Bleed",
+  "Sleep",
+  "Rage",
+  "Tiredness",
+  "Blessing",
+  "SystemInvincibility",
+  "BestState",
+  "Invincibility",
+  "Suction",
+  "Taming",
+  "Curse",
+  "Flash",
+  "Runaway",
+  "MagicalExplosion",
+  "Sick",
+  "Malgravity",
+  "Dispel",
+  "Inversion",
+  "Mineralization",
+  "NoTools",
+  "Enhance",
+  "ComboInvincibility",
+  "DeathTorqueShot",
+  "SystemAddHate",
+  "Recovery",
+] as const;
+export type AbnormalType = (typeof ABNORMAL_TYPE)[number];
 
 // export type SkillType = "Unknown"
-//   | "Attack" // 攻击
-//   | "Mastery" 
-//   | "Support" // 辅助
-//   | "Buffer" // buff
-//   | "Circle" // 圈
-//   | "Object" // 对象
-//   | "Heal" //   治疗
-//   | 'Special' // 特殊技能
-//   | "Extra" // 额外 
+//   , "Attack" // 攻击
+//   , "Mastery"
+//   , "Support" // 辅助
+//   , "Buffer" // buff
+//   , "Circle" // 圈
+//   , "Object" // 对象
+//   , "Heal" //   治疗
+//   , 'Special' // 特殊技能
+//   , "Extra" // 额外
 
-export type SkillTreeType =
-  | "BladeSkill" // 剑术技能
-  | "ShootSkill" // 射击技能
-  | "MagicSkill" // 魔法技能
-  | "MarshallSkill" // 格斗技能
-  | "DualSwordSkill" // 双剑技能
-  | "HalberdSkill" // 斧枪技能
-  | "MononofuSkill" // 武士技能
-  | "CrusherSkill" // 粉碎者技能
-  | "FeatheringSkill" // 灵魂技能
-  | "GuardSkill" // 格挡技能
-  | "ShieldSkill" // 护盾技能
-  | "KnifeSkill" // 小刀技能
-  | "KnightSkill" // 骑士技能
-  | "HunterSkill" // 狩猎技能
-  | "PriestSkill" // 祭司技能
-  | "AssassinSkill" // 暗杀技能
-  | "WizardSkill" // 巫师技能
+// 技能树类型
+const SKILL_TREE_TYPE = [
+  "BladeSkill", // 剑术技能
+  "ShootSkill", // 射击技能
+  "MagicSkill", // 魔法技能
+  "MarshallSkill", // 格斗技能
+  "DualSwordSkill", // 双剑技能
+  "HalberdSkill", // 斧枪技能
+  "MononofuSkill", // 武士技能
+  "CrusherSkill", // 粉碎者技能
+  "FeatheringSkill", // 灵魂技能
+  "GuardSkill", // 格挡技能
+  "ShieldSkill", // 护盾技能
+  "KnifeSkill", // 小刀技能
+  "KnightSkill", // 骑士技能
+  "HunterSkill", // 狩猎技能
+  "PriestSkill", // 祭司技能
+  "AssassinSkill", // 暗杀技能
+  "WizardSkill", // 巫师技能
   //
-  | "SupportSkill" // 辅助技能
-  | "BattleSkill" // 好战分子
-  | "SurvivalSkill" // 生存本能
+  "SupportSkill", // 辅助技能
+  "BattleSkill", // 好战分子
+  "SurvivalSkill", // 生存本能
   //
-  | "SmithSkill" // 锻冶大师
-  | "AlchemySkill" // 炼金术士
-  | "TamerSkill" // 驯兽天分
+  "SmithSkill", // 锻冶大师
+  "AlchemySkill", // 炼金术士
+  "TamerSkill", // 驯兽天分
   //
-  | "DarkPowerSkill" // 暗黑之力
-  | "MagicBladeSkill" // 魔剑技能
-  | "DancerSkill" // 舞者技能
-  | "MinstrelSkill" // 诗人技能
-  | "BareHandSkill" // 空手技能
-  | "NinjaSkill" // 忍者技能
-  | "PartisanSkill" // 游击队技能
+  "DarkPowerSkill", // 暗黑之力
+  "MagicBladeSkill", // 魔剑技能
+  "DancerSkill", // 舞者技能
+  "MinstrelSkill", // 诗人技能
+  "BareHandSkill", // 空手技能
+  "NinjaSkill", // 忍者技能
+  "PartisanSkill", // 游击队技能
   //
-  | "LuckSkill"
-  | "MerchantSkill" // 商人技能
-  | "PetSkill"; // 宠物技能
+  "LuckSkill",
+  "MerchantSkill", // 商人技能
+  "PetSkill", // 宠物技能
+] as const;
+export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
 
 // 玩家技能攻击类型
-export type SkillAttackType = "None" | "Physical" | "Magic" | "SkillNormal";
+const SKILL_ATTACK_TYP = ["None", "Physical", "Magic", "SkillNormal"] as const;
+export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
 
 // 连击效果类型
-export type SkillComboType =
-  | "None"
-  | "Start"
-  | "Rengeki" // 连击
-  | "ThirdEye" // 心眼
-  | "Filling" // 补位
-  | "Quick" // 迅速
-  | "HardHit" // 增幅
-  | "Tenacity" // 执着
-  | "Invincible" // 无敌
-  | "BloodSucking" // 吸血
-  | "Tough" // 强韧
-  | "AMomentaryWalk"
-  | "Reflection" // 反射
-  | "Illusion"
-  | "Max";
+const SKILL_COMBO_TYPE = [
+  "None",
+  "Start",
+  "Rengeki", // 连击
+  "ThirdEye", // 心眼
+  "Filling", // 补位
+  "Quick", // 迅速
+  "HardHit", // 增幅
+  "Tenacity", // 执着
+  "Invincible", // 无敌
+  "BloodSucking", // 吸血
+  "Tough", // 强韧
+  "AMomentaryWalk",
+  "Reflection", // 反射
+  "Illusion",
+  "Max",
+] as const;
+export type SkillComboType = (typeof SKILL_COMBO_TYPE)[number];

@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistics";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
@@ -69,14 +69,14 @@ export const defaultAddEquip: AddEquip = {
   colorB: 0,
   colorC: 0,
   dataSources: "",
-  extraDetails: "",
+  details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.addEquipRecipe,
+  recipe: defaultRecipes.addEquip,
   updatedAt: new Date(),
   createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
 };

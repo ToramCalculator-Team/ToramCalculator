@@ -2,11 +2,12 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, recipe } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultWeapon } from "./weapon";
+import { defaultWeapons } from "./weapon";
 import { defaultAddEquip } from "./addEquip";
 import { defaultArmor } from "./armor";
 import { defaultSpeEquip } from "./speEquip";
 import { defaultConsumable } from "./consumable";
+import { WeaponType } from "./enums";
 
 export type Recipe = Awaited<ReturnType<typeof findRecipeById>>;
 export type NewRecipe = Insertable<recipe>;
@@ -16,7 +17,7 @@ export function recipeSubRelations(eb: ExpressionBuilder<DB, "recipe">, id: Expr
   return [
     jsonArrayFrom(
       eb.selectFrom("recipe_ingredient").where("recipe_ingredient.recipeId", "=", id).selectAll("recipe_ingredient"),
-    ).as("rewardBy"),
+    ).as("recipeEntries"),
   ];
 }
 
@@ -44,56 +45,120 @@ export async function deleteRecipe(id: string) {
   return await db.deleteFrom("recipe").where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
+const defaultRecipeWeaponShared = {
+  armorId: null,
+  activityId: null,
+  recipeEntries: [],
+  addEquipId: null,
+  speEquipId: null,
+  consumableId: null,
+};
+
 // default
-export const defaultRecipes = {
-  weaponRecipe: {
-    id: "defaultWeaponRecipe",
-    activityId: null,
-    rewardBy: [],
-    weaponId: defaultWeapon.id,
-    armorId: null,
-    addEquipId: null,
-    speEquipId: null,
-    consumableId: null,
-  } satisfies Recipe,
-  armorRecipe: {
+export const defaultRecipes: Record<WeaponType | "armor" | "addEquip" | "speEquip" | "consumable", Recipe> = {
+  OneHandSword: {
+    id: "defaultOneHandRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  TwoHandSword: {
+    id: "defaultTwoHandRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Bow: {
+    id: "defaultBowRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Bowgun: {
+    id: "defaultBowgunRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Rod: {
+    id: "defaultRodRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Magictool: {
+    id: "defaultMagictoolRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Knuckle: {
+    id: "defaultKnuckleRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Halberd: {
+    id: "defaultHalberdRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Katana: {
+    id: "defaultKatanaRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Arrow: {
+    id: "defaultArrowRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  ShortSword: {
+    id: "defaultShortSwordRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  NinjutsuScroll: {
+    id: "defaultNinjutsuScrollRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  Shield: {
+    id: "defaultShieldRecipe",
+    weaponId: "",
+    ...defaultRecipeWeaponShared
+  },
+  armor: {
     id: "defaultArmorRecipe",
+    armorId: "",
     activityId: null,
-    rewardBy: [],
+    recipeEntries: [],
     weaponId: null,
-    armorId: defaultArmor.id,
     addEquipId: null,
     speEquipId: null,
     consumableId: null,
-  } satisfies Recipe,
-  addEquipRecipe: {
+  },
+  addEquip: {
     id: "defaultAddEquipRecipe",
     activityId: null,
-    rewardBy: [],
+    recipeEntries: [],
     weaponId: null,
     armorId: null,
-    addEquipId: defaultAddEquip.id,
+    addEquipId: "",
     speEquipId: null,
     consumableId: null,
-  } satisfies Recipe,
-  speEquipRecipe: {
+  },
+  speEquip: {
     id: "defaultSpeEquipRecipe",
     activityId: null,
-    rewardBy: [],
+    recipeEntries: [],
     weaponId: null,
     armorId: null,
     addEquipId: null,
-    speEquipId: defaultSpeEquip.id,
+    speEquipId: "",
     consumableId: null,
-  } satisfies Recipe,
-  consumableRecipe: {
+  },
+  consumable: {
     id: "defaultConsumableRecipe",
     activityId: null,
-    rewardBy: [],
+    recipeEntries: [],
     weaponId: null,
     armorId: null,
     addEquipId: null,
     speEquipId: null,
-    consumableId: defaultConsumable.id,
-  } satisfies Recipe,
+    consumableId: "",
+  },
 };

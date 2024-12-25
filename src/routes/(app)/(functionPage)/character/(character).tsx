@@ -2,7 +2,6 @@ import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { test } from "~/../test/testData";
 
 export default function CharacterIndexPage() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
@@ -14,7 +13,7 @@ export default function CharacterIndexPage() {
   // 状态管理参数
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
-  const character = test.member.character;
+  const character = defaultCharacter;
   const setCharacter = (value: Character) => setStore("characterPage", "characterId", value.id);
 
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);

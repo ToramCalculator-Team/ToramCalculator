@@ -1,12 +1,11 @@
-import { createEffect, createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import LoadingBox from "~/components/ui/loadingBox";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
 export default function Loading() {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-
-  let LoadingPageRef: HTMLDivElement
+  const [loadingPageRef, setLoadingPageRef] = createSignal<HTMLDivElement | null>(null);
   
   let img1Ref: HTMLDivElement
   let img2Ref: HTMLDivElement
@@ -22,10 +21,11 @@ export default function Loading() {
   }
   
   onMount(() => {
-    LoadingPageRef.addEventListener('mousemove', bgParallaxFn);
-    return () => {
-      LoadingPageRef.removeEventListener('mousemove', bgParallaxFn);
-    }
+    loadingPageRef()?.addEventListener('mousemove', bgParallaxFn);
+  })
+
+  onCleanup(() => {
+    loadingPageRef()?.removeEventListener('mousemove', bgParallaxFn);
   })
 
   createEffect(() => {
@@ -34,7 +34,7 @@ export default function Loading() {
 
   return (
     <div
-      ref={LoadingPageRef!}
+      ref={setLoadingPageRef}
       onclick={() => history.back()}
       class="LoadingPage fixed left-0 top-0 flex h-dvh w-dvw items-center justify-center bg-aeskl bg-cover bg-center"
     >

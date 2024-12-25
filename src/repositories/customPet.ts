@@ -8,7 +8,7 @@ export type CustomPet = Awaited<ReturnType<typeof findCustomPetById>>;
 export type NewCustomPet = Insertable<custom_pet>;
 export type CustomPetUpdate = Updateable<custom_pet>;
 
-export function custom_petSubRelations(eb: ExpressionBuilder<DB, "custom_pet">, id: Expression<string>) {
+export function customPetSubRelations(eb: ExpressionBuilder<DB, "custom_pet">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
@@ -27,7 +27,7 @@ export async function findCustomPetById(id: string) {
     .selectFrom("custom_pet")
     .where("id", "=", id)
     .selectAll("custom_pet")
-    .select((eb) => custom_petSubRelations(eb, eb.val(id)))
+    .select((eb) => customPetSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

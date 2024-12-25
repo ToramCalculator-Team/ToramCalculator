@@ -2,13 +2,10 @@ import { Expression, ExpressionBuilder, Insertable, Selectable, Updateable } fro
 import { db } from "./database";
 import { account, DB } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { Modify } from "./untils";
+import { ModifyKeys } from "./untils";
+import { AccountType } from "./enums";
 
-const ACCOUNT_TYPES = ["Admin", "User"] as const;
-
-export type AccountType = (typeof ACCOUNT_TYPES)[number];
-
-export type Account = Modify<Awaited<ReturnType<typeof findAccountById>>, {
+export type Account = ModifyKeys<Awaited<ReturnType<typeof findAccountById>>, {
     type: AccountType
 }>;
 
@@ -110,9 +107,9 @@ export const defaultAccount: Account = {
   session_state: null,
   userId: "",
   create: {
-    accountId: "defaultAccount",
+    accountId: "",
   },
   update: {
-    accountId: "defaultAccount",
+    accountId: "",
   },
 };

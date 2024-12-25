@@ -68,11 +68,11 @@ export type armor_enchantment_attributes = {
     id: string;
     name: string;
     flow: unknown;
-    extraDetails: string | null;
+    details: string | null;
     dataSources: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
@@ -122,10 +122,10 @@ export type character = {
     partnerSkillB: string;
     partnerSkillBType: MercenarySkillType;
     masterId: string;
-    extraDetails: string;
+    details: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     imageId: string;
 };
 export type character_skill = {
@@ -194,9 +194,6 @@ export type custom_additional_equipment = {
     templateId: string;
     refinement: number;
     masterId: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    extraDetails: string;
 };
 export type custom_armor = {
     id: string;
@@ -205,11 +202,8 @@ export type custom_armor = {
     armorType: ArmorType;
     templateId: string;
     refinement: number;
-    enchantmentAttributesId: string;
+    enchantmentAttributesId: string | null;
     masterId: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    extraDetails: string;
 };
 export type custom_pet = {
     id: string;
@@ -237,9 +231,6 @@ export type custom_special_equipment = {
     templateId: string;
     refinement: number;
     masterId: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    extraDetails: string;
 };
 export type custom_weapon = {
     id: string;
@@ -247,11 +238,8 @@ export type custom_weapon = {
     extraAbi: number;
     templateId: string;
     refinement: number;
-    enchantmentAttributesId: string;
+    enchantmentAttributesId: string | null;
     masterId: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
-    extraDetails: string;
 };
 export type drop_item = {
     id: string;
@@ -279,10 +267,10 @@ export type item = {
     id: string;
     name: string;
     dataSources: string;
-    extraDetails: string;
+    details: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
@@ -343,11 +331,11 @@ export type mob = {
     difficultyOfMelee: number;
     difficultyOfRanged: number;
     possibilityOfRunningAround: number;
-    extraDetails: string;
+    details: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     imageId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
@@ -379,7 +367,7 @@ export type rate = {
     id: string;
     rate: number;
     accountId: string;
-    statisticsId: string;
+    statisticId: string;
 };
 export type recipe = {
     id: string;
@@ -415,10 +403,10 @@ export type simulator = {
     id: string;
     name: string;
     visibility: Visibility;
-    extraDetails: string | null;
+    details: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
@@ -437,11 +425,11 @@ export type skill = {
     element: string;
     chargingType: SkillChargingType;
     distanceResist: SkillDistanceResistType;
-    extraDetails: string;
+    details: string;
     dataSources: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
@@ -463,6 +451,7 @@ export type skill_effect = {
 };
 export type skill_yield = {
     id: string;
+    name: string;
     yieldType: YieldType;
     yieldFormula: string;
     mutationTimingFormula: string | null;
@@ -474,7 +463,7 @@ export type special_equipment = {
     modifiers: string[];
     itemId: string;
 };
-export type statistics = {
+export type statistic = {
     id: string;
 };
 export type task = {
@@ -490,7 +479,7 @@ export type team = {
 };
 export type usage_timestamp = {
     timestamp: Timestamp;
-    statisticsId: string | null;
+    statisticId: string | null;
 };
 export type user = {
     id: string;
@@ -507,7 +496,7 @@ export type verification_token = {
 };
 export type view_timestamp = {
     timestamp: Timestamp;
-    statisticsId: string | null;
+    statisticId: string | null;
 };
 export type weapon = {
     name: string;
@@ -524,11 +513,11 @@ export type weapon_enchantment_attributes = {
     id: string;
     name: string;
     flow: unknown;
-    extraDetails: string | null;
+    details: string | null;
     dataSources: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
-    statisticsId: string;
+    statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
@@ -604,7 +593,7 @@ export type DB = {
     skill_effect: skill_effect;
     skill_yield: skill_yield;
     special_equipment: special_equipment;
-    statistics: statistics;
+    statistic: statistic;
     task: task;
     team: team;
     usage_timestamp: usage_timestamp;

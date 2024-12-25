@@ -1,15 +1,15 @@
 import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "~/worker/evaluate.old.worker";
 import { ObjectRenderer } from "~/components/module/objectRender";
-import { Monster } from "~/repositories/mob";
+import { defaultMob, Mob } from "~/repositories/mob";
 import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { generateAugmentedMonsterList } from "~/lib/untils/monster";
+import { generateAugmentedMobList } from "~/lib/untils/mob";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
-import { Simulator } from "~/repositories/simulator";
+import { defaultSimulator, Simulator } from "~/repositories/simulator";
 import { test } from "~/../test/testData";
 import evaluateWorker from "~/worker/evaluate.worker?worker";
 
@@ -28,28 +28,28 @@ export default function SimulatorIndexClient() {
   const calculatorWorker = new evaluateWorker();
 
   // 状态管理参数
-  const monsterList = store.monsterPage.monsterList;
-  const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
+  const mobList = store.mobPage.mobList;
+  const setMobList = (value: Mob[]) => setStore("mobPage", "mobList", value);
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.simulatorPage.simulatorList;
   const setAnalyzeList = (value: Simulator[]) => setStore("simulatorPage", "simulatorList", value);
-  const monster = test.monster;
-  const character = test.member.character;
-  const simulator = test.simulator;
+  const mob = defaultMob;
+  const character = defaultCharacter;
+  const simulator = defaultSimulator;
 
   const [dialogState, setDialogState] = createSignal(false);
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
   const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
   const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
-  const [defaultMonsterList] = createSignal(store.monsterPage.monsterList);
+  const [defaultMobList] = createSignal(store.mobPage.mobList);
   const [team, setTeam] = createSignal<computeInput["arg"]["team"]>([
     {
-      config: test.member.character,
+      config: defaultCharacter,
       actionQueue: test.skillSequence1.data,
     },
     {
-      config: test.member.character,
+      config: defaultCharacter,
       actionQueue: test.skillSequence2.data,
     },
   ]);
@@ -80,101 +80,101 @@ export default function SimulatorIndexClient() {
     return colors[index]!;
   }
 
-  function generateResultDom(frameData: FrameData[]) {
-    const result = frameData;
-    const lastFrameData = result.at(-1);
-    const RemainingHp = lastFrameData ? dynamicTotalValue(lastFrameData.monsterData.hp) : 0;
-    const totalDamge = (lastFrameData?.monsterData.hp.baseValue ?? 0) - RemainingHp;
-    const totalDuration = result.length / 60;
-    const dps = totalDamge / totalDuration;
-    return (
-      <>
-        <div class="Result my-10 flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div class="DPS flex flex-col gap-2">
-            <span class="Key py-2 text-sm">DPS</span>
-            <span class="Value border-y-[1px] border-brand-color-1st p-4 text-6xl lg:border-none lg:p-0 lg:text-8xl lg:text-accent-color">
-              {math.floor(math.abs(dps))}
-            </span>
-          </div>
-          <div class="OtherData flex flex-1 gap-2">
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-              <span class="Key p-1 text-sm text-mainText-color">总耗时</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(totalDuration))} 秒
-              </span>
-            </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-              <span class="Key p-1 text-sm text-mainText-color">总伤害</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(totalDamge) / 10000)} 万
-              </span>
-            </div>
-            <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-              <span class="Key p-1 text-sm text-mainText-color">怪物剩余HP</span>
-              <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
-                {math.floor(math.abs(RemainingHp) / 10000)}万
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="TimeLine flex flex-col gap-4">
-          <div class="Title border-b-2 border-brand-color-1st p-2">
-            <span class="Key p-1">时间轴</span>
-          </div>
-          <div class="Content flex flex-1 flex-wrap gap-y-4 shadow-dividing-color drop-shadow-2xl">
-            {result.map((frameData, frame) => {
-              return (
-                <div class={`FrameData${frame} flex flex-col justify-around gap-1`}>
-                  {frameData.teamState.map((member, memberIndex) => {
-                    const color = stringToColor(member?.skillData.name ?? "");
-                    return frame === 0 ? (
-                      <button class="MemberName p-1 text-sm">{member?.name}</button>
-                    ) : (
-                      <button
-                        class={`MemberData group relative h-4 px-[1px]`}
-                        style={{
-                          "background-color": member ? color : "transparent",
-                        }}
-                        onClick={() => {
-                          console.log("点击了队员：", member?.name, "的第：", frame, "帧");
-                          if (member) {
-                            setDialogFrameData(frameData);
-                            setDialogState(true);
-                          }
-                        }}
-                      >
-                        {member ? (
-                          <div class="absolute -left-4 bottom-14 z-10 hidden w-fit min-w-[300px] flex-col gap-2 rounded bg-primary-color p-2 text-left shadow-2xl shadow-dividing-color backdrop-blur-xl lg:group-hover:z-20 lg:group-hover:flex">
-                            <div class="FrameAttr flex flex-col gap-1 bg-area-color p-1">
-                              <span class="Title font-bold">队员: {member?.name}</span>
-                              <span class="Content">
-                                第 {math.floor(frame / 60)} 秒的第 {frame % 60} 帧
-                                <br />
-                              </span>
+  // function generateResultDom(frameData: FrameData[]) {
+  //   const result = frameData;
+  //   const lastFrameData = result.at(-1);
+  //   const RemainingHp = lastFrameData ? dynamicTotalValue(lastFrameData.mobData.hp) : 0;
+  //   const totalDamge = (lastFrameData?.mobData.hp.baseValue ?? 0) - RemainingHp;
+  //   const totalDuration = result.length / 60;
+  //   const dps = totalDamge / totalDuration;
+  //   return (
+  //     <>
+  //       <div class="Result my-10 flex flex-col gap-4 lg:flex-row lg:items-end">
+  //         <div class="DPS flex flex-col gap-2">
+  //           <span class="Key py-2 text-sm">DPS</span>
+  //           <span class="Value border-y-[1px] border-brand-color-1st p-4 text-6xl lg:border-none lg:p-0 lg:text-8xl lg:text-accent-color">
+  //             {math.floor(math.abs(dps))}
+  //           </span>
+  //         </div>
+  //         <div class="OtherData flex flex-1 gap-2">
+  //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+  //             <span class="Key p-1 text-sm text-mainText-color">总耗时</span>
+  //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
+  //               {math.floor(math.abs(totalDuration))} 秒
+  //             </span>
+  //           </div>
+  //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+  //             <span class="Key p-1 text-sm text-mainText-color">总伤害</span>
+  //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
+  //               {math.floor(math.abs(totalDamge) / 10000)} 万
+  //             </span>
+  //           </div>
+  //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
+  //             <span class="Key p-1 text-sm text-mainText-color">怪物剩余HP</span>
+  //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
+  //               {math.floor(math.abs(RemainingHp) / 10000)}万
+  //             </span>
+  //           </div>
+  //         </div>
+  //       </div>
+  //       <div class="TimeLine flex flex-col gap-4">
+  //         <div class="Title border-b-2 border-brand-color-1st p-2">
+  //           <span class="Key p-1">时间轴</span>
+  //         </div>
+  //         <div class="Content flex flex-1 flex-wrap gap-y-4 shadow-dividing-color drop-shadow-2xl">
+  //           {result.map((frameData, frame) => {
+  //             return (
+  //               <div class={`FrameData${frame} flex flex-col justify-around gap-1`}>
+  //                 {frameData.teamState.map((member, memberIndex) => {
+  //                   const color = stringToColor(member?.skillData.name ?? "");
+  //                   return frame === 0 ? (
+  //                     <button class="MemberName p-1 text-sm">{member?.name}</button>
+  //                   ) : (
+  //                     <button
+  //                       class={`MemberData group relative h-4 px-[1px]`}
+  //                       style={{
+  //                         "background-color": member ? color : "transparent",
+  //                       }}
+  //                       onClick={() => {
+  //                         console.log("点击了队员：", member?.name, "的第：", frame, "帧");
+  //                         if (member) {
+  //                           setDialogFrameData(frameData);
+  //                           setDialogState(true);
+  //                         }
+  //                       }}
+  //                     >
+  //                       {member ? (
+  //                         <div class="absolute -left-4 bottom-14 z-10 hidden w-fit min-w-[300px] flex-col gap-2 rounded bg-primary-color p-2 text-left shadow-2xl shadow-dividing-color backdrop-blur-xl lg:group-hover:z-20 lg:group-hover:flex">
+  //                           <div class="FrameAttr flex flex-col gap-1 bg-area-color p-1">
+  //                             <span class="Title font-bold">队员: {member?.name}</span>
+  //                             <span class="Content">
+  //                               第 {math.floor(frame / 60)} 秒的第 {frame % 60} 帧
+  //                               <br />
+  //                             </span>
 
-                              <span class="Content">
-                                技能 {(member?.actionIndex ?? 0) + 1} {member?.skillData.name} 的第：
-                                {member?.actionFrameIndex} / {member?.skillData.skillDuration} 帧
-                                <br />
-                              </span>
-                            </div>
-                          </div>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </>
-    );
-  }
+  //                             <span class="Content">
+  //                               技能 {(member?.actionIndex ?? 0) + 1} {member?.skillData.name} 的第：
+  //                               {member?.actionFrameIndex} / {member?.skillData.skillDuration} 帧
+  //                               <br />
+  //                             </span>
+  //                           </div>
+  //                         </div>
+  //                       ) : null}
+  //                     </button>
+  //                   );
+  //                 })}
+  //               </div>
+  //             );
+  //           })}
+  //         </div>
+  //       </div>
+  //     </>
+  //   );
+  // }
 
   onMount(() => {
     console.log("--ComboAnalyze Client Render");
-    setMonsterList(generateAugmentedMonsterList(defaultMonsterList(), dictionary()));
+    setMobList(generateAugmentedMobList(defaultMobList(), dictionary()));
     setCharacterList([defaultCharacter, defaultCharacter]);
 
     calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
@@ -188,7 +188,8 @@ export default function SimulatorIndexClient() {
           break;
         case "success":
           {
-            setComputeResult(generateResultDom(computeResult as FrameData[]));
+            // setComputeResult(generateResultDom(computeResult as FrameData[]));
+            setComputeResult(<div class="Result my-10 flex items-end"></div>);
           }
           break;
         case "error":
@@ -220,7 +221,7 @@ export default function SimulatorIndexClient() {
         arg: {
           dictionary: dictionary(),
           team: team(),
-          monster: monster,
+          mob: mob,
         },
       }),
     );
@@ -248,9 +249,9 @@ export default function SimulatorIndexClient() {
         <div class="mobsConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex gap-4">
             <span class="Key">怪物：</span>
-            <span class="MonsterName font-bold">{monster.name}</span>
+            <span class="MobName font-bold">{mob.name}</span>
           </div>
-          {/* <LongSearchBox dictionary={dictionary} monsterList={monsterList} setMonster={setMonster} /> */}
+          {/* <LongSearchBox dictionary={dictionary} mobList={mobList} setMob={setMob} /> */}
         </div>
         <div class="TeamConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex flex-col gap-4">队伍配置：</div>
@@ -338,15 +339,15 @@ export default function SimulatorIndexClient() {
                 })}
               </div>
             </div>
-            <div class="MonsterData flex flex-col gap-1">
+            <div class="MobData flex flex-col gap-1">
               <div class="Title sticky top-0 z-10 flex items-center gap-6 bg-primary-color pt-4">
-                <span class="Title text-base font-bold lg:text-xl">Monster</span>
+                <span class="Title text-base font-bold lg:text-xl">Mob</span>
                 <div class="h-[1px] flex-1 bg-brand-color-1st"></div>
               </div>
               <div class="Content flex flex-wrap outline-[1px] lg:gap-1">
-                {dialogFrameData() ? (
-                  <ObjectRenderer dictionary={dictionary()} data={dialogFrameData()?.monsterData} display />
-                ) : null}
+                {/* {dialogFrameData() ? (
+                  <ObjectRenderer dictionary={dictionary()} data={dialogFrameData()?.mobData} display />
+                ) : null} */}
               </div>
             </div>
           </div>

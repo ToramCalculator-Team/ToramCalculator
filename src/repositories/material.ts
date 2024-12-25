@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
-import { defaultStatistics } from "./statistics";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 
@@ -48,13 +48,13 @@ export const defaultMaterial: Material = {
     ptValue: 0,
     price: 0,
     dataSources: "",
-    extraDetails: "",
+    details: "",
     dropBy: [],
     rewardBy: [],
     updatedAt: new Date(),
     createdAt: new Date(),
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistics: defaultStatistics,
-    statisticsId: defaultStatistics.id,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
 };

@@ -1,4 +1,4 @@
-import { type Statistics } from "~/repositories/statistics";
+import { type Statistics } from "~/repositories/statistic";
 import { type ConvertToAllString, type dictionary } from "./type";
 import { Image } from "~/repositories/image";
 

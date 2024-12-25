@@ -75,9 +75,5 @@ export const defaultCustomAddEquip: CustomAddEquip = {
   templateId: defaultAddEquip.id,
   refinement: 0,
   crystalList: [],
-  extraDetails: "",
-
-  updatedAt: new Date(),
-  createdAt: new Date(),
   masterId: defaultAccount.id,
 };

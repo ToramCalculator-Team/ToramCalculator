@@ -13,7 +13,6 @@ import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/skill_effect";
-import { type SkillCost } from "~/repositories/skill_cost";
 import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -75,9 +74,8 @@ export default function Index() {
     "updatedByAccountId",
     "createdByAccountId",
   ];
-  const skillHiddenData: Array<keyof (Skill & SkillEffect & SkillCost)> = [
+  const skillHiddenData: Array<keyof (Skill & SkillEffect)> = [
     "id",
-    "skillEffectId",
     "belongToskillId",
     "updatedAt",
     "createdAt",
@@ -367,57 +365,57 @@ export default function Index() {
   };
 
   // 键盘事件
-  const handleKeyPress = (e: KeyboardEvent) => {
-    switch (e.key) {
-      case "Enter":
-        {
-          if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
-            searchButtonRef.click();
-          }
-        }
-        break;
-      case "Escape":
-        {
-          if (store.settingsDialogState) {
-            setStore("settingsDialogState", false);
-            e.stopPropagation();
-          } else if (document.activeElement === searchInputPCRef) {
-            searchInputPCRef.blur();
-            e.stopPropagation();
-          } else if (document.activeElement === searchInputMobileRef) {
-            searchInputMobileRef.blur();
-            e.stopPropagation();
-          } else if (resultDialogOpened()) {
-            setResultDialogOpened(false);
-            e.stopPropagation();
-          }
-          if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
-            searchInputPCRef.blur();
-            searchInputMobileRef.blur();
-          }
-        }
-        break;
-      case "s":
-      case "S":
-        {
-          if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
-            setStore("settingsDialogState", true);
-          }
-        }
-        break;
-      case "·":
-      case "`":
-        {
-          if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
-            searchInputPCRef.focus();
-            e.preventDefault(); // 阻止默认输入行为
-          }
-        }
-        break;
-      default:
-        break;
-    }
-  };
+  // const handleKeyPress = (e: KeyboardEvent) => {
+  //   switch (e.key) {
+  //     case "Enter":
+  //       {
+  //         if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+  //           searchButtonRef.click();
+  //         }
+  //       }
+  //       break;
+  //     case "Escape":
+  //       {
+  //         if (store.settingsDialogState) {
+  //           setStore("settingsDialogState", false);
+  //           e.stopPropagation();
+  //         } else if (document.activeElement === searchInputPCRef) {
+  //           searchInputPCRef.blur();
+  //           e.stopPropagation();
+  //         } else if (document.activeElement === searchInputMobileRef) {
+  //           searchInputMobileRef.blur();
+  //           e.stopPropagation();
+  //         } else if (resultDialogOpened()) {
+  //           setResultDialogOpened(false);
+  //           e.stopPropagation();
+  //         }
+  //         if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+  //           searchInputPCRef.blur();
+  //           searchInputMobileRef.blur();
+  //         }
+  //       }
+  //       break;
+  //     case "s":
+  //     case "S":
+  //       {
+  //         if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+  //           setStore("settingsDialogState", true);
+  //         }
+  //       }
+  //       break;
+  //     case "·":
+  //     case "`":
+  //       {
+  //         if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+  //           searchInputPCRef.focus();
+  //           e.preventDefault(); // 阻止默认输入行为
+  //         }
+  //       }
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // };
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
@@ -431,11 +429,11 @@ export default function Index() {
     };
 
     // 监听绑带与清除
-    document.addEventListener("keydown", handleKeyPress);
+    // document.addEventListener("keydown", handleKeyPress);
     window.addEventListener("popstate", handlePopState);
 
     onCleanup(() => {
-      document.removeEventListener("keydown", handleKeyPress);
+      // document.removeEventListener("keydown", handleKeyPress);
       window.removeEventListener("popstate", handlePopState);
     });
   });

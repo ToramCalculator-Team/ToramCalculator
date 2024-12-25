@@ -6,5 +6,5 @@ export type ViewTimestamp = Selectable<view_timestamp>
 // default
 export const defaultViewTimestamp: ViewTimestamp = {
   timestamp: new Date(),
-  statisticsId: "defaultStatisticsId",
+  statisticId: "",
 };

@@ -1,6 +1,6 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { type Monster } from "./repositories/mob";
+import { type Mob } from "./repositories/mob";
 import { type Crystal } from "./repositories/crystal";
 import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
@@ -36,12 +36,12 @@ export type Store = {
   };
   indexPage: {
   };
-  monsterPage: {
+  mobPage: {
     augmented: boolean;
-    monsterId: string;
-    monsterList: Monster[];
-    monsterDialogState: boolean;
-    monsterFormState: FormSate;
+    mobId: string;
+    mobList: Mob[];
+    mobDialogState: boolean;
+    mobFormState: FormSate;
     filterState: boolean;
   };
   crystalPage: {
@@ -101,12 +101,12 @@ export const initialStore: Store = {
   },
   settingsDialogState: false,
   indexPage: {},
-  monsterPage: {
+  mobPage: {
     augmented: true,
-    monsterId: "defaultMonsterId",
-    monsterList: [],
-    monsterDialogState: false,
-    monsterFormState: "DISPLAY",
+    mobId: "defaultMobId",
+    mobList: [],
+    mobDialogState: false,
+    mobFormState: "DISPLAY",
     filterState: false,
   },
   crystalPage: {

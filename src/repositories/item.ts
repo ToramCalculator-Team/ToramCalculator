@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistics";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 
 export type Item = Awaited<ReturnType<typeof findItemById>>;
@@ -11,9 +11,9 @@ export type ItemUpdate = Updateable<item>;
 
 export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
-    jsonObjectFrom(eb.selectFrom("statistics").whereRef("id", "=", "item.statisticsId").selectAll("statistics"))
+    jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
       .$notNull()
-      .as("statistics"),
+      .as("statistic"),
     jsonArrayFrom(
       eb
         .selectFrom("drop_item")
@@ -61,13 +61,13 @@ export const defaultItem: Item = {
   id: "defaultItemId",
   name: "默认道具（缺省值）",
   dataSources: "",
-  extraDetails: "",
+  details: "",
   dropBy: [],
   rewardBy: [],
   updatedAt: new Date(),
   createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
 };

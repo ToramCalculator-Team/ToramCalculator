@@ -2,7 +2,6 @@ import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
 import { rate } from "~/repositories/db/types";
 import { defaultAccount } from "./account";
-import { defaultStatistics } from "./statistics";
 
 export type Rate = Selectable<rate>;
 export type NewRate = Insertable<rate>;
@@ -29,5 +28,5 @@ export const defaultRate: Rate = {
   rate: 0,
   id: "defaultRateId",
   accountId: defaultAccount.id,
-  statisticsId: defaultStatistics.id,
+  statisticId: "",
 };

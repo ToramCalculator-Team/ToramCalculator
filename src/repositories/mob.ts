@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/repositories/db/types";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { defaultImage } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
@@ -27,13 +27,13 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
     ).as("dropItems"),
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "mob.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+        .selectFrom("statistic")
+        .whereRef("id", "=", "mob.statisticId")
+        .selectAll("statistic")
+        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
     )
       .$notNull()
-      .as("statistics"),
+      .as("statistic"),
     jsonObjectFrom(eb.selectFrom("image").whereRef("id", "=", "mob.imageId").selectAll("image"))
       .$notNull()
       .as("image"),
@@ -63,14 +63,18 @@ export async function updateMob(id: string, updateWith: MobUpdate) {
 
 export async function createMob(newMob: NewMob) {
   return await db.transaction().execute(async (trx) => {
-    const mob = await trx.insertInto("mob").values(newMob).returningAll().executeTakeFirstOrThrow();
-    const statistics = await trx
-      .insertInto("statistics")
-      .values(defaultStatistics)
+    const statistic = await trx
+      .insertInto("statistic")
+      .values(defaultStatistic)
       .returningAll()
       .executeTakeFirstOrThrow();
     const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
-    return { ...mob, statistics, image };
+    const mob = await trx.insertInto("mob").values({
+      ...newMob,
+      statisticId: statistic.id,
+      imageId: image.id,
+    }).returningAll().executeTakeFirstOrThrow();
+    return { ...mob, statistic, image };
   });
 }
 
@@ -108,12 +112,12 @@ export const defaultMob: Mob = {
   possibilityOfRunningAround: 0,
   belongToZones: [],
   dropItems: [],
-  extraDetails: "defaultExtraDetails",
+  details: "defaultExtraDetails",
   dataSources: "defaultDataSources",
   updatedAt: new Date(),
   createdAt: new Date(),
-  statisticsId: defaultStatistics.id,
-  statistics: defaultStatistics,
+  statisticId: defaultStatistic.id,
+  statistic: defaultStatistic,
   imageId: defaultImage.id,
   image: defaultImage,
   updatedByAccountId: defaultAccount.id,

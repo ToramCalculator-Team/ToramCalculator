@@ -82,7 +82,7 @@ export const ZoneScalarFieldEnumSchema = z.enum(['id','name','linkZone','rewardN
 
 export const NpcScalarFieldEnumSchema = z.enum(['id','name','zoneId']);
 
-export const ItemScalarFieldEnumSchema = z.enum(['id','name','dataSources','extraDetails','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
+export const ItemScalarFieldEnumSchema = z.enum(['id','name','dataSources','details','updatedAt','createdAt','statisticId','updatedByAccountId','createdByAccountId']);
 
 export const Recipe_ingredientScalarFieldEnumSchema = z.enum(['id','type','count','itemId','recipeId']);
 
@@ -94,39 +94,39 @@ export const RewardScalarFieldEnumSchema = z.enum(['id','type','value','probabil
 
 export const MaterialScalarFieldEnumSchema = z.enum(['name','itemId','material','ptValue','price']);
 
-export const MobScalarFieldEnumSchema = z.enum(['id','name','mobType','captureable','baseLv','experience','partsExperience','element','radius','maxhp','physicalDefense','physicalResistance','magicalDefense','magicalResistance','criticalResistance','avoidance','dodge','block','normalAttackResistanceModifier','physicalAttackResistanceModifier','magicalAttackResistanceModifier','actions','difficultyOfTank','difficultyOfMelee','difficultyOfRanged','possibilityOfRunningAround','extraDetails','dataSources','updatedAt','createdAt','statisticsId','imageId','updatedByAccountId','createdByAccountId']);
+export const MobScalarFieldEnumSchema = z.enum(['id','name','mobType','captureable','baseLv','experience','partsExperience','element','radius','maxhp','physicalDefense','physicalResistance','magicalDefense','magicalResistance','criticalResistance','avoidance','dodge','block','normalAttackResistanceModifier','physicalAttackResistanceModifier','magicalAttackResistanceModifier','actions','difficultyOfTank','difficultyOfMelee','difficultyOfRanged','possibilityOfRunningAround','details','dataSources','updatedAt','createdAt','statisticId','imageId','updatedByAccountId','createdByAccountId']);
 
 export const Drop_itemScalarFieldEnumSchema = z.enum(['id','itemId','probability','relatedPart','relatedPartInfo','breakReward','dropById']);
 
-export const Weapon_enchantment_attributesScalarFieldEnumSchema = z.enum(['id','name','flow','extraDetails','dataSources','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
+export const Weapon_enchantment_attributesScalarFieldEnumSchema = z.enum(['id','name','flow','details','dataSources','updatedAt','createdAt','statisticId','updatedByAccountId','createdByAccountId']);
 
-export const Armor_enchantment_attributesScalarFieldEnumSchema = z.enum(['id','name','flow','extraDetails','dataSources','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
+export const Armor_enchantment_attributesScalarFieldEnumSchema = z.enum(['id','name','flow','details','dataSources','updatedAt','createdAt','statisticId','updatedByAccountId','createdByAccountId']);
 
 export const CrystalScalarFieldEnumSchema = z.enum(['name','crystalType','modifiers','itemId']);
 
 export const WeaponScalarFieldEnumSchema = z.enum(['name','type','baseAbi','stability','modifiers','colorA','colorB','colorC','itemId']);
 
-export const Custom_weaponScalarFieldEnumSchema = z.enum(['id','name','extraAbi','templateId','refinement','enchantmentAttributesId','masterId','updatedAt','createdAt','extraDetails']);
+export const Custom_weaponScalarFieldEnumSchema = z.enum(['id','name','extraAbi','templateId','refinement','enchantmentAttributesId','masterId']);
 
 export const ArmorScalarFieldEnumSchema = z.enum(['name','baseDef','modifiers','colorA','colorB','colorC','itemId']);
 
-export const Custom_armorScalarFieldEnumSchema = z.enum(['id','name','def','armorType','templateId','refinement','enchantmentAttributesId','masterId','updatedAt','createdAt','extraDetails']);
+export const Custom_armorScalarFieldEnumSchema = z.enum(['id','name','def','armorType','templateId','refinement','enchantmentAttributesId','masterId']);
 
 export const Additional_equipmentScalarFieldEnumSchema = z.enum(['name','baseDef','modifiers','colorA','colorB','colorC','itemId']);
 
-export const Custom_additional_equipmentScalarFieldEnumSchema = z.enum(['id','name','def','templateId','refinement','masterId','updatedAt','createdAt','extraDetails']);
+export const Custom_additional_equipmentScalarFieldEnumSchema = z.enum(['id','name','def','templateId','refinement','masterId']);
 
 export const Special_equipmentScalarFieldEnumSchema = z.enum(['name','baseDef','modifiers','itemId']);
 
-export const Custom_special_equipmentScalarFieldEnumSchema = z.enum(['id','name','def','templateId','refinement','masterId','updatedAt','createdAt','extraDetails']);
+export const Custom_special_equipmentScalarFieldEnumSchema = z.enum(['id','name','def','templateId','refinement','masterId']);
 
-export const SkillScalarFieldEnumSchema = z.enum(['id','treeName','posX','posY','tier','name','isPassive','element','chargingType','distanceResist','extraDetails','dataSources','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
+export const SkillScalarFieldEnumSchema = z.enum(['id','treeName','posX','posY','tier','name','isPassive','element','chargingType','distanceResist','details','dataSources','updatedAt','createdAt','statisticId','updatedByAccountId','createdByAccountId']);
 
 export const Character_skillScalarFieldEnumSchema = z.enum(['id','lv','templateId']);
 
 export const Skill_effectScalarFieldEnumSchema = z.enum(['id','mainHand','subHand','armor','description','motionFixed','motionModified','chantingFixed','chantingModified','ReservoirFixed','ReservoirModified','startupFrames','cost','belongToskillId']);
 
-export const Skill_yieldScalarFieldEnumSchema = z.enum(['id','yieldType','yieldFormula','mutationTimingFormula','skillEffectId']);
+export const Skill_yieldScalarFieldEnumSchema = z.enum(['id','name','yieldType','yieldFormula','mutationTimingFormula','skillEffectId']);
 
 export const Custom_petScalarFieldEnumSchema = z.enum(['id','templateId','pStr','pInt','pVit','pAgi','pDex','str','int','vit','agi','dex','weaponType','persona','type','weaponAtk','masterId']);
 
@@ -138,7 +138,7 @@ export const AvatarScalarFieldEnumSchema = z.enum(['id','name','type','modifiers
 
 export const PlayerScalarFieldEnumSchema = z.enum(['id','name','useIn','actions','accountId']);
 
-export const CharacterScalarFieldEnumSchema = z.enum(['id','name','lv','str','int','vit','agi','dex','personalityType','personalityValue','weaponId','subWeaponId','armorId','addEquipId','speEquipId','cooking','modifiers','partnerSkillA','partnerSkillAType','partnerSkillB','partnerSkillBType','masterId','extraDetails','updatedAt','createdAt','statisticsId','imageId']);
+export const CharacterScalarFieldEnumSchema = z.enum(['id','name','lv','str','int','vit','agi','dex','personalityType','personalityValue','weaponId','subWeaponId','armorId','addEquipId','speEquipId','cooking','modifiers','partnerSkillA','partnerSkillAType','partnerSkillB','partnerSkillBType','masterId','details','updatedAt','createdAt','statisticId','imageId']);
 
 export const MercenaryScalarFieldEnumSchema = z.enum(['type','templateId','skillAId','skillAType','skillBId','skillBType']);
 
@@ -146,17 +146,17 @@ export const MemberScalarFieldEnumSchema = z.enum(['id','playerId','partnerId','
 
 export const TeamScalarFieldEnumSchema = z.enum(['id','name','gems']);
 
-export const SimulatorScalarFieldEnumSchema = z.enum(['id','name','visibility','extraDetails','updatedAt','createdAt','statisticsId','updatedByAccountId','createdByAccountId']);
+export const SimulatorScalarFieldEnumSchema = z.enum(['id','name','visibility','details','updatedAt','createdAt','statisticId','updatedByAccountId','createdByAccountId']);
 
-export const StatisticsScalarFieldEnumSchema = z.enum(['id']);
+export const StatisticScalarFieldEnumSchema = z.enum(['id']);
 
 export const ImageScalarFieldEnumSchema = z.enum(['id','dataUrl','npcId']);
 
-export const RateScalarFieldEnumSchema = z.enum(['id','rate','accountId','statisticsId']);
+export const RateScalarFieldEnumSchema = z.enum(['id','rate','accountId','statisticId']);
 
-export const Usage_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticsId']);
+export const Usage_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticId']);
 
-export const View_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticsId']);
+export const View_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticId']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -435,10 +435,10 @@ export const itemSchema = z.object({
   id: z.string(),
   name: z.string(),
   dataSources: z.string(),
-  extraDetails: z.string(),
+  details: z.string(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
 })
@@ -548,11 +548,11 @@ export const mobSchema = z.object({
   difficultyOfMelee: z.number().int(),
   difficultyOfRanged: z.number().int(),
   possibilityOfRunningAround: z.number().int(),
-  extraDetails: z.string(),
+  details: z.string(),
   dataSources: z.string(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   imageId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
@@ -584,11 +584,11 @@ export const weapon_enchantment_attributesSchema = z.object({
   id: z.string(),
   name: z.string(),
   flow: JsonValueSchema,
-  extraDetails: z.string().nullable(),
+  details: z.string().nullable(),
   dataSources: z.string().nullable(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
 })
@@ -603,11 +603,11 @@ export const armor_enchantment_attributesSchema = z.object({
   id: z.string(),
   name: z.string(),
   flow: JsonValueSchema,
-  extraDetails: z.string().nullable(),
+  details: z.string().nullable(),
   dataSources: z.string().nullable(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
 })
@@ -655,11 +655,8 @@ export const custom_weaponSchema = z.object({
   extraAbi: z.number().int(),
   templateId: z.string(),
   refinement: z.number().int(),
-  enchantmentAttributesId: z.string(),
+  enchantmentAttributesId: z.string().nullable(),
   masterId: z.string(),
-  updatedAt: z.coerce.date(),
-  createdAt: z.coerce.date(),
-  extraDetails: z.string(),
 })
 
 export type custom_weapon = z.infer<typeof custom_weaponSchema>
@@ -691,11 +688,8 @@ export const custom_armorSchema = z.object({
   def: z.number().int(),
   templateId: z.string(),
   refinement: z.number().int(),
-  enchantmentAttributesId: z.string(),
+  enchantmentAttributesId: z.string().nullable(),
   masterId: z.string(),
-  updatedAt: z.coerce.date(),
-  createdAt: z.coerce.date(),
-  extraDetails: z.string(),
 })
 
 export type custom_armor = z.infer<typeof custom_armorSchema>
@@ -727,9 +721,6 @@ export const custom_additional_equipmentSchema = z.object({
   templateId: z.string(),
   refinement: z.number().int(),
   masterId: z.string(),
-  updatedAt: z.coerce.date(),
-  createdAt: z.coerce.date(),
-  extraDetails: z.string(),
 })
 
 export type custom_additional_equipment = z.infer<typeof custom_additional_equipmentSchema>
@@ -758,9 +749,6 @@ export const custom_special_equipmentSchema = z.object({
   templateId: z.string(),
   refinement: z.number().int(),
   masterId: z.string(),
-  updatedAt: z.coerce.date(),
-  createdAt: z.coerce.date(),
-  extraDetails: z.string(),
 })
 
 export type custom_special_equipment = z.infer<typeof custom_special_equipmentSchema>
@@ -780,11 +768,11 @@ export const skillSchema = z.object({
   name: z.string(),
   isPassive: z.boolean(),
   element: z.string(),
-  extraDetails: z.string(),
+  details: z.string(),
   dataSources: z.string(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
 })
@@ -833,6 +821,7 @@ export type skill_effect = z.infer<typeof skill_effectSchema>
 export const skill_yieldSchema = z.object({
   yieldType: YieldTypeSchema,
   id: z.string(),
+  name: z.string(),
   yieldFormula: z.string(),
   mutationTimingFormula: z.string().nullable(),
   skillEffectId: z.string().nullable(),
@@ -947,10 +936,10 @@ export const characterSchema = z.object({
   partnerSkillA: z.string(),
   partnerSkillB: z.string(),
   masterId: z.string(),
-  extraDetails: z.string(),
+  details: z.string(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   imageId: z.string(),
 })
 
@@ -1006,10 +995,10 @@ export const simulatorSchema = z.object({
   visibility: VisibilitySchema,
   id: z.string(),
   name: z.string(),
-  extraDetails: z.string().nullable(),
+  details: z.string().nullable(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
   updatedByAccountId: z.string().nullable(),
   createdByAccountId: z.string().nullable(),
 })
@@ -1017,14 +1006,14 @@ export const simulatorSchema = z.object({
 export type simulator = z.infer<typeof simulatorSchema>
 
 /////////////////////////////////////////
-// STATISTICS SCHEMA
+// STATISTIC SCHEMA
 /////////////////////////////////////////
 
-export const statisticsSchema = z.object({
+export const statisticSchema = z.object({
   id: z.string(),
 })
 
-export type statistics = z.infer<typeof statisticsSchema>
+export type statistic = z.infer<typeof statisticSchema>
 
 /////////////////////////////////////////
 // IMAGE SCHEMA
@@ -1046,7 +1035,7 @@ export const rateSchema = z.object({
   id: z.string(),
   rate: z.number().int(),
   accountId: z.string(),
-  statisticsId: z.string(),
+  statisticId: z.string(),
 })
 
 export type rate = z.infer<typeof rateSchema>
@@ -1057,7 +1046,7 @@ export type rate = z.infer<typeof rateSchema>
 
 export const usage_timestampSchema = z.object({
   timestamp: z.coerce.date(),
-  statisticsId: z.string().nullable(),
+  statisticId: z.string().nullable(),
 })
 
 export type usage_timestamp = z.infer<typeof usage_timestampSchema>
@@ -1068,7 +1057,7 @@ export type usage_timestamp = z.infer<typeof usage_timestampSchema>
 
 export const view_timestampSchema = z.object({
   timestamp: z.coerce.date(),
-  statisticsId: z.string().nullable(),
+  statisticId: z.string().nullable(),
 })
 
 export type view_timestamp = z.infer<typeof view_timestampSchema>

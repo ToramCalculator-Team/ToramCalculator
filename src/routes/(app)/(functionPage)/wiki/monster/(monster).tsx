@@ -15,43 +15,43 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/image";
-import { type Monster, defaultMonster, findMonsters } from "~/repositories/mob";
+import { type Mob, defaultMob, findMobs } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
 import { $Enums } from "@prisma/client";
 import { getDictionary } from "~/locales/i18n";
-import { generateAugmentedMonsterList } from "~/lib/untils/monster";
+import { generateAugmentedMobList } from "~/lib/untils/mob";
 import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import Button from "~/components/ui/button";
 
-export default function MonsterIndexPage() {
+export default function MobIndexPage() {
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
-  const setMonsterFormState = (newState: FormSate): void => {
-    setStore("monsterPage", {
-      monsterFormState: newState,
+  const setMobFormState = (newState: FormSate): void => {
+    setStore("mobPage", {
+      mobFormState: newState,
     });
   };
   const setAugmented = (newAugmented: boolean): void => {
-    setStore("monsterPage", {
+    setStore("mobPage", {
       augmented: newAugmented,
     });
   };
-  const setMonsterList = (newList: Monster[]): void => {
-    setStore("monsterPage", {
-      monsterList: newList,
+  const setMobList = (newList: Mob[]): void => {
+    setStore("mobPage", {
+      mobList: newList,
     });
   };
   const setFilterState = (newState: boolean): void => {
-    setStore("monsterPage", {
+    setStore("mobPage", {
       filterState: newState,
     });
   };
-  const setMonster = (newMonster: Monster): void => {
-    setStore("monsterPage", "monsterId", newMonster.id);
+  const setMob = (newMob: Mob): void => {
+    setStore("mobPage", "mobId", newMob.id);
   };
 
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
@@ -62,103 +62,103 @@ export default function MonsterIndexPage() {
 
   // table原始数据------------------------------------------------------------
 
-  const [monsterList, { refetch: refetchMonsterList }] = createResource(findMonsters);
+  const [mobList, { refetch: refetchMobList }] = createResource(findMobs);
   // table
-  const columns: ColumnDef<Monster>[] = [
+  const columns: ColumnDef<Mob>[] = [
     {
       accessorKey: "id",
-      header: () => dictionary().db.models.monster.id,
+      header: () => dictionary().db.models.mob.id,
       cell: (info) => info.getValue(),
       size: 200,
     },
     {
       accessorKey: "name",
-      header: () => dictionary().db.models.monster.name,
+      header: () => dictionary().db.models.mob.name,
       cell: (info) => info.getValue(),
       size: 220,
     },
     {
       accessorKey: "address",
-      header: () => dictionary().db.models.monster.address,
+      header: () => dictionary().db.models.mob.actions,
       cell: (info) => info.getValue(),
       size: 150,
     },
     {
-      accessorKey: "monsterType",
-      header: () => dictionary().db.models.monster.monsterType,
-      cell: (info) => dictionary().db.enums.MonsterType[info.getValue<$Enums.MonsterType>()],
+      accessorKey: "mobType",
+      header: () => dictionary().db.models.mob.mobType,
+      cell: (info) => dictionary().db.enums.MobType[info.getValue<$Enums.MobType>()],
       size: 120,
     },
     {
       accessorKey: "element",
-      header: () => dictionary().db.models.monster.element,
+      header: () => dictionary().db.models.mob.element,
       cell: (info) => dictionary().db.enums.Element[info.getValue<$Enums.Element>()],
       size: 120,
     },
     {
       accessorKey: "baseLv",
-      header: () => dictionary().db.models.monster.baseLv,
+      header: () => dictionary().db.models.mob.baseLv,
       size: 120,
     },
     {
       accessorKey: "experience",
-      header: () => dictionary().db.models.monster.experience,
+      header: () => dictionary().db.models.mob.experience,
       size: 120,
     },
     {
       accessorKey: "physicalDefense",
-      header: () => dictionary().db.models.monster.physicalDefense,
+      header: () => dictionary().db.models.mob.physicalDefense,
       size: 120,
     },
     {
       accessorKey: "physicalResistance",
-      header: () => dictionary().db.models.monster.physicalResistance,
+      header: () => dictionary().db.models.mob.physicalResistance,
       size: 120,
     },
     {
       accessorKey: "magicalDefense",
-      header: () => dictionary().db.models.monster.magicalDefense,
+      header: () => dictionary().db.models.mob.magicalDefense,
       size: 120,
     },
     {
       accessorKey: "magicalResistance",
-      header: () => dictionary().db.models.monster.magicalResistance,
+      header: () => dictionary().db.models.mob.magicalResistance,
       size: 120,
     },
     {
       accessorKey: "criticalResistance",
-      header: () => dictionary().db.models.monster.criticalResistance,
+      header: () => dictionary().db.models.mob.criticalResistance,
       size: 120,
     },
     {
       accessorKey: "avoidance",
-      header: () => dictionary().db.models.monster.avoidance,
+      header: () => dictionary().db.models.mob.avoidance,
       size: 100,
     },
     {
       accessorKey: "dodge",
-      header: () => dictionary().db.models.monster.dodge,
+      header: () => dictionary().db.models.mob.dodge,
       size: 100,
     },
     {
       accessorKey: "block",
-      header: () => dictionary().db.models.monster.block,
+      header: () => dictionary().db.models.mob.block,
       size: 100,
     },
     {
       accessorKey: "updatedAt",
-      header: dictionary().db.models.monster.updatedAt,
+      header: dictionary().db.models.mob.updatedAt,
       cell: (info) => info.getValue<Date>().toLocaleDateString(),
       size: 100,
     },
   ];
   const table = createMemo(() => {
-    if (!monsterList()) {
+    if (!mobList()) {
       return undefined;
     }
     return createSolidTable({
       get data() {
-        return monsterList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
+        return mobList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
       },
       columns,
       getCoreRowModel: getCoreRowModel(),
@@ -174,9 +174,9 @@ export default function MonsterIndexPage() {
       },
     });
   });
-  const monsterTableHiddenData: Array<keyof Monster> = ["id", "address", "monsterType", "updatedByAccountId"];
+  const mobTableHiddenData: Array<keyof Mob> = ["id", "mobType", "updatedByAccountId"];
   // 表头固定
-  const getCommonPinningStyles = (column: Column<Monster>): JSX.CSSProperties => {
+  const getCommonPinningStyles = (column: Column<Mob>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
     const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
     const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
@@ -201,11 +201,11 @@ export default function MonsterIndexPage() {
   const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | undefined>(undefined);
 
   // 搜索使用的基准列表--------------------------------------------------------
-  let actualList = generateAugmentedMonsterList(monsterList() ?? [], dictionary());
+  let actualList = generateAugmentedMobList(mobList() ?? [], dictionary());
 
   // 搜索框行为函数
   // 定义搜索时需要忽略的数据
-  const monsterSearchHiddenData: Array<keyof Monster> = [
+  const mobSearchHiddenData: Array<keyof Mob> = [
     "id",
     "experience",
     "radius",
@@ -219,9 +219,9 @@ export default function MonsterIndexPage() {
   ];
 
   // 搜索
-  const searchMonster = (value: string, list: Monster[]) => {
+  const searchMob = (value: string, list: Mob[]) => {
     const fuse = new Fuse(list, {
-      keys: Object.keys(defaultMonster).filter((key) => !monsterSearchHiddenData.includes(key as keyof Monster)),
+      keys: Object.keys(defaultMob).filter((key) => !mobSearchHiddenData.includes(key as keyof Mob)),
     });
     return fuse.search(value).map((result) => result.item);
   };
@@ -230,7 +230,7 @@ export default function MonsterIndexPage() {
     if (key === "" || key === null) {
       console.log(actualList);
     } else {
-      console.log(searchMonster(key, actualList));
+      console.log(searchMob(key, actualList));
     }
   };
 
@@ -267,11 +267,11 @@ export default function MonsterIndexPage() {
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
         console.log(id);
-        const targetMonster = (monsterList() ?? []).find((monster) => monster.id === id);
-        if (targetMonster) {
-          setMonster(targetMonster);
+        const targetMob = (mobList() ?? []).find((mob) => mob.id === id);
+        if (targetMob) {
+          setMob(targetMob);
           setDialogState(true);
-          setMonsterFormState("DISPLAY");
+          setMobFormState("DISPLAY");
         }
       }
     };
@@ -282,9 +282,9 @@ export default function MonsterIndexPage() {
 
   const handleUKeyPress = (e: KeyboardEvent) => {
     if (e.key === "u") {
-      setStore("monsterPage", {
-        monsterDialogState: true,
-        monsterFormState: "CREATE",
+      setStore("mobPage", {
+        mobDialogState: true,
+        mobFormState: "CREATE",
       });
     }
   };
@@ -306,13 +306,13 @@ export default function MonsterIndexPage() {
 
   // u键监听
   onMount(() => {
-    console.log("--Monster Client Render");
+    console.log("--Mob Client Render");
     // u键监听
     document.addEventListener("keydown", handleUKeyPress);
   });
 
   onCleanup(() => {
-    console.log("--Monster Client Unmount");
+    console.log("--Mob Client Unmount");
     document.removeEventListener("keydown", handleUKeyPress);
   });
 
@@ -327,10 +327,10 @@ export default function MonsterIndexPage() {
           >
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
               <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
-                {dictionary().ui.monster.pageTitle}
+                {dictionary().ui.mob.pageTitle}
               </h1>
               <input
-                id="MonsterSearchBox"
+                id="MobSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
                 class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-mainText-color focus:border-mainText-color focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
@@ -341,10 +341,10 @@ export default function MonsterIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
-                  setMonster(defaultMonster);
-                  setStore("monsterPage", {
-                    monsterDialogState: true,
-                    monsterFormState: "CREATE",
+                  setMob(defaultMob);
+                  setStore("mobPage", {
+                    mobDialogState: true,
+                    mobFormState: "CREATE",
                   });
                 }}
               ></Button>
@@ -352,10 +352,10 @@ export default function MonsterIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {
-                  setMonster(defaultMonster);
-                  setStore("monsterPage", {
-                    monsterDialogState: true,
-                    monsterFormState: "CREATE",
+                  setMob(defaultMob);
+                  setStore("mobPage", {
+                    mobDialogState: true,
+                    mobFormState: "CREATE",
                   });
                 }}
               >
@@ -377,42 +377,42 @@ export default function MonsterIndexPage() {
                 class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
-                  "background-image": `url(${monsterList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.1</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{monsterList()?.[0]?.name}</span>
+                  <span class="text-xl">{mobList()?.[0]?.name}</span>
                 </div>
               </div>
               <div
                 class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
-                  "background-image": `url(${monsterList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-image": `url(${mobList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.2</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{monsterList()?.[1]?.name}</span>
+                  <span class="text-xl">{mobList()?.[1]?.name}</span>
                 </div>
               </div>
               <div
                 class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-dividing-color" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
-                  "background-image": `url(${monsterList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? monsterList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  "background-image": `url(${mobList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.3</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{monsterList()?.[2]?.name}</span>
+                  <span class="text-xl">{mobList()?.[2]?.name}</span>
                 </div>
               </div>
             </div>
@@ -423,12 +423,12 @@ export default function MonsterIndexPage() {
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
-              {dictionary().ui.monster.table.title}
+              {dictionary().ui.mob.table.title}
             </div>
             <div
               class={`Description flex-1 rounded bg-area-color p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
-              {dictionary().ui.monster.table.description}
+              {dictionary().ui.mob.table.description}
             </div>
             <Button
               level="quaternary"
@@ -454,7 +454,7 @@ export default function MonsterIndexPage() {
                         <For each={headerGroup.headers}>
                           {(header) => {
                             const { column } = header;
-                            if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
+                            if (mobTableHiddenData.includes(column.id as keyof Mob)) {
                               // 默认隐藏的数据
                               return;
                             }
@@ -474,7 +474,7 @@ export default function MonsterIndexPage() {
                                     header.column.getCanSort() ? "cursor-pointer select-none" : ""
                                   }`}
                                 >
-                                  {dictionary().db.models.monster[column.id as keyof Monster] as string}
+                                  {dictionary().db.models.mob[column.id as keyof Mob] as string}
                                   {{
                                     asc: " ↓",
                                     desc: " ↑",
@@ -506,14 +506,14 @@ export default function MonsterIndexPage() {
                           <For each={row.getVisibleCells()}>
                             {(cell) => {
                               const { column } = cell;
-                              if (monsterTableHiddenData.includes(column.id as keyof Monster)) {
+                              if (mobTableHiddenData.includes(column.id as keyof Mob)) {
                                 // 默认隐藏的数据
                                 return;
                               }
 
                               let tdContent: JSX.Element;
 
-                              switch (cell.column.id as Exclude<keyof Monster, keyof typeof monsterTableHiddenData>) {
+                              switch (cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenData>) {
                                 case "name":
                                   tdContent = (
                                     <>
@@ -600,7 +600,7 @@ export default function MonsterIndexPage() {
               exit={{ opacity: 0 }}
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
-              <div class="Title flex h-12 text-xl">{dictionary().ui.monster.news.title}</div>
+              <div class="Title flex h-12 text-xl">{dictionary().ui.mob.news.title}</div>
               <div class="Content flex flex-1 flex-col bg-area-color"></div>
             </Motion.div>
           </Show>

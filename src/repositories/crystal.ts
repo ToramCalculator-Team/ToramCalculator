@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistics";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 
@@ -41,6 +41,16 @@ export async function findCrystalById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findCrystals() {
+  return await db
+    .selectFrom("item")
+    .innerJoin("crystal", "item.id", "crystal.itemId")
+    .selectAll(["item", "crystal"])
+    .select((eb) => crystalSubRelations(eb, eb.val("item.id")))
+    .select((eb) => itemSubRelations(eb, eb.val("item.id")))
+    .execute();
+}
+
 export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
   return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }
@@ -66,13 +76,13 @@ export const defaultCrystal: Crystal = {
   back: [],
   crystalType: "",
   dataSources: "",
-  extraDetails: "",
+  details: "",
   dropBy: [],
   rewardBy: [],
   updatedAt: new Date(),
   createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
 };

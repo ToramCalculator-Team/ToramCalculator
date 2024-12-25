@@ -1,14 +1,21 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/repositories/db/types";
-import { jsonArrayFrom,jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistics";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
+import { WeaponType } from "./enums";
+import { ModifyKeys } from "./untils";
 
-export type Weapon = Awaited<ReturnType<typeof findWeaponById>>;
+export type Weapon = ModifyKeys<
+  Awaited<ReturnType<typeof findWeaponById>>,
+  {
+    type: WeaponType;
+  }
+>;
 export type NewWeapon = Insertable<item>;
 export type WeaponUpdate = Updateable<item>;
 
@@ -57,28 +64,155 @@ export async function deleteWeapon(id: string) {
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
-// default
-export const defaultWeapon: Weapon = {
-  name: "默认武器（缺省值）",
-  id: "defaultWeaponId",
-  modifiers: [],
-  itemId: "defaultWeaponId",
-  type: "",
+// 武器公共属性
+const defaultWeaponShared = {
   baseAbi: 0,
   stability: 0,
   defaultCrystals: [],
   colorA: 0,
   colorB: 0,
   colorC: 0,
+  modifiers: [],
   dataSources: "",
-  extraDetails: "",
+  details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.weaponRecipe,
   updatedAt: new Date(),
   createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+};
+
+// default
+export const defaultWeapons: Record<WeaponType, Weapon> = {
+  OneHandSword: {
+    name: "默认单手剑（缺省值）",
+    id: "defaultWeaponOneHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "OneHandSword",
+    recipe: defaultRecipes.OneHandSword,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  TwoHandSword: {
+    name: "默认大剑（缺省值）",
+    id: "defaultWeaponTwoHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "TwoHandSword",
+    recipe: defaultRecipes.TwoHandSword,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Bow: {
+    name: "默认弓（缺省值）",
+    id: "defaultWeaponBowId",
+    itemId: "defaultWeaponId",
+    type: "Bow",
+    recipe: defaultRecipes.Bow,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Bowgun: {
+    name: "默认弩（缺省值）",
+    id: "defaultWeaponBowgunId",
+    itemId: "defaultWeaponId",
+    type: "Bowgun",
+    recipe: defaultRecipes.Bowgun,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Rod: {
+    name: "默认杖（缺省值）",
+    id: "defaultWeaponRodId",
+    itemId: "defaultWeaponId",
+    type: "Rod",
+    recipe: defaultRecipes.Rod,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Magictool: {
+    name: "默认魔导具（缺省值）",
+    id: "defaultWeaponMagictoolId",
+    itemId: "defaultWeaponId",
+    type: "Magictool",
+    recipe: defaultRecipes.Magictool,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Knuckle: {
+    name: "默认拳套（缺省值）",
+    id: "defaultWeaponKnuckleId",
+    itemId: "defaultWeaponId",
+    type: "Knuckle",
+    recipe: defaultRecipes.Knuckle,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Halberd: {
+    name: "默认枪（缺省值）",
+    id: "defaultWeaponHalberdId",
+    itemId: "defaultWeaponId",
+    type: "Halberd",
+    recipe: defaultRecipes.Halberd,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Katana: {
+    name: "默认拔刀（缺省值）",
+    id: "defaultWeaponKatanaId",
+    itemId: "defaultWeaponId",
+    type: "Katana",
+    recipe: defaultRecipes.Katana,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Arrow: {
+    name: "默认箭（缺省值）",
+    id: "defaultWeaponOneHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "OneHandSword",
+    recipe: defaultRecipes.Arrow,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  ShortSword: {
+    name: "默认小刀（缺省值）",
+    id: "defaultWeaponOneHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "OneHandSword",
+    recipe: defaultRecipes.ShortSword,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  NinjutsuScroll: {
+    name: "默认卷轴（缺省值）",
+    id: "defaultWeaponOneHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "OneHandSword",
+    recipe: defaultRecipes.NinjutsuScroll,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
+  Shield: {
+    name: "默认盾（缺省值）",
+    id: "defaultWeaponOneHandSwordId",
+    itemId: "defaultWeaponId",
+    type: "OneHandSword",
+    recipe: defaultRecipes.Shield,
+    statistic: defaultStatistic,
+    statisticId: defaultStatistic.id,
+    ...defaultWeaponShared,
+  },
 };

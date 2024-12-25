@@ -2,10 +2,16 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, skill_effect } from "~/repositories/db/types";
 import { defaultSkillYield } from "./skill_yield";
-import { defaultSkillCost } from "./skill_cost";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { ModifyKeys } from "./untils";
+import { ArmorType } from "./db/enums";
+import { WeaponType } from "./enums";
 
-export type SkillEffect = Awaited<ReturnType<typeof findSkillEffectById>>;
+export type SkillEffect = ModifyKeys<Awaited<ReturnType<typeof findSkillEffectById>>, {
+  mainHand: WeaponType | "Empty"
+  subHand: WeaponType | "Empty"
+  armor: ArmorType
+}>;
 export type NewSkillEffect = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
 
@@ -14,9 +20,6 @@ export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect"
     jsonArrayFrom(
       eb.selectFrom("skill_yield").whereRef("skillEffectId", "=", "skill_effect.id").selectAll("skill_yield"),
     ).$notNull().as("skillYield"),
-    jsonArrayFrom(
-      eb.selectFrom("skill_cost").where("skillEffectId", "=", "skill_effect.id").selectAll("skill_cost"),
-    ).$notNull().as("skillCost"),
   ];
 }
 
@@ -48,15 +51,7 @@ export async function createSkillEffect(newSkillEffect: NewSkillEffect) {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    const skill_cost = await trx
-      .insertInto("skill_cost")
-      .values({
-        ...defaultSkillCost,
-        skillEffectId: skill_effect.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return { ...skill_effect, skillYield: [skill_yield], skillCost: [skill_cost] };
+    return { ...skill_effect, skillYield: [skill_yield] };
   });
 }
 
@@ -66,18 +61,19 @@ export async function deleteSkillEffect(id: string) {
 
 // default
 export const defaultSkillEffect: SkillEffect = {
-  id: "",
-  condition: "",
+  id: "defaultSkillEffectId",
+  mainHand: "Empty",
+  subHand: "Empty",
+  armor: "Normal",
   description: "",
-  actionBaseDurationFormula: "13",
-  actionModifiableDurationFormula: "48",
-  skillExtraActionType: "None",
-  chargingBaseDurationFormula: "0",
-  chargingModifiableDurationFormula: "0",
-  chantingBaseDurationFormula: "0",
-  chantingModifiableDurationFormula: "0",
-  skillStartupFramesFormula: "0",
-  skillCost: [defaultSkillCost],
+  motionFixed: "",
+  motionModified: "",
+  chantingFixed: "",
+  chantingModified: "",
+  ReservoirFixed: "",
+  ReservoirModified: "",
+  startupFrames: "",
+  cost: "",
   skillYield: [defaultSkillYield],
   belongToskillId: "",
 };

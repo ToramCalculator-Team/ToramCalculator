@@ -8,7 +8,7 @@ import { defaultModifierList } from "~/repositories/weaponEncAttrs";
 import { Monster } from "~/repositories/mob";
 import { defaultPet } from "~/repositories/pet";
 import { defaultSkill } from "~/repositories/skill";
-import { defaultStatistics } from "~/repositories/statistics";
+import { defaultStatistics } from "~/repositories/statistic";
 import { skillSequenceList } from "~/routes/(app)/(functionPage)/simulator/(simulator)";
 
 export const test: {

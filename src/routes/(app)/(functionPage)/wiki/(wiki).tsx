@@ -49,7 +49,7 @@ export default function WikiPage() {
                   <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
                 }
               >
-                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.monsters}</span>
+                <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.mobs}</span>
               </Button>
             </a>
             <a

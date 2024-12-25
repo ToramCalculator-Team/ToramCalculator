@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, custom_weapon } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultWeapon } from "./weapon";
+import { defaultWeapons } from "./weapon";
 import { defaultAccount } from "./account";
 import { defaultWeaponEncAttributes } from "./weaponEncAttrs";
 
@@ -36,7 +36,7 @@ export function customWeaponSubRelations(
         .selectFrom("weapon_enchantment_attributes")
         .whereRef("weapon_enchantment_attributes.id", "=", "custom_weapon.enchantmentAttributesId")
         .selectAll("weapon_enchantment_attributes"),
-    ).$notNull().as("enchantmentAttributes"),
+    ).as("enchantmentAttributes"),
   ];
 }
 
@@ -74,19 +74,29 @@ export async function deleteCustomWeapon(id: string) {
 }
 
 // default
-export const defaultCustomWeapon: CustomWeapon = {
-  id: "defaultWeaponId",
-  name: "默认自定义武器（缺省值）",
-  extraAbi: 0,
-  enchantmentAttributes: defaultWeaponEncAttributes,
-  enchantmentAttributesId: defaultWeaponEncAttributes.id,
-  template: defaultWeapon,
-  templateId: defaultWeapon.id,
-  refinement: 0,
-  crystalList: [],
-  extraDetails: "",
-
-  updatedAt: new Date(),
-  createdAt: new Date(),
-  masterId: defaultAccount.id,
+export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> = {
+  mainHand: {
+    id: "defaultWeaponId",
+    name: "默认自定义主手（缺省值）",
+    extraAbi: 0,
+    enchantmentAttributes: defaultWeaponEncAttributes,
+    enchantmentAttributesId: defaultWeaponEncAttributes.id,
+    template: defaultWeapons.OneHandSword,
+    templateId: defaultWeapons.OneHandSword.id,
+    refinement: 0,
+    crystalList: [],
+    masterId: defaultAccount.id,
+  },
+  subHand: {
+    id: "defaultWeaponId",
+    name: "默认自定义副手（缺省值）",
+    extraAbi: 0,
+    enchantmentAttributes: null,
+    enchantmentAttributesId: null,
+    template: defaultWeapons.Shield,
+    templateId: defaultWeapons.Shield.id,
+    refinement: 0,
+    crystalList: [],
+    masterId: defaultAccount.id,
+  }
 };

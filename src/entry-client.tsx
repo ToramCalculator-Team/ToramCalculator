@@ -5,8 +5,8 @@ import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 import { mount, StartClient } from "@solidjs/start/client";
 import { initialStore } from "./store";
 import * as _ from "lodash-es";
-import { createUser, defaultUser, findUserById } from "./repositories/user";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
+// import { defaultCharacter, findCharacterById, createCharacter } from "./repositories/character";
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -42,8 +42,8 @@ OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
 
 // 测试kysely方法
-try {
-  console.log(await findUserById(defaultUser.id));
-} catch (e) {
-  await createUser(defaultUser);
-}
+// try {
+//   console.log(await findCharacterById(defaultCharacter.id));
+// } catch (e) {
+//   await createCharacter(defaultCharacter);
+// }

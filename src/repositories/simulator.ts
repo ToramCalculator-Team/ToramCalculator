@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, simulator } from "~/repositories/db/types";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { teamSubRelations } from "./team";
 import { defaultAccount } from "./account";
@@ -14,13 +14,13 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .whereRef("id", "=", "simulator.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
+        .selectFrom("statistic")
+        .whereRef("id", "=", "simulator.statisticId")
+        .selectAll("statistic")
+        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
     )
       .$notNull()
-      .as("statistics"),
+      .as("statistic"),
     jsonArrayFrom(
       eb
         .selectFrom("_simulatorToteam")
@@ -74,12 +74,12 @@ export const defaultSimulator: Simulator = {
   name: "默认模拟器（缺省值）",
   visibility: "Public",
   team: [],
-  extraDetails: "",
+  details: "",
 
   updatedAt: new Date(),
   createdAt: new Date(),
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };

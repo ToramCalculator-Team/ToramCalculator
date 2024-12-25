@@ -6,5 +6,5 @@ export type UsageTimestamp = Selectable<usage_timestamp>
 // default
 export const defaultUsageTimestamp: UsageTimestamp = {
   timestamp: new Date(),
-  statisticsId: "defaultStatisticsId",
+  statisticId: "",
 };

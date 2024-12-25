@@ -70,9 +70,5 @@ export const defaultCustomArmor: CustomArmor = {
   enchantmentAttributesId: defaultArmorEncAttributes.id,
   refinement: 0,
   crystalList: [],
-  extraDetails: "",
-
-  updatedAt: new Date(),
-  createdAt: new Date(),
   masterId: defaultAccount.id,
 };

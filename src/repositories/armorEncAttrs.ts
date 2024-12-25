@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { armor_enchantment_attributes, DB } from "~/repositories/db/types";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, statisticsSubRelations } from "./statistics";
+import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { defaultAccount } from "./account";
 
 export type ArmorEncAttributes = Awaited<ReturnType<typeof findArmorEncAttributesById>>;
@@ -13,11 +13,11 @@ export function armorEncAttrsSubRelations(eb: ExpressionBuilder<DB, "armor_encha
   return [
     jsonObjectFrom(
       eb
-        .selectFrom("statistics")
-        .where("statistics.id", "=", "armor_enchantment_attributes.statisticsId")
-        .selectAll("statistics")
-        .select((subEb) => statisticsSubRelations(subEb, subEb.val(id))),
-    ).$notNull().as("statistics")
+        .selectFrom("statistic")
+        .where("statistic.id", "=", "armor_enchantment_attributes.statisticId")
+        .selectAll("statistic")
+        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
+    ).$notNull().as("statistic")
   ];
 }
 
@@ -39,11 +39,11 @@ export async function updateArmorEncAttributes(id: string, updateWith: ArmorEncA
     .executeTakeFirst();
 }
 
-export async function createArmorEncAttributes(newEncAttributes: NewArmorEncAttributes) {
+export async function createArmorEncAttributes(newArmorEncAttributes: NewArmorEncAttributes) {
   return await db.transaction().execute(async (trx) => {
     const armor_enchantment_attributes = await trx
       .insertInto("armor_enchantment_attributes")
-      .values(newEncAttributes)
+      .values(newArmorEncAttributes)
       .returningAll()
       .executeTakeFirstOrThrow();
     return armor_enchantment_attributes;
@@ -59,12 +59,12 @@ export const defaultArmorEncAttributes: ArmorEncAttributes = {
   id: "defaultArmorEncAttributes",
   name: "默认防具附魔（缺省值）",
   flow: [],
-  extraDetails: "",
+  details: "",
   dataSources: "",
   updatedAt: new Date(),
   createdAt: new Date(),
-  statistics: defaultStatistics,
-  statisticsId: defaultStatistics.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };
