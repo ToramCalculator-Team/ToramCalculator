@@ -82,9 +82,9 @@ export default function Nav() {
           <div class="SubGroup hidden flex-col items-center lg:flex">
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.monsters,
+                btnName: dictionary().ui.nav.mobs,
                 icon: <Icon.Line.Calendar />,
-                url: "/wiki/monster",
+                url: "/wiki/mob",
               }}
               active={active}
             />

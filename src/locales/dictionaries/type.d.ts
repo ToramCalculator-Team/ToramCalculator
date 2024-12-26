@@ -1,9 +1,9 @@
 import { type Crystal } from "~/repositories/crystal";
 import { type Skill } from "~/repositories/skill";
 import { type Character } from "~/repositories/character";
-import type { $Enums } from "@prisma/client";
 import { Mob } from "~/repositories/mob";
 import { User } from "~/repositories/user";
+import { Enums } from "~/repositories/enums";
 
 // 为了方便编辑器自动补全，这个方法可以递归地将对象的值类型转换为字符串
 export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | number
@@ -175,7 +175,7 @@ export interface dictionary {
       modifiers: string;
       staticModifiers: string;
       dynamicModifiers: string;
-      dialogData: ConvertToAllString<CharacterData>;
+      // dialogData: ConvertToAllString<CharacterData>;
       simulatorPage: {
         mobsConfig: {
           title: string;
@@ -191,14 +191,13 @@ export interface dictionary {
     };
   };
   db: {
-    enums: ConvertToAllString<typeof $Enums>;
+    enums: Enums;
     models: {
       mob: ConvertToAllString<Mob>;
       crystal: ConvertToAllString<Crystal>;
       skill: ConvertToAllString<Skill>;
-      skillEffect: ConvertToAllString<Skill["skillEffect"][0]>;
-      skillCost: ConvertToAllString<Skill["skillEffect"][0]["skillCost"][0]>;
-      skillYield: ConvertToAllString<Skill["skillEffect"][0]["skillYield"][0]>;
+      skillEffect: ConvertToAllString<Skill["skillEffect"][number]>;
+      skillYield: ConvertToAllString<Skill["skillEffect"][number]["skillYield"][number]>;
       user: ConvertToAllString<User>;
       character: ConvertToAllString<Character>;
     };

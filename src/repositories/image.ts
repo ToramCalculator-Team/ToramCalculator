@@ -25,6 +25,5 @@ export async function deleteImage(id: string) {
 // default
 export const defaultImage: Image = {
   id: "",
-  dataUrl: "data:image/png;base64,",
-  npcId: null
+  dataUrl: "data:image/png;base64,"
 };

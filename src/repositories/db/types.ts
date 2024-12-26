@@ -4,8 +4,6 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { UserRole, Element, MobType, PersonalityType, ArmorType, SkillTargetType, SkillChargingType, YieldType, DurationType, MobDifficultyFlag, MobDamageType, ComboType, AddressType, MaterialType, PartBreakReward, MobPart, AvailabilityType, AcquisitionMethodType, SkillDistanceResistType, Persona, PetType, MercenaryType, MercenarySkillType, Visibility } from "./enums";
-
 export type account = {
     id: string;
     type: string;
@@ -50,7 +48,7 @@ export type additional_equipmentToimage = {
 export type address = {
     id: string;
     name: string;
-    type: AddressType;
+    type: string;
     x: number;
     y: number;
     worldId: string;
@@ -108,7 +106,7 @@ export type character = {
     vit: number;
     agi: number;
     dex: number;
-    personalityType: PersonalityType;
+    personalityType: string;
     personalityValue: number;
     weaponId: string;
     subWeaponId: string;
@@ -118,9 +116,9 @@ export type character = {
     cooking: string[];
     modifiers: string[];
     partnerSkillA: string;
-    partnerSkillAType: MercenarySkillType;
+    partnerSkillAType: string;
     partnerSkillB: string;
-    partnerSkillBType: MercenarySkillType;
+    partnerSkillBType: string;
     masterId: string;
     details: string;
     updatedAt: Timestamp;
@@ -199,7 +197,7 @@ export type custom_armor = {
     id: string;
     name: string;
     def: number;
-    armorType: ArmorType;
+    armorType: string;
     templateId: string;
     refinement: number;
     enchantmentAttributesId: string | null;
@@ -219,8 +217,8 @@ export type custom_pet = {
     agi: number;
     dex: number;
     weaponType: string;
-    persona: Persona;
-    type: PetType;
+    persona: string;
+    type: string;
     weaponAtk: number;
     masterId: string;
 };
@@ -245,9 +243,9 @@ export type drop_item = {
     id: string;
     itemId: string;
     probability: number;
-    relatedPart: MobPart;
+    relatedPart: string;
     relatedPartInfo: string;
-    breakReward: PartBreakReward;
+    breakReward: string;
     dropById: string;
 };
 export type FrontRelation = {
@@ -257,7 +255,6 @@ export type FrontRelation = {
 export type image = {
     id: string;
     dataUrl: string;
-    npcId: string | null;
 };
 export type imageToweapon = {
     A: string;
@@ -277,7 +274,7 @@ export type item = {
 export type material = {
     name: string;
     itemId: string;
-    material: MaterialType;
+    material: string;
     ptValue: number;
     price: number;
 };
@@ -287,19 +284,19 @@ export type member = {
     partnerId: string | null;
     mercenaryId: string | null;
     mobId: string | null;
-    mobDifficultyFlag: MobDifficultyFlag;
+    mobDifficultyFlag: string;
 };
 export type memberToteam = {
     A: string;
     B: string;
 };
 export type mercenary = {
-    type: MercenaryType;
+    type: string;
     templateId: string;
     skillAId: string;
-    skillAType: MercenarySkillType;
+    skillAType: string;
     skillBId: string;
-    skillBType: MercenarySkillType;
+    skillBType: string;
 };
 export type mob = {
     id: string;
@@ -307,12 +304,12 @@ export type mob = {
      * @zod.string.min(2, { message: "最少2个字符" })
      */
     name: string;
-    mobType: MobType;
+    mobType: string;
     captureable: boolean;
     baseLv: number;
     experience: number;
     partsExperience: number;
-    element: Element;
+    element: string;
     radius: number;
     maxhp: number;
     physicalDefense: number;
@@ -347,6 +344,7 @@ export type mobTozone = {
 export type npc = {
     id: string;
     name: string;
+    imageId: string;
     zoneId: string;
 };
 export type player = {
@@ -402,7 +400,7 @@ export type session = {
 export type simulator = {
     id: string;
     name: string;
-    visibility: Visibility;
+    visibility: string;
     details: string | null;
     updatedAt: Timestamp;
     createdAt: Timestamp;
@@ -423,8 +421,8 @@ export type skill = {
     name: string;
     isPassive: boolean;
     element: string;
-    chargingType: SkillChargingType;
-    distanceResist: SkillDistanceResistType;
+    chargingType: string;
+    distanceResist: string;
     details: string;
     dataSources: string;
     updatedAt: Timestamp;
@@ -443,8 +441,8 @@ export type skill_effect = {
     motionModified: string;
     chantingFixed: string;
     chantingModified: string;
-    ReservoirFixed: string;
-    ReservoirModified: string;
+    reservoirFixed: string;
+    reservoirModified: string;
     startupFrames: string;
     cost: string;
     belongToskillId: string;
@@ -452,7 +450,7 @@ export type skill_effect = {
 export type skill_yield = {
     id: string;
     name: string;
-    yieldType: YieldType;
+    yieldType: string;
     yieldFormula: string;
     mutationTimingFormula: string | null;
     skillEffectId: string | null;
@@ -487,7 +485,7 @@ export type user = {
     email: string | null;
     emailVerified: Timestamp | null;
     image: string | null;
-    userRole: UserRole;
+    userRole: string;
 };
 export type verification_token = {
     identifier: string;

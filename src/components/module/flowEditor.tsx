@@ -1,4 +1,4 @@
-import { Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Accessor, createEffect, createMemo, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
@@ -16,7 +16,7 @@ import {
   ValidatorConfiguration,
 } from "sequential-workflow-designer";
 import Button from "../ui/button";
-import Input from "../ui/input";
+import Input, { InputComponentType } from "../ui/input";
 import * as Icon from "~/lib/icon";
 import { wrapDefinition } from "./flowEditor/WrappedDefinition";
 import { RootEditorWrapperContext, useRootEditor } from "./flowEditor/RootEditorWrapper";
@@ -229,26 +229,58 @@ export default function FlowEditor(props: FlowEditorProps) {
   //   }
   // }
 
+  const SettingPageContentModule = (
+    moduleName: string,
+    labelName: string,
+    content: {
+      title: string;
+      description: string;
+      children: JSX.Element;
+      type?: InputComponentType;
+    }[],
+  ) => (
+    <div class={`Module ${moduleName} flex flex-col gap-1 lg:gap-2 lg:px-3`}>
+      <h2 class="ModuleTitle py-2 text-xl font-bold lg:px-2">{labelName}</h2>
+      <div class="LabelGroup flex flex-col gap-2">
+        <For each={content}>
+          {({ title, description, children }) => (
+            <Input title={title} description={description}>
+              {children}
+            </Input>
+          )}
+        </For>
+      </div>
+    </div>
+  );
+
+  const Divider = () => <div class="Divider h-[1px] w-full flex-none bg-dividing-color"></div>;
+
   function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
     const container = document.createElement("div");
     container.className = externalEditorClassName;
     render(
       () => (
         <RootEditorWrapperContext definition={def} context={context} isReadonly={isReadonly}>
-          <div class="RootEditor">
-            <h4>状态机信息</h4>
-            <p>
-              <label>速度(毫秒)</label>
-              <Input
-                onChange={(e) => {
-                  def.properties.speed = parseInt(e.target.value);
-                  context.notifyPropertiesChanged();
-                }}
-                value={def.properties.speed?.toString() ?? ""}
-                readOnly={isReadonly}
-                type="text"
-              />
-            </p>
+          <div class="List flex h-full flex-1 flex-col gap-6 rounded">
+            {SettingPageContentModule("Language", dictionary().ui.settings.language.title, [
+              {
+                title: dictionary().ui.settings.language.selectedLanguage.title,
+                description: dictionary().ui.settings.language.selectedLanguage.description,
+                children: (
+                  <input
+                    name="speed"
+                    onChange={(e) => {
+                      def.properties.speed = parseInt(e.target.value);
+                      context.notifyPropertiesChanged();
+                    }}
+                    value={def.properties.speed?.toString() ?? ""}
+                    readOnly={isReadonly}
+                    type="text"
+                  />
+                ),
+              },
+            ])}
+            <Divider />
           </div>
         </RootEditorWrapperContext>
       ),
@@ -257,7 +289,12 @@ export default function FlowEditor(props: FlowEditorProps) {
     return container;
   }
 
-  function stepEditorProvider(step: Step, context: StepEditorContext, def: Definition, isReadonly: boolean) {
+  function stepEditorProvider(
+    step: CustomStateMachineStep,
+    context: StepEditorContext,
+    def: Definition,
+    isReadonly: boolean,
+  ) {
     const container = document.createElement("div");
     container.className = externalEditorClassName;
     render(
@@ -266,31 +303,37 @@ export default function FlowEditor(props: FlowEditorProps) {
           <div class="StepEditor">
             <h4>{"Step " + step.type}</h4>
             <p>
-              <label>名称</label>
-              <Input
-                onInput={(e) => {
-                  step.name = e.target.value;
-                  context.notifyNameChanged();
-                }}
-                value={step.name?.toString()}
-                readOnly={isReadonly}
-                type="text"
-              />
+              <label>
+                名称
+                <input
+                  name="name"
+                  onInput={(e) => {
+                    step.name = e.target.value;
+                    context.notifyNameChanged();
+                  }}
+                  value={step.name?.toString()}
+                  readOnly={isReadonly}
+                  type="text"
+                />
+              </label>
             </p>
             <For each={["formula", "condition", "message"]}>
               {(key) => (
                 <Show when={step.properties[key] !== undefined}>
                   <p>
-                    <label>{key}</label>
-                    <Input
-                      onInput={(e) => {
-                        step.properties[key] = e.target.value;
-                        context.notifyPropertiesChanged();
-                      }}
-                      value={step.properties[key]?.toString()}
-                      readOnly={isReadonly}
-                      type="text"
-                    />
+                    <label>
+                      {key}
+                      <input
+                        name={key}
+                        onInput={(e) => {
+                          step.properties[key] = e.target.value;
+                          context.notifyPropertiesChanged();
+                        }}
+                        value={step.properties[key]?.toString()}
+                        readOnly={isReadonly}
+                        type="text"
+                      />
+                    </label>
                   </p>
                 </Show>
               )}
@@ -577,31 +620,33 @@ export default function FlowEditor(props: FlowEditorProps) {
   onMount(() => {
     console.log("FlowEditor onMount");
 
-    setDesigner(Designer.create(placeholder()!, startDefinition(), {
-      theme: "light",
-      undoStackSize: 10,
-      toolbox: toolboxConfiguration()
-        ? {
-            ...toolboxConfiguration(),
-            isCollapsed: isToolboxCollapsed(),
-          }
-        : false,
-      steps: stepsConfiguration(),
-      validator: validatorConfiguration(),
-      controlBar: true,
-      contextMenu: true,
-      keyboard: true,
-      // preferenceStorage:,
-      editors: {
-        isCollapsed: isEditorCollapsed(),
-        rootEditorProvider,
-        stepEditorProvider,
-      },
-      customActionHandler: () => {},
-      // extensions,
-      // i18n,
-      isReadonly: isReadonly(),
-    }))
+    setDesigner(
+      Designer.create(placeholder()!, startDefinition(), {
+        theme: "light",
+        undoStackSize: 10,
+        toolbox: toolboxConfiguration()
+          ? {
+              ...toolboxConfiguration(),
+              isCollapsed: isToolboxCollapsed(),
+            }
+          : false,
+        steps: stepsConfiguration(),
+        validator: validatorConfiguration(),
+        controlBar: true,
+        contextMenu: true,
+        keyboard: true,
+        // preferenceStorage:,
+        editors: {
+          isCollapsed: isEditorCollapsed(),
+          rootEditorProvider,
+          stepEditorProvider,
+        },
+        customActionHandler: () => {},
+        // extensions,
+        // i18n,
+        isReadonly: isReadonly(),
+      }),
+    );
 
     // esc键监听
     const handleEscapeKeyPress = (e: KeyboardEvent) => {

@@ -76,7 +76,7 @@ export default function BabylonBg(): JSX.Element {
   // 模型加载进度展示标签引用
   let progress: HTMLDivElement;
   // canvas引用
-  let canvas: HTMLCanvasElement;
+  let canvas!: HTMLCanvasElement;
   // 引擎定义
   let engine: AbstractEngine;
   // 场景定义

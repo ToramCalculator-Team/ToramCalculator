@@ -6,7 +6,7 @@ import {
   type FrameData,
 } from "../../../../worker/evaluate.old.worker";
 import { ObjectRenderer } from "../../../../components/module/objectRender";
-import { Monster } from "~/repositories/mob";
+import { Mob } from "~/repositories/mob";
 import { Character } from "~/repositories/character";
 import {
   Accessor,
@@ -25,10 +25,8 @@ import { setStore, store } from "~/store";
 import Button from "~/components/ui/button";
 import Dialog from "~/components/ui/dialog";
 import {
-  addMemberToSimulator,
   Simulator,
   defaultSimulator,
-  deleteMemberFromSimulator,
   findSimulatorById,
 } from "~/repositories/simulator";
 import { useParams } from "@solidjs/router";
@@ -77,8 +75,8 @@ export default function SimulatorIndexClient() {
   });
 
   // 状态管理参数
-  const monsterList = store.monsterPage.monsterList;
-  const setMonsterList = (value: Monster[]) => setStore("monsterPage", "monsterList", value);
+  const mobList = store.mobPage.mobList;
+  const setMobList = (value: Mob[]) => setStore("mobPage", "mobList", value);
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.simulatorPage.simulatorList;
@@ -236,19 +234,6 @@ export default function SimulatorIndexClient() {
   }));
 
   const [starArray, setStarArray] = createSignal<number[]>([]);
-  createEffect(
-    on(
-      () => simulator()?.mobs,
-      () => {
-        console.log("更新星级");
-        const defaultStarArray: number[] = [];
-        simulator()?.mobs.forEach((mob) => {
-          defaultStarArray.push(mob.star);
-        });
-        setStarArray(defaultStarArray);
-      },
-    ),
-  );
   const [dialogState, setDialogState] = createSignal(false);
   // simulator更新后未重新获取，待解决
   // createEffect(
@@ -274,7 +259,8 @@ export default function SimulatorIndexClient() {
             speed: 300,
           },
           sequence: _.cloneDeep(
-            (simulator()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ?? [
+            // (simulator()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ??
+            [
               ExecutableSteps.createTextStep("开始!"),
               ExecutableSteps.createTextStep("结束"),
             ],
@@ -311,7 +297,7 @@ export default function SimulatorIndexClient() {
       const sequence = designer()?.getDefinition().sequence;
       if (sequence) {
         // 更新数据库
-        simulator() && updateMember(simulator()!.team[memberIndex()].id, { flow: sequence });
+        // 更新状态库
         // setStore("simulator", "team", memberIndex(), "flow", structuredClone(sequence));
       }
     });
@@ -341,7 +327,7 @@ export default function SimulatorIndexClient() {
           {dictionary().ui.simulator.simulatorPage.mobsConfig.title}
         </div>
         <div class="ModuleContent flex flex-col gap-6">
-          <For each={simulator()?.mobs}>
+          <For each={simulator()?.team}>
             {(mob, index) => {
               function setStarArr(star: number) {
                 const newStarArray = [...starArray()];
@@ -350,8 +336,8 @@ export default function SimulatorIndexClient() {
               }
               return (
                 <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-dividing-color lg:flex-row lg:gap-6">
-                  <div class="MobsName z-10 flex-shrink-0 px-6 py-3 text-xl text-primary-color">
-                    {mob.monster?.name ?? ""}
+                  {/* <div class="MobsName z-10 flex-shrink-0 px-6 py-3 text-xl text-primary-color">
+                    {mob.mob?.name ?? ""}
                   </div>
                   <div class="MobsConfig z-10 flex flex-1 flex-shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
                     <div
@@ -389,12 +375,12 @@ export default function SimulatorIndexClient() {
                   <div
                     class="MobsBG z-0 w-1/2 self-stretch rounded"
                     style={{
-                      "background-image": `url(${mob?.monster?.image?.dataUrl})`,
+                      "background-image": `url(${mob?.mob?.image?.dataUrl})`,
                       "background-position-y": "40%",
                     }}
                   >
                     <div class="Mask to-accent-color-0 h-full w-1/2 bg-gradient-to-r from-accent-color"></div>
-                  </div>
+                  </div> */}
                 </div>
               );
             }}
@@ -411,7 +397,7 @@ export default function SimulatorIndexClient() {
             {(member, index) => {
               return (
                 <div class="Member flex border-b-2 border-accent-color p-1">
-                  <div
+                  {/* <div
                     onClick={() => showDesigner(index())}
                     class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-dividing-color"
                   >
@@ -438,7 +424,7 @@ export default function SimulatorIndexClient() {
                     </div>
                     <div class="Funtion"></div>
                   </div>
-                  <div class="FlowRow"></div>
+                  <div class="FlowRow"></div> */}
                 </div>
               );
             }}
@@ -447,7 +433,7 @@ export default function SimulatorIndexClient() {
           <div class="AddMember flex p-1">
             <div
               onClick={async () => {
-                simulator() && addMemberToSimulator(simulator()!.id, defaultMember);
+                // simulator() && addMemberToSimulator(simulator()!.id, defaultMember);
               }}
               class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-area-color p-2 hover:bg-dividing-color"
             >
@@ -494,7 +480,7 @@ export default function SimulatorIndexClient() {
             icon={<Icon.Line.Gamepad />}
             onClick={() => {
               setDialogState(false);
-              deleteMemberFromSimulator(simulator()!.id, simulator()!.team[memberIndex()].id);
+              // deleteMemberFromSimulator(simulator()!.id, simulator()!.team[memberIndex()].id);
             }}
           >
             {dictionary().ui.actions.remove}

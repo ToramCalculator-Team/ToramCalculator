@@ -1,299 +1,250 @@
-import { $Enums } from "@prisma/client";
-
-export enum ModifierType {
-  DEFAULT = "default",
+// 已知的可加成项
+export const MODIFIER_TYPE = [
   // 能力值
-  STR = "str", // 力量
-  INT = "int", // 智力
-  VIT = "vit", // 耐力
-  AGI = "agi", // 敏捷
-  DEX = "dex", // 灵巧
-  LUK = "luk", // 幸运
-  TEC = "tec", // 技巧
-  MEN = "men", // 异抗
-  CRI = "cri", // 暴击
+  "str", // 力量
+  "int", // 智力
+  "vit", // 耐力
+  "agi", // 敏捷
+  "dex", // 灵巧
+  "luk", // 幸运
+  "tec", // 技巧
+  "men", // 异抗
+  "cri", // 暴击
   // 基础属性
-  MAX_MP = "maxMp", // 最大MP
-  MP = "mp", // MP
-  AGGRO = "aggro", // 仇恨值
-  WEAPON_RANGE = "weaponRange", // 武器射程
-  HP_REGEN = "hpRegen", // HP自然回复
-  MP_REGEN = "mpRegen", // MP自然回复
-  MP_ATK_REGEN = "mpAtkRegen", // MP攻击回复
+  "maxMp", // 最大MP
+  "mp", // MP
+  "aggro", // 仇恨值
+  "weaponRange", // 武器射程
+  "hpRegen", // HP自然回复
+  "mpRegen", // MP自然回复
+  "mpAtkRegen", // MP攻击回复
   // 单次伤害增幅
-  PHYSICAL_ATK = "physicalAtk", // 物理攻击
-  MAGICAL_ATK = "magicalAtk", // 魔法攻击
-  WEAPON_ATK = "weaponAtk", // 武器攻击
-  UNSHEATHE_ATK = "unsheatheAtk", // 拔刀攻击
-  PHYSICAL_PIERCE = "physicalPierce", // 物理贯穿
-  MAGICAL_PIERCE = "magicalPierce", // 魔法贯穿
-  PHYSICAL_CRITICAL_RATE = "criticalRate", // 暴击率
-  PHYSICAL_CRITICAL_DAMAGE = "criticalDamage", // 暴击伤害
-  MAGICAL_CRT_CONVERSION_RATE = "magicCrtConversionRate", // 魔法暴击转化率
-  MAGICAL_CRT_DAMAGE_CONVERSION_RATE = "magicCrtDamageConversionRate", // 魔法爆伤转化率
-  MAGICAL_CRITICAL_RATE = "magicCriticalRate", // 魔法暴击率
-  MAGICAL_CRITICAL_DAMAGE = "magicCriticalDamage", // 魔法暴击伤害
-  SHORT_RANGE_DAMAGE = "shortRangeDamage", // 近距离威力
-  LONG_RANGE_DAMAGE = "longRangeDamage", // 远距离威力
-  STRONGER_AGAINST_NETURAL = "strongerAgainstNetural", // 对无属性增强
-  STRONGER_AGAINST_Light = "strongerAgainstLight", // 对光属性增强
-  STRONGER_AGAINST_Dark = "strongerAgainstDark", // 对暗属性增强
-  STRONGER_AGAINST_Water = "strongerAgainstWater", // 对水属性增强
-  STRONGER_AGAINST_Fire = "strongerAgainstFire", // 对火属性增强
-  STRONGER_AGAINST_Earth = "strongerAgainstEarth", // 对地属性增强
-  STRONGER_AGAINST_Wind = "strongerAgainstWind", // 对风属性增强
-  TOTAL_DAMAGE = "totalDamage", // 总伤害
-  FINAL_DAMAGE = "finalDamage", // 最终伤害
-  PHYSICAL_STABILITY = "stability", // 稳定率
-  MAGIC_STABILITY = "magicStability", // 魔法稳定率
-  ACCURACY = "accuracy", // 命中
-  ADDITIONAL_PHYSICS = "additionalPhysics", // 物理追击
-  ADDITIONAL_MAGIC = "additionalMagic", // 魔法追击
-  ANTICIPATE = "anticipate", // 看穿
-  GUARD_BREAK = "guardBreak", // 破防
-  REFLECT = "reflect", // 反弹伤害
-  ABSOLUTA_ACCURACY = "absolutaAccuracy", // 绝对命中
-  ATK_UP_STR = "atkUpStr", // 物理攻击提升（力量）
-  ATK_UP_INT = "atkUpInt", // 物理攻击提升（智力）
-  ATK_UP_VIT = "atkUpVit", // 物理攻击提升（耐力）
-  ATK_UP_AGI = "atkUpAgi", // 物理攻击提升（敏捷）
-  ATK_UP_DEX = "atkUpDex", // 物理攻击提升（灵巧）
-  MATK_UP_STR = "matkUpStr", // 魔法攻击提升（力量）
-  MATK_UP_INT = "matkUpInt", // 魔法攻击提升（智力）
-  MATK_UP_VIT = "matkUpVit", // 魔法攻击提升（耐力）
-  MATK_UP_AGI = "matkUpAgi", // 魔法攻击提升（敏捷）
-  MATK_UP_DEX = "matkUpDex", // 魔法攻击提升（灵巧）
-  ATK_DOWN_STR = "atkDownStr", // 物理攻击下降（力量）
-  ATK_DOWN_INT = "atkDownInt", // 物理攻击下降（智力）
-  ATK_DOWN_VIT = "atkDownVit", // 物理攻击下降（耐力）
-  ATK_DOWN_AGI = "atkDownAgi", // 物理攻击下降（敏捷）
-  ATK_DOWN_DEX = "atkDownDex", // 物理攻击下降（灵巧）
-  MATK_DOWN_STR = "matkDownStr", // 魔法攻击下降（力量）
-  MATK_DOWN_INT = "matkDownInt", // 魔法攻击下降（智力）
-  MATK_DOWN_VIT = "matkDownVit", // 魔法攻击下降（耐力）
-  MATK_DOWN_AGI = "matkDownAgi", // 魔法攻击下降（敏捷）
-  MATK_DOWN_DEX = "matkDownDex", // 魔法攻击下降（灵巧）
+  "physicalAtk", // 物理攻击
+  "magicalAtk", // 魔法攻击
+  "weaponAtk", // 武器攻击
+  "unsheatheAtk", // 拔刀攻击
+  "physicalPierce", // 物理贯穿
+  "magicalPierce", // 魔法贯穿
+  "criticalRate", // 暴击率
+  "criticalDamage", // 暴击伤害
+  "magicCrtConversionRate", // 魔法暴击转化率
+  "magicCrtDamageConversionRate", // 魔法爆伤转化率
+  "magicCriticalRate", // 魔法暴击率
+  "magicCriticalDamage", // 魔法暴击伤害
+  "shortRangeDamage", // 近距离威力
+  "longRangeDamage", // 远距离威力
+  "strongerAgainstNetural", // 对无属性增强
+  "strongerAgainstLight", // 对光属性增强
+  "strongerAgainstDark", // 对暗属性增强
+  "strongerAgainstWater", // 对水属性增强
+  "strongerAgainstFire", // 对火属性增强
+  "strongerAgainstEarth", // 对地属性增强
+  "strongerAgainstWind", // 对风属性增强
+  "totalDamage", // 总伤害
+  "finalDamage", // 最终伤害
+  "stability", // 稳定率
+  "magicStability", // 魔法稳定率
+  "accuracy", // 命中
+  "additionalPhysics", // 物理追击
+  "additionalMagic", // 魔法追击
+  "anticipate", // 看穿
+  "guardBreak", // 破防
+  "reflect", // 反弹伤害
+  "absolutaAccuracy", // 绝对命中
+  "atkUpStr", // 物理攻击提升（力量）
+  "atkUpInt", // 物理攻击提升（智力）
+  "atkUpVit", // 物理攻击提升（耐力）
+  "atkUpAgi", // 物理攻击提升（敏捷）
+  "atkUpDex", // 物理攻击提升（灵巧）
+  "matkUpStr", // 魔法攻击提升（力量）
+  "matkUpInt", // 魔法攻击提升（智力）
+  "matkUpVit", // 魔法攻击提升（耐力）
+  "matkUpAgi", // 魔法攻击提升（敏捷）
+  "matkUpDex", // 魔法攻击提升（灵巧）
+  "atkDownStr", // 物理攻击下降（力量）
+  "atkDownInt", // 物理攻击下降（智力）
+  "atkDownVit", // 物理攻击下降（耐力）
+  "atkDownAgi", // 物理攻击下降（敏捷）
+  "atkDownDex", // 物理攻击下降（灵巧）
+  "matkDownStr", // 魔法攻击下降（力量）
+  "matkDownInt", // 魔法攻击下降（智力）
+  "matkDownVit", // 魔法攻击下降（耐力）
+  "matkDownAgi", // 魔法攻击下降（敏捷）
+  "matkDownDex", // 魔法攻击下降（灵巧）
   // 生存能力加成
-  MAX_HP = "maxHp", // 最大HP
-  HP = "hp", // 当前HP
-  PHYSICAL_DEF = "physicalDef", // 物理防御
-  MAGICAL_DEF = "magicalDef", // 魔法防御
-  PHYSICAL_RESISTANCE = "physicalResistance", // 物理抗性
-  MAGICAL_RESISTANCE = "magicalResistance", // 魔法抗性
-  NEUTRAL_RESISTANCE = "neutralResistance", // 无属性抗性
-  Light_RESISTANCE = "lightResistance", // 光属性抗性
-  Dark_RESISTANCE = "darkResistance", // 暗属性抗性
-  Water_RESISTANCE = "waterResistance", // 水属性抗性
-  Fire_RESISTANCE = "fireResistance", // 火属性抗性
-  Earth_RESISTANCE = "earthResistance", // 地属性抗性
-  Wind_RESISTANCE = "windResistance", // 风属性抗性
-  DODGE = "dodge", // 回避
-  AILMENT_RESISTANCE = "ailmentResistance", // 异常抗性
-  BASE_GUARD_POWER = "baseGuardPower", // 基础格挡力
-  GUARD_POWER = "guardPower", // 格挡力
-  BASE_GUARD_RECHARGE = "baseGuardRecharge", // 基础格挡回复
-  GUARD_RECHANGE = "guardRecharge", // 格挡回复
-  EVASION_RECHARGE = "evasionRecharge", // 闪躲回复
-  PHYSICAL_BARRIER = "physicalBarrier", // 物理屏障
-  MAGICAL_BARRIER = "magicalBarrier", // 魔法屏障
-  FRACTIONAL_BARRIER = "fractionalBarrier", // 百分比瓶屏障
-  BARRIER_COOLDOWN = "barrierCooldown", // 屏障回复速度
-  REDUCE_DMG_FLOOR = "reduceDmgFloor", // 地面伤害减轻（地刺）
-  REDUCE_DMG_METEOR = "reduceDmgMeteor", // 陨石伤害减轻（天火）
-  REDUCE_DMG_PLAYER_EPICENTER = "reduceDmgPlayerEpicenter", // 范围伤害减轻（以玩家为中心的范围伤害）
-  REDUCE_DMG_FOE_EPICENTER = "reduceDmgFoeEpicenter", // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
-  REDUCE_DMG_BOWLING = "reduceDmgBowling", // 贴地伤害减轻（剑气、风刃）
-  REDUCE_DMG_BULLET = "reduceDmgBullet", // 子弹伤害减轻（各种球）
-  REDUCE_DMG_STRAIGHT_LINE = "reduceDmgStraightLine", // 直线伤害减轻（激光）
-  REDUCE_DMG_CHARGE = "reduceDmgCharge", // 冲撞伤害减轻（怪物的位移技能）
-  ABSOLUTE_DODGE = "absoluteDodge", // 绝对回避
+  "maxHp", // 最大HP
+  "hp", // 当前HP
+  "physicalDef", // 物理防御
+  "magicalDef", // 魔法防御
+  "physicalResistance", // 物理抗性
+  "magicalResistance", // 魔法抗性
+  "neutralResistance", // 无属性抗性
+  "lightResistance", // 光属性抗性
+  "darkResistance", // 暗属性抗性
+  "waterResistance", // 水属性抗性
+  "fireResistance", // 火属性抗性
+  "earthResistance", // 地属性抗性
+  "windResistance", // 风属性抗性
+  "dodge", // 回避
+  "ailmentResistance", // 异常抗性
+  "baseGuardPower", // 基础格挡力
+  "guardPower", // 格挡力
+  "baseGuardRecharge", // 基础格挡回复
+  "guardRecharge", // 格挡回复
+  "evasionRecharge", // 闪躲回复
+  "physicalBarrier", // 物理屏障
+  "magicalBarrier", // 魔法屏障
+  "fractionalBarrier", // 百分比瓶屏障
+  "barrierCooldown", // 屏障回复速度
+  "reduceDmgFloor", // 地面伤害减轻（地刺）
+  "reduceDmgMeteor", // 陨石伤害减轻（天火）
+  "reduceDmgPlayerEpicenter", // 范围伤害减轻（以玩家为中心的范围伤害）
+  "reduceDmgFoeEpicenter", // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
+  "reduceDmgBowling", // 贴地伤害减轻（剑气、风刃）
+  "reduceDmgBullet", // 子弹伤害减轻（各种球）
+  "reduceDmgStraightLine", // 直线伤害减轻（激光）
+  "reduceDmgCharge", // 冲撞伤害减轻（怪物的位移技能）
+  "absoluteDodge", // 绝对回避
   // 速度加成
-  ASPD = "aspd", // 攻击速度
-  MSRD = "asrd", // 动作缩减
-  CSPD = "cspd", // 咏唱速度
-  CSRD = "csrd", // 咏唱缩减
-  MSPD = "mspd", // 行动速度
+  "aspd", // 攻击速度
+  "asrd", // 动作缩减
+  "cspd", // 咏唱速度
+  "csrd", // 咏唱缩减
+  "mspd", // 行动速度
   // 其他加成
-  DROP_RATE = "dropRate", // 掉宝率
-  REVIVE_TIME = "reviveTime", // 复活时间
-  FLINCH_UNAVAILABLE = "flinchUnavailable", // 封印胆怯
-  TUMBLE_UNAVAILABLE = "tumbleUnavailable", // 封印翻覆
-  STUN_UNAVAILABLE = "stunUnavailable", // 封印昏厥
-  INVINCIBLE_AID = "invincibleAid", // 无敌急救
-  EXP_RATE = "expRate", // 经验加成
-  PET_EXP = "petExp", // 宠物经验
-  ITEM_COOLDOWN = "itemCooldown", // 道具冷却
-  RECOIL_DAMAGE = "recoilDamage", // 反作用伤害
-  GEM_POWDER_DROP = "gemPowderDrop", // 晶石粉末掉落
-  // 中间数值
-  WEAPON_MATK_CONVERSION_RATE = "weaponMatkConversionRate", // 主武器魔法攻击转换率
-  WEAPON_ATK_CONVERSION_RATE = "weaponAtkConversionRate", // 主武器物理攻击转换率
-  MAINWEAPON_BASE_VALUE = "mainWeaponBaseValue", // 主武器基础值
-  MAINWEAPON_ATK = "mainWeaponAtk", // 主武器攻击
-  SUBWEAPON_BASE_VALUE = "subweaponBaseValue", // 副武器基础值
-  SUBWEAPON_ATK = "subweaponAtk", // 副武器攻击
-  BODYARMOR_BASE_VALUE = "bodyarmorBaseValue", // 防具基础值
-}
+  "dropRate", // 掉宝率
+  "reviveTime", // 复活时间
+  "flinchUnavailable", // 封印胆怯
+  "tumbleUnavailable", // 封印翻覆
+  "stunUnavailable", // 封印昏厥
+  "invincibleAid", // 无敌急救
+  "expRate", // 经验加成
+  "petExp", // 宠物经验
+  "itemCooldown", // 道具冷却
+  "recoilDamage", // 反作用伤害
+  "gemPowderDrop", // 晶石粉末掉落
+] as const;
+export type ModifierType = (typeof MODIFIER_TYPE)[number];
 
-export enum CharacterModifierType {
-  DEFAULT = "default",
-  // 能力值
-  STR = "str", // 力量
-  INT = "int", // 智力
-  VIT = "vit", // 耐力
-  AGI = "agi", // 敏捷
-  DEX = "dex", // 灵巧
-  // 基础属性
-  MAX_MP = "maxMp", // 最大MP
-  AGGRO = "aggro", // 仇恨值
-  WEAPON_RANGE = "weaponRange", // 武器射程
-  HP_REGEN = "hpRegen", // HP自然回复
-  MP_REGEN = "mpRegen", // MP自然回复
-  // 单次伤害增幅
-  PHYSICAL_ATK = "physicalAtk", // 物理攻击
-  MAGICAL_ATK = "magicalAtk", // 魔法攻击
-  WEAPON_ATK = "weaponAtk", // 武器攻击
-  UNSHEATHE_ATK = "unsheatheAtk", // 拔刀攻击
-  PHYSICAL_PIERCE = "physicalPierce", // 物理贯穿
-  MAGICAL_PIERCE = "magicalPierce", // 魔法贯穿
-  CRITICAL_RATE = "criticalRate", // 暴击率
-  CRITICAL_DAMAGE = "criticalDamage", // 暴击伤害
-  MAGIC_CRT_CONVERSION_RATE = "magicCrtConversionRate", // 魔法暴击转化率
-  MAGIC_CRT_DAMAGE_CONVERSION_RATE = "magicCrtDamageConversionRate", // 魔法爆伤转化率
-  SHORT_RANGE_DAMAGE = "shortRangeDamage", // 近距离威力
-  LONG_RANGE_DAMAGE = "longRangeDamage", // 远距离威力
-  STRONGER_AGAINST_NETURAL = "strongerAgainstNetural", // 对无属性增强
-  STRONGER_AGAINST_Light = "strongerAgainstLight", // 对光属性增强
-  STRONGER_AGAINST_Dark = "strongerAgainstDark", // 对暗属性增强
-  STRONGER_AGAINST_Water = "strongerAgainstWater", // 对水属性增强
-  STRONGER_AGAINST_Fire = "strongerAgainstFire", // 对火属性增强
-  STRONGER_AGAINST_Earth = "strongerAgainstEarth", // 对地属性增强
-  STRONGER_AGAINST_Wind = "strongerAgainstWind", // 对风属性增强
-  TOTAL_DAMAGE = "totalDamage", // 总伤害
-  FINAL_DAMAGE = "finalDamage", // 最终伤害
-  STABILITY = "stability", // 稳定率
-  ACCURACY = "accuracy", // 命中
-  ADDITIONAL_PHYSICS = "additionalPhysics", // 物理追击
-  ADDITIONAL_MAGIC = "additionalMagic", // 魔法追击
-  ANTICIPATE = "anticipate", // 看穿
-  GUARD_BREAK = "guardBreak", // 破防
-  REFLECT = "reflect", // 反弹伤害
-  ABSOLUTA_ACCURACY = "absolutaAccuracy", // 绝对命中
-  ATK_UP_STR = "atkUpStr", // 物理攻击提升（力量）
-  ATK_UP_INT = "atkUpInt", // 物理攻击提升（智力）
-  ATK_UP_VIT = "atkUpVit", // 物理攻击提升（耐力）
-  ATK_UP_AGI = "atkUpAgi", // 物理攻击提升（敏捷）
-  ATK_UP_DEX = "atkUpDex", // 物理攻击提升（灵巧）
-  MATK_UP_STR = "matkUpStr", // 魔法攻击提升（力量）
-  MATK_UP_INT = "matkUpInt", // 魔法攻击提升（智力）
-  MATK_UP_VIT = "matkUpVit", // 魔法攻击提升（耐力）
-  MATK_UP_AGI = "matkUpAgi", // 魔法攻击提升（敏捷）
-  MATK_UP_DEX = "matkUpDex", // 魔法攻击提升（灵巧）
-  ATK_DOWN_STR = "atkDownStr", // 物理攻击下降（力量）
-  ATK_DOWN_INT = "atkDownInt", // 物理攻击下降（智力）
-  ATK_DOWN_VIT = "atkDownVit", // 物理攻击下降（耐力）
-  ATK_DOWN_AGI = "atkDownAgi", // 物理攻击下降（敏捷）
-  ATK_DOWN_DEX = "atkDownDex", // 物理攻击下降（灵巧）
-  MATK_DOWN_STR = "matkDownStr", // 魔法攻击下降（力量）
-  MATK_DOWN_INT = "matkDownInt", // 魔法攻击下降（智力）
-  MATK_DOWN_VIT = "matkDownVit", // 魔法攻击下降（耐力）
-  MATK_DOWN_AGI = "matkDownAgi", // 魔法攻击下降（敏捷）
-  MATK_DOWN_DEX = "matkDownDex", // 魔法攻击下降（灵巧）
-  // 生存能力加成
-  MAX_HP = "maxHp", // 最大HP
-  PHYSICAL_DEF = "physicalDef", // 物理防御
-  MAGICAL_DEF = "magicalDef", // 魔法防御
-  PHYSICAL_RESISTANCE = "physicalResistance", // 物理抗性
-  MAGICAL_RESISTANCE = "magicalResistance", // 魔法抗性
-  NEUTRAL_RESISTANCE = "neutralResistance", // 无属性抗性
-  Light_RESISTANCE = "lightResistance", // 光属性抗性
-  Dark_RESISTANCE = "darkResistance", // 暗属性抗性
-  Water_RESISTANCE = "waterResistance", // 水属性抗性
-  Fire_RESISTANCE = "fireResistance", // 火属性抗性
-  Earth_RESISTANCE = "earthResistance", // 地属性抗性
-  Wind_RESISTANCE = "windResistance", // 风属性抗性
-  DODGE = "dodge", // 回避
-  AILMENT_RESISTANCE = "ailmentResistance", // 异常抗性
-  BASE_GUARD_POWER = "baseGuardPower", // 基础格挡力
-  GUARD_POWER = "guardPower", // 格挡力
-  BASE_GUARD_RECHARGE = "baseGuardRecharge", // 基础格挡回复
-  GUARD_RECHANGE = "guardRecharge", // 格挡回复
-  EVASION_RECHARGE = "evasionRecharge", // 闪躲回复
-  PHYSICAL_BARRIER = "physicalBarrier", // 物理屏障
-  MAGICAL_BARRIER = "magicalBarrier", // 魔法屏障
-  FRACTIONAL_BARRIER = "fractionalBarrier", // 百分比瓶屏障
-  BARRIER_COOLDOWN = "barrierCooldown", // 屏障回复速度
-  REDUCE_DMG_FLOOR = "reduceDmgFloor", // 地面伤害减轻（地刺）
-  REDUCE_DMG_METEOR = "reduceDmgMeteor", // 陨石伤害减轻（天火）
-  REDUCE_DMG_PLAYER_EPICENTER = "reduceDmgPlayerEpicenter", // 范围伤害减轻（以玩家为中心的范围伤害）
-  REDUCE_DMG_FOE_EPICENTER = "reduceDmgFoeEpicenter", // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
-  REDUCE_DMG_BOWLING = "reduceDmgBowling", // 贴地伤害减轻（剑气、风刃）
-  REDUCE_DMG_BULLET = "reduceDmgBullet", // 子弹伤害减轻（各种球）
-  REDUCE_DMG_STRAIGHT_LINE = "reduceDmgStraightLine", // 直线伤害减轻（激光）
-  REDUCE_DMG_CHARGE = "reduceDmgCharge", // 冲撞伤害减轻（怪物的位移技能）
-  ABSOLUTE_DODGE = "absoluteDodge", // 绝对回避
-  // 速度加成
-  ASPD = "aspd", // 攻击速度
-  CSPD = "cspd", // 咏唱速度
-  MSPD = "mspd", // 行动速度
-  // 其他加成
-  DROP_RATE = "dropRate", // 掉宝率
-  REVIVE_TIME = "reviveTime", // 复活时间
-  FLINCH_UNAVAILABLE = "flinchUnavailable", // 封印胆怯
-  TUMBLE_UNAVAILABLE = "tumbleUnavailable", // 封印翻覆
-  STUN_UNAVAILABLE = "stunUnavailable", // 封印昏厥
-  INVINCIBLE_AID = "invincibleAid", // 无敌急救
-  EXP_RATE = "expRate", // 经验加成
-  PET_EXP = "petExp", // 宠物经验
-  ITEM_COOLDOWN = "itemCooldown", // 道具冷却
-  RECOIL_DAMAGE = "recoilDamage", // 反作用伤害
-  GEM_POWDER_DROP = "gemPowderDrop", // 晶石粉末掉落
-  // 中间数值
-  WEAPON_MATK_CONVERSION_RATE = "weaponMatkConversionRate", // 武器魔法攻击转换率
-  WEAPON_ATK_CONVERSION_RATE = "weaponAtkConversionRate", // 武器物理攻击转换率
-}
+// 用户角色
+export const USER_ROLE = ["USER", "ADMIN"] as const;
+export type UserRole = (typeof USER_ROLE)[number];
 
-export enum MonsterModifierType {
-  default,
-  physicalAtk, // 物理攻击
-  magicalAtk, // 魔法攻击
-  criticalRate, // 暴击率
-  criticalDamage, // 暴击伤害
-  stability, // 稳定率
-  accuracy, // 命中
-  maxHp, // 最大HP
-  physicalDef, // 物理防御
-  magicalDef, // 魔法防御
-  physicalResistance, // 物理抗性
-  magicalResistance, // 魔法抗性
-  neutralResistance, // 无属性抗性
-  lightResistance, // 光属性抗性
-  darkResistance, // 暗属性抗性
-  waterResistance, // 水属性抗性
-  fireResistance, // 火属性抗性
-  earthResistance, // 地属性抗性
-  windResistance, // 风属性抗性
-  dodge, // 回避
-  ailmentResistance, // 异常抗性
-  baseGuardPower, // 基础格挡力
-  guardPower, // 格挡力
-  baseGuardRecharge, // 基础格挡回复
-  guardRechange, // 格挡回复
-  evasionRecharge, // 闪躲回复
-  aspd, // 攻击速度
-  cspd, // 咏唱速度
-  mspd, // 行动速度
-}
+// 元素属性
+export const ELEMENT = ["Normal", "Light", "Dark", "Water", "Fire", "Earth", "Wind"] as const;
+export type Element = (typeof ELEMENT)[number];
 
-// export enum SkillModifierType {
+// 怪物分类枚举
+export const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
+export type MobType = (typeof MOB_TYPE)[number];
 
-//  }
+// 个人能力值类型枚举
+export const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
+export type PersonalityType = (typeof PERSONALITY_TYPE)[number];
 
-// 账号类型
+// 身体装备轻重化类型枚举
+export const ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
+export type ArmorType = (typeof ARMOR_TYPE)[number];
+
+// 技能目标类型
+export const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
+export type SkillTargetType = (typeof SKILL_TARGET_TYPE)[number];
+
+// 技能充能类型枚举（咏唱、蓄力）
+export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
+export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
+
+// 技能效果类型枚举（持续效果，立即效果）
+export const YIELD_TYPE = ["PersistentEffect", "ImmediateEffect"] as const;
+export type YieldType = (typeof YIELD_TYPE)[number];
+
+// 效果有效期类型枚举（按时间计算、按技能数计算、无限）
+export const DURATION_TYPE = ["FRAME", "SKILL", "UNLIMITED"] as const;
+export type DurationType = (typeof DURATION_TYPE)[number];
+
+// 怪物难度标识
+export const MOB_DIFFICULTY_FLAG = ["Easy", "Normal", "Hard", "Lunatic", "Ultimate"] as const;
+export type MobDifficultyFlag = (typeof MOB_DIFFICULTY_FLAG)[number];
+
+// 怪物伤害类型
+export const MOB_DAMAGE_TYPE = ["Physics", "Magic", "CurrentRate", "MaxRate"] as const;
+export type MobDamageType = (typeof MOB_DAMAGE_TYPE)[number];
+
+// 地点类型（普通地点，限时地点）
+export const ADDRESS_TYPE = ["Normal", "Limited"] as const;
+export type AddressType = (typeof ADDRESS_TYPE)[number];
+
+// 素材类型
+export const MATERIAL_TYPE = ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"] as const;
+export type MaterialType = (typeof MATERIAL_TYPE)[number];
+
+// 部位破坏奖励
+export const PART_BREAK_REWARD = ["None", "CanDrop", "DropUp"] as const;
+export type PartBreakReward = (typeof PART_BREAK_REWARD)[number];
+
+// 部位枚举
+export const MOB_PART = ["A", "B", "C"] as const;
+export type MobPart = (typeof MOB_PART)[number];
+
+// 道具取得方式
+export const ACQUISITION_METHOD_TYPE = ["Drop", "Craft"] as const;
+export type AcquisitionMethodType = (typeof ACQUISITION_METHOD_TYPE)[number];
+
+// 技能距离威力抵制类型
+export const SKILL_DISTANCE_RESIST_TYPE = ["None", "Long", "Short", "Both"] as const;
+export type SkillDistanceResistType = (typeof SKILL_DISTANCE_RESIST_TYPE)[number];
+
+// 宠物性格
+export const PET_PERSONA_TYPE = [
+  "Fervent",
+  "Intelligent",
+  "Mild",
+  "Swift",
+  "Justice",
+  "Devoted",
+  "Impulsive",
+  "Calm",
+  "Sly",
+  "Timid",
+  "Brave",
+  "Active",
+  "Sturdy",
+  "Steady",
+  "Max",
+] as const;
+export type PetPersonaType = (typeof PET_PERSONA_TYPE)[number];
+
+// 宠物类型
+export const PET_TYPE = [
+  "AllTrades",
+  "PhysicalAttack",
+  "MagicAttack",
+  "PhysicalDefense",
+  "MagicDefensem",
+  "Avoidance",
+  "Hit",
+  "SkillsEnhancement",
+  "Genius",
+] as const;
+export type PetType = (typeof PET_TYPE)[number];
+
+// 佣兵类型
+export const MERCENARY_TYPE = ["Tank", "Dps"] as const;
+export type MercenaryType = (typeof MERCENARY_TYPE)[number];
+
+// 佣兵技能类型
+export const MERCENARY_SKILL_TYPE = ["Active", "Passive"] as const;
+export type MercenarySkillType = (typeof MERCENARY_SKILL_TYPE)[number];
+
+// 其他用户可见性
+export const VISIBILITY = ["Public", "Private"] as const;
+export type Visibility = (typeof VISIBILITY)[number];
+
+// 账号类型 //
 const ACCOUNT_TYPES = ["Admin", "User"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
-// 主武器类型
+// 主武器类型 //
 const MAIN_WEAPON_TYPE = [
   "OneHandSword",
   "TwoHandSword",
@@ -307,19 +258,19 @@ const MAIN_WEAPON_TYPE = [
 ] as const;
 export type MainWeaponType = (typeof MAIN_WEAPON_TYPE)[number];
 
-// 副武器
+// 副武器 //
 const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
 export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
 
-// 武器
+// 武器 //
 const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
 export type WeaponType = (typeof WEAPON_TYPE)[number];
 
-// 装备
+// 装备 //
 const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "AddEquip", "SpecialEquip"] as const;
 export type EquipType = (typeof EQUIP_TYPE)[number];
 
-// 锻晶
+// 锻晶 //
 const CRYSTAL_TYPE = [
   "Normal",
   "Weapon",
@@ -334,15 +285,15 @@ const CRYSTAL_TYPE = [
 ] as const;
 export type CrystalType = (typeof CRYSTAL_TYPE)[number];
 
-// 道具
+// 道具 //
 const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE] as const;
-export type Item = (typeof ITEM_TYPE)[number];
+export type ItemType = (typeof ITEM_TYPE)[number];
 
-// 任务奖励
+// 任务奖励 //
 const TASK_REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
 export type TaskRewardType = (typeof TASK_REWARD_TYPE)[number];
 
-// 异常状态
+// 异常状态 //
 const ABNORMAL_TYPE = [
   "MagicFlinch",
   "None",
@@ -394,18 +345,7 @@ const ABNORMAL_TYPE = [
 ] as const;
 export type AbnormalType = (typeof ABNORMAL_TYPE)[number];
 
-// export type SkillType = "Unknown"
-//   , "Attack" // 攻击
-//   , "Mastery"
-//   , "Support" // 辅助
-//   , "Buffer" // buff
-//   , "Circle" // 圈
-//   , "Object" // 对象
-//   , "Heal" //   治疗
-//   , 'Special' // 特殊技能
-//   , "Extra" // 额外
-
-// 技能树类型
+// 技能树类型 //
 const SKILL_TREE_TYPE = [
   "BladeSkill", // 剑术技能
   "ShootSkill", // 射击技能
@@ -447,11 +387,11 @@ const SKILL_TREE_TYPE = [
 ] as const;
 export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
 
-// 玩家技能攻击类型
+// 玩家技能攻击类型 //
 const SKILL_ATTACK_TYP = ["None", "Physical", "Magic", "SkillNormal"] as const;
 export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
 
-// 连击效果类型
+// 连击效果类型 //
 const SKILL_COMBO_TYPE = [
   "None",
   "Start",
@@ -470,3 +410,45 @@ const SKILL_COMBO_TYPE = [
   "Max",
 ] as const;
 export type SkillComboType = (typeof SKILL_COMBO_TYPE)[number];
+
+type UnionToObject<A extends string> = {
+  [K in (A | "selfName")]: string;
+};
+
+export interface Enums {
+  ModifierType: UnionToObject<ModifierType>;
+  UserRole: UnionToObject<UserRole>;
+  Element: UnionToObject<Element>;
+  MobType: UnionToObject<MobType>;
+  PersonalityType: UnionToObject<PersonalityType>;
+  ArmorType: UnionToObject<ArmorType>;
+  SkillTargetType: UnionToObject<SkillTargetType>;
+  SkillChargingType: UnionToObject<SkillChargingType>;
+  YieldType: UnionToObject<YieldType>;
+  DurationType: UnionToObject<DurationType>;
+  MobDifficultyFlag: UnionToObject<MobDifficultyFlag>;
+  MobDamageType: UnionToObject<MobDamageType>;
+  AddressType: UnionToObject<AddressType>;
+  MaterialType: UnionToObject<MaterialType>;
+  PartBreakReward: UnionToObject<PartBreakReward>;
+  MobPart: UnionToObject<MobPart>;
+  AcquisitionMethodType: UnionToObject<AcquisitionMethodType>;
+  SkillDistanceResistType: UnionToObject<SkillDistanceResistType>;
+  PetPersonaType: UnionToObject<PetPersonaType>;
+  PetType: UnionToObject<PetType>;
+  MercenaryType: UnionToObject<MercenaryType>;
+  MercenarySkillType: UnionToObject<MercenarySkillType>;
+  Visibility: UnionToObject<Visibility>;
+  AccountType: UnionToObject<AccountType>;
+  MainWeaponType: UnionToObject<MainWeaponType>;
+  SubWeaponType: UnionToObject<SubWeaponType>;
+  WeaponType: UnionToObject<WeaponType>;
+  EquipType: UnionToObject<EquipType>;
+  CrystalType: UnionToObject<CrystalType>;
+  ItemType: UnionToObject<ItemType>;
+  TaskRewardType: UnionToObject<TaskRewardType>;
+  AbnormalType: UnionToObject<AbnormalType>;
+  SkillTreeType: UnionToObject<SkillTreeType>;
+  SkillAttackType: UnionToObject<SkillAttackType>;
+  SkillComboType: UnionToObject<SkillComboType>;
+}

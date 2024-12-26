@@ -23,18 +23,13 @@ datasource db {
     url      = env("PG_URL")
 }
 
-enum UserRole {
-    USER
-    ADMIN
-}
-
 model user {
     id            String    @id
     name          String?
     email         String?   @unique
     emailVerified DateTime?
     image         String?
-    userRole      UserRole
+    userRole      String
     accounts      account[]
     sessions      session[]
     posts         post[]
@@ -92,90 +87,6 @@ model post {
 
 // 以下是托拉姆的数据 ----------------------------------------------------------------------------------------------
 
-// 元素属性枚举
-enum Element {
-    Normal
-    Light
-    Dark
-    Water
-    Fire
-    Earth
-    Wind
-}
-
-// 怪物分类枚举
-enum MobType {
-    Mob
-    MiniBoss
-    Boss
-}
-
-// 特殊能力值类型枚举
-enum PersonalityType {
-    None
-    Luk
-    Cri
-    Tec
-    Men
-}
-
-// 身体装备轻重化类型枚举
-enum ArmorType {
-    Normal
-    Light
-    Heavy
-}
-
-// 技能目标类型
-enum SkillTargetType {
-    None
-    Self
-    Player
-    Enemy
-}
-
-// 技能充能类型枚举（咏唱、蓄力）
-enum SkillChargingType {
-    None
-    Chanting
-    Reservoir
-}
-
-// 技能效果类型枚举（持续效果，立即效果）
-enum YieldType {
-    PersistentEffect
-    ImmediateEffect
-}
-
-// 效果有效期类型枚举（按时间计算、按技能数计算、无限）
-enum DurationType {
-    FRAME
-    SKILL
-    UNLIMITED
-}
-
-// 怪物星级
-enum MobDifficultyFlag {
-    Easy
-    Normal
-    Hard
-    Lunatic
-    Ultimate
-}
-
-// 怪物伤害类型
-enum MobDamageType {
-    Physics
-    Magic
-    CurrentRate
-    MaxRate
-}
-
-// 连击效果类型
-enum ComboType {
-    NULL
-}
-
 // 账户创建内容
 model account_create_data {
     mobs            mob[]
@@ -217,18 +128,13 @@ model activity {
     recipes recipe[]
 }
 
-// 地点类型（普通地点，限时地点）
-enum AddressType {
-    Normal
-    Limited
-}
 
 // 地点
 model address {
     id String @id
 
     name String
-    type AddressType
+    type String
     x    Int
     y    Int
 
@@ -258,9 +164,10 @@ model zone {
 model npc {
     id String @id
 
-    name  String
-    tasks task[]
-    image image?
+    name    String
+    tasks   task[]
+    image   image? @relation(fields: [imageId], references: [id])
+    imageId String
 
     belongToZone zone   @relation(fields: [zoneId], references: [id])
     zoneId       String
@@ -361,15 +268,6 @@ model reward {
     taskId       String
 }
 
-// 素材类型
-enum MaterialType {
-    Metal
-    Cloth
-    Beast
-    Wood
-    Drug
-    Magic
-}
 
 // 素材物品
 model material {
@@ -377,37 +275,22 @@ model material {
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 
-    material MaterialType
+    material String
     ptValue  Int
     price    Int
 }
-
-// enum MobTypeFlag {
-//     Mob
-//     Boss
-//     Dungeon
-//     Defence
-//     Wave
-//     Rezero
-//     TreasureHunt
-//     NewWave
-//     HighRaid
-//     GuildRaid
-//     Moba
-//     Entourage
-// }
 
 // 怪物
 model mob {
     id String @id
 
     name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
-    mobType                          MobType
+    mobType                          String
     captureable                      Boolean
     baseLv                           Int
     experience                       Int
     partsExperience                  Int
-    element                          Element
+    element                          String
     radius                           Int
     maxhp                            Int
     physicalDefense                  Int
@@ -450,19 +333,6 @@ model mob {
     createdByAccountId String?
 }
 
-// 部位破坏奖励
-enum PartBreakReward {
-    None
-    CanDrop
-    DropUp
-}
-
-// 部位枚举
-enum MobPart {
-    A
-    B
-    C
-}
 
 // 掉落物
 model drop_item {
@@ -471,9 +341,9 @@ model drop_item {
     item            item            @relation(fields: [itemId], references: [id])
     itemId          String
     probability     Int
-    relatedPart     MobPart
+    relatedPart     String
     relatedPartInfo String
-    breakReward     PartBreakReward
+    breakReward     String
 
     dropBy   mob    @relation(fields: [dropById], references: [id])
     dropById String
@@ -550,18 +420,6 @@ model crystal {
     backRelated  crystal[] @relation("BackRelation")
 }
 
-// 活动武器与常态武器
-enum AvailabilityType {
-    permanent
-    event
-}
-
-// 道具取得方式
-enum AcquisitionMethodType {
-    Drop
-    Craft
-}
-
 // 武器
 model weapon {
     name            String
@@ -626,7 +484,7 @@ model custom_armor {
 
     name                    String
     def                     Int
-    armorType               ArmorType
+    armorType               String
     template                armor                         @relation(fields: [templateId], references: [itemId])
     templateId              String
     refinement              Int
@@ -706,14 +564,6 @@ model custom_special_equipment {
     usedBy character[]
 }
 
-// 技能距离威力抵制类型
-enum SkillDistanceResistType {
-    None
-    Long
-    Short
-    Both
-}
-
 // 技能
 model skill {
     id String @id
@@ -725,8 +575,8 @@ model skill {
     name           String
     isPassive      Boolean
     element        String
-    chargingType   SkillChargingType
-    distanceResist SkillDistanceResistType
+    chargingType   String
+    distanceResist String
     effect         skill_effect[]
 
     details     String
@@ -769,8 +619,8 @@ model skill_effect {
     motionModified    String
     chantingFixed     String
     chantingModified  String
-    ReservoirFixed    String
-    ReservoirModified String
+    reservoirFixed    String
+    reservoirModified String
     startupFrames     String
     cost              String
     yield             skill_yield[]
@@ -784,44 +634,12 @@ model skill_yield {
     id String @id
 
     name                  String
-    yieldType             YieldType
+    yieldType             String
     yieldFormula          String
     mutationTimingFormula String?
 
     belongToSkillEffect skill_effect? @relation(fields: [skillEffectId], references: [id], onDelete: Cascade)
     skillEffectId       String?
-}
-
-// 宠物性格
-enum Persona {
-    Fervent
-    Intelligent
-    Mild
-    Swift
-    Justice
-    Devoted
-    Impulsive
-    Calm
-    Sly
-    Timid
-    Brave
-    Active
-    Sturdy
-    Steady
-    Max
-}
-
-// 宠物类型
-enum PetType {
-    AllTrades
-    PhysicalAttack
-    MagicAttack
-    PhysicalDefense
-    MagicDefensem
-    Avoidance
-    Hit
-    SkillsEnhancement
-    Genius
 }
 
 // 自定义宠物
@@ -841,8 +659,8 @@ model custom_pet {
     agi        Int
     dex        Int
     weaponType String
-    persona    Persona
-    type       PetType
+    persona    String
+    type       String
     weaponAtk  Int
 
     master   player @relation(fields: [masterId], references: [id])
@@ -919,7 +737,7 @@ model character {
     vit               Int
     agi               Int
     dex               Int
-    personalityType   PersonalityType
+    personalityType   String
     personalityValue  Int
     weapon            custom_weapon               @relation("weapon", fields: [weaponId], references: [id])
     weaponId          String
@@ -936,9 +754,9 @@ model character {
     modifiers         String[]
     skills            character_skill[]
     partnerSkillA     String
-    partnerSkillAType MercenarySkillType
+    partnerSkillAType String
     partnerSkillB     String
-    partnerSkillBType MercenarySkillType
+    partnerSkillBType String
     consumableList    consumable[]
     combos            combo[]
     master            player                      @relation(fields: [masterId], references: [id])
@@ -956,28 +774,16 @@ model character {
     imageId     String    @unique
 }
 
-// 佣兵类型
-enum MercenaryType {
-    Tank
-    Dps
-}
-
-// 佣兵技能类型
-enum MercenarySkillType {
-    Active
-    Passive
-}
-
 // 佣兵
 model mercenary {
-    type       MercenaryType
+    type       String
     template   character     @relation(fields: [templateId], references: [id])
     templateId String        @id
 
     skillAId   String
-    skillAType MercenarySkillType
+    skillAType String
     skillBId   String
-    skillBType MercenarySkillType
+    skillBType String
 
     usedByMemberPartner   member[] @relation("partner")
     usedByMemberMercenary member[] @relation("mercenary")
@@ -995,7 +801,7 @@ model member {
     mercenaryId       String?
     mob               mob?              @relation(fields: [mobId], references: [id])
     mobId             String?
-    mobDifficultyFlag MobDifficultyFlag // 仅当类型为Boss时生效
+    mobDifficultyFlag String // 仅当类型为Boss时生效
 
     belongToTeams team[]
 }
@@ -1011,18 +817,12 @@ model team {
     belongToSimulators simulator[]
 }
 
-// 其他用户可见性
-enum Visibility {
-    Public
-    Private
-}
-
 // 模拟器
 model simulator {
     id String @id
 
     name       String
-    visibility Visibility
+    visibility String
     teams      team[]
 
     details String?
@@ -1060,9 +860,7 @@ model image {
 
     dataUrl String
 
-    belongToNpc npc?    @relation(fields: [npcId], references: [id])
-    npcId       String? @unique
-
+    belongToNpc      npc[]
     belongToWeapon   weapon[]
     belongToArmor    armor[]
     belongToAddEquip additional_equipment[]

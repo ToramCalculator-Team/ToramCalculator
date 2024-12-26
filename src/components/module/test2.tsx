@@ -66,9 +66,9 @@ export default function BabylonBg(): JSX.Element {
   // 场景渲染状态代替图片加载状态
   const [loaderState, setLoaderState] = createSignal(false);
   // 模型加载进度展示标签引用
-  let progress: HTMLDivElement;
+  let progress!: HTMLDivElement;
   // canvas引用
-  let canvas: HTMLCanvasElement;
+  let canvas!: HTMLCanvasElement;
   // 引擎定义
   let engine: AbstractEngine;
   // 场景定义

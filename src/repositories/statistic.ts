@@ -12,16 +12,16 @@ export type StatisticUpdate = Updateable<statistic>;
 
 export function statisticSubRelations(eb: ExpressionBuilder<DB, "statistic">, statisticId: Expression<string>) {
   return [
-    // jsonArrayFrom(
-    //   eb.selectFrom("view_timestamp").where("view_timestamp.statisticId", "=", statisticId).selectAll("view_timestamp"),
-    // ).as("viewTimestamps"),
-    // jsonArrayFrom(
-    //   eb
-    //     .selectFrom("usage_timestamp")
-    //     .where("usage_timestamp.statisticId", "=", statisticId)
-    //     .selectAll("usage_timestamp"),
-    // ).as("usageTimestamps"),
-    // jsonArrayFrom(eb.selectFrom("rate").whereRef("rate.statisticId", "=", statisticId).selectAll("rate")).as("rates"),
+    jsonArrayFrom(
+      eb.selectFrom("view_timestamp").where("view_timestamp.statisticId", "=", statisticId).selectAll("view_timestamp"),
+    ).as("viewTimestamps"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("usage_timestamp")
+        .where("usage_timestamp.statisticId", "=", statisticId)
+        .selectAll("usage_timestamp"),
+    ).as("usageTimestamps"),
+    jsonArrayFrom(eb.selectFrom("rate").whereRef("rate.statisticId", "=", statisticId).selectAll("rate")).as("rates"),
   ];
 }
 
@@ -64,16 +64,16 @@ export async function deleteStatistic(id: string) {
 // default
 export const defaultStatistic: Statistic = {
   id: "defaultStatisticId",
-  // rates: [],
-  // viewTimestamps: [],
-  // usageTimestamps: [],
+  rates: [],
+  viewTimestamps: [],
+  usageTimestamps: [],
 };
 
 export const statisticGenerateById = (id: string) => {
   return {
     id: id,
-    // rates: [],
-    // viewTimestamps: [],
-    // usageTimestamps: [],
+    rates: [],
+    viewTimestamps: [],
+    usageTimestamps: [],
   } satisfies Statistic;
 };
