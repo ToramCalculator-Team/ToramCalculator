@@ -1,5 +1,5 @@
 // 已知的可加成项
-export const MODIFIER_TYPE = [
+const MODIFIER_TYPE = [
   // 能力值
   "str", // 力量
   "int", // 智力
@@ -127,75 +127,75 @@ export const MODIFIER_TYPE = [
 export type ModifierType = (typeof MODIFIER_TYPE)[number];
 
 // 用户角色
-export const USER_ROLE = ["USER", "ADMIN"] as const;
+const USER_ROLE = ["USER", "ADMIN"] as const;
 export type UserRole = (typeof USER_ROLE)[number];
 
 // 元素属性
-export const ELEMENT = ["Normal", "Light", "Dark", "Water", "Fire", "Earth", "Wind"] as const;
-export type Element = (typeof ELEMENT)[number];
+const ELEMENT_TYPE = ["Normal", "Light", "Dark", "Water", "Fire", "Earth", "Wind"] as const;
+export type ElementType = (typeof ELEMENT_TYPE)[number];
 
 // 怪物分类枚举
-export const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
+const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
 export type MobType = (typeof MOB_TYPE)[number];
 
 // 个人能力值类型枚举
-export const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
+const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
 export type PersonalityType = (typeof PERSONALITY_TYPE)[number];
 
 // 身体装备轻重化类型枚举
-export const ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
+const ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
 export type ArmorType = (typeof ARMOR_TYPE)[number];
 
 // 技能目标类型
-export const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
+const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
 export type SkillTargetType = (typeof SKILL_TARGET_TYPE)[number];
 
 // 技能充能类型枚举（咏唱、蓄力）
-export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
+const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
 export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
 
 // 技能效果类型枚举（持续效果，立即效果）
-export const YIELD_TYPE = ["PersistentEffect", "ImmediateEffect"] as const;
+const YIELD_TYPE = ["PersistentEffect", "ImmediateEffect"] as const;
 export type YieldType = (typeof YIELD_TYPE)[number];
 
 // 效果有效期类型枚举（按时间计算、按技能数计算、无限）
-export const DURATION_TYPE = ["FRAME", "SKILL", "UNLIMITED"] as const;
+const DURATION_TYPE = ["FRAME", "SKILL", "UNLIMITED"] as const;
 export type DurationType = (typeof DURATION_TYPE)[number];
 
 // 怪物难度标识
-export const MOB_DIFFICULTY_FLAG = ["Easy", "Normal", "Hard", "Lunatic", "Ultimate"] as const;
+const MOB_DIFFICULTY_FLAG = ["Easy", "Normal", "Hard", "Lunatic", "Ultimate"] as const;
 export type MobDifficultyFlag = (typeof MOB_DIFFICULTY_FLAG)[number];
 
 // 怪物伤害类型
-export const MOB_DAMAGE_TYPE = ["Physics", "Magic", "CurrentRate", "MaxRate"] as const;
+const MOB_DAMAGE_TYPE = ["Physics", "Magic", "CurrentRate", "MaxRate"] as const;
 export type MobDamageType = (typeof MOB_DAMAGE_TYPE)[number];
 
 // 地点类型（普通地点，限时地点）
-export const ADDRESS_TYPE = ["Normal", "Limited"] as const;
+const ADDRESS_TYPE = ["Normal", "Limited"] as const;
 export type AddressType = (typeof ADDRESS_TYPE)[number];
 
 // 素材类型
-export const MATERIAL_TYPE = ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"] as const;
+const MATERIAL_TYPE = ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"] as const;
 export type MaterialType = (typeof MATERIAL_TYPE)[number];
 
 // 部位破坏奖励
-export const PART_BREAK_REWARD = ["None", "CanDrop", "DropUp"] as const;
+const PART_BREAK_REWARD = ["None", "CanDrop", "DropUp"] as const;
 export type PartBreakReward = (typeof PART_BREAK_REWARD)[number];
 
 // 部位枚举
-export const MOB_PART = ["A", "B", "C"] as const;
+const MOB_PART = ["A", "B", "C"] as const;
 export type MobPart = (typeof MOB_PART)[number];
 
 // 道具取得方式
-export const ACQUISITION_METHOD_TYPE = ["Drop", "Craft"] as const;
+const ACQUISITION_METHOD_TYPE = ["Drop", "Craft"] as const;
 export type AcquisitionMethodType = (typeof ACQUISITION_METHOD_TYPE)[number];
 
 // 技能距离威力抵制类型
-export const SKILL_DISTANCE_RESIST_TYPE = ["None", "Long", "Short", "Both"] as const;
+const SKILL_DISTANCE_RESIST_TYPE = ["None", "Long", "Short", "Both"] as const;
 export type SkillDistanceResistType = (typeof SKILL_DISTANCE_RESIST_TYPE)[number];
 
 // 宠物性格
-export const PET_PERSONA_TYPE = [
+const PET_PERSONA_TYPE = [
   "Fervent",
   "Intelligent",
   "Mild",
@@ -215,7 +215,7 @@ export const PET_PERSONA_TYPE = [
 export type PetPersonaType = (typeof PET_PERSONA_TYPE)[number];
 
 // 宠物类型
-export const PET_TYPE = [
+const PET_TYPE = [
   "AllTrades",
   "PhysicalAttack",
   "MagicAttack",
@@ -229,15 +229,15 @@ export const PET_TYPE = [
 export type PetType = (typeof PET_TYPE)[number];
 
 // 佣兵类型
-export const MERCENARY_TYPE = ["Tank", "Dps"] as const;
+const MERCENARY_TYPE = ["Tank", "Dps"] as const;
 export type MercenaryType = (typeof MERCENARY_TYPE)[number];
 
 // 佣兵技能类型
-export const MERCENARY_SKILL_TYPE = ["Active", "Passive"] as const;
+const MERCENARY_SKILL_TYPE = ["Active", "Passive"] as const;
 export type MercenarySkillType = (typeof MERCENARY_SKILL_TYPE)[number];
 
 // 其他用户可见性
-export const VISIBILITY = ["Public", "Private"] as const;
+const VISIBILITY = ["Public", "Private"] as const;
 export type Visibility = (typeof VISIBILITY)[number];
 
 // 账号类型 //
@@ -410,45 +410,3 @@ const SKILL_COMBO_TYPE = [
   "Max",
 ] as const;
 export type SkillComboType = (typeof SKILL_COMBO_TYPE)[number];
-
-type UnionToObject<A extends string> = {
-  [K in (A | "selfName")]: string;
-};
-
-export interface Enums {
-  ModifierType: UnionToObject<ModifierType>;
-  UserRole: UnionToObject<UserRole>;
-  Element: UnionToObject<Element>;
-  MobType: UnionToObject<MobType>;
-  PersonalityType: UnionToObject<PersonalityType>;
-  ArmorType: UnionToObject<ArmorType>;
-  SkillTargetType: UnionToObject<SkillTargetType>;
-  SkillChargingType: UnionToObject<SkillChargingType>;
-  YieldType: UnionToObject<YieldType>;
-  DurationType: UnionToObject<DurationType>;
-  MobDifficultyFlag: UnionToObject<MobDifficultyFlag>;
-  MobDamageType: UnionToObject<MobDamageType>;
-  AddressType: UnionToObject<AddressType>;
-  MaterialType: UnionToObject<MaterialType>;
-  PartBreakReward: UnionToObject<PartBreakReward>;
-  MobPart: UnionToObject<MobPart>;
-  AcquisitionMethodType: UnionToObject<AcquisitionMethodType>;
-  SkillDistanceResistType: UnionToObject<SkillDistanceResistType>;
-  PetPersonaType: UnionToObject<PetPersonaType>;
-  PetType: UnionToObject<PetType>;
-  MercenaryType: UnionToObject<MercenaryType>;
-  MercenarySkillType: UnionToObject<MercenarySkillType>;
-  Visibility: UnionToObject<Visibility>;
-  AccountType: UnionToObject<AccountType>;
-  MainWeaponType: UnionToObject<MainWeaponType>;
-  SubWeaponType: UnionToObject<SubWeaponType>;
-  WeaponType: UnionToObject<WeaponType>;
-  EquipType: UnionToObject<EquipType>;
-  CrystalType: UnionToObject<CrystalType>;
-  ItemType: UnionToObject<ItemType>;
-  TaskRewardType: UnionToObject<TaskRewardType>;
-  AbnormalType: UnionToObject<AbnormalType>;
-  SkillTreeType: UnionToObject<SkillTreeType>;
-  SkillAttackType: UnionToObject<SkillAttackType>;
-  SkillComboType: UnionToObject<SkillComboType>;
-}

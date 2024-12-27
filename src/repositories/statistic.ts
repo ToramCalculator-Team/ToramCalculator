@@ -43,12 +43,13 @@ export async function findStatisticById(id: string) {
 
 export async function createStatistic(newStatistic: NewStatistic) {
   return await db.transaction().execute(async (trx) => {
+    console.log("createStatistic");
     const statistic = await trx.insertInto("statistic").values(newStatistic).returningAll().executeTakeFirstOrThrow();
-
+    console.log("createRate");
     const rate = await trx.insertInto("rate").values(defaultRate).returningAll().execute();
-
+    console.log("createViewTimestamp");
     const viewTimestamp = await trx.insertInto("view_timestamp").values(defaultViewTimestamp).returningAll().execute();
-
+    console.log("createUsageTimestamp");
     const usageTimestamp = await trx
       .insertInto("usage_timestamp")
       .values(defaultUsageTimestamp)
@@ -70,9 +71,8 @@ export const defaultStatistic: Statistic = {
   viewTimestamps: [],
   usageTimestamps: [],
   updatedAt: new Date(),
-  createdAt: new Date()
+  createdAt: new Date(),
 };
-
 
 export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
   switch (locale) {
@@ -120,5 +120,4 @@ export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
         usageTimestamps: "",
       };
   }
-} 
-
+};

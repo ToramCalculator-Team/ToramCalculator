@@ -25,7 +25,7 @@ import ddl from "~/../prisma/ddl.sql?raw";
 //       await pg.exec(migration.sql);
 //       await pg.exec(
 //         `
-//         INSERT INTO migrations (name) 
+//         INSERT INTO migrations (name)
 //         VALUES ($1);
 //       `,
 //         [migration.name],
@@ -51,7 +51,7 @@ worker({
       },
     });
     // await migrate(pg);
-    meta.init && await pg.exec(ddl);
+    meta.init && (await pg.exec(ddl));
     // 添加本地迁移记录表
     await pg.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
@@ -59,7 +59,7 @@ worker({
         name TEXT NOT NULL UNIQUE,
         applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `)
+    `);
     // const userShape = await pg.sync.syncShapeToTable({
     //   shape: {
     //     url: `${ELECTRIC_HOST}/v1/shape?table="user"`,

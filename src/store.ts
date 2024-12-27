@@ -174,8 +174,8 @@ const getActStore = () => {
       }
       actStore = mergedStore;
     } else {
-      console.log(performance.now(),"配置数据缺失，将应用配置为默认值并初始化本地数据库架构");
       if (isBrowser) {
+        console.log(performance.now(),"配置数据缺失，将应用配置为默认值并初始化本地数据库架构");
         localStorage.setItem("store", JSON.stringify(initialStore));
         initialPGWorker(true);
       }

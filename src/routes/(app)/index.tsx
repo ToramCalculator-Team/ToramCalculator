@@ -13,7 +13,6 @@ import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/skill_effect";
-import { type ConvertToAllString } from "../../locales/dictionaries/type";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";
@@ -66,19 +65,10 @@ export default function Index() {
   };
 
   // 搜索函数
-  const mobHiddenData: Array<keyof Mob> = [
-    "id",
-    "updatedAt",
-    "image",
-    "imageId",
-    "updatedByAccountId",
-    "createdByAccountId",
-  ];
+  const mobHiddenData: Array<keyof Mob> = ["id", "image", "imageId", "updatedByAccountId", "createdByAccountId"];
   const skillHiddenData: Array<keyof (Skill & SkillEffect)> = [
     "id",
     "belongToskillId",
-    "updatedAt",
-    "createdAt",
     "updatedByAccountId",
     "createdByAccountId",
   ];
@@ -160,18 +150,8 @@ export default function Index() {
     return values;
   }
 
-  const searchInList = <T extends Mob | Skill | Crystal>(
-    list: T[],
-    key: string | number,
-    dictionary: ConvertToAllString<T>,
-    hiddenData: string[],
-  ) => {
+  const searchInList = <T extends Mob | Skill | Crystal>(list: T[], key: string | number, hiddenData: string[]) => {
     if (!key) return;
-    if (typeof key === "string") {
-      // 字典替换
-      // 获取所有字典值
-      // console.log(getAllValues(dictionary));
-    }
     const result: Result[] = [];
     list.forEach((item) => {
       keyWordSearch(item, key, hiddenData)
@@ -204,9 +184,9 @@ export default function Index() {
     const searchValue = isNumber ? parsedInput : searchInputValue();
 
     const finalResult: FinalResult = {
-      mobs: searchInList(mobList() ?? [], searchValue, dictionary().db.models.mob, mobHiddenData),
-      skills: searchInList(skillList() ?? [], searchValue, dictionary().db.models.skill, skillHiddenData),
-      crystals: searchInList(crystalList() ?? [], searchValue, dictionary().db.models.crystal, crystalHiddenData),
+      mobs: searchInList(mobList() ?? [], searchValue, mobHiddenData),
+      skills: searchInList(skillList() ?? [], searchValue, skillHiddenData),
+      crystals: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -446,7 +426,9 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <div class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${resultDialogOpened() ? "" : "lg:flex"}`}>
+        <div
+          class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${resultDialogOpened() ? "" : "lg:flex"}`}
+        >
           <span>MobList: {mobList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>

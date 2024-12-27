@@ -15,14 +15,14 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/image";
-import { type Mob, defaultMob, findMobs } from "~/repositories/mob";
+import { type Mob, MobDic, defaultMob, findMobs } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
-import { $Enums } from "@prisma/client";
 import { getDictionary } from "~/locales/i18n";
 import { generateAugmentedMobList } from "~/lib/untils/mob";
 import * as Icon from "~/lib/icon";
 import Dialog from "~/components/ui/dialog";
 import Button from "~/components/ui/button";
+import * as Enums from "~/repositories/enums";
 
 export default function MobIndexPage() {
   // 状态管理参数
@@ -67,88 +67,82 @@ export default function MobIndexPage() {
   const columns: ColumnDef<Mob>[] = [
     {
       accessorKey: "id",
-      header: () => dictionary().db.models.mob.id,
+      header: () => MobDic(store.settings.language).id,
       cell: (info) => info.getValue(),
       size: 200,
     },
     {
       accessorKey: "name",
-      header: () => dictionary().db.models.mob.name,
+      header: () => MobDic(store.settings.language).name,
       cell: (info) => info.getValue(),
       size: 220,
     },
     {
       accessorKey: "address",
-      header: () => dictionary().db.models.mob.actions,
+      header: () => MobDic(store.settings.language).actions,
       cell: (info) => info.getValue(),
       size: 150,
     },
     {
       accessorKey: "mobType",
-      header: () => dictionary().db.models.mob.mobType,
-      cell: (info) => dictionary().db.enums.MobType[info.getValue<$Enums.MobType>()],
+      header: () => MobDic(store.settings.language).mobType,
+      cell: (info) => dictionary().enums.MobType[info.getValue<Enums.MobType>()],
       size: 120,
     },
     {
       accessorKey: "element",
-      header: () => dictionary().db.models.mob.element,
-      cell: (info) => dictionary().db.enums.Element[info.getValue<$Enums.Element>()],
+      header: () => MobDic(store.settings.language).element,
+      cell: (info) => dictionary().enums.Element[info.getValue<Enums.ElementType>()],
       size: 120,
     },
     {
       accessorKey: "baseLv",
-      header: () => dictionary().db.models.mob.baseLv,
+      header: () => MobDic(store.settings.language).baseLv,
       size: 120,
     },
     {
       accessorKey: "experience",
-      header: () => dictionary().db.models.mob.experience,
+      header: () => MobDic(store.settings.language).experience,
       size: 120,
     },
     {
       accessorKey: "physicalDefense",
-      header: () => dictionary().db.models.mob.physicalDefense,
+      header: () => MobDic(store.settings.language).physicalDefense,
       size: 120,
     },
     {
       accessorKey: "physicalResistance",
-      header: () => dictionary().db.models.mob.physicalResistance,
+      header: () => MobDic(store.settings.language).physicalResistance,
       size: 120,
     },
     {
       accessorKey: "magicalDefense",
-      header: () => dictionary().db.models.mob.magicalDefense,
+      header: () => MobDic(store.settings.language).magicalDefense,
       size: 120,
     },
     {
       accessorKey: "magicalResistance",
-      header: () => dictionary().db.models.mob.magicalResistance,
+      header: () => MobDic(store.settings.language).magicalResistance,
       size: 120,
     },
     {
       accessorKey: "criticalResistance",
-      header: () => dictionary().db.models.mob.criticalResistance,
+      header: () => MobDic(store.settings.language).criticalResistance,
       size: 120,
     },
     {
       accessorKey: "avoidance",
-      header: () => dictionary().db.models.mob.avoidance,
+      header: () => MobDic(store.settings.language).avoidance,
       size: 100,
     },
     {
       accessorKey: "dodge",
-      header: () => dictionary().db.models.mob.dodge,
+      header: () => MobDic(store.settings.language).dodge,
       size: 100,
     },
     {
       accessorKey: "block",
-      header: () => dictionary().db.models.mob.block,
-      size: 100,
-    },
-    {
-      accessorKey: "updatedAt",
-      header: dictionary().db.models.mob.updatedAt,
-      cell: (info) => info.getValue<Date>().toLocaleDateString(),
+      header: () => MobDic(store.settings.language).block,
       size: 100,
     },
   ];
@@ -212,9 +206,7 @@ export default function MobIndexPage() {
     "difficultyOfMelee",
     "difficultyOfRanged",
     "difficultyOfTank",
-    "updatedAt",
     "updatedByAccountId",
-    "createdAt",
     "createdByAccountId",
   ];
 
@@ -474,7 +466,7 @@ export default function MobIndexPage() {
                                     header.column.getCanSort() ? "cursor-pointer select-none" : ""
                                   }`}
                                 >
-                                  {dictionary().db.models.mob[column.id as keyof Mob] as string}
+                                  {MobDic(store.settings.language)[column.id as keyof Mob] as string}
                                   {{
                                     asc: " ↓",
                                     desc: " ↑",
@@ -538,7 +530,7 @@ export default function MobIndexPage() {
                                         Light: <Icon.Element.Light class="h-12 w-12" />,
                                         Dark: <Icon.Element.Dark class="h-12 w-12" />,
                                         Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-                                      }[cell.getValue() as $Enums.Element] ?? undefined;
+                                      }[cell.getValue() as Enums.ElementType] ?? undefined;
                                     tdContent = icon;
                                   }
                                   break;
@@ -559,10 +551,10 @@ export default function MobIndexPage() {
                                 default:
                                   try {
                                     const content =
-                                      dictionary().db.enums[
+                                      dictionary().enums[
                                         (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                          cell.column.id.slice(1)) as keyof typeof $Enums
-                                      ][cell.getValue() as keyof (typeof $Enums)[keyof typeof $Enums]];
+                                          cell.column.id.slice(1)) as keyof typeof Enums
+                                      ][cell.getValue() as keyof (typeof Enums)[keyof typeof Enums]];
                                     tdContent = content;
                                   } catch (error) {
                                     tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());

@@ -145,8 +145,6 @@ export const defaultCharacter: Character = {
   partnerSkillBType: "Active",
   masterId: "",
   details: "",
-  updatedAt: new Date(),
-  createdAt: new Date(),
   statistic: defaultStatistic,
   statisticId: defaultStatistic.id,
 };
