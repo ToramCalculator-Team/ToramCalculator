@@ -5,6 +5,8 @@ import { defaultRate } from "./rate";
 import { defaultViewTimestamp } from "./view_timestamp";
 import { defaultUsageTimestamp } from "./usage_timestamp";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -67,13 +69,56 @@ export const defaultStatistic: Statistic = {
   rates: [],
   viewTimestamps: [],
   usageTimestamps: [],
+  updatedAt: new Date(),
+  createdAt: new Date()
 };
 
-export const statisticGenerateById = (id: string) => {
-  return {
-    id: id,
-    rates: [],
-    viewTimestamps: [],
-    usageTimestamps: [],
-  } satisfies Statistic;
-};
+
+export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "账号",
+        id: "defaultStatisticId",
+        rates: "",
+        updatedAt: "",
+        createdAt: "",
+        viewTimestamps: "",
+        usageTimestamps: "",
+      };
+    case "zh-TW":
+      return {
+        selfName: "账号",
+        id: "defaultStatisticId",
+        rates: "",
+        updatedAt: "",
+        createdAt: "",
+        viewTimestamps: "",
+        usageTimestamps: "",
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "账号",
+        id: "defaultStatisticId",
+        rates: "",
+        updatedAt: "",
+        createdAt: "",
+        viewTimestamps: "",
+        usageTimestamps: "",
+      };
+    case "ja":
+      return {
+        selfName: "账号",
+        id: "defaultStatisticId",
+        rates: "",
+        updatedAt: "",
+        createdAt: "",
+        viewTimestamps: "",
+        usageTimestamps: "",
+      };
+  }
+} 
+

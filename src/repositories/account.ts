@@ -2,12 +2,16 @@ import { Expression, ExpressionBuilder, Insertable, Selectable, Updateable } fro
 import { db } from "./database";
 import { account, DB } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ModifyKeys } from "./untils";
+import { ModifyKeys,ConvertToAllString } from "./untils";
 import { AccountType } from "./enums";
+import { Locale } from "~/locales/i18n";
 
-export type Account = ModifyKeys<Awaited<ReturnType<typeof findAccountById>>, {
-    type: AccountType
-}>;
+export type Account = ModifyKeys<
+  Awaited<ReturnType<typeof findAccountById>>,
+  {
+    type: AccountType;
+  }
+>;
 
 export type NewAccount = Insertable<account>;
 
@@ -68,7 +72,7 @@ export async function findAccountById(id: string) {
     .selectAll()
     .select((eb) => accountSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-  return account 
+  return account;
 }
 
 export async function updateAccount(id: string, updateWith: AccountUpdate) {
@@ -113,3 +117,107 @@ export const defaultAccount: Account = {
     accountId: "",
   },
 };
+
+export const AccountDic = (locale: Locale): ConvertToAllString<Account> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "账号",
+        id: "ID",
+        type: "账号类型",
+        provider: "",
+        providerAccountId: "",
+        refresh_token: "",
+        access_token: "",
+        expires_at: "",
+        token_type: "",
+        scope: "",
+        id_token: "",
+        session_state: "",
+        userId: "",
+        create: {
+          accountId: "",
+          selfName: "",
+        },
+        update: {
+          accountId: "",
+          selfName: "",
+        },
+      };
+    case "zh-TW":
+      return {
+        selfName: "帳號",
+        id: "ID",
+        type: "帳號類型",
+        provider: "",
+        providerAccountId: "",
+        refresh_token: "",
+        access_token: "",
+        expires_at: "",
+        token_type: "",
+        scope: "",
+        id_token: "",
+        session_state: "",
+        userId: "",
+        create: {
+          accountId: "",
+          selfName: "",
+        },
+        update: {
+          accountId: "",
+          selfName: "",
+        },
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "Account",
+        id: "ID",
+        type: "Account Type",
+        provider: "",
+        providerAccountId: "",
+        refresh_token: "",
+        access_token: "",
+        expires_at: "",
+        token_type: "",
+        scope: "",
+        id_token: "",
+        session_state: "",
+        userId: "",
+        create: {
+          accountId: "",
+          selfName: "",
+        },
+        update: {
+          accountId: "",
+          selfName: "",
+        },
+      };
+    case "ja":
+      return {
+        selfName: "アカウント",
+        id: "ID",
+        type: "アカウントタイプ",
+        provider: "",
+        providerAccountId: "",
+        refresh_token: "",
+        access_token: "",
+        expires_at: "",
+        token_type: "",
+        scope: "",
+        id_token: "",
+        session_state: "",
+        userId: "",
+        create: {
+          accountId: "",
+          selfName: "",
+        },
+        update: {
+          accountId: "",
+          selfName: "",
+        },
+      };
+  }
+} 

@@ -2,6 +2,8 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, avatar } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { ConvertToAllString } from "./untils";
+import { Locale } from "~/locales/i18n";
 
 export type Avatar = Awaited<ReturnType<typeof findAvatarById>>;
 export type NewAvatar = Insertable<avatar>;
@@ -34,4 +36,49 @@ export const defaultAvatar: Avatar = {
   type: "",
   modifiers: [],
   playerId: "",
+};
+
+// Dictionary
+export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "防具装备",
+        name: "名称",
+        id: "ID",
+        type: "位置",
+        modifiers: "属性",
+        playerId: "所属玩家ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "防具裝備",
+        name: "名称",
+        id: "ID",
+        type: "位置",
+        modifiers: "屬性",
+        playerId: "所屬玩家ID",
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "Armor",
+        name: "Name",
+        id: "ID",
+        type: "Type",
+        modifiers: "Modifiers",
+        playerId: "Player ID",
+      };
+    case "ja":
+      return {
+        selfName: "鎧",
+        name: "名前",
+        id: "ID",
+        type: "位置",
+        modifiers: "属性",
+        playerId: "所属プレイヤーID",
+      };
+  }
 };

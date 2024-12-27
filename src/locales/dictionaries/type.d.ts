@@ -1,24 +1,4 @@
-import { type Crystal } from "~/repositories/crystal";
-import { type Skill } from "~/repositories/skill";
-import { type Character } from "~/repositories/character";
-import { Mob } from "~/repositories/mob";
-import { User } from "~/repositories/user";
 import { Enums } from "~/repositories/enums";
-
-// 为了方便编辑器自动补全，这个方法可以递归地将对象的值类型转换为字符串
-export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | number
-  ? string
-  : T extends Record<string, unknown>
-    ? {
-        [K in keyof T]: K extends string
-          ? string extends K // 检查索引签名
-            ? T[K] // 如果是索引签名，保持原有类型
-            : ConvertToAllString<T[K]> // 否则递归转换
-          : never;
-      } & {
-        selfName: string;
-      }
-    : string;
 
 export interface dictionary {
   ui: {
@@ -190,16 +170,5 @@ export interface dictionary {
       description: string;
     };
   };
-  db: {
-    enums: Enums;
-    models: {
-      mob: ConvertToAllString<Mob>;
-      crystal: ConvertToAllString<Crystal>;
-      skill: ConvertToAllString<Skill>;
-      skillEffect: ConvertToAllString<Skill["skillEffect"][number]>;
-      skillYield: ConvertToAllString<Skill["skillEffect"][number]["skillYield"][number]>;
-      user: ConvertToAllString<User>;
-      character: ConvertToAllString<Character>;
-    };
-  };
+  enums: Enums;
 }

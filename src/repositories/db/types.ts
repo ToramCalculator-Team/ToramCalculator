@@ -68,8 +68,6 @@ export type armor_enchantment_attributes = {
     flow: unknown;
     details: string | null;
     dataSources: string | null;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
@@ -121,8 +119,6 @@ export type character = {
     partnerSkillBType: string;
     masterId: string;
     details: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     imageId: string;
 };
@@ -265,8 +261,6 @@ export type item = {
     name: string;
     dataSources: string;
     details: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
@@ -330,8 +324,6 @@ export type mob = {
     possibilityOfRunningAround: number;
     details: string;
     dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     imageId: string;
     updatedByAccountId: string | null;
@@ -402,8 +394,6 @@ export type simulator = {
     name: string;
     visibility: string;
     details: string | null;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
@@ -425,8 +415,6 @@ export type skill = {
     distanceResist: string;
     details: string;
     dataSources: string;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
@@ -463,6 +451,8 @@ export type special_equipment = {
 };
 export type statistic = {
     id: string;
+    updatedAt: Timestamp;
+    createdAt: Timestamp;
 };
 export type task = {
     id: string;
@@ -513,8 +503,6 @@ export type weapon_enchantment_attributes = {
     flow: unknown;
     details: string | null;
     dataSources: string | null;
-    updatedAt: Timestamp;
-    createdAt: Timestamp;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;

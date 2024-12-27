@@ -8,6 +8,8 @@ import { defaultArmor } from "./armor";
 import { defaultSpeEquip } from "./speEquip";
 import { defaultConsumable } from "./consumable";
 import { WeaponType } from "./enums";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type Recipe = Awaited<ReturnType<typeof findRecipeById>>;
 export type NewRecipe = Insertable<recipe>;
@@ -162,3 +164,59 @@ export const defaultRecipes: Record<WeaponType | "armor" | "addEquip" | "speEqui
     consumableId: "",
   },
 };
+
+export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "账号",
+        id: "defaultConsumableRecipe",
+        activityId: "null",
+        recipeEntries: "[]",
+        weaponId: "null",
+        armorId: "null",
+        addEquipId: "null",
+        speEquipId: "null",
+        consumableId: "",
+      };
+    case "zh-TW":
+      return {
+        selfName: "账号",
+        id: "defaultConsumableRecipe",
+        activityId: "null",
+        recipeEntries: "[]",
+        weaponId: "null",
+        armorId: "null",
+        addEquipId: "null",
+        speEquipId: "null",
+        consumableId: "",
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "账号",
+        id: "defaultConsumableRecipe",
+        activityId: "null",
+        recipeEntries: "[]",
+        weaponId: "null",
+        armorId: "null",
+        addEquipId: "null",
+        speEquipId: "null",
+        consumableId: "",
+      };
+    case "ja":
+      return {
+        selfName: "账号",
+        id: "defaultConsumableRecipe",
+        activityId: "null",
+        recipeEntries: "[]",
+        weaponId: "null",
+        armorId: "null",
+        addEquipId: "null",
+        speEquipId: "null",
+        consumableId: "",
+      };
+  }
+} 

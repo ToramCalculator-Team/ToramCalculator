@@ -128,7 +128,6 @@ model activity {
     recipes recipe[]
 }
 
-
 // 地点
 model address {
     id String @id
@@ -188,9 +187,6 @@ model item {
 
     dataSources String
     details     String
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
 
     usedByDropItem   drop_item[]
     usedByRewardItem reward[]
@@ -268,7 +264,6 @@ model reward {
     taskId       String
 }
 
-
 // 素材物品
 model material {
     name         String
@@ -315,9 +310,6 @@ model mob {
     details                    String
     dataSources                String
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
     image       image     @relation(fields: [imageId], references: [id])
@@ -333,12 +325,11 @@ model mob {
     createdByAccountId String?
 }
 
-
 // 掉落物
 model drop_item {
     id String @id
 
-    item            item            @relation(fields: [itemId], references: [id])
+    item            item   @relation(fields: [itemId], references: [id])
     itemId          String
     probability     Int
     relatedPart     String
@@ -357,9 +348,6 @@ model weapon_enchantment_attributes {
     flow        Json
     details     String?
     dataSources String?
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -380,9 +368,6 @@ model armor_enchantment_attributes {
     flow        Json
     details     String?
     dataSources String?
-
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -582,9 +567,6 @@ model skill {
     details     String
     dataSources String
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
@@ -646,7 +628,7 @@ model skill_yield {
 model custom_pet {
     id String @id
 
-    template   mob     @relation(fields: [templateId], references: [id])
+    template   mob    @relation(fields: [templateId], references: [id])
     templateId String
     pStr       Int
     pInt       Int
@@ -764,8 +746,6 @@ model character {
 
     details String
 
-    updatedAt       DateTime   @updatedAt
-    createdAt       DateTime
     usedInMercenary mercenary?
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -777,8 +757,8 @@ model character {
 // 佣兵
 model mercenary {
     type       String
-    template   character     @relation(fields: [templateId], references: [id])
-    templateId String        @id
+    template   character @relation(fields: [templateId], references: [id])
+    templateId String    @id
 
     skillAId   String
     skillAType String
@@ -793,13 +773,13 @@ model mercenary {
 model member {
     id String @id
 
-    player            player?           @relation(fields: [playerId], references: [id])
+    player            player?    @relation(fields: [playerId], references: [id])
     playerId          String?
-    partner           mercenary?        @relation("partner", fields: [partnerId], references: [templateId])
+    partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])
     partnerId         String?
-    mercenary         mercenary?        @relation("mercenary", fields: [mercenaryId], references: [templateId])
+    mercenary         mercenary? @relation("mercenary", fields: [mercenaryId], references: [templateId])
     mercenaryId       String?
-    mob               mob?              @relation(fields: [mobId], references: [id])
+    mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
     mobDifficultyFlag String // 仅当类型为Boss时生效
 
@@ -827,9 +807,6 @@ model simulator {
 
     details String?
 
-    updatedAt DateTime @updatedAt
-    createdAt DateTime
-
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
@@ -841,7 +818,10 @@ model simulator {
 
 // 统计字段
 model statistic {
-    id              String            @id
+    id String @id
+
+    updatedAt       DateTime          @updatedAt
+    createdAt       DateTime
     usageTimestamps usage_timestamp[]
     viewTimestamps  view_timestamp[]
     rates           rate[]

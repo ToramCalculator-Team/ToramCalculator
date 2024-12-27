@@ -2,6 +2,8 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, combo } from "~/repositories/db/types";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type Combo = Awaited<ReturnType<typeof findComboById>>;
 export type NewCombo = Insertable<combo>;
@@ -39,4 +41,41 @@ export const defaultCombo: Combo = {
   id: "defaultComboId",
   name: "defaultComboName",
   combo:{},
+};
+
+// Dictionary
+export const ComborDic = (locale: Locale): ConvertToAllString<Combo> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "防具装备",
+        name: "名称",
+        id: "ID",
+        combo: "连击序列",
+      };
+    case "zh-TW":
+      return {
+        selfName: "防具裝備",
+        name: "名称",
+        id: "ID",
+        combo: "連擊序列",
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "Armor",
+        name: "Name",
+        id: "ID",
+        combo: "Combo",
+      };
+    case "ja":
+      return {
+        selfName: "鎧",
+        name: "名前",
+        id: "ID",
+        combo: "コンボ",
+      };
+  }
 };

@@ -2,8 +2,10 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { armor_enchantment_attributes, DB } from "~/repositories/db/types";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistic, statisticSubRelations } from "./statistic";
+import { defaultStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultAccount } from "./account";
+import { ConvertToAllString } from "./untils";
+import { Locale } from "~/locales/i18n";
 
 export type ArmorEncAttributes = Awaited<ReturnType<typeof findArmorEncAttributesById>>;
 export type NewArmorEncAttributes = Insertable<armor_enchantment_attributes>;
@@ -61,10 +63,70 @@ export const defaultArmorEncAttributes: ArmorEncAttributes = {
   flow: [],
   details: "",
   dataSources: "",
-  updatedAt: new Date(),
-  createdAt: new Date(),
   statistic: defaultStatistic,
   statisticId: defaultStatistic.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };
+
+// Dictionary
+export const ArmorEncAttributesDic = (locale: Locale): ConvertToAllString<ArmorEncAttributes> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-HK":
+      return {
+        selfName: "防具装备",
+        name: "名称",
+        id: "ID",
+        flow: "附魔步骤",
+        dataSources: "数据来源",
+        details: "额外说明",
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "创建者ID",
+        statistic: StatisticDic(locale),
+        statisticId: "统计信息ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "防具裝備",
+        name: "名称",
+        id: "ID",
+        flow: "附魔步骤",
+        dataSources: "資料來源",
+        details: "額外說明",
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "創建者ID",
+        statistic: StatisticDic(locale),
+        statisticId: "統計信息ID",
+      };
+    case "en":
+    case "en-US":
+    case "en-GB":
+      return {
+        selfName: "Armor",
+        name: "Name",
+        id: "ID",
+        flow: "Steps",
+        dataSources: "Data Sources",
+        details: "Details",
+        updatedByAccountId: "Updated By Account Id",
+        createdByAccountId: "Created By Account Id",
+        statistic: StatisticDic(locale),
+        statisticId: "Statistic Id",
+      };
+    case "ja":
+      return {
+        selfName: "鎧",
+        name: "名前",
+        id: "ID",
+        flow: "ステップ",
+        dataSources: "データソース",
+        details: "追加詳細",
+        updatedByAccountId: "アカウントIDによって更新",
+        createdByAccountId: "アカウントIDによって作成",
+        statistic: StatisticDic(locale),
+        statisticId: "統計ID",
+      };
+  }
+};
+
