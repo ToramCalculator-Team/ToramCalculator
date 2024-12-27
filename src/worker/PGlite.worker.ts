@@ -7,7 +7,6 @@ import { live } from "@electric-sql/pglite/live";
 import { createId } from "@paralleldrive/cuid2";
 import ddl from "~/../prisma/ddl.sql?raw";
 // import ddl from "~/../test/db-csv/toram.sql?raw";
-import { initialStore } from "~/store";
 // import m1 from "../db/migrations/01-create_tables.sql?raw";
 // import m2 from "../db/migrations/02-add_items.sql?raw";
 
@@ -15,16 +14,6 @@ import { initialStore } from "~/store";
 //   { name: "01-create_tables", sql: m1 },
 //   { name: "02-add_items", sql: m2 },
 // ];
-
-// export async function migrate(pg: PGlite) {
-//   // Create migrations table if it doesn't exist
-//   await pg.exec(`
-//     CREATE TABLE IF NOT EXISTS migrations (
-//       id SERIAL PRIMARY KEY,
-//       name TEXT NOT NULL UNIQUE,
-//       applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-//     );
-//   `);
 
 //   // Get list of applied migrations
 //   const result = await pg.exec(`SELECT name FROM migrations ORDER BY id;`);
@@ -62,18 +51,15 @@ worker({
       },
     });
     // await migrate(pg);
-    if (meta.storage) {
-      const oldStore = JSON.parse(meta.storage);
-      const newStore = initialStore;
-      if (oldStore.dbVersion && oldStore.dbVersion === newStore.dbVersion) {
-      } else {
-        console.log(`数据库版本更新，将迁移数据库`);
-        await pg.exec(ddl);
-      }
-    } else {
-      console.log("配置数据缺失，初始化数据库");
-      await pg.exec(ddl);
-    }
+    meta.init && await pg.exec(ddl);
+    // 添加本地迁移记录表
+    await pg.exec(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
     // const userShape = await pg.sync.syncShapeToTable({
     //   shape: {
     //     url: `${ELECTRIC_HOST}/v1/shape?table="user"`,

@@ -7,7 +7,7 @@ export type Rate = Selectable<rate>;
 export type NewRate = Insertable<rate>;
 export type RateUpdate = Updateable<rate>;
 
-export async function findRatesById(id: string) {
+export async function findRateById(id: string) {
   return await db.selectFrom("rate").where("id", "=", id).selectAll().execute();
 }
 

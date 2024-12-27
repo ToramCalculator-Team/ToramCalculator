@@ -1,75 +1,3 @@
--- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('USER', 'ADMIN');
-
--- CreateEnum
-CREATE TYPE "Element" AS ENUM ('Normal', 'Light', 'Dark', 'Water', 'Fire', 'Earth', 'Wind');
-
--- CreateEnum
-CREATE TYPE "MobType" AS ENUM ('Mob', 'MiniBoss', 'Boss');
-
--- CreateEnum
-CREATE TYPE "PersonalityType" AS ENUM ('None', 'Luk', 'Cri', 'Tec', 'Men');
-
--- CreateEnum
-CREATE TYPE "ArmorType" AS ENUM ('Normal', 'Light', 'Heavy');
-
--- CreateEnum
-CREATE TYPE "SkillTargetType" AS ENUM ('None', 'Self', 'Player', 'Enemy');
-
--- CreateEnum
-CREATE TYPE "SkillChargingType" AS ENUM ('None', 'Chanting', 'Reservoir');
-
--- CreateEnum
-CREATE TYPE "YieldType" AS ENUM ('PersistentEffect', 'ImmediateEffect');
-
--- CreateEnum
-CREATE TYPE "DurationType" AS ENUM ('FRAME', 'SKILL', 'UNLIMITED');
-
--- CreateEnum
-CREATE TYPE "MobDifficultyFlag" AS ENUM ('Easy', 'Normal', 'Hard', 'Lunatic', 'Ultimate');
-
--- CreateEnum
-CREATE TYPE "MobDamageType" AS ENUM ('Physics', 'Magic', 'CurrentRate', 'MaxRate');
-
--- CreateEnum
-CREATE TYPE "ComboType" AS ENUM ('NULL');
-
--- CreateEnum
-CREATE TYPE "AddressType" AS ENUM ('Normal', 'Limited');
-
--- CreateEnum
-CREATE TYPE "MaterialType" AS ENUM ('Metal', 'Cloth', 'Beast', 'Wood', 'Drug', 'Magic');
-
--- CreateEnum
-CREATE TYPE "PartBreakReward" AS ENUM ('None', 'CanDrop', 'DropUp');
-
--- CreateEnum
-CREATE TYPE "MobPart" AS ENUM ('A', 'B', 'C');
-
--- CreateEnum
-CREATE TYPE "AvailabilityType" AS ENUM ('permanent', 'event');
-
--- CreateEnum
-CREATE TYPE "AcquisitionMethodType" AS ENUM ('Drop', 'Craft');
-
--- CreateEnum
-CREATE TYPE "SkillDistanceResistType" AS ENUM ('None', 'Long', 'Short', 'Both');
-
--- CreateEnum
-CREATE TYPE "Persona" AS ENUM ('Fervent', 'Intelligent', 'Mild', 'Swift', 'Justice', 'Devoted', 'Impulsive', 'Calm', 'Sly', 'Timid', 'Brave', 'Active', 'Sturdy', 'Steady', 'Max');
-
--- CreateEnum
-CREATE TYPE "PetType" AS ENUM ('AllTrades', 'PhysicalAttack', 'MagicAttack', 'PhysicalDefense', 'MagicDefensem', 'Avoidance', 'Hit', 'SkillsEnhancement', 'Genius');
-
--- CreateEnum
-CREATE TYPE "MercenaryType" AS ENUM ('Tank', 'Dps');
-
--- CreateEnum
-CREATE TYPE "MercenarySkillType" AS ENUM ('Active', 'Passive');
-
--- CreateEnum
-CREATE TYPE "Visibility" AS ENUM ('Public', 'Private');
-
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
@@ -77,7 +5,7 @@ CREATE TABLE "user" (
     "email" TEXT,
     "emailVerified" TIMESTAMP(3),
     "image" TEXT,
-    "userRole" "UserRole" NOT NULL,
+    "userRole" TEXT NOT NULL,
 
     CONSTRAINT "user_pkey" PRIMARY KEY ("id")
 );
@@ -162,7 +90,7 @@ CREATE TABLE "activity" (
 CREATE TABLE "address" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "type" "AddressType" NOT NULL,
+    "type" TEXT NOT NULL,
     "x" INTEGER NOT NULL,
     "y" INTEGER NOT NULL,
     "worldId" TEXT NOT NULL,
@@ -186,6 +114,7 @@ CREATE TABLE "zone" (
 CREATE TABLE "npc" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "imageId" TEXT NOT NULL,
     "zoneId" TEXT NOT NULL,
 
     CONSTRAINT "npc_pkey" PRIMARY KEY ("id")
@@ -197,8 +126,6 @@ CREATE TABLE "item" (
     "name" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "details" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -256,7 +183,7 @@ CREATE TABLE "reward" (
 CREATE TABLE "material" (
     "name" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
-    "material" "MaterialType" NOT NULL,
+    "material" TEXT NOT NULL,
     "ptValue" INTEGER NOT NULL,
     "price" INTEGER NOT NULL,
 
@@ -267,12 +194,12 @@ CREATE TABLE "material" (
 CREATE TABLE "mob" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "mobType" "MobType" NOT NULL,
+    "mobType" TEXT NOT NULL,
     "captureable" BOOLEAN NOT NULL,
     "baseLv" INTEGER NOT NULL,
     "experience" INTEGER NOT NULL,
     "partsExperience" INTEGER NOT NULL,
-    "element" "Element" NOT NULL,
+    "element" TEXT NOT NULL,
     "radius" INTEGER NOT NULL,
     "maxhp" INTEGER NOT NULL,
     "physicalDefense" INTEGER NOT NULL,
@@ -293,8 +220,6 @@ CREATE TABLE "mob" (
     "possibilityOfRunningAround" INTEGER NOT NULL,
     "details" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "imageId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
@@ -308,9 +233,9 @@ CREATE TABLE "drop_item" (
     "id" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
     "probability" INTEGER NOT NULL,
-    "relatedPart" "MobPart" NOT NULL,
+    "relatedPart" TEXT NOT NULL,
     "relatedPartInfo" TEXT NOT NULL,
-    "breakReward" "PartBreakReward" NOT NULL,
+    "breakReward" TEXT NOT NULL,
     "dropById" TEXT NOT NULL,
 
     CONSTRAINT "drop_item_pkey" PRIMARY KEY ("id")
@@ -323,8 +248,6 @@ CREATE TABLE "weapon_enchantment_attributes" (
     "flow" JSONB NOT NULL,
     "details" TEXT,
     "dataSources" TEXT,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -339,8 +262,6 @@ CREATE TABLE "armor_enchantment_attributes" (
     "flow" JSONB NOT NULL,
     "details" TEXT,
     "dataSources" TEXT,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -404,7 +325,7 @@ CREATE TABLE "custom_armor" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "def" INTEGER NOT NULL,
-    "armorType" "ArmorType" NOT NULL,
+    "armorType" TEXT NOT NULL,
     "templateId" TEXT NOT NULL,
     "refinement" INTEGER NOT NULL,
     "enchantmentAttributesId" TEXT,
@@ -470,12 +391,10 @@ CREATE TABLE "skill" (
     "name" TEXT NOT NULL,
     "isPassive" BOOLEAN NOT NULL,
     "element" TEXT NOT NULL,
-    "chargingType" "SkillChargingType" NOT NULL,
-    "distanceResist" "SkillDistanceResistType" NOT NULL,
+    "chargingType" TEXT NOT NULL,
+    "distanceResist" TEXT NOT NULL,
     "details" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -503,8 +422,8 @@ CREATE TABLE "skill_effect" (
     "motionModified" TEXT NOT NULL,
     "chantingFixed" TEXT NOT NULL,
     "chantingModified" TEXT NOT NULL,
-    "ReservoirFixed" TEXT NOT NULL,
-    "ReservoirModified" TEXT NOT NULL,
+    "reservoirFixed" TEXT NOT NULL,
+    "reservoirModified" TEXT NOT NULL,
     "startupFrames" TEXT NOT NULL,
     "cost" TEXT NOT NULL,
     "belongToskillId" TEXT NOT NULL,
@@ -516,7 +435,7 @@ CREATE TABLE "skill_effect" (
 CREATE TABLE "skill_yield" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "yieldType" "YieldType" NOT NULL,
+    "yieldType" TEXT NOT NULL,
     "yieldFormula" TEXT NOT NULL,
     "mutationTimingFormula" TEXT,
     "skillEffectId" TEXT,
@@ -539,8 +458,8 @@ CREATE TABLE "custom_pet" (
     "agi" INTEGER NOT NULL,
     "dex" INTEGER NOT NULL,
     "weaponType" TEXT NOT NULL,
-    "persona" "Persona" NOT NULL,
-    "type" "PetType" NOT NULL,
+    "persona" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "weaponAtk" INTEGER NOT NULL,
     "masterId" TEXT NOT NULL,
 
@@ -599,7 +518,7 @@ CREATE TABLE "character" (
     "vit" INTEGER NOT NULL,
     "agi" INTEGER NOT NULL,
     "dex" INTEGER NOT NULL,
-    "personalityType" "PersonalityType" NOT NULL,
+    "personalityType" TEXT NOT NULL,
     "personalityValue" INTEGER NOT NULL,
     "weaponId" TEXT NOT NULL,
     "subWeaponId" TEXT NOT NULL,
@@ -609,13 +528,11 @@ CREATE TABLE "character" (
     "cooking" TEXT[],
     "modifiers" TEXT[],
     "partnerSkillA" TEXT NOT NULL,
-    "partnerSkillAType" "MercenarySkillType" NOT NULL,
+    "partnerSkillAType" TEXT NOT NULL,
     "partnerSkillB" TEXT NOT NULL,
-    "partnerSkillBType" "MercenarySkillType" NOT NULL,
+    "partnerSkillBType" TEXT NOT NULL,
     "masterId" TEXT NOT NULL,
     "details" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "imageId" TEXT NOT NULL,
 
@@ -624,12 +541,12 @@ CREATE TABLE "character" (
 
 -- CreateTable
 CREATE TABLE "mercenary" (
-    "type" "MercenaryType" NOT NULL,
+    "type" TEXT NOT NULL,
     "templateId" TEXT NOT NULL,
     "skillAId" TEXT NOT NULL,
-    "skillAType" "MercenarySkillType" NOT NULL,
+    "skillAType" TEXT NOT NULL,
     "skillBId" TEXT NOT NULL,
-    "skillBType" "MercenarySkillType" NOT NULL,
+    "skillBType" TEXT NOT NULL,
 
     CONSTRAINT "mercenary_pkey" PRIMARY KEY ("templateId")
 );
@@ -641,7 +558,7 @@ CREATE TABLE "member" (
     "partnerId" TEXT,
     "mercenaryId" TEXT,
     "mobId" TEXT,
-    "mobDifficultyFlag" "MobDifficultyFlag" NOT NULL,
+    "mobDifficultyFlag" TEXT NOT NULL,
 
     CONSTRAINT "member_pkey" PRIMARY KEY ("id")
 );
@@ -659,10 +576,8 @@ CREATE TABLE "team" (
 CREATE TABLE "simulator" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "visibility" "Visibility" NOT NULL,
+    "visibility" TEXT NOT NULL,
     "details" TEXT,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -673,6 +588,8 @@ CREATE TABLE "simulator" (
 -- CreateTable
 CREATE TABLE "statistic" (
     "id" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "statistic_pkey" PRIMARY KEY ("id")
 );
@@ -681,7 +598,6 @@ CREATE TABLE "statistic" (
 CREATE TABLE "image" (
     "id" TEXT NOT NULL,
     "dataUrl" TEXT NOT NULL,
-    "npcId" TEXT,
 
     CONSTRAINT "image_pkey" PRIMARY KEY ("id")
 );
@@ -890,9 +806,6 @@ CREATE UNIQUE INDEX "character_imageId_key" ON "character"("imageId");
 CREATE UNIQUE INDEX "simulator_statisticId_key" ON "simulator"("statisticId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "image_npcId_key" ON "image"("npcId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "_mobTozone_AB_unique" ON "_mobTozone"("A", "B");
 
 -- CreateIndex
@@ -1011,4 +924,3 @@ CREATE UNIQUE INDEX "_imageToweapon_AB_unique" ON "_imageToweapon"("A", "B");
 
 -- CreateIndex
 CREATE INDEX "_imageToweapon_B_index" ON "_imageToweapon"("B");
-

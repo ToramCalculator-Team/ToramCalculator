@@ -5,6 +5,8 @@ import { type Crystal } from "./repositories/crystal";
 import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
+import { initialPGWorker } from "./initialWorker";
+import * as _ from "lodash-es";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
 
@@ -75,7 +77,7 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-  version: 20241107,
+  version: 20241227,
   dbVersion: 0.001,
   theme: "light",
   settings: {
@@ -139,12 +141,49 @@ export const initialStore: Store = {
   }
 };
 
-const [store, setStore] = createStore<Store>(
-  typeof window !== "undefined" && localStorage.getItem("store")
-    ? { ...initialStore, ...JSON.parse(localStorage.getItem("store")!) }
-    : initialStore,
-);
+let actStore: Store
 
-const reset = () => setStore(initialStore);
+const safeParse = (data: string) => {
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    console.warn("本地存储数据解析失败，正在重置为默认配置:", error);
+    return null;
+  }
+};
 
-export { store, setStore, reset };
+const getActStore = () => {
+  if (!actStore) {
+    const isBrowser = typeof window !== "undefined";
+    const storage = isBrowser && localStorage.getItem("store");
+    if (storage) {
+      const oldStore = safeParse(storage) || {};
+      const newStore = initialStore;
+
+      // 排除版本信息
+      const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
+      const { version: newVersion, ...newStoreWithoutVersion } = newStore;
+
+      let mergedStore: Store;
+      if (oldVersion && oldVersion === newVersion) {
+        mergedStore = _.merge({}, oldStore, newStore);
+      } else {
+        mergedStore = _.merge({}, oldStoreWithoutVersion, newStoreWithoutVersion);
+        mergedStore.version = newVersion;
+        isBrowser && localStorage.setItem("store", JSON.stringify(mergedStore));
+      }
+      actStore = mergedStore;
+    } else {
+      console.log(performance.now(),"配置数据缺失，将应用配置为默认值并初始化本地数据库架构");
+      if (isBrowser) {
+        localStorage.setItem("store", JSON.stringify(initialStore));
+        initialPGWorker(true);
+      }
+      actStore = initialStore;
+    }
+  }
+  return actStore;
+};
+
+const [store, setStore] = createStore<Store>(getActStore());
+export { store, setStore };

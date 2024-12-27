@@ -7,7 +7,7 @@ import { Pool } from "pg";
 // const PGdialect = new PostgresDialect({
 //   pool: new Pool({
 //     database: 'postgres',
-//     host: 'kiaclouth.com',
+//     host: 'localhost',
 //     user: 'postgres',
 //     port: 5432,
 //     max: 10,
