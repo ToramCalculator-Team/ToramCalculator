@@ -590,6 +590,8 @@ CREATE TABLE "statistic" (
     "id" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
+    "usageTimestamps" TIMESTAMP(3)[],
+    "viewTimestamps" TIMESTAMP(3)[],
 
     CONSTRAINT "statistic_pkey" PRIMARY KEY ("id")
 );
@@ -600,32 +602,6 @@ CREATE TABLE "image" (
     "dataUrl" TEXT NOT NULL,
 
     CONSTRAINT "image_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "rate" (
-    "id" TEXT NOT NULL,
-    "rate" INTEGER NOT NULL,
-    "accountId" TEXT NOT NULL,
-    "statisticId" TEXT NOT NULL,
-
-    CONSTRAINT "rate_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "usage_timestamp" (
-    "timestamp" TIMESTAMP(3) NOT NULL,
-    "statisticId" TEXT,
-
-    CONSTRAINT "usage_timestamp_pkey" PRIMARY KEY ("timestamp")
-);
-
--- CreateTable
-CREATE TABLE "view_timestamp" (
-    "timestamp" TIMESTAMP(3) NOT NULL,
-    "statisticId" TEXT,
-
-    CONSTRAINT "view_timestamp_pkey" PRIMARY KEY ("timestamp")
 );
 
 -- CreateTable

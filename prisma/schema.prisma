@@ -33,7 +33,6 @@ model user {
     accounts      account[]
     sessions      session[]
     posts         post[]
-    rates         rate[]
 }
 
 model account {
@@ -822,9 +821,8 @@ model statistic {
 
     updatedAt       DateTime          @updatedAt
     createdAt       DateTime
-    usageTimestamps usage_timestamp[]
-    viewTimestamps  view_timestamp[]
-    rates           rate[]
+    usageTimestamps DateTime[]
+    viewTimestamps  DateTime[]
 
     belongToWeaponEncAttr weapon_enchantment_attributes?
     belongToArmorEncAttr  armor_enchantment_attributes?
@@ -846,28 +844,4 @@ model image {
     belongToAddEquip additional_equipment[]
     usedByMob        mob[]
     usedByCharacter  character[]
-}
-
-// 评分
-model rate {
-    id                 String    @id
-    rate               Int
-    belongToUser       user      @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    accountId          String
-    belongToStatistics statistic @relation(fields: [statisticId], references: [id])
-    statisticId        String
-}
-
-// 使用记录时间戳
-model usage_timestamp {
-    timestamp        DateTime   @id
-    usedByStatistics statistic? @relation(fields: [statisticId], references: [id])
-    statisticId      String?
-}
-
-// 查看记录时间戳
-model view_timestamp {
-    timestamp        DateTime   @id
-    usedByStatistics statistic? @relation(fields: [statisticId], references: [id])
-    statisticId      String?
 }

@@ -353,12 +353,6 @@ export type post = {
     updatedAt: Timestamp;
     createdById: string;
 };
-export type rate = {
-    id: string;
-    rate: number;
-    accountId: string;
-    statisticId: string;
-};
 export type recipe = {
     id: string;
     weaponId: string | null;
@@ -453,6 +447,8 @@ export type statistic = {
     id: string;
     updatedAt: Timestamp;
     createdAt: Timestamp;
+    usageTimestamps: Timestamp[];
+    viewTimestamps: Timestamp[];
 };
 export type task = {
     id: string;
@@ -464,10 +460,6 @@ export type team = {
     id: string;
     name: string | null;
     gems: string[];
-};
-export type usage_timestamp = {
-    timestamp: Timestamp;
-    statisticId: string | null;
 };
 export type user = {
     id: string;
@@ -481,10 +473,6 @@ export type verification_token = {
     identifier: string;
     token: string;
     expires: Timestamp;
-};
-export type view_timestamp = {
-    timestamp: Timestamp;
-    statisticId: string | null;
 };
 export type weapon = {
     name: string;
@@ -569,7 +557,6 @@ export type DB = {
     npc: npc;
     player: player;
     post: post;
-    rate: rate;
     recipe: recipe;
     recipe_ingredient: recipe_ingredient;
     reward: reward;
@@ -582,10 +569,8 @@ export type DB = {
     statistic: statistic;
     task: task;
     team: team;
-    usage_timestamp: usage_timestamp;
     user: user;
     verification_token: verification_token;
-    view_timestamp: view_timestamp;
     weapon: weapon;
     weapon_enchantment_attributes: weapon_enchantment_attributes;
     world: world;

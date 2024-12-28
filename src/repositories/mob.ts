@@ -1,7 +1,7 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/repositories/db/types";
-import { createStatistic, defaultStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { createStatistic, defaultStatistic, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
@@ -63,20 +63,22 @@ export async function updateMob(id: string, updateWith: MobUpdate) {
   return await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createMob(newMob: NewMob) {
-  return await db.transaction().execute(async (trx) => {
-    console.log("createStatistic");
-    const statistic = await createStatistic(defaultStatistic);
-    console.log("createImage");
-    const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
-    console.log("createMob");
-    const mob = await trx.insertInto("mob").values({
-      ...newMob,
-      statisticId: statistic.id,
-      imageId: image.id,
-    }).returningAll().executeTakeFirstOrThrow();
-    return { ...mob, statistic, image };
-  });
+export async function insertMob(trx:Transaction<DB>, newMob: NewMob) {
+  const statistic = await insertStatistic(trx, defaultStatistic);
+  const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
+  const mob = await trx.insertInto("mob").values({
+    ...newMob,
+    statisticId: statistic.id,
+    imageId: image.id,
+  }).returningAll().executeTakeFirstOrThrow();
+
+  return mob;
+}
+
+  export async function createMob(newMob: NewMob) {
+    return await db.transaction().execute(async (trx) => {
+      return await insertMob(trx, newMob);
+    });
 }
 
 export async function deleteMob(id: string) {

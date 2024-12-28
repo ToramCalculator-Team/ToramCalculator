@@ -148,15 +148,9 @@ export const TeamScalarFieldEnumSchema = z.enum(['id','name','gems']);
 
 export const SimulatorScalarFieldEnumSchema = z.enum(['id','name','visibility','details','statisticId','updatedByAccountId','createdByAccountId']);
 
-export const StatisticScalarFieldEnumSchema = z.enum(['id','updatedAt','createdAt']);
+export const StatisticScalarFieldEnumSchema = z.enum(['id','updatedAt','createdAt','usageTimestamps','viewTimestamps']);
 
 export const ImageScalarFieldEnumSchema = z.enum(['id','dataUrl']);
-
-export const RateScalarFieldEnumSchema = z.enum(['id','rate','accountId','statisticId']);
-
-export const Usage_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticId']);
-
-export const View_timestampScalarFieldEnumSchema = z.enum(['timestamp','statisticId']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -903,6 +897,8 @@ export const statisticSchema = z.object({
   id: z.string(),
   updatedAt: z.coerce.date(),
   createdAt: z.coerce.date(),
+  usageTimestamps: z.coerce.date().array(),
+  viewTimestamps: z.coerce.date().array(),
 })
 
 export type statistic = z.infer<typeof statisticSchema>
@@ -917,38 +913,3 @@ export const imageSchema = z.object({
 })
 
 export type image = z.infer<typeof imageSchema>
-
-/////////////////////////////////////////
-// RATE SCHEMA
-/////////////////////////////////////////
-
-export const rateSchema = z.object({
-  id: z.string(),
-  rate: z.number().int(),
-  accountId: z.string(),
-  statisticId: z.string(),
-})
-
-export type rate = z.infer<typeof rateSchema>
-
-/////////////////////////////////////////
-// USAGE TIMESTAMP SCHEMA
-/////////////////////////////////////////
-
-export const usage_timestampSchema = z.object({
-  timestamp: z.coerce.date(),
-  statisticId: z.string().nullable(),
-})
-
-export type usage_timestamp = z.infer<typeof usage_timestampSchema>
-
-/////////////////////////////////////////
-// VIEW TIMESTAMP SCHEMA
-/////////////////////////////////////////
-
-export const view_timestampSchema = z.object({
-  timestamp: z.coerce.date(),
-  statisticId: z.string().nullable(),
-})
-
-export type view_timestamp = z.infer<typeof view_timestampSchema>
