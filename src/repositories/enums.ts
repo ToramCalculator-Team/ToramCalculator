@@ -272,16 +272,16 @@ export type EquipType = (typeof EQUIP_TYPE)[number];
 
 // 锻晶 //
 const CRYSTAL_TYPE = [
-  "Normal",
-  "Weapon",
-  "Armor",
-  "AddEquip",
-  "Special",
-  "PowerUpNormal",
-  "PowerUpWeapon",
-  "PowerUpArmor",
-  "PowerUpAddEquip",
-  "PowerUpSpecial",
+  "NormalCrystal",
+  "WeaponCrystal",
+  "ArmorCrystal",
+  "AddEquipCrystal",
+  "SpecialCrystal",
+  "PowerUpNormalCrystal",
+  "PowerUpWeaponCrystal",
+  "PowerUpArmorCrystal",
+  "PowerUpAddEquipCrystal",
+  "PowerUpSpecialCrystal",
 ] as const;
 export type CrystalType = (typeof CRYSTAL_TYPE)[number];
 

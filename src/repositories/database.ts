@@ -1,7 +1,7 @@
 import { DB } from "~/repositories/db/types";
 import { Kysely, PostgresDialect } from "kysely";
 import { PGliteDialect } from "./dialect/dialect";
-import { getPGWorker } from "~/initialWorker";
+import { pgWorker } from "~/initialWorker";
 import { Pool } from "pg";
 
 // const PGdialect = new PostgresDialect({
@@ -21,7 +21,7 @@ import { Pool } from "pg";
 // debugger
 const initialDatabase = async () => {
   return new Kysely<DB>({
-    dialect: new PGliteDialect(await getPGWorker()),
+    dialect: new PGliteDialect(pgWorker),
     // log(event) {
     //   if (event.level === "query") {
     //     console.log(event.query.sql); // SQL 查询

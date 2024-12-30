@@ -78,31 +78,38 @@ export default function MobIndexPage() {
       size: 220,
     },
     {
-      accessorKey: "address",
-      header: () => MobDic(store.settings.language).actions,
-      cell: (info) => info.getValue(),
-      size: 150,
-    },
-    {
       accessorKey: "mobType",
       header: () => MobDic(store.settings.language).mobType,
       cell: (info) => dictionary().enums.MobType[info.getValue<Enums.MobType>()],
       size: 120,
     },
     {
-      accessorKey: "element",
-      header: () => MobDic(store.settings.language).element,
-      cell: (info) => dictionary().enums.Element[info.getValue<Enums.ElementType>()],
+      accessorKey: "captureable",
+      header: () => MobDic(store.settings.language).captureable,
+      cell: (info) => info.getValue(),
       size: 120,
     },
     {
       accessorKey: "baseLv",
       header: () => MobDic(store.settings.language).baseLv,
+      cell: (info) => info.getValue(),
       size: 120,
     },
     {
       accessorKey: "experience",
       header: () => MobDic(store.settings.language).experience,
+      size: 120,
+    },
+    {
+      accessorKey: "partsExperience",
+      header: () => MobDic(store.settings.language).partsExperience,
+      cell: (info) => info.getValue(),
+      size: 120,
+    },
+    {
+      accessorKey: "element",
+      header: () => MobDic(store.settings.language).element,
+      cell: (info) => dictionary().enums.Element[info.getValue<Enums.ElementType>()],
       size: 120,
     },
     {
@@ -144,6 +151,18 @@ export default function MobIndexPage() {
       accessorKey: "block",
       header: () => MobDic(store.settings.language).block,
       size: 100,
+    },
+    {
+      accessorKey: "actions",
+      header: () => MobDic(store.settings.language).actions,
+      cell: (info) => info.getValue(),
+      size: 150,
+    },
+    {
+      accessorKey: "belongToZones",
+      header: () => MobDic(store.settings.language).belongToZones,
+      cell: (info) => info.getValue(),
+      size: 150,
     },
   ];
   const table = createMemo(() => {
@@ -513,7 +532,7 @@ export default function MobIndexPage() {
                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                       </span>
                                       <span class="text-sm font-normal text-mainText-color">
-                                        {row.getValue("address") ?? "未知"}
+                                        {row.getValue("belongToZones") ?? "无"}
                                       </span>
                                     </>
                                   );

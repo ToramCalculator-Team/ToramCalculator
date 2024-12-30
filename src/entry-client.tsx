@@ -5,7 +5,7 @@ import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 import { mount, StartClient } from "@solidjs/start/client";
 import * as _ from "lodash-es";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
-import { createMob, defaultMob, findMobById, Mob, NewMob } from "./repositories/mob";
+import { createMob, defaultMob, findMobById } from "./repositories/mob";
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -17,7 +17,7 @@ if ("serviceWorker" in navigator) {
 OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
 
-// 测试kysely方法
+// 测试kysely方法，目前没办法保证异步执行顺序，可能此时数据库未完成初始化
 try {
   console.log("查询");
   const result = await findMobById(defaultMob.id);

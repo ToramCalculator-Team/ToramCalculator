@@ -5,14 +5,12 @@ import { type Crystal } from "./repositories/crystal";
 import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
-import { initialPGWorker } from "./initialWorker";
 import * as _ from "lodash-es";
 
-export type FormSate = "CREATE" | "UPDATE" | "DISPLAY"
+export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
 
 export type Store = {
   version: number;
-  dbVersion: number;
   theme: "light" | "dark";
   settingsDialogState: boolean;
   settings: {
@@ -36,8 +34,7 @@ export type Store = {
       };
     };
   };
-  indexPage: {
-  };
+  indexPage: {};
   mobPage: {
     augmented: boolean;
     mobId: string;
@@ -78,12 +75,11 @@ export type Store = {
 
 export const initialStore: Store = {
   version: 20241227,
-  dbVersion: 0.001,
   theme: "light",
   settings: {
     userInterface: {
       isAnimationEnabled: true,
-      is3DbackgroundDisabled: false
+      is3DbackgroundDisabled: false,
     },
     language: "zh-CN",
     statusAndSync: {
@@ -91,14 +87,14 @@ export const initialStore: Store = {
       syncStateAcrossClients: true,
     },
     privacy: {
-      postVisibility: "everyone"
+      postVisibility: "everyone",
     },
     messages: {
       notifyOnContentChange: {
         notifyOnReferencedContentChange: true,
         notifyOnLike: true,
-        notifyOnBookmark: true
-      }
+        notifyOnBookmark: true,
+      },
     },
   },
   settingsDialogState: false,
@@ -116,32 +112,32 @@ export const initialStore: Store = {
     crystalList: [],
     crystalDialogState: false,
     crystalFormState: "CREATE",
-    filterState: false
+    filterState: false,
   },
   skillPage: {
     skillId: "defaultSkillId",
     skillList: [],
     skillDialogState: false,
     skillFormState: "CREATE",
-    filterState: false
+    filterState: false,
   },
   characterPage: {
     characterId: "defaultCharacterId",
     characterList: [],
     characterDialogState: false,
     characterFormState: "CREATE",
-    filterState: false
+    filterState: false,
   },
   simulatorPage: {
     simulatorId: "defaultSimulatorId",
     simulatorList: [],
     simulatorDialogState: false,
     simulatorFormState: "CREATE",
-    filterState: false
-  }
+    filterState: false,
+  },
 };
 
-let actStore: Store
+let actStore: Store;
 
 const safeParse = (data: string) => {
   try {
@@ -155,31 +151,31 @@ const safeParse = (data: string) => {
 const getActStore = () => {
   if (!actStore) {
     const isBrowser = typeof window !== "undefined";
-    const storage = isBrowser && localStorage.getItem("store");
-    if (storage) {
-      const oldStore = safeParse(storage) || {};
-      const newStore = initialStore;
+    if (isBrowser) {
+      const storage = localStorage.getItem("store");
+      if (storage) {
+        const oldStore = safeParse(storage) || {};
+        const newStore = initialStore;
 
-      // 排除版本信息
-      const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
-      const { version: newVersion, ...newStoreWithoutVersion } = newStore;
+        // 排除版本信息
+        const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
+        const { version: newVersion, ...newStoreWithoutVersion } = newStore;
 
-      let mergedStore: Store;
-      if (oldVersion && oldVersion === newVersion) {
-        mergedStore = _.merge({}, oldStore, newStore);
+        let mergedStore: Store;
+        if (oldVersion && oldVersion === newVersion) {
+          mergedStore = _.merge({}, oldStore, newStore);
+        } else {
+          mergedStore = _.merge({}, oldStoreWithoutVersion, newStoreWithoutVersion);
+          mergedStore.version = newVersion;
+          console.log(performance.now(), "本地配置更新");
+          localStorage.setItem("store", JSON.stringify(mergedStore));
+        }
+        actStore = mergedStore;
       } else {
-        mergedStore = _.merge({}, oldStoreWithoutVersion, newStoreWithoutVersion);
-        mergedStore.version = newVersion;
-        isBrowser && localStorage.setItem("store", JSON.stringify(mergedStore));
-      }
-      actStore = mergedStore;
-    } else {
-      if (isBrowser) {
-        console.log(performance.now(),"配置数据缺失，将应用配置为默认值并初始化本地数据库架构");
+        console.log(performance.now(), "初始化本地配置");
         localStorage.setItem("store", JSON.stringify(initialStore));
-        initialPGWorker(true);
+        actStore = initialStore;
       }
-      actStore = initialStore;
     }
   }
   return actStore;

@@ -4,45 +4,22 @@ import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
-import { createId } from "@paralleldrive/cuid2";
 import ddl from "~/../prisma/ddl.sql?raw";
-// import ddl from "~/../test/db-csv/toram.sql?raw";
-// import m1 from "../db/migrations/01-create_tables.sql?raw";
-// import m2 from "../db/migrations/02-add_items.sql?raw";
 
-// const migrations = [
-//   { name: "01-create_tables", sql: m1 },
-//   { name: "02-add_items", sql: m2 },
-// ];
+const ELECTRIC_HOST = "http://localhost:3000";
+// const ELECTRIC_HOST = "https://test.kiaclouth.com";
 
-//   // Get list of applied migrations
-//   const result = await pg.exec(`SELECT name FROM migrations ORDER BY id;`);
-//   const appliedMigrations = result.rows.map((row) => row[0]);
-
-//   // Apply new migrations
-//   for (const migration of migrations) {
-//     if (!appliedMigrations.includes(migration.name)) {
-//       await pg.exec(migration.sql);
-//       await pg.exec(
-//         `
-//         INSERT INTO migrations (name)
-//         VALUES ($1);
-//       `,
-//         [migration.name],
-//       );
-//       console.log(`Applied migration: ${migration.name}`);
-//     }
-//   }
-// }
-
-// const ELECTRIC_HOST = "http://localhost:3000";
-const ELECTRIC_HOST = "https://test.kiaclouth.com";
+const migrates = [
+  {
+    name: "init",
+    sql: ddl,
+  },
+];
 
 worker({
   async init(options) {
-    const meta = options.meta;
     const pg = await PGlite.create({
-      dataDir: meta.dataDir,
+      dataDir: "idb://toramCalculatorDB",
       relaxedDurability: true,
       // debug: 1,
       extensions: {
@@ -50,8 +27,6 @@ worker({
         sync: electricSync({ debug: false }),
       },
     });
-    // await migrate(pg);
-    meta.init && (await pg.exec(ddl));
     // 添加本地迁移记录表
     await pg.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
@@ -60,6 +35,22 @@ worker({
         applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    const result = await pg.exec(`SELECT name FROM migrations ORDER BY id;`);
+    const appliedMigrations = result[0].rows.map((row) => row.name);
+    for (const migration of migrates) {
+      if (!appliedMigrations.includes(migration.name)) {
+        await pg.exec(migration.sql);
+        await pg.exec(
+          `
+        INSERT INTO migrations (name)
+        VALUES ('${migration.name}');
+      `,
+        );
+        console.log(`已应用迁移: ${migration.name}`);
+      }
+    }
+
     // const userShape = await pg.sync.syncShapeToTable({
     //   shape: {
     //     url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
@@ -244,6 +235,8 @@ worker({
     //   shapeKey: "simulators",
     //   primaryKey: ["id"],
     // });
+
+    console.log("PGliteWorker初始化完成.....");
 
     return pg;
   },
