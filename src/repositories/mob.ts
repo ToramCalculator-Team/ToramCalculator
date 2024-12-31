@@ -6,9 +6,13 @@ import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ElementType, MobType } from "./enums";
 
-export type Mob = Awaited<ReturnType<typeof findMobById>>;
+export type Mob = ModifyKeys<Awaited<ReturnType<typeof findMobById>>, {
+  mobType: MobType;
+  element: ElementType;
+}>;
 export type NewMob = Insertable<mob>;
 export type MobUpdate = Updateable<mob>;
 
@@ -109,10 +113,6 @@ export const defaultMob: Mob = {
   physicalAttackResistanceModifier: 0,
   magicalAttackResistanceModifier: 0,
   partsExperience: 0,
-  difficultyOfTank: 0,
-  difficultyOfMelee: 0,
-  difficultyOfRanged: 0,
-  possibilityOfRunningAround: 0,
   belongToZones: [],
   dropItems: [],
   details: "defaultExtraDetails",
@@ -154,10 +154,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理伤害惯性变动率",
         magicalAttackResistanceModifier: "魔法伤害惯性变动率",
         partsExperience: "部件经验",
-        difficultyOfTank: "坦克难度",
-        difficultyOfMelee: "近战输出难度",
-        difficultyOfRanged: "远程输出难度",
-        possibilityOfRunningAround: "好动程度",
         belongToZones: "所属区域",
         dropItems: "掉落道具",
         details: "额外说明",
@@ -194,10 +190,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理傷害惡性變動率",
         magicalAttackResistanceModifier: "魔法傷害惡性變動率",
         partsExperience: "部件經驗",
-        difficultyOfTank: "坦克難度",
-        difficultyOfMelee: "近戰輸出難度",
-        difficultyOfRanged: "遠程輸出難度",
-        possibilityOfRunningAround: "好動程度",
         belongToZones: "所屬區域",
         dropItems: "掉落道具",
         details: "額外說明",
@@ -236,10 +228,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "Physical Attack Resistance Modifier",
         magicalAttackResistanceModifier: "Magical Attack Resistance Modifier",
         partsExperience: "Parts Experience",
-        difficultyOfTank: "Tank Difficulty",
-        difficultyOfMelee: "Melee DPS Difficulty",
-        difficultyOfRanged: "Ranged DPS Difficulty",
-        possibilityOfRunningAround: "Possibility of Running Around",
         belongToZones: "Belong To Zones",
         dropItems: "Drop Items",
         details: "Details",
@@ -276,10 +264,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理攻撃耐性変動率",
         magicalAttackResistanceModifier: "魔法攻撃耐性変動率",
         partsExperience: "部品経験",
-        difficultyOfTank: "タンク出力難度",
-        difficultyOfMelee: "近戦出力难度",
-        difficultyOfRanged: "遠程出力难度",
-        possibilityOfRunningAround: "好動度",
         belongToZones: "所属ゾーン",
         dropItems: "ドロップアイテム",
         details: "追加情報",

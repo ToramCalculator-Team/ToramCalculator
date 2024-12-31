@@ -25,7 +25,7 @@ datasource db {
 
 model user {
     id            String    @id
-    name          String?
+    name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
     email         String?   @unique
     emailVerified DateTime?
     image         String?
@@ -84,8 +84,6 @@ model post {
     @@index([name])
 }
 
-// 以下是托拉姆的数据 ----------------------------------------------------------------------------------------------
-
 // 账户创建内容
 model account_create_data {
     mobs            mob[]
@@ -110,18 +108,20 @@ model account_update_data {
     accountId       String                          @id
 }
 
+// wiki内容 ----------------------------------------------------------------------------------------------
+
 // 世界
 model world {
     id String @id
 
-    name      String
+    name      Json
     addresses address[]
 }
 
 // 活动
 model activity {
     id   String @id
-    name String
+    name Json
 
     zones   zone[]
     recipes recipe[]
@@ -131,7 +131,7 @@ model activity {
 model address {
     id String @id
 
-    name String
+    name Json
     type String
     x    Int
     y    Int
@@ -146,7 +146,7 @@ model address {
 model zone {
     id String @id
 
-    name        String?
+    name        Json?
     linkZone    String[]
     rewardNodes Int
     mobs        mob[]
@@ -162,7 +162,7 @@ model zone {
 model npc {
     id String @id
 
-    name    String
+    name    Json
     tasks   task[]
     image   image? @relation(fields: [imageId], references: [id])
     imageId String
@@ -175,7 +175,7 @@ model npc {
 model item {
     id String @id
 
-    name       String
+    name       Json
     weapon     weapon?
     armor      armor?
     addEquip   additional_equipment?
@@ -187,8 +187,9 @@ model item {
     dataSources String
     details     String
 
-    usedByDropItem   drop_item[]
-    usedByRewardItem reward[]
+    usedByDropItem    drop_item[]
+    usedByRewardItem  reward[]
+    usedByTaskRequire task_require[]
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -241,12 +242,42 @@ model recipe {
 model task {
     id String @id
 
-    lv      Int
-    name    String
-    rewards reward[]
+    lv          Int
+    name        Json
+    type        String
+    description Json
+    kills       kill_requirement[]
+    requires    task_require[] // type为
+    rewards     reward[]
 
     belongToNpc npc    @relation(fields: [npcId], references: [id])
     npcId       String
+}
+
+// 击杀要求
+model kill_requirement {
+    id String @id
+
+    mob   mob?   @relation(fields: [mobId], references: [id])
+    mobId String
+    count Int
+
+    belongToTask task   @relation(fields: [taskId], references: [id])
+    taskId       String
+}
+
+// 配方项
+model task_require {
+    id String @id
+
+    type   String
+    count  Int
+    item   item?   @relation(fields: [itemId], references: [id])
+    itemId String?
+
+    // 从属于配方
+    belongTorecipe task   @relation(fields: [taskId], references: [id])
+    taskId         String
 }
 
 // 任务奖励
@@ -265,7 +296,7 @@ model reward {
 
 // 素材物品
 model material {
-    name         String
+    name         Json
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 
@@ -278,7 +309,7 @@ model material {
 model mob {
     id String @id
 
-    name                             String ///  @zod.string.min(2, { message: "最少2个字符" })
+    name                             Json
     mobType                          String
     captureable                      Boolean
     baseLv                           Int
@@ -302,21 +333,18 @@ model mob {
 
     drops drop_item[]
 
-    difficultyOfTank           Int
-    difficultyOfMelee          Int
-    difficultyOfRanged         Int
-    possibilityOfRunningAround Int
-    details                    String
-    dataSources                String
+    details     String
+    dataSources String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
     image       image     @relation(fields: [imageId], references: [id])
     imageId     String
 
-    belongToZones    zone[]
-    usedByMembers    member[]
-    usedByCustomPets custom_pet[]
+    belongToZones          zone[]
+    usedByKillRequirements kill_requirement[]
+    usedByMembers          member[]
+    usedByCustomPets       custom_pet[]
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
     updatedByAccountId String?
@@ -339,49 +367,9 @@ model drop_item {
     dropById String
 }
 
-// 武器附魔
-model weapon_enchantment_attributes {
-    id String @id
-
-    name        String
-    flow        Json
-    details     String?
-    dataSources String?
-
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
-
-    usedByCustomWeapon custom_weapon[]
-
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
-    updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
-    createdByAccountId String?
-}
-
-// 防具附魔
-model armor_enchantment_attributes {
-    id String @id
-
-    name        String
-    flow        Json
-    details     String?
-    dataSources String?
-
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
-
-    usedByCustomArmor custom_armor[]
-
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
-    updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
-    createdByAccountId String?
-}
-
 // 锻晶
 model crystal {
-    name        String
+    name        Json
     crystalType String
     modifiers   String[]
 
@@ -406,7 +394,7 @@ model crystal {
 
 // 武器
 model weapon {
-    name            String
+    name            Json
     type            String
     baseAbi         Int
     stability       Int
@@ -423,6 +411,143 @@ model weapon {
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 }
+
+// 身体装备
+model armor {
+    name            Json
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    recipe          recipe?
+
+    usedBy custom_armor[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 防具附魔
+model armor_enchantment_attributes {
+    id String @id
+
+    name        String
+    flow        Json
+    details     String?
+    dataSources String?
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    usedByCustomArmor custom_armor[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+}
+
+// 追加装备
+model additional_equipment {
+    name            Json
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    recipe          recipe?
+
+    usedBy custom_additional_equipment[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 特殊装备
+model special_equipment {
+    name            Json
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    recipe          recipe?
+
+    usedBy custom_special_equipment[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 技能
+model skill {
+    id String @id
+
+    treeName       Json
+    posX           Int
+    posY           Int
+    tier           Int
+    name           Json
+    isPassive      Boolean
+    element        String
+    chargingType   String
+    distanceResist String
+    effect         skill_effect[]
+
+    details     String
+    dataSources String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    usedBy character_skill[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+}
+
+// 技能效果
+model skill_effect {
+    id String @id
+
+    mainHand          String
+    subHand           String
+    armor             String
+    description       Json
+    motionFixed       String
+    motionModified    String
+    chantingFixed     String
+    chantingModified  String
+    reservoirFixed    String
+    reservoirModified String
+    startupFrames     String
+    cost              String
+    details           Json
+
+    belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
+    belongToskillId String
+}
+
+// 消耗品
+model consumable {
+    name         Json
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+
+    type           String
+    effectDuration Int
+    effects        String[]
+    recipe         recipe?
+
+    usedBy character[]
+}
+
+// 模拟器内容 ----------------------------------------------------------------------------------------------
 
 // 玩家自定义武器
 model custom_weapon {
@@ -444,22 +569,24 @@ model custom_weapon {
     usedBySubHand  character[] @relation("subWeapon")
 }
 
-// 身体装备
-model armor {
-    name            String
-    baseDef         Int
-    defaultCrystals crystal[]
-    modifiers       String[]
-    colorA          Int
-    colorB          Int
-    colorC          Int
-    image           image[]
-    recipe          recipe?
+// 武器附魔
+model weapon_enchantment_attributes {
+    id String @id
 
-    usedBy custom_armor[]
+    name        String
+    flow        Json
+    details     String?
+    dataSources String?
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    usedByCustomWeapon custom_weapon[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 玩家自定义身体装备
@@ -482,24 +609,6 @@ model custom_armor {
     usedBy character[]
 }
 
-// 追加装备
-model additional_equipment {
-    name            String
-    baseDef         Int
-    defaultCrystals crystal[]
-    modifiers       String[]
-    colorA          Int
-    colorB          Int
-    colorC          Int
-    image           image[]
-    recipe          recipe?
-
-    usedBy custom_additional_equipment[]
-
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
-}
-
 // 玩家自定义追加装备
 model custom_additional_equipment {
     id String @id
@@ -515,20 +624,6 @@ model custom_additional_equipment {
     masterId String
 
     usedBy character[]
-}
-
-// 特殊装备
-model special_equipment {
-    name            String
-    baseDef         Int
-    defaultCrystals crystal[]
-    modifiers       String[]
-    recipe          recipe?
-
-    usedBy custom_special_equipment[]
-
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
 }
 
 // 玩家自定义特殊装备
@@ -548,35 +643,6 @@ model custom_special_equipment {
     usedBy character[]
 }
 
-// 技能
-model skill {
-    id String @id
-
-    treeName       String
-    posX           Int
-    posY           Int
-    tier           Int
-    name           String
-    isPassive      Boolean
-    element        String
-    chargingType   String
-    distanceResist String
-    effect         skill_effect[]
-
-    details     String
-    dataSources String
-
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
-
-    usedBy character_skill[]
-
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
-    updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
-    createdByAccountId String?
-}
-
 // 角色习得技能
 model character_skill {
     id String @id
@@ -586,41 +652,6 @@ model character_skill {
     templateId String
 
     usedByCharacter character[]
-}
-
-// 技能效果
-model skill_effect {
-    id String @id
-
-    mainHand          String
-    subHand           String
-    armor             String
-    description       String
-    motionFixed       String
-    motionModified    String
-    chantingFixed     String
-    chantingModified  String
-    reservoirFixed    String
-    reservoirModified String
-    startupFrames     String
-    cost              String
-    yield             skill_yield[]
-
-    belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
-    belongToskillId String
-}
-
-// 技能效果
-model skill_yield {
-    id String @id
-
-    name                  String
-    yieldType             String
-    yieldFormula          String
-    mutationTimingFormula String?
-
-    belongToSkillEffect skill_effect? @relation(fields: [skillEffectId], references: [id], onDelete: Cascade)
-    skillEffectId       String?
 }
 
 // 自定义宠物
@@ -648,20 +679,6 @@ model custom_pet {
     masterId String
 }
 
-// 消耗品
-model consumable {
-    name         String
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
-
-    type           String
-    effectDuration Int
-    effects        String[]
-    recipe         recipe?
-
-    usedBy character[]
-}
-
 // 连击
 model combo {
     id String @id
@@ -683,28 +700,6 @@ model avatar {
     playerId       String
 
     usedBy character[]
-}
-
-// 资产归属和操作实体
-model player {
-    id String @id
-
-    name    String
-    useIn   String
-    actions Json
-
-    characters character[]
-    customPets custom_pet[]
-    weapons    custom_weapon[]
-    armors     custom_armor[]
-    addEquips  custom_additional_equipment[]
-    speEquips  custom_special_equipment[]
-    avatars    avatar[]
-
-    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    accountId       String
-
-    usedByMember member[]
 }
 
 // 机体
@@ -768,6 +763,28 @@ model mercenary {
     usedByMemberMercenary member[] @relation("mercenary")
 }
 
+// 资产归属和操作实体
+model player {
+    id String @id
+
+    name    String
+    useIn   String
+    actions Json
+
+    characters character[]
+    customPets custom_pet[]
+    weapons    custom_weapon[]
+    armors     custom_armor[]
+    addEquips  custom_additional_equipment[]
+    speEquips  custom_special_equipment[]
+    avatars    avatar[]
+
+    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String
+
+    usedByMember member[]
+}
+
 // 队伍成员
 model member {
     id String @id
@@ -819,7 +836,7 @@ model simulator {
 model statistic {
     id String @id
 
-    updatedAt       DateTime          @updatedAt
+    updatedAt       DateTime   @updatedAt
     createdAt       DateTime
     usageTimestamps DateTime[]
     viewTimestamps  DateTime[]

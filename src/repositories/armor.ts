@@ -8,9 +8,12 @@ import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { WikiString } from "./enums";
 
-export type Armor = Awaited<ReturnType<typeof findArmorById>>;
+export type Armor = ModifyKeys<Awaited<ReturnType<typeof findArmorById>>, {
+  name: WikiString;
+}>;
 export type NewArmor = Insertable<item>;
 export type ArmorUpdate = Updateable<item>;
 
@@ -61,7 +64,15 @@ export async function deleteArmor(id: string) {
 
 // default
 export const defaultArmor: Armor = {
-  name: "默认防具（缺省值）",
+  name: {
+    "zh-CN": "默认防具（缺省值）",
+    "zh-TW": "",
+    "zh-HK": "",
+    en: "",
+    "en-US": "",
+    "en-GB": "",
+    ja: ""
+  },
   id: "defaultArmorId",
   modifiers: [],
   itemId: "defaultArmorId",

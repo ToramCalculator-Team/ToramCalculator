@@ -73,7 +73,7 @@ CREATE TABLE "account_update_data" (
 -- CreateTable
 CREATE TABLE "world" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
 
     CONSTRAINT "world_pkey" PRIMARY KEY ("id")
 );
@@ -81,7 +81,7 @@ CREATE TABLE "world" (
 -- CreateTable
 CREATE TABLE "activity" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
 
     CONSTRAINT "activity_pkey" PRIMARY KEY ("id")
 );
@@ -89,7 +89,7 @@ CREATE TABLE "activity" (
 -- CreateTable
 CREATE TABLE "address" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
     "type" TEXT NOT NULL,
     "x" INTEGER NOT NULL,
     "y" INTEGER NOT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE "address" (
 -- CreateTable
 CREATE TABLE "zone" (
     "id" TEXT NOT NULL,
-    "name" TEXT,
+    "name" JSONB,
     "linkZone" TEXT[],
     "rewardNodes" INTEGER NOT NULL,
     "activityId" TEXT,
@@ -113,7 +113,7 @@ CREATE TABLE "zone" (
 -- CreateTable
 CREATE TABLE "npc" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
     "imageId" TEXT NOT NULL,
     "zoneId" TEXT NOT NULL,
 
@@ -123,7 +123,7 @@ CREATE TABLE "npc" (
 -- CreateTable
 CREATE TABLE "item" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
     "dataSources" TEXT NOT NULL,
     "details" TEXT NOT NULL,
     "statisticId" TEXT NOT NULL,
@@ -161,10 +161,33 @@ CREATE TABLE "recipe" (
 CREATE TABLE "task" (
     "id" TEXT NOT NULL,
     "lv" INTEGER NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
+    "type" TEXT NOT NULL,
+    "description" JSONB NOT NULL,
     "npcId" TEXT NOT NULL,
 
     CONSTRAINT "task_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "kill_requirement" (
+    "id" TEXT NOT NULL,
+    "mobId" TEXT NOT NULL,
+    "count" INTEGER NOT NULL,
+    "taskId" TEXT NOT NULL,
+
+    CONSTRAINT "kill_requirement_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "task_require" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "count" INTEGER NOT NULL,
+    "itemId" TEXT,
+    "taskId" TEXT NOT NULL,
+
+    CONSTRAINT "task_require_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -181,7 +204,7 @@ CREATE TABLE "reward" (
 
 -- CreateTable
 CREATE TABLE "material" (
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
     "itemId" TEXT NOT NULL,
     "material" TEXT NOT NULL,
     "ptValue" INTEGER NOT NULL,
@@ -193,7 +216,7 @@ CREATE TABLE "material" (
 -- CreateTable
 CREATE TABLE "mob" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" JSONB NOT NULL,
     "mobType" TEXT NOT NULL,
     "captureable" BOOLEAN NOT NULL,
     "baseLv" INTEGER NOT NULL,
@@ -214,10 +237,6 @@ CREATE TABLE "mob" (
     "physicalAttackResistanceModifier" INTEGER NOT NULL,
     "magicalAttackResistanceModifier" INTEGER NOT NULL,
     "actions" JSONB NOT NULL,
-    "difficultyOfTank" INTEGER NOT NULL,
-    "difficultyOfMelee" INTEGER NOT NULL,
-    "difficultyOfRanged" INTEGER NOT NULL,
-    "possibilityOfRunningAround" INTEGER NOT NULL,
     "details" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "statisticId" TEXT NOT NULL,
@@ -242,17 +261,41 @@ CREATE TABLE "drop_item" (
 );
 
 -- CreateTable
-CREATE TABLE "weapon_enchantment_attributes" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "flow" JSONB NOT NULL,
-    "details" TEXT,
-    "dataSources" TEXT,
-    "statisticId" TEXT NOT NULL,
-    "updatedByAccountId" TEXT,
-    "createdByAccountId" TEXT,
+CREATE TABLE "crystal" (
+    "name" JSONB NOT NULL,
+    "crystalType" TEXT NOT NULL,
+    "modifiers" TEXT[],
+    "itemId" TEXT NOT NULL,
 
-    CONSTRAINT "weapon_enchantment_attributes_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "crystal_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "weapon" (
+    "name" JSONB NOT NULL,
+    "type" TEXT NOT NULL,
+    "baseAbi" INTEGER NOT NULL,
+    "stability" INTEGER NOT NULL,
+    "modifiers" TEXT[],
+    "colorA" INTEGER NOT NULL,
+    "colorB" INTEGER NOT NULL,
+    "colorC" INTEGER NOT NULL,
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "weapon_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "armor" (
+    "name" JSONB NOT NULL,
+    "baseDef" INTEGER NOT NULL,
+    "modifiers" TEXT[],
+    "colorA" INTEGER NOT NULL,
+    "colorB" INTEGER NOT NULL,
+    "colorC" INTEGER NOT NULL,
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "armor_pkey" PRIMARY KEY ("itemId")
 );
 
 -- CreateTable
@@ -270,28 +313,79 @@ CREATE TABLE "armor_enchantment_attributes" (
 );
 
 -- CreateTable
-CREATE TABLE "crystal" (
-    "name" TEXT NOT NULL,
-    "crystalType" TEXT NOT NULL,
-    "modifiers" TEXT[],
-    "itemId" TEXT NOT NULL,
-
-    CONSTRAINT "crystal_pkey" PRIMARY KEY ("itemId")
-);
-
--- CreateTable
-CREATE TABLE "weapon" (
-    "name" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "baseAbi" INTEGER NOT NULL,
-    "stability" INTEGER NOT NULL,
+CREATE TABLE "additional_equipment" (
+    "name" JSONB NOT NULL,
+    "baseDef" INTEGER NOT NULL,
     "modifiers" TEXT[],
     "colorA" INTEGER NOT NULL,
     "colorB" INTEGER NOT NULL,
     "colorC" INTEGER NOT NULL,
     "itemId" TEXT NOT NULL,
 
-    CONSTRAINT "weapon_pkey" PRIMARY KEY ("itemId")
+    CONSTRAINT "additional_equipment_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "special_equipment" (
+    "name" JSONB NOT NULL,
+    "baseDef" INTEGER NOT NULL,
+    "modifiers" TEXT[],
+    "itemId" TEXT NOT NULL,
+
+    CONSTRAINT "special_equipment_pkey" PRIMARY KEY ("itemId")
+);
+
+-- CreateTable
+CREATE TABLE "skill" (
+    "id" TEXT NOT NULL,
+    "treeName" JSONB NOT NULL,
+    "posX" INTEGER NOT NULL,
+    "posY" INTEGER NOT NULL,
+    "tier" INTEGER NOT NULL,
+    "name" JSONB NOT NULL,
+    "isPassive" BOOLEAN NOT NULL,
+    "element" TEXT NOT NULL,
+    "chargingType" TEXT NOT NULL,
+    "distanceResist" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
+    "dataSources" TEXT NOT NULL,
+    "statisticId" TEXT NOT NULL,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
+
+    CONSTRAINT "skill_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "skill_effect" (
+    "id" TEXT NOT NULL,
+    "mainHand" TEXT NOT NULL,
+    "subHand" TEXT NOT NULL,
+    "armor" TEXT NOT NULL,
+    "description" JSONB NOT NULL,
+    "motionFixed" TEXT NOT NULL,
+    "motionModified" TEXT NOT NULL,
+    "chantingFixed" TEXT NOT NULL,
+    "chantingModified" TEXT NOT NULL,
+    "reservoirFixed" TEXT NOT NULL,
+    "reservoirModified" TEXT NOT NULL,
+    "startupFrames" TEXT NOT NULL,
+    "cost" TEXT NOT NULL,
+    "details" JSONB NOT NULL,
+    "belongToskillId" TEXT NOT NULL,
+
+    CONSTRAINT "skill_effect_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "consumable" (
+    "name" JSONB NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "effectDuration" INTEGER NOT NULL,
+    "effects" TEXT[],
+
+    CONSTRAINT "consumable_pkey" PRIMARY KEY ("itemId")
 );
 
 -- CreateTable
@@ -308,16 +402,17 @@ CREATE TABLE "custom_weapon" (
 );
 
 -- CreateTable
-CREATE TABLE "armor" (
+CREATE TABLE "weapon_enchantment_attributes" (
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "baseDef" INTEGER NOT NULL,
-    "modifiers" TEXT[],
-    "colorA" INTEGER NOT NULL,
-    "colorB" INTEGER NOT NULL,
-    "colorC" INTEGER NOT NULL,
-    "itemId" TEXT NOT NULL,
+    "flow" JSONB NOT NULL,
+    "details" TEXT,
+    "dataSources" TEXT,
+    "statisticId" TEXT NOT NULL,
+    "updatedByAccountId" TEXT,
+    "createdByAccountId" TEXT,
 
-    CONSTRAINT "armor_pkey" PRIMARY KEY ("itemId")
+    CONSTRAINT "weapon_enchantment_attributes_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -335,19 +430,6 @@ CREATE TABLE "custom_armor" (
 );
 
 -- CreateTable
-CREATE TABLE "additional_equipment" (
-    "name" TEXT NOT NULL,
-    "baseDef" INTEGER NOT NULL,
-    "modifiers" TEXT[],
-    "colorA" INTEGER NOT NULL,
-    "colorB" INTEGER NOT NULL,
-    "colorC" INTEGER NOT NULL,
-    "itemId" TEXT NOT NULL,
-
-    CONSTRAINT "additional_equipment_pkey" PRIMARY KEY ("itemId")
-);
-
--- CreateTable
 CREATE TABLE "custom_additional_equipment" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -357,16 +439,6 @@ CREATE TABLE "custom_additional_equipment" (
     "masterId" TEXT NOT NULL,
 
     CONSTRAINT "custom_additional_equipment_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "special_equipment" (
-    "name" TEXT NOT NULL,
-    "baseDef" INTEGER NOT NULL,
-    "modifiers" TEXT[],
-    "itemId" TEXT NOT NULL,
-
-    CONSTRAINT "special_equipment_pkey" PRIMARY KEY ("itemId")
 );
 
 -- CreateTable
@@ -382,65 +454,12 @@ CREATE TABLE "custom_special_equipment" (
 );
 
 -- CreateTable
-CREATE TABLE "skill" (
-    "id" TEXT NOT NULL,
-    "treeName" TEXT NOT NULL,
-    "posX" INTEGER NOT NULL,
-    "posY" INTEGER NOT NULL,
-    "tier" INTEGER NOT NULL,
-    "name" TEXT NOT NULL,
-    "isPassive" BOOLEAN NOT NULL,
-    "element" TEXT NOT NULL,
-    "chargingType" TEXT NOT NULL,
-    "distanceResist" TEXT NOT NULL,
-    "details" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
-    "statisticId" TEXT NOT NULL,
-    "updatedByAccountId" TEXT,
-    "createdByAccountId" TEXT,
-
-    CONSTRAINT "skill_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "character_skill" (
     "id" TEXT NOT NULL,
     "lv" INTEGER NOT NULL,
     "templateId" TEXT NOT NULL,
 
     CONSTRAINT "character_skill_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "skill_effect" (
-    "id" TEXT NOT NULL,
-    "mainHand" TEXT NOT NULL,
-    "subHand" TEXT NOT NULL,
-    "armor" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "motionFixed" TEXT NOT NULL,
-    "motionModified" TEXT NOT NULL,
-    "chantingFixed" TEXT NOT NULL,
-    "chantingModified" TEXT NOT NULL,
-    "reservoirFixed" TEXT NOT NULL,
-    "reservoirModified" TEXT NOT NULL,
-    "startupFrames" TEXT NOT NULL,
-    "cost" TEXT NOT NULL,
-    "belongToskillId" TEXT NOT NULL,
-
-    CONSTRAINT "skill_effect_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "skill_yield" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "yieldType" TEXT NOT NULL,
-    "yieldFormula" TEXT NOT NULL,
-    "mutationTimingFormula" TEXT,
-    "skillEffectId" TEXT,
-
-    CONSTRAINT "skill_yield_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -467,17 +486,6 @@ CREATE TABLE "custom_pet" (
 );
 
 -- CreateTable
-CREATE TABLE "consumable" (
-    "name" TEXT NOT NULL,
-    "itemId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "effectDuration" INTEGER NOT NULL,
-    "effects" TEXT[],
-
-    CONSTRAINT "consumable_pkey" PRIMARY KEY ("itemId")
-);
-
--- CreateTable
 CREATE TABLE "combo" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -495,17 +503,6 @@ CREATE TABLE "avatar" (
     "playerId" TEXT NOT NULL,
 
     CONSTRAINT "avatar_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "player" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "useIn" TEXT NOT NULL,
-    "actions" JSONB NOT NULL,
-    "accountId" TEXT NOT NULL,
-
-    CONSTRAINT "player_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -549,6 +546,17 @@ CREATE TABLE "mercenary" (
     "skillBType" TEXT NOT NULL,
 
     CONSTRAINT "mercenary_pkey" PRIMARY KEY ("templateId")
+);
+
+-- CreateTable
+CREATE TABLE "player" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "useIn" TEXT NOT NULL,
+    "actions" JSONB NOT NULL,
+    "accountId" TEXT NOT NULL,
+
+    CONSTRAINT "player_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -764,13 +772,13 @@ CREATE UNIQUE INDEX "recipe_consumableId_key" ON "recipe"("consumableId");
 CREATE UNIQUE INDEX "mob_statisticId_key" ON "mob"("statisticId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "weapon_enchantment_attributes_statisticId_key" ON "weapon_enchantment_attributes"("statisticId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "armor_enchantment_attributes_statisticId_key" ON "armor_enchantment_attributes"("statisticId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "skill_statisticId_key" ON "skill"("statisticId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "weapon_enchantment_attributes_statisticId_key" ON "weapon_enchantment_attributes"("statisticId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "character_statisticId_key" ON "character"("statisticId");

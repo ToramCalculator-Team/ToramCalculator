@@ -7,9 +7,12 @@ import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { WikiString } from "./enums";
 
-export type Consumable = Awaited<ReturnType<typeof findConsumableById>>;
+export type Consumable = ModifyKeys<Awaited<ReturnType<typeof findConsumableById>>, {
+  name: WikiString;
+}>;
 export type NewConsumable = Insertable<item>;
 export type ConsumableUpdate = Updateable<item>;
 
@@ -52,7 +55,15 @@ export async function deleteConsumable(id: string) {
 
 // default
 export const defaultConsumable: Consumable = {
-  name: "默认消耗品（缺省值）",
+  name: {
+    "zh-CN": "默认消耗品（缺省值）",
+    "zh-TW": "",
+    "zh-HK": "",
+    en: "",
+    "en-US": "",
+    "en-GB": "",
+    ja: ""
+  },
   id: "defaultConsumableId",
   itemId: "defaultConsumableId",
   type: "",

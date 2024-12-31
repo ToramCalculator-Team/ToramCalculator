@@ -8,9 +8,12 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { WikiString } from "./enums";
 
-export type AddEquip = Awaited<ReturnType<typeof findAddEquipById>>;
+export type AddEquip = ModifyKeys<Awaited<ReturnType<typeof findAddEquipById>>, {
+  name: WikiString;
+}>;
 export type NewAddEquip = Insertable<item>;
 export type AddEquipUpdate = Updateable<item>;
 
@@ -61,7 +64,15 @@ export async function deleteAddEquip(id: string) {
 
 // default
 export const defaultAddEquip: AddEquip = {
-  name: "默认追加（缺省值）",
+  name: {
+    "zh-CN": "默认追加（缺省值）",
+    "zh-TW": "",
+    "zh-HK": "",
+    en: "",
+    "en-US": "",
+    "en-GB": "",
+    ja: ""
+  },
   id: "defaultAddEquipId",
   modifiers: [],
   itemId: "defaultAddEquipId",

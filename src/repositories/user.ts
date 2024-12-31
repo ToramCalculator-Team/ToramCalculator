@@ -1,12 +1,12 @@
 import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
 import { user } from "~/repositories/db/types";
+import { ModifyKeys } from "./untils";
+import { UserRole } from "./enums";
 
-const USER_ROLES = ["Admin", "User"] as const;
-
-export type UserRoleType = (typeof USER_ROLES)[number];
-
-export type User = Awaited<ReturnType<typeof findUserById>>;
+export type User = ModifyKeys<Awaited<ReturnType<typeof findUserById>>, {
+  userRole: UserRole
+}>;
 export type NewUser = Insertable<user>;
 export type UserUpdate = Updateable<user>;
 

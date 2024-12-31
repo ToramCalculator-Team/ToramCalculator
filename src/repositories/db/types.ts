@@ -26,10 +26,10 @@ export type account_update_data = {
 };
 export type activity = {
     id: string;
-    name: string;
+    name: unknown;
 };
 export type additional_equipment = {
-    name: string;
+    name: unknown;
     baseDef: number;
     modifiers: string[];
     colorA: number;
@@ -47,14 +47,14 @@ export type additional_equipmentToimage = {
 };
 export type address = {
     id: string;
-    name: string;
+    name: unknown;
     type: string;
     x: number;
     y: number;
     worldId: string;
 };
 export type armor = {
-    name: string;
+    name: unknown;
     baseDef: number;
     modifiers: string[];
     colorA: number;
@@ -145,14 +145,14 @@ export type combo = {
     combo: unknown;
 };
 export type consumable = {
-    name: string;
+    name: unknown;
     itemId: string;
     type: string;
     effectDuration: number;
     effects: string[];
 };
 export type crystal = {
-    name: string;
+    name: unknown;
     crystalType: string;
     modifiers: string[];
     itemId: string;
@@ -258,15 +258,21 @@ export type imageToweapon = {
 };
 export type item = {
     id: string;
-    name: string;
+    name: unknown;
     dataSources: string;
     details: string;
     statisticId: string;
     updatedByAccountId: string | null;
     createdByAccountId: string | null;
 };
+export type kill_requirement = {
+    id: string;
+    mobId: string;
+    count: number;
+    taskId: string;
+};
 export type material = {
-    name: string;
+    name: unknown;
     itemId: string;
     material: string;
     ptValue: number;
@@ -294,10 +300,7 @@ export type mercenary = {
 };
 export type mob = {
     id: string;
-    /**
-     * @zod.string.min(2, { message: "最少2个字符" })
-     */
-    name: string;
+    name: unknown;
     mobType: string;
     captureable: boolean;
     baseLv: number;
@@ -318,10 +321,6 @@ export type mob = {
     physicalAttackResistanceModifier: number;
     magicalAttackResistanceModifier: number;
     actions: unknown;
-    difficultyOfTank: number;
-    difficultyOfMelee: number;
-    difficultyOfRanged: number;
-    possibilityOfRunningAround: number;
     details: string;
     dataSources: string;
     statisticId: string;
@@ -335,7 +334,7 @@ export type mobTozone = {
 };
 export type npc = {
     id: string;
-    name: string;
+    name: unknown;
     imageId: string;
     zoneId: string;
 };
@@ -398,11 +397,11 @@ export type simulatorToteam = {
 };
 export type skill = {
     id: string;
-    treeName: string;
+    treeName: unknown;
     posX: number;
     posY: number;
     tier: number;
-    name: string;
+    name: unknown;
     isPassive: boolean;
     element: string;
     chargingType: string;
@@ -418,7 +417,7 @@ export type skill_effect = {
     mainHand: string;
     subHand: string;
     armor: string;
-    description: string;
+    description: unknown;
     motionFixed: string;
     motionModified: string;
     chantingFixed: string;
@@ -427,18 +426,11 @@ export type skill_effect = {
     reservoirModified: string;
     startupFrames: string;
     cost: string;
+    details: unknown;
     belongToskillId: string;
 };
-export type skill_yield = {
-    id: string;
-    name: string;
-    yieldType: string;
-    yieldFormula: string;
-    mutationTimingFormula: string | null;
-    skillEffectId: string | null;
-};
 export type special_equipment = {
-    name: string;
+    name: unknown;
     baseDef: number;
     modifiers: string[];
     itemId: string;
@@ -453,8 +445,17 @@ export type statistic = {
 export type task = {
     id: string;
     lv: number;
-    name: string;
+    name: unknown;
+    type: string;
+    description: unknown;
     npcId: string;
+};
+export type task_require = {
+    id: string;
+    type: string;
+    count: number;
+    itemId: string | null;
+    taskId: string;
 };
 export type team = {
     id: string;
@@ -463,6 +464,9 @@ export type team = {
 };
 export type user = {
     id: string;
+    /**
+     * @zod.string.min(2, { message: "最少2个字符" })
+     */
     name: string | null;
     email: string | null;
     emailVerified: Timestamp | null;
@@ -475,7 +479,7 @@ export type verification_token = {
     expires: Timestamp;
 };
 export type weapon = {
-    name: string;
+    name: unknown;
     type: string;
     baseAbi: number;
     stability: number;
@@ -497,11 +501,11 @@ export type weapon_enchantment_attributes = {
 };
 export type world = {
     id: string;
-    name: string;
+    name: unknown;
 };
 export type zone = {
     id: string;
-    name: string | null;
+    name: unknown | null;
     linkZone: string[];
     rewardNodes: number;
     activityId: string | null;
@@ -550,6 +554,7 @@ export type DB = {
     drop_item: drop_item;
     image: image;
     item: item;
+    kill_requirement: kill_requirement;
     material: material;
     member: member;
     mercenary: mercenary;
@@ -564,10 +569,10 @@ export type DB = {
     simulator: simulator;
     skill: skill;
     skill_effect: skill_effect;
-    skill_yield: skill_yield;
     special_equipment: special_equipment;
     statistic: statistic;
     task: task;
+    task_require: task_require;
     team: team;
     user: user;
     verification_token: verification_token;

@@ -32,6 +32,7 @@ export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expre
   ];
 }
 
+// 锻晶卡片需要的详细数据
 export async function findCrystalById(id: string) {
   return await db
     .selectFrom("item")
@@ -43,6 +44,7 @@ export async function findCrystalById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+// 锻晶列表
 export async function findCrystals() {
   return await db
     .selectFrom("item")
@@ -53,18 +55,17 @@ export async function findCrystals() {
     .execute();
 }
 
-export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
-}
-
+// 锻晶表单
 export async function createCrystal(newCrystal: NewCrystal) {
   return await db.transaction().execute(async (trx) => {
     const item = await trx.insertInto("item").values(newCrystal).returningAll().executeTakeFirstOrThrow();
     return item;
   });
 }
-
-export async function deleteCrystal(id: string) {
+export async function updateCrystal(id: string, updateWith: CrystalUpdate) {
+  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+}
+export async function deleteCrystalById(id: string) {
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
