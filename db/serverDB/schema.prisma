@@ -5,7 +5,8 @@ generator client {
 
 generator zod {
     provider                 = "zod-prisma-types"
-    output                   = "./generated/zod.ts"
+    output                   = "./generated/zod"
+    fileName                 = "zod.ts"
     writeNullishInModelTypes = false // 是否将可选字段类型转换为 null | undefined
     useMultipleFiles         = false // 是否生成拆分的ts
     createInputTypes         = false // 是否生成input类型
@@ -13,18 +14,18 @@ generator zod {
 
 generator kysely {
     provider     = "prisma-kysely"
-    output       = "./generated/"
+    output       = "./generated/kysely"
     fileName     = "kyesely.ts"
     enumFileName = "enums.ts"
 }
 
 generator zero {
-  provider       = "prisma-generator-zero"
+    provider = "prisma-generator-zero"
 }
 
 datasource db {
     provider = "postgresql"
-    url      = env("PG_URL")
+    url      = env("ZERO_UPSTREAM_DB")
 }
 
 model user {
@@ -67,14 +68,6 @@ model session {
     expires      DateTime
     user         user     @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId    String
-}
-
-model verification_token {
-    identifier String
-    token      String   @unique
-    expires    DateTime
-
-    @@unique([identifier, token])
 }
 
 model post {

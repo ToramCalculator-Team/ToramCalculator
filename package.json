@@ -4,8 +4,8 @@
   "scripts": {
     "dev:db-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up",
     "dev:zero-cache": "zero-cache-dev -p db/clientDB/schema.ts",
-    "dev:db-migrate": "prisma migrate dev --name init --create-only --schema=db/serverDB/schema.prisma",
-    "dev:db-type": "prisma generate",
+    "dev:db-ddl": "prisma migrate dev --name init --create-only --schema=db/serverDB/schema.prisma",
+    "dev:db-type": "prisma generate --schema=db/serverDB/schema.prisma",
     "dev:db-down": "docker compose --env-file .env -f ./docker/docker-compose.yml down",
     "dev:clean": "source .env && docker volume rm -f docker_zstart_solid_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*",
     "db:push": "prisma db push",

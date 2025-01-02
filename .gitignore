@@ -30,4 +30,4 @@ gitignore
 Thumbs.db
 
 #prisma
-/prisma/migrations
+db/serverDB/migrations
