@@ -6,12 +6,13 @@ import { Zero } from "@rocicorp/zero";
 import Cookies from "js-cookie";
 
 const ZeroContext = createContext<Zero<Schema>>(createZeroInstance());
-
-console.log("createZeroInstance");
-const encodedJWT = Cookies.get("jwt");
+// console.log("createZeroInstance");
 
 function createZeroInstance() {
+  const encodedJWT = Cookies.get("jwt");
+  // console.log("encodedJWT", encodedJWT);
   const decodedJWT = encodedJWT && decodeJwt(encodedJWT);
+  // console.log("decodedJWT", decodedJWT);
   const userID = decodedJWT?.sub ? (decodedJWT.sub as string) : "anon";
   const z = createZero({
     userID,

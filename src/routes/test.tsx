@@ -183,6 +183,7 @@ function App() {
                 {user() === "anon" ? "" : `当前用户 ${user()}`}
                 <Button
                   onMouseDown={() => {
+                    console.log(user());
                     if (user() === "anon") {
                       fetch("/api/user/login");
                     } else {
@@ -191,7 +192,7 @@ function App() {
                     location.reload();
                   }}
                 >
-                  {user() === "anon" ? "登录" : "登出"}
+                  {user() === "anon" ? "随机登录" : "登出"}
                 </Button>
               </div>
             </div>

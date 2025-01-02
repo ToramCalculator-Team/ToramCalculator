@@ -24,10 +24,10 @@ export async function GET({ params }: APIEvent) {
   const jwt = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("30days")
-    .sign(new TextEncoder().encode(import.meta.env.ZERO_AUTH_SECRET));
+    .sign(new TextEncoder().encode(import.meta.env.ZERO_AUTH_SECRET ?? process.env.ZERO_AUTH_SECRET));
 
   setCookie("jwt", jwt, {
-    httpOnly: true, // 确保客户端 JS 无法访问
+    httpOnly: false, // 确保客户端 JS 无法访问
     secure: process.env.NODE_ENV === "production", // 在生产环境启用 secure
     sameSite: "strict",
     maxAge: 30 * 24 * 60 * 60, // 30 天
