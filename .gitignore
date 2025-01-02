@@ -1,5 +1,6 @@
 
 dist
+generated
 .solid
 .output
 .vercel
