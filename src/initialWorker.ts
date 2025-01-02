@@ -2,12 +2,12 @@ import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { live } from "@electric-sql/pglite/live";
 import PGWorker from "~/worker/PGlite.worker?worker";
 
-console.log(performance.now(), "PGliteWorker初始化开始");
+// console.log(performance.now(), "PGliteWorker初始化开始");
 const pgWorker = await PGliteWorker.create(new PGWorker(), {
   extensions: { live }
 });
 
-console.log(performance.now(), "PGliteWorker初始化完成");
+// console.log(performance.now(), "PGliteWorker初始化完成");
 
 export { pgWorker };
 

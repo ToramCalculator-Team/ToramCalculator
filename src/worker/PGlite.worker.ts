@@ -236,7 +236,7 @@ worker({
     //   primaryKey: ["id"],
     // });
 
-    console.log("PGliteWorker初始化完成.....");
+    // console.log("PGliteWorker初始化完成.....");
 
     return pg;
   },

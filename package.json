@@ -2,6 +2,11 @@
   "name": "toram-calculator",
   "type": "module",
   "scripts": {
+    "dev:ui": "VITE_PUBLIC_SERVER='http://localhost:4848' vite",
+    "dev:zero-cache": "zero-cache-dev -p db/clientDB/schema.ts",
+    "dev:db-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up",
+    "dev:db-down": "docker compose --env-file .env -f ./docker/docker-compose.yml down",
+    "dev:clean": "source .env && docker volume rm -f docker_zstart_solid_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*",
     "dbGenerate:ddl": "prisma migrate dev --name init --create-only",
     "dbGenerate:type": "prisma generate",
     "db:push": "prisma db push",
@@ -14,7 +19,7 @@
   "devDependencies": {
     "@prisma/client": "latest",
     "@types/lodash-es": "^4.17.12",
-    "@types/node": "^20.14.8",
+    "@types/node": "^22.7.9",
     "autoprefixer": "^10.4.20",
     "husky": "^9.1.4",
     "pg": "latest",
@@ -22,7 +27,16 @@
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",
     "prisma": "^5.18.0",
-    "zod-prisma-types": "latest"
+    "zod-prisma-types": "latest",
+    "@hono/node-server": "^1.13.2",
+    "@types/js-cookie": "^3.0.6",
+    "dotenv": "^16.4.5",
+    "eslint": "^9.9.0",
+    "globals": "^15.9.0",
+    "hono": "^4.6.6",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.0.1",
+    "vite-plugin-solid": "^2.10.2"
   },
   "dependencies": {
     "@babylonjs/core": "^7.32.5",
@@ -54,11 +68,14 @@
     "overlayscrollbars-solid": "^0.5.5",
     "prisma-kysely": "^1.8.0",
     "sequential-workflow-designer": "^0.27.0",
-    "solid-js": "^1.8.18",
     "solid-motionone": "^1.0.1",
     "tailwindcss": "^3.4.10",
     "vinxi": "^0.4.1",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@rocicorp/zero": "^0.10.2024122404",
+    "jose": "^5.9.6",
+    "js-cookie": "^3.0.5",
+    "solid-js": "^1.9.3"
   },
   "engines": {
     "node": ">=20"
