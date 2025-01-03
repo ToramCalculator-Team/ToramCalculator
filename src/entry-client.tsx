@@ -25,7 +25,7 @@ try {
 } catch (e) {
   console.log(e);
   console.log("创建");
-  const { statistic, image, dropItems, belongToZones, ...mob } = defaultMob;
+  const { statistic, image, belongToZones, ...mob } = defaultMob;
   const newMob = await createMob(mob);
   console.log("newMob", newMob);
 }

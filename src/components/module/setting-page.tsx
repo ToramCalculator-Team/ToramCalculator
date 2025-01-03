@@ -117,8 +117,8 @@ export default function Setting() {
                       children: (
                         <div class="Selector flex flex-col">
                           <Radio
-                            name={"zh-CN&zh-HK"}
-                            checked={store.settings.language === "zh-CN" || store.settings.language === "zh-HK"}
+                            name={"zh-CN"}
+                            checked={store.settings.language === "zh-CN"}
                             onClick={() => setStore("settings", "language", "zh-CN")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.zhCN}
@@ -131,9 +131,9 @@ export default function Setting() {
                             {dictionary().ui.settings.language.selectedLanguage.zhTW}
                           </Radio>
                           <Radio
-                            name="en-US&en-GB"
-                            checked={store.settings.language === "en-US" || store.settings.language === "en-GB"}
-                            onClick={() => setStore("settings", "language", "en-US")}
+                            name="en"
+                            checked={store.settings.language === "en"}
+                            onClick={() => setStore("settings", "language", "en")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.enUS}
                           </Radio>

@@ -29,28 +29,28 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
         .where("_mobTozone.A", "=", id)
         .select("zone.name"),
     ).as("belongToZones"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("drop_item")
-        .innerJoin("item", "item.id", "drop_item.itemId")
-        .innerJoin("weapon", "item.id", "weapon.itemId")
-        .innerJoin("armor", "item.id", "armor.itemId")
-        .innerJoin("additional_equipment", "item.id", "additional_equipment.itemId")
-        .innerJoin("special_equipment", "item.id", "special_equipment.itemId")
-        .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("consumable", "item.id", "consumable.itemId")
-        .innerJoin("material", "item.id", "material.itemId")
-        .where("drop_item.dropById", "=", id)
-        .select([
-          "weapon.name",
-          "armor.name",
-          "additional_equipment.name",
-          "special_equipment.name",
-          "crystal.name",
-          "consumable.name",
-          "material.name",
-        ]),
-    ).as("dropItems"),
+    // jsonArrayFrom(
+    //   eb
+    //     .selectFrom("drop_item")
+    //     .innerJoin("item", "item.id", "drop_item.itemId")
+    //     .innerJoin("weapon", "item.id", "weapon.itemId")
+    //     .innerJoin("armor", "item.id", "armor.itemId")
+    //     .innerJoin("additional_equipment", "item.id", "additional_equipment.itemId")
+    //     .innerJoin("special_equipment", "item.id", "special_equipment.itemId")
+    //     .innerJoin("crystal", "item.id", "crystal.itemId")
+    //     .innerJoin("consumable", "item.id", "consumable.itemId")
+    //     .innerJoin("material", "item.id", "material.itemId")
+    //     .where("drop_item.dropById", "=", id)
+    //     .select([
+    //       "weapon.name",
+    //       "armor.name",
+    //       "additional_equipment.name",
+    //       "special_equipment.name",
+    //       "crystal.name",
+    //       "consumable.name",
+    //       "material.name",
+    //     ]),
+    // ).as("dropItems"),
     jsonObjectFrom(
       eb
         .selectFrom("statistic")
@@ -143,7 +143,6 @@ export const defaultMob: Mob = {
   magicalAttackResistanceModifier: 0,
   partsExperience: 0,
   belongToZones: [],
-  dropItems: [],
   details: "defaultExtraDetails",
   dataSources: "defaultDataSources",
   statisticId: defaultStatistic.id,
@@ -183,7 +182,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         magicalAttackResistanceModifier: "魔法伤害惯性变动率",
         partsExperience: "部件经验",
         belongToZones: "所属区域",
-        dropItems: "掉落道具",
         details: "额外说明",
         dataSources: "数据来源",
         statisticId: "统计信息ID",
@@ -219,7 +217,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         magicalAttackResistanceModifier: "魔法傷害惡性變動率",
         partsExperience: "部件經驗",
         belongToZones: "所屬區域",
-        dropItems: "掉落道具",
         details: "額外說明",
         dataSources: "數據來源",
         statisticId: "統計信息ID",
@@ -255,7 +252,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         magicalAttackResistanceModifier: "Magical Attack Resistance Modifier",
         partsExperience: "Parts Experience",
         belongToZones: "Belong To Zones",
-        dropItems: "Drop Items",
         details: "Details",
         dataSources: "Data Sources",
         statisticId: "Statistic ID",
@@ -291,7 +287,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         magicalAttackResistanceModifier: "魔法攻撃耐性変動率",
         partsExperience: "部品経験",
         belongToZones: "所属ゾーン",
-        dropItems: "ドロップアイテム",
         details: "追加情報",
         dataSources: "データソース",
         statisticId: "統計情報ID",

@@ -154,12 +154,12 @@ export default function MobIndexPage() {
       cell: (info) => info.getValue(),
       size: 150,
     },
-    {
-      accessorKey: "belongToZones",
-      header: () => MobDic(store.settings.language).belongToZones,
-      cell: (info) => info.getValue(),
-      size: 150,
-    },
+    // {
+    //   accessorKey: "belongToZones",
+    //   header: () => MobDic(store.settings.language).belongToZones,
+    //   cell: (info) => info.getValue(),
+    //   size: 150,
+    // },
   ];
   const table = createMemo(() => {
     if (!mobList()) {
@@ -524,9 +524,9 @@ export default function MobIndexPage() {
                                       <span class="pb-1">
                                         {row.original.name[store.settings.language]}
                                       </span>
-                                      <span class="text-sm font-normal text-mainText-color">
+                                      {/* <span class="text-sm font-normal text-mainText-color">
                                         {row.getValue("belongToZones") ?? "无"}
-                                      </span>
+                                      </span> */}
                                     </>
                                   );
                                   break;
