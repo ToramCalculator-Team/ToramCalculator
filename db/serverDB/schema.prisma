@@ -19,13 +19,9 @@ generator kysely {
     enumFileName = "enums.ts"
 }
 
-generator zero {
-    provider = "prisma-generator-zero"
-}
-
 datasource db {
     provider = "postgresql"
-    url      = env("ZERO_UPSTREAM_DB")
+    url      = env("PG_URL")
 }
 
 model user {
@@ -172,7 +168,6 @@ model npc {
 model item {
     id String @id
 
-    name       Json
     weapon     weapon?
     armor      armor?
     addEquip   additional_equipment?

@@ -1,9 +1,8 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, player } from "~/repositories/db/types";
+import { DB, player } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultCharacter, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob } from "./mob";
 import { defaultAccount } from "./account";
 
 export type Player = Awaited<ReturnType<typeof findPlayerById>>;

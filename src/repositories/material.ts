@@ -1,11 +1,18 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
+import { ModifyKeys } from "./untils";
+import { WikiString } from "./enums";
 
-export type Material = Awaited<ReturnType<typeof findMaterialById>>;
+export type Material = ModifyKeys<
+  Awaited<ReturnType<typeof findMaterialById>>,
+  {
+    name: WikiString;
+  }
+>;
 export type NewMaterial = Insertable<item>;
 export type MaterialUpdate = Updateable<item>;
 
@@ -41,20 +48,23 @@ export async function deleteMaterial(id: string) {
 
 // default
 export const defaultMaterial: Material = {
-    name: "默认素材（缺省值）",
-    id: "defaultMaterialId",
-    itemId: "defaultMaterialId",
-    material: "Metal",
-    ptValue: 0,
-    price: 0,
-    dataSources: "",
-    details: "",
-    dropBy: [],
-    rewardBy: [],
-    updatedAt: new Date(),
-    createdAt: new Date(),
-    updatedByAccountId: defaultAccount.id,
-    createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+  name: {
+    "zh-CN": "默认素材（缺省值）",
+    "zh-TW": "",
+    en: "defaultMaterial",
+    ja: "",
+  },
+  id: "defaultMaterialId",
+  itemId: "defaultMaterialId",
+  material: "Metal",
+  ptValue: 0,
+  price: 0,
+  dataSources: "",
+  details: "",
+  dropBy: [],
+  rewardBy: [],
+  updatedByAccountId: defaultAccount.id,
+  createdByAccountId: defaultAccount.id,
+  statistic: defaultStatistic,
+  statisticId: defaultStatistic.id,
 };

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, recipe } from "~/repositories/db/types";
+import { DB, recipe } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultWeapons } from "./weapon";
 import { defaultAddEquip } from "./addEquip";
@@ -168,7 +168,6 @@ export const defaultRecipes: Record<WeaponType | "armor" | "addEquip" | "speEqui
 export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "账号",
         id: "defaultConsumableRecipe",
@@ -193,8 +192,6 @@ export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
         consumableId: "",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "账号",
         id: "defaultConsumableRecipe",

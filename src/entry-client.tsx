@@ -18,14 +18,14 @@ OverlayScrollbars.plugin(ClickScrollPlugin);
 mount(() => <StartClient />, document.getElementById("app")!);
 
 // 测试kysely方法，目前没办法保证异步执行顺序，可能此时数据库未完成初始化
-// try {
-//   console.log("查询");
-//   const result = await findMobById(defaultMob.id);
-//   console.log("result", result);
-// } catch (e) {
-//   console.log(e);
-//   console.log("创建");
-//   const { statistic, image, dropItems, belongToZones, ...mob } = defaultMob;
-//   const newMob = await createMob(mob);
-//   console.log("newMob", newMob);
-// }
+try {
+  console.log("查询");
+  const result = await findMobById(defaultMob.id);
+  console.log("result", result);
+} catch (e) {
+  console.log(e);
+  console.log("创建");
+  const { statistic, image, dropItems, belongToZones, ...mob } = defaultMob;
+  const newMob = await createMob(mob);
+  console.log("newMob", newMob);
+}

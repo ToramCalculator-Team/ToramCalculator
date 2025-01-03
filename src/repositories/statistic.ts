@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, statistic } from "~/repositories/db/types";
+import { DB, statistic } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
@@ -54,7 +54,6 @@ export const defaultStatistic: Statistic = {
 export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "账号",
         id: "defaultStatisticId",
@@ -73,8 +72,6 @@ export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
         usageTimestamps: "",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "账号",
         id: "defaultStatisticId",

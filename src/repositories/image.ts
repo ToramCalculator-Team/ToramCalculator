@@ -1,6 +1,6 @@
 import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
-import { image } from "~/repositories/db/types";
+import { image } from "~/../db/clientDB/generated/kysely/kyesely";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 
@@ -34,7 +34,6 @@ export const defaultImage: Image = {
 export const ImageDic = (locale: Locale): ConvertToAllString<Image> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "防具装备",
         id: "ID",
@@ -47,8 +46,6 @@ export const ImageDic = (locale: Locale): ConvertToAllString<Image> => {
         dataUrl: "圖像數據"
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Armor",
         id: "ID",

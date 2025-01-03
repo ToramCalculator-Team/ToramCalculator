@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, avatar } from "~/repositories/db/types";
+import { DB, avatar } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString } from "./untils";
 import { Locale } from "~/locales/i18n";
@@ -42,7 +42,6 @@ export const defaultAvatar: Avatar = {
 export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "防具装备",
         name: "名称",
@@ -61,8 +60,6 @@ export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar> => {
         playerId: "所屬玩家ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Armor",
         name: "Name",

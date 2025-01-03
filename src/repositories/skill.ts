@@ -1,10 +1,9 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, skill } from "~/repositories/db/types";
+import { DB, skill } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultSkillEffect, skillEffectSubRelations } from "./skill_effect";
-import { defaultSkillYield } from "./skill_yield";
+import { defaultSkillEffect, skillEffectSubRelations } from "./skillEffect";
 import { ModifyKeys } from "./untils";
 import { SkillTreeType } from "./enums";
 
@@ -69,19 +68,10 @@ export async function createSkill(newSkill: NewSkill) {
       .returningAll()
       .executeTakeFirstOrThrow();
 
-    const skillYield = await trx.insertInto("skill_yield").values({
-      ...defaultSkillYield,
-      skillEffectId: skillEffect.id,
-    }).returningAll().executeTakeFirstOrThrow();
     return {
       ...skill,
       statistic,
-      skillEffect: [
-        {
-          ...skillEffect,
-          skillYield: [skillYield],
-        },
-      ],
+      skillEffect
     };
   });
 }
@@ -106,9 +96,7 @@ export const defaultSkill: Skill = {
   dataSources: "",
   details: "",
 
-  updatedAt: new Date(),
   updatedByAccountId: "",
-  createdAt: new Date(),
   createdByAccountId: "",
   statistic: defaultStatistic,
   statisticId: "",

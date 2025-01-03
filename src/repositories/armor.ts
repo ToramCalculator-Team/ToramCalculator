@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
@@ -66,12 +66,9 @@ export async function deleteArmor(id: string) {
 export const defaultArmor: Armor = {
   name: {
     "zh-CN": "默认防具（缺省值）",
-    "zh-TW": "",
-    "zh-HK": "",
-    en: "",
-    "en-US": "",
-    "en-GB": "",
-    ja: ""
+    "zh-TW": "默认防具（缺省值）",
+    en: "defaultArmor",
+    ja: "デフォルトの防具"  
   },
   id: "defaultArmorId",
   modifiers: [],
@@ -96,7 +93,6 @@ export const defaultArmor: Armor = {
 export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "防具装备",
         name: "名称",
@@ -141,8 +137,6 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         statisticId: "統計信息ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Armor",
         name: "Name",

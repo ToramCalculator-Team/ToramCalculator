@@ -1,11 +1,14 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, npc } from "~/repositories/db/types";
+import { DB, npc } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
+import { WikiString } from "./enums";
 
-export type Npc = Awaited<ReturnType<typeof findNpcById>>;
+export type Npc = ModifyKeys<Awaited<ReturnType<typeof findNpcById>>, {
+  name: WikiString;
+}>;
 export type NewNpc = Insertable<npc>;
 export type NpcUpdate = Updateable<npc>;
 
@@ -32,7 +35,12 @@ export async function deleteNpc(id: string) {
 
 export const defaultNpc: Npc = {
   id: "defaultNpcId",
-  name: "默认NPC（缺省值）",
+  name: {
+    "zh-CN": "默认NPC",
+    "zh-TW": "預設NPC",
+    en: "defaultNpc",
+    ja: "デフォルトNPC",
+  },
   imageId: "",
   zoneId: "",
   tasks: [],
@@ -42,7 +50,6 @@ export const defaultNpc: Npc = {
 export const NpcDic = (locale: Locale): ConvertToAllString<Npc> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "NPC",
         name: "名称",
@@ -61,8 +68,6 @@ export const NpcDic = (locale: Locale): ConvertToAllString<Npc> => {
         tasks: "任務列表",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "NPC",
         name: "Name",

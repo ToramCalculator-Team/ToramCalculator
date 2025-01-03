@@ -39,13 +39,6 @@ CREATE TABLE "session" (
 );
 
 -- CreateTable
-CREATE TABLE "verification_token" (
-    "identifier" TEXT NOT NULL,
-    "token" TEXT NOT NULL,
-    "expires" TIMESTAMP(3) NOT NULL
-);
-
--- CreateTable
 CREATE TABLE "post" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -740,12 +733,6 @@ CREATE UNIQUE INDEX "account_provider_providerAccountId_key" ON "account"("provi
 
 -- CreateIndex
 CREATE UNIQUE INDEX "session_sessionToken_key" ON "session"("sessionToken");
-
--- CreateIndex
-CREATE UNIQUE INDEX "verification_token_token_key" ON "verification_token"("token");
-
--- CreateIndex
-CREATE UNIQUE INDEX "verification_token_identifier_token_key" ON "verification_token"("identifier", "token");
 
 -- CreateIndex
 CREATE INDEX "post_name_idx" ON "post"("name");

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, member } from "~/repositories/db/types";
+import { DB, member } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultPlayer, playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultMob } from "./mob";

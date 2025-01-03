@@ -1,8 +1,9 @@
 import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
-import { user } from "~/repositories/db/types";
-import { ModifyKeys } from "./untils";
+import { user } from "~/../db/clientDB/generated/kysely/kyesely";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { UserRole } from "./enums";
+import { Locale } from "~/locales/i18n";
 
 export type User = ModifyKeys<Awaited<ReturnType<typeof findUserById>>, {
   userRole: UserRole
@@ -69,3 +70,48 @@ export const defaultUser: User = {
   image: null,
   userRole: "USER",
 };
+
+export const UserDic = (locale: Locale): ConvertToAllString<User> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        id: "ID",
+        name: "名称",
+        email: "邮箱",
+        emailVerified: "邮箱验证",
+        image: "图像",
+        userRole: "用户角色",
+        selfName: "用户",
+      };
+    case "zh-TW":
+      return {
+        id: "ID",
+        name: "名稱",
+        email: "郵箱",
+        emailVerified: "郵箱驗證",
+        image: "圖像",
+        userRole: "用戶角色",
+        selfName: "用戶",
+      };
+    case "en":
+      return {
+        id: "ID",
+        name: "Name",
+        email: "Email",
+        emailVerified: "Email Verified",
+        image: "Image",
+        userRole: "User Role",
+        selfName: "User",
+      };
+    case "ja": 
+      return {
+        id: "ID",
+        name: "名前",
+        email: "メールアドレス",
+        emailVerified: "メール確認",
+        image: "画像",
+        userRole: "ユーザー角色",
+        selfName: "ユーザー",
+      };
+  }
+}

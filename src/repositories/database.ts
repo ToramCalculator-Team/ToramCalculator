@@ -1,4 +1,4 @@
-import { DB } from "~/repositories/db/types";
+import { DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { Kysely, PostgresDialect } from "kysely";
 import { PGliteDialect } from "./dialect/dialect";
 import { pgWorker } from "~/initialWorker";

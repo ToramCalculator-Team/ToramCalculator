@@ -6,7 +6,7 @@ import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import { MainWeaponType, ModifierType, SubWeaponType, WeaponType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
 import { type Mob } from "~/repositories/mob";
-import { type SkillEffect } from "~/repositories/skill_effect";
+import { type SkillEffect } from "~/repositories/skillEffect";
 
 const fps = 60;
 

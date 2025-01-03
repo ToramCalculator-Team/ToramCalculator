@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
-import { account, DB } from "~/repositories/db/types";
+import { account, DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ModifyKeys,ConvertToAllString } from "./untils";
 import { AccountType } from "./enums";
@@ -121,7 +121,6 @@ export const defaultAccount: Account = {
 export const AccountDic = (locale: Locale): ConvertToAllString<Account> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "账号",
         id: "ID",
@@ -170,8 +169,6 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account> => {
         },
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Account",
         id: "ID",

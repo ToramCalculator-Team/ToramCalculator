@@ -25,6 +25,8 @@ import Button from "~/components/ui/button";
 import * as Enums from "~/repositories/enums";
 
 export default function MobIndexPage() {
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
@@ -53,12 +55,6 @@ export default function MobIndexPage() {
   const setMob = (newMob: Mob): void => {
     setStore("mobPage", "mobId", newMob.id);
   };
-
-  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
 
   // table原始数据------------------------------------------------------------
 
@@ -222,9 +218,6 @@ export default function MobIndexPage() {
     "id",
     "experience",
     "radius",
-    "difficultyOfMelee",
-    "difficultyOfRanged",
-    "difficultyOfTank",
     "updatedByAccountId",
     "createdByAccountId",
   ];
@@ -395,7 +388,7 @@ export default function MobIndexPage() {
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.1</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{mobList()?.[0]?.name}</span>
+                  <span class="text-xl">{mobList()?.[0]?.name[store.settings.language]}</span>
                 </div>
               </div>
               <div
@@ -409,7 +402,7 @@ export default function MobIndexPage() {
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.2</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{mobList()?.[1]?.name}</span>
+                  <span class="text-xl">{mobList()?.[1]?.name[store.settings.language]}</span>
                 </div>
               </div>
               <div
@@ -423,7 +416,7 @@ export default function MobIndexPage() {
                 <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color lg:flex">
                   <span class="text-3xl font-bold">Top.3</span>
                   <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{mobList()?.[2]?.name}</span>
+                  <span class="text-xl">{mobList()?.[2]?.name[store.settings.language]}</span>
                 </div>
               </div>
             </div>
@@ -529,7 +522,7 @@ export default function MobIndexPage() {
                                   tdContent = (
                                     <>
                                       <span class="pb-1">
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        {row.original.name[store.settings.language]}
                                       </span>
                                       <span class="text-sm font-normal text-mainText-color">
                                         {row.getValue("belongToZones") ?? "无"}

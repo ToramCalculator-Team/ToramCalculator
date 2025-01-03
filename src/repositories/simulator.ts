@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, simulator } from "~/repositories/db/types";
+import { DB, simulator } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { teamSubRelations } from "./team";
@@ -76,8 +76,6 @@ export const defaultSimulator: Simulator = {
   team: [],
   details: "",
 
-  updatedAt: new Date(),
-  createdAt: new Date(),
   statistic: defaultStatistic,
   statisticId: defaultStatistic.id,
   updatedByAccountId: defaultAccount.id,

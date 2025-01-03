@@ -7,7 +7,7 @@ import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import { ModifierType } from "~/repositories/enums";
 import { type Character } from "~/repositories/character";
 import { type Monster } from "~/repositories/mob";
-import { type SkillEffect } from "~/repositories/skill_effect";
+import { type SkillEffect } from "~/repositories/skillEffect";
 import { type ModifierList } from "~/repositories/weaponEncAttrs";
 import { Modifier } from "~/repositories/modifier";
 

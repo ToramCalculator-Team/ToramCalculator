@@ -74,7 +74,7 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-  version: 20241227,
+  version: 20250103,
   theme: "light",
   settings: {
     userInterface: {
@@ -163,11 +163,10 @@ const getActStore = () => {
 
         let mergedStore: Store;
         if (oldVersion && oldVersion === newVersion) {
-          mergedStore = _.merge({}, oldStore, newStore);
+          mergedStore = _.merge({}, newStore, oldStore );
         } else {
-          mergedStore = _.merge({}, oldStoreWithoutVersion, newStoreWithoutVersion);
+          mergedStore = _.merge({}, newStoreWithoutVersion, oldStoreWithoutVersion);
           mergedStore.version = newVersion;
-          console.log(performance.now(), "本地配置更新");
           localStorage.setItem("store", JSON.stringify(mergedStore));
         }
         actStore = mergedStore;

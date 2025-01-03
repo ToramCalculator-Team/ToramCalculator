@@ -4,11 +4,10 @@ import { store } from "~/store";
 import Setting from "~/components/module/setting-page";
 // import BabylonBg from "~/components/module/test2";
 import RandomBallBackground from "~/components/module/randomBallBg";
-import { ZeroProvider } from "~/components/module/zeroContex";
 
 export default function AppMainContet(props: ParentProps) {
   return (
-    <ZeroProvider>
+    <>
       {/* <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
         <BabylonBg />
       </Show> */}
@@ -20,6 +19,6 @@ export default function AppMainContet(props: ParentProps) {
         {props.children}
       </Motion.div>
       <Setting />
-    </ZeroProvider>
+    </>
   );
 }

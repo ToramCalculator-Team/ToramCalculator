@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
@@ -65,13 +65,10 @@ export async function deleteAddEquip(id: string) {
 // default
 export const defaultAddEquip: AddEquip = {
   name: {
-    "zh-CN": "默认追加（缺省值）",
-    "zh-TW": "",
-    "zh-HK": "",
-    en: "",
-    "en-US": "",
-    "en-GB": "",
-    ja: ""
+    "zh-CN": "默认追加装备（缺省值）",
+    "zh-TW": "默认追加裝備（缺省值）",
+    en: "defaultAddEquip",
+    ja: "デフォルトの付加装備"
   },
   id: "defaultAddEquipId",
   modifiers: [],
@@ -96,7 +93,6 @@ export const defaultAddEquip: AddEquip = {
 export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "追加装备",
         name: "名称",
@@ -141,8 +137,6 @@ export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
         statisticId: "統計信息ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Additional Equipment",
         name: "Name",

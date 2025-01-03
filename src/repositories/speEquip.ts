@@ -1,14 +1,18 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
+import { ModifyKeys } from "./untils";
+import { WikiString } from "./enums";
 
-export type SpeEquip = Awaited<ReturnType<typeof findSpeEquipById>>;
+export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
+  name: WikiString
+}>;
 export type NewSpeEquip = Insertable<item>;
 export type SpeEquipUpdate = Updateable<item>;
 
@@ -59,7 +63,12 @@ export async function deleteSpeEquip(id: string) {
 
 // default
 export const defaultSpeEquip: SpeEquip = {
-  name: "默认戒指（缺省值）",
+  name: {
+    "zh-CN": "默认特殊装备（缺省值）",
+    "zh-TW": "默认特殊裝備（缺省值）",
+    en: "defaultSpeEquip",
+    ja: "デフォルトの特殊装備",
+  },
   id: "defaultSpeEquipId",
   modifiers: [],
   itemId: "defaultSpeEquipId",
@@ -69,8 +78,6 @@ export const defaultSpeEquip: SpeEquip = {
   dropBy: [],
   rewardBy: [],
   recipe: defaultRecipes.speEquip,
-  updatedAt: new Date(),
-  createdAt: new Date(),
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistic,

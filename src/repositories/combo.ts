@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, combo } from "~/repositories/db/types";
+import { DB, combo } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
@@ -47,7 +47,6 @@ export const defaultCombo: Combo = {
 export const ComborDic = (locale: Locale): ConvertToAllString<Combo> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "防具装备",
         name: "名称",
@@ -62,8 +61,6 @@ export const ComborDic = (locale: Locale): ConvertToAllString<Combo> => {
         combo: "連擊序列",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Armor",
         name: "Name",

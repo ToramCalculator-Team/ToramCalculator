@@ -4,7 +4,7 @@ import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
-import ddl from "~/../prisma/ddl.sql?raw";
+import ddl from "~/../db/clientDB/ddl.sql?raw";
 
 const ELECTRIC_HOST = "http://localhost:3000";
 // const ELECTRIC_HOST = "https://test.kiaclouth.com";

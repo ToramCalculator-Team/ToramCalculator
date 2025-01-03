@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { armor_enchantment_attributes, DB } from "~/repositories/db/types";
+import { armor_enchantment_attributes, DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultAccount } from "./account";
@@ -73,7 +73,6 @@ export const defaultArmorEncAttributes: ArmorEncAttributes = {
 export const ArmorEncAttributesDic = (locale: Locale): ConvertToAllString<ArmorEncAttributes> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "防具装备",
         name: "名称",
@@ -100,8 +99,6 @@ export const ArmorEncAttributesDic = (locale: Locale): ConvertToAllString<ArmorE
         statisticId: "統計信息ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Armor",
         name: "Name",

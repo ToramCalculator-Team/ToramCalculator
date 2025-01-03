@@ -1,26 +1,20 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, skill_effect } from "~/repositories/db/types";
-import { defaultSkillYield } from "./skill_yield";
+import { DB, skill_effect } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { ModifyKeys } from "./untils";
-import { ArmorType } from "./db/enums";
-import { WeaponType } from "./enums";
+import { ArmorType, WeaponType } from "./enums";
 
 export type SkillEffect = ModifyKeys<Awaited<ReturnType<typeof findSkillEffectById>>, {
   mainHand: WeaponType | "Empty"
   subHand: WeaponType | "Empty"
-  armor: ArmorType
+  armor: ArmorType | "Empty"
 }>;
 export type NewSkillEffect = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
 
 export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb.selectFrom("skill_yield").whereRef("skillEffectId", "=", "skill_effect.id").selectAll("skill_yield"),
-    ).$notNull().as("skillYield"),
-  ];
+  return [];
 }
 
 export async function findSkillEffectById(id: string) {
@@ -43,15 +37,7 @@ export async function createSkillEffect(newSkillEffect: NewSkillEffect) {
       .values(newSkillEffect)
       .returningAll()
       .executeTakeFirstOrThrow();
-    const skill_yield = await trx
-      .insertInto("skill_yield")
-      .values({
-        ...defaultSkillYield,
-        skillEffectId: skill_effect.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return { ...skill_effect, skillYield: [skill_yield] };
+    return skill_effect;
   });
 }
 
@@ -70,10 +56,10 @@ export const defaultSkillEffect: SkillEffect = {
   motionModified: "",
   chantingFixed: "",
   chantingModified: "",
-  ReservoirFixed: "",
-  ReservoirModified: "",
+  reservoirFixed: "",
+  reservoirModified: "",
   startupFrames: "",
   cost: "",
-  skillYield: [defaultSkillYield],
   belongToskillId: "",
+  details: {},
 };

@@ -1,35 +1,55 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, mob } from "~/repositories/db/types";
+import { DB, mob } from "~/../db/clientDB/generated/kysely/kyesely";
 import { createStatistic, defaultStatistic, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, MobType } from "./enums";
+import { ElementType, MobType, WikiString } from "./enums";
 
-export type Mob = ModifyKeys<Awaited<ReturnType<typeof findMobById>>, {
-  mobType: MobType;
-  element: ElementType;
-}>;
+export type Mob = ModifyKeys<
+  Awaited<ReturnType<typeof findMobById>>,
+  {
+    name: WikiString;
+    mobType: MobType;
+    element: ElementType;
+  }
+>;
 export type NewMob = Insertable<mob>;
 export type MobUpdate = Updateable<mob>;
 
 export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
   return [
     jsonArrayFrom(
-      eb.selectFrom("_mobTozone")
+      eb
+        .selectFrom("_mobTozone")
         .innerJoin("zone", "_mobTozone.B", "zone.id")
         .where("_mobTozone.A", "=", id)
-      .select("zone.name")
+        .select("zone.name"),
     ).as("belongToZones"),
     jsonArrayFrom(
       eb
         .selectFrom("drop_item")
         .innerJoin("item", "item.id", "drop_item.itemId")
+        .innerJoin("weapon", "item.id", "weapon.itemId")
+        .innerJoin("armor", "item.id", "armor.itemId")
+        .innerJoin("additional_equipment", "item.id", "additional_equipment.itemId")
+        .innerJoin("special_equipment", "item.id", "special_equipment.itemId")
+        .innerJoin("crystal", "item.id", "crystal.itemId")
+        .innerJoin("consumable", "item.id", "consumable.itemId")
+        .innerJoin("material", "item.id", "material.itemId")
         .where("drop_item.dropById", "=", id)
-        .select("item.name"),
+        .select([
+          "weapon.name",
+          "armor.name",
+          "additional_equipment.name",
+          "special_equipment.name",
+          "crystal.name",
+          "consumable.name",
+          "material.name",
+        ]),
     ).as("dropItems"),
     jsonObjectFrom(
       eb
@@ -56,33 +76,37 @@ export async function findMobById(id: string) {
 }
 
 export async function findMobs() {
-  return await db
+  return (await db
     .selectFrom("mob")
     .selectAll("mob")
     .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
-    .execute();
+    .execute()) as Mob[];
 }
 
 export async function updateMob(id: string, updateWith: MobUpdate) {
-  return await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+  return (await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst()) as Mob;
 }
 
-export async function insertMob(trx:Transaction<DB>, newMob: NewMob) {
+export async function insertMob(trx: Transaction<DB>, newMob: NewMob) {
   const statistic = await insertStatistic(trx, defaultStatistic);
   const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
-  const mob = await trx.insertInto("mob").values({
-    ...newMob,
-    statisticId: statistic.id,
-    imageId: image.id,
-  }).returningAll().executeTakeFirstOrThrow();
+  const mob = await trx
+    .insertInto("mob")
+    .values({
+      ...newMob,
+      statisticId: statistic.id,
+      imageId: image.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
 
-  return mob;
+  return mob as Mob;
 }
 
-  export async function createMob(newMob: NewMob) {
-    return await db.transaction().execute(async (trx) => {
-      return await insertMob(trx, newMob);
-    });
+export async function createMob(newMob: NewMob) {
+  return await db.transaction().execute(async (trx) => {
+    return await insertMob(trx, newMob);
+  });
 }
 
 export async function deleteMob(id: string) {
@@ -92,7 +116,12 @@ export async function deleteMob(id: string) {
 // default
 export const defaultMob: Mob = {
   id: "defaultMobId",
-  name: "默认怪物（缺省值）",
+  name: {
+    "zh-CN": "默认怪物（缺省值）",
+    "zh-TW": "默认怪物（缺省值）",
+    en: "defaultMobName",
+    ja: "デフォルトのモブ",
+  },
   mobType: "Boss",
   captureable: false,
   actions: [],
@@ -129,7 +158,6 @@ export const defaultMob: Mob = {
 export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "怪物",
         name: "名称",
@@ -202,8 +230,6 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         createdByAccountId: "創建者ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Mob",
         name: "Name",
@@ -277,4 +303,3 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
       };
   }
 };
-

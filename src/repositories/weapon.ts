@@ -1,18 +1,19 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
-import { WeaponType } from "./enums";
+import { WeaponType, WikiString } from "./enums";
 import { ModifyKeys } from "./untils";
 
 export type Weapon = ModifyKeys<
   Awaited<ReturnType<typeof findWeaponById>>,
   {
+    name: WikiString;
     type: WeaponType;
   }
 >;
@@ -86,7 +87,12 @@ const defaultWeaponShared = {
 // default
 export const defaultWeapons: Record<WeaponType, Weapon> = {
   OneHandSword: {
-    name: "默认单手剑（缺省值）",
+    name: {
+      "zh-CN": "默认单手剑（缺省值）",
+      "zh-TW": "默认單手劍（缺省值）",
+      en: "defaultOneHandSword",
+      ja: "デフォルトの片手剣",
+    },
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -96,7 +102,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   TwoHandSword: {
-    name: "默认大剑（缺省值）",
+    name: {
+      "zh-CN": "默认双手剑（缺省值）",
+      "zh-TW": "默认雙手劍（缺省值）",
+      en: "defaultTwoHandSword",
+      ja: "デフォルトの両手剣",
+    },
     id: "defaultWeaponTwoHandSwordId",
     itemId: "defaultWeaponId",
     type: "TwoHandSword",
@@ -106,7 +117,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Bow: {
-    name: "默认弓（缺省值）",
+    name: {
+      "zh-CN": "默认弓（缺省值）",
+      "zh-TW": "默认弓（缺省值）",
+      en: "defaultBow",
+      ja: "デフォルトの弓",
+    },
     id: "defaultWeaponBowId",
     itemId: "defaultWeaponId",
     type: "Bow",
@@ -116,7 +132,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Bowgun: {
-    name: "默认弩（缺省值）",
+    name: {
+      "zh-CN": "默认弩（缺省值）",
+      "zh-TW": "默认弩（缺省值）",
+      en: "defaultBowgun",
+      ja: "デフォルトの弩弓",
+    },
     id: "defaultWeaponBowgunId",
     itemId: "defaultWeaponId",
     type: "Bowgun",
@@ -126,7 +147,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Rod: {
-    name: "默认杖（缺省值）",
+    name: {
+      "zh-CN": "默认杖（缺省值）",
+      "zh-TW": "默认杖（缺省值）",
+      en: "defaultRod",
+      ja: "デフォルトの杖",
+    },
     id: "defaultWeaponRodId",
     itemId: "defaultWeaponId",
     type: "Rod",
@@ -136,7 +162,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Magictool: {
-    name: "默认魔导具（缺省值）",
+    name: {
+      "zh-CN": "默认魔导具（缺省值）",
+      "zh-TW": "默认魔導具（缺省值）",
+      en: "defaultMagictool",
+      ja: "デフォルトの魔道具"
+    },
     id: "defaultWeaponMagictoolId",
     itemId: "defaultWeaponId",
     type: "Magictool",
@@ -146,7 +177,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Knuckle: {
-    name: "默认拳套（缺省值）",
+    name: {
+      "zh-CN": "默认拳套（缺省值）",
+      "zh-TW": "默认拳套（缺省值）",
+      en: "defaultKnuckle",
+      ja: "デフォルトの拳套"
+    },
     id: "defaultWeaponKnuckleId",
     itemId: "defaultWeaponId",
     type: "Knuckle",
@@ -156,7 +192,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Halberd: {
-    name: "默认枪（缺省值）",
+    name: {
+      "zh-CN": "默认枪（缺省值）",
+      "zh-TW": "默认槍（缺省值）",
+      en: "defaultHalberd",
+      ja: "デフォルトの槍"
+    },
     id: "defaultWeaponHalberdId",
     itemId: "defaultWeaponId",
     type: "Halberd",
@@ -166,7 +207,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Katana: {
-    name: "默认拔刀（缺省值）",
+    name: {
+      "zh-CN": "默认拔刀剑（缺省值）",
+      "zh-TW": "默认拔刀剣（缺省值）",
+      en: "defaultKatana",
+      ja: "デフォルトの拔刀剣"
+    },
     id: "defaultWeaponKatanaId",
     itemId: "defaultWeaponId",
     type: "Katana",
@@ -176,7 +222,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Arrow: {
-    name: "默认箭（缺省值）",
+    name: {
+      "zh-CN": "默认箭矢（缺省值）",
+      "zh-TW": "默认箭矢（缺省值）",
+      en: "defaultArrow",
+      ja: "デフォルトの矢"
+    },
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -186,7 +237,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   ShortSword: {
-    name: "默认小刀（缺省值）",
+    name: {
+      "zh-CN": "默认小刀（缺省值）",
+      "zh-TW": "默认小刀（缺省值）",
+      en: "defaultShortSword",
+      ja: "デフォルトの短剣"
+    },
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -196,7 +252,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   NinjutsuScroll: {
-    name: "默认卷轴（缺省值）",
+    name: {
+      "zh-CN": "默认忍术卷轴（缺省值）",
+      "zh-TW": "默认忍術卷軸（缺省值）",
+      en: "defaultNinjutsuScroll",
+      ja: "デフォルトの忍術卷軸"
+    },
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -206,7 +267,12 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Shield: {
-    name: "默认盾（缺省值）",
+    name: {
+      "zh-CN": "默认盾牌（缺省值）",
+      "zh-TW": "默认盾牌（缺省值）",
+      en: "defaultShield",
+      ja: "デフォルトの盾"
+    },
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, weapon_enchantment_attributes } from "~/repositories/db/types";
+import { DB, weapon_enchantment_attributes } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultUser } from "./user";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic, statisticSubRelations } from "./statistic";

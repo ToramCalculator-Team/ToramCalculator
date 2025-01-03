@@ -1,14 +1,18 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { defaultStatistic, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { CrystalType, WikiString } from "./enums";
 
-export type Crystal = Awaited<ReturnType<typeof findCrystalById>>;
+export type Crystal = ModifyKeys<Awaited<ReturnType<typeof findCrystalById>>, {
+  name: WikiString;
+  crystalType: CrystalType;
+}>;
 export type NewCrystal = Insertable<item>;
 export type CrystalUpdate = Updateable<item>;
 
@@ -71,13 +75,18 @@ export async function deleteCrystalById(id: string) {
 
 // default
 export const defaultCrystal: Crystal = {
-  name: "默认锻晶（缺省值）",
+  name: {
+    "zh-CN": "默认普通锻晶（缺省值）",
+    "zh-TW": "默认普通鑄晶（缺省值）",
+    en: "defaultNormalCrystal",
+    ja: "デフォルトの普通鑄晶"
+  },
   id: "defaultCrystalId",
   modifiers: [],
   itemId: "defaultCrystalId",
   front: [],
   back: [],
-  crystalType: "",
+  crystalType: "NormalCrystal",
   dataSources: "",
   details: "",
   dropBy: [],
@@ -93,7 +102,6 @@ export const defaultCrystal: Crystal = {
 export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "追加装备",
         name: "名称",
@@ -132,8 +140,6 @@ export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
         statisticId: "統計信息ID",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Additional Equipment",
         name: "Name",

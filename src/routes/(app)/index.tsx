@@ -12,7 +12,7 @@ import { type Skill } from "~/repositories/skill";
 import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
-import { type SkillEffect } from "~/repositories/skill_effect";
+import { type SkillEffect } from "~/repositories/skillEffect";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";

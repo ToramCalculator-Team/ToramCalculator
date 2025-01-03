@@ -1,12 +1,15 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/repositories/db/types";
+import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
-import { ItemType } from "./enums";
+import { ItemType, WikiString } from "./enums";
+import { ModifyKeys } from "./untils";
 
-export type Item = Awaited<ReturnType<typeof findItemById>>;
+export type Item = ModifyKeys<Awaited<ReturnType<typeof findItemById>>, {
+  
+}>;
 export type NewItem = Insertable<item>;
 export type ItemUpdate = Updateable<item>;
 
@@ -61,7 +64,6 @@ export async function deleteItem(id: string) {
 export const defaultItems: Record<ItemType, Item> = {
   OneHandSword: {
     id: "defaultOneHandSwordId",
-    name: "默认单手剑（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -73,7 +75,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   TwoHandSword: {
     id: "defaultTwoHandSwordId",
-    name: "默认大剑（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -85,7 +86,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Bow: {
     id: "defaultBowId",
-    name: "默认弓（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -97,7 +97,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Bowgun: {
     id: "defaultBowgunId",
-    name: "默认弩（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -109,7 +108,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Rod: {
     id: "defaultRodId",
-    name: "默认杖（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -121,7 +119,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Magictool: {
     id: "defaultMagictoolId",
-    name: "默认魔导具（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -133,7 +130,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Knuckle: {
     id: "defaultKnuckleId",
-    name: "默认拳套（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -145,7 +141,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Halberd: {
     id: "defaultHalberdId",
-    name: "默认枪（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -157,7 +152,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Katana: {
     id: "defaultKatanaId",
-    name: "默认拔刀剑（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -169,7 +163,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Arrow: {
     id: "defaultArrowId",
-    name: "默认箭（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -181,7 +174,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   ShortSword: {
     id: "defaultShortSwordId",
-    name: "默认小刀（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -193,7 +185,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   NinjutsuScroll: {
     id: "defaultNinjutsuScrollId",
-    name: "默认卷轴（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -205,7 +196,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Shield: {
     id: "defaultShieldId",
-    name: "默认盾（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -217,7 +207,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   Armor: {
     id: "defaultArmorId",
-    name: "默认防具（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -229,7 +218,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   AddEquip: {
     id: "defaultAddEquipId",
-    name: "默认追加装备（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -241,7 +229,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   SpecialEquip: {
     id: "defaultSpecialEquipId",
-    name: "默认特殊装备（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -253,7 +240,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   NormalCrystal: {
     id: "defaultNormalCrystalId",
-    name: "默认普通锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -265,7 +251,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   WeaponCrystal: {
     id: "defaultWeaponCrystalId",
-    name: "默认武器锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -277,7 +262,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   ArmorCrystal: {
     id: "defaultArmorCrystalId",
-    name: "默认防具锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -289,7 +273,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   AddEquipCrystal: {
     id: "defaultAddEquipCrystalId",
-    name: "默认追加装备锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -301,7 +284,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   SpecialCrystal: {
     id: "defaultSpecialCrystalId",
-    name: "默认特殊锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -313,7 +295,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   PowerUpNormalCrystal: {
     id: "defaultPowerUpNormalCrystalId",
-    name: "默认一般强化锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -325,7 +306,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   PowerUpWeaponCrystal: {
     id: "defaultPowerUpWeaponCrystalId",
-    name: "默认武器强化锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -337,7 +317,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   PowerUpArmorCrystal: {
     id: "defaultPowerUpArmorCrystalId",
-    name: "默认防具强化锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -349,7 +328,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   PowerUpAddEquipCrystal: {
     id: "defaultPowerUpAddEquipCrystalId",
-    name: "默认追加装备强化锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -361,7 +339,6 @@ export const defaultItems: Record<ItemType, Item> = {
   },
   PowerUpSpecialCrystal: {
     id: "defaultPowerUpSpecialCrystalId",
-    name: "默认特殊强化锻晶（缺省值）",
     dataSources: "",
     details: "",
     dropBy: [],

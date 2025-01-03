@@ -1,11 +1,15 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, task } from "~/repositories/db/types";
+import { DB, task } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
+import { WikiString } from "./enums";
 
-export type Task = Awaited<ReturnType<typeof findTaskById>>;
+export type Task = ModifyKeys<Awaited<ReturnType<typeof findTaskById>>, {
+  name: WikiString;
+  description: WikiString;
+}>;
 export type NewTask = Insertable<task>;
 export type TaskUpdate = Updateable<task>;
 
@@ -32,17 +36,28 @@ export async function deleteTask(id: string) {
 
 export const defaultTask: Task = {
   id: "defaultTaskId",
-  name: "默认任务（缺省值）",
+  name: {
+    "zh-CN": "默认任务",
+    "zh-TW": "預設任務",
+    "en": "Default Task",
+    "ja": "デフォルト任務",
+  },
   lv: 0,
   npcId: "",
   rewards: [],
+  type: "",
+  description: {
+    "zh-CN": "默认任务",
+    "zh-TW": "預設任務",
+    "en": "Default Task",
+    "ja": "デフォルト任務",
+  }
 };
 
 // Dictionary
 export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "任务",
         name: "名称",
@@ -50,6 +65,8 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         lv: "等级限制",
         npcId: "所属NPCID",
         rewards: "奖励列表",
+        type: "任务类型",
+        description: "任务描述",
       };
     case "zh-TW":
       return {
@@ -59,10 +76,10 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         lv: "等級限制",
         npcId: "所屬NPCID",
         rewards: "獎勵列表",
+        type: "任務類型",
+        description: "任務描述",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Task",
         name: "Name",
@@ -70,6 +87,8 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         lv: "Level Limit",
         npcId: "NPC ID",
         rewards: "Rewards",
+        type: "Task Type",
+        description: "Task Description",
       };
     case "ja":
       return {
@@ -79,6 +98,8 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         lv: "レベル制限",
         npcId: "NPC ID",
         rewards: "報酬一覧",
+        type: "任務タイプ",
+        description: "任務説明",
       };
   }
 };

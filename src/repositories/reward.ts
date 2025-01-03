@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, reward } from "~/repositories/db/types";
+import { DB, reward } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
@@ -51,7 +51,6 @@ export const defaultReward: Reward = {
 export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "任务奖励",
         id: "ID",
@@ -74,8 +73,6 @@ export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
         item: "物品",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Task Reward",
         id: "ID",

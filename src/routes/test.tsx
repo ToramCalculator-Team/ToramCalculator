@@ -1,6 +1,3 @@
-import { useQuery } from "@rocicorp/zero/solid";
-import { escapeLike, Zero } from "@rocicorp/zero";
-import { Schema, Medium, Message, User } from "~/../db/clientDB/schema";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { useZero } from "~/components/module/zeroContex";
 import "./test.css";
@@ -27,23 +24,6 @@ const replies = [
   "I could send you a tarball, but it won't work",
 ];
 
-function randomMessage(users: readonly User[], mediums: readonly Medium[]): Message {
-  const id = randID();
-  const mediumID = mediums[randInt(mediums.length)].id;
-  const timestamp = randBetween(1727395200000, new Date().getTime());
-  const isRequest = randInt(10) <= 6;
-  const messages = isRequest ? requests : replies;
-  const senders = users.filter((u) => u.partner === !isRequest);
-  const senderID = senders[randInt(senders.length)].id;
-  return {
-    id,
-    senderID,
-    mediumID,
-    body: messages[randInt(messages.length)],
-    timestamp,
-  };
-}
-
 const randBetween = (min: number, max: number) => Math.floor(Math.random() * (max - min) + min);
 const randInt = (max: number) => randBetween(0, max);
 const randID = () => Math.random().toString(36).slice(2);
@@ -60,15 +40,13 @@ const formatDate = (timestamp: number) => {
 
 function App() {
   const z = useZero();
-  const users = useQuery(() => z.query.user);
-  const mediums = useQuery(() => z.query.medium);
+  const [users, { refetch: refetchUsers }] = createResource(findUsers);
+  const [users, { refetch: refetchUsers }] = createResource(findUsers);
 
   const [filterUser, setFilterUser] = createSignal<string>("");
   const [filterMedium, setFilterMedium] = createSignal<string>("");
   const [filterText, setFilterText] = createSignal<string>("");
   const [filterDate, setFilterDate] = createSignal<string>("");
-
-  const allMessages = useQuery(() => z.query.message);
 
   const filteredMessages = useQuery(() => {
     let filtered = z.query.message
