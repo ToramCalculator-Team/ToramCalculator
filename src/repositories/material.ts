@@ -5,12 +5,12 @@ import { defaultStatistic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { ModifyKeys } from "./untils";
-import { WikiString } from "./enums";
+import { I18nString } from "./enums";
 
 export type Material = ModifyKeys<
   Awaited<ReturnType<typeof findMaterialById>>,
   {
-    name: WikiString;
+    name: I18nString;
   }
 >;
 export type NewMaterial = Insertable<item>;

@@ -4,10 +4,10 @@ import { DB, npc } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { WikiString } from "./enums";
+import { I18nString } from "./enums";
 
 export type Npc = ModifyKeys<Awaited<ReturnType<typeof findNpcById>>, {
-  name: WikiString;
+  name: I18nString;
 }>;
 export type NewNpc = Insertable<npc>;
 export type NpcUpdate = Updateable<npc>;

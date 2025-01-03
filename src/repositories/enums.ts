@@ -1,8 +1,7 @@
-import { i18n, Locale } from "~/locales/i18n";
+import { Locale } from "~/locales/i18n";
 
 // wiki数据中的多语言字段类型
-const WIKI_STRING = i18n.locales;
-export type WikiString = Record<Locale, string>
+export type I18nString = Record<Locale, string>
 
 // 已知的可加成项
 const MODIFIER_TYPE = [

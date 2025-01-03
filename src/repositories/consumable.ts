@@ -8,12 +8,12 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { WikiString } from "./enums";
+import { I18nString } from "./enums";
 
 export type Consumable = ModifyKeys<
   Awaited<ReturnType<typeof findConsumableById>>,
   {
-    name: WikiString;
+    name: I18nString;
   }
 >;
 export type NewConsumable = Insertable<item>;

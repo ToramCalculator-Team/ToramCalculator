@@ -2,11 +2,14 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, zone } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
+import { I18nString } from "./enums";
 
-export type Zone = Awaited<ReturnType<typeof findZoneById>>;
+export type Zone = ModifyKeys<Awaited<ReturnType<typeof findZoneById>>, {
+  name: I18nString;
+}>;
 export type NewZone = Insertable<zone>;
 export type ZoneUpdate = Updateable<zone>;
 
@@ -45,7 +48,12 @@ export async function deleteZone(id: string) {
 
 export const defaultZone: Zone = {
   id: "defaultZoneId",
-  name: "默认区域（缺省值）",
+  name: {
+    "zh-CN": "默认区域",
+    "zh-TW": "預設區域",
+    en: "Default Zone",
+    ja: "デフォルトゾーン",
+  },
   linkZone: [],
   rewardNodes: 0,
   activityId: null,
@@ -58,7 +66,6 @@ export const defaultZone: Zone = {
 export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
   switch (locale) {
     case "zh-CN":
-    case "zh-HK":
       return {
         selfName: "区域",
         name: "名称",
@@ -83,8 +90,6 @@ export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
         npcs: "此區域的NPC",
       };
     case "en":
-    case "en-US":
-    case "en-GB":
       return {
         selfName: "Zone",
         name: "Name",

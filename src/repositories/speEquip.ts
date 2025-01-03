@@ -8,10 +8,10 @@ import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
 import { ModifyKeys } from "./untils";
-import { WikiString } from "./enums";
+import { I18nString } from "./enums";
 
 export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
-  name: WikiString
+  name: I18nString
 }>;
 export type NewSpeEquip = Insertable<item>;
 export type SpeEquipUpdate = Updateable<item>;

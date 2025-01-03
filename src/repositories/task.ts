@@ -4,11 +4,11 @@ import { DB, task } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { WikiString } from "./enums";
+import { I18nString } from "./enums";
 
 export type Task = ModifyKeys<Awaited<ReturnType<typeof findTaskById>>, {
-  name: WikiString;
-  description: WikiString;
+  name: I18nString;
+  description: I18nString;
 }>;
 export type NewTask = Insertable<task>;
 export type TaskUpdate = Updateable<task>;

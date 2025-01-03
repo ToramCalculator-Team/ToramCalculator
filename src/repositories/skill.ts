@@ -5,10 +5,14 @@ import { defaultStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, skillEffectSubRelations } from "./skillEffect";
 import { ModifyKeys } from "./untils";
-import { SkillTreeType } from "./enums";
+import { ElementType, SkillChargingType, SkillDistanceResistType, SkillTreeType, I18nString } from "./enums";
 
 export type Skill = ModifyKeys<Awaited<ReturnType<typeof findSkillById>>, {
-  treeName: SkillTreeType
+  name: I18nString;
+  treeName: SkillTreeType;
+  chargingType: SkillChargingType;
+  distanceResist: SkillDistanceResistType;
+  element: ElementType;
 }>;
 export type NewSkill = Insertable<skill>;
 export type SkillUpdate = Updateable<skill>;
@@ -83,13 +87,18 @@ export async function deleteSkill(id: string) {
 // default
 export const defaultSkill: Skill = {
   id: "",
-  name: "defaultSkill",
+  name: {
+    "zh-CN": "默认技能",
+    "zh-TW": "預設技能",
+    en: "defaultSkill",
+    ja: "デフォルトスキル",
+  },
   treeName: "MagicSkill",
   posX: 0,
   posY: 0,
   tier: 0,
   isPassive: false,
-  chargingType: "None",
+  chargingType: "Reservoir",
   distanceResist: "None",
   element: "Normal",
   skillEffect: [defaultSkillEffect],

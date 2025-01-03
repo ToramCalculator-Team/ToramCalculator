@@ -7,12 +7,12 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, MobType, WikiString } from "./enums";
+import { ElementType, MobType, I18nString } from "./enums";
 
 export type Mob = ModifyKeys<
   Awaited<ReturnType<typeof findMobById>>,
   {
-    name: WikiString;
+    name: I18nString;
     mobType: MobType;
     element: ElementType;
   }

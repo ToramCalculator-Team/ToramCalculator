@@ -7,10 +7,10 @@ import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { CrystalType, WikiString } from "./enums";
+import { CrystalType, I18nString } from "./enums";
 
 export type Crystal = ModifyKeys<Awaited<ReturnType<typeof findCrystalById>>, {
-  name: WikiString;
+  name: I18nString;
   crystalType: CrystalType;
 }>;
 export type NewCrystal = Insertable<item>;

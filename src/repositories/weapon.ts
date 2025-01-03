@@ -7,13 +7,13 @@ import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
-import { WeaponType, WikiString } from "./enums";
+import { WeaponType, I18nString } from "./enums";
 import { ModifyKeys } from "./untils";
 
 export type Weapon = ModifyKeys<
   Awaited<ReturnType<typeof findWeaponById>>,
   {
-    name: WikiString;
+    name: I18nString;
     type: WeaponType;
   }
 >;
