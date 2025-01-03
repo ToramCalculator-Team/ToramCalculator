@@ -3,26 +3,34 @@
 ## 项目信息
 
 - 概述：出于兴趣为Toram Online开发的小工具￣ω￣=
-- 功能：配置队伍组成后，系统模拟战斗过程，并生成逐帧数据再可视化为图表。玩家可分享自己的机体配置和战斗模拟配置。
-- 数据架构：这是一个localfirst应用，服务端负责分发资源和广播数据库变更（由ElectricSQL引擎完成），客户端订阅对应数据表接口，实现本地数据同步
-- 
+- 功能：主要是战斗流程的模拟，配置队伍组成后，系统模拟战斗过程，并生成逐帧数据再可视化为图表。玩家可分享自己的机体配置和战斗模拟配置。为了方便配置，附带了wiki库。
+- 项目地址：https://app.kiaclouth.com
 
 ## 依赖说明
 
-- prisma model：生成中央数据库架构和本地数据DDL
-- prisma client：生成静态数据类型
-- electric：postgresql的同步引擎
+- solid-start：应用框架
+- postgres：服务端数据库
+- prisma：数据建模和数据库迁移
+- pglite：客户端数据库
+- electric：C-S数据同步引擎
+- kysely：数据交互和类型生成
+- zod：数据校验
+- mathjs：数学计算引擎
+- motionone：动画库
 
 ### 目录说明
 
 - .husky: git hooks
-- prisma: 存放服务端数据库架构的Prisma模型
+- backend: 后端服务配置
+- db: 数据库文件
+- - clientDB: 客户端数据库文件
+- - serverDB: 服务端数据库文件
 - public: 公共静态资源
 - src: 前端项目文件夹
 - - components: 页面组件
 - - lib：工具函数库
 - - locales: 国际化相关
-- - repositories：本地数据库交互方法
+- - repositories：数据库交互方法
 - - routes: 应用程序路由
 - - styles: 项目公用样式、动画、主题、变量等
 - - worker: 工作线程文件
@@ -70,7 +78,7 @@ pnpm install
 
 # generate types
 # 生成静态数据类型
-pnpm dbGenerate：type
+pnpm dev:db-type
 
 # start dev
 # 以开发模式试运行
@@ -84,11 +92,3 @@ pnpm build
 # 以生成模式运行
 pnpm start
 ```
-
-### 开发概要
-
-- Solid Start
-- TypeScript
-- Tailwind CSS
-- Prisma & Kysely
-- Electric & PGlite
