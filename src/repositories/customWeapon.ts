@@ -77,7 +77,7 @@ export async function deleteCustomWeapon(id: string) {
 export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> = {
   mainHand: {
     id: "defaultWeaponId",
-    name: "默认自定义主手（缺省值）",
+    name: "默认自定义主手",
     extraAbi: 0,
     enchantmentAttributes: defaultWeaponEncAttributes,
     enchantmentAttributesId: defaultWeaponEncAttributes.id,
@@ -89,7 +89,7 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
   },
   subHand: {
     id: "defaultWeaponId",
-    name: "默认自定义副手（缺省值）",
+    name: "默认自定义副手",
     extraAbi: 0,
     enchantmentAttributes: null,
     enchantmentAttributesId: null,

@@ -69,7 +69,7 @@ export async function deleteCustomSpeEquip(id: string) {
 // default
 export const defaultCustomSpeEquip: CustomSpeEquip = {
   id: "defaultSpeEquipId",
-  name: "默认自定义特殊装备（缺省值）",
+  name: "默认自定义特殊装备",
   def: 0,
   template: defaultSpeEquip,
   templateId: defaultSpeEquip.id,

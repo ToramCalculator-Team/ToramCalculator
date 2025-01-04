@@ -41,7 +41,6 @@ const formatDate = (timestamp: number) => {
 function App() {
   const z = useZero();
   const [users, { refetch: refetchUsers }] = createResource(findUsers);
-  const [users, { refetch: refetchUsers }] = createResource(findUsers);
 
   const [filterUser, setFilterUser] = createSignal<string>("");
   const [filterMedium, setFilterMedium] = createSignal<string>("");

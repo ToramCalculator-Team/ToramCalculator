@@ -88,8 +88,8 @@ const defaultWeaponShared = {
 export const defaultWeapons: Record<WeaponType, Weapon> = {
   OneHandSword: {
     name: {
-      "zh-CN": "默认单手剑（缺省值）",
-      "zh-TW": "默认單手劍（缺省值）",
+      "zh-CN": "默认单手剑",
+      "zh-TW": "默认單手劍",
       en: "defaultOneHandSword",
       ja: "デフォルトの片手剣",
     },
@@ -103,8 +103,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   TwoHandSword: {
     name: {
-      "zh-CN": "默认双手剑（缺省值）",
-      "zh-TW": "默认雙手劍（缺省值）",
+      "zh-CN": "默认双手剑",
+      "zh-TW": "默认雙手劍",
       en: "defaultTwoHandSword",
       ja: "デフォルトの両手剣",
     },
@@ -118,8 +118,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Bow: {
     name: {
-      "zh-CN": "默认弓（缺省值）",
-      "zh-TW": "默认弓（缺省值）",
+      "zh-CN": "默认弓",
+      "zh-TW": "默认弓",
       en: "defaultBow",
       ja: "デフォルトの弓",
     },
@@ -133,8 +133,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Bowgun: {
     name: {
-      "zh-CN": "默认弩（缺省值）",
-      "zh-TW": "默认弩（缺省值）",
+      "zh-CN": "默认弩",
+      "zh-TW": "默认弩",
       en: "defaultBowgun",
       ja: "デフォルトの弩弓",
     },
@@ -148,8 +148,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Rod: {
     name: {
-      "zh-CN": "默认杖（缺省值）",
-      "zh-TW": "默认杖（缺省值）",
+      "zh-CN": "默认杖",
+      "zh-TW": "默认杖",
       en: "defaultRod",
       ja: "デフォルトの杖",
     },
@@ -163,8 +163,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Magictool: {
     name: {
-      "zh-CN": "默认魔导具（缺省值）",
-      "zh-TW": "默认魔導具（缺省值）",
+      "zh-CN": "默认魔导具",
+      "zh-TW": "默认魔導具",
       en: "defaultMagictool",
       ja: "デフォルトの魔道具"
     },
@@ -178,8 +178,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Knuckle: {
     name: {
-      "zh-CN": "默认拳套（缺省值）",
-      "zh-TW": "默认拳套（缺省值）",
+      "zh-CN": "默认拳套",
+      "zh-TW": "默认拳套",
       en: "defaultKnuckle",
       ja: "デフォルトの拳套"
     },
@@ -193,8 +193,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Halberd: {
     name: {
-      "zh-CN": "默认枪（缺省值）",
-      "zh-TW": "默认槍（缺省值）",
+      "zh-CN": "默认枪",
+      "zh-TW": "默认槍",
       en: "defaultHalberd",
       ja: "デフォルトの槍"
     },
@@ -208,8 +208,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Katana: {
     name: {
-      "zh-CN": "默认拔刀剑（缺省值）",
-      "zh-TW": "默认拔刀剣（缺省值）",
+      "zh-CN": "默认拔刀剑",
+      "zh-TW": "默认拔刀剣",
       en: "defaultKatana",
       ja: "デフォルトの拔刀剣"
     },
@@ -223,8 +223,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Arrow: {
     name: {
-      "zh-CN": "默认箭矢（缺省值）",
-      "zh-TW": "默认箭矢（缺省值）",
+      "zh-CN": "默认箭矢",
+      "zh-TW": "默认箭矢",
       en: "defaultArrow",
       ja: "デフォルトの矢"
     },
@@ -238,8 +238,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   ShortSword: {
     name: {
-      "zh-CN": "默认小刀（缺省值）",
-      "zh-TW": "默认小刀（缺省值）",
+      "zh-CN": "默认小刀",
+      "zh-TW": "默认小刀",
       en: "defaultShortSword",
       ja: "デフォルトの短剣"
     },
@@ -253,8 +253,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   NinjutsuScroll: {
     name: {
-      "zh-CN": "默认忍术卷轴（缺省值）",
-      "zh-TW": "默认忍術卷軸（缺省值）",
+      "zh-CN": "默认忍术卷轴",
+      "zh-TW": "默认忍術卷軸",
       en: "defaultNinjutsuScroll",
       ja: "デフォルトの忍術卷軸"
     },
@@ -268,8 +268,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
   },
   Shield: {
     name: {
-      "zh-CN": "默认盾牌（缺省值）",
-      "zh-TW": "默认盾牌（缺省值）",
+      "zh-CN": "默认盾牌",
+      "zh-TW": "默认盾牌",
       en: "defaultShield",
       ja: "デフォルトの盾"
     },

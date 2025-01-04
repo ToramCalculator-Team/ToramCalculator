@@ -59,7 +59,7 @@ export async function deleteArmorEncAttributes(id: string) {
 // default
 export const defaultArmorEncAttributes: ArmorEncAttributes = {
   id: "defaultArmorEncAttributes",
-  name: "默认防具附魔（缺省值）",
+  name: "默认防具附魔",
   flow: [],
   details: "",
   dataSources: "",

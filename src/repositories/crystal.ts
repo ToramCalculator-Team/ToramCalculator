@@ -56,7 +56,7 @@ export async function findCrystals() {
     .selectAll(["item", "crystal"])
     .select((eb) => crystalSubRelations(eb, eb.val("item.id")))
     .select((eb) => itemSubRelations(eb, eb.val("item.id")))
-    .execute();
+    .execute() as Crystal[];
 }
 
 // 锻晶表单
@@ -76,8 +76,8 @@ export async function deleteCrystalById(id: string) {
 // default
 export const defaultCrystal: Crystal = {
   name: {
-    "zh-CN": "默认普通锻晶（缺省值）",
-    "zh-TW": "默认普通鑄晶（缺省值）",
+    "zh-CN": "默认普通锻晶",
+    "zh-TW": "默认普通鑄晶",
     en: "defaultNormalCrystal",
     ja: "デフォルトの普通鑄晶"
   },

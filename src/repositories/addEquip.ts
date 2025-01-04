@@ -65,8 +65,8 @@ export async function deleteAddEquip(id: string) {
 // default
 export const defaultAddEquip: AddEquip = {
   name: {
-    "zh-CN": "默认追加装备（缺省值）",
-    "zh-TW": "默认追加裝備（缺省值）",
+    "zh-CN": "默认追加装备",
+    "zh-TW": "默认追加裝備",
     en: "defaultAddEquip",
     ja: "デフォルトの付加装備"
   },

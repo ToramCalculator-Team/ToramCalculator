@@ -117,8 +117,8 @@ export async function deleteMob(id: string) {
 export const defaultMob: Mob = {
   id: "defaultMobId",
   name: {
-    "zh-CN": "默认怪物（缺省值）",
-    "zh-TW": "默认怪物（缺省值）",
+    "zh-CN": "默认怪物",
+    "zh-TW": "默认怪物",
     en: "defaultMobName",
     ja: "デフォルトのモブ",
   },

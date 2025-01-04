@@ -59,7 +59,7 @@ export async function deleteConsumable(id: string) {
 // default
 export const defaultConsumable: Consumable = {
   name: {
-    "zh-CN": "默认消耗品（缺省值）",
+    "zh-CN": "默认消耗品",
     "zh-TW": "",
     en: "",
     ja: "",

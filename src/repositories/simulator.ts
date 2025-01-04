@@ -71,7 +71,7 @@ export async function deleteSimulator(id: string) {
 export const defaultSimulator: Simulator = {
   id: "defaultSimulator",
 
-  name: "默认模拟器（缺省值）",
+  name: "默认模拟器",
   visibility: "Public",
   team: [],
   details: "",

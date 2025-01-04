@@ -56,7 +56,7 @@ export async function deletePlayer(id: string) {
 // Default
 export const defaultPlayer: Player = {
   id: "defaultPlayer",
-  name: "默认玩家（缺省值）",
+  name: "默认玩家",
   character: defaultCharacter,
   actions: [
     {

@@ -31,3 +31,4 @@ Thumbs.db
 
 #prisma
 db/serverDB/migrations
+db/clientDB/migrations

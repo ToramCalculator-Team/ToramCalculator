@@ -117,7 +117,7 @@ export async function deleteCharacter(id: string) {
 export const defaultCharacter: Character = {
   id: "defaultCharacter",
   imageId: "",
-  name: "默认机体（缺省值）",
+  name: "默认机体",
   lv: 0,
   str: 0,
   int: 0,

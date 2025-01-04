@@ -61,7 +61,7 @@ export async function deleteCustomArmor(id: string) {
 // default
 export const defaultCustomArmor: CustomArmor = {
   id: "defaultArmorId",
-  name: "默认自定义防具（缺省值）",
+  name: "默认自定义防具",
   def: 0,
   template: defaultArmor,
   templateId: defaultArmor.id,

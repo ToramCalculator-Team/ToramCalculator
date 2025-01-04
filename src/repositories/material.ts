@@ -49,7 +49,7 @@ export async function deleteMaterial(id: string) {
 // default
 export const defaultMaterial: Material = {
   name: {
-    "zh-CN": "默认素材（缺省值）",
+    "zh-CN": "默认素材",
     "zh-TW": "",
     en: "defaultMaterial",
     ja: "",

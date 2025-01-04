@@ -64,8 +64,8 @@ export async function deleteSpeEquip(id: string) {
 // default
 export const defaultSpeEquip: SpeEquip = {
   name: {
-    "zh-CN": "默认特殊装备（缺省值）",
-    "zh-TW": "默认特殊裝備（缺省值）",
+    "zh-CN": "默认特殊装备",
+    "zh-TW": "默认特殊裝備",
     en: "defaultSpeEquip",
     ja: "デフォルトの特殊装備",
   },

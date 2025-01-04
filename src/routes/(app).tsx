@@ -2,15 +2,15 @@ import { ParentProps, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
 import Setting from "~/components/module/setting-page";
-// import BabylonBg from "~/components/module/test2";
+import BabylonBg from "~/components/module/test2";
 import RandomBallBackground from "~/components/module/randomBallBg";
 
 export default function AppMainContet(props: ParentProps) {
   return (
     <>
-      {/* <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+      <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
         <BabylonBg />
-      </Show> */}
+      </Show>
       <RandomBallBackground />
       <Motion.div
         id="AppMainContet"

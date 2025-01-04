@@ -65,8 +65,8 @@ export async function deleteArmor(id: string) {
 // default
 export const defaultArmor: Armor = {
   name: {
-    "zh-CN": "默认防具（缺省值）",
-    "zh-TW": "默认防具（缺省值）",
+    "zh-CN": "默认防具",
+    "zh-TW": "默认防具",
     en: "defaultArmor",
     ja: "デフォルトの防具"  
   },

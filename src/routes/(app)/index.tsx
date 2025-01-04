@@ -156,7 +156,7 @@ export default function Index() {
     list.forEach((item) => {
       keyWordSearch(item, key, hiddenData)
         ? result.push({
-            name: item.name,
+            name: item.name[store.settings.language],
             relateds: keyWordSearch(item, key, hiddenData)!,
             data: item,
           })

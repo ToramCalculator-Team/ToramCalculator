@@ -69,7 +69,7 @@ export async function deleteCustomAddEquip(id: string) {
 // default
 export const defaultCustomAddEquip: CustomAddEquip = {
   id: "defaultAddEquipId",
-  name: "默认自定义追加装备（缺省值）",
+  name: "默认自定义追加装备",
   def: 0,
   template: defaultAddEquip,
   templateId: defaultAddEquip.id,

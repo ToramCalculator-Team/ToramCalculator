@@ -161,18 +161,19 @@ export default function Setting() {
                         />
                       ),
                     },
-                    // {
-                    //   title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
-                    //   description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
-                    //   children: (
-                    //     <Toggle
-                    //       onclick={() =>
-                    //         setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
-                    //       }
-                    //       state={store.settings.userInterface.is3DbackgroundDisabled}
-                    //     />
-                    //   ),
-                    // },
+                    {
+                      title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
+                      description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
+                      children: (
+                        <Switch
+                          name={dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title}
+                          onclick={() =>
+                            setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
+                          }
+                          checked={store.settings.userInterface.is3DbackgroundDisabled}
+                        />
+                      ),
+                    },
                   ])}
                   <Divider />
                   {SettingPageContentModule("StatusAndSync", dictionary().ui.settings.statusAndSync.title, [
