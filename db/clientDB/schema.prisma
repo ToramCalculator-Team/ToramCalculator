@@ -397,6 +397,7 @@ model weapon {
     colorC          Int
     image           image[]
     recipe          recipe?
+    element         String?
 
     usedBy custom_weapon[]
 
@@ -427,7 +428,7 @@ model armor_enchantment_attributes {
     id String @id
 
     name        String
-    flow        Json
+    modifiers   String[]
     details     String?
     dataSources String?
 
@@ -546,9 +547,12 @@ model custom_weapon {
     id String @id
 
     name                    String
+    type                    String
+    baseAbi                 Int
+    stability               Int
     extraAbi                Int
-    template                weapon                         @relation(fields: [templateId], references: [itemId])
-    templateId              String
+    template                weapon?                         @relation(fields: [templateId], references: [itemId])
+    templateId              String?
     refinement              Int
     enchantmentAttributes   weapon_enchantment_attributes? @relation(fields: [enchantmentAttributesId], references: [id])
     enchantmentAttributesId String?
@@ -566,7 +570,7 @@ model weapon_enchantment_attributes {
     id String @id
 
     name        String
-    flow        Json
+    modifiers   String[]
     details     String?
     dataSources String?
 
@@ -640,6 +644,7 @@ model character_skill {
     id String @id
 
     lv         Int
+    isStarGem  Boolean
     template   skill  @relation(fields: [templateId], references: [id])
     templateId String
 
