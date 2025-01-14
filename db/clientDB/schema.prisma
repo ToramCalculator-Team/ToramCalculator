@@ -508,10 +508,8 @@ model skill {
 model skill_effect {
     id String @id
 
-    mainHand          String
-    subHand           String
-    armor             String
-    description       Json
+    condition         String
+    targetType        String
     motionFixed       String
     motionModified    String
     chantingFixed     String
@@ -520,6 +518,7 @@ model skill_effect {
     reservoirModified String
     startupFrames     String
     cost              String
+    description       Json
     details           Json
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
