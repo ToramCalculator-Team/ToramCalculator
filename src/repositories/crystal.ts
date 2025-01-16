@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { defaultStatistic, StatisticDic } from "./statistic";
+import { defaultStatistics, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
@@ -93,8 +93,8 @@ export const defaultCrystal: Crystal = {
   rewardBy: [],
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistic,
-  statisticId: defaultStatistic.id,
+  statistic: defaultStatistics,
+  statisticId: defaultStatistics.id,
 };
 
 

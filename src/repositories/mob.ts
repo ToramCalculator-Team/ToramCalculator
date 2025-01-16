@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/../db/clientDB/generated/kysely/kyesely";
-import { createStatistic, defaultStatistic, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { createStatistic, defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
@@ -88,7 +88,7 @@ export async function updateMob(id: string, updateWith: MobUpdate) {
 }
 
 export async function insertMob(trx: Transaction<DB>, newMob: NewMob) {
-  const statistic = await insertStatistic(trx, defaultStatistic);
+  const statistic = await insertStatistic(trx, defaultStatistics.Mob);
   const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
   const mob = await trx
     .insertInto("mob")
@@ -145,8 +145,8 @@ export const defaultMob: Mob = {
   belongToZones: [],
   details: "defaultExtraDetails",
   dataSources: "defaultDataSources",
-  statisticId: defaultStatistic.id,
-  statistic: defaultStatistic,
+  statisticId: defaultStatistics.Mob.id,
+  statistic: defaultStatistics.Mob,
   imageId: defaultImage.id,
   image: defaultImage,
   updatedByAccountId: defaultAccount.id,

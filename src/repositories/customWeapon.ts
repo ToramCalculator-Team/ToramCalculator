@@ -2,12 +2,16 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, custom_weapon } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { crystalSubRelations } from "./crystal";
-import { defaultWeapons } from "./weapon";
+import { Crystal, crystalSubRelations } from "./crystal";
+import { defaultWeapons, Weapon, weaponSubRelations } from "./weapon";
 import { defaultAccount } from "./account";
 import { defaultWeaponEncAttributes } from "./weaponEncAttrs";
+import { ModifyKeys } from "./untils";
 
-export type CustomWeapon = Awaited<ReturnType<typeof findCustomWeaponById>>;
+export type CustomWeapon = ModifyKeys<Awaited<ReturnType<typeof findCustomWeaponById>>, {
+  crystalList: Crystal[];
+  template: Weapon;
+}>;
 export type NewCustomWeapon = Insertable<custom_weapon>;
 export type CustomWeaponUpdate = Updateable<custom_weapon>;
 
@@ -18,17 +22,19 @@ export function customWeaponSubRelations(
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_crystalTocustom_weapon")
-        .innerJoin("crystal", "_crystalTocustom_weapon.A", "crystal.itemId")
-        // .innerJoin("item", "crystal.itemId", "item.id")
-        .where("_crystalTocustom_weapon.B", "=", id)
+        .selectFrom("item")
+        .innerJoin("crystal", "item.id", "crystal.itemId")
+        .innerJoin("_crystalTocustom_weapon", "item.id", "_crystalTocustom_weapon.A")
+        .whereRef("_crystalTocustom_weapon.B", "=", "custom_weapon.templateId")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll("crystal"),
-      // .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id"))),
     ).as("crystalList"),
     jsonObjectFrom(
       eb
-        .selectFrom("weapon")
+        .selectFrom("item")
+        .innerJoin("weapon", "item.id", "weapon.itemId")
         .whereRef("weapon.itemId", "=", "custom_weapon.templateId")
+        .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
         .selectAll("weapon"),
     ).$notNull().as("template"),
     jsonObjectFrom(
@@ -86,6 +92,9 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
     refinement: 0,
     crystalList: [],
     masterId: defaultAccount.id,
+    type: "",
+    baseAbi: 0,
+    stability: 0
   },
   subHand: {
     id: "defaultWeaponId",
@@ -98,5 +107,8 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
     refinement: 0,
     crystalList: [],
     masterId: defaultAccount.id,
+    type: "",
+    baseAbi: 0,
+    stability: 0
   }
 };

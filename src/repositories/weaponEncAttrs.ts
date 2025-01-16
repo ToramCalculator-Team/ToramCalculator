@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, weapon_enchantment_attributes } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultUser } from "./user";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, statisticSubRelations } from "./statistic";
 
 export type WeaponEncAttributes = Awaited<ReturnType<typeof findWeaponEncAttributesById>>;
 export type NewWeaponEncAttributes = Insertable<weapon_enchantment_attributes>;
@@ -68,8 +68,8 @@ export const defaultWeaponEncAttributes: WeaponEncAttributes = {
   dataSources: "",
   updatedAt: new Date(),
   createdAt: new Date(),
-  statistic: defaultStatistic,
-  statisticId: defaultStatistic.id,
+  statistic: defaultStatistics,
+  statisticId: defaultStatistics.id,
   updatedByAccountId: defaultUser.id,
   createdByAccountId: defaultUser.id,
 };

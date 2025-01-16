@@ -1,15 +1,24 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, character } from "~/../db/clientDB/generated/kysely/kyesely";
-import { defaultStatistic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, Statistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { comboSubRelations } from "./combo";
-import { customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
-import { customArmorSubRelations, defaultCustomArmor } from "./customArmor";
-import { customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
-import { customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
+import { Combo, comboSubRelations } from "./combo";
+import { CustomWeapon, customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
+import { CustomArmor, customArmorSubRelations, defaultCustomArmor } from "./customArmor";
+import { CustomAddEquip, customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
+import { CustomSpeEquip, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
+import { ModifyKeys } from "./untils";
 
-export type Character = Awaited<ReturnType<typeof findCharacterById>>;
+export type Character = ModifyKeys<Awaited<ReturnType<typeof findCharacterById>>, {
+  weapon: CustomWeapon;
+  subWeapon: CustomWeapon;
+  armor: CustomArmor;
+  addEquip: CustomAddEquip;
+  speEquip: CustomSpeEquip;
+  combos: Combo[];
+  statistic: Statistic;
+}>;
 export type NewCharacter = Insertable<character>;
 export type CharacterUpdate = Updateable<character>;
 
@@ -99,7 +108,7 @@ export async function createCharacter(newCharacter: NewCharacter) {
   return await db.transaction().execute(async (trx) => {
       const statistic = await trx
         .insertInto("statistic")
-        .values(defaultStatistic)
+        .values(defaultStatistics.Character)
         .returningAll()
         .executeTakeFirstOrThrow();
       const character = await trx.insertInto("character").values({
@@ -145,6 +154,6 @@ export const defaultCharacter: Character = {
   partnerSkillBType: "Active",
   masterId: "",
   details: "",
-  statistic: defaultStatistic,
-  statisticId: defaultStatistic.id,
+  statistic: defaultStatistics.Character,
+  statisticId: defaultStatistics.Character.id,
 };

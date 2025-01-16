@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, skill } from "~/../db/clientDB/generated/kysely/kyesely";
-import { defaultStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, SkillEffectDic, skillEffectSubRelations } from "./skillEffect";
 import { ConvertToAllString, ModifyKeys } from "./untils";
@@ -62,7 +62,7 @@ export async function createSkill(newSkill: NewSkill) {
     const statistic = await trx
       .insertInto("statistic")
       .values({
-        ...defaultStatistic,
+        ...defaultStatistics,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -119,7 +119,7 @@ export const defaultSkill: Skill = {
 
   updatedByAccountId: "",
   createdByAccountId: "",
-  statistic: defaultStatistic,
+  statistic: defaultStatistics,
   statisticId: "",
 };
 

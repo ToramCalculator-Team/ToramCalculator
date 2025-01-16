@@ -509,7 +509,9 @@ model skill_effect {
     id String @id
 
     condition         String
-    targetType        String
+    targetType        String // 目标类型: 自己\队友\敌人
+    castingRange      Int
+    effectiveRange    Int
     motionFixed       String
     motionModified    String
     chantingFixed     String

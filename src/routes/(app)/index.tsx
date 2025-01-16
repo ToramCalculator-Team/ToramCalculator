@@ -6,7 +6,7 @@ import { evaluate } from "mathjs";
 import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/lib/icon";
-import Button from "~/components/ui/button";
+import Button from "~/components/controls/button";
 import { findMobs, type Mob } from "~/repositories/mob";
 import { type Skill } from "~/repositories/skill";
 import { findCrystals, type Crystal } from "~/repositories/crystal";

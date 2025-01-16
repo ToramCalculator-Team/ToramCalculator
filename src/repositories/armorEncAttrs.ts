@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { armor_enchantment_attributes, DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultAccount } from "./account";
 import { ConvertToAllString } from "./untils";
 import { Locale } from "~/locales/i18n";
@@ -63,8 +63,8 @@ export const defaultArmorEncAttributes: ArmorEncAttributes = {
   flow: [],
   details: "",
   dataSources: "",
-  statistic: defaultStatistic,
-  statisticId: defaultStatistic.id,
+  statistic: defaultStatistics,
+  statisticId: defaultStatistics.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };

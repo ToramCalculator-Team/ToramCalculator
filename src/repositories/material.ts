@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
-import { defaultStatistic } from "./statistic";
+import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { ModifyKeys } from "./untils";
@@ -65,6 +65,6 @@ export const defaultMaterial: Material = {
   rewardBy: [],
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistic,
-  statisticId: defaultStatistic.id,
+  statistic: defaultStatistics,
+  statisticId: defaultStatistics.id,
 };

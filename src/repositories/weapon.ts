@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistic } from "./statistic";
+import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
@@ -99,8 +99,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "OneHandSword",
     element:"Normal",
     recipe: defaultRecipes.OneHandSword,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   TwoHandSword: {
@@ -115,8 +115,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "TwoHandSword",
     element:"Normal",
     recipe: defaultRecipes.TwoHandSword,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Bow: {
@@ -131,8 +131,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Bow",
     element:"Normal",
     recipe: defaultRecipes.Bow,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Bowgun: {
@@ -147,8 +147,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Bowgun",
     element:"Normal",
     recipe: defaultRecipes.Bowgun,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Rod: {
@@ -163,8 +163,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Rod",
     element:"Normal",
     recipe: defaultRecipes.Rod,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Magictool: {
@@ -179,8 +179,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Magictool",
     element:"Normal",
     recipe: defaultRecipes.Magictool,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Knuckle: {
@@ -195,8 +195,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Knuckle",
     element:"Normal",
     recipe: defaultRecipes.Knuckle,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Halberd: {
@@ -211,8 +211,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Halberd",
     element:"Normal",
     recipe: defaultRecipes.Halberd,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Katana: {
@@ -227,8 +227,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "Katana",
     element:"Normal",
     recipe: defaultRecipes.Katana,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Arrow: {
@@ -243,8 +243,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "OneHandSword",
     element:"Normal",
     recipe: defaultRecipes.Arrow,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   ShortSword: {
@@ -259,8 +259,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "OneHandSword",
     element:"Normal",
     recipe: defaultRecipes.ShortSword,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   NinjutsuScroll: {
@@ -275,8 +275,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "OneHandSword",
     element:"Normal",
     recipe: defaultRecipes.NinjutsuScroll,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
   Shield: {
@@ -291,8 +291,8 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     type: "OneHandSword",
     element:"Normal",
     recipe: defaultRecipes.Shield,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
     ...defaultWeaponShared,
   },
 };

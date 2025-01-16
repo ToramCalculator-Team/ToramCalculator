@@ -22,8 +22,8 @@ import {
 } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import Button from "~/components/ui/button";
-import Dialog from "~/components/ui/dialog";
+import Button from "~/components/controls/button";
+import Dialog from "~/components/controls/dialog";
 import {
   Simulator,
   defaultSimulator,
@@ -45,7 +45,7 @@ import {
 } from "sequential-workflow-designer";
 import * as Comlink from "comlink";
 import { RootEditorWrapperContext } from "~/components/module/flowEditor/RootEditorWrapper";
-import Input, { InputComponentType } from "~/components/ui/input";
+import Input, { InputComponentType } from "~/components/controls/input";
 import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";

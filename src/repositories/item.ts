@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistic } from "./statistic";
+import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { ItemType, I18nString } from "./enums";
 import { ModifyKeys } from "./untils";
@@ -70,8 +70,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   TwoHandSword: {
     id: "defaultTwoHandSwordId",
@@ -81,8 +81,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Bow: {
     id: "defaultBowId",
@@ -92,8 +92,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Bowgun: {
     id: "defaultBowgunId",
@@ -103,8 +103,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Rod: {
     id: "defaultRodId",
@@ -114,8 +114,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Magictool: {
     id: "defaultMagictoolId",
@@ -125,8 +125,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Knuckle: {
     id: "defaultKnuckleId",
@@ -136,8 +136,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Halberd: {
     id: "defaultHalberdId",
@@ -147,8 +147,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Katana: {
     id: "defaultKatanaId",
@@ -158,8 +158,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Arrow: {
     id: "defaultArrowId",
@@ -169,8 +169,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   ShortSword: {
     id: "defaultShortSwordId",
@@ -180,8 +180,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   NinjutsuScroll: {
     id: "defaultNinjutsuScrollId",
@@ -191,8 +191,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Shield: {
     id: "defaultShieldId",
@@ -202,8 +202,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   Armor: {
     id: "defaultArmorId",
@@ -213,8 +213,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   AddEquip: {
     id: "defaultAddEquipId",
@@ -224,8 +224,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   SpecialEquip: {
     id: "defaultSpecialEquipId",
@@ -235,8 +235,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   NormalCrystal: {
     id: "defaultNormalCrystalId",
@@ -246,8 +246,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   WeaponCrystal: {
     id: "defaultWeaponCrystalId",
@@ -257,8 +257,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   ArmorCrystal: {
     id: "defaultArmorCrystalId",
@@ -268,8 +268,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   AddEquipCrystal: {
     id: "defaultAddEquipCrystalId",
@@ -279,8 +279,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   SpecialCrystal: {
     id: "defaultSpecialCrystalId",
@@ -290,8 +290,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   PowerUpNormalCrystal: {
     id: "defaultPowerUpNormalCrystalId",
@@ -301,8 +301,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   PowerUpWeaponCrystal: {
     id: "defaultPowerUpWeaponCrystalId",
@@ -312,8 +312,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   PowerUpArmorCrystal: {
     id: "defaultPowerUpArmorCrystalId",
@@ -323,8 +323,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   PowerUpAddEquipCrystal: {
     id: "defaultPowerUpAddEquipCrystalId",
@@ -334,8 +334,8 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
   PowerUpSpecialCrystal: {
     id: "defaultPowerUpSpecialCrystalId",
@@ -345,7 +345,7 @@ export const defaultItems: Record<ItemType, Item> = {
     rewardBy: [],
     updatedByAccountId: defaultAccount.id,
     createdByAccountId: defaultAccount.id,
-    statistic: defaultStatistic,
-    statisticId: defaultStatistic.id,
+    statistic: defaultStatistics,
+    statisticId: defaultStatistics.id,
   },
 };

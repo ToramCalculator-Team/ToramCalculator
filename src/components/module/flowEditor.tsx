@@ -15,8 +15,8 @@ import {
   ToolboxConfiguration,
   ValidatorConfiguration,
 } from "sequential-workflow-designer";
-import Button from "../ui/button";
-import Input, { InputComponentType } from "../ui/input";
+import Button from "../controls/button";
+import Input, { InputComponentType } from "../controls/input";
 import * as Icon from "~/lib/icon";
 import { wrapDefinition } from "./flowEditor/WrappedDefinition";
 import { RootEditorWrapperContext, useRootEditor } from "./flowEditor/RootEditorWrapper";

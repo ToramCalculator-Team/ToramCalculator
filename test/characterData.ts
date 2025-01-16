@@ -1,7 +1,6 @@
-import { $Enums } from "@prisma/client";
 import { type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { WeaponType } from "~/repositories/enums";
+import { MainWeaponType } from "~/repositories/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,
@@ -234,7 +233,7 @@ export type SkillModifierType = keyof typeof SkillAttrEnum;
 export type AttrType = CharacterAttrType | MonsterAttrType | SkillModifierType;
 export type SourceName = AttrType | "SYSTEM";
 
-type MainHandWeaponType = WeaponType | "None";
+type MainHandWeaponType = MainWeaponType | "None";
 
 const weaponAbiT: Record<
 MainHandWeaponType,
@@ -789,7 +788,7 @@ const characterData = (character: Character) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.weaponType].weaAtk_Patk_Convert,
+        formula: weaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert,
         originType: OriginType.baseValue,
       },
       {

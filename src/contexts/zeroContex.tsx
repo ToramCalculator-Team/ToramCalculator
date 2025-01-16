@@ -1,7 +1,7 @@
 import { createContext, ParentProps, useContext } from "solid-js";
 import { createZero } from "@rocicorp/zero/solid";
 import { decodeJwt } from "jose";
-import { type Schema, schema } from "~/../db/clientDB/schema";
+import { type Schema, schema } from "~/../db/clientDB/generated/zero/schema";
 import { Zero } from "@rocicorp/zero";
 import Cookies from "js-cookie";
 

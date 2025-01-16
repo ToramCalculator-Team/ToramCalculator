@@ -4,6 +4,7 @@ import { DB, statistic } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
+import { WikiSchemaType } from "./enums";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -43,12 +44,35 @@ export async function deleteStatistic(id: string) {
 }
 
 // default
-export const defaultStatistic: Statistic = {
-  id: "defaultStatisticId",
-  viewTimestamps: [],
-  usageTimestamps: [],
-  updatedAt: new Date(),
-  createdAt: new Date(),
+export const defaultStatistics: Record<WikiSchemaType, Statistic> = {
+  Mob: {
+    id: "defaultMobStatisticId",
+    viewTimestamps: [],
+    usageTimestamps: [],
+    updatedAt: new Date(),
+    createdAt: new Date(),
+  },
+  Character: {
+    id: "defaultCharacterStatisticId",
+    viewTimestamps: [],
+    usageTimestamps: [],
+    updatedAt: new Date(),
+    createdAt: new Date(),
+  },
+  Weapon:{
+    id: "defaultWeaponStatisticId",
+    viewTimestamps: [],
+    usageTimestamps: [],
+    updatedAt: new Date(),
+    createdAt: new Date(),
+  },
+  Item:{
+    id: "defaultItemStatisticId",
+    viewTimestamps: [],
+    usageTimestamps: [],
+    updatedAt: new Date(),
+    createdAt: new Date(),
+  }
 };
 
 export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {

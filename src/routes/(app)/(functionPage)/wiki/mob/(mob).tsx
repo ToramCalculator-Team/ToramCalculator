@@ -20,8 +20,8 @@ import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { generateAugmentedMobList } from "~/lib/untils/mob";
 import * as Icon from "~/lib/icon";
-import Dialog from "~/components/ui/dialog";
-import Button from "~/components/ui/button";
+import Dialog from "~/components/controls/dialog";
+import Button from "~/components/controls/button";
 import * as Enums from "~/repositories/enums";
 
 export default function MobIndexPage() {
