@@ -42,15 +42,15 @@ const RandomBallBackground = () => {
   // 背景随机动画
   const ballsSize = [0.33, 1.25, 0.76, 2.89, 1.13, 1.42, 0.92, 0.45, 2.54, 0.83];
   const ballsRef: HTMLDivElement[] = [];
-  
+
   createEffect(() => {
-    store.theme === "dark" ?
-      ballsRef.forEach((ball, i) => {
-        ball.style.filter = "drop-shadow(0 0 " + ballsSize[i] * 2 + "px currentcolor)";
-      }) :
-      ballsRef.forEach((ball, i) => {
-        ball.style.filter = "drop-shadow(0 0 0px currentcolor)";
-      })
+    store.theme === "dark"
+      ? ballsRef.forEach((ball, i) => {
+          ball.style.filter = "drop-shadow(0 0 " + ballsSize[i] * 2 + "px currentcolor)";
+        })
+      : ballsRef.forEach((ball, i) => {
+          ball.style.filter = "drop-shadow(0 0 0px currentcolor)";
+        });
   });
 
   return (
@@ -99,7 +99,7 @@ const RandomBallBackground = () => {
       </div>
     </Motion.div>
   );
-}
+};
 
 const Setting = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
@@ -139,12 +139,12 @@ const Setting = () => {
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center`}
         >
+          <Button class={`CloseBtn absolute right-3 top-3`} onClick={() => setStore("settingsDialogState", false)}>
+            <Icon.Line.Close />
+          </Button>
           <div class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-6 lg:max-w-screen-2xl lg:p-3`}>
-            <div class="FormTitle flex items-center justify-between">
+            <div class="FormTitle flex items-center">
               <h1 class="text-2xl font-bold">{dictionary().ui.settings.title}</h1>
-              <Button onClick={() => setStore("settingsDialogState", false)}>
-                <Icon.Line.Close />
-              </Button>
             </div>
             <div class="FormContent flex flex-1 flex-row items-start gap-3 overflow-hidden">
               <div class="Nav hidden w-fit min-w-60 flex-col gap-2 rounded lg:flex">
@@ -365,7 +365,7 @@ const Setting = () => {
       </Show>
     </Presence>
   );
-}
+};
 
 export default function AppMainContet(props: ParentProps) {
   // pwa安装提示

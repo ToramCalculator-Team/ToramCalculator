@@ -6,8 +6,8 @@ import { defaultWeapons } from "./weapon";
 import { defaultAddEquip } from "./addEquip";
 import { defaultArmor } from "./armor";
 import { defaultSpeEquip } from "./speEquip";
-import { defaultConsumable } from "./consumable";
-import { WeaponType } from "./enums";
+import { defaultConsumables } from "./consumable";
+import { RECIPE_TYPE, RecipeType, WeaponType } from "./enums";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 
@@ -47,123 +47,24 @@ export async function deleteRecipe(id: string) {
   return await db.deleteFrom("recipe").where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-const defaultRecipeWeaponShared = {
-  armorId: null,
-  activityId: null,
-  recipeEntries: [],
-  addEquipId: null,
-  speEquipId: null,
-  consumableId: null,
-};
-
-// default
-export const defaultRecipes: Record<WeaponType | "armor" | "addEquip" | "speEquip" | "consumable", Recipe> = {
-  OneHandSword: {
-    id: "defaultOneHandRecipe",
+const recipes: Partial<Record<RecipeType, Recipe>> = {};
+for (const key of RECIPE_TYPE) {
+  const recipeWeaponShared = {
     weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  TwoHandSword: {
-    id: "defaultTwoHandRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Bow: {
-    id: "defaultBowRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Bowgun: {
-    id: "defaultBowgunRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Rod: {
-    id: "defaultRodRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Magictool: {
-    id: "defaultMagictoolRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Knuckle: {
-    id: "defaultKnuckleRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Halberd: {
-    id: "defaultHalberdRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Katana: {
-    id: "defaultKatanaRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Arrow: {
-    id: "defaultArrowRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  ShortSword: {
-    id: "defaultShortSwordRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  NinjutsuScroll: {
-    id: "defaultNinjutsuScrollRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  Shield: {
-    id: "defaultShieldRecipe",
-    weaponId: "",
-    ...defaultRecipeWeaponShared
-  },
-  armor: {
-    id: "defaultArmorRecipe",
     armorId: "",
-    activityId: null,
+    activityId: "",
     recipeEntries: [],
-    weaponId: null,
-    addEquipId: null,
-    speEquipId: null,
-    consumableId: null,
-  },
-  addEquip: {
-    id: "defaultAddEquipRecipe",
-    activityId: null,
-    recipeEntries: [],
-    weaponId: null,
-    armorId: null,
     addEquipId: "",
-    speEquipId: null,
-    consumableId: null,
-  },
-  speEquip: {
-    id: "defaultSpeEquipRecipe",
-    activityId: null,
-    recipeEntries: [],
-    weaponId: null,
-    armorId: null,
-    addEquipId: null,
     speEquipId: "",
-    consumableId: null,
-  },
-  consumable: {
-    id: "defaultConsumableRecipe",
-    activityId: null,
-    recipeEntries: [],
-    weaponId: null,
-    armorId: null,
-    addEquipId: null,
-    speEquipId: null,
     consumableId: "",
-  },
-};
+  };
+  recipes[key] = {
+    id: `default${key}StatisticId`,
+    ...recipeWeaponShared,
+  };
+}
+
+export const defaultRecipes = recipes as Record<RecipeType, Recipe>;
 
 export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
   switch (locale) {
@@ -216,4 +117,4 @@ export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
         consumableId: "",
       };
   }
-} 
+};

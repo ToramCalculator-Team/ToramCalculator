@@ -4,7 +4,7 @@ import { DB, statistic } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
-import { WikiSchemaType } from "./enums";
+import { STATISTIC_TYPE, StatisticType, WIKISCHEMA_TYPE, WikiSchemaType } from "./enums";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -36,44 +36,29 @@ export async function insertStatistic(trx: Transaction<DB>, newStatistic: NewSta
 export async function createStatistic(newStatistic: NewStatistic) {
   return await db.transaction().execute(async (trx) => {
     return await insertStatistic(trx, newStatistic);
-  })
+  });
 }
 
 export async function deleteStatistic(id: string) {
   return await db.deleteFrom("statistic").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-// default
-export const defaultStatistics: Record<WikiSchemaType, Statistic> = {
-  Mob: {
-    id: "defaultMobStatisticId",
-    viewTimestamps: [],
-    usageTimestamps: [],
-    updatedAt: new Date(),
-    createdAt: new Date(),
-  },
-  Character: {
-    id: "defaultCharacterStatisticId",
-    viewTimestamps: [],
-    usageTimestamps: [],
-    updatedAt: new Date(),
-    createdAt: new Date(),
-  },
-  Weapon:{
-    id: "defaultWeaponStatisticId",
-    viewTimestamps: [],
-    usageTimestamps: [],
-    updatedAt: new Date(),
-    createdAt: new Date(),
-  },
-  Item:{
-    id: "defaultItemStatisticId",
-    viewTimestamps: [],
-    usageTimestamps: [],
-    updatedAt: new Date(),
-    createdAt: new Date(),
-  }
+const statisticShared = {
+  viewTimestamps: [],
+  usageTimestamps: [],
+  updatedAt: new Date(),
+  createdAt: new Date(),
 };
+
+const statistics: Partial<Record<StatisticType, Statistic>> = {};
+for (const key of STATISTIC_TYPE) {
+  statistics[key] = {
+    id: `default${key}StatisticId`,
+    ...statisticShared,
+  };
+}
+
+export const defaultStatistics = statistics as Record<StatisticType, Statistic>;
 
 export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
   switch (locale) {

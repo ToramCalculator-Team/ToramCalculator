@@ -62,7 +62,7 @@ export async function createSkill(newSkill: NewSkill) {
     const statistic = await trx
       .insertInto("statistic")
       .values({
-        ...defaultStatistics,
+        ...defaultStatistics.Skill,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -119,8 +119,8 @@ export const defaultSkill: Skill = {
 
   updatedByAccountId: "",
   createdByAccountId: "",
-  statistic: defaultStatistics,
-  statisticId: "",
+  statistic: defaultStatistics.Skill,
+  statisticId: defaultStatistics.Skill.id,
 };
 
 export const SkillDic = (locale: Locale): ConvertToAllString<Skill> => {

@@ -137,7 +137,7 @@ const Nav = () => {
           config={{
             btnName: dictionary().ui.nav.character,
             icon: <Icon.Line.Gamepad />,
-            url: "/character/defaultCharacter",
+            url: "/character/defaultCharacterId",
           }}
           active={active}
           class=" w-[25dvw] lg:w-auto"
@@ -146,7 +146,7 @@ const Nav = () => {
           config={{
             btnName: dictionary().ui.nav.simulator,
             icon: <Icon.Line.Filter />,
-            url: "/simulator/testSimulatorId",
+            url: "/simulator/defaultSimulatorId",
           }}
           active={active}
           class=" w-[25dvw] lg:w-auto"

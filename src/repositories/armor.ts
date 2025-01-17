@@ -85,8 +85,8 @@ export const defaultArmor: Armor = {
   recipe: defaultRecipes.armor,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  statistic: defaultStatistics.Armor,
+  statisticId: defaultStatistics.Armor.id,
 };
 
 // Dictionary

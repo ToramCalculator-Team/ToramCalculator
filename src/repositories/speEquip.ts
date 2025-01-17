@@ -77,9 +77,9 @@ export const defaultSpeEquip: SpeEquip = {
   details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.speEquip,
+  recipe: defaultRecipes.SpeEquip,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  statistic: defaultStatistics.SpeEquip,
+  statisticId: defaultStatistics.SpeEquip.id,
 };

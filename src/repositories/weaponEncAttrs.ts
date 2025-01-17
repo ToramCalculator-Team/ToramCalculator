@@ -63,13 +63,11 @@ export async function deleteWeaponEncAttributes(id: string) {
 export const defaultWeaponEncAttributes: WeaponEncAttributes = {
   id: "defaultWeaponEncAttributes",
   name: "默认武器附魔",
-  flow: [],
+  modifiers: [],
   details: "",
   dataSources: "",
-  updatedAt: new Date(),
-  createdAt: new Date(),
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  statistic: defaultStatistics.WeaponEncAttrs,
+  statisticId: defaultStatistics.WeaponEncAttrs.id,
   updatedByAccountId: defaultUser.id,
   createdByAccountId: defaultUser.id,
 };

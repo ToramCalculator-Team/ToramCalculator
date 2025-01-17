@@ -85,8 +85,8 @@ export const defaultAddEquip: AddEquip = {
   recipe: defaultRecipes.addEquip,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  statistic: defaultStatistics.AddEquip,
+  statisticId: defaultStatistics.AddEquip.id,
 };
 
 // Dictionary

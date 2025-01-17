@@ -74,27 +74,117 @@ export async function deleteCrystalById(id: string) {
 }
 
 // default
-export const defaultCrystal: Crystal = {
-  name: {
-    "zh-CN": "默认普通锻晶",
-    "zh-TW": "默认普通鑄晶",
-    en: "defaultNormalCrystal",
-    ja: "デフォルトの普通鑄晶"
+export const defaultCrystal: Record<CrystalType, Crystal> = {
+  NormalCrystal: {
+    name: {
+      "zh-CN": "默认普通锻晶",
+      "zh-TW": "默认普通鑄晶",
+      en: "defaultNormalCrystal",
+      ja: "デフォルトの普通鑄晶"
+    },
+    id: "defaultNormalCrystalId",
+    modifiers: [],
+    itemId: "defaultNormalCrystalId",
+    front: [],
+    back: [],
+    crystalType: "NormalCrystal",
+    dataSources: "",
+    details: "",
+    dropBy: [],
+    rewardBy: [],
+    updatedByAccountId: defaultAccount.id,
+    createdByAccountId: defaultAccount.id,
+    statistic: defaultStatistics.NormalCrystal,
+    statisticId: defaultStatistics.NormalCrystal.id,
   },
-  id: "defaultCrystalId",
-  modifiers: [],
-  itemId: "defaultCrystalId",
-  front: [],
-  back: [],
-  crystalType: "NormalCrystal",
-  dataSources: "",
-  details: "",
-  dropBy: [],
-  rewardBy: [],
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  WeaponCrystal: {
+    name: {
+      "zh-CN": "默认武器锻晶",
+      "zh-TW": "默认武器鑄晶",
+      en: "defaultWeaponCrystal",
+      ja: "デフォルトの武器鑄晶"
+    },
+    id: "defaultWeaponCrystallId",
+    modifiers: [],
+    itemId: "defaultWeaponCrystalId",
+    front: [],
+    back: [],
+    crystalType: "WeaponCrystal",
+    dataSources: "",
+    details: "",
+    dropBy: [],
+    rewardBy: [],
+    updatedByAccountId: defaultAccount.id,
+    createdByAccountId: defaultAccount.id,
+    statistic: defaultStatistics.WeaponCrystal,
+    statisticId: defaultStatistics.WeaponCrystal.id,
+  },
+  ArmorCrystal: {
+    name: {
+      "zh-CN": "默认防具锻晶",
+      "zh-TW": "默认防具鑄晶",
+      en: "defaultArmorCrystal",
+      ja: "デフォルトの防具鑄晶"
+    },
+    id: "defaultArmorCrystalId",
+    modifiers: [],
+    itemId: "defaultArmorCrystalId",
+    front: [],
+    back: [],
+    crystalType: "ArmorCrystal",
+    dataSources: "",
+    details: "",
+    dropBy: [],
+    rewardBy: [],
+    updatedByAccountId: defaultAccount.id,
+    createdByAccountId: defaultAccount.id,
+    statistic: defaultStatistics.ArmorCrystal,
+    statisticId: defaultStatistics.ArmorCrystal.id,
+  },
+  AddEquipCrystal: {
+    name: {
+      "zh-CN": "默认追击锻晶",
+      "zh-TW": "默认追击鑄晶",
+      en: "defaultAddEquipCrystal",
+      ja: "デフォルトの追加装备鑄晶"
+    },
+    id: "defaultAddEquipCrystalId",
+    modifiers: [],
+    itemId: "defaultAddEquipCrystalId",
+    front: [],
+    back: [],
+    crystalType: "AddEquipCrystal",
+    dataSources: "",
+    details: "",
+    dropBy: [],
+    rewardBy: [],
+    updatedByAccountId: defaultAccount.id,
+    createdByAccountId: defaultAccount.id,
+    statistic: defaultStatistics.AddEquipCrystal,
+    statisticId: defaultStatistics.AddEquipCrystal.id,
+  },
+  SpecialCrystal: {
+    name: {
+      "zh-CN": "默认特殊锻晶",
+      "zh-TW": "默认特殊鑄晶",
+      en: "defaultSpecialCrystal",
+      ja: "デフォルトの特殊鑄晶"
+    },
+    id: "defaultSpecialCrystalId",
+    modifiers: [],
+    itemId: "defaultSpecialCrystalId",
+    front: [],
+    back: [],
+    crystalType: "SpecialCrystal",
+    dataSources: "",
+    details: "",
+    dropBy: [],
+    rewardBy: [],
+    updatedByAccountId: defaultAccount.id,
+    createdByAccountId: defaultAccount.id,
+    statistic: defaultStatistics.SpecialCrystal,
+    statisticId: defaultStatistics.SpecialCrystal.id,
+  }
 };
 
 

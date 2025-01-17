@@ -31,9 +31,8 @@ export default function CharacterIndexPage() {
 
   return (
     <>
-      {/* <BabylonBg /> */}
       <div class="Content flex flex-col gap-4 p-3">
-        <a href="/character/testCharacterId">testCharacter</a>
+        <a href="/character/defaultCharacterId">defaultCharacterId</a>
       </div>
     </>
   );

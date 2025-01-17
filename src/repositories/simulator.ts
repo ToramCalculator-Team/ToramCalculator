@@ -76,8 +76,8 @@ export const defaultSimulator: Simulator = {
   team: [],
   details: "",
 
-  statistic: defaultStatistics,
-  statisticId: defaultStatistics.id,
+  statistic: defaultStatistics.Simulator,
+  statisticId: defaultStatistics.Simulator.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };

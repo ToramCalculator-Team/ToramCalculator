@@ -704,7 +704,7 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/simulator/testSimulatorId"}
+                  href={"/simulator/defaultSimulatorId"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >
                   <Button
