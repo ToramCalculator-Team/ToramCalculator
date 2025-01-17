@@ -1,14 +1,18 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, character } from "~/../db/clientDB/generated/kysely/kyesely";
-import { defaultStatistics, Statistic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, Statistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Combo, comboSubRelations } from "./combo";
-import { CustomWeapon, customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
+import { CustomWeapon, CustomWeaponDic, customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
 import { CustomArmor, customArmorSubRelations, defaultCustomArmor } from "./customArmor";
 import { CustomAddEquip, customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
 import { CustomSpeEquip, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
-import { ModifyKeys } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { Locale } from "~/locales/i18n";
+import { ArmorDic } from "./armor";
+import { AddEquipDic } from "./addEquip";
+import { WeaponDic } from "./weapon";
 
 export type Character = ModifyKeys<Awaited<ReturnType<typeof findCharacterById>>, {
   weapon: CustomWeapon;
@@ -156,4 +160,49 @@ export const defaultCharacter: Character = {
   details: "",
   statistic: defaultStatistics.Character,
   statisticId: defaultStatistics.Character.id,
+};
+
+// Dictionary
+export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "追加装备",
+        name: "名称",
+        id: "ID",
+        imageId: "图片ID",
+        lv: "等级",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        personalityType: "个人能力类型",
+        personalityValue: "个人能力值",
+        weapon: CustomWeaponDic(locale),
+        weaponId: "主手武器ID",
+        subWeapon: CustomWeaponDic(locale),
+        subWeaponId: "副手武器ID",
+        armor: CustomArmorDic(locale),
+        armorId: "防具ID",
+        addEquip: AddEquipDic(locale),
+        addEquipId: "追加装备ID",
+        speEquip: SpeEquipDic(locale),
+        speEquipId: "特殊装备ID",
+        cooking: "料理",
+        combos: "连击",
+        modifiers: "额外加成属性",
+        partnerSkillA: "伙伴技能A",
+        partnerSkillAType: "伙伴技能A类型",
+        partnerSkillB: "伙伴技能B",
+        partnerSkillBType: "伙伴技能B类型",
+        masterId: "所有者ID",
+        details: "额外说明",
+        statistic: StatisticDic(locale),
+        statisticId: "统计信息ID",
+      };
+    case "zh-TW":
+    case "en":
+    case "ja":
+  }
 };

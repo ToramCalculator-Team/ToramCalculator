@@ -202,12 +202,12 @@ export interface dictionary {
       };
       augmented: string;
       canNotModify: string;
-      mobDegreeOfDifficulty: {
-        0: string;
-        1: string;
-        2: string;
-        3: string;
-        4: string;
+      difficultyflag: {
+        Easy: string;
+        Normal: string;
+        Hard: string;
+        Lunatic: string;
+        Ultimate: string;
       };
       mobForm: {
         description: string;

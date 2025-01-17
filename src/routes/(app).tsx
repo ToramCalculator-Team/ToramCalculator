@@ -3,7 +3,7 @@ import { For, type JSX, Show, type ParentProps, createMemo, createEffect, onMoun
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
-import * as Icon from "~/lib/icon";
+import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import Button from "~/components/controls/button";
 import CheckBox from "~/components/controls/checkBox";

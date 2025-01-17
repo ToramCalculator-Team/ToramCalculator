@@ -3,22 +3,24 @@ import { db } from "./database";
 import { DB, custom_weapon } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Crystal, crystalSubRelations } from "./crystal";
-import { defaultWeapons, Weapon, weaponSubRelations } from "./weapon";
+import { defaultWeapons, Weapon, WeaponDic, weaponSubRelations } from "./weapon";
 import { defaultAccount } from "./account";
-import { defaultWeaponEncAttributes } from "./weaponEncAttrs";
-import { ModifyKeys } from "./untils";
+import { defaultWeaponEncAttributes, WeaponEncAttrDic } from "./weaponEncAttrs";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { Locale } from "~/locales/i18n";
+import { StatisticDic } from "./statistic";
 
-export type CustomWeapon = ModifyKeys<Awaited<ReturnType<typeof findCustomWeaponById>>, {
-  crystalList: Crystal[];
-  template: Weapon;
-}>;
+export type CustomWeapon = ModifyKeys<
+  Awaited<ReturnType<typeof findCustomWeaponById>>,
+  {
+    crystalList: Crystal[];
+    template: Weapon;
+  }
+>;
 export type NewCustomWeapon = Insertable<custom_weapon>;
 export type CustomWeaponUpdate = Updateable<custom_weapon>;
 
-export function customWeaponSubRelations(
-  eb: ExpressionBuilder<DB, "custom_weapon">,
-  id: Expression<string>,
-) {
+export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "custom_weapon">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -36,13 +38,15 @@ export function customWeaponSubRelations(
         .whereRef("weapon.itemId", "=", "custom_weapon.templateId")
         .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
         .selectAll("weapon"),
-    ).$notNull().as("template"),
+    )
+      .$notNull()
+      .as("template"),
     jsonObjectFrom(
       eb
         .selectFrom("weapon_enchantment_attributes")
         .whereRef("weapon_enchantment_attributes.id", "=", "custom_weapon.enchantmentAttributesId")
         .selectAll("weapon_enchantment_attributes"),
-    ).as("enchantmentAttributes"),
+    ).$notNull().as("enchantmentAttributes"),
   ];
 }
 
@@ -56,12 +60,7 @@ export async function findCustomWeaponById(id: string) {
 }
 
 export async function updateCustomWeapon(id: string, updateWith: CustomWeaponUpdate) {
-  return await db
-    .updateTable("custom_weapon")
-    .set(updateWith)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst();
+  return await db.updateTable("custom_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function createCustomWeapon(newWeapon: NewCustomWeapon) {
@@ -94,14 +93,14 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
     masterId: defaultAccount.id,
     type: "",
     baseAbi: 0,
-    stability: 0
+    stability: 0,
   },
   subHand: {
     id: "defaultWeaponId",
     name: "默认自定义副手",
     extraAbi: 0,
-    enchantmentAttributes: null,
-    enchantmentAttributesId: null,
+    enchantmentAttributes: defaultWeaponEncAttributes,
+    enchantmentAttributesId: defaultWeaponEncAttributes.id,
     template: defaultWeapons.Shield,
     templateId: defaultWeapons.Shield.id,
     refinement: 0,
@@ -109,6 +108,80 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
     masterId: defaultAccount.id,
     type: "",
     baseAbi: 0,
-    stability: 0
+    stability: 0,
+  },
+};
+
+// Dictionary
+export const CustomWeaponDic = (locale: Locale): ConvertToAllString<CustomWeapon> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        id: "ID",
+        name: "名称",
+        extraAbi: "额外基础攻击力",
+        enchantmentAttributes: WeaponEncAttrDic(locale),
+        enchantmentAttributesId: "附魔ID",
+        template: WeaponDic(locale),
+        templateId: "模板ID",
+        refinement: "精炼值",
+        crystalList: "锻晶",
+        masterId: "所有者ID",
+        type: "武器类型",
+        baseAbi: "基础攻击力",
+        stability: "稳定率",
+        selfName: "自定义武器",
+      };
+    case "zh-TW":
+      return {
+        id: "ID",
+        name: "名称",
+        extraAbi: "額外基礎攻擊力",
+        enchantmentAttributes: WeaponEncAttrDic(locale),
+        enchantmentAttributesId: "附魔ID",
+        template: WeaponDic(locale),
+        templateId: "模板ID",
+        refinement: "精炼值",
+        crystalList: "鑄晶",
+        masterId: "所有者ID",
+        type: "武器類型",
+        baseAbi: "基礎攻擊力",
+        stability: "穩定率",
+        selfName: "自定義武器",
+      };
+    case "en":
+      return {
+        id: "ID",
+        name: "Name",
+        extraAbi: "Extra Base Attack",
+        enchantmentAttributes: WeaponEncAttrDic(locale),
+        enchantmentAttributesId: "Enchantment Attributes ID",
+        template: WeaponDic(locale),
+        templateId: "Template ID",
+        refinement: "Refinement",
+        crystalList: "Crystals",
+        masterId: "Master ID",
+        type: "Type",
+        baseAbi: "Base Attack",
+        stability: "Stability",
+        selfName: "Custom Weapon",
+      }
+    case "ja":
+      return {
+        id: "ID",
+        name: "名前",
+        extraAbi: "追加基本攻撃力",
+        enchantmentAttributes: WeaponEncAttrDic(locale),
+        enchantmentAttributesId: "附魔属性ID",
+        template: WeaponDic(locale),
+        templateId: "テンプレートID",
+        refinement: "精炼度",
+        crystalList: "鑄石",
+        masterId: "マスターID",
+        type: "タイプ",
+        baseAbi: "基本攻撃力",
+        stability: "安定度",
+        selfName: "カスタム武器",
+      }
   }
 };

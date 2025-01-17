@@ -17,7 +17,7 @@ import {
 } from "sequential-workflow-designer";
 import Button from "../controls/button";
 import Input, { InputComponentType } from "../controls/input";
-import * as Icon from "~/lib/icon";
+import * as Icon from "~/components/icon";
 import { wrapDefinition } from "./flowEditor/WrappedDefinition";
 import { RootEditorWrapperContext, useRootEditor } from "./flowEditor/RootEditorWrapper";
 import { StepEditorWrapperContext, useStepEditor } from "./flowEditor/StepEditorWrapper";

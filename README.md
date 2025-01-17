@@ -3,20 +3,27 @@
 ## 项目信息
 
 - 概述：出于兴趣为Toram Online开发的小工具￣ω￣=
-- 功能：主要是战斗流程的模拟，配置队伍组成后，系统模拟战斗过程，并生成逐帧数据再可视化为图表。玩家可分享自己的机体配置和战斗模拟配置。为了方便配置，附带了wiki库。
+- 核心功能：帮助玩家找到最合适的配置。配置队伍组成后，系统模拟战斗过程，并生成逐帧数据再可视化为图表。玩家可分享自己的机体配置和战斗模拟配置。为了方便配置，附带了wiki库。
 - 项目地址：https://app.kiaclouth.com
 
 ## 依赖说明
 
-- solid-start：应用框架
-- postgres：服务端数据库
-- prisma：数据建模和数据库迁移
-- pglite：客户端数据库
-- electric：C-S数据同步引擎
-- kysely：数据交互和类型生成
-- zod：数据校验
-- mathjs：数学计算引擎
-- motionone：动画库
+- UI 层 (Presentation Layer):
+- - 负责用户界面展示和用户交互。
+- - 使用 SolidJS、Tailwind CSS、Babylon.js、Editor.js、TanStack 等技术。
+- - 处理用户输入、UI 渲染、动画效果等。
+- 应用逻辑层 (Application Layer/Business Logic Layer):
+- - 负责处理应用程序的核心业务逻辑，例如模拟器计算、数据分析、状态管理等。
+- - 使用 XState 管理应用状态。
+- - 协调 UI 层和数据层之间的交互。
+- 数据层 (Data Layer):
+- - 负责数据的访问、存储和管理。
+- - 使用 pgLite、kysely、ElectricSQL、PostgreSQL 等技术。
+- - 处理本地数据库操作、数据同步、数据验证（zod）、数据搜索（fuse）等。
+- 基础设施层 (Infrastructure Layer):
+- - 负责提供底层支持，例如 ID 生成、JWT 处理、Cookie 管理等。
+- - 包含 cuid2、jose、js-cookie 等工具。
+- - 也包含与 Web Workers 和 WASM 相关的代码。
 
 ### 目录说明
 

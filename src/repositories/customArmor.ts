@@ -3,9 +3,11 @@ import { db } from "./database";
 import { DB, custom_armor } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultArmor } from "./armor";
+import { ArmorDic, defaultArmor } from "./armor";
 import { defaultAccount } from "./account";
-import { defaultArmorEncAttributes } from "./armorEncAttrs";
+import { ArmorEncAttributesDic, defaultArmorEncAttributes } from "./armorEncAttrs";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type CustomArmor = Awaited<ReturnType<typeof findCustomArmorById>>;
 export type NewCustomArmor = Insertable<custom_armor>;
@@ -71,4 +73,71 @@ export const defaultCustomArmor: CustomArmor = {
   refinement: 0,
   crystalList: [],
   masterId: defaultAccount.id,
+};
+
+// Dictionary
+export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "自定义防具",
+        id: "ID",
+        name: "名称",
+        def: "防御力",
+        template: ArmorDic(locale),
+        templateId: "模板ID",
+        armorType: "防具类型",
+        enchantmentAttributes: ArmorEncAttributesDic(locale),
+        enchantmentAttributesId: "附魔ID",
+        refinement: "精炼值",
+        crystalList: "锻晶",
+        masterId: "所有者ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "自定义防具",
+        id: "ID",
+        name: "名称",
+        def: "防禦力",
+        template: ArmorDic(locale),
+        templateId: "模板ID",
+        armorType: "防具類型",
+        enchantmentAttributes: ArmorEncAttributesDic(locale),
+        enchantmentAttributesId: "附魔ID",
+        refinement: "精炼值",
+        crystalList: "鑄晶",
+        masterId: "所有者ID",
+      };
+    case "en":
+      return {
+        selfName: "Custom Armor",
+        id: "ID",
+        name: "Name",
+        def: "Def",
+        template: ArmorDic(locale),
+        templateId: "Template ID",
+        armorType: "Armor Type",
+        enchantmentAttributes: ArmorEncAttributesDic(locale),
+        enchantmentAttributesId: "Enchantment Attributes ID",
+        refinement: "Refinement",
+        crystalList: "Crystals",
+        masterId: "Master ID",
+      }
+    case "ja":
+      return {
+        selfName: "カスタム防具",
+        id: "ID",
+        name: "名前",
+        def: "防御力",
+        template: ArmorDic(locale),
+        templateId: "テンプレートID",
+        armorType: "防具タイプ",
+        enchantmentAttributes: ArmorEncAttributesDic(locale),
+        enchantmentAttributesId: "附魔属性ID",
+        refinement: "精炼度",
+        crystalList: "クリスタル",
+        masterId: "所有者ID",
+      }
+      
+  }
 };

@@ -3,7 +3,9 @@ import { db } from "./database";
 import { DB, weapon_enchantment_attributes } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultUser } from "./user";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, statisticSubRelations } from "./statistic";
+import { defaultStatistics, StatisticDic, statisticSubRelations } from "./statistic";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type WeaponEncAttributes = Awaited<ReturnType<typeof findWeaponEncAttributesById>>;
 export type NewWeaponEncAttributes = Insertable<weapon_enchantment_attributes>;
@@ -70,4 +72,62 @@ export const defaultWeaponEncAttributes: WeaponEncAttributes = {
   statisticId: defaultStatistics.WeaponEncAttrs.id,
   updatedByAccountId: defaultUser.id,
   createdByAccountId: defaultUser.id,
+};
+
+// Dictionary
+export const WeaponEncAttrDic = (locale: Locale): ConvertToAllString<WeaponEncAttributes> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "武器附魔",
+        id: "ID",
+        name: "名称",
+        modifiers: "词条",
+        details: "额外说明",
+        dataSources: "数据来源",
+        statistic: StatisticDic(locale),
+        statisticId: "统计信息ID",
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "创建者ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "武器附魔",
+        id: "ID",
+        name: "名称",
+        modifiers: "語項",
+        details: "額外說明",
+        dataSources: "資料來源",
+        statistic: StatisticDic(locale),
+        statisticId: "統計資訊ID",
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "創建者ID",
+      }
+    case "en":
+      return {
+        selfName: "Weapon Enchantment",
+        id: "ID",
+        name: "Name",
+        modifiers: "Modifiers",
+        details: "Details",
+        dataSources: "Data Sources",
+        statistic: StatisticDic(locale),
+        statisticId: "Statistic ID",
+        updatedByAccountId: "Updated By Account ID",
+        createdByAccountId: "Created By Account ID",
+      }
+    case "ja":
+      return {
+        selfName: "武器附魔",
+        id: "ID",
+        name: "名前",
+        modifiers: "修飾子",
+        details: "詳細",
+        dataSources: "データソース",
+        statistic: StatisticDic(locale),
+        statisticId: "統計情報ID",
+        updatedByAccountId: "更新者アカウントID",
+        createdByAccountId: "作成者アカウントID",
+      };
+  }
 };

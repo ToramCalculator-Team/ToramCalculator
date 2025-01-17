@@ -82,7 +82,7 @@ export const defaultArmor: Armor = {
   details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.armor,
+  recipe: defaultRecipes.Armor,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistics.Armor,

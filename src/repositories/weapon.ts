@@ -2,13 +2,14 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistic";
+import { defaultStatistics, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
 import { WeaponType, I18nString, ElementType } from "./enums";
-import { ModifyKeys } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { Locale } from "~/locales/i18n";
 
 export type Weapon = ModifyKeys<
   Awaited<ReturnType<typeof findWeaponById>>,
@@ -295,4 +296,110 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     statisticId: defaultStatistics.Shield.id,
     ...defaultWeaponShared,
   },
+};
+
+// Dictionary
+export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "武器",
+        name: "名称",
+        id: "ID",
+        baseAbi: "基础攻击力",
+        stability: "稳定率",
+        defaultCrystals: "默认锻晶",
+        colorA: "颜色A",
+        colorB: "颜色B",
+        colorC: "颜色C",
+        modifiers: "属性",
+        dataSources: "数据来源",
+        details: "额外说明",
+        dropBy: "掉落于",
+        rewardBy: "奖励于",
+        itemId: "道具ID",
+        type: "武器类型",
+        element:"固有元素属性",
+        recipe: "配方",
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "创建者ID",
+        statistic: StatisticDic(locale),
+        statisticId: "统计信息ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "",
+        name: "",
+        id: "ID",
+        baseAbi: "",
+        stability: "",
+        defaultCrystals: "",
+        colorA: "",
+        colorB: "",
+        colorC: "",
+        modifiers: "",
+        dataSources: "",
+        details: "",
+        dropBy: "",
+        rewardBy: "",
+        itemId: "",
+        type: "",
+        element:"",
+        recipe: "",
+        updatedByAccountId: "",
+        createdByAccountId: "",
+        statistic: StatisticDic(locale),
+        statisticId: "",
+      };
+    case "en":
+      return {
+        selfName: "",
+        name: "",
+        id: "ID",
+        baseAbi: "",
+        stability: "",
+        defaultCrystals: "",
+        colorA: "",
+        colorB: "",
+        colorC: "",
+        modifiers: "",
+        dataSources: "",
+        details: "",
+        dropBy: "",
+        rewardBy: "",
+        itemId: "",
+        type: "",
+        element:"",
+        recipe: "",
+        updatedByAccountId: "",
+        createdByAccountId: "",
+        statistic: StatisticDic(locale),
+        statisticId: "",
+      };
+    case "ja":
+      return {
+        selfName: "",
+        name: "",
+        id: "ID",
+        baseAbi: "",
+        stability: "",
+        defaultCrystals: "",
+        colorA: "",
+        colorB: "",
+        colorC: "",
+        modifiers: "",
+        dataSources: "",
+        details: "",
+        dropBy: "",
+        rewardBy: "",
+        itemId: "",
+        type: "",
+        element:"",
+        recipe: "",
+        updatedByAccountId: "",
+        createdByAccountId: "",
+        statistic: StatisticDic(locale),
+        statisticId: "",
+      };
+  }
 };

@@ -3,7 +3,7 @@ import { ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { useLocation } from "@solidjs/router";
-import * as Icon from "~/lib/icon";
+import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import Button from "~/components/controls/button";
