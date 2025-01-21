@@ -10,6 +10,7 @@ import { defaultRecipes, recipeSubRelations } from "./recipe";
 import { WeaponType, I18nString, ElementType } from "./enums";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
+import { mobSubRelations } from "./mob";
 
 export type Weapon = ModifyKeys<
   Awaited<ReturnType<typeof findWeaponById>>,
@@ -24,6 +25,14 @@ export type WeaponUpdate = Updateable<item>;
 
 export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
+      jsonArrayFrom(
+        eb
+          .selectFrom("mob")
+          .innerJoin("drop_item","drop_item.dropById","mob.id")
+          .where("drop_item.itemId", "=", id)
+          .selectAll("mob")
+          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
+      ).as("dropBy"),
     jsonArrayFrom(
       eb
         .selectFrom("_crystalTocustom_weapon")

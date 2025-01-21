@@ -5,9 +5,9 @@ import { defaultStatistics, Statistic, StatisticDic, statisticSubRelations } fro
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Combo, comboSubRelations } from "./combo";
 import { CustomWeapon, CustomWeaponDic, customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
-import { CustomArmor, customArmorSubRelations, defaultCustomArmor } from "./customArmor";
-import { CustomAddEquip, customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
-import { CustomSpeEquip, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
+import { CustomArmor, CustomArmorDic, customArmorSubRelations, defaultCustomArmor } from "./customArmor";
+import { CustomAddEquip, CustomAddEquipDic, customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
+import { CustomSpeEquip, CustomSpeEquipDic, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { ArmorDic } from "./armor";
@@ -185,9 +185,9 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         subWeaponId: "副手武器ID",
         armor: CustomArmorDic(locale),
         armorId: "防具ID",
-        addEquip: AddEquipDic(locale),
+        addEquip: CustomAddEquipDic(locale),
         addEquipId: "追加装备ID",
-        speEquip: SpeEquipDic(locale),
+        speEquip: CustomSpeEquipDic(locale),
         speEquipId: "特殊装备ID",
         cooking: "料理",
         combos: "连击",
@@ -202,7 +202,112 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         statisticId: "统计信息ID",
       };
     case "zh-TW":
+      return {
+        selfName: "追加裝備",
+        name: "名稱",
+        id: "ID",
+        imageId: "圖片ID",
+        lv: "等級",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        personalityType: "個人能力類型",
+        personalityValue: "個人能力值",
+        weapon: CustomWeaponDic(locale),
+        weaponId: "主手武器ID",
+        subWeapon: CustomWeaponDic(locale),
+        subWeaponId: "副手武器ID",
+        armor: CustomArmorDic(locale),
+        armorId: "防具ID",
+        addEquip: CustomAddEquipDic(locale),
+        addEquipId: "追加裝備ID",
+        speEquip: CustomSpeEquipDic(locale),
+        speEquipId: "特殊裝備ID",
+        cooking: "料理",
+        combos: "連擊",
+        modifiers: "額外加成屬性",
+        partnerSkillA: "伙伴技能A",
+        partnerSkillAType: "伙伴技能A類型",
+        partnerSkillB: "伙伴技能B",
+        partnerSkillBType: "伙伴技能B類型",
+        masterId: "所有者ID",
+        details: "額外說明",
+        statistic: StatisticDic(locale),
+        statisticId: "統計信息ID",
+      }
     case "en":
+      return {
+        selfName: "Character",
+        name: "Name",
+        id: "ID",
+        imageId: "Image ID",
+        lv: "Level",
+        str: "Strength",
+        int: "Intelligence",
+        vit: "Vitality",
+        agi: "Agility",
+        dex: "Dexterity",
+        personalityType: "Personality Type",
+        personalityValue: "Personality Value",
+        weapon: CustomWeaponDic(locale),
+        weaponId: "Weapon ID",
+        subWeapon: CustomWeaponDic(locale),
+        subWeaponId: "Sub Weapon ID",
+        armor: CustomArmorDic(locale),
+        armorId: "Armor ID",
+        addEquip: CustomAddEquipDic(locale),
+        addEquipId: "Add Equip ID",
+        speEquip: CustomSpeEquipDic(locale),
+        speEquipId: "Spe Equip ID",
+        cooking: "Cooking",
+        combos: "Combos",
+        modifiers: "Modifiers",
+        partnerSkillA: "Partner Skill A",
+        partnerSkillAType: "Partner Skill A Type",
+        partnerSkillB: "Partner Skill B",
+        partnerSkillBType: "Partner Skill B Type",
+        masterId: "Master ID",
+        details: "Details",
+        statistic: StatisticDic(locale),
+        statisticId: "Statistic ID",
+      }
     case "ja":
+      return {
+        selfName: "キャラクター",
+        name: "名前",
+        id: "ID",
+        imageId: "画像ID",
+        lv: "レベル",
+        str: "力",
+        int: "知力",
+        vit: "体力",
+        agi: "敏捷",
+        dex: "速度",
+        personalityType: "個性",
+        personalityValue: "個性値",
+        weapon: CustomWeaponDic(locale),
+        weaponId: "武器ID",
+        subWeapon: CustomWeaponDic(locale),
+        subWeaponId: "副武器ID",
+        armor: CustomArmorDic(locale),
+        armorId: "防具ID",
+        addEquip: CustomAddEquipDic(locale),
+        addEquipId: "追加装備ID",
+        speEquip: CustomSpeEquipDic(locale),
+        speEquipId: "特殊装備ID",
+        cooking: "料理",
+        combos: "連擊",
+        modifiers: "追加属性",
+        partnerSkillA: "パートナー技能A",
+        partnerSkillAType: "パートナー技能Aタイプ",
+        partnerSkillB: "パートナー技能B",
+        partnerSkillBType: "パートナー技能Bタイプ",
+        masterId: "所有者ID",
+        details: "詳細",
+        statistic: StatisticDic(locale),
+        statisticId: "統計情報ID",
+      }
   }
 };

@@ -10,6 +10,7 @@ import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { I18nString } from "./enums";
+import { mobSubRelations } from "./mob";
 
 export type AddEquip = ModifyKeys<Awaited<ReturnType<typeof findAddEquipById>>, {
   name: I18nString;
@@ -19,6 +20,14 @@ export type AddEquipUpdate = Updateable<item>;
 
 export function addEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
+      jsonArrayFrom(
+        eb
+          .selectFrom("mob")
+          .innerJoin("drop_item","drop_item.dropById","mob.id")
+          .where("drop_item.itemId", "=", id)
+          .selectAll("mob")
+          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
+      ).as("dropBy"),
     jsonArrayFrom(
       eb
         .selectFrom("_additional_equipmentTocrystal")
@@ -82,7 +91,7 @@ export const defaultAddEquip: AddEquip = {
   details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.addEquip,
+  recipe: defaultRecipes.AddEquip,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistics.AddEquip,

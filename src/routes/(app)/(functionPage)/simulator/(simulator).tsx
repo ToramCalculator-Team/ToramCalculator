@@ -1,17 +1,15 @@
 import * as math from "mathjs";
-import { type computeInput, type computeOutput, type tSkill, dynamicTotalValue, type FrameData } from "~/worker/evaluate.old.worker";
-import { ObjectRenderer } from "~/components/module/objectRender";
+import { type computeInput, type computeOutput, type tSkill, type FrameData } from "~/worker/evaluate.old.worker";
 import { defaultMob, Mob } from "~/repositories/mob";
 import { defaultCharacter, Character } from "~/repositories/character";
 import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { generateAugmentedMobList } from "~/lib/untils/mob";
 import Button from "~/components/controls/button";
 import Dialog from "~/components/controls/dialog";
 import { defaultSimulator, Simulator } from "~/repositories/simulator";
+import { generateAugmentedMobList } from "~/lib/mob";
 import { test } from "~/../test/testData";
-import evaluateWorker from "~/worker/evaluate.worker?worker";
 
 export type skillSequenceList = {
   name: string;
@@ -25,7 +23,7 @@ export default function SimulatorIndexClient() {
     setDictionary(getDictionary(store.settings.language));
   });
 
-  const calculatorWorker = new evaluateWorker();
+  // const calculatorWorker = new evaluateWorker();
 
   // 状态管理参数
   const mobList = store.mobPage.mobList;
@@ -43,16 +41,6 @@ export default function SimulatorIndexClient() {
   const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
   const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
   const [defaultMobList] = createSignal(store.mobPage.mobList);
-  const [team, setTeam] = createSignal<computeInput["arg"]["team"]>([
-    {
-      config: defaultCharacter,
-      actionQueue: test.skillSequence1.data,
-    },
-    {
-      config: defaultCharacter,
-      actionQueue: test.skillSequence2.data,
-    },
-  ]);
 
   function stringToColor(str: string): string {
     // 预定义的颜色数组
@@ -174,42 +162,42 @@ export default function SimulatorIndexClient() {
 
   onMount(() => {
     console.log("--ComboAnalyze Client Render");
-    setMobList(generateAugmentedMobList(defaultMobList(), dictionary()));
+    setMobList(generateAugmentedMobList(defaultMobList()));
     setCharacterList([defaultCharacter, defaultCharacter]);
 
-    calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
-      const { type, computeResult } = e.data;
-      switch (type) {
-        case "progress":
-          {
-            const result = computeResult as string;
-            setComputeResult(<div class="Result my-10 flex items-end">{result}</div>);
-          }
-          break;
-        case "success":
-          {
-            // setComputeResult(generateResultDom(computeResult as FrameData[]));
-            setComputeResult(<div class="Result my-10 flex items-end"></div>);
-          }
-          break;
-        case "error":
-          {
-            setComputeResult(<div class="Result my-10 flex items-end">发生错误</div>);
-          }
-          break;
-        default:
-          break;
-      }
-    };
-    calculatorWorker.onerror = (error) => {
-      console.error("Worker error:", error);
-    };
+    // calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
+    //   const { type, computeResult } = e.data;
+    //   switch (type) {
+    //     case "progress":
+    //       {
+    //         const result = computeResult as string;
+    //         setComputeResult(<div class="Result my-10 flex items-end">{result}</div>);
+    //       }
+    //       break;
+    //     case "success":
+    //       {
+    //         // setComputeResult(generateResultDom(computeResult as FrameData[]));
+    //         setComputeResult(<div class="Result my-10 flex items-end"></div>);
+    //       }
+    //       break;
+    //     case "error":
+    //       {
+    //         setComputeResult(<div class="Result my-10 flex items-end">发生错误</div>);
+    //       }
+    //       break;
+    //     default:
+    //       break;
+    //   }
+    // };
+    // calculatorWorker.onerror = (error) => {
+    //   console.error("Worker error:", error);
+    // };
 
     return () => {
       console.log("--ComboAnalyze Client Unmount");
-      if (calculatorWorker) {
-        calculatorWorker.terminate();
-      }
+      // if (calculatorWorker) {
+      //   calculatorWorker.terminate();
+      // }
     };
   });
 
@@ -220,12 +208,12 @@ export default function SimulatorIndexClient() {
         type: "start",
         arg: {
           dictionary: dictionary(),
-          team: team(),
+          team: [],
           mob: mob,
         },
       }),
     );
-    calculatorWorker.postMessage(workerMessage);
+    // calculatorWorker.postMessage(workerMessage);
   };
 
   return (
@@ -249,14 +237,14 @@ export default function SimulatorIndexClient() {
         <div class="mobsConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex gap-4">
             <span class="Key">怪物：</span>
-            <span class="MobName font-bold">{mob.name}</span>
+            <span class="MobName font-bold">{mob.name[store.settings.language]}</span>
           </div>
           {/* <LongSearchBox dictionary={dictionary} mobList={mobList} setMob={setMob} /> */}
         </div>
         <div class="TeamConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex flex-col gap-4">队伍配置：</div>
           <div class="Content flex flex-col">
-            {team().map((member, index) => {
+            {/* {team().map((member, index) => {
               return (
                 <div class="Member flex flex-col gap-4 border-b border-dividing-color p-4 lg:flex-row lg:items-center">
                   <div class="CharacterConfig flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -275,7 +263,7 @@ export default function SimulatorIndexClient() {
                   </div>
                 </div>
               );
-            })}
+            })} */}
           </div>
         </div>
 
@@ -316,26 +304,14 @@ export default function SimulatorIndexClient() {
                   })}
                 </div>
                 {dialogFrameData()?.teamState.map((member, memberIndex) => {
-                  return (
-                    <ObjectRenderer
-                      data={member?.characterData}
-                      dictionary={dictionary()}
-                      display={dialogMeberIndex() === memberIndex}
-                    />
-                  );
+                  return <></>;
                 })}
                 <div class="Title flex items-center gap-6 bg-primary-color pt-4">
                   <span class="Title text-base font-bold">Skill</span>
                   <div class="h-[1px] flex-1 bg-brand-color-1st"></div>
                 </div>
                 {dialogFrameData()?.teamState.map((member, memberIndex) => {
-                  return (
-                    <ObjectRenderer
-                      data={member?.skillData}
-                      dictionary={dictionary()}
-                      display={dialogMeberIndex() === memberIndex}
-                    />
-                  );
+                  return <></>;
                 })}
               </div>
             </div>

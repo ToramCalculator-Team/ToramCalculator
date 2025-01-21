@@ -2,13 +2,15 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistic";
+import { defaultStatistics, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
-import { defaultRecipes, recipeSubRelations } from "./recipe";
-import { ModifyKeys } from "./untils";
+import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { I18nString } from "./enums";
+import { Locale } from "~/locales/i18n";
+import { mobSubRelations } from "./mob";
 
 export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
   name: I18nString
@@ -20,11 +22,19 @@ export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expr
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_crystalTocustom_special_equipment")
-        .innerJoin("crystal", "_crystalTocustom_special_equipment.A", "crystal.itemId")
-        .where("_crystalTocustom_special_equipment.B", "=", id)
+        .selectFrom("_crystalTospecial_equipment")
+        .innerJoin("crystal", "_crystalTospecial_equipment.A", "crystal.itemId")
+        .where("_crystalTospecial_equipment.B", "=", id)
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
+    ).as("defaultCrystals"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("mob")
+        .innerJoin("drop_item","drop_item.dropById","mob.id")
+        .where("drop_item.itemId", "=", id)
+        .selectAll("mob")
+        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
     ).as("dropBy"),
     jsonObjectFrom(
       eb
@@ -82,4 +92,87 @@ export const defaultSpeEquip: SpeEquip = {
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistics.SpeEquip,
   statisticId: defaultStatistics.SpeEquip.id,
+  defaultCrystals: []
+};
+
+// Dictionary
+export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "追加装备",
+        name: "名称",
+        id: "ID",
+        modifiers: "属性",
+        itemId: "所属道具ID",
+        defaultCrystals: "附加锻晶",
+        baseDef: "防御力",
+        dataSources: "数据来源",
+        details: "额外说明",
+        dropBy: "掉落于怪物",
+        rewardBy: "奖励于任务",
+        recipe: RecipeDic(locale),
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "创建者ID",
+        statistic: StatisticDic(locale),
+        statisticId: "统计信息ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "追加裝備",
+        name: "名称",
+        id: "ID",
+        modifiers: "屬性",
+        itemId: "所屬道具ID",
+        defaultCrystals: "附加鑽晶",
+        baseDef: "防禦力",
+        dataSources: "資料來源",
+        details: "額外說明",
+        dropBy: "掉落於怪物",
+        rewardBy: "獎勵於任務",
+        recipe: RecipeDic(locale),
+        updatedByAccountId: "更新者ID",
+        createdByAccountId: "創建者ID",
+        statistic: StatisticDic(locale),
+        statisticId: "統計信息ID",
+      };
+    case "en":
+      return {
+        selfName: "Additional Equipment",
+        name: "Name",
+        id: "ID",
+        modifiers: "Modifiers",
+        itemId: "ItemId",
+        defaultCrystals: "Default Crystals",
+        baseDef: "Base Def",
+        dataSources: "Data Sources",
+        details: "Details",
+        dropBy: "Drop By",
+        rewardBy: "Reward By",
+        recipe: RecipeDic(locale),
+        updatedByAccountId: "Updated By Account Id",
+        createdByAccountId: "Created By Account Id",
+        statistic: StatisticDic(locale),
+        statisticId: "Statistic Id",
+      };
+    case "ja":
+      return {
+        selfName: "追加装備",
+        name: "名前",
+        id: "ID",
+        modifiers: "補正項目",
+        itemId: "所属アイテムID",
+        defaultCrystals: "デフォルトクリスタル",
+        baseDef: "防御力",
+        dataSources: "データソース",
+        details: "追加詳細",
+        dropBy: "ドロップバイ",
+        rewardBy: "報酬バイ",
+        recipe: RecipeDic(locale),
+        updatedByAccountId: "アカウントIDによって更新",
+        createdByAccountId: "アカウントIDによって作成",
+        statistic: StatisticDic(locale),
+        statisticId: "統計ID",
+      };
+  }
 };

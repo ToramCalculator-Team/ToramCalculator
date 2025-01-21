@@ -3,8 +3,10 @@ import { db } from "./database";
 import { DB, custom_special_equipment } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultSpeEquip } from "./speEquip";
+import { defaultSpeEquip, SpeEquip, SpeEquipDic } from "./speEquip";
 import { defaultAccount } from "./account";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type CustomSpeEquip = Awaited<ReturnType<typeof findCustomSpeEquipById>>;
 export type NewCustomSpeEquip = Insertable<custom_special_equipment>;
@@ -77,3 +79,58 @@ export const defaultCustomSpeEquip: CustomSpeEquip = {
   crystalList: [],
   masterId: defaultAccount.id,
 };
+// Dictionary
+export const CustomSpeEquipDic = (locale: Locale): ConvertToAllString<CustomSpeEquip> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "自定义追加装备",
+        id: "ID",
+        name: "名称",
+        def: "防御力",
+        template: SpeEquipDic(locale),
+        templateId: "模板ID",
+        refinement: "精炼值",
+        crystalList: "锻晶",
+        masterId: "所有者ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "自定义追加裝備",
+        id: "ID",
+        name: "名称",
+        def: "防禦力",
+        template: SpeEquipDic(locale),
+        templateId: "模板ID",
+        refinement: "精炼值",
+        crystalList: "鑄晶",
+        masterId: "所有者ID",
+      };
+    case "en":
+      return {
+        selfName: "Custom Armor",
+        id: "ID",
+        name: "Name",
+        def: "Def",
+        template: SpeEquipDic(locale),
+        templateId: "Template ID",
+        refinement: "Refinement",
+        crystalList: "Crystals",
+        masterId: "Master ID",
+      }
+    case "ja":
+      return {
+        selfName: "カスタム追加装備",
+        id: "ID",
+        name: "名前",
+        def: "防御力",
+        template: SpeEquipDic(locale),
+        templateId: "テンプレートID",
+        refinement: "精炼度",
+        crystalList: "クリスタル",
+        masterId: "所有者ID",
+      }
+      
+  }
+};
+

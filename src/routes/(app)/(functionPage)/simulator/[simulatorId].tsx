@@ -1,10 +1,3 @@
-import {
-  type computeInput,
-  type computeOutput,
-  type tSkill,
-  dynamicTotalValue,
-  type FrameData,
-} from "../../../../worker/evaluate.old.worker";
 import { Mob } from "~/repositories/mob";
 import { Character, CharacterDic } from "~/repositories/character";
 import {
@@ -30,8 +23,6 @@ import {
 } from "~/repositories/simulator";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/components/icon";
-import { defaultImage } from "~/repositories/image";
-import { defaultMember, Member, updateMember } from "~/repositories/member";
 import * as _ from "lodash-es";
 import {
   Definition,
@@ -42,14 +33,11 @@ import {
   ToolboxConfiguration,
   ValidatorConfiguration,
 } from "sequential-workflow-designer";
-import * as Comlink from "comlink";
 import { RootEditorWrapperContext } from "~/components/module/flowEditor/RootEditorWrapper";
 import Input, { InputComponentType } from "~/components/controls/input";
 import { render } from "solid-js/web";
 import { StepEditorWrapperContext } from "~/components/module/flowEditor/StepEditorWrapper";
 import { type CustomStateMachineStep, ExecutableSteps, StateMachine } from "~/worker/utils/StateMachine";
-import { updateMob } from "~/repositories/mob";
-import { create } from "domain";
 
 interface WorkflowDefinition extends Definition {
   properties: {
