@@ -2,7 +2,7 @@ import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, type FrameData } from "~/worker/evaluate.old.worker";
 import { defaultMob, Mob } from "~/repositories/mob";
 import { defaultCharacter, Character } from "~/repositories/character";
-import { createEffect, createSignal, JSX, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/controls/button";
@@ -17,11 +17,8 @@ export type skillSequenceList = {
 };
 
 export default function SimulatorIndexClient() {
-  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // const calculatorWorker = new evaluateWorker();
 

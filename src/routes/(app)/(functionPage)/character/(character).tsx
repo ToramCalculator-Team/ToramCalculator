@@ -4,11 +4,8 @@ import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 
 export default function CharacterIndexPage() {
-  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 状态管理参数
   const characterList = store.characterPage.characterList;

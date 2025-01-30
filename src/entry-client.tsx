@@ -6,7 +6,7 @@ import { mount, StartClient } from "@solidjs/start/client";
 import * as _ from "lodash-es";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
 import { createMob, defaultMob, findMobById } from "./repositories/mob";
-import { createCharacter, defaultCharacter, findCharacterById } from "./repositories/character";
+import { createSimulator, defaultSimulator, findSimulatorById } from "./repositories/simulator";
 
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
@@ -32,13 +32,13 @@ try {
 }
 
 try {
-  console.log("查询Character");
-  const character = await findCharacterById(defaultCharacter.id);
-  console.log("找到Character：", character);
+  console.log("查询Simulator");
+  const simulator = await findSimulatorById(defaultSimulator.id);
+  console.log("找到Simulator：", simulator);
 } catch (e) {
   console.log(e);
-  console.log("创建Character");
-  const { statistic, combos, weapon, subWeapon, armor, addEquip, speEquip,  ...character } = defaultCharacter;
-  const newCharacter = await createCharacter(character);
-  console.log("已创建newCharacter：", newCharacter);
+  console.log("创建Simulator");
+  const { statistic, team,  ...simulator } = defaultSimulator;
+  const newSimulator = await createSimulator(simulator);
+  console.log("已创建newSimulator：", newSimulator);
 }

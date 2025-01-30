@@ -55,11 +55,8 @@ const externalEditorClassName = "sqd-editor-solid";
 
 export default function SimulatorIndexClient() {
   const params = useParams();
-  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 状态管理参数
   const mobList = store.mobPage.mobList;

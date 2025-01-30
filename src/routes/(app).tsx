@@ -1,5 +1,5 @@
 // import BabylonBg from "~/components/module/test2";
-import { For, type JSX, Show, type ParentProps, createMemo, createEffect, onMount } from "solid-js";
+import { For, type JSX, Show, type ParentProps, createMemo, createEffect, onMount, createSignal } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
@@ -10,6 +10,7 @@ import CheckBox from "~/components/controls/checkBox";
 import Input, { type InputComponentType } from "~/components/controls/input";
 import Switch from "~/components/controls/switch";
 import Radio from "~/components/controls/radio";
+import BabylonBg from "~/components/module/babylonBg";
 
 const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
   const toCss = (cssObject: JSX.CSSProperties | string) =>
@@ -368,25 +369,37 @@ const Setting = () => {
 };
 
 export default function AppMainContet(props: ParentProps) {
+  const [hasInstalled, setHasInstalled] = createSignal(true);
+
   // pwa安装提示
-  let deferredPrompt;
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
-    deferredPrompt = e;
-    console.log("beforeinstallprompt");
+    console.log("检测到未安装")
+    setHasInstalled(false);
   });
 
   return (
     <>
-      {/* <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+      <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
         <BabylonBg />
-      </Show> */}
+      </Show>
       <RandomBallBackground />
       <Motion.div
         id="AppMainContet"
         class={`h-dvh w-dvw overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-sm" : "scale-100 opacity-100 blur-0"}`}
       >
         {props.children}
+        <Presence exitBeforeEnter>
+          <Show when={!hasInstalled()}>
+            <Motion.div
+              onClick={() => setHasInstalled(true)}
+              animate={{ transform: "scale(1)", opacity: [0, 1] }}
+              exit={{ transform: "scale(1.05)", opacity: 0 }}
+              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+              class={`InstallPrompt fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-brand-color-1st`}
+            ></Motion.div>
+          </Show>
+        </Presence>
       </Motion.div>
       <Setting />
     </>

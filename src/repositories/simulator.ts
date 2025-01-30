@@ -3,7 +3,7 @@ import { db } from "./database";
 import { DB, simulator } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultStatistics, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { teamSubRelations } from "./team";
+import { defaultTeam, teamSubRelations } from "./team";
 import { defaultAccount } from "./account";
 
 export type Simulator = Awaited<ReturnType<typeof findSimulatorById>>;
@@ -69,11 +69,11 @@ export async function deleteSimulator(id: string) {
 }
 
 export const defaultSimulator: Simulator = {
-  id: "defaultSimulator",
+  id: "defaultSimulatorId",
 
   name: "默认模拟器",
   visibility: "Public",
-  team: [],
+  team: [defaultTeam],
   details: "",
 
   statistic: defaultStatistics.Simulator,

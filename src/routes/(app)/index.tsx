@@ -50,7 +50,8 @@ export default function Index() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
-  const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   // const [UserList, { refetch: refetchUserList }] = createResource(
   //   async () =>
   //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
@@ -396,10 +397,6 @@ export default function Index() {
   //       break;
   //   }
   // };
-
-  createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
-  });
 
   onMount(async () => {
     // 浏览器后退事件监听
