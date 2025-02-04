@@ -18,6 +18,7 @@ export type Store = {
       isAnimationEnabled: boolean;
       is3DbackgroundDisabled: boolean;
     };
+    hasDismissedPWAInstall: boolean;
     language: Locale;
     statusAndSync: {
       restorePreviousStateOnStartup: boolean;
@@ -82,6 +83,7 @@ export const initialStore: Store = {
       is3DbackgroundDisabled: false,
     },
     language: "zh-CN",
+    hasDismissedPWAInstall: false,
     statusAndSync: {
       restorePreviousStateOnStartup: true,
       syncStateAcrossClients: true,

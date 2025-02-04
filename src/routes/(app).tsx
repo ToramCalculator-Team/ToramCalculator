@@ -374,7 +374,6 @@ export default function AppMainContet(props: ParentProps) {
   // pwa安装提示
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
-    console.log("检测到未安装")
     setHasInstalled(false);
   });
 
@@ -390,7 +389,7 @@ export default function AppMainContet(props: ParentProps) {
       >
         {props.children}
         <Presence exitBeforeEnter>
-          <Show when={!hasInstalled()}>
+          <Show when={!hasInstalled() && !store.settings.hasDismissedPWAInstall}>
             <Motion.div
               onClick={() => setHasInstalled(true)}
               animate={{ transform: "scale(1)", opacity: [0, 1] }}

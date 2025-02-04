@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import LoadingBox from "~/components/controls/loadingBar";
+import LoadingBox from "~/components/loadingBar";
 import { store } from "~/store";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";

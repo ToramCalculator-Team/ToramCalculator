@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import LoadingBox from "~/components/controls/loadingBar";
+import LoadingBox from "~/components/loadingBar";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
