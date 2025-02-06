@@ -672,6 +672,8 @@ model custom_pet {
     persona    String
     type       String
     weaponAtk  Int
+    generation Int
+    maxLv Int
 
     master   player @relation(fields: [masterId], references: [id])
     masterId String
@@ -787,6 +789,7 @@ model player {
 model member {
     id String @id
 
+    order             Int
     player            player?    @relation(fields: [playerId], references: [id])
     playerId          String?
     partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])
@@ -805,6 +808,7 @@ model team {
     id String @id
 
     name    String?
+    order   Int
     members member[]
     gems    String[]
 

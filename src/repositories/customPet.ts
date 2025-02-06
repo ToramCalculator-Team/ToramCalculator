@@ -2,7 +2,9 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, custom_pet } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob, mobSubRelations } from "./mob";
+import { defaultMob, MobDic, mobSubRelations } from "./mob";
+import { Locale } from "~/locales/i18n";
+import { ConvertToAllString } from "./untils";
 
 export type CustomPet = Awaited<ReturnType<typeof findCustomPetById>>;
 export type NewCustomPet = Insertable<custom_pet>;
@@ -58,4 +60,99 @@ export const defaultCustomPet: CustomPet = {
     type: "AllTrades",
     weaponAtk: 0,
     masterId: "",
+};
+
+
+// Dictionary
+export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
+  switch (locale) {
+    case "zh-CN":
+      return {
+        selfName: "宠物",
+        id: "ID",
+        template: MobDic(locale),
+        templateId: "模板ID",
+        pStr: "力量潜力",
+        pInt: "智力潜力",
+        pVit: "耐力潜力",
+        pAgi: "敏捷潜力",
+        pDex: "灵巧潜力",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        weaponType: "武器类型",
+        persona: "性格",
+        type: "类型",
+        weaponAtk: "战斗力",
+        masterId: "主人ID",
+      };
+    case "zh-TW":
+      return {
+        selfName: "宠物",
+        id: "ID",
+        template: MobDic(locale),
+        templateId: "模板ID",
+        pStr: "力量潜力",
+        pInt: "智力潜力",
+        pVit: "耐力潜力",
+        pAgi: "敏捷潜力",
+        pDex: "灵巧潜力",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        weaponType: "武器类型",
+        persona: "性格",
+        type: "类型",
+        weaponAtk: "战斗力",
+        masterId: "主人ID",
+      };
+    case "en":
+      return {
+        selfName: "宠物",
+        id: "ID",
+        template: MobDic(locale),
+        templateId: "模板ID",
+        pStr: "力量潜力",
+        pInt: "智力潜力",
+        pVit: "耐力潜力",
+        pAgi: "敏捷潜力",
+        pDex: "灵巧潜力",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        weaponType: "武器类型",
+        persona: "性格",
+        type: "类型",
+        weaponAtk: "战斗力",
+        masterId: "主人ID",
+      };
+    case "ja":
+      return {
+        selfName: "宠物",
+        id: "ID",
+        template: MobDic(locale),
+        templateId: "模板ID",
+        pStr: "力量潜力",
+        pInt: "智力潜力",
+        pVit: "耐力潜力",
+        pAgi: "敏捷潜力",
+        pDex: "灵巧潜力",
+        str: "力量",
+        int: "智力",
+        vit: "耐力",
+        agi: "敏捷",
+        dex: "灵巧",
+        weaponType: "武器类型",
+        persona: "性格",
+        type: "类型",
+        weaponAtk: "战斗力",
+        masterId: "主人ID",
+      };
+  }
 };

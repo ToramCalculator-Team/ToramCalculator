@@ -1,5 +1,5 @@
 import { defaultCharacter, Character } from "~/repositories/character";
-import { createEffect, createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 

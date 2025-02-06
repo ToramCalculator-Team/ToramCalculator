@@ -6,6 +6,7 @@ import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
 import * as _ from "lodash-es";
+import { type CustomPet } from "./repositories/customPet";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
 
@@ -36,27 +37,33 @@ export type Store = {
     };
   };
   indexPage: {};
-  mobPage: {
-    augmented: boolean;
-    mobId: string;
-    mobList: Mob[];
-    mobDialogState: boolean;
-    mobFormState: FormSate;
-    filterState: boolean;
-  };
-  crystalPage: {
-    crystalId: string;
-    crystalList: Crystal[];
-    crystalDialogState: boolean;
-    crystalFormState: FormSate;
-    filterState: boolean;
-  };
-  skillPage: {
-    skillId: string;
-    skillList: Skill[];
-    skillDialogState: boolean;
-    skillFormState: FormSate;
-    filterState: boolean;
+  wiki: {
+    mobPage: {
+      augmented: boolean;
+      mobId: string;
+      mobList: Mob[];
+      mobDialogState: boolean;
+      mobFormState: FormSate;
+      filterState: boolean;
+    };
+    petPage: {
+      petId: String;
+      petList: CustomPet[];
+    };
+    crystalPage: {
+      crystalId: string;
+      crystalList: Crystal[];
+      crystalDialogState: boolean;
+      crystalFormState: FormSate;
+      filterState: boolean;
+    };
+    skillPage: {
+      skillId: string;
+      skillList: Skill[];
+      skillDialogState: boolean;
+      skillFormState: FormSate;
+      filterState: boolean;
+    };
   };
   characterPage: {
     characterId: string;
@@ -101,27 +108,33 @@ export const initialStore: Store = {
   },
   settingsDialogState: false,
   indexPage: {},
-  mobPage: {
-    augmented: true,
-    mobId: "defaultMobId",
-    mobList: [],
-    mobDialogState: false,
-    mobFormState: "DISPLAY",
-    filterState: false,
-  },
-  crystalPage: {
-    crystalId: "defaultCrystalId",
-    crystalList: [],
-    crystalDialogState: false,
-    crystalFormState: "CREATE",
-    filterState: false,
-  },
-  skillPage: {
-    skillId: "defaultSkillId",
-    skillList: [],
-    skillDialogState: false,
-    skillFormState: "CREATE",
-    filterState: false,
+  wiki: {
+    mobPage: {
+      augmented: true,
+      mobId: "defaultMobId",
+      mobList: [],
+      mobDialogState: false,
+      mobFormState: "DISPLAY",
+      filterState: false,
+    },
+    petPage: {
+      petId: "",
+      petList: [],
+    },
+    crystalPage: {
+      crystalId: "defaultCrystalId",
+      crystalList: [],
+      crystalDialogState: false,
+      crystalFormState: "CREATE",
+      filterState: false,
+    },
+    skillPage: {
+      skillId: "defaultSkillId",
+      skillList: [],
+      skillDialogState: false,
+      skillFormState: "CREATE",
+      filterState: false,
+    },
   },
   characterPage: {
     characterId: "defaultCharacterId",
@@ -165,7 +178,7 @@ const getActStore = () => {
 
         let mergedStore: Store;
         if (oldVersion && oldVersion === newVersion) {
-          mergedStore = _.merge({}, newStore, oldStore );
+          mergedStore = _.merge({}, newStore, oldStore);
         } else {
           mergedStore = _.merge({}, newStoreWithoutVersion, oldStoreWithoutVersion);
           mergedStore.version = newVersion;
