@@ -59,8 +59,8 @@ export default function SimulatorIndexClient() {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 状态管理参数
-  const mobList = store.mobPage.mobList;
-  const setMobList = (value: Mob[]) => setStore("mobPage", "mobList", value);
+  const mobList = store.wiki.mobPage.mobList;
+  const setMobList = (value: Mob[]) => setStore("wiki", "mobPage", "mobList", value);
   const characterList = store.characterPage.characterList;
   const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
   const analyzeList = store.simulatorPage.simulatorList;
@@ -255,9 +255,9 @@ export default function SimulatorIndexClient() {
           undoStackSize: 10,
           toolbox: toolboxConfiguration()
             ? {
-                ...toolboxConfiguration(),
-                isCollapsed: isToolboxCollapsed(),
-              }
+              ...toolboxConfiguration(),
+              isCollapsed: isToolboxCollapsed(),
+            }
             : false,
           steps: stepsConfiguration(),
           validator: validatorConfiguration(),
@@ -270,7 +270,7 @@ export default function SimulatorIndexClient() {
             rootEditorProvider,
             stepEditorProvider,
           },
-          customActionHandler: () => {},
+          customActionHandler: () => { },
           // extensions,
           // i18n,
           isReadonly: isReadonly(),
@@ -285,9 +285,9 @@ export default function SimulatorIndexClient() {
         // setStore("simulator", "team", memberIndex(), "flow", structuredClone(sequence));
       }
     });
-    designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
-    designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
-    designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
+    designer()?.onSelectedStepIdChanged.subscribe((stepId) => { });
+    designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => { });
+    designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => { });
   };
 
   onMount(() => {
