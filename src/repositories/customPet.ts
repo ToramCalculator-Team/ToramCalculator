@@ -42,24 +42,26 @@ export async function deleteCustomPet(id: string) {
 }
 
 export const defaultCustomPet: CustomPet = {
-    id: "",
-    template: defaultMob,
-    templateId: defaultMob.id,
-    pStr: 0,
-    pInt: 0,
-    pVit: 0,
-    pAgi: 0,
-    pDex: 0,
-    str: 0,
-    int: 0,
-    vit: 0,
-    agi: 0,
-    dex: 0,
-    weaponType: "",
-    persona: "Fervent",
-    type: "AllTrades",
-    weaponAtk: 0,
-    masterId: "",
+  id: "",
+  template: defaultMob,
+  templateId: defaultMob.id,
+  pStr: 0,
+  pInt: 0,
+  pVit: 0,
+  pAgi: 0,
+  pDex: 0,
+  str: 0,
+  int: 0,
+  vit: 0,
+  agi: 0,
+  dex: 0,
+  weaponType: "",
+  persona: "Fervent",
+  type: "AllTrades",
+  weaponAtk: 0,
+  masterId: "",
+  generation: 0,
+  maxLv: 0
 };
 
 
@@ -87,6 +89,8 @@ export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
         type: "类型",
         weaponAtk: "战斗力",
         masterId: "主人ID",
+        maxLv: "最大等级",
+        generation: "代数"
       };
     case "zh-TW":
       return {
@@ -108,7 +112,9 @@ export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
         persona: "性格",
         type: "類型",
         weaponAtk: "戰鬥力",
-        masterId: "主人ID"
+        masterId: "主人ID",
+        maxLv: "最大等級",
+        generation: "代數"
       };
     case "en":
       return {
@@ -130,7 +136,9 @@ export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
         persona: "Personality",
         type: "Type",
         weaponAtk: "Combat Power",
-        masterId: "Master ID"
+        masterId: "Master ID",
+        maxLv: "Max Level",
+        generation: "Generation"
       };
     case "ja":
       return {
@@ -152,7 +160,9 @@ export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
         persona: "性格",
         type: "タイプ",
         weaponAtk: "戦闘力",
-        masterId: "マスターID"
+        masterId: "マスターID",
+        maxLv: "最大レベル",
+        generation: "世代"
       };
   }
 };

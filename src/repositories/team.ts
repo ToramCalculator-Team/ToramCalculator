@@ -57,4 +57,5 @@ export const defaultTeam: Team = {
   name: null,
   gems: [],
   members: [],
+  order: 0
 };

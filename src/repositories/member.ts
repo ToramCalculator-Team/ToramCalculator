@@ -70,4 +70,5 @@ export const defaultMember: Member = {
   mercenaryId: null,
   partner: null,
   partnerId: null,
+  order: 0
 };
