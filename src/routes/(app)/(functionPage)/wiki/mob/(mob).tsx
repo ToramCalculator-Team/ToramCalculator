@@ -33,27 +33,27 @@ export default function MobIndexPage() {
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMobFormState = (newState: FormSate): void => {
-    setStore("mobPage", {
+    setStore("wiki","mobPage", {
       mobFormState: newState,
     });
   };
   const setAugmented = (newAugmented: boolean): void => {
-    setStore("mobPage", {
+    setStore("wiki","mobPage", {
       augmented: newAugmented,
     });
   };
   const setMobList = (newList: Mob[]): void => {
-    setStore("mobPage", {
+    setStore("wiki","mobPage", {
       mobList: newList,
     });
   };
   const setFilterState = (newState: boolean): void => {
-    setStore("mobPage", {
+    setStore("wiki","mobPage", {
       filterState: newState,
     });
   };
   const setMob = (newMob: Mob): void => {
-    setStore("mobPage", "mobId", newMob.id);
+    setStore("wiki","mobPage", "mobId", newMob.id);
   };
 
   // table原始数据------------------------------------------------------------
@@ -210,7 +210,7 @@ export default function MobIndexPage() {
   const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | undefined>(undefined);
 
   // 搜索使用的基准列表--------------------------------------------------------
-  let actualList = generateAugmentedMobList(mobList() ?? [], dictionary());
+  let actualList = generateAugmentedMobList(mobList() ?? []);
 
   // 搜索框行为函数
   // 定义搜索时需要忽略的数据
@@ -286,7 +286,7 @@ export default function MobIndexPage() {
 
   const handleUKeyPress = (e: KeyboardEvent) => {
     if (e.key === "u") {
-      setStore("mobPage", {
+      setStore("wiki","mobPage", {
         mobDialogState: true,
         mobFormState: "CREATE",
       });
@@ -346,7 +346,7 @@ export default function MobIndexPage() {
                 class="flex lg:hidden"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("mobPage", {
+                  setStore("wiki","mobPage", {
                     mobDialogState: true,
                     mobFormState: "CREATE",
                   });
@@ -357,7 +357,7 @@ export default function MobIndexPage() {
                 class="hidden lg:flex"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("mobPage", {
+                  setStore("wiki","mobPage", {
                     mobDialogState: true,
                     mobFormState: "CREATE",
                   });
