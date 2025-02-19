@@ -33,8 +33,23 @@ export default function Editor() {
     const editorDiv = editorDivRef();
     if (editorDiv) {
       const editor = new Drawflow(editorDiv);
-      editor.start();
-      editor.addNode("github", 0, 1, 150, 300, "github", customNodes.github.data, customNodes.github.html, false);
+      
+
+    editor.reroute = true;
+    editor.reroute_fix_curvature = true;
+
+    editor.start();
+
+    const data = {
+      name: ''
+    };
+
+    editor.addNode('foo', 1, 1, 100, 200, 'foo', data, 'Foo', false);
+    editor.addNode('bar', 1, 1, 400, 100, 'bar', data, 'Bar A', false);
+    editor.addNode('bar', 1, 1, 400, 300, 'bar', data, 'Bar B', false);
+
+    editor.addConnection(1, 2, "output_1", "input_1");
+    editor.addConnection(1, 3, "output_1", "input_1");
     }
   });
 
