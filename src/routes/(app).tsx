@@ -385,20 +385,22 @@ export default function AppMainContet(props: ParentProps) {
       <RandomBallBackground />
       <Motion.div
         id="AppMainContet"
-        class={`h-dvh w-dvw overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-sm" : "scale-100 opacity-100 blur-0"}`}
+        class={`h-full w-full overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-sm" : "scale-100 opacity-100 blur-0"}`}
       >
         {props.children}
-        <Presence exitBeforeEnter>
+        {/* <Presence exitBeforeEnter>
           <Show when={!hasInstalled() && !store.settings.hasDismissedPWAInstall}>
             <Motion.div
               onClick={() => setHasInstalled(true)}
               animate={{ transform: "scale(1)", opacity: [0, 1] }}
               exit={{ transform: "scale(1.05)", opacity: 0 }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`InstallPrompt fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center bg-brand-color-1st`}
-            ></Motion.div>
+              class={`InstallPrompt fixed left-0 top-0 z-[999] grid h-dvh w-dvw scale-[105%] place-items-center items-center bg-primary-color-90`}
+            >
+              <Button>检测到未安装</Button>
+            </Motion.div>
           </Show>
-        </Presence>
+        </Presence> */}
       </Motion.div>
       <Setting />
     </>

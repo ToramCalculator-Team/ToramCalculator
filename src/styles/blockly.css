@@ -1,0 +1,82 @@
+#blocklyDiv * {
+  transition: transform 0s;
+}
+
+/* @media (max-width: 1024px) {
+  .blocklyToolboxDiv {
+    height: auto !important;
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .blocklyToolboxContents {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: fit-content;
+  }
+
+  .blocklyTreeRow {
+    border-left: 0px !important;
+    border-top: 2px !important;
+  }
+
+  .blocklyFlyout {
+    transform: translate(0, 61px) !important;
+    height: calc(100% - 61px) !important;
+  }
+
+  .blocklyBlockCanvas {
+    
+  }
+  
+} */
+
+.blocklyToolboxCategory {
+  display: flex;
+  flex-direction: column;
+}
+
+.blocklyTreeRow {
+  cursor: pointer;
+  height: auto;
+  padding: 12px 12px 12px 0;
+}
+
+.blocklyFlyoutScrollbar {
+  display: none;
+}
+
+.blocklyDropDownDiv,
+.blocklyMenu,
+.goog-menu {
+  padding: 2px !important;
+  border-radius: 12px;
+  background-color: #000 !important;
+  border: 2px solid #888;
+  max-height: unset !important;
+}
+
+.blocklyDropDownArrow {
+  border: 2px solid #888;
+  border-bottom: none;
+  border-right: none;
+}
+
+.blocklyMenuItem,
+.blocklyMenuItem,
+.goog-menuitem {
+  border-radius: 8px;
+  color: rgb(255 255 255);
+}
+
+.blocklyMenuItem.Highlight,
+.goog-menuitem.goog-menuitem-highlight {
+  background-color: #999;
+}
+
+.blocklyMenuItemCheckbox,
+.goog-menuitem-checkbox {
+  transform: translate(-999px, -999px);
+  filter: drop-shadow(999px 999px 0px white);
+}

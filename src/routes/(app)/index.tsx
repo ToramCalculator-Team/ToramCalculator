@@ -17,6 +17,8 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";
 import { findSimulators } from "~/repositories/simulator";
+import Dialog from "~/components/controls/dialog";
+import NodeEditor from "~/components/module/nodeEditor";
 
 type Related =
   | {
@@ -40,13 +42,15 @@ export default function Index() {
 
   type FinalResult = Partial<Record<"mobs" | "skills" | "crystals", Result[]>>;
 
+  const [nodeEditorDialog, setNodeEditorDialog] = createSignal(false);
+  const [flowEditorDialog, setFlowEditorDialog] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
     mobs: [],
     skills: [],
     crystals: [],
   });
-  const [resultDialogOpened, setResultDialogOpened] = createSignal(false);
+  const [searchResultOpened, setSearchResultOpened] = createSignal(false);
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
@@ -171,12 +175,12 @@ export default function Index() {
     setIsNullResult(true);
     if (searchInputValue() === "" || searchInputValue() === null) {
       // console.log("输入值为空，不处理");
-      setResultDialogOpened(false);
+      setSearchResultOpened(false);
       return;
     }
-    if (!resultDialogOpened()) {
+    if (!searchResultOpened()) {
       // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
-      setResultDialogOpened(true);
+      setSearchResultOpened(true);
       history.pushState({ popup: true }, "");
     }
 
@@ -366,8 +370,8 @@ export default function Index() {
   //         } else if (document.activeElement === searchInputMobileRef) {
   //           searchInputMobileRef.blur();
   //           e.stopPropagation();
-  //         } else if (resultDialogOpened()) {
-  //           setResultDialogOpened(false);
+  //         } else if (searchResultOpened()) {
+  //           setSearchResultOpened(false);
   //           e.stopPropagation();
   //         }
   //         if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
@@ -401,7 +405,7 @@ export default function Index() {
   onMount(async () => {
     // 浏览器后退事件监听
     const handlePopState = () => {
-      setResultDialogOpened(false);
+      setSearchResultOpened(false);
       history.replaceState(null, "", location.href);
     };
 
@@ -424,18 +428,25 @@ export default function Index() {
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
         <div
-          class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${resultDialogOpened() ? "" : "lg:flex"}`}
+          class={`QueryStarus text-accent-color-30 pointer-events-none absolute left-10 top-10 hidden flex-col text-xs ${searchResultOpened() ? "" : "lg:flex"}`}
         >
           <span>MobList: {mobList()?.length}</span>
           <span>SkillList: {skillList()?.length}</span>
           <span>CrystalList: {crystalList()?.length}</span>
-          <span>resultDialogOpened: {resultDialogOpened().toString()}</span>
+          <span>searchResultOpened: {searchResultOpened().toString()}</span>
         </div>
         <Motion.div
           animate={{ opacity: [0, 1] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
           class={`Config absolute right-3 top-3 flex gap-1`}
         >
+          <Button
+            class="outline-none duration-150 focus-within:outline-none"
+            level="quaternary"
+            onClick={() => setNodeEditorDialog(!nodeEditorDialog())}
+          >
+            <Icon.Line.Basketball />
+          </Button>
           <Button
             class="outline-none duration-150 focus-within:outline-none"
             level="quaternary"
@@ -452,11 +463,11 @@ export default function Index() {
           </Button>
         </Motion.div>
         <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${resultDialogOpened() ? "p-3" : "p-6"} w-full duration-700 lg:mx-auto lg:max-w-[1536px] lg:p-3`}
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full duration-700 lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
           <div
             class={`Greetings flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden duration-700 ${
-              resultDialogOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] opacity-100 lg:flex-none lg:pb-12`
+              searchResultOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] opacity-100 lg:flex-none lg:pb-12`
             }`}
           >
             <div class={`LogoBox mb-2 overflow-hidden rounded backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
@@ -468,12 +479,12 @@ export default function Index() {
           </div>
           <div
             class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
-              resultDialogOpened()
+              searchResultOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%]`
                 : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
             }`}
             style={
-              resultDialogOpened()
+              searchResultOpened()
                 ? {
                     "clip-path": "inset(0% 0% 0% 0% round 12px)",
                     "transition-duration": "0.3s",
@@ -486,20 +497,20 @@ export default function Index() {
                   }
             }
           >
-            {generateSearchResultDom(resultDialogOpened())}
+            {generateSearchResultDom(searchResultOpened())}
           </div>
           <div
-            class={`FunctionBox flex w-full flex-col justify-between ${resultDialogOpened() ? "pb-3" : ""} lg:flex-row`}
+            class={`FunctionBox flex w-full flex-col justify-between ${searchResultOpened() ? "pb-3" : ""} lg:flex-row`}
           >
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
-                resultDialogOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
+                searchResultOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
               }`}
             >
               <Button
                 level="quaternary"
                 onClick={() => {
-                  setResultDialogOpened(false);
+                  setSearchResultOpened(false);
                 }}
                 class="w-full outline-none focus-within:outline-none"
               >
@@ -508,7 +519,7 @@ export default function Index() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none group box-content flex w-full gap-1 border-dividing-color p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${resultDialogOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox border-b-none group box-content flex w-full gap-1 border-dividing-color p-0.5 duration-500 ease-linear focus-within:border-accent-color hover:border-accent-color lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${searchResultOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -545,7 +556,7 @@ export default function Index() {
             <div class="hidden w-60 flex-none lg:flex"></div>
           </div>
           <Presence exitBeforeEnter>
-            <Show when={resultDialogOpened()}>
+            <Show when={searchResultOpened()}>
               <Motion.div
                 animate={{
                   clipPath: ["inset(10% 10% 90% 10% round 12px)", "inset(0% 0% 0% 0% round 12px)"],
@@ -562,14 +573,14 @@ export default function Index() {
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
                 class={`ResultPC hidden lg:flex lg:h-full lg:flex-1 lg:flex-row lg:gap-1 lg:overflow-y-hidden`}
               >
-                {generateSearchResultDom(resultDialogOpened())}
+                {generateSearchResultDom(searchResultOpened())}
               </Motion.div>
             </Show>
           </Presence>
         </div>
 
         <Presence exitBeforeEnter>
-          <Show when={!resultDialogOpened()}>
+          <Show when={!searchResultOpened()}>
             <Motion.div
               animate={{
                 opacity: [0, 1],
@@ -585,7 +596,7 @@ export default function Index() {
               class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-area-color lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
-                class={`Content flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:bg-area-color lg:backdrop-blur ${resultDialogOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:bg-area-color lg:backdrop-blur ${searchResultOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
                 <a
                   tabIndex={2}
@@ -721,6 +732,9 @@ export default function Index() {
         </Presence>
       </Motion.div>
       <Filing />
+            <Dialog state={nodeEditorDialog()} setState={setNodeEditorDialog}>
+              <NodeEditor />
+            </Dialog>
     </MetaProvider>
   );
 }

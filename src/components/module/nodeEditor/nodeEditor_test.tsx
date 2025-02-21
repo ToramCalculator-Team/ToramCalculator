@@ -99,32 +99,32 @@ export default function NodeEditor(props: { data: NodeEditorExport }) {
     if (canvas) {
       
       /* Mouse and Touch Actions */
-      canvas.addEventListener('mouseup', dragEnd);
-      canvas.addEventListener('mousemove', position);
-      canvas.addEventListener('mousedown', click);
+      // canvas.addEventListener('mouseup', dragEnd);
+      // canvas.addEventListener('mousemove', position);
+      // canvas.addEventListener('mousedown', click);
 
-      canvas.addEventListener('touchend', dragEnd);
-      canvas.addEventListener('touchmove', position, { passive: false });
-      canvas.addEventListener('touchstart', click, { passive: false });
+      // canvas.addEventListener('touchend', dragEnd);
+      // canvas.addEventListener('touchmove', position, { passive: false });
+      // canvas.addEventListener('touchstart', click, { passive: false });
 
-      /* Context Menu */
-      canvas.addEventListener('contextmenu', contextmenu);
-      /* Delete */
-      canvas.addEventListener('keydown', key);
+      // /* Context Menu */
+      // canvas.addEventListener('contextmenu', contextmenu);
+      // /* Delete */
+      // canvas.addEventListener('keydown', key);
 
-      /* Zoom Mouse */
-      canvas.addEventListener('wheel', zoom_enter, { passive: false });
-      /* Update data Nodes */
-      canvas.addEventListener('input', updateNodeValue);
+      // /* Zoom Mouse */
+      // canvas.addEventListener('wheel', zoom_enter, { passive: false });
+      // /* Update data Nodes */
+      // canvas.addEventListener('input', updateNodeValue);
 
-      canvas.addEventListener('dblclick', dblclick);
-      /* Mobile zoom */
-      canvas.onpointerdown = pointerdown_handler;
-      canvas.onpointermove = pointermove_handler;
-      canvas.onpointerup = pointerup_handler;
-      canvas.onpointercancel = pointerup_handler;
-      canvas.onpointerout = pointerup_handler;
-      canvas.onpointerleave = pointerup_handler;
+      // canvas.addEventListener('dblclick', dblclick);
+      // /* Mobile zoom */
+      // canvas.onpointerdown = pointerdown_handler;
+      // canvas.onpointermove = pointermove_handler;
+      // canvas.onpointerup = pointerup_handler;
+      // canvas.onpointercancel = pointerup_handler;
+      // canvas.onpointerout = pointerup_handler;
+      // canvas.onpointerleave = pointerup_handler;
     }
     });
 

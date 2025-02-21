@@ -3,7 +3,7 @@
 @import url(flowEditor.css);
 @import url(monster.css);
 @import url(babylonjs.css);
-@import url(drawflow.css);
+@import url(blockly.css);
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
