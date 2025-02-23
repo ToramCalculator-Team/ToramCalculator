@@ -533,16 +533,14 @@ export default function SkillIndexPage() {
       <Dialog state={dialogState()} setState={setDialogState}>
         {/* <pre>{JSON.stringify(skill(), null, 2)}</pre> */}
         <NodeEditor
-          data={() => {
-            const curSkill = skill();
-            if (!curSkill) return undefined;
-            const details = curSkill.effects[0].details as Record<string, any>;
-            console.log(details);
-            return details;
+          data={async () => {
+            await refetchSkill();
+            return skill()!.effects[0].details as Record<string, any>;
           }}
           setData={async (data) => {
             const curSkillEffect = skill()?.effects[0];
             if (!curSkillEffect) return;
+            console.log("/////");
             await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, details: data });
           }}
         />

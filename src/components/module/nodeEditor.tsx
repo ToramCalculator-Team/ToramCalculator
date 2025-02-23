@@ -1,5 +1,5 @@
-import { createEffect, createMemo, createSignal, onMount } from "solid-js";
-import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization } from "blockly/core";
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization, WorkspaceSvg } from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
@@ -19,7 +19,7 @@ import { store } from "~/store";
 // }
 
 interface NodeEditorProps {
-  data: () => Record<string, any> | undefined;
+  data: () => Promise<Record<string, any> | undefined>;
   setData: (data: Record<string, any>) => void;
 }
 
@@ -28,6 +28,7 @@ export default function NodeEditor(props: NodeEditorProps) {
   const [isPc] = createSignal(window.innerWidth > 1024);
   const [code, setCode] = createSignal("");
   const [workerSpaceState, setWorkerSpaceState] = createSignal<Record<string, any>>({});
+  let workerSpace: WorkspaceSvg
 
   const { default: _d, ...location } = {
     "zh-CN": Zh,
@@ -36,7 +37,7 @@ export default function NodeEditor(props: NodeEditorProps) {
     en: En,
   }[store.settings.language];
 
-  onMount(() => {
+  onMount(async () => {
     const div = ref();
     if (div) {
       const toolbox = {
@@ -816,7 +817,7 @@ export default function NodeEditor(props: NodeEditorProps) {
         ],
       };
       setLocale(location);
-      const workerSpace = inject(div, {
+      workerSpace = inject(div, {
         horizontalLayout: !isPc(),
         // renderer: "geras",
         toolboxPosition: isPc() ? "start" : "end",
@@ -845,8 +846,9 @@ export default function NodeEditor(props: NodeEditorProps) {
           snap: true,
         },
       });
+      const data = await props.data()
       serialization.workspaces.load(
-        props.data() ?? {},
+        data ?? {},
         workerSpace,
       );
       workerSpace.addChangeListener(() => setCode(javascriptGenerator.workspaceToCode(workerSpace)));
@@ -856,7 +858,7 @@ export default function NodeEditor(props: NodeEditorProps) {
       createEffect((prevCode) => {
         const curCode = code();
         if (curCode !== prevCode) {
-          console.log(curCode);
+          // console.log(curCode);
           props.setData(serialization.workspaces.save(workerSpace))
           // console.log(JSON.stringify(serialization.workspaces.save(workerSpace)));
         }
