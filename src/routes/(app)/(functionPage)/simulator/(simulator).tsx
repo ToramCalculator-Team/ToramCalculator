@@ -234,7 +234,7 @@ export default function SimulatorIndexClient() {
         <div class="mobsConfig flex flex-col gap-4 lg:flex-row lg:items-center">
           <div class="Title flex gap-4">
             <span class="Key">怪物：</span>
-            <span class="MobName font-bold">{mob.name[store.settings.language]}</span>
+            <span class="MobName font-bold">{mob.name}</span>
           </div>
           {/* <LongSearchBox dictionary={dictionary} mobList={mobList} setMob={setMob} /> */}
         </div>

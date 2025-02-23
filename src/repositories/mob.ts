@@ -7,12 +7,11 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, MobType, I18nString } from "./enums";
+import { ElementType, MobType } from "./enums";
 
 export type Mob = ModifyKeys<
   Awaited<ReturnType<typeof findMobById>>,
   {
-    name: I18nString;
     mobType: MobType;
     element: ElementType;
   }
@@ -116,12 +115,7 @@ export async function deleteMob(id: string) {
 // default
 export const defaultMob: Mob = {
   id: "defaultMobId",
-  name: {
-    "zh-CN": "默认怪物",
-    "zh-TW": "默认怪物",
-    en: "defaultMobName",
-    ja: "デフォルトのモブ",
-  },
+  name: "defaultMob",
   mobType: "Boss",
   captureable: false,
   actions: [],

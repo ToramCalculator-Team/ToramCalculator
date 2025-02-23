@@ -128,17 +128,16 @@ const dictionary: dictionary = {
       },
       augmented: "すべての星級データを表示",
       canNotModify: "システムによって生成され、修正不可",
-      mobDegreeOfDifficulty: {
-        0: "ゼロ星",
-        1: "一星",
-        2: "二星",
-        3: "三星",
-        4: "四星",
+      form: {
+        description: "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
       },
-      mobForm: {
-        description:
-          "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
-      },
+      difficultyflag: {
+        Easy: "0星",
+        Normal: "1星",
+        Hard: "2星",
+        Lunatic: "3星",
+        Ultimate: "4星"
+      }
     },
     crystal: {
       pageTitle: "クリスタルテーブル",
@@ -149,8 +148,17 @@ const dictionary: dictionary = {
       },
     },
     skill: {
-      pageTitle: "スキル情報テーブル",
-      description: "このページは開発中です。使用しないでください。",
+      pageTitle: "技能",
+      table: {
+        title: "技能表",
+        description: "小心無限循環。",
+      },
+      news: {
+        title: "最近更新",
+      },
+      form: {
+        description: "開発中です。使用しないでください。",
+      }
     },
     simulator: {
       pageTitle: "プロセス計算機",

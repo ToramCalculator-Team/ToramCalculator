@@ -1,5 +1,3 @@
-import { I18nString } from "./enums";
-
 /**
  * 根据指定的属性类型映射来调整类型
  *
@@ -17,7 +15,7 @@ export type ModifyKeys<T, R extends { [K in keyof T]?: unknown }> = {
  * @template T 原始类型
  * @returns 转换后的字符串
  */
-export type ConvertToAllString<T> = T extends Date | Date[] | I18nString | Array<object> | number
+export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | number
   ? string
   : T extends Record<string, unknown>
     ? {

@@ -1,9 +1,12 @@
-import { createSignal, onMount } from "solid-js";
-import { setLocale, inject, Theme, Themes, ToolboxCategory, registry } from "blockly/core";
+import { createEffect, createMemo, createSignal, onMount } from "solid-js";
+import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization } from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
+import * as En from "blockly/msg/en";
+import * as Ja from "blockly/msg/ja";
+import * as ZhTw from "blockly/msg/zh-hant";
+import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
-
-const {default: _d, ...location } = Zh;
+import { store } from "~/store";
 
 // class CustomCategory extends ToolboxCategory {
 //   /**
@@ -15,8 +18,24 @@ const {default: _d, ...location } = Zh;
 //   }
 // }
 
-export default function NodeEditor() {
+interface NodeEditorProps {
+  data: () => Record<string, any> | undefined;
+  setData: (data: Record<string, any>) => void;
+}
+
+export default function NodeEditor(props: NodeEditorProps) {
   const [ref, setRef] = createSignal<HTMLDivElement>();
+  const [isPc] = createSignal(window.innerWidth > 1024);
+  const [code, setCode] = createSignal("");
+  const [workerSpaceState, setWorkerSpaceState] = createSignal<Record<string, any>>({});
+
+  const { default: _d, ...location } = {
+    "zh-CN": Zh,
+    "zh-TW": ZhTw,
+    ja: Ja,
+    en: En,
+  }[store.settings.language];
+
   onMount(() => {
     const div = ref();
     if (div) {
@@ -797,7 +816,10 @@ export default function NodeEditor() {
         ],
       };
       setLocale(location);
-      inject(div, {
+      const workerSpace = inject(div, {
+        horizontalLayout: !isPc(),
+        // renderer: "geras",
+        toolboxPosition: isPc() ? "start" : "end",
         theme: Theme.defineTheme("dark", {
           base: Themes.Zelos,
           componentStyles: {
@@ -823,7 +845,23 @@ export default function NodeEditor() {
           snap: true,
         },
       });
+      serialization.workspaces.load(
+        props.data() ?? {},
+        workerSpace,
+      );
+      workerSpace.addChangeListener(() => setCode(javascriptGenerator.workspaceToCode(workerSpace)));
       // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
+
+      // 当代码发生变化时
+      createEffect((prevCode) => {
+        const curCode = code();
+        if (curCode !== prevCode) {
+          console.log(curCode);
+          props.setData(serialization.workspaces.save(workerSpace))
+          // console.log(JSON.stringify(serialization.workspaces.save(workerSpace)));
+        }
+        return curCode;
+      }, "");
     }
   });
 

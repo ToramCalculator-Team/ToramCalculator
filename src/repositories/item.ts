@@ -4,7 +4,7 @@ import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
-import { ItemType, I18nString, ITEM_TYPE } from "./enums";
+import { ItemType, ITEM_TYPE } from "./enums";
 import { ModifyKeys } from "./untils";
 
 export type Item = ModifyKeys<Awaited<ReturnType<typeof findItemById>>, {

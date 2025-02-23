@@ -7,10 +7,9 @@ import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { CrystalType, I18nString } from "./enums";
+import { CrystalType } from "./enums";
 
 export type Crystal = ModifyKeys<Awaited<ReturnType<typeof findCrystalById>>, {
-  name: I18nString;
   crystalType: CrystalType;
 }>;
 export type NewCrystal = Insertable<item>;
@@ -76,12 +75,7 @@ export async function deleteCrystalById(id: string) {
 // default
 export const defaultCrystal: Record<CrystalType, Crystal> = {
   NormalCrystal: {
-    name: {
-      "zh-CN": "默认普通锻晶",
-      "zh-TW": "默认普通鑄晶",
-      en: "defaultNormalCrystal",
-      ja: "デフォルトの普通鑄晶"
-    },
+    name: "defaultNormalCrystal",
     id: "defaultNormalCrystalId",
     modifiers: [],
     itemId: "defaultNormalCrystalId",
@@ -98,12 +92,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     statisticId: defaultStatistics.NormalCrystal.id,
   },
   WeaponCrystal: {
-    name: {
-      "zh-CN": "默认武器锻晶",
-      "zh-TW": "默认武器鑄晶",
-      en: "defaultWeaponCrystal",
-      ja: "デフォルトの武器鑄晶"
-    },
+    name: "defaultWeaponCrystal",
     id: "defaultWeaponCrystallId",
     modifiers: [],
     itemId: "defaultWeaponCrystalId",
@@ -120,12 +109,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     statisticId: defaultStatistics.WeaponCrystal.id,
   },
   ArmorCrystal: {
-    name: {
-      "zh-CN": "默认防具锻晶",
-      "zh-TW": "默认防具鑄晶",
-      en: "defaultArmorCrystal",
-      ja: "デフォルトの防具鑄晶"
-    },
+    name: "defaultArmorCrystal",
     id: "defaultArmorCrystalId",
     modifiers: [],
     itemId: "defaultArmorCrystalId",
@@ -142,12 +126,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     statisticId: defaultStatistics.ArmorCrystal.id,
   },
   AddEquipCrystal: {
-    name: {
-      "zh-CN": "默认追击锻晶",
-      "zh-TW": "默认追击鑄晶",
-      en: "defaultAddEquipCrystal",
-      ja: "デフォルトの追加装备鑄晶"
-    },
+    name: "defaultAddEquipCrystal",
     id: "defaultAddEquipCrystalId",
     modifiers: [],
     itemId: "defaultAddEquipCrystalId",
@@ -164,12 +143,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     statisticId: defaultStatistics.AddEquipCrystal.id,
   },
   SpecialCrystal: {
-    name: {
-      "zh-CN": "默认特殊锻晶",
-      "zh-TW": "默认特殊鑄晶",
-      en: "defaultSpecialCrystal",
-      ja: "デフォルトの特殊鑄晶"
-    },
+    name: "defaultSpecialCrystal",
     id: "defaultSpecialCrystalId",
     modifiers: [],
     itemId: "defaultSpecialCrystalId",

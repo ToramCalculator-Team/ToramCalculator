@@ -4,7 +4,6 @@ import { DB, character_skill } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { I18nString } from "./enums";
 import { defaultSkill, Skill, SkillDic, skillSubRelations } from "./skill";
 
 export type CharacterSkill = ModifyKeys<Awaited<ReturnType<typeof findCharacterSkillById>>, {

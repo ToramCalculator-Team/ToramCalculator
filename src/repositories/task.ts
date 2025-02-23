@@ -4,11 +4,8 @@ import { DB, task } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { I18nString } from "./enums";
 
 export type Task = ModifyKeys<Awaited<ReturnType<typeof findTaskById>>, {
-  name: I18nString;
-  description: I18nString;
 }>;
 export type NewTask = Insertable<task>;
 export type TaskUpdate = Updateable<task>;
@@ -36,22 +33,12 @@ export async function deleteTask(id: string) {
 
 export const defaultTask: Task = {
   id: "defaultTaskId",
-  name: {
-    "zh-CN": "默认任务",
-    "zh-TW": "預設任務",
-    "en": "Default Task",
-    "ja": "デフォルト任務",
-  },
+  name: "defaultTask",
   lv: 0,
   npcId: "",
   rewards: [],
   type: "",
-  description: {
-    "zh-CN": "默认任务",
-    "zh-TW": "預設任務",
-    "en": "Default Task",
-    "ja": "デフォルト任務",
-  }
+  description: "defaultTask description",
 };
 
 // Dictionary

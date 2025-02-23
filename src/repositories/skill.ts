@@ -1,17 +1,16 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, skill } from "~/../db/clientDB/generated/kysely/kyesely";
-import { defaultStatistics, StatisticDic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, SkillEffectDic, skillEffectSubRelations } from "./skillEffect";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, SkillChargingType, SkillDistanceResistType, SkillTreeType, I18nString } from "./enums";
+import { ElementType, SkillChargingType, SkillDistanceResistType, SkillTreeType } from "./enums";
 import { Locale } from "~/locales/i18n";
 
 export type Skill = ModifyKeys<
   Awaited<ReturnType<typeof findSkillById>>,
   {
-    name: I18nString;
     treeName: SkillTreeType;
     chargingType: SkillChargingType;
     distanceResist: SkillDistanceResistType;
@@ -35,11 +34,10 @@ export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expres
     jsonArrayFrom(
       eb
         .selectFrom("skill_effect")
-        .where("id", "=", "skill.imageId")
+        .whereRef("skill_effect.belongToskillId", "=", "skill.id")
         .selectAll("skill_effect")
         .select((subEb) => skillEffectSubRelations(subEb, subEb.val(id))),
     )
-      .$notNull()
       .as("effects"),
   ];
 }
@@ -53,43 +51,36 @@ export async function findSkillById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findSkills() {
+  return (await db
+    .selectFrom("skill")
+    .selectAll("skill")
+    .select((eb) => skillSubRelations(eb, eb.val("skill.id")))
+    .execute()) as Skill[];
+}
+
 export async function updateSkill(id: string, updateWith: SkillUpdate) {
   return await db.updateTable("skill").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createSkill(newSkill: NewSkill) {
-  return await db.transaction().execute(async (trx) => {
-    const statistic = await trx
-      .insertInto("statistic")
-      .values({
-        ...defaultStatistics.Skill,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+export async function insertSkill(trx: Transaction<DB>, newSkill: NewSkill) {
+    const statistic = await insertStatistic(trx, defaultStatistics.Skill);
     const skill = await trx
-      .insertInto("skill")
+      .insertInto('skill')
       .values({
         ...newSkill,
         statisticId: statistic.id,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
+  
+    return skill as Skill;
+}
 
-    const effects = await trx
-      .insertInto("skill_effect")
-      .values({
-        ...defaultSkillEffect,
-        belongToskillId: skill.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-
-    return {
-      ...skill,
-      statistic,
-      effects,
-    };
-  });
+export async function createSkill(newSkill: NewSkill) {
+  return await db.transaction().execute(async (trx) => {
+      return await insertSkill(trx, newSkill);
+    });
 }
 
 export async function deleteSkill(id: string) {
@@ -98,13 +89,8 @@ export async function deleteSkill(id: string) {
 
 // default
 export const defaultSkill: Skill = {
-  id: "",
-  name: {
-    "zh-CN": "默认技能",
-    "zh-TW": "預設技能",
-    en: "defaultSkill",
-    ja: "デフォルトスキル",
-  },
+  id: "defaultSkillId",
+  name: "defaultSkill",
   treeName: "MagicSkill",
   posX: 0,
   posY: 0,
@@ -113,7 +99,7 @@ export const defaultSkill: Skill = {
   chargingType: "Reservoir",
   distanceResist: "None",
   element: "Normal",
-  effects: [defaultSkillEffect],
+  effects: [],
   dataSources: "",
   details: "",
 

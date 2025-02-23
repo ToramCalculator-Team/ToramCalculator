@@ -107,14 +107,14 @@ model account_update_data {
 model world {
     id String @id
 
-    name      Json
+    name      String
     addresses address[]
 }
 
 // 活动
 model activity {
     id   String @id
-    name Json
+    name String
 
     zones   zone[]
     recipes recipe[]
@@ -124,7 +124,7 @@ model activity {
 model address {
     id String @id
 
-    name Json
+    name String
     type String
     x    Int
     y    Int
@@ -139,7 +139,7 @@ model address {
 model zone {
     id String @id
 
-    name        Json?
+    name        String?
     linkZone    String[]
     rewardNodes Int
     mobs        mob[]
@@ -155,7 +155,7 @@ model zone {
 model npc {
     id String @id
 
-    name    Json
+    name    String
     tasks   task[]
     image   image? @relation(fields: [imageId], references: [id])
     imageId String
@@ -235,9 +235,9 @@ model task {
     id String @id
 
     lv          Int
-    name        Json
+    name        String
     type        String
-    description Json
+    description String
     kills       kill_requirement[]
     requires    task_require[] // type为
     rewards     reward[]
@@ -288,7 +288,7 @@ model reward {
 
 // 素材物品
 model material {
-    name         Json
+    name         String
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 
@@ -301,7 +301,7 @@ model material {
 model mob {
     id String @id
 
-    name                             Json
+    name                             String
     mobType                          String
     captureable                      Boolean
     baseLv                           Int
@@ -361,7 +361,7 @@ model drop_item {
 
 // 锻晶
 model crystal {
-    name        Json
+    name        String
     crystalType String
     modifiers   String[]
 
@@ -386,7 +386,7 @@ model crystal {
 
 // 武器
 model weapon {
-    name            Json
+    name            String
     type            String
     baseAbi         Int
     stability       Int
@@ -407,7 +407,7 @@ model weapon {
 
 // 身体装备
 model armor {
-    name            Json
+    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -445,7 +445,7 @@ model armor_enchantment_attributes {
 
 // 追加装备
 model additional_equipment {
-    name            Json
+    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -463,7 +463,7 @@ model additional_equipment {
 
 // 特殊装备
 model special_equipment {
-    name            Json
+    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -479,11 +479,11 @@ model special_equipment {
 model skill {
     id String @id
 
-    treeName       Json
+    treeName       String
     posX           Int
     posY           Int
     tier           Int
-    name           Json
+    name           String
     isPassive      Boolean
     element        String
     chargingType   String
@@ -520,7 +520,7 @@ model skill_effect {
     reservoirModified String
     startupFrames     String
     cost              String
-    description       Json
+    description       String
     details           Json
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
@@ -529,7 +529,7 @@ model skill_effect {
 
 // 消耗品
 model consumable {
-    name         Json
+    name         String
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 

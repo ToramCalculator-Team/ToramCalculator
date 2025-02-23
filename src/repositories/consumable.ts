@@ -8,12 +8,11 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ConsumableType, I18nString } from "./enums";
+import { ConsumableType } from "./enums";
 
 export type Consumable = ModifyKeys<
   Awaited<ReturnType<typeof findConsumableById>>,
   {
-    name: I18nString;
     type: ConsumableType;
   }
 >;
@@ -69,12 +68,7 @@ const consumableShared = {
 // default
 export const defaultConsumables: Record<ConsumableType, Consumable> = {
   MaxHp: {
-    name: {
-      "zh-CN": "默认HP上限加成类消耗品",
-      "zh-TW": "預設HP上限加成類消耗品",
-      en: "defaultMaxHpModifierConsumable",
-      ja: "デフォルトHP上限加成類消耗品",
-    },
+    name: "defaultMaxHpModifierConsumable",
     id: "defaultMaxHpModifierConsumableId",
     itemId: "defaultMaxHpModifierConsumableId",
     type: "MaxHp",
@@ -86,12 +80,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.MaxHp.id,
   },
   MaxMp: {
-    name: {
-      "zh-CN": "默认MP上限加成类消耗品",
-      "zh-TW": "預設MP上限加成類消耗品",
-      en: "defaultMaxMpModifierConsumable",
-      ja: "デフォルトMP上限加成類消耗品",
-    },
+    name: "defaultMaxMpModifierConsumable",
     id: "defaultMaxMpModifierConsumableId",
     itemId: "defaultMaxMpModifierConsumableId",
     type: "MaxMp",
@@ -103,12 +92,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.MaxMp.id,
   },
   pAtk: {
-    name: {
-      "zh-CN": "默认物理攻击加成类消耗品",
-      "zh-TW": "預設物理攻擊加成類消耗品",
-      en: "defaultPhysicalAttackModifierConsumable",
-      ja: "デフォルト物理攻撃加成類消耗品",
-    },
+    name: "defaultPhysicalAttackModifierConsumable",
     id: "defaultPhysicalAttackModifierConsumableId",
     itemId: "defaultPhysicalAttackModifierConsumableId",
     type: "pAtk",
@@ -120,12 +104,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.pAtk.id,
   },
   mAtk: {
-    name: {
-      "zh-CN": "默认魔法攻击加成类消耗品",
-      "zh-TW": "預設魔法攻擊加成類消耗品",
-      en: "defaultMagicAttackModifierConsumable",
-      ja: "デフォルト魔法攻撃加成類消耗品",
-    },
+    name: "defaultMagicAttackModifierConsumable",
     id: "defaultMagicAttackModifierConsumableId",
     itemId: "defaultMagicAttackModifierConsumableId",
     type: "mAtk",
@@ -137,12 +116,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.mAtk.id,
   },
   Aspd: {
-    name: {
-      "zh-CN": "默认攻击速度加成类消耗品",
-      "zh-TW": "預設攻擊速度加成類消耗品",
-      en: "defaultAspdModifierConsumable",
-      ja: "デフォルト攻撃速度加成類消耗品",
-    },
+    name: "defaultAspdModifierConsumable",
     id: "defaultAspdModifierConsumableId",
     itemId: "defaultAspdModifierConsumableId",
     type: "Aspd",
@@ -154,12 +128,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.Aspd.id,
   },
   Cspd: {
-    name: {
-      "zh-CN": "默认咏唱速度加成消耗品",
-      "zh-TW": "預設咏唱速度加成消耗品",
-      en: "defaultCspdModifierConsumable",
-      ja: "デフォルト咏唱速度加成消耗品",
-    },
+    name: "defaultCspdModifierConsumable",
     id: "defaultCspdModifierConsumableId",
     itemId: "defaultCspdModifierConsumableId",
     type: "Cspd",
@@ -171,12 +140,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.Cspd.id,
   },
   Hit: {
-    name: {
-      "zh-CN": "默认命中加成类消耗品",
-      "zh-TW": "預設命中加成類消耗品",
-      en: "defaultHitModifierConsumable",
-      ja: "デフォルト命中加成類消耗品",
-    },
+    name: "defaultHitModifierConsumable",
     id: "defaultHitModifierConsumableId",
     itemId: "defaultHitModifierConsumableId",
     type: "Hit",
@@ -188,12 +152,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.Hit.id,
   },
   Flee: {
-    name: {
-      "zh-CN": "默认回避加成类消耗品",
-      "zh-TW": "預設回避加成類消耗品",
-      en: "defaultFleeModifierConsumable",
-      ja: "デフォルト回避加成類消耗品",
-    },
+    name: "defaultFleeModifierConsumable",
     id: "defaultFleeModifierConsumableId",
     itemId: "defaultFleeModifierConsumableId",
     type: "Flee",
@@ -205,12 +164,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.Flee.id,
   },
   EleStro: {
-    name: {
-      "zh-CN": "默认属性增强类消耗品",
-      "zh-TW": "預設屬性增強類消耗品",
-      en: "defaultEleStroConsumable",
-      ja: "デフォルト属性強化類消耗品",
-    },
+    name: "defaultEleStroConsumable",
     id: "defaultEleStroConsumableId",
     itemId: "defaultEleStroConsumableId",
     type: "EleStro",
@@ -222,12 +176,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.EleStro.id,
   },
   EleRes: {
-    name: {
-      "zh-CN": "默认属性抗性类消耗品",
-      "zh-TW": "預設屬性抗性類消耗品",
-      en: "defaultEleResConsumable",
-      ja: "デフォルト属性耐性類消耗品",
-    },
+    name: "defaultEleResConsumable",
     id: "defaultEleResConsumableId",
     itemId: "defaultEleResConsumableId",
     type: "EleRes",
@@ -239,12 +188,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.EleRes.id,
   },
   pRes: {
-    name: {
-      "zh-CN": "默认物理抗性类消耗品",
-      "zh-TW": "預設物理抗性類消耗品",
-      en: "defaultPhysicalResistConsumable",
-      ja: "デフォルト物理耐性類消耗品",
-    },
+    name: "defaultPhysicalResistConsumable",
     id: "defaultPhysicalResistConsumableId",
     itemId: "defaultPhysicalResistConsumableId",
     type: "pRes",
@@ -256,12 +200,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable> = {
     statisticId: defaultStatistics.pRes.id,
   },
   mRes: {
-    name: {
-      "zh-CN": "默认魔法抗性类消耗品",
-      "zh-TW": "預設魔法抗性類消耗品",
-      en: "defaultMagicResistConsumable",
-      ja: "デフォルト魔法耐性類消耗品",
-    },
+    name: "defaultMagicResistConsumable",
     id: "defaultMagicResistConsumableId",
     itemId: "defaultMagicResistConsumableId",
     type: "mRes",

@@ -4,10 +4,8 @@ import { DB, npc } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { I18nString } from "./enums";
 
 export type Npc = ModifyKeys<Awaited<ReturnType<typeof findNpcById>>, {
-  name: I18nString;
 }>;
 export type NewNpc = Insertable<npc>;
 export type NpcUpdate = Updateable<npc>;
@@ -35,12 +33,7 @@ export async function deleteNpc(id: string) {
 
 export const defaultNpc: Npc = {
   id: "defaultNpcId",
-  name: {
-    "zh-CN": "默认NPC",
-    "zh-TW": "預設NPC",
-    en: "defaultNpc",
-    ja: "デフォルトNPC",
-  },
+  name: "defaultNpc",
   imageId: "",
   zoneId: "",
   tasks: [],

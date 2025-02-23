@@ -8,12 +8,10 @@ import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { I18nString } from "./enums";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
 
 export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
-  name: I18nString
 }>;
 export type NewSpeEquip = Insertable<item>;
 export type SpeEquipUpdate = Updateable<item>;
@@ -73,12 +71,7 @@ export async function deleteSpeEquip(id: string) {
 
 // default
 export const defaultSpeEquip: SpeEquip = {
-  name: {
-    "zh-CN": "默认特殊装备",
-    "zh-TW": "默认特殊裝備",
-    en: "defaultSpeEquip",
-    ja: "デフォルトの特殊装備",
-  },
+  name: "defaultSpeEquip",
   id: "defaultSpeEquipId",
   modifiers: [],
   itemId: "defaultSpeEquipId",

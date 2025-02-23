@@ -9,10 +9,8 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { I18nString } from "./enums";
 
 export type Armor = ModifyKeys<Awaited<ReturnType<typeof findArmorById>>, {
-  name: I18nString;
 }>;
 export type NewArmor = Insertable<item>;
 export type ArmorUpdate = Updateable<item>;
@@ -64,12 +62,7 @@ export async function deleteArmor(id: string) {
 
 // default
 export const defaultArmor: Armor = {
-  name: {
-    "zh-CN": "默认防具",
-    "zh-TW": "默认防具",
-    en: "defaultArmor",
-    ja: "デフォルトの防具"  
-  },
+  name: "defaultArmor",
   id: "defaultArmorId",
   modifiers: [],
   itemId: "defaultArmorId",

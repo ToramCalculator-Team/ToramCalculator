@@ -9,11 +9,9 @@ import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { I18nString } from "./enums";
 import { mobSubRelations } from "./mob";
 
 export type AddEquip = ModifyKeys<Awaited<ReturnType<typeof findAddEquipById>>, {
-  name: I18nString;
 }>;
 export type NewAddEquip = Insertable<item>;
 export type AddEquipUpdate = Updateable<item>;
@@ -73,12 +71,7 @@ export async function deleteAddEquip(id: string) {
 
 // default
 export const defaultAddEquip: AddEquip = {
-  name: {
-    "zh-CN": "默认追加装备",
-    "zh-TW": "默认追加裝備",
-    en: "defaultAddEquip",
-    ja: "デフォルトの付加装備"
-  },
+  name: "defaultAddEquip",
   id: "defaultAddEquipId",
   modifiers: [],
   itemId: "defaultAddEquipId",

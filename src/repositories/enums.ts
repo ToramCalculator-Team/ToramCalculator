@@ -1,8 +1,3 @@
-import { Locale } from "~/locales/i18n";
-
-// wiki数据中的多语言字段类型
-export type I18nString = Record<Locale, string>;
-
 // 已知的可加成项
 export const MODIFIER_TYPE = [
   // 能力值

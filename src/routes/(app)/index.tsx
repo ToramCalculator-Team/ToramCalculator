@@ -17,8 +17,6 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";
 import { findSimulators } from "~/repositories/simulator";
-import Dialog from "~/components/controls/dialog";
-import NodeEditor from "~/components/module/nodeEditor";
 
 type Related =
   | {
@@ -161,7 +159,7 @@ export default function Index() {
     list.forEach((item) => {
       keyWordSearch(item, key, hiddenData)
         ? result.push({
-            name: item.name[store.settings.language],
+            name: item.name,
             relateds: keyWordSearch(item, key, hiddenData)!,
             data: item,
           })
@@ -732,9 +730,6 @@ export default function Index() {
         </Presence>
       </Motion.div>
       <Filing />
-            <Dialog state={nodeEditorDialog()} setState={setNodeEditorDialog}>
-              <NodeEditor />
-            </Dialog>
     </MetaProvider>
   );
 }

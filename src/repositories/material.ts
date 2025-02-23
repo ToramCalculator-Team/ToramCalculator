@@ -5,12 +5,11 @@ import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { ModifyKeys } from "./untils";
-import { I18nString, MaterialType } from "./enums";
+import { MaterialType } from "./enums";
 
 export type Material = ModifyKeys<
   Awaited<ReturnType<typeof findMaterialById>>,
   {
-    name: I18nString;
   }
 >;
 export type NewMaterial = Insertable<item>;
@@ -49,12 +48,7 @@ export async function deleteMaterial(id: string) {
 // default
 export const defaultMaterial: Record<MaterialType, Material> = {
   Magic: {
-    name: {
-      "zh-CN": "默认魔素素材",
-      "zh-TW": "預設魔素素材",
-      en: "defaultMagic",
-      ja: "デフォルト魔素素材",
-    },
+    name: "defaultMagic",
     id: "defaultMagicId",
     itemId: "defaultMaterialId",
     material: "Magic",
@@ -70,12 +64,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     statisticId: defaultStatistics.Magic.id,
   },
   Cloth: {
-    name: {
-      "zh-CN": "默认布料素材",
-      "zh-TW": "預設布料素材",
-      en: "defaultCloth",
-      ja: "デフォルト布料素材",
-    },
+    name: "defaultCloth",
     id: "defaultClothId",
     itemId: "defaultMaterialId",
     material: "Cloth",
@@ -91,12 +80,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     statisticId: defaultStatistics.Cloth.id,
   },
   Beast: {
-    name: {
-      "zh-CN": "默认兽品素材",
-      "zh-TW": "預設兽品素材",
-      en: "defaultBeast",
-      ja: "デフォルト兽品素材",
-    },
+    name: "defaultBeast",
     id: "defaultBeastId",
     itemId: "defaultMaterialId",
     material: "Beast",
@@ -112,12 +96,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     statisticId: defaultStatistics.Beast.id,
   },
   Wood: {
-    name: {
-      "zh-CN": "默认木材素材",
-      "zh-TW": "預設木材素材",
-      en: "defaultWood",
-      ja: "デフォルト木材素材",
-    },
+    name: "defaultWood",
     id: "defaultWoodId",
     itemId: "defaultMaterialId",
     material: "Wood",
@@ -133,12 +112,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     statisticId: defaultStatistics.Wood.id,
   },
   Drug: {
-    name: {
-      "zh-CN": "默认药品素材",
-      "zh-TW": "預設药品素材",
-      en: "defaultDrug",
-      ja: "デフォルト药素材",
-    },
+    name: "defaultDrug",
     id: "defaultDrugId",
     itemId: "defaultMaterialId",
     material: "Drug",
@@ -154,12 +128,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     statisticId: defaultStatistics.Drug.id,
   },
   Metal: {
-    name: {
-      "zh-CN": "默认金属素材",
-      "zh-TW": "預設金属素材",
-      en: "defaultMetal",
-      ja: "デフォルト金属素材",
-    },
+    name: "defaultMetal",
     id: "defaultMetalId",
     itemId: "defaultMaterialId",
     material: "Metal",

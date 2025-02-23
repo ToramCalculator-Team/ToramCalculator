@@ -7,7 +7,7 @@ import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { defaultRecipes, recipeSubRelations } from "./recipe";
-import { WeaponType, I18nString, ElementType } from "./enums";
+import { WeaponType,  ElementType } from "./enums";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
@@ -15,7 +15,6 @@ import { mobSubRelations } from "./mob";
 export type Weapon = ModifyKeys<
   Awaited<ReturnType<typeof findWeaponById>>,
   {
-    name: I18nString;
     type: WeaponType;
     element: ElementType
   }
@@ -98,12 +97,7 @@ const defaultWeaponShared = {
 // default
 export const defaultWeapons: Record<WeaponType, Weapon> = {
   OneHandSword: {
-    name: {
-      "zh-CN": "默认单手剑",
-      "zh-TW": "默认單手劍",
-      en: "defaultOneHandSword",
-      ja: "デフォルトの片手剣",
-    },
+    name: "defaultOneHandSword",
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -114,12 +108,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   TwoHandSword: {
-    name: {
-      "zh-CN": "默认双手剑",
-      "zh-TW": "默认雙手劍",
-      en: "defaultTwoHandSword",
-      ja: "デフォルトの両手剣",
-    },
+    name: "defaultTwoHandSword",
     id: "defaultWeaponTwoHandSwordId",
     itemId: "defaultWeaponId",
     type: "TwoHandSword",
@@ -130,12 +119,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Bow: {
-    name: {
-      "zh-CN": "默认弓",
-      "zh-TW": "默认弓",
-      en: "defaultBow",
-      ja: "デフォルトの弓",
-    },
+    name: "defaultBow",
     id: "defaultWeaponBowId",
     itemId: "defaultWeaponId",
     type: "Bow",
@@ -146,12 +130,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Bowgun: {
-    name: {
-      "zh-CN": "默认弩",
-      "zh-TW": "默认弩",
-      en: "defaultBowgun",
-      ja: "デフォルトの弩弓",
-    },
+    name: "defaultBowgun",
     id: "defaultWeaponBowgunId",
     itemId: "defaultWeaponId",
     type: "Bowgun",
@@ -162,12 +141,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Rod: {
-    name: {
-      "zh-CN": "默认杖",
-      "zh-TW": "默认杖",
-      en: "defaultRod",
-      ja: "デフォルトの杖",
-    },
+    name: "defaultRod",
     id: "defaultWeaponRodId",
     itemId: "defaultWeaponId",
     type: "Rod",
@@ -178,12 +152,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Magictool: {
-    name: {
-      "zh-CN": "默认魔导具",
-      "zh-TW": "默认魔導具",
-      en: "defaultMagictool",
-      ja: "デフォルトの魔道具"
-    },
+    name: "defaultMagictool",
     id: "defaultWeaponMagictoolId",
     itemId: "defaultWeaponId",
     type: "Magictool",
@@ -194,12 +163,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Knuckle: {
-    name: {
-      "zh-CN": "默认拳套",
-      "zh-TW": "默认拳套",
-      en: "defaultKnuckle",
-      ja: "デフォルトの拳套"
-    },
+    name: "defaultKnuckle",
     id: "defaultWeaponKnuckleId",
     itemId: "defaultWeaponId",
     type: "Knuckle",
@@ -210,12 +174,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Halberd: {
-    name: {
-      "zh-CN": "默认枪",
-      "zh-TW": "默认槍",
-      en: "defaultHalberd",
-      ja: "デフォルトの槍"
-    },
+    name: "defaultHalberd",
     id: "defaultWeaponHalberdId",
     itemId: "defaultWeaponId",
     type: "Halberd",
@@ -226,12 +185,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Katana: {
-    name: {
-      "zh-CN": "默认拔刀剑",
-      "zh-TW": "默认拔刀剣",
-      en: "defaultKatana",
-      ja: "デフォルトの拔刀剣"
-    },
+    name: "defaultKatana",
     id: "defaultWeaponKatanaId",
     itemId: "defaultWeaponId",
     type: "Katana",
@@ -242,12 +196,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Arrow: {
-    name: {
-      "zh-CN": "默认箭矢",
-      "zh-TW": "默认箭矢",
-      en: "defaultArrow",
-      ja: "デフォルトの矢"
-    },
+    name: "defaultArrow",
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -258,12 +207,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   ShortSword: {
-    name: {
-      "zh-CN": "默认小刀",
-      "zh-TW": "默认小刀",
-      en: "defaultShortSword",
-      ja: "デフォルトの短剣"
-    },
+    name: "defaultShortSword",
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -274,12 +218,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   NinjutsuScroll: {
-    name: {
-      "zh-CN": "默认忍术卷轴",
-      "zh-TW": "默认忍術卷軸",
-      en: "defaultNinjutsuScroll",
-      ja: "デフォルトの忍術卷軸"
-    },
+    name: "defaultNinjutsuScroll",
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",
@@ -290,12 +229,7 @@ export const defaultWeapons: Record<WeaponType, Weapon> = {
     ...defaultWeaponShared,
   },
   Shield: {
-    name: {
-      "zh-CN": "默认盾牌",
-      "zh-TW": "默认盾牌",
-      en: "defaultShield",
-      ja: "デフォルトの盾"
-    },
+    name: "defaultShield",
     id: "defaultWeaponOneHandSwordId",
     itemId: "defaultWeaponId",
     type: "OneHandSword",

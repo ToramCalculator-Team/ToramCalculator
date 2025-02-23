@@ -7,6 +7,7 @@ import { ArmorType, WeaponType } from "./enums";
 import { Locale } from "~/locales/i18n";
 
 export type SkillEffect = ModifyKeys<Awaited<ReturnType<typeof findSkillEffectById>>, {
+  details: Record<string, any>;
 }>;
 export type NewSkillEffect = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
@@ -78,7 +79,9 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "前摇帧数",
         cost: "技能消耗表达式",
         belongToskillId: "",
-        details: "逻辑描述",
+        details: {
+          selfName: "逻辑描述"
+        },
         selfName: "技能效果",
         targetType: "目标类型",
         castingRange: "施法距离",
@@ -98,7 +101,9 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "前摇幀數",
         cost: "技能消耗表達式",
         belongToskillId: "",
-        details: "邏輯描述",
+      details: {
+          selfName: "邏輯描述"
+        },
         selfName: "技能效果",
         targetType: "目標類型",
         castingRange: "施法距離",
@@ -118,7 +123,9 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "Startup frames",
         cost: "Skill cost expression",
         belongToskillId: "",
-        details: "Logical description",
+        details: {
+          selfName: "Logic description"
+        },
         selfName: "Skill effect",
         targetType: "Target type",
         castingRange: "Casting range",
@@ -137,7 +144,9 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "開始フレーム",
         cost: "スキルコスト式",
         belongToskillId: "",
-        details: "ロジック説明",
+        details: {
+          selfName: "ロジック説明"
+        },
         selfName: "スキル効果",
         targetType: "対象タイプ",
         castingRange: "射程距離",

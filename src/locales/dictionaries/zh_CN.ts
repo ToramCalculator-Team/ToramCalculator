@@ -125,16 +125,16 @@ const dictionary: dictionary = {
       },
       augmented: "是否展示全部星级数据",
       canNotModify: "系统生成，不可修改",
-      mobDegreeOfDifficulty: {
-        0: "零星",
-        1: "一星",
-        2: "二星",
-        3: "三星",
-        4: "四星",
-      },
-      mobForm: {
+      form: {
         description: "上传定点boss数据时请使用一星数据，系统将按规则自动计算其余星级数据。",
       },
+      difficultyflag: {
+        Easy: "0星",
+        Normal: "1星",
+        Hard: "2星",
+        Lunatic: "3星",
+        Ultimate: "4星"
+      }
     },
     crystal: {
       pageTitle: "锻晶表",
@@ -145,8 +145,17 @@ const dictionary: dictionary = {
       },
     },
     skill: {
-      pageTitle: "技能信息表",
-      description: "此页面正在开发中，请勿使用",
+      pageTitle: "技能",
+      table: {
+        title: "技能表",
+        description: "小心无限循环。",
+      },
+      news: {
+        title: "最近更新",
+      },
+      form: {
+        description: "正在开发中，请勿使用。",
+      },
     },
     simulator: {
       pageTitle: "流程计算器",
@@ -320,11 +329,6 @@ const dictionary: dictionary = {
       ArmorCrystal: "防具锻晶",
       AddEquipCrystal: "追加锻晶",
       SpecialCrystal: "特殊锻晶",
-      PowerUpNormalCrystal: "通用强化锻晶",
-      PowerUpWeaponCrystal: "武器强化锻晶",
-      PowerUpArmorCrystal: "防具强化锻晶",
-      PowerUpAddEquipCrystal: "追加强化锻晶",
-      PowerUpSpecialCrystal: "特殊强化锻晶",
       selfName: "锻晶类型",
     },
     SkillTreeType: {
@@ -651,7 +655,7 @@ const dictionary: dictionary = {
       Shield: "",
       Armor: "",
       AddEquip: "",
-      SpecialEquip: ""
+      SpeEquip: ""
     },
     ItemType: {
       selfName: "",
@@ -670,17 +674,30 @@ const dictionary: dictionary = {
       Shield: "",
       Armor: "",
       AddEquip: "",
-      SpecialEquip: "",
+      SpeEquip: "",
       NormalCrystal: "",
       WeaponCrystal: "",
       ArmorCrystal: "",
       AddEquipCrystal: "",
       SpecialCrystal: "",
-      PowerUpNormalCrystal: "",
-      PowerUpWeaponCrystal: "",
-      PowerUpArmorCrystal: "",
-      PowerUpAddEquipCrystal: "",
-      PowerUpSpecialCrystal: ""
+      Metal: "",
+      Cloth: "",
+      Beast: "",
+      Wood: "",
+      Drug: "",
+      Magic: "",
+      MaxHp: "",
+      MaxMp: "",
+      pAtk: "",
+      mAtk: "",
+      Aspd: "",
+      Cspd: "",
+      Hit: "",
+      Flee: "",
+      EleStro: "",
+      EleRes: "",
+      pRes: "",
+      mRes: ""
     },
     TaskRewardType: {
       selfName: "",
@@ -699,19 +716,32 @@ const dictionary: dictionary = {
       Shield: "",
       Armor: "",
       AddEquip: "",
-      SpecialEquip: "",
+      SpeEquip: "",
       NormalCrystal: "",
       WeaponCrystal: "",
       ArmorCrystal: "",
       AddEquipCrystal: "",
       SpecialCrystal: "",
-      PowerUpNormalCrystal: "",
-      PowerUpWeaponCrystal: "",
-      PowerUpArmorCrystal: "",
-      PowerUpAddEquipCrystal: "",
-      PowerUpSpecialCrystal: "",
       Exp: "",
-      Money: ""
+      Money: "",
+      Metal: "",
+      Cloth: "",
+      Beast: "",
+      Wood: "",
+      Drug: "",
+      Magic: "",
+      MaxHp: "",
+      MaxMp: "",
+      pAtk: "",
+      mAtk: "",
+      Aspd: "",
+      Cspd: "",
+      Hit: "",
+      Flee: "",
+      EleStro: "",
+      EleRes: "",
+      pRes: "",
+      mRes: ""
     },
     AbnormalType: {
       selfName: "",

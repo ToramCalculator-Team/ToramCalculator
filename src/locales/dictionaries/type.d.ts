@@ -209,7 +209,7 @@ export interface dictionary {
         Lunatic: string;
         Ultimate: string;
       };
-      mobForm: {
+      form: {
         description: string;
       };
     };
@@ -223,7 +223,16 @@ export interface dictionary {
     };
     skill: {
       pageTitle: string;
-      description: string;
+      table: {
+        title: string;
+        description: string;
+      };
+      news: {
+        title: string;
+      };
+      form: {
+        description: string;
+      };
     };
     simulator: {
       pageTitle: string;
