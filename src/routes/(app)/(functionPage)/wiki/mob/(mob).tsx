@@ -22,7 +22,8 @@ import { generateAugmentedMobList } from "~/lib/mob";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
-import * as Enums from "~/repositories/enums";
+import { type Enums } from "~/repositories/enums";
+import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -33,27 +34,27 @@ export default function MobIndexPage() {
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMobFormState = (newState: FormSate): void => {
-    setStore("wiki","mobPage", {
+    setStore("wiki", "mobPage", {
       mobFormState: newState,
     });
   };
   const setAugmented = (newAugmented: boolean): void => {
-    setStore("wiki","mobPage", {
+    setStore("wiki", "mobPage", {
       augmented: newAugmented,
     });
   };
   const setMobList = (newList: Mob[]): void => {
-    setStore("wiki","mobPage", {
+    setStore("wiki", "mobPage", {
       mobList: newList,
     });
   };
   const setFilterState = (newState: boolean): void => {
-    setStore("wiki","mobPage", {
+    setStore("wiki", "mobPage", {
       filterState: newState,
     });
   };
   const setMob = (newMob: Mob): void => {
-    setStore("wiki","mobPage", "mobId", newMob.id);
+    setStore("wiki", "mobPage", "mobId", newMob.id);
   };
 
   // table原始数据------------------------------------------------------------
@@ -76,7 +77,7 @@ export default function MobIndexPage() {
     {
       accessorKey: "mobType",
       header: () => MobDic(store.settings.language).mobType,
-      cell: (info) => dictionary().enums.MobType[info.getValue<Enums.MobType>()],
+      cell: (info) => dictionary().enums.MobType[info.getValue<Enums["MobType"]>()],
       size: 120,
     },
     {
@@ -105,7 +106,7 @@ export default function MobIndexPage() {
     {
       accessorKey: "element",
       header: () => MobDic(store.settings.language).element,
-      cell: (info) => dictionary().enums.Element[info.getValue<Enums.ElementType>()],
+      cell: (info) => dictionary().enums.ElementType[info.getValue<Enums["ElementType"]>()],
       size: 120,
     },
     {
@@ -286,7 +287,7 @@ export default function MobIndexPage() {
 
   const handleUKeyPress = (e: KeyboardEvent) => {
     if (e.key === "u") {
-      setStore("wiki","mobPage", {
+      setStore("wiki", "mobPage", {
         mobDialogState: true,
         mobFormState: "CREATE",
       });
@@ -321,7 +322,7 @@ export default function MobIndexPage() {
   });
 
   return (
-    <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
+    <>
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
@@ -346,7 +347,7 @@ export default function MobIndexPage() {
                 class="flex lg:hidden"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("wiki","mobPage", {
+                  setStore("wiki", "mobPage", {
                     mobDialogState: true,
                     mobFormState: "CREATE",
                   });
@@ -357,7 +358,7 @@ export default function MobIndexPage() {
                 class="hidden lg:flex"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("wiki","mobPage", {
+                  setStore("wiki", "mobPage", {
                     mobDialogState: true,
                     mobFormState: "CREATE",
                   });
@@ -521,9 +522,7 @@ export default function MobIndexPage() {
                                 case "name":
                                   tdContent = (
                                     <>
-                                      <span class="pb-1">
-                                        {row.original.name}
-                                      </span>
+                                      <span class="pb-1">{row.original.name}</span>
                                       {/* <span class="text-sm font-normal text-mainText-color">
                                         {row.getValue("belongToZones") ?? "无"}
                                       </span> */}
@@ -542,7 +541,7 @@ export default function MobIndexPage() {
                                         Light: <Icon.Element.Light class="h-12 w-12" />,
                                         Dark: <Icon.Element.Dark class="h-12 w-12" />,
                                         Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-                                      }[cell.getValue() as Enums.ElementType] ?? undefined;
+                                      }[cell.getValue() as Enums["ElementType"]] ?? undefined;
                                     tdContent = icon;
                                   }
                                   break;
@@ -562,11 +561,10 @@ export default function MobIndexPage() {
 
                                 default:
                                   try {
-                                    const content =
+                                    const content = // 将首字母转换成大写
                                       dictionary().enums[
-                                        (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                          cell.column.id.slice(1)) as keyof typeof Enums
-                                      ][cell.getValue() as keyof (typeof Enums)[keyof typeof Enums]];
+                                      (cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)) as DicEnumsKeys]
+                                      [cell.getValue() as keyof DicEnumsKeysValue];
                                     tdContent = content;
                                   } catch (error) {
                                     tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
@@ -613,6 +611,6 @@ export default function MobIndexPage() {
       <Dialog state={dialogState()} setState={setDialogState}>
         {"emmm..."}
       </Dialog>
-    </main>
+    </>
   );
 }

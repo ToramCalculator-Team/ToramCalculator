@@ -1,82 +1,19 @@
-import {
-  ModifierType,
-  UserRole,
-  ElementType,
-  MobType,
-  PersonalityType,
-  ArmorType,
-  SkillTargetType,
-  SkillChargingType,
-  YieldType,
-  DurationType,
-  MobDifficultyFlag,
-  MobDamageType,
-  AddressType,
-  MaterialType,
-  PartBreakReward,
-  MobPart,
-  AcquisitionMethodType,
-  SkillDistanceResistType,
-  PetPersonaType,
-  PetType,
-  MercenaryType,
-  MercenarySkillType,
-  Visibility,
-  AccountType,
-  MainWeaponType,
-  SubWeaponType,
-  WeaponType,
-  EquipType,
-  CrystalType,
-  ItemType,
-  TaskRewardType,
-  AbnormalType,
-  SkillTreeType,
-  SkillAttackType,
-  SkillComboType,
-} from "~/repositories/enums";
+import { type Enums } from "~/repositories/enums";
 
-type UnionToObject<A extends string> = {
-  [K in A | "selfName"]: string;
+
+// 字典对象类型
+type Dictionary<A extends string> = {
+  [key in A | "selfName"]: string;
 };
 
-export interface Enums {
-  ModifierType: UnionToObject<ModifierType>;
-  UserRole: UnionToObject<UserRole>;
-  Element: UnionToObject<ElementType>;
-  MobType: UnionToObject<MobType>;
-  PersonalityType: UnionToObject<PersonalityType>;
-  ArmorType: UnionToObject<ArmorType>;
-  SkillTargetType: UnionToObject<SkillTargetType>;
-  SkillChargingType: UnionToObject<SkillChargingType>;
-  YieldType: UnionToObject<YieldType>;
-  DurationType: UnionToObject<DurationType>;
-  MobDifficultyFlag: UnionToObject<MobDifficultyFlag>;
-  MobDamageType: UnionToObject<MobDamageType>;
-  AddressType: UnionToObject<AddressType>;
-  MaterialType: UnionToObject<MaterialType>;
-  PartBreakReward: UnionToObject<PartBreakReward>;
-  MobPart: UnionToObject<MobPart>;
-  AcquisitionMethodType: UnionToObject<AcquisitionMethodType>;
-  SkillDistanceResistType: UnionToObject<SkillDistanceResistType>;
-  PetPersonaType: UnionToObject<PetPersonaType>;
-  PetType: UnionToObject<PetType>;
-  MercenaryType: UnionToObject<MercenaryType>;
-  MercenarySkillType: UnionToObject<MercenarySkillType>;
-  Visibility: UnionToObject<Visibility>;
-  AccountType: UnionToObject<AccountType>;
-  MainWeaponType: UnionToObject<MainWeaponType>;
-  SubWeaponType: UnionToObject<SubWeaponType>;
-  WeaponType: UnionToObject<WeaponType>;
-  EquipType: UnionToObject<EquipType>;
-  CrystalType: UnionToObject<CrystalType>;
-  ItemType: UnionToObject<ItemType>;
-  TaskRewardType: UnionToObject<TaskRewardType>;
-  AbnormalType: UnionToObject<AbnormalType>;
-  SkillTreeType: UnionToObject<SkillTreeType>;
-  SkillAttackType: UnionToObject<SkillAttackType>;
-  SkillComboType: UnionToObject<SkillComboType>;
-}
+// 自动生成 Enums 类型
+export type DicEnums = {
+  [K in (keyof Enums)]: Dictionary<Enums[K]>;
+};
+
+// 表格内工具类
+export type DicEnumsKeys = keyof DicEnums;
+export type DicEnumsKeysValue = DicEnums[DicEnumsKeys];
 
 export interface dictionary {
   ui: {
@@ -257,5 +194,6 @@ export interface dictionary {
       description: string;
     };
   };
-  enums: Enums;
+  enums: DicEnums;
 }
+

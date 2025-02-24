@@ -379,7 +379,14 @@ export default function AppMainContet(props: ParentProps) {
 
   onMount(() => {
     // 移除加载动画
-    document.getElementById("loader")?.remove();
+    const loader = document.getElementById("loader");
+    if (loader) {
+      loader.style.opacity = "0";
+      loader.style.scale = "1.1";
+      setTimeout(() => {
+        loader.remove();
+      }, 1000);
+    }
     // 标记已加载
     document.cookie = "resourcesLoaded=true;path=/;max-age=31536000;";
   });

@@ -21,10 +21,11 @@ import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
-import * as Enums from "~/repositories/enums";
+import { type Enums } from "~/repositories/enums";
 import { findSimulatorById } from "~/repositories/simulator";
 import NodeEditor from "~/components/module/nodeEditor";
 import { updateSkillEffect } from "~/repositories/skillEffect";
+import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 
 export default function SkillIndexPage() {
   // UI文本字典
@@ -75,7 +76,7 @@ export default function SkillIndexPage() {
     {
       accessorKey: "treeName",
       header: () => SkillDic(store.settings.language).treeName,
-      cell: (info) => dictionary().enums.SkillTreeType[info.getValue<Enums.SkillTreeType>()],
+      cell: (info) => dictionary().enums.SkillTreeType[info.getValue<Enums["SkillTreeType"]>()],
       size: 120,
     },
     {
@@ -98,7 +99,7 @@ export default function SkillIndexPage() {
     {
       accessorKey: "element",
       header: () => SkillDic(store.settings.language).element,
-      cell: (info) => dictionary().enums.Element[info.getValue<Enums.ElementType>()],
+      cell: (info) => dictionary().enums.ElementType[info.getValue<Enums["ElementType"]>()],
       size: 120,
     },
   ];
@@ -256,7 +257,7 @@ export default function SkillIndexPage() {
   });
 
   return (
-    <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
+    <>
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
@@ -475,18 +476,18 @@ export default function SkillIndexPage() {
                                         Light: <Icon.Element.Light class="h-12 w-12" />,
                                         Dark: <Icon.Element.Dark class="h-12 w-12" />,
                                         Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-                                      }[cell.getValue() as Enums.ElementType] ?? undefined;
+                                      }[cell.getValue() as Enums["ElementType"]] ?? undefined;
                                     tdContent = icon;
                                   }
                                   break;
 
                                 default:
                                   try {
-                                    const content =
+                                    const content = // 将首字母转换成大写
                                       dictionary().enums[
                                         (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                          cell.column.id.slice(1)) as keyof typeof Enums
-                                      ][cell.getValue() as keyof (typeof Enums)[keyof typeof Enums]];
+                                          cell.column.id.slice(1)) as DicEnumsKeys
+                                      ][cell.getValue() as keyof DicEnumsKeysValue];
                                     tdContent = content;
                                   } catch (error) {
                                     tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
@@ -545,6 +546,6 @@ export default function SkillIndexPage() {
           }}
         />
       </Dialog>
-    </main>
+    </>
   );
 }

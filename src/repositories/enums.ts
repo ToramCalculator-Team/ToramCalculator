@@ -124,76 +124,40 @@ export const MODIFIER_TYPE = [
   "recoilDamage", // 反作用伤害
   "gemPowderDrop", // 晶石粉末掉落
 ] as const;
-export type ModifierType = (typeof MODIFIER_TYPE)[number];
-
 // 用户角色
 export const USER_ROLE = ["USER", "ADMIN"] as const;
-export type UserRole = (typeof USER_ROLE)[number];
-
 // 元素属性
 export const ELEMENT_TYPE = ["Normal", "Light", "Dark", "Water", "Fire", "Earth", "Wind"] as const;
-export type ElementType = (typeof ELEMENT_TYPE)[number];
-
 // 怪物分类枚举
 export const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
-export type MobType = (typeof MOB_TYPE)[number];
-
 // 个人能力值类型枚举
 export const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
-export type PersonalityType = (typeof PERSONALITY_TYPE)[number];
-
 // 身体装备轻重化类型枚举
 export const ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
-export type ArmorType = (typeof ARMOR_TYPE)[number];
-
 // 技能目标类型
 export const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
-export type SkillTargetType = (typeof SKILL_TARGET_TYPE)[number];
-
 // 技能充能类型枚举（咏唱、蓄力）
 export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
-export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
-
 // 技能效果类型枚举（持续效果，立即效果）
 export const YIELD_TYPE = ["PersistentEffect", "ImmediateEffect"] as const;
-export type YieldType = (typeof YIELD_TYPE)[number];
-
 // 效果有效期类型枚举（按时间计算、按技能数计算、无限）
 export const DURATION_TYPE = ["FRAME", "SKILL", "UNLIMITED"] as const;
-export type DurationType = (typeof DURATION_TYPE)[number];
-
 // 怪物难度标识
 export const MOB_DIFFICULTY_FLAG = ["Easy", "Normal", "Hard", "Lunatic", "Ultimate"] as const;
-export type MobDifficultyFlag = (typeof MOB_DIFFICULTY_FLAG)[number];
-
 // 怪物伤害类型
 export const MOB_DAMAGE_TYPE = ["Physics", "Magic", "CurrentRate", "MaxRate"] as const;
-export type MobDamageType = (typeof MOB_DAMAGE_TYPE)[number];
-
 // 地点类型（普通地点，限时地点）
 export const ADDRESS_TYPE = ["Normal", "Limited"] as const;
-export type AddressType = (typeof ADDRESS_TYPE)[number];
-
 // 素材类型
 export const MATERIAL_TYPE = ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"] as const;
-export type MaterialType = (typeof MATERIAL_TYPE)[number];
-
 // 部位破坏奖励
 export const PART_BREAK_REWARD = ["None", "CanDrop", "DropUp"] as const;
-export type PartBreakReward = (typeof PART_BREAK_REWARD)[number];
-
 // 部位枚举
 export const MOB_PART = ["A", "B", "C"] as const;
-export type MobPart = (typeof MOB_PART)[number];
-
 // 道具取得方式
 export const ACQUISITION_METHOD_TYPE = ["Drop", "Craft"] as const;
-export type AcquisitionMethodType = (typeof ACQUISITION_METHOD_TYPE)[number];
-
 // 技能距离威力抵制类型
 export const SKILL_DISTANCE_RESIST_TYPE = ["None", "Long", "Short", "Both"] as const;
-export type SkillDistanceResistType = (typeof SKILL_DISTANCE_RESIST_TYPE)[number];
-
 // 宠物性格
 export const PET_PERSONA_TYPE = [
   "Fervent",
@@ -212,8 +176,6 @@ export const PET_PERSONA_TYPE = [
   "Steady",
   "Max",
 ] as const;
-export type PetPersonaType = (typeof PET_PERSONA_TYPE)[number];
-
 // 宠物类型
 export const PET_TYPE = [
   "AllTrades",
@@ -226,25 +188,15 @@ export const PET_TYPE = [
   "SkillsEnhancement",
   "Genius",
 ] as const;
-export type PetType = (typeof PET_TYPE)[number];
-
 // 佣兵类型
 export const MERCENARY_TYPE = ["Tank", "Dps"] as const;
-export type MercenaryType = (typeof MERCENARY_TYPE)[number];
-
 // 佣兵技能类型
 export const MERCENARY_SKILL_TYPE = ["Active", "Passive"] as const;
-export type MercenarySkillType = (typeof MERCENARY_SKILL_TYPE)[number];
-
 // 其他用户可见性
 export const VISIBILITY = ["Public", "Private"] as const;
-export type Visibility = (typeof VISIBILITY)[number];
-
-// 账号类型 //
+// 账号类型
 export const ACCOUNT_TYPES = ["Admin", "User"] as const;
-export type AccountType = (typeof ACCOUNT_TYPES)[number];
-
-// 主武器类型 //
+// 主武器类型
 export const MAIN_WEAPON_TYPE = [
   "OneHandSword",
   "TwoHandSword",
@@ -256,47 +208,42 @@ export const MAIN_WEAPON_TYPE = [
   "Halberd",
   "Katana",
 ] as const;
-export type MainWeaponType = (typeof MAIN_WEAPON_TYPE)[number];
-
-// 副武器 //
+// 副武器
 export const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
-export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
-
-// 武器 //
+// 武器
 export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
-export type WeaponType = (typeof WEAPON_TYPE)[number];
-
-// 装备 //
+// 装备
 export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "AddEquip", "SpeEquip"] as const;
-export type EquipType = (typeof EQUIP_TYPE)[number];
-
-// 锻晶 //
+// 锻晶
 export const CRYSTAL_TYPE = [
   "NormalCrystal",
   "WeaponCrystal",
   "ArmorCrystal",
   "AddEquipCrystal",
-  "SpecialCrystal"
+  "SpecialCrystal",
 ] as const;
-export type CrystalType = (typeof CRYSTAL_TYPE)[number];
-
-// 消耗品 //
-export const CONSUMABLE_TYPE = ["MaxHp", "MaxMp", "pAtk", "mAtk", "Aspd", "Cspd", "Hit", "Flee", "EleStro", "EleRes", "pRes", "mRes"] as const;
-export type ConsumableType = (typeof CONSUMABLE_TYPE)[number];
-
-// 道具 //
+// 消耗品
+export const CONSUMABLE_TYPE = [
+  "MaxHp",
+  "MaxMp",
+  "pAtk",
+  "mAtk",
+  "Aspd",
+  "Cspd",
+  "Hit",
+  "Flee",
+  "EleStro",
+  "EleRes",
+  "pRes",
+  "mRes",
+] as const;
+// 道具
 export const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE, ...MATERIAL_TYPE, ...CONSUMABLE_TYPE] as const;
-export type ItemType = (typeof ITEM_TYPE)[number];
-
-// 任务奖励 //
+// 任务奖励
 export const TASK_REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
-export type TaskRewardType = (typeof TASK_REWARD_TYPE)[number];
-
-// 配方 //
+// 配方
 export const RECIPE_TYPE = [...EQUIP_TYPE, ...CONSUMABLE_TYPE] as const;
-export type RecipeType = (typeof RECIPE_TYPE)[number];
-
-// 异常状态 //
+// 异常状态
 export const ABNORMAL_TYPE = [
   "MagicFlinch",
   "None",
@@ -346,9 +293,7 @@ export const ABNORMAL_TYPE = [
   "SystemAddHate",
   "Recovery",
 ] as const;
-export type AbnormalType = (typeof ABNORMAL_TYPE)[number];
-
-// 技能树类型 //
+// 技能树类型
 export const SKILL_TREE_TYPE = [
   "BladeSkill", // 剑术技能
   "ShootSkill", // 射击技能
@@ -388,13 +333,9 @@ export const SKILL_TREE_TYPE = [
   "MerchantSkill", // 商人技能
   "PetSkill", // 宠物技能
 ] as const;
-export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
-
-// 玩家技能攻击类型 //
+// 玩家技能攻击类型
 export const SKILL_ATTACK_TYP = ["None", "Physical", "Magic", "SkillNormal"] as const;
-export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
-
-// 连击效果类型 //
+// 连击效果类型
 export const SKILL_COMBO_TYPE = [
   "None",
   "Start",
@@ -412,9 +353,7 @@ export const SKILL_COMBO_TYPE = [
   "Illusion",
   "Max",
 ] as const;
-export type SkillComboType = (typeof SKILL_COMBO_TYPE)[number];
-
-// 雷吉斯托环类型 //
+// 雷吉斯托环类型
 export const REGISLET_TYPE = [
   "Nil",
   "AtkUp",
@@ -493,8 +432,6 @@ export const REGISLET_TYPE = [
   "SmashEnhance",
   "SonicWaveEnhance",
 ] as const;
-export type RegisletType = (typeof REGISLET_TYPE)[number];
-
 export const WIKISCHEMA_TYPE = [
   "Mob",
   "Character",
@@ -507,7 +444,47 @@ export const WIKISCHEMA_TYPE = [
   ...CRYSTAL_TYPE,
   ...ITEM_TYPE,
 ] as const;
-export type WikiSchemaType = (typeof WIKISCHEMA_TYPE)[number];
-
 export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
-export type StatisticType = (typeof STATISTIC_TYPE)[number];
+
+export type Enums = {
+  ModifierType: (typeof MODIFIER_TYPE)[number];
+  UserRole: (typeof USER_ROLE)[number];
+  ElementType: (typeof ELEMENT_TYPE)[number];
+  MobType: (typeof MOB_TYPE)[number];
+  PersonalityType: (typeof PERSONALITY_TYPE)[number];
+  ArmorType: (typeof ARMOR_TYPE)[number];
+  SkillTargetType: (typeof SKILL_TARGET_TYPE)[number];
+  SkillChargingType: (typeof SKILL_CHARGING_TYPE)[number];
+  YieldType: (typeof YIELD_TYPE)[number];
+  DurationType: (typeof DURATION_TYPE)[number];
+  MobDifficultyFlag: (typeof MOB_DIFFICULTY_FLAG)[number];
+  MobDamageType: (typeof MOB_DAMAGE_TYPE)[number];
+  AddressType: (typeof ADDRESS_TYPE)[number];
+  MaterialType: (typeof MATERIAL_TYPE)[number];
+  PartBreakReward: (typeof PART_BREAK_REWARD)[number];
+  MobPart: (typeof MOB_PART)[number];
+  AcquisitionMethodType: (typeof ACQUISITION_METHOD_TYPE)[number];
+  SkillDistanceResistType: (typeof SKILL_DISTANCE_RESIST_TYPE)[number];
+  PetPersonaType: (typeof PET_PERSONA_TYPE)[number];
+  PetType: (typeof PET_TYPE)[number];
+  MercenaryType: (typeof MERCENARY_TYPE)[number];
+  MercenarySkillType: (typeof MERCENARY_SKILL_TYPE)[number];
+  Visibility: (typeof VISIBILITY)[number];
+  AccountType: (typeof ACCOUNT_TYPES)[number];
+  MainWeaponType: (typeof MAIN_WEAPON_TYPE)[number];
+  SubWeaponType: (typeof SUB_WEAPON_TYPE)[number];
+  WeaponType: (typeof WEAPON_TYPE)[number];
+  EquipType: (typeof EQUIP_TYPE)[number];
+  CrystalType: (typeof CRYSTAL_TYPE)[number];
+  ConsumableType: (typeof CONSUMABLE_TYPE)[number];
+  ItemType: (typeof ITEM_TYPE)[number];
+  TaskRewardType: (typeof TASK_REWARD_TYPE)[number];
+  RecipeType: (typeof RECIPE_TYPE)[number];
+  AbnormalType: (typeof ABNORMAL_TYPE)[number];
+  SkillTreeType: (typeof SKILL_TREE_TYPE)[number];
+  SkillAttackType: (typeof SKILL_ATTACK_TYP)[number];
+  SkillComboType: (typeof SKILL_COMBO_TYPE)[number];
+  RegisletType: (typeof REGISLET_TYPE)[number];
+  WikiSchemaType: (typeof WIKISCHEMA_TYPE)[number];
+  StatisticType: (typeof STATISTIC_TYPE)[number];
+}

@@ -662,38 +662,6 @@ export default function Index() {
                 </a>
                 <a
                   tabIndex={2}
-                  href={"/wiki/pet"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.pets}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/building"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group w-full flex-col bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:w-fit lg:flex-row lg:bg-accent-color"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.items}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
                   href={"/character"}
                   class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
                 >

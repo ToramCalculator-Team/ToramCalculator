@@ -17,16 +17,16 @@ if (!document.cookie.split(";").includes(" resourcesLoaded=true")) {
   const resourceList = document.getElementById("resource-list")!;
   let totalResources = 310;
   let loadedResources = 0;
-  
+
   const observer = new PerformanceObserver((list) => {
     list.getEntries().forEach((entry) => {
-      resourceList.innerHTML = `⏳ ${Math.floor(loadedResources * 100 / totalResources)}% ：${entry.name}`;
-  
+      resourceList.innerHTML = `⏳ ${Math.floor((loadedResources * 100) / totalResources)}% ：${entry.name.replace("https://app.kiaclouth.com/_build/assets/", "")}`;
+
       // 模拟进度（实际需根据资源总数调整）
       loadedResources++;
-      // console.log(`已加载资源数：${loadedResources}`);
+      console.log(`已加载资源数：${loadedResources}`);
       // totalResources++;
-      // console.log(`已加载资源数：${totalResources}`);
+      // console.log(`已加载资源数：${totalResources}`);1
     });
   });
   observer.observe({ type: "resource", buffered: true });
