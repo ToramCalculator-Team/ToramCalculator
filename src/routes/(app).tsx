@@ -377,6 +377,13 @@ export default function AppMainContet(props: ParentProps) {
     setHasInstalled(false);
   });
 
+  onMount(() => {
+    // 移除加载动画
+    document.getElementById("loader")?.remove();
+    // 标记已加载
+    document.cookie = "resourcesLoaded=true;path=/;max-age=31536000;";
+  });
+
   return (
     <>
       <Show when={store.settings.userInterface.is3DbackgroundDisabled}>

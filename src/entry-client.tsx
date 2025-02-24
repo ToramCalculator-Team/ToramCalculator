@@ -10,6 +10,28 @@ import { createSimulator, defaultSimulator, findSimulatorById } from "./reposito
 import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/skill";
 import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/skillEffect";
 
+console.log("entry-client");
+
+if (!document.cookie.split(";").includes(" resourcesLoaded=true")) {
+  // 资源加载进度
+  const resourceList = document.getElementById("resource-list")!;
+  let totalResources = 310;
+  let loadedResources = 0;
+  
+  const observer = new PerformanceObserver((list) => {
+    list.getEntries().forEach((entry) => {
+      resourceList.innerHTML = `⏳ ${Math.floor(loadedResources * 100 / totalResources)}% ：${entry.name}`;
+  
+      // 模拟进度（实际需根据资源总数调整）
+      loadedResources++;
+      // console.log(`已加载资源数：${loadedResources}`);
+      // totalResources++;
+      // console.log(`已加载资源数：${totalResources}`);
+    });
+  });
+  observer.observe({ type: "resource", buffered: true });
+}
+
 // 注册ServiceWorker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register(serviceWorkerUrl, {

@@ -44,11 +44,63 @@ export default createHandler(() => (
             {assets}
           </head>
           <body>
+            <div
+              id="loader"
+              class="fixed left-0 top-0 z-50 flex h-dvh w-dvw flex-col items-end justify-end bg-primary-color"
+            >
+              <div
+                id="resource-list"
+                class="w-dvw p-6 text-xs text-nowrap overflow-hidden overflow-ellipsis"
+              ></div>
+              <div id="loadingBox">
+                <div class="shadow shadow-none">
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                </div>
+                <div id="maskElement2"></div>
+                <div id="maskElement3"></div>
+                <div class="line">
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                  <div class="circle"></div>
+                </div>
+              </div>
+            </div>
             <div id="app" class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
               {children}
             </div>
             {scripts}
             {/* <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script> */}
+            <script>
+              if(document.cookie.split(";").includes(" resourcesLoaded=true")) document.getElementById("loader")?.remove();
+            </script>
           </body>
         </html>
       );
