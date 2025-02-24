@@ -34,6 +34,7 @@ const dictionary: dictionary = {
       items: "Items",
       character: "Character",
       simulator: "Combo",
+      profile: "",
     },
     errorPage: {
       tips: "You have no knowledge of the desert. Click the screen to return",

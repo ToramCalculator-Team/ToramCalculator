@@ -34,6 +34,7 @@ const dictionary: dictionary = {
       items: "消耗品",
       character: "角色配置",
       simulator: "流程模拟",
+      profile: "",
     },
     errorPage: {
       tips: "你来到了没有知识的荒原~，点击屏幕返回",

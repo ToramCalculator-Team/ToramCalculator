@@ -34,6 +34,7 @@ const dictionary: dictionary = {
       items: "消耗品",
       character: "キャラクター",
       simulator: "コンボ分析",
+      profile: "",
     },
     errorPage: {
       tips: "あなたは知識の荒野にいるが、クリックして戻ります",

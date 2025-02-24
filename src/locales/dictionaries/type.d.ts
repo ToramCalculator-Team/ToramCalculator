@@ -49,6 +49,7 @@ export interface dictionary {
       items: string;
       character: string;
       simulator: string;
+      profile: string;
     };
     errorPage: {
       tips: string;

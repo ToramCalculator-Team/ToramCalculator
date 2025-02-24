@@ -28,25 +28,26 @@ const NavBtn = (props: {
       }
     >
       <div
-        class={`iconArea rounded-full px-4 py-1 ${props.active(props.config.url)} group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st`}
+        class={`iconArea rounded-full p-3 lg:px-4 lg:py-1 ${props.active(props.config.url)} group-hover:bg-area-color group-focus:bg-area-color lg:group-hover:bg-brand-color-1st lg:group-focus:bg-brand-color-1st`}
       >
         {props.config.icon}
       </div>
-      <div class="text-xs">{props.config.btnName}</div>
+      <div class="hidden text-xs lg:block">{props.config.btnName}</div>
     </a>
   );
 };
 
 const Divider = () => (
-  <div class={"Divider hidden py-2 lg:block"}>
+  <div class={"Divider hidden py-2 lg:flex lg:justify-center"}>
     <div class="Line h-[2px] w-12 bg-brand-color-1st"></div>
   </div>
 );
 
 const Nav = () => {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+  const [wikiClass, setWikiClass] = createSignal("mob");
   const location = useLocation();
-  const active = (path: string) => (location.pathname.includes(path) ? "bg-brand-color-1st" : "");
+  const active = (path: string) => (location.pathname.includes(path) ? "bg-area-color lg:bg-brand-color-1st" : "");
 
   createEffect(() => {
     setDictionary(getDictionary(store.settings.language));
@@ -56,12 +57,12 @@ const Nav = () => {
     <Motion.div
       animate={{ transform: "none", opacity: 1 }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav z-10 flex w-dvw flex-shrink-0 translate-y-full items-center justify-between bg-area-color opacity-0 lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:py-5`}
+      class={`Nav z-10 flex w-dvw translate-y-full items-center justify-between bg-primary-color py-2 opacity-0 lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:bg-area-color lg:py-5`}
     >
-      <div class="NavBtnGroup flex flex-1 items-center lg:flex-col lg:gap-0">
+      <div class="NavBtnGroup flex items-center overflow-y-hidden lg:flex-col lg:gap-0">
         <a
           href={"/"}
-          class="Home group flex w-[25dvw] lg:w-auto flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:p-0"
+          class="Home group hidden w-[20dvw] flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:flex lg:w-auto lg:p-0 lg:pb-6"
           tabIndex={1}
         >
           <div class="iconArea rounded-full px-4 py-1 group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st lg:hidden">
@@ -70,69 +71,75 @@ const Nav = () => {
           <Icon.Line.Logo class="hidden lg:block" />
           <div class="text-xs lg:hidden">{dictionary().ui.nav.home}</div>
         </a>
-        <div class="WikiGroup flex-shrink-0 lg:pt-6">
+        <div class="WikiGroup flex flex-col overflow-y-hidden">
           <NavBtn
             config={{
               btnName: "Wiki",
               icon: <Icon.Line.Category2 />,
-              url: "/wiki",
+              url: `/wiki/${wikiClass()}`,
             }}
             active={active}
-            class="lg:hidden w-[25dvw] lg:w-auto"
+            class="w-[20dvw] lg:hidden"
           />
-          <div class="SubGroup hidden flex-col items-center lg:flex">
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.mobs,
-                icon: <Icon.Line.Calendar />,
-                url: "/wiki/mob",
-              }}
-              active={active}
-            />
-            <Divider />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.skills,
-                icon: <Icon.Line.Basketball />,
-                url: "/wiki/skill",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.equipments,
-                icon: <Icon.Line.Category2 />,
-                url: "/wiki/equipment",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.crystals,
-                icon: <Icon.Line.Box2 />,
-                url: "/wiki/crystal",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.pets,
-                icon: <Icon.Line.Money />,
-                url: "/wiki/pet",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.items,
-                icon: <Icon.Line.Coins />,
-                url: "/wiki/building",
-              }}
-              active={active}
-            />
-            <Divider />
-          </div>
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.mobs,
+              icon: <Icon.Line.Calendar />,
+              url: "/wiki/mob",
+            }}
+            active={active}
+            class="hidden lg:flex lg:w-auto"
+          />
+          <Divider />
+          <OverlayScrollbarsComponent
+            element="div"
+            options={{ scrollbars: { autoHide: "scroll" } }}
+            defer
+            class="SubGroup !hidden flex-shrink flex-col overflow-y-auto lg:flex"
+          >
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.skills,
+              icon: <Icon.Line.Basketball />,
+              url: "/wiki/skill",
+            }}
+            active={active}
+          />
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.equipments,
+              icon: <Icon.Line.Category2 />,
+              url: "/wiki/equipment",
+            }}
+            active={active}
+          />
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.crystals,
+              icon: <Icon.Line.Box2 />,
+              url: "/wiki/crystal",
+            }}
+            active={active}
+          />
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.pets,
+              icon: <Icon.Line.Money />,
+              url: "/wiki/pet",
+            }}
+            active={active}
+          />
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.items,
+              icon: <Icon.Line.Coins />,
+              url: "/wiki/building",
+            }}
+            active={active}
+          />
+          </OverlayScrollbarsComponent>
         </div>
+        <Divider />
         <NavBtn
           config={{
             btnName: dictionary().ui.nav.character,
@@ -140,8 +147,15 @@ const Nav = () => {
             url: "/character/defaultCharacterId",
           }}
           active={active}
-          class=" w-[25dvw] lg:w-auto"
+          class="w-[20dvw] lg:w-auto"
         />
+        <div class="ModuleSwitcher flex w-[20dvw] items-center justify-center lg:hidden">
+          <div class="Btn h-12 w-12 rounded-full bg-accent-color p-1">
+            <div class="Ring flex h-full w-full items-center justify-center rounded-full border border-primary-color text-primary-color">
+              53
+            </div>
+          </div>
+        </div>
         <NavBtn
           config={{
             btnName: dictionary().ui.nav.simulator,
@@ -149,28 +163,37 @@ const Nav = () => {
             url: "/simulator/defaultSimulatorId",
           }}
           active={active}
-          class=" w-[25dvw] lg:w-auto"
+          class="w-[20dvw] lg:w-auto"
         />
       </div>
-      <div class="FunBtnGroup hidden lg:flex items-center justify-center gap-3 px-6 lg:flex-col lg:p-0">
+      <div class="FunBtnGroup items-center justify-center gap-3 lg:flex lg:flex-col">
         <Button
           level="quaternary"
-          class="rounded-full bg-transparent px-2 py-2"
+          class="hidden rounded-full bg-transparent px-2 py-2 lg:flex"
           onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
         >
           <Icon.Line.Light />
         </Button>
         <Button
           level="quaternary"
-          class="rounded-full bg-transparent px-2 py-2"
+          class="hidden rounded-full bg-transparent px-2 py-2 lg:flex"
           onClick={() => setStore("settingsDialogState", true)}
         >
           <Icon.Line.Settings />
         </Button>
+        <NavBtn
+          config={{
+            btnName: dictionary().ui.nav.profile,
+            icon: <Icon.Line.User />,
+            url: "/profile",
+          }}
+          active={active}
+          class="w-[20dvw] lg:hidden"
+        />
       </div>
     </Motion.div>
   );
-}
+};
 
 export default function Home(props: ParentProps) {
   return (
@@ -180,13 +203,13 @@ export default function Home(props: ParentProps) {
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
-        class="h-full w-full z-50"
+        class="z-50 h-full w-full"
       >
         <Motion.div
           animate={{ opacity: 1 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
           id="mainContent"
-          class="Content flex w-full min-h-full flex-1 flex-col opacity-0"
+          class="Content flex min-h-full w-full flex-1 flex-col opacity-0"
         >
           {props.children}
         </Motion.div>
