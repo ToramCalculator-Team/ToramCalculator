@@ -400,7 +400,8 @@ export default function Index() {
   //   }
   // };
 
-  onMount(async () => {
+  onMount(() => {
+    console.log("Index loaded")
     // 浏览器后退事件监听
     const handlePopState = () => {
       setSearchResultOpened(false);

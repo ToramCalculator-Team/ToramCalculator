@@ -352,6 +352,35 @@ export const Line = {
     );
   },
 
+  Receipt: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" {...props}>
+        <path
+          d="M5 3.5H19V19.4656C19 20.2959 18.0466 20.7645 17.3892 20.2574L16.0584 19.2307C15.7236 18.9725 15.2625 18.9527 14.9068 19.1813L13.0815 20.3547C12.4227 20.7783 11.5773 20.7783 10.9185 20.3547L9.0932 19.1813C8.73751 18.9527 8.27644 18.9725 7.94164 19.2307L6.6108 20.2574C5.95338 20.7645 5 20.2959 5 19.4656V3.5Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path d="M9 9.5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M3 3.5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M9 13.5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path
+          d="M15 9.5H15.5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M15 13.5H15.5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    );
+  },
+
   Laptop: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -623,14 +652,7 @@ export const Line = {
   User: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24" viewBox="0 0 25 24" fill="none" {...props}>
-        <circle
-          cx="4"
-          cy="4"
-          r="4"
-          transform="matrix(-1 0 0 1 16.25 3)"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
+        <circle cx="4" cy="4" r="4" transform="matrix(-1 0 0 1 16.25 3)" stroke="currentColor" stroke-width="1.5" />
         <path
           d="M5.25 16.9347C5.25 16.0743 5.79085 15.3068 6.60109 15.0175V15.0175C10.254 13.7128 14.246 13.7128 17.8989 15.0175V15.0175C18.7091 15.3068 19.25 16.0743 19.25 16.9347V18.2502C19.25 19.4376 18.1983 20.3498 17.0228 20.1818L16.0684 20.0455C13.5356 19.6837 10.9644 19.6837 8.43162 20.0455L7.47721 20.1818C6.3017 20.3498 5.25 19.4376 5.25 18.2502V16.9347Z"
           stroke="currentColor"

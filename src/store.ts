@@ -38,6 +38,7 @@ export type Store = {
   };
   indexPage: {};
   wiki: {
+    filterStr: string;
     mobPage: {
       augmented: boolean;
       mobId: string;
@@ -109,6 +110,7 @@ export const initialStore: Store = {
   settingsDialogState: false,
   indexPage: {},
   wiki: {
+    filterStr: "",
     mobPage: {
       augmented: true,
       mobId: "defaultMobId",

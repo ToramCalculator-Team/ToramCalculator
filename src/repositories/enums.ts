@@ -439,14 +439,16 @@ export const REGISLET_TYPE = [
 export const WIKISCHEMA_TYPE = [
   "Mob",
   "Character",
-  ...WEAPON_TYPE,
+  "Weapon",
   "WeaponEncAttrs",
-  ...CUSTOM_ARMOR_TYPE,
+  "Armor",
   "ArmorEncAttrs",
   "AddEquip",
   "SpeEquip",
-  ...CRYSTAL_TYPE,
-  ...ITEM_TYPE,
+  "Crystal",
+  "Item",
+  "Skill",
+  "Pet"
 ] as const;
 export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
 

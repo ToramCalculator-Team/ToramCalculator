@@ -76,7 +76,7 @@ export default function MobIndexPage() {
     },
     {
       accessorKey: "mobType",
-      header: () => MobDic(store.settings.language).mobType,
+      header: () => MobDic(store.settings.language).type,
       cell: (info) => dictionary().enums.MobType[info.getValue<Enums["MobType"]>()],
       size: 120,
     },
@@ -105,7 +105,7 @@ export default function MobIndexPage() {
     },
     {
       accessorKey: "element",
-      header: () => MobDic(store.settings.language).element,
+      header: () => MobDic(store.settings.language).elementType,
       cell: (info) => dictionary().enums.ElementType[info.getValue<Enums["ElementType"]>()],
       size: 120,
     },
@@ -184,7 +184,7 @@ export default function MobIndexPage() {
       },
     });
   });
-  const mobTableHiddenData: Array<keyof Mob> = ["id", "mobType", "updatedByAccountId"];
+  const mobTableHiddenData: Array<keyof Mob> = ["id", "type", "updatedByAccountId"];
   // 表头固定
   const getCommonPinningStyles = (column: Column<Mob>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -530,7 +530,7 @@ export default function MobIndexPage() {
                                   );
                                   break;
 
-                                case "element":
+                                case "elementType":
                                   {
                                     const icon =
                                       {
