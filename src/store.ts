@@ -14,6 +14,7 @@ export type Store = {
   version: number;
   theme: "light" | "dark";
   settingsDialogState: boolean;
+  resourcesLoaded: boolean;
   settings: {
     userInterface: {
       isAnimationEnabled: boolean;
@@ -85,6 +86,7 @@ export type Store = {
 export const initialStore: Store = {
   version: 20250103,
   theme: "light",
+  resourcesLoaded: false,
   settings: {
     userInterface: {
       isAnimationEnabled: true,

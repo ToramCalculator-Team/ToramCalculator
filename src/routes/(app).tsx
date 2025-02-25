@@ -387,8 +387,7 @@ export default function AppMainContet(props: ParentProps) {
         loader.remove();
       }, 1000);
     }
-    // 标记已加载
-    document.cookie += "resourcesLoaded=true;path=/;max-age=31536000;";
+    setStore("resourcesLoaded", true);
   });
 
   return (

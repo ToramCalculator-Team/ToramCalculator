@@ -10,10 +10,11 @@ import { createSimulator, defaultSimulator, findSimulatorById } from "./reposito
 import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/skill";
 import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/skillEffect";
 import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/crystal";
+import { store } from "./store";
 
 console.log("entry-client");
 
-if (!document.cookie.split(";").includes(" resourcesLoaded=true")) {
+if (!store.resourcesLoaded) {
   // 资源加载进度
   const resourceList = document.getElementById("resource-list")!;
   let totalResources = 310;

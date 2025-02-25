@@ -38,8 +38,7 @@ export default createHandler(() => (
               storeCache.theme; root.classList.add(theme); let isAnimationEnabled = true; if (storeCache)
               isAnimationEnabled = storeCache.settings.userInterface.isAnimationEnabled; isAnimationEnabled ??
               root.classList.add("transitionNone"); let language = "zh-CN"; if (storeCache) language =
-              storeCache.settings.language; root.lang = language; document.cookie = "lang=" + language + ";
-              path=/;max-age=31536000;";
+              storeCache.settings.language; root.lang = language;
             </script>
             {assets}
           </head>
@@ -96,11 +95,16 @@ export default createHandler(() => (
             <div id="app" class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
               {children}
             </div>
+            <script>
+              {`try {
+                storeCache.resourcesLoaded; document.getElementById("loader").remove();
+              console.log("资源加载完成");
+              } catch (error) {
+                console.log("初次加载资源");
+              }`}
+            </script>
             {scripts}
             {/* <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script> */}
-            <script>
-              if(document.cookie.split(";").includes(" resourcesLoaded=true")) document.getElementById("loader")?.remove();
-            </script>
           </body>
         </html>
       );
