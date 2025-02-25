@@ -73,7 +73,7 @@ export async function deleteCrystalById(id: string) {
 }
 
 // default
-export const defaultCrystal: Record<Enums["CrystalType"], Crystal> = {
+export const defaultCrystals: Record<Enums["CrystalType"], Crystal> = {
   NormalCrystal: {
     name: "defaultNormalCrystal",
     id: "defaultNormalCrystalId",

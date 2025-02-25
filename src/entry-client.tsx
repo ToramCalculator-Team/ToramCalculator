@@ -9,6 +9,7 @@ import { createMob, defaultMob, findMobById } from "./repositories/mob";
 import { createSimulator, defaultSimulator, findSimulatorById } from "./repositories/simulator";
 import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/skill";
 import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/skillEffect";
+import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/crystal";
 
 console.log("entry-client");
 

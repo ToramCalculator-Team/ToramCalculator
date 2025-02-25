@@ -439,6 +439,18 @@ export const REGISLET_TYPE = [
 export const WIKISCHEMA_TYPE = [
   "Mob",
   "Character",
+  ...WEAPON_TYPE,
+  "WeaponEncAttrs",
+  ...CUSTOM_ARMOR_TYPE,
+  "ArmorEncAttrs",
+  "AddEquip",
+  "SpeEquip",
+  ...CRYSTAL_TYPE,
+  ...ITEM_TYPE,
+] as const;
+export const WIKI_TYPE = [
+  "Mob",
+  "Character",
   "Weapon",
   "WeaponEncAttrs",
   "Armor",

@@ -4,7 +4,7 @@ import { DB, statistic } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
-import { STATISTIC_TYPE, StatisticType, WIKISCHEMA_TYPE, WikiSchemaType } from "./enums";
+import { STATISTIC_TYPE, WIKISCHEMA_TYPE, type Enums } from "./enums";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -50,7 +50,7 @@ const statisticShared = {
   createdAt: new Date(),
 };
 
-const statistics: Partial<Record<StatisticType, Statistic>> = {};
+const statistics: Partial<Record<Enums["StatisticType"], Statistic>> = {};
 for (const key of STATISTIC_TYPE) {
   statistics[key] = {
     id: `default${key}StatisticId`,
@@ -58,7 +58,7 @@ for (const key of STATISTIC_TYPE) {
   };
 }
 
-export const defaultStatistics = statistics as Record<StatisticType, Statistic>;
+export const defaultStatistics = statistics as Record<Enums["StatisticType"], Statistic>;
 
 export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
   switch (locale) {

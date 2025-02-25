@@ -7,8 +7,7 @@ import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import Button from "~/components/controls/button";
-import Input from "~/components/controls/input";
-import { WIKISCHEMA_TYPE } from "~/repositories/enums";
+import { WIKI_TYPE } from "~/repositories/enums";
 
 const NavBtn = (props: {
   config: {
@@ -253,7 +252,7 @@ const Nav = () => {
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
               class={`DialogContent flex min-h-12 w-[calc(100%-48px)] translate-y-6 flex-wrap items-center overflow-y-auto rounded bg-primary-color shadow-2xl shadow-dividing-color`}
             >
-              <For each={WIKISCHEMA_TYPE}>
+              <For each={WIKI_TYPE}>
                 {(schemaName) => {
                   return (
                     <a
