@@ -17,7 +17,7 @@ console.log("entry-client");
 if (!store.resourcesLoaded) {
   // 资源加载进度
   const resourceList = document.getElementById("resource-list")!;
-  let totalResources = 310;
+  let totalResources = 32;
   let loadedResources = 0;
 
   const observer = new PerformanceObserver((list) => {
