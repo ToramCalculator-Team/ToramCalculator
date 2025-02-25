@@ -12,7 +12,7 @@ export default function Loading() {
   let img3Ref: HTMLDivElement
 
   const bgParallaxFn = (event: MouseEvent) => {
-    const speed = 0.01;
+    const speed = 0.02;
     const offsetX = event.pageX * speed;
     const offsetY = event.pageY * speed;
     img1Ref!.style.transform = `translateX(${offsetX * 0.125}px) translateY(${offsetY * 0.125}px)`;
@@ -45,19 +45,20 @@ export default function Loading() {
       <div
         ref={img1Ref!}
         class="hidden lg:block absolute h-full w-full bg-contain bg-bottom bg-no-repeat"
-        style={{ "background-image": "url(/app-image/404/1.png)" }}
+        style={{ "background-image": "url(/app-image/404/1.png)","transition": "all 0s" }}
       ></div>
       <div
         ref={img2Ref!}
         class="hidden lg:block absolute h-full w-full bg-contain bg-bottom bg-no-repeat"
-        style={{ "background-image": "url(/app-image/404/2.png)" }}
+        style={{ "background-image": "url(/app-image/404/2.png)","transition": "all 0s" }}
       ></div>
       <div
         ref={img3Ref!}
         class="hidden lg:block absolute h-full w-full bg-contain bg-bottom bg-no-repeat blur-[2px]"
-        style={{ "background-image": "url(/app-image/404/3.png)" }}
+        style={{ "background-image": "url(/app-image/404/3.png)","transition": "all 0s" }}
       ></div>
-      <div class="LoadingMask fixed left-0 top-0 h-full w-full bg-gradient-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-[25%]"></div>
+      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-gradient-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-[25%]"></div>
+      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-gradient-to-b from-primary-color from-5% to-primary-color-0 to-20% lg:from-5% lg:to-[25%]"></div>
       <div class="LoadingState fixed h-fit bottom-[calc(2%+67px)] left-[4dvw] flex flex-col gap-3 lg:left-[10dvw] lg:top-[97%] lg:-translate-y-full">
         <h1 class="animate-pulse">{dictionary().ui.errorPage.tips}</h1>
         <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />

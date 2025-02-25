@@ -98,7 +98,7 @@ const Nav = () => {
                 <Motion.div
                   animate={{ transform: "none", opacity: 1 }}
                   transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  class="h-6 w-6 rotate-90"
+                  class="h-6 w-6 -rotate-90"
                 >
                   <Icon.Line.Category2 />
                 </Motion.div>
