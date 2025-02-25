@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import Fuse from "fuse.js";
 import {
+  Cell,
   Column,
   ColumnDef,
   createSolidTable,
@@ -26,6 +27,77 @@ import { findSimulatorById } from "~/repositories/simulator";
 import NodeEditor from "~/components/module/nodeEditor";
 import { updateSkillEffect } from "~/repositories/skillEffect";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
+
+const skillTableHiddenData: Array<keyof Skill> = ["id"];
+// 表头固定
+const getCommonPinningStyles = (column: Column<Skill>): JSX.CSSProperties => {
+  const isPinned = column.getIsPinned();
+  const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
+  const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+  const styles: JSX.CSSProperties = {
+    position: isPinned ? "sticky" : "relative",
+    width: column.getSize().toString(),
+    "z-index": isPinned ? 1 : 0,
+  };
+  if (isPinned) {
+    styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
+    styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
+    styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+  }
+  return styles;
+};
+
+function SkillTableTd(props: { cell: Cell<Skill, keyof Skill> }) {
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
+
+  switch (props.cell.column.id as Exclude<keyof Skill, keyof typeof skillTableHiddenData>) {
+    case "name":
+      setTdContent(
+        <>
+          <span class="pb-1">{props.cell.getValue()}</span>
+          {/* <span class="pb-1">{row.original.name}</span> */}
+          {/* <span class="text-sm font-normal text-mainText-color">
+            {row.getValue("belongToZones") ?? "无"}
+          </span> */}
+        </>,
+      );
+      break;
+
+    default:
+      setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
+      break;
+  }
+
+  return (
+    <td
+      style={{
+        ...getCommonPinningStyles(props.cell.column),
+        width: getCommonPinningStyles(props.cell.column).width + "px",
+      }}
+      class={"flex flex-col justify-center py-6"}
+    >
+      <Show
+        when={
+          Object.keys(dictionary().enums).includes(
+            "Skill" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
+          ) &&
+          Object.keys(
+            dictionary().enums[
+              ("Skill" +
+                props.cell.column.id.charAt(0).toLocaleUpperCase() +
+                props.cell.column.id.slice(1)) as DicEnumsKeys
+            ],
+          ).includes(props.cell.getValue())
+        }
+        fallback={tdContent()}
+      >
+        {dictionary().enums.SkillTreeType.BladeSkill}
+      </Show>
+    </td>
+  );
+}
 
 export default function SkillIndexPage() {
   // UI文本字典
@@ -74,8 +146,8 @@ export default function SkillIndexPage() {
       size: 220,
     },
     {
-      accessorKey: "treeName",
-      header: () => SkillDic(store.settings.language).treeName,
+      accessorKey: "treeType",
+      header: () => SkillDic(store.settings.language).treeType,
       cell: (info) => dictionary().enums.SkillTreeType[info.getValue<Enums["SkillTreeType"]>()],
       size: 120,
     },
@@ -83,23 +155,6 @@ export default function SkillIndexPage() {
       accessorKey: "tier",
       header: () => SkillDic(store.settings.language).tier,
       cell: (info) => info.getValue(),
-      size: 120,
-    },
-    {
-      accessorKey: "chargingType",
-      header: () => SkillDic(store.settings.language).chargingType,
-      cell: (info) => info.getValue(),
-      size: 120,
-    },
-    {
-      accessorKey: "distanceResist",
-      header: () => SkillDic(store.settings.language).distanceResist,
-      size: 120,
-    },
-    {
-      accessorKey: "element",
-      header: () => SkillDic(store.settings.language).element,
-      cell: (info) => dictionary().enums.ElementType[info.getValue<Enums["ElementType"]>()],
       size: 120,
     },
   ];
@@ -125,24 +180,6 @@ export default function SkillIndexPage() {
       },
     });
   });
-  const skillTableHiddenData: Array<keyof Skill> = ["id"];
-  // 表头固定
-  const getCommonPinningStyles = (column: Column<Skill>): JSX.CSSProperties => {
-    const isPinned = column.getIsPinned();
-    const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-    const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
-    const styles: JSX.CSSProperties = {
-      position: isPinned ? "sticky" : "relative",
-      width: column.getSize().toString(),
-      "z-index": isPinned ? 1 : 0,
-    };
-    if (isPinned) {
-      styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-      styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-      styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
-    }
-    return styles;
-  };
 
   // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
@@ -443,70 +480,12 @@ export default function SkillIndexPage() {
                           class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
                           onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                         >
-                          <For each={row.getVisibleCells()}>
-                            {(cell) => {
-                              const { column } = cell;
-                              if (skillTableHiddenData.includes(column.id as keyof Skill)) {
-                                // 默认隐藏的数据
-                                return;
-                              }
-
-                              let tdContent: JSX.Element;
-
-                              switch (cell.column.id as Exclude<keyof Skill, keyof typeof skillTableHiddenData>) {
-                                case "name":
-                                  tdContent = (
-                                    <>
-                                      <span class="pb-1">{row.original.name}</span>
-                                      {/* <span class="text-sm font-normal text-mainText-color">
-                                        {row.getValue("belongToZones") ?? "无"}
-                                      </span> */}
-                                    </>
-                                  );
-                                  break;
-
-                                case "element":
-                                  {
-                                    const icon =
-                                      {
-                                        Water: <Icon.Element.Water class="h-12 w-12" />,
-                                        Fire: <Icon.Element.Fire class="h-12 w-12" />,
-                                        Earth: <Icon.Element.Earth class="h-12 w-12" />,
-                                        Wind: <Icon.Element.Wind class="h-12 w-12" />,
-                                        Light: <Icon.Element.Light class="h-12 w-12" />,
-                                        Dark: <Icon.Element.Dark class="h-12 w-12" />,
-                                        Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-                                      }[cell.getValue() as Enums["ElementType"]] ?? undefined;
-                                    tdContent = icon;
-                                  }
-                                  break;
-
-                                default:
-                                  try {
-                                    const content = // 将首字母转换成大写
-                                      dictionary().enums[
-                                        (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                          cell.column.id.slice(1)) as DicEnumsKeys
-                                      ][cell.getValue() as keyof DicEnumsKeysValue];
-                                    tdContent = content;
-                                  } catch (error) {
-                                    tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
-                                  }
-                                  break;
-                              }
-
-                              return (
-                                <td
-                                  style={{
-                                    ...getCommonPinningStyles(column),
-                                    width: getCommonPinningStyles(column).width + "px",
-                                  }}
-                                  class={"flex flex-col justify-center py-6"}
-                                >
-                                  {tdContent}
-                                </td>
-                              );
-                            }}
+                          <For
+                            each={row
+                              .getVisibleCells()
+                              .filter((cell) => !skillTableHiddenData.includes(cell.column.id as keyof Skill))}
+                          >
+                            {(cell) => <SkillTableTd cell={cell} />}
                           </For>
                         </tr>
                       );
@@ -536,13 +515,13 @@ export default function SkillIndexPage() {
         <NodeEditor
           data={async () => {
             await refetchSkill();
-            return skill()!.effects[0].details as Record<string, any>;
+            return skill()!.effects[0].logic as Record<string, any>;
           }}
           setData={async (data) => {
             const curSkillEffect = skill()?.effects[0];
             if (!curSkillEffect) return;
             console.log("/////");
-            await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, details: data });
+            await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, logic: data });
           }}
         />
       </Dialog>

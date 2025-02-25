@@ -72,7 +72,7 @@ export const defaultSimulator: Simulator = {
   id: "defaultSimulatorId",
 
   name: "默认模拟器",
-  visibility: "Public",
+  visibilityType: "Public",
   team: [defaultTeam],
   details: "",
 

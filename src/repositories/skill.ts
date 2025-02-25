@@ -5,16 +5,13 @@ import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, SkillEffectDic, skillEffectSubRelations } from "./skillEffect";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, SkillChargingType, SkillDistanceResistType, SkillTreeType } from "./enums";
+import { type Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
 
 export type Skill = ModifyKeys<
   Awaited<ReturnType<typeof findSkillById>>,
   {
-    treeName: SkillTreeType;
-    chargingType: SkillChargingType;
-    distanceResist: SkillDistanceResistType;
-    element: ElementType;
+    treeType: Enums["SkillTreeType"];
   }
 >;
 export type NewSkill = Insertable<skill>;
@@ -92,18 +89,14 @@ export async function deleteSkill(id: string) {
 export const defaultSkill: Skill = {
   id: "defaultSkillId",
   name: "defaultSkill",
-  treeName: "MagicSkill",
+  treeType: "MagicSkill",
   posX: 0,
   posY: 0,
   tier: 0,
   isPassive: false,
-  chargingType: "Reservoir",
-  distanceResist: "None",
-  element: "Normal",
   effects: [],
   dataSources: "",
   details: "",
-
   updatedByAccountId: "",
   createdByAccountId: "",
   statistic: defaultStatistics.Skill,
@@ -116,18 +109,14 @@ export const SkillDic = (locale: Locale): ConvertToAllString<Skill> => {
       return {
         id: "ID",
         name: "技能",
-        treeName: "技能树",
+        treeType: "技能树",
         posX: "水平坐标",
         posY: "垂直坐标",
         tier: "位阶",
         isPassive: "是被动技能吗",
-        chargingType: "读条类型",
-        distanceResist: "距离威力抗性",
-        element: "自身元素属性",
         effects: "技能效果",
         dataSources: "数据来源",
         details: "额外说明",
-
         updatedByAccountId: "",
         createdByAccountId: "",
         statistic: StatisticDic(locale),
@@ -138,18 +127,14 @@ export const SkillDic = (locale: Locale): ConvertToAllString<Skill> => {
       return {
         id: "ID",
         name: "技能",
-        treeName: "技能树",
-        posX: "水平坐标",
-        posY: "垂直坐标",
-        tier: "位阶",
-        isPassive: "是被动技能吗",
-        chargingType: "读条类型",
-        distanceResist: "距离威力抗性",
-        element: "自身元素属性",
+        treeType: "技能樹",
+        posX: "水平坐標",
+        posY: "垂直坐標",
+        tier: "位階",
+        isPassive: "是被動技能嗎",
         effects: "技能效果",
-        dataSources: "数据来源",
-        details: "额外说明",
-
+        dataSources: "資料來源",
+        details: "額外說明",
         updatedByAccountId: "",
         createdByAccountId: "",
         statistic: StatisticDic(locale),
@@ -159,46 +144,38 @@ export const SkillDic = (locale: Locale): ConvertToAllString<Skill> => {
     case "en":
       return {
         id: "ID",
-        name: "技能",
-        treeName: "技能树",
-        posX: "水平坐标",
-        posY: "垂直坐标",
-        tier: "位阶",
-        isPassive: "是被动技能吗",
-        chargingType: "读条类型",
-        distanceResist: "距离威力抗性",
-        element: "自身元素属性",
-        effects: "技能效果",
-        dataSources: "数据来源",
-        details: "额外说明",
-
+        name: "Skill",
+        treeType: "Skill Tree",
+        posX: "Horizontal Coordinate",
+        posY: "Vertical Coordinate",
+        tier: "Tier",
+        isPassive: "Is Passive Skill",
+        effects: "Skill Effects",
+        dataSources: "Data Sources",
+        details: "Details",
         updatedByAccountId: "",
         createdByAccountId: "",
         statistic: StatisticDic(locale),
         statisticId: "",
-        selfName: "技能"
+        selfName: "Skill"
       };
     case "ja":
       return {
         id: "ID",
-        name: "技能",
-        treeName: "技能树",
-        posX: "水平坐标",
-        posY: "垂直坐标",
-        tier: "位阶",
-        isPassive: "是被动技能吗",
-        chargingType: "读条类型",
-        distanceResist: "距离威力抗性",
-        element: "自身元素属性",
-        effects: "技能效果",
-        dataSources: "数据来源",
-        details: "额外说明",
-
+        name: "スキル",
+        treeType: "スキルツリー",
+        posX: "水平座標",
+        posY: "垂直座標",
+        tier: "位階",
+        isPassive: "パッシブスキルか",
+        effects: "スキルエフェクト",
+        dataSources: "データソース",
+        details: "詳細",
         updatedByAccountId: "",
         createdByAccountId: "",
         statistic: StatisticDic(locale),
         statisticId: "",
-        selfName: "技能"
+        selfName: "スキル"
       };
   }
 };

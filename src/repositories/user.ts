@@ -2,11 +2,11 @@ import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
 import { user } from "~/../db/clientDB/generated/kysely/kyesely";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { UserRole } from "./enums";
+import { type Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
 
 export type User = ModifyKeys<Awaited<ReturnType<typeof findUserById>>, {
-  userRole: UserRole
+  roleType: Enums["UserRole"];
 }>;
 export type NewUser = Insertable<user>;
 export type UserUpdate = Updateable<user>;
@@ -68,7 +68,7 @@ export const defaultUser: User = {
   email: null,
   emailVerified: null,
   image: null,
-  userRole: "USER",
+  roleType: "USER",
 };
 
 export const UserDic = (locale: Locale): ConvertToAllString<User> => {
@@ -80,7 +80,7 @@ export const UserDic = (locale: Locale): ConvertToAllString<User> => {
         email: "邮箱",
         emailVerified: "邮箱验证",
         image: "图像",
-        userRole: "用户角色",
+        roleType: "用户角色",
         selfName: "用户",
       };
     case "zh-TW":
@@ -90,7 +90,7 @@ export const UserDic = (locale: Locale): ConvertToAllString<User> => {
         email: "郵箱",
         emailVerified: "郵箱驗證",
         image: "圖像",
-        userRole: "用戶角色",
+        roleType: "用戶角色",
         selfName: "用戶",
       };
     case "en":
@@ -100,7 +100,7 @@ export const UserDic = (locale: Locale): ConvertToAllString<User> => {
         email: "Email",
         emailVerified: "Email Verified",
         image: "Image",
-        userRole: "User Role",
+        roleType: "User Role",
         selfName: "User",
       };
     case "ja": 
@@ -110,7 +110,7 @@ export const UserDic = (locale: Locale): ConvertToAllString<User> => {
         email: "メールアドレス",
         emailVerified: "メール確認",
         image: "画像",
-        userRole: "ユーザー角色",
+        roleType: "ユーザー角色",
         selfName: "ユーザー",
       };
   }

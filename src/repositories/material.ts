@@ -5,11 +5,12 @@ import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { ModifyKeys } from "./untils";
-import { MaterialType } from "./enums";
+import { Enums } from "./enums";
 
 export type Material = ModifyKeys<
   Awaited<ReturnType<typeof findMaterialById>>,
   {
+    type: Enums["MaterialType"];
   }
 >;
 export type NewMaterial = Insertable<item>;
@@ -46,12 +47,12 @@ export async function deleteMaterial(id: string) {
 }
 
 // default
-export const defaultMaterial: Record<MaterialType, Material> = {
+export const defaultMaterial: Record<Enums["MaterialType"], Material> = {
   Magic: {
     name: "defaultMagic",
     id: "defaultMagicId",
     itemId: "defaultMaterialId",
-    material: "Magic",
+    type: "Magic",
     ptValue: 0,
     price: 0,
     dataSources: "",
@@ -67,7 +68,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     name: "defaultCloth",
     id: "defaultClothId",
     itemId: "defaultMaterialId",
-    material: "Cloth",
+    type: "Cloth",
     ptValue: 0,
     price: 0,
     dataSources: "",
@@ -83,7 +84,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     name: "defaultBeast",
     id: "defaultBeastId",
     itemId: "defaultMaterialId",
-    material: "Beast",
+    type: "Beast",
     ptValue: 0,
     price: 0,
     dataSources: "",
@@ -99,7 +100,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     name: "defaultWood",
     id: "defaultWoodId",
     itemId: "defaultMaterialId",
-    material: "Wood",
+    type: "Wood",
     ptValue: 0,
     price: 0,
     dataSources: "",
@@ -115,7 +116,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     name: "defaultDrug",
     id: "defaultDrugId",
     itemId: "defaultMaterialId",
-    material: "Drug",
+    type: "Drug",
     ptValue: 0,
     price: 0,
     dataSources: "",
@@ -131,7 +132,7 @@ export const defaultMaterial: Record<MaterialType, Material> = {
     name: "defaultMetal",
     id: "defaultMetalId",
     itemId: "defaultMaterialId",
-    material: "Metal",
+    type: "Metal",
     ptValue: 0,
     price: 0,
     dataSources: "",

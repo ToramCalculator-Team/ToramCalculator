@@ -7,9 +7,12 @@ import { ArmorDic, defaultArmor } from "./armor";
 import { defaultAccount } from "./account";
 import { ArmorEncAttributesDic, defaultArmorEncAttributes } from "./armorEncAttrs";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
+import { Enums } from "./enums";
 
-export type CustomArmor = Awaited<ReturnType<typeof findCustomArmorById>>;
+export type CustomArmor = ModifyKeys<Awaited<ReturnType<typeof findCustomArmorById>>, {
+  type: Enums["Custom_armorType"]
+}>;
 export type NewCustomArmor = Insertable<custom_armor>;
 export type CustomArmorUpdate = Updateable<custom_armor>;
 
@@ -67,7 +70,7 @@ export const defaultCustomArmor: CustomArmor = {
   def: 0,
   template: defaultArmor,
   templateId: defaultArmor.id,
-  armorType: "Normal",
+  type: "Normal",
   enchantmentAttributes: defaultArmorEncAttributes,
   enchantmentAttributesId: defaultArmorEncAttributes.id,
   refinement: 0,
@@ -86,7 +89,7 @@ export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> 
         def: "防御力",
         template: ArmorDic(locale),
         templateId: "模板ID",
-        armorType: "防具类型",
+        type: "防具类型",
         enchantmentAttributes: ArmorEncAttributesDic(locale),
         enchantmentAttributesId: "附魔ID",
         refinement: "精炼值",
@@ -101,7 +104,7 @@ export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> 
         def: "防禦力",
         template: ArmorDic(locale),
         templateId: "模板ID",
-        armorType: "防具類型",
+        type: "防具類型",
         enchantmentAttributes: ArmorEncAttributesDic(locale),
         enchantmentAttributesId: "附魔ID",
         refinement: "精炼值",
@@ -116,7 +119,7 @@ export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> 
         def: "Def",
         template: ArmorDic(locale),
         templateId: "Template ID",
-        armorType: "Armor Type",
+        type: "Armor Type",
         enchantmentAttributes: ArmorEncAttributesDic(locale),
         enchantmentAttributesId: "Enchantment Attributes ID",
         refinement: "Refinement",
@@ -131,7 +134,7 @@ export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> 
         def: "防御力",
         template: ArmorDic(locale),
         templateId: "テンプレートID",
-        armorType: "防具タイプ",
+        type: "防具タイプ",
         enchantmentAttributes: ArmorEncAttributesDic(locale),
         enchantmentAttributesId: "附魔属性ID",
         refinement: "精炼度",

@@ -277,6 +277,7 @@ const dictionary: dictionary = {
       description: "このページは開発中です。使用しないでください。",
     },
   },
+  
   enums: {
     MobType: {
       Boss: "定点王",
@@ -321,7 +322,7 @@ const dictionary: dictionary = {
       Shield: "盾牌",
       selfName: "副武器类型",
     },
-    ArmorType: {
+    Custom_armorType: {
       Normal: "一般",
       Light: "轻化",
       Heavy: "重化",
@@ -336,11 +337,11 @@ const dictionary: dictionary = {
       selfName: "锻晶类型",
     },
     SkillTreeType: {
-      BladeSkill: "剑术技能",
-      ShootSkill: "射击技能",
-      MagicSkill: "魔法技能",
-      MarshallSkill: "格斗技能",
-      DualSwordSkill: "双剑技能",
+      BladeSkill: "Blade Skill",
+      ShootSkill: "Shoot Skill",
+      MagicSkill: "Magic Skill",
+      MarshallSkill: "Marshall Skill",
+      DualSwordSkill: "Dual Sword Skill",
       HalberdSkill: "斧枪技能",
       MononofuSkill: "武士技能",
       CrusherSkill: "粉碎者技能",
@@ -657,9 +658,11 @@ const dictionary: dictionary = {
       ShortSword: "",
       NinjutsuScroll: "",
       Shield: "",
-      Armor: "",
       AddEquip: "",
-      SpeEquip: ""
+      SpeEquip: "",
+      Normal: "",
+      Light: "",
+      Heavy: ""
     },
     ItemType: {
       selfName: "",
@@ -676,7 +679,6 @@ const dictionary: dictionary = {
       ShortSword: "",
       NinjutsuScroll: "",
       Shield: "",
-      Armor: "",
       AddEquip: "",
       SpeEquip: "",
       NormalCrystal: "",
@@ -701,9 +703,12 @@ const dictionary: dictionary = {
       EleStro: "",
       EleRes: "",
       pRes: "",
-      mRes: ""
+      mRes: "",
+      Normal: "",
+      Light: "",
+      Heavy: ""
     },
-    TaskRewardType: {
+    RewardType: {
       selfName: "",
       OneHandSword: "",
       TwoHandSword: "",
@@ -718,7 +723,7 @@ const dictionary: dictionary = {
       ShortSword: "",
       NinjutsuScroll: "",
       Shield: "",
-      Armor: "",
+
       AddEquip: "",
       SpeEquip: "",
       NormalCrystal: "",
@@ -745,7 +750,10 @@ const dictionary: dictionary = {
       EleStro: "",
       EleRes: "",
       pRes: "",
-      mRes: ""
+      mRes: "",
+      Normal: "",
+      Light: "",
+      Heavy: ""
     },
     AbnormalType: {
       selfName: "",
@@ -853,7 +861,7 @@ const dictionary: dictionary = {
       ShortSword: "",
       NinjutsuScroll: "",
       Shield: "",
-      Armor: "",
+
       AddEquip: "",
       SpeEquip: "",
       MaxHp: "",
@@ -866,7 +874,10 @@ const dictionary: dictionary = {
       EleStro: "",
       EleRes: "",
       pRes: "",
-      mRes: ""
+      mRes: "",
+      Normal: "",
+      Light: "",
+      Heavy: ""
     },
     RegisletType: {
       selfName: "",
@@ -973,7 +984,7 @@ const dictionary: dictionary = {
       ShortSword: "",
       NinjutsuScroll: "",
       Shield: "",
-      Armor: "",
+
       AddEquip: "",
       SpeEquip: "",
       NormalCrystal: "",
@@ -1025,7 +1036,7 @@ const dictionary: dictionary = {
       ArmorCrystal: "",
       AddEquipCrystal: "",
       SpecialCrystal: "",
-      Armor: "",
+
       Metal: "",
       Cloth: "",
       Beast: "",
@@ -1046,6 +1057,32 @@ const dictionary: dictionary = {
       mRes: "",
       Skill: "",
       Simulator: ""
+    },
+    AvatarType: {
+      selfName: "",
+      Decoration: "",
+      Top: "",
+      Bottom: ""
+    },
+    WeaponElementType: {
+      selfName: "",
+      Normal: "",
+      Light: "",
+      Dark: "",
+      Water: "",
+      Fire: "",
+      Earth: "",
+      Wind: ""
+    },
+    MobElementType: {
+      selfName: "",
+      Normal: "",
+      Light: "",
+      Dark: "",
+      Water: "",
+      Fire: "",
+      Earth: "",
+      Wind: ""
     }
   },
 };

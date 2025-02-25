@@ -8,12 +8,12 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ConsumableType } from "./enums";
+import { Enums } from "./enums";
 
 export type Consumable = ModifyKeys<
   Awaited<ReturnType<typeof findConsumableById>>,
   {
-    type: ConsumableType;
+    type: Enums["ConsumableType"];
   }
 >;
 export type NewConsumable = Insertable<item>;
@@ -66,7 +66,7 @@ const consumableShared = {
 };
 
 // default
-export const defaultConsumables: Record<ConsumableType, Consumable> = {
+export const defaultConsumables: Record<Enums["ConsumableType"], Consumable> = {
   MaxHp: {
     name: "defaultMaxHpModifierConsumable",
     id: "defaultMaxHpModifierConsumableId",

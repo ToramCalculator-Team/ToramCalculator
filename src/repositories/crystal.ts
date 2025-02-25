@@ -7,10 +7,10 @@ import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { CrystalType } from "./enums";
+import { Enums } from "./enums";
 
 export type Crystal = ModifyKeys<Awaited<ReturnType<typeof findCrystalById>>, {
-  crystalType: CrystalType;
+  type: Enums["CrystalType"];
 }>;
 export type NewCrystal = Insertable<item>;
 export type CrystalUpdate = Updateable<item>;
@@ -73,7 +73,7 @@ export async function deleteCrystalById(id: string) {
 }
 
 // default
-export const defaultCrystal: Record<CrystalType, Crystal> = {
+export const defaultCrystal: Record<Enums["CrystalType"], Crystal> = {
   NormalCrystal: {
     name: "defaultNormalCrystal",
     id: "defaultNormalCrystalId",
@@ -81,7 +81,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     itemId: "defaultNormalCrystalId",
     front: [],
     back: [],
-    crystalType: "NormalCrystal",
+    type: "NormalCrystal",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -98,7 +98,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     itemId: "defaultWeaponCrystalId",
     front: [],
     back: [],
-    crystalType: "WeaponCrystal",
+    type: "WeaponCrystal",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -115,7 +115,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     itemId: "defaultArmorCrystalId",
     front: [],
     back: [],
-    crystalType: "ArmorCrystal",
+    type: "ArmorCrystal",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -132,7 +132,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     itemId: "defaultAddEquipCrystalId",
     front: [],
     back: [],
-    crystalType: "AddEquipCrystal",
+    type: "AddEquipCrystal",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -149,7 +149,7 @@ export const defaultCrystal: Record<CrystalType, Crystal> = {
     itemId: "defaultSpecialCrystalId",
     front: [],
     back: [],
-    crystalType: "SpecialCrystal",
+    type: "SpecialCrystal",
     dataSources: "",
     details: "",
     dropBy: [],
@@ -174,7 +174,7 @@ export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
         itemId: "所属道具ID",
         front: "前置锻晶",
         back: "可用强化锻晶",
-        crystalType: "锻晶类型",
+        type: "锻晶类型",
         dataSources: "数据来源",
         details: "额外说明",
         dropBy: "掉落于怪物",
@@ -193,7 +193,7 @@ export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
         itemId: "所屬道具ID",
         front: "前置鑄晶",
         back: "可用強化鑄晶",
-        crystalType: "鑄晶類型",
+        type: "鑄晶類型",
         dataSources: "資料來源",
         details: "額外說明",
         dropBy: "掉落於怪物",
@@ -212,7 +212,7 @@ export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
         itemId: "ItemId",
         front: "Front Crystals",
         back: "Back Crystals",
-        crystalType: "Crystal Type",
+        type: "Crystal Type",
         dataSources: "Data Sources",
         details: "Details",
         dropBy: "Drop By",
@@ -231,7 +231,7 @@ export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal> => {
         itemId: "所属アイテムID",
         front: "前置鑄晶",
         back: "可用強化鑄晶",
-        crystalType: "鑄晶種類",
+        type: "鑄晶種類",
         dataSources: "データソース",
         details: "追加詳細",
         dropBy: "ドロップバイ",

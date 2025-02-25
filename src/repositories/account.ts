@@ -3,13 +3,13 @@ import { db } from "./database";
 import { account, DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ModifyKeys,ConvertToAllString } from "./untils";
-import { AccountType } from "./enums";
+import { Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
 
 export type Account = ModifyKeys<
   Awaited<ReturnType<typeof findAccountById>>,
   {
-    type: AccountType;
+    type: Enums["AccountType"];
   }
 >;
 

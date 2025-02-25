@@ -10,8 +10,10 @@ import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
+import { type Enums } from "./enums";
 
 export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
+  type: Enums["ItemType"]
 }>;
 export type NewSpeEquip = Insertable<item>;
 export type SpeEquipUpdate = Updateable<item>;
@@ -73,6 +75,7 @@ export async function deleteSpeEquip(id: string) {
 export const defaultSpeEquip: SpeEquip = {
   name: "defaultSpeEquip",
   id: "defaultSpeEquipId",
+  type: "SpeEquip",
   modifiers: [],
   itemId: "defaultSpeEquipId",
   baseDef: 0,
@@ -85,7 +88,7 @@ export const defaultSpeEquip: SpeEquip = {
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistics.SpeEquip,
   statisticId: defaultStatistics.SpeEquip.id,
-  defaultCrystals: []
+  defaultCrystals: [],
 };
 
 // Dictionary
@@ -96,6 +99,7 @@ export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
         selfName: "追加装备",
         name: "名称",
         id: "ID",
+        type: "道具类型",
         modifiers: "属性",
         itemId: "所属道具ID",
         defaultCrystals: "附加锻晶",
@@ -115,6 +119,7 @@ export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
         selfName: "追加裝備",
         name: "名称",
         id: "ID",
+        type: "道具類型",
         modifiers: "屬性",
         itemId: "所屬道具ID",
         defaultCrystals: "附加鑽晶",
@@ -134,6 +139,7 @@ export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
         selfName: "Additional Equipment",
         name: "Name",
         id: "ID",
+        type: "Item Type",
         modifiers: "Modifiers",
         itemId: "ItemId",
         defaultCrystals: "Default Crystals",
@@ -153,6 +159,7 @@ export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
         selfName: "追加装備",
         name: "名前",
         id: "ID",
+        type: "アイテムタイプ",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
         defaultCrystals: "デフォルトクリスタル",

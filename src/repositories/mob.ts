@@ -7,13 +7,13 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ElementType, MobType } from "./enums";
+import { type Enums } from "./enums";
 
 export type Mob = ModifyKeys<
   Awaited<ReturnType<typeof findMobById>>,
   {
-    mobType: MobType;
-    element: ElementType;
+    type: Enums["MobType"];
+    element: Enums["ElementType"];
   }
 >;
 export type NewMob = Insertable<mob>;
@@ -116,12 +116,12 @@ export async function deleteMob(id: string) {
 export const defaultMob: Mob = {
   id: "defaultMobId",
   name: "defaultMob",
-  mobType: "Boss",
+  type: "Boss",
   captureable: false,
   actions: [],
   baseLv: 0,
   experience: 0,
-  element: "Normal",
+  elementType: "Normal",
   radius: 0,
   maxhp: 0,
   physicalDefense: 0,
@@ -155,12 +155,12 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         selfName: "怪物",
         name: "名称",
         id: "ID",
-        mobType: "怪物类型",
+        type: "怪物类型",
         captureable: "是否可捕获",
         actions: "行为",
         baseLv: "基础等级",
         experience: "经验",
-        element: "元素属性",
+        elementType: "元素属性",
         radius: "半径",
         maxhp: "最大生命值",
         physicalDefense: "物理防御",
@@ -190,12 +190,12 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         selfName: "怪物",
         name: "名称",
         id: "ID",
-        mobType: "怪物類型",
+        type: "怪物類型",
         captureable: "是否可捕獲",
         actions: "行為",
         baseLv: "基礎等級",
         experience: "經驗",
-        element: "元素屬性",
+        elementType: "元素屬性",
         radius: "半徑",
         maxhp: "最大生命值",
         physicalDefense: "物理防禦",
@@ -225,12 +225,12 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         selfName: "Mob",
         name: "Name",
         id: "ID",
-        mobType: "Mob Type",
+        type: "Mob Type",
         captureable: "Captureable",
         actions: "Actions",
         baseLv: "Base Level",
         experience: "Experience",
-        element: "Element",
+        elementType: "Element Type",
         radius: "Radius",
         maxhp: "Max HP",
         physicalDefense: "Physical Defense",
@@ -260,12 +260,12 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         selfName: "モブ",
         name: "名前",
         id: "ID",
-        mobType: "モブタイプ",
+        type: "モブタイプ",
         captureable: "捕獲可能",
         actions: "行動",
         baseLv: "基本レベル",
         experience: "経験",
-        element: "要素",
+        elementType: "要素",
         radius: "半径",
         maxhp: "最大HP",
         physicalDefense: "物理的防御",

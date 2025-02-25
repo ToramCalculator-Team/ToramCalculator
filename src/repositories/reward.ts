@@ -5,12 +5,12 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { defaultItems } from "./item";
-import { TaskRewardType } from "./enums";
+import { type Enums } from "./enums";
 
 export type Reward = ModifyKeys<
   Awaited<ReturnType<typeof findRewardById>>,
   {
-    type: TaskRewardType;
+    type: Enums["RewardType"];
   }
 >;
 export type NewReward = Insertable<reward>;

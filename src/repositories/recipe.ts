@@ -7,11 +7,13 @@ import { defaultAddEquip } from "./addEquip";
 import { defaultArmor } from "./armor";
 import { defaultSpeEquip } from "./speEquip";
 import { defaultConsumables } from "./consumable";
-import { RECIPE_TYPE, RecipeType, WeaponType } from "./enums";
+import { RECIPE_TYPE, type Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 
-export type Recipe = Awaited<ReturnType<typeof findRecipeById>>;
+export type Recipe = ModifyKeys<Awaited<ReturnType<typeof findRecipeById>>, {
+  
+}>;
 export type NewRecipe = Insertable<recipe>;
 export type RecipeUpdate = Updateable<recipe>;
 
@@ -47,7 +49,7 @@ export async function deleteRecipe(id: string) {
   return await db.deleteFrom("recipe").where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-const recipes: Partial<Record<RecipeType, Recipe>> = {};
+const recipes: Partial<Record<Enums["RecipeType"], Recipe>> = {};
 for (const key of RECIPE_TYPE) {
   const recipeWeaponShared = {
     weaponId: "",
@@ -64,7 +66,7 @@ for (const key of RECIPE_TYPE) {
   };
 }
 
-export const defaultRecipes = recipes as Record<RecipeType, Recipe>;
+export const defaultRecipes = recipes as Record<Enums["RecipeType"], Recipe>;
 
 export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
   switch (locale) {

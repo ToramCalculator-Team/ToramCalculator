@@ -2,10 +2,13 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, avatar } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
+import { Enums } from "./enums";
 
-export type Avatar = Awaited<ReturnType<typeof findAvatarById>>;
+export type Avatar = ModifyKeys<Awaited<ReturnType<typeof findAvatarById>>, {
+  type: Enums["AvatarType"];
+}>;
 export type NewAvatar = Insertable<avatar>;
 export type AvatarUpdate = Updateable<avatar>;
 
@@ -31,9 +34,9 @@ export async function deleteAvatar(id: string) {
 }
 
 export const defaultAvatar: Avatar = {
-  id: "",
-  name: "",
-  type: "",
+  id: "defaultAvatarId",
+  name: "defaultAvatar",
+  type: "Top",
   modifiers: [],
   playerId: "",
 };

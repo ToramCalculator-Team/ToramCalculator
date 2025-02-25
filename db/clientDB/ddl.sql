@@ -5,7 +5,7 @@ CREATE TABLE "user" (
     "email" TEXT,
     "emailVerified" TIMESTAMP(3),
     "image" TEXT,
-    "userRole" TEXT NOT NULL,
+    "roleType" TEXT NOT NULL,
 
     CONSTRAINT "user_pkey" PRIMARY KEY ("id")
 );
@@ -116,6 +116,7 @@ CREATE TABLE "npc" (
 -- CreateTable
 CREATE TABLE "item" (
     "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "details" TEXT NOT NULL,
     "statisticId" TEXT NOT NULL,
@@ -198,7 +199,7 @@ CREATE TABLE "reward" (
 CREATE TABLE "material" (
     "name" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
-    "material" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "ptValue" INTEGER NOT NULL,
     "price" INTEGER NOT NULL,
 
@@ -209,12 +210,12 @@ CREATE TABLE "material" (
 CREATE TABLE "mob" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "mobType" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "captureable" BOOLEAN NOT NULL,
     "baseLv" INTEGER NOT NULL,
     "experience" INTEGER NOT NULL,
     "partsExperience" INTEGER NOT NULL,
-    "element" TEXT NOT NULL,
+    "elementType" TEXT NOT NULL,
     "radius" INTEGER NOT NULL,
     "maxhp" INTEGER NOT NULL,
     "physicalDefense" INTEGER NOT NULL,
@@ -244,7 +245,7 @@ CREATE TABLE "drop_item" (
     "id" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
     "probability" INTEGER NOT NULL,
-    "relatedPart" TEXT NOT NULL,
+    "relatedPartType" TEXT NOT NULL,
     "relatedPartInfo" TEXT NOT NULL,
     "breakReward" TEXT NOT NULL,
     "dropById" TEXT NOT NULL,
@@ -255,7 +256,7 @@ CREATE TABLE "drop_item" (
 -- CreateTable
 CREATE TABLE "crystal" (
     "name" TEXT NOT NULL,
-    "crystalType" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "modifiers" TEXT[],
     "itemId" TEXT NOT NULL,
 
@@ -272,7 +273,7 @@ CREATE TABLE "weapon" (
     "colorA" INTEGER NOT NULL,
     "colorB" INTEGER NOT NULL,
     "colorC" INTEGER NOT NULL,
-    "element" TEXT,
+    "elementType" TEXT,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "weapon_pkey" PRIMARY KEY ("itemId")
@@ -331,15 +332,12 @@ CREATE TABLE "special_equipment" (
 -- CreateTable
 CREATE TABLE "skill" (
     "id" TEXT NOT NULL,
-    "treeName" TEXT NOT NULL,
+    "treeType" TEXT NOT NULL,
     "posX" INTEGER NOT NULL,
     "posY" INTEGER NOT NULL,
     "tier" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "isPassive" BOOLEAN NOT NULL,
-    "element" TEXT NOT NULL,
-    "chargingType" TEXT NOT NULL,
-    "distanceResist" TEXT NOT NULL,
     "details" TEXT NOT NULL,
     "dataSources" TEXT NOT NULL,
     "statisticId" TEXT NOT NULL,
@@ -353,6 +351,9 @@ CREATE TABLE "skill" (
 CREATE TABLE "skill_effect" (
     "id" TEXT NOT NULL,
     "condition" TEXT NOT NULL,
+    "elementLogic" TEXT NOT NULL,
+    "chargingType" TEXT NOT NULL,
+    "distanceType" TEXT NOT NULL,
     "targetType" TEXT NOT NULL,
     "castingRange" INTEGER NOT NULL,
     "effectiveRange" INTEGER NOT NULL,
@@ -365,7 +366,8 @@ CREATE TABLE "skill_effect" (
     "startupFrames" TEXT NOT NULL,
     "cost" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "details" JSONB NOT NULL,
+    "logic" JSONB NOT NULL,
+    "details" TEXT NOT NULL,
     "belongToskillId" TEXT NOT NULL,
 
     CONSTRAINT "skill_effect_pkey" PRIMARY KEY ("id")
@@ -386,7 +388,6 @@ CREATE TABLE "consumable" (
 CREATE TABLE "custom_weapon" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
     "baseAbi" INTEGER NOT NULL,
     "stability" INTEGER NOT NULL,
     "extraAbi" INTEGER NOT NULL,
@@ -417,7 +418,7 @@ CREATE TABLE "custom_armor" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "def" INTEGER NOT NULL,
-    "armorType" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "templateId" TEXT NOT NULL,
     "refinement" INTEGER NOT NULL,
     "enchantmentAttributesId" TEXT,
@@ -475,7 +476,7 @@ CREATE TABLE "custom_pet" (
     "agi" INTEGER NOT NULL,
     "dex" INTEGER NOT NULL,
     "weaponType" TEXT NOT NULL,
-    "persona" TEXT NOT NULL,
+    "personaType" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "weaponAtk" INTEGER NOT NULL,
     "generation" INTEGER NOT NULL,
@@ -524,9 +525,9 @@ CREATE TABLE "character" (
     "speEquipId" TEXT NOT NULL,
     "cooking" TEXT[],
     "modifiers" TEXT[],
-    "partnerSkillA" TEXT NOT NULL,
+    "partnerSkillAId" TEXT NOT NULL,
     "partnerSkillAType" TEXT NOT NULL,
-    "partnerSkillB" TEXT NOT NULL,
+    "partnerSkillBId" TEXT NOT NULL,
     "partnerSkillBType" TEXT NOT NULL,
     "masterId" TEXT NOT NULL,
     "details" TEXT NOT NULL,
@@ -586,7 +587,7 @@ CREATE TABLE "team" (
 CREATE TABLE "simulator" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "visibility" TEXT NOT NULL,
+    "visibilityType" TEXT NOT NULL,
     "details" TEXT,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,

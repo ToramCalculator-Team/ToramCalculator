@@ -1,3 +1,5 @@
+import { DB } from "~/../db/clientDB/generated/kysely/kyesely";
+
 // 已知的可加成项
 export const MODIFIER_TYPE = [
   // 能力值
@@ -132,8 +134,6 @@ export const ELEMENT_TYPE = ["Normal", "Light", "Dark", "Water", "Fire", "Earth"
 export const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
 // 个人能力值类型枚举
 export const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
-// 身体装备轻重化类型枚举
-export const ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
 // 技能目标类型
 export const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
 // 技能充能类型枚举（咏唱、蓄力）
@@ -212,8 +212,12 @@ export const MAIN_WEAPON_TYPE = [
 export const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
 // 武器
 export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
+// 防具
+export const CUSTOM_ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
 // 装备
-export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "AddEquip", "SpeEquip"] as const;
+export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, ...CUSTOM_ARMOR_TYPE, "AddEquip", "SpeEquip"] as const;
+// 时装
+export const AVATAR_TYPE = ["Decoration", "Top", "Bottom"] as const;
 // 锻晶
 export const CRYSTAL_TYPE = [
   "NormalCrystal",
@@ -240,7 +244,7 @@ export const CONSUMABLE_TYPE = [
 // 道具
 export const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE, ...MATERIAL_TYPE, ...CONSUMABLE_TYPE] as const;
 // 任务奖励
-export const TASK_REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
+export const REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
 // 配方
 export const RECIPE_TYPE = [...EQUIP_TYPE, ...CONSUMABLE_TYPE] as const;
 // 异常状态
@@ -437,7 +441,7 @@ export const WIKISCHEMA_TYPE = [
   "Character",
   ...WEAPON_TYPE,
   "WeaponEncAttrs",
-  ...ARMOR_TYPE,
+  ...CUSTOM_ARMOR_TYPE,
   "ArmorEncAttrs",
   "AddEquip",
   "SpeEquip",
@@ -446,13 +450,33 @@ export const WIKISCHEMA_TYPE = [
 ] as const;
 export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
 
-export type Enums = {
+// 获取所有模型的字段
+type ModelFieldPairs = {
+  [M in keyof DB]: {
+    model: M;
+    field: keyof DB[M];
+  };
+}[keyof DB];
+
+// 创建模型名称+字段名称组合的映射
+type ModelFieldMap = {
+  [Pair in ModelFieldPairs as `${Capitalize<Pair['model'] & string>}${Capitalize<Pair['field'] & string>}`]: Pair;
+};
+
+// 创建一个辅助类型，确保只能使用有效的键
+type CreateEnums<T extends Partial<Record<keyof ModelFieldMap, any>>> = T;
+
+export type Enums = CreateEnums<{
+  Custom_armorType: (typeof CUSTOM_ARMOR_TYPE)[number];
+  RewardType: (typeof REWARD_TYPE)[number];
+  AvatarType: (typeof AVATAR_TYPE)[number];
   ModifierType: (typeof MODIFIER_TYPE)[number];
   UserRole: (typeof USER_ROLE)[number];
   ElementType: (typeof ELEMENT_TYPE)[number];
+  WeaponElementType: (typeof ELEMENT_TYPE)[number];
+  MobElementType: (typeof ELEMENT_TYPE)[number];
   MobType: (typeof MOB_TYPE)[number];
   PersonalityType: (typeof PERSONALITY_TYPE)[number];
-  ArmorType: (typeof ARMOR_TYPE)[number];
   SkillTargetType: (typeof SKILL_TARGET_TYPE)[number];
   SkillChargingType: (typeof SKILL_CHARGING_TYPE)[number];
   YieldType: (typeof YIELD_TYPE)[number];
@@ -478,7 +502,6 @@ export type Enums = {
   CrystalType: (typeof CRYSTAL_TYPE)[number];
   ConsumableType: (typeof CONSUMABLE_TYPE)[number];
   ItemType: (typeof ITEM_TYPE)[number];
-  TaskRewardType: (typeof TASK_REWARD_TYPE)[number];
   RecipeType: (typeof RECIPE_TYPE)[number];
   AbnormalType: (typeof ABNORMAL_TYPE)[number];
   SkillTreeType: (typeof SKILL_TREE_TYPE)[number];
@@ -487,4 +510,4 @@ export type Enums = {
   RegisletType: (typeof REGISLET_TYPE)[number];
   WikiSchemaType: (typeof WIKISCHEMA_TYPE)[number];
   StatisticType: (typeof STATISTIC_TYPE)[number];
-}
+}>;

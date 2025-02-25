@@ -10,8 +10,10 @@ import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { mobSubRelations } from "./mob";
+import { Enums } from "./enums";
 
 export type AddEquip = ModifyKeys<Awaited<ReturnType<typeof findAddEquipById>>, {
+  type: Enums["ItemType"]
 }>;
 export type NewAddEquip = Insertable<item>;
 export type AddEquipUpdate = Updateable<item>;
@@ -73,6 +75,7 @@ export async function deleteAddEquip(id: string) {
 export const defaultAddEquip: AddEquip = {
   name: "defaultAddEquip",
   id: "defaultAddEquipId",
+  type: "AddEquip",
   modifiers: [],
   itemId: "defaultAddEquipId",
   defaultCrystals: [],
@@ -99,6 +102,7 @@ export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
         selfName: "追加装备",
         name: "名称",
         id: "ID",
+        type: "道具类型",
         modifiers: "属性",
         itemId: "所属道具ID",
         defaultCrystals: "附加锻晶",
@@ -121,6 +125,7 @@ export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
         selfName: "追加裝備",
         name: "名称",
         id: "ID",
+        type: "道具類型",
         modifiers: "屬性",
         itemId: "所屬道具ID",
         defaultCrystals: "附加鑽晶",
@@ -143,6 +148,7 @@ export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
         selfName: "Additional Equipment",
         name: "Name",
         id: "ID",
+        type: "Item Type",
         modifiers: "Modifiers",
         itemId: "ItemId",
         defaultCrystals: "Default Crystals",
@@ -165,6 +171,7 @@ export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
         selfName: "追加装備",
         name: "名前",
         id: "ID",
+        type: "アイテムタイプ",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
         defaultCrystals: "デフォルトクリスタル",

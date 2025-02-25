@@ -9,8 +9,10 @@ import { itemSubRelations } from "./item";
 import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
+import { Enums } from "./enums";
 
 export type Armor = ModifyKeys<Awaited<ReturnType<typeof findArmorById>>, {
+  type: Enums["ItemType"]
 }>;
 export type NewArmor = Insertable<item>;
 export type ArmorUpdate = Updateable<item>;
@@ -64,6 +66,7 @@ export async function deleteArmor(id: string) {
 export const defaultArmor: Armor = {
   name: "defaultArmor",
   id: "defaultArmorId",
+  type: "Armor",
   modifiers: [],
   itemId: "defaultArmorId",
   defaultCrystals: [],
@@ -90,6 +93,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "防具装备",
         name: "名称",
         id: "ID",
+        type:"道具类型",
         modifiers: "属性",
         itemId: "所属道具ID",
         defaultCrystals: "附加锻晶",
@@ -112,6 +116,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "防具裝備",
         name: "名称",
         id: "ID",
+        type:"道具類型",
         modifiers: "屬性",
         itemId: "所屬道具ID",
         defaultCrystals: "附加鑽晶",
@@ -134,6 +139,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "Armor",
         name: "Name",
         id: "ID",
+        type: "Item Type",
         modifiers: "Modifiers",
         itemId: "ItemId",
         defaultCrystals: "Default Crystals",
@@ -156,6 +162,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "鎧",
         name: "名前",
         id: "ID",
+        type: "アイテムタイプ",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
         defaultCrystals: "デフォルトクリスタル",

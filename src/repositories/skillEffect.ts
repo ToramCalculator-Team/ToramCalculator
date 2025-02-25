@@ -3,12 +3,13 @@ import { db } from "./database";
 import { DB, skill_effect } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, ModifyKeys } from "./untils";
-import { ArmorType, WeaponType } from "./enums";
 import { Locale } from "~/locales/i18n";
 
-export type SkillEffect = ModifyKeys<Awaited<ReturnType<typeof findSkillEffectById>>, {
-  details: Record<string, any>;
-}>;
+export type SkillEffect = ModifyKeys<
+  Awaited<ReturnType<typeof findSkillEffectById>>,
+  {
+  }
+>;
 export type NewSkillEffect = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
 
@@ -58,17 +59,26 @@ export const defaultSkillEffect: SkillEffect = {
   startupFrames: "",
   cost: "",
   belongToskillId: "",
-  details: {},
+  details: "",
   targetType: "",
   castingRange: 0,
   effectiveRange: 0,
+  elementLogic: "",
+  chargingType: "",
+  distanceType: "",
+  logic: {},
 };
 
-export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> => {  switch (locale) {
+export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> => {
+  switch (locale) {
     case "zh-CN":
       return {
         id: "ID",
         condition: "条件",
+        elementLogic: "元素逻辑",
+        chargingType: "施法动作类型",
+        distanceType: "距离威力类型",
+        logic: "逻辑",
         description: "文字描述",
         motionFixed: "固定动画时长",
         motionModified: "可变动画时长",
@@ -79,18 +89,20 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "前摇帧数",
         cost: "技能消耗表达式",
         belongToskillId: "",
-        details: {
-          selfName: "逻辑描述"
-        },
+        details: "逻辑描述",
         selfName: "技能效果",
         targetType: "目标类型",
         castingRange: "施法距离",
         effectiveRange: "技能效果范围",
       };
     case "zh-TW":
-    return {
+      return {
         id: "ID",
         condition: "條件",
+        elementLogic: "元素邏輯",
+        chargingType: "施法動作類型",
+        distanceType: "距離威力類型",
+        logic: "邏輯",
         description: "文字描述",
         motionFixed: "固定動畫時長",
         motionModified: "可變動畫時長",
@@ -101,9 +113,7 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "前摇幀數",
         cost: "技能消耗表達式",
         belongToskillId: "",
-      details: {
-          selfName: "邏輯描述"
-        },
+        details: "邏輯描述",
         selfName: "技能效果",
         targetType: "目標類型",
         castingRange: "施法距離",
@@ -113,6 +123,10 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
       return {
         id: "ID",
         condition: "Condition",
+        elementLogic: "Element logic",
+        chargingType: "Charging type",
+        distanceType: "Distance type",
+        logic: "Logic",
         description: "Text description",
         motionFixed: "Fixed animation duration",
         motionModified: "Variable animation duration",
@@ -123,17 +137,20 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "Startup frames",
         cost: "Skill cost expression",
         belongToskillId: "",
-        details: {
-          selfName: "Logic description"
-        },
+        details: "Logic description",
         selfName: "Skill effect",
         targetType: "Target type",
         castingRange: "Casting range",
         effectiveRange: "Skill effect range",
       };
     case "ja":
-      return {id: "ID",
+      return {
+        id: "ID",
         condition: "条件",
+        elementLogic: "元素ロジック",
+        chargingType: "施法アニメーションタイプ",
+        distanceType: "距離威力タイプ",
+        logic: "ロジック",
         description: "テキスト説明",
         motionFixed: "固定アニメーション時間",
         motionModified: "可変アニメーション時間",
@@ -144,12 +161,11 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         startupFrames: "開始フレーム",
         cost: "スキルコスト式",
         belongToskillId: "",
-        details: {
-          selfName: "ロジック説明"
-        },
+        details: "ロジック説明",
         selfName: "スキル効果",
         targetType: "対象タイプ",
         castingRange: "射程距離",
         effectiveRange: "スキル効果範囲",
       };
-  }}
+  }
+};

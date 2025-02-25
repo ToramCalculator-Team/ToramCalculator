@@ -10,9 +10,6 @@ import { CustomAddEquip, CustomAddEquipDic, customAddEquipSubRelations, defaultC
 import { CustomSpeEquip, CustomSpeEquipDic, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { ArmorDic } from "./armor";
-import { AddEquipDic } from "./addEquip";
-import { WeaponDic } from "./weapon";
 
 export type Character = ModifyKeys<Awaited<ReturnType<typeof findCharacterById>>, {
   weapon: CustomWeapon;
@@ -152,9 +149,9 @@ export const defaultCharacter: Character = {
   cooking: [],
   combos: [],
   modifiers: [],
-  partnerSkillA: "",
+  partnerSkillAId: "",
   partnerSkillAType: "Active",
-  partnerSkillB: "",
+  partnerSkillBId: "",
   partnerSkillBType: "Active",
   masterId: "",
   details: "",
@@ -192,9 +189,9 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         cooking: "料理",
         combos: "连击",
         modifiers: "额外加成属性",
-        partnerSkillA: "伙伴技能A",
+        partnerSkillAId: "伙伴技能A",
         partnerSkillAType: "伙伴技能A类型",
-        partnerSkillB: "伙伴技能B",
+        partnerSkillBId: "伙伴技能B",
         partnerSkillBType: "伙伴技能B类型",
         masterId: "所有者ID",
         details: "额外说明",
@@ -228,9 +225,9 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         cooking: "料理",
         combos: "連擊",
         modifiers: "額外加成屬性",
-        partnerSkillA: "伙伴技能A",
+        partnerSkillAId: "伙伴技能A",
         partnerSkillAType: "伙伴技能A類型",
-        partnerSkillB: "伙伴技能B",
+        partnerSkillBId: "伙伴技能B",
         partnerSkillBType: "伙伴技能B類型",
         masterId: "所有者ID",
         details: "額外說明",
@@ -264,9 +261,9 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         cooking: "Cooking",
         combos: "Combos",
         modifiers: "Modifiers",
-        partnerSkillA: "Partner Skill A",
+        partnerSkillAId: "Partner Skill A",
         partnerSkillAType: "Partner Skill A Type",
-        partnerSkillB: "Partner Skill B",
+        partnerSkillBId: "Partner Skill B",
         partnerSkillBType: "Partner Skill B Type",
         masterId: "Master ID",
         details: "Details",
@@ -300,9 +297,9 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         cooking: "料理",
         combos: "連擊",
         modifiers: "追加属性",
-        partnerSkillA: "パートナー技能A",
+        partnerSkillAId: "パートナー技能A",
         partnerSkillAType: "パートナー技能Aタイプ",
-        partnerSkillB: "パートナー技能B",
+        partnerSkillBId: "パートナー技能B",
         partnerSkillBType: "パートナー技能Bタイプ",
         masterId: "所有者ID",
         details: "詳細",

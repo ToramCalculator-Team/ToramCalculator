@@ -24,7 +24,7 @@ if (!document.cookie.split(";").includes(" resourcesLoaded=true")) {
 
       // 模拟进度（实际需根据资源总数调整）
       loadedResources++;
-      console.log(`已加载资源数：${loadedResources}`);
+      // console.log(`已加载资源数：${loadedResources}`);
       // totalResources++;
       // console.log(`已加载资源数：${totalResources}`);1
     });

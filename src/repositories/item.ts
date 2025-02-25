@@ -4,11 +4,11 @@ import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
-import { ItemType, ITEM_TYPE } from "./enums";
+import { type Enums, ITEM_TYPE } from "./enums";
 import { ModifyKeys } from "./untils";
 
 export type Item = ModifyKeys<Awaited<ReturnType<typeof findItemById>>, {
-  
+  type: Enums["ItemType"];
 }>;
 export type NewItem = Insertable<item>;
 export type ItemUpdate = Updateable<item>;
@@ -69,14 +69,15 @@ const itemsShared = {
   createdByAccountId: defaultAccount.id,
 };
 
-const items: Partial<Record<ItemType, Item>> = {};
+const items: Partial<Record<Enums["ItemType"], Item>> = {};
 for (const key of ITEM_TYPE) {
   items[key] = {
     id: `default${key}Id`,
+    type: key,
     statistic: defaultStatistics[key],
     statisticId: defaultStatistics[key].id,
     ...itemsShared,
   };
 }
 
-export const defaultItems = items as Record<ItemType, Item>;
+export const defaultItems = items as Record<Enums["ItemType"], Item>;

@@ -30,7 +30,7 @@ model user {
     email         String?   @unique
     emailVerified DateTime?
     image         String?
-    userRole      String
+    roleType      String
     accounts      account[]
     sessions      session[]
     posts         post[]
@@ -166,7 +166,8 @@ model npc {
 
 // 道具
 model item {
-    id String @id
+    id   String @id
+    type String
 
     weapon     weapon?
     armor      armor?
@@ -292,9 +293,9 @@ model material {
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
 
-    material String
-    ptValue  Int
-    price    Int
+    type    String
+    ptValue Int
+    price   Int
 }
 
 // 怪物
@@ -302,12 +303,12 @@ model mob {
     id String @id
 
     name                             String
-    mobType                          String
+    type                             String
     captureable                      Boolean
     baseLv                           Int
     experience                       Int
     partsExperience                  Int
-    element                          String
+    elementType                      String
     radius                           Int
     maxhp                            Int
     physicalDefense                  Int
@@ -351,7 +352,7 @@ model drop_item {
     item            item   @relation(fields: [itemId], references: [id])
     itemId          String
     probability     Int
-    relatedPart     String
+    relatedPartType String
     relatedPartInfo String
     breakReward     String
 
@@ -361,9 +362,9 @@ model drop_item {
 
 // 锻晶
 model crystal {
-    name        String
-    crystalType String
-    modifiers   String[]
+    name      String
+    type      String
+    modifiers String[]
 
     front crystal[] @relation("FrontRelation")
     back  crystal[] @relation("BackRelation")
@@ -397,7 +398,7 @@ model weapon {
     colorC          Int
     image           image[]
     recipe          recipe?
-    element         String?
+    elementType     String?
 
     usedBy custom_weapon[]
 
@@ -479,16 +480,13 @@ model special_equipment {
 model skill {
     id String @id
 
-    treeName       String
-    posX           Int
-    posY           Int
-    tier           Int
-    name           String
-    isPassive      Boolean
-    element        String
-    chargingType   String
-    distanceResist String
-    effect         skill_effect[]
+    treeType  String
+    posX      Int
+    posY      Int
+    tier      Int
+    name      String
+    isPassive Boolean
+    effect    skill_effect[]
 
     details     String
     dataSources String
@@ -509,6 +507,9 @@ model skill_effect {
     id String @id
 
     condition         String
+    elementLogic      String
+    chargingType      String
+    distanceType      String
     targetType        String // 目标类型: 自己\队友\敌人
     castingRange      Int
     effectiveRange    Int
@@ -521,7 +522,8 @@ model skill_effect {
     startupFrames     String
     cost              String
     description       String
-    details           Json
+    logic             Json
+    details           String
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
     belongToskillId String
@@ -548,11 +550,10 @@ model custom_weapon {
     id String @id
 
     name                    String
-    type                    String
     baseAbi                 Int
     stability               Int
     extraAbi                Int
-    template                weapon?                         @relation(fields: [templateId], references: [itemId])
+    template                weapon?                        @relation(fields: [templateId], references: [itemId])
     templateId              String?
     refinement              Int
     enchantmentAttributes   weapon_enchantment_attributes? @relation(fields: [enchantmentAttributesId], references: [id])
@@ -592,7 +593,7 @@ model custom_armor {
 
     name                    String
     def                     Int
-    armorType               String
+    type                    String
     template                armor                         @relation(fields: [templateId], references: [itemId])
     templateId              String
     refinement              Int
@@ -646,7 +647,7 @@ model character_skill {
 
     lv         Int
     isStarGem  Boolean
-    template   skill  @relation(fields: [templateId], references: [id])
+    template   skill   @relation(fields: [templateId], references: [id])
     templateId String
 
     usedByCharacter character[]
@@ -656,24 +657,24 @@ model character_skill {
 model custom_pet {
     id String @id
 
-    template   mob    @relation(fields: [templateId], references: [id])
-    templateId String
-    pStr       Int
-    pInt       Int
-    pVit       Int
-    pAgi       Int
-    pDex       Int
-    str        Int
-    int        Int
-    vit        Int
-    agi        Int
-    dex        Int
-    weaponType String
-    persona    String
-    type       String
-    weaponAtk  Int
-    generation Int
-    maxLv Int
+    template    mob    @relation(fields: [templateId], references: [id])
+    templateId  String
+    pStr        Int
+    pInt        Int
+    pVit        Int
+    pAgi        Int
+    pDex        Int
+    str         Int
+    int         Int
+    vit         Int
+    agi         Int
+    dex         Int
+    weaponType  String
+    personaType String
+    type        String
+    weaponAtk   Int
+    generation  Int
+    maxLv       Int
 
     master   player @relation(fields: [masterId], references: [id])
     masterId String
@@ -729,9 +730,9 @@ model character {
     cooking           String[]
     modifiers         String[]
     skills            character_skill[]
-    partnerSkillA     String
+    partnerSkillAId   String
     partnerSkillAType String
-    partnerSkillB     String
+    partnerSkillBId   String
     partnerSkillBType String
     consumableList    consumable[]
     combos            combo[]
@@ -819,9 +820,9 @@ model team {
 model simulator {
     id String @id
 
-    name       String
-    visibility String
-    teams      team[]
+    name           String
+    visibilityType String
+    teams          team[]
 
     details String?
 

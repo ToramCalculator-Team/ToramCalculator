@@ -95,7 +95,7 @@ const Nav = () => {
             element="div"
             options={{ scrollbars: { autoHide: "scroll" } }}
             defer
-            class="SubGroup !hidden flex-shrink flex-col overflow-y-auto lg:flex"
+            class="SubGroup !hidden flex-shrink flex-col overflow-y-auto lg:!flex"
           >
           <NavBtn
             config={{
