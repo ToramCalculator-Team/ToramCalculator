@@ -471,24 +471,24 @@ export default function Index() {
                 animate={{
                   opacity: [0, 1],
                   paddingBottom: [0, isPc() ? "3rem" : "0rem"],
-                  gridTemplateRows: ["0fr", "1fr"],
+                  gridTemplateRows: ["0fr", isPc() ? "1fr 0fr" : "1fr 1fr"],
                   filter: ["blur(20px)", "blur(0px)"],
                   // flexBasis: [0, isPc() ? "auto" : "100%"],
                 }}
                 exit={{
                   opacity: [1, 0],
                   paddingBottom: 0,
-                  gridTemplateRows: ["1fr", "0fr"],
+                  gridTemplateRows: ["1fr 1fr", "0fr"],
                   filter: ["blur(0px)", "blur(20px)"],
                   // flexBasis: [isPc() ? "auto" : "100%", 0],
                 }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-                class={`Greetings grid flex-1 items-center justify-center gap-2 overflow-hidden lg:flex-none`}
+                class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden lg:flex-none`}
               >
-                <div class={`LogoBox mb-2 overflow-hidden rounded backdrop-blur-sm lg:mb-0 dark:backdrop-blur-none`}>
+                <div class={`LogoBox self-end mb-2 overflow-hidden rounded backdrop-blur-sm lg:mb-0 dark:backdrop-blur-none`}>
                   <Icon.LogoText class="h-12 w-fit lg:h-auto" />
                 </div>
-                <h1 class={`text-main-text-color py-4 lg:hidden`}>
+                <h1 class={`text-main-text-color self-start py-4 lg:hidden`}>
                   {getGreetings() + ",  " + dictionary().ui.index.adventurer}
                 </h1>
               </Motion.div>
