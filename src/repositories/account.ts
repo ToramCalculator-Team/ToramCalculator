@@ -2,20 +2,19 @@ import { Expression, ExpressionBuilder, Insertable, Selectable, Updateable } fro
 import { db } from "./database";
 import { account, DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ModifyKeys,ConvertToAllString } from "./untils";
+import { ModifyKeys, ConvertToAllString, DataType } from "./untils";
 import { Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
 
-export type Account = ModifyKeys<
-  Awaited<ReturnType<typeof findAccountById>>,
-  {
-    type: Enums["AccountType"];
-  }
->;
-
-export type NewAccount = Insertable<account>;
-
-export type AccountUpdate = Updateable<account>;
+export interface Account
+  extends DataType<
+    account,
+    {
+      type: Enums["AccountType"];
+    },
+    typeof findAccountById,
+    typeof createAccount
+  > {}
 
 export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
   return [
@@ -75,7 +74,7 @@ export async function findAccountById(id: string) {
   return account;
 }
 
-export async function updateAccount(id: string, updateWith: AccountUpdate) {
+export async function updateAccount(id: string, updateWith: Account["Update"]) {
   return await db.transaction().execute(async (trx) => {
     const account = await trx
       .updateTable("account")
@@ -88,7 +87,7 @@ export async function updateAccount(id: string, updateWith: AccountUpdate) {
   // await db.updateTable('account').set(updateWith).where('id', '=', id).execute()
 }
 
-export async function createAccount(account: NewAccount) {
+export async function createAccount(account: Account["Insert"]) {
   return await db.insertInto("account").values(account).returningAll().executeTakeFirstOrThrow();
 }
 
@@ -97,7 +96,7 @@ export async function deleteAccount(id: string) {
 }
 
 // default
-export const defaultAccount: Account = {
+export const defaultAccount: Account["Insert"] = {
   id: "defaultAccount",
   type: "User",
   provider: "",
@@ -110,15 +109,10 @@ export const defaultAccount: Account = {
   id_token: null,
   session_state: null,
   userId: "",
-  create: {
-    accountId: "",
-  },
-  update: {
-    accountId: "",
-  },
 };
 
-export const AccountDic = (locale: Locale): ConvertToAllString<Account> => {
+// 设计为Form字段字典，但是由于Table字段是此对象子集，因此通用
+export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -217,4 +211,4 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account> => {
         },
       };
   }
-} 
+};

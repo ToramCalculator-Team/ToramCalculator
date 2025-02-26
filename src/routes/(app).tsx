@@ -129,21 +129,23 @@ const Setting = () => {
     </div>
   );
 
-  const Divider = () => <div class="Divider h-[1px] w-full flex-none bg-dividing-color"></div>;
+  const Divider = () => <div class="Divider bg-dividing-color h-[1px] w-full flex-none"></div>;
 
   return (
     <Presence exitBeforeEnter>
       <Show when={store.settingsDialogState}>
         <Motion.div
-          animate={{ transform: "scale(1)", opacity: [0, 1] }}
-          exit={{ transform: "scale(1.05)", opacity: 0 }}
+          animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
+          exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SettingBox fixed left-0 top-0 grid h-dvh w-dvw scale-[105%] place-items-center`}
+          class={`SettingBox fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center`}
         >
-          <Button class={`CloseBtn absolute right-3 top-3`} onClick={() => setStore("settingsDialogState", false)}>
+          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => setStore("settingsDialogState", false)}>
             <Icon.Line.Close />
           </Button>
-          <div class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-6 lg:max-w-screen-2xl lg:p-3`}>
+          <div
+            class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-6 lg:max-w-(--breakpoint-2xl) lg:p-3`}
+          >
             <div class="FormTitle flex items-center">
               <h1 class="text-2xl font-bold">{dictionary().ui.settings.title}</h1>
             </div>
@@ -174,7 +176,7 @@ const Setting = () => {
                   <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
                 </Button>
               </div>
-              <div class="Divider hidden h-full w-[1px] bg-dividing-color lg:block"></div>
+              <div class="Divider bg-dividing-color hidden h-full w-[1px] lg:block"></div>
               <OverlayScrollbarsComponent
                 element="div"
                 options={{ scrollbars: { autoHide: "scroll" } }}
@@ -398,7 +400,7 @@ export default function AppMainContet(props: ParentProps) {
       <RandomBallBackground />
       <Motion.div
         id="AppMainContet"
-        class={`h-full w-full overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-sm" : "scale-100 opacity-100 blur-0"}`}
+        class={`h-full w-full overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
       >
         {props.children}
         {/* <Presence exitBeforeEnter>
@@ -408,7 +410,7 @@ export default function AppMainContet(props: ParentProps) {
               animate={{ transform: "scale(1)", opacity: [0, 1] }}
               exit={{ transform: "scale(1.05)", opacity: 0 }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`InstallPrompt fixed left-0 top-0 z-[999] grid h-dvh w-dvw scale-[105%] place-items-center items-center bg-primary-color-90`}
+              class={`InstallPrompt fixed left-0 top-0 z-999 grid h-dvh w-dvw scale-[105%] place-items-center items-center bg-primary-color-90`}
             >
               <Button>检测到未安装</Button>
             </Motion.div>

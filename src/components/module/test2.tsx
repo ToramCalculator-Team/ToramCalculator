@@ -345,7 +345,7 @@ export default function BabylonBg(): JSX.Element {
           !loaderState() ? "pointer-events-auto visible opacity-100" : "pointer-events-none invisible opacity-0"
         }`}
       >
-        <div class="LoadingMask fixed left-0 top-0 h-full w-full bg-gradient-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-[25%]"></div>
+        <div class="LoadingMask fixed left-0 top-0 h-full w-full bg-linear-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-25%"></div>
         <div class="LoadingState fixed bottom-[calc(2%+67px)] left-[4dvw] flex h-fit flex-col gap-3 lg:left-[10dvw] lg:top-[97%] lg:-translate-y-full">
           <h1 ref={progress!} class="animate-pulse">
             加载中...

@@ -168,6 +168,7 @@ const safeParse = (data: string) => {
 };
 
 const getActStore = () => {
+  console.log("store")
   if (!actStore) {
     const isBrowser = typeof window !== "undefined";
     if (isBrowser) {

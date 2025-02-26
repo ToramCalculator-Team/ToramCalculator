@@ -38,8 +38,8 @@ const CheckBox = (props: CheckBoxProps) => {
             iconContainer: "bg-accent-color text-primary-color",
           }
         : {
-            text: "text-mainText-color",
-            iconContainer: "bg-primary-color text-transparent border-2 border-mainText-color",
+            text: "text-main-text-color",
+            iconContainer: "bg-primary-color text-transparent border-2 border-main-text-color",
           },
     };
   });

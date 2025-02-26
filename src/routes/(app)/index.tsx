@@ -214,7 +214,7 @@ export default function Index() {
         <span class="NullResultWarring text-xl font-bold leading-loose lg:text-2xl">
           {dictionary().ui.index.nullSearchResultWarring}
         </span>
-        <p class={`NullResultTips text-center leading-loose text-mainText-color`}>
+        <p class={`NullResultTips text-center leading-loose text-main-text-color`}>
           {dictionary()
             .ui.index.nullSearchResultTips.split("\n")
             .map((line, index) => (
@@ -259,7 +259,7 @@ export default function Index() {
                         ...resultListSate().slice(groupIndex + 1),
                       ])
                     }
-                    class={`Group flex cursor-pointer justify-center gap-2 bg-primary-color outline-none focus-within:outline-none ${resultListSate()[groupIndex] ? "" : ""} rounded px-3 py-4`}
+                    class={`Group flex cursor-pointer justify-center gap-2 bg-primary-color outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex] ? "" : ""} rounded px-3 py-4`}
                   >
                     {icon}
                     <span class="w-full text-left">
@@ -275,7 +275,7 @@ export default function Index() {
                     {value.map((item, index) => {
                       return (
                         <Motion.button
-                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded border border-dividing-color bg-primary-color p-3 outline-none focus-within:bg-area-color focus-within:outline-none`}
+                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} rounded border border-dividing-color bg-primary-color p-3 outline-hidden focus-within:bg-area-color focus-within:outline-hidden`}
                           animate={{
                             opacity: [0, 1],
                             transform: ["translateY(30px)", "translateY(0)"],
@@ -299,7 +299,7 @@ export default function Index() {
                           <div class="Name border-b-2 border-transparent p-1 font-bold group-hover:border-accent-color">
                             {item?.name}
                           </div>
-                          <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-mainText-color group-hover:text-accent-color">
+                          <div class="Value flex w-full flex-col flex-wrap p-1 text-sm text-main-text-color group-hover:text-accent-color">
                             {item?.relateds.map((related, index) => {
                               return (
                                 <div class="Related w-fit pr-2">
@@ -440,21 +440,21 @@ export default function Index() {
           class={`Config absolute right-3 top-3 flex gap-1`}
         >
           <Button
-            class="outline-none duration-150 focus-within:outline-none"
+            class="outline-hidden duration-150 focus-within:outline-hidden"
             level="quaternary"
             onClick={() => setNodeEditorDialog(!nodeEditorDialog())}
           >
             <Icon.Line.Basketball />
           </Button>
           <Button
-            class="outline-none duration-150 focus-within:outline-none"
+            class="outline-hidden duration-150 focus-within:outline-hidden"
             level="quaternary"
             onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
           >
             <Icon.Line.Light />
           </Button>
           <Button
-            class="outline-none duration-150 focus-within:outline-none"
+            class="outline-hidden duration-150 focus-within:outline-hidden"
             level="quaternary"
             onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
           >
@@ -469,10 +469,10 @@ export default function Index() {
               searchResultOpened() ? `basis-[0%] pb-0 opacity-0` : `basis-[100%] opacity-100 lg:flex-none lg:pb-12`
             }`}
           >
-            <div class={`LogoBox mb-2 overflow-hidden rounded backdrop-blur dark:backdrop-blur-none lg:mb-0`}>
+            <div class={`LogoBox mb-2 overflow-hidden rounded backdrop-blur-sm dark:backdrop-blur-none lg:mb-0`}>
               <Icon.LogoText class="h-12 w-fit lg:h-auto" />
             </div>
-            <h1 class={`py-4 text-mainText-color lg:hidden`}>
+            <h1 class={`py-4 text-main-text-color lg:hidden`}>
               {getGreetings() + ",  " + dictionary().ui.index.adventurer}
             </h1>
           </div>
@@ -480,7 +480,7 @@ export default function Index() {
             class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
               searchResultOpened()
                 ? `flex-shrink-1 flex-grow-1 basis-[100%]`
-                : `flex-shrink-0 flex-grow-0 basis-[0%] opacity-0`
+                : `shrink-0 grow-0 basis-[0%] opacity-0`
             }`}
             style={
               searchResultOpened()
@@ -511,7 +511,7 @@ export default function Index() {
                 onClick={() => {
                   setSearchResultOpened(false);
                 }}
-                class="w-full outline-none focus-within:outline-none"
+                class="w-full outline-hidden focus-within:outline-hidden"
               >
                 <Icon.Line.Back />
                 <span class="w-full text-left">{dictionary().ui.actions.back}</span>
@@ -530,7 +530,7 @@ export default function Index() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="focus:placeholder:text-accent-color-0 hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-none placeholder:text-base placeholder:font-normal placeholder:text-boundary-color focus-within:outline-none dark:mix-blend-normal lg:flex lg:bg-transparent"
+                class="focus:placeholder:text-accent-color hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal placeholder:text-boundary-color focus-within:outline-hidden dark:mix-blend-normal lg:flex lg:bg-transparent"
               />
               <input
                 id="searchInput-Mobile"
@@ -542,7 +542,7 @@ export default function Index() {
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="w-full flex-1 rounded bg-area-color px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur placeholder:font-normal placeholder:text-boundary-color dark:mix-blend-normal lg:hidden"
+                class="w-full flex-1 rounded bg-area-color px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur-sm placeholder:font-normal placeholder:text-boundary-color dark:mix-blend-normal lg:hidden"
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
@@ -595,7 +595,7 @@ export default function Index() {
               class={`Bottom grid w-full self-center bg-accent-color p-6 ease-linear dark:bg-area-color lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
             >
               <div
-                class={`Content flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:bg-area-color lg:backdrop-blur ${searchResultOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:bg-area-color lg:backdrop-blur-sm ${searchResultOpened() ? `lg:p-0` : `lg:p-3`}`}
               >
                 <a
                   tabIndex={2}
@@ -607,7 +607,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Browser class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.mobs}</span>
@@ -623,7 +623,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Basketball class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.skills}</span>
@@ -639,7 +639,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Category2 class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.equipments}</span>
@@ -655,7 +655,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Box2 class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.crystals}</span>
@@ -672,7 +672,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Heart class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.pets}</span>
@@ -688,7 +688,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Layers class="h-10 w-10 text-brand-color-3rd group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.items}</span>
@@ -704,7 +704,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.User class="h-10 w-10 text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.character}</span>
@@ -720,7 +720,7 @@ export default function Index() {
                     level="primary"
                     tabIndex={-1}
                     icon={
-                      <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color group-hover:dark:text-accent-color lg:h-6 lg:w-6" />
+                      <Icon.Filled.Gamepad class="h-10 w-10 text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color lg:h-6 lg:w-6" />
                     }
                   >
                     <span class="text-ellipsis text-nowrap text-sm lg:text-base">{dictionary().ui.nav.simulator}</span>

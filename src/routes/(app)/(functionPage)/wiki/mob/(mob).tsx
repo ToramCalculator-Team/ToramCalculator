@@ -338,7 +338,7 @@ export default function MobIndexPage() {
                 id="MobSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-mainText-color focus:border-mainText-color focus:outline-none lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
@@ -523,7 +523,7 @@ export default function MobIndexPage() {
                                   tdContent = (
                                     <>
                                       <span class="pb-1">{row.original.name}</span>
-                                      {/* <span class="text-sm font-normal text-mainText-color">
+                                      {/* <span class="text-sm font-normal text-main-text-color">
                                         {row.getValue("belongToZones") ?? "无"}
                                       </span> */}
                                     </>

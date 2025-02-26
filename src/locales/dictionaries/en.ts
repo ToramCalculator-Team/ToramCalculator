@@ -33,7 +33,7 @@ const dictionary: dictionary = {
       pets: "Pets",
       items: "Items",
       character: "Character",
-      simulator: "Combo",
+      simulator: "Simulator",
       profile: "",
     },
     errorPage: {

@@ -1,0 +1,216 @@
+/* 当屏幕宽度小于或等于 1536px 时 */
+#mainContent {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+@media (min-width: 1024px) {
+  #mainContent {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+/* 当屏幕宽度大于 1536px 时 */
+/* @media (min-width: 1536px) {
+    #mainContent {
+      padding-left: calc((100% - 1536px) / 2);
+      padding-right: calc((100% - 1536px) / 2);
+    }
+  } */
+
+#loadingBox {
+  --overallWidth: calc(1920px * 0.2);
+  --overallHeight: calc(1920px * 0.2);
+  position: fixed;
+  right: 2vw;
+  bottom: 2vw;
+  width: var(--overallWidth);
+  height: var(--overallHeight);
+  mask-image:;
+  -webkit-mask-image:;
+  mask-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzg0IiBoZWlnaHQ9IjM4NCIgdmlld0JveD0iMCAwIDM4NCAzODQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMCAwVjMxMS41TDY1LjY5ODYgMjc1Ljk5OUM3My4yNTQ1IDI4NS40NzQgODkuMTMzOCAyOTIgMTA3LjUgMjkyQzEzMy4xODEgMjkyIDE1NCAyNzkuMjQgMTU0IDI2My41QzE1NCAyNTUuNzg4IDE0OS4wMDIgMjQ4Ljc5MiAxNDAuODg0IDI0My42NjFMMTQyLjA5MiAyMzQuNzE4TDIzOC4yMzQgMTgyLjc2N0MyNDYuNzM0IDE4OC40NDIgMjU4LjkzOSAxOTIgMjcyLjUgMTkyQzI5OC4xODEgMTkyIDMxOSAxNzkuMjQgMzE5IDE2My41QzMxOSAxNTYuNDc2IDMxNC44NTQgMTUwLjA0NiAzMDcuOTgxIDE0NS4wNzhMMzg0IDEwNFYwSDBaIiBmaWxsPSIjRDlEOUQ5Ii8+Cjwvc3ZnPgo=);
+  -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzg0IiBoZWlnaHQ9IjM4NCIgdmlld0JveD0iMCAwIDM4NCAzODQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMCAwVjMxMS41TDY1LjY5ODYgMjc1Ljk5OUM3My4yNTQ1IDI4NS40NzQgODkuMTMzOCAyOTIgMTA3LjUgMjkyQzEzMy4xODEgMjkyIDE1NCAyNzkuMjQgMTU0IDI2My41QzE1NCAyNTUuNzg4IDE0OS4wMDIgMjQ4Ljc5MiAxNDAuODg0IDI0My42NjFMMTQyLjA5MiAyMzQuNzE4TDIzOC4yMzQgMTgyLjc2N0MyNDYuNzM0IDE4OC40NDIgMjU4LjkzOSAxOTIgMjcyLjUgMTkyQzI5OC4xODEgMTkyIDMxOSAxNzkuMjQgMzE5IDE2My41QzMxOSAxNTYuNDc2IDMxNC44NTQgMTUwLjA0NiAzMDcuOTgxIDE0NS4wNzhMMzg0IDEwNFYwSDBaIiBmaWxsPSIjRDlEOUQ5Ii8+Cjwvc3ZnPgo=);
+  mask-position: 0 0;
+  -webkit-mask-position: 0 0;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+@media (max-width: 1024px) {
+  #loadingBox {
+    --overallWidth: 384px;
+    --overallHeight: 384px;
+    right: unset;
+    left: 50%;
+    bottom: 50%;
+    transform: translateX(-50%) translateY(50%);
+  }
+}
+
+#maskElement2,
+#maskElement3 {
+  position: absolute;
+  width: calc(0.24 * var(--overallWidth));
+  height: calc(0.14 * var(--overallHeight));
+  clip-path: ellipse(50% 50% at 50% 50%);
+  background-color: rgb(var(--accent));
+  z-index: 2;
+}
+
+#maskElement2 {
+  top: 62%;
+  left: 16%;
+}
+#maskElement3 {
+  position: absolute;
+  top: 36%;
+  left: 59%;
+}
+
+#loadingBox .line,
+#loadingBox .Shadow {
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+}
+
+#loadingBox .line {
+  --startingDistance: 65%;
+  z-index: 3;
+}
+#loadingBox .Shadow {
+  --startingDistance: 80%;
+  z-index: 1;
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+}
+
+@keyframes moveLine {
+  0% {
+    offset-distance: var(--startingDistance);
+    opacity: 1;
+  }
+  100% {
+    offset-distance: calc(var(--startingDistance) + 100%);
+    opacity: 1;
+  }
+}
+@keyframes moveShadow {
+  0% {
+    offset-distance: var(--startingDistance);
+    opacity: 1;
+  }
+  100% {
+    offset-distance: calc(var(--startingDistance) + 100%);
+    opacity: 1;
+  }
+}
+
+#loadingBox .line .Circle,
+#loadingBox .Shadow .Circle {
+  --animationTime: 2000ms;
+  --startTime: 750ms;
+  --intervalTime: 20ms;
+  transition: all 0.3s;
+  position: absolute;
+  width: calc(0.16 * var(--overallWidth));
+  height: calc(0.16 * var(--overallHeight));
+  /* width: calc(0.24 * var(--overallWidth));
+    height: calc(0.14 * var(--overallHeight));
+    clip-path: ellipse(50% 50% at 50% 50%); */
+  offset-rotate: 0deg;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+#loadingBox .line .Circle {
+  margin: 22% 0 0 22%;
+  background-color: rgb(var(--brand-3rd));
+  offset-path: path(
+    "M135.855 8.78699C173.378 32.583 181.249 104.655 153.436 169.762C125.624 234.869 72.659 268.358 35.136 244.562C-2.38598 220.765 -10.258 148.694 17.555 83.586C45.368 18.479 98.333 -15.01 135.855 8.78699Z"
+  );
+  animation: moveLine var(--animationTime) infinite linear;
+}
+
+#loadingBox .Shadow .Circle {
+  /* display: none; */
+  margin: 34% 0 0 5%;
+  background-color: rgb(var(--transition));
+  offset-path: path(
+    "M31.603 22.489C80.11 -5.38799 168.044 -6.50599 228.01 19.992C287.975 46.49 297.264 90.57 248.758 118.447C200.251 146.325 112.316 147.443 52.351 120.945C-7.61499 94.446 -16.904 50.367 31.603 22.489Z"
+  );
+  animation: moveShadow var(--animationTime) infinite cubic-bezier(0.47, 0, 0.37, 1);
+}
+
+#loadingBox .line .Circle:nth-child(-n + 8) {
+  background-color: rgb(var(--brand-1st));
+}
+
+#loadingBox .line .Circle:nth-child(1),
+#loadingBox .Shadow .Circle:nth-child(1) {
+  animation-delay: calc(var(--startTime) + 0 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(2),
+#loadingBox .Shadow .Circle:nth-child(2) {
+  animation-delay: calc(var(--startTime) + 1 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(3),
+#loadingBox .Shadow .Circle:nth-child(3) {
+  animation-delay: calc(var(--startTime) + 2 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(4),
+#loadingBox .Shadow .Circle:nth-child(4) {
+  animation-delay: calc(var(--startTime) + 3 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(5),
+#loadingBox .Shadow .Circle:nth-child(5) {
+  animation-delay: calc(var(--startTime) + 4 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(6),
+#loadingBox .Shadow .Circle:nth-child(6) {
+  animation-delay: calc(var(--startTime) + 5 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(7),
+#loadingBox .Shadow .Circle:nth-child(7) {
+  animation-delay: calc(var(--startTime) + 6 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(8),
+#loadingBox .Shadow .Circle:nth-child(8) {
+  animation-delay: calc(var(--startTime) + 7 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(9),
+#loadingBox .Shadow .Circle:nth-child(9) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 0 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(10),
+#loadingBox .Shadow .Circle:nth-child(10) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 1 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(11),
+#loadingBox .Shadow .Circle:nth-child(11) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 2 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(12),
+#loadingBox .Shadow .Circle:nth-child(12) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 3 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(13),
+#loadingBox .Shadow .Circle:nth-child(13) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 4 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(14),
+#loadingBox .Shadow .Circle:nth-child(14) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 5 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(15),
+#loadingBox .Shadow .Circle:nth-child(15) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 6 * var(--intervalTime));
+}
+#loadingBox .line .Circle:nth-child(16),
+#loadingBox .Shadow .Circle:nth-child(16) {
+  animation-delay: calc(var(--startTime) + var(--animationTime) / 2 + 7 * var(--intervalTime));
+}

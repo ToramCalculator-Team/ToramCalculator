@@ -320,12 +320,12 @@ export default function SimulatorIndexClient() {
               }
               return (
                 <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-dividing-color lg:flex-row lg:gap-6">
-                  {/* <div class="MobsName z-10 flex-shrink-0 px-6 py-3 text-xl text-primary-color">
+                  {/* <div class="MobsName z-10 shrink-0 px-6 py-3 text-xl text-primary-color">
                     {mob.mob?.name ?? ""}
                   </div>
-                  <div class="MobsConfig z-10 flex flex-1 flex-shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
+                  <div class="MobsConfig z-10 flex flex-1 shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
                     <div
-                      class="MobsAugment flex flex-shrink-0 cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
+                      class="MobsAugment flex shrink-0 cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
                       onMouseEnter={() => setStarArr(0)}
                       onMouseLeave={() => {
                         setStarArr(mob.star);
@@ -363,7 +363,7 @@ export default function SimulatorIndexClient() {
                       "background-position-y": "40%",
                     }}
                   >
-                    <div class="Mask to-accent-color-0 h-full w-1/2 bg-gradient-to-r from-accent-color"></div>
+                    <div class="Mask to-accent-color-0 h-full w-1/2 bg-linear-to-r from-accent-color"></div>
                   </div> */}
                 </div>
               );
@@ -387,7 +387,7 @@ export default function SimulatorIndexClient() {
                   >
                     <div class="Info flex flex-col gap-2 px-3">
                       <div class="MemberName text-lg font-bold">{member.character?.name ?? "未知"}</div>
-                      <div class="MenberConfig flex flex-1 gap-1 text-mainText-color">
+                      <div class="MenberConfig flex flex-1 gap-1 text-main-text-color">
                         <span>{member.character?.lv ?? "未知"}</span>-
                         <span>
                           {

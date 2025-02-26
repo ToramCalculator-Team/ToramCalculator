@@ -57,8 +57,8 @@ export default function Loading() {
         class="hidden lg:block absolute h-full w-full bg-contain bg-bottom bg-no-repeat blur-[2px]"
         style={{ "background-image": "url(/app-image/404/3.png)","transition": "all 0s" }}
       ></div>
-      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-gradient-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-[25%]"></div>
-      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-gradient-to-b from-primary-color from-5% to-primary-color-0 to-20% lg:from-5% lg:to-[25%]"></div>
+      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-linear-to-t from-primary-color from-10% to-primary-color-0 to-25% lg:from-5% lg:to-25%"></div>
+      <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-linear-to-b from-primary-color from-5% to-primary-color-0 to-20% lg:from-5% lg:to-25%"></div>
       <div class="LoadingState fixed h-fit bottom-[calc(2%+67px)] left-[4dvw] flex flex-col gap-3 lg:left-[10dvw] lg:top-[97%] lg:-translate-y-full">
         <h1 class="animate-pulse">{dictionary().ui.errorPage.tips}</h1>
         <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />

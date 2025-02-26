@@ -1,8 +1,10 @@
+import { Selectable, Insertable, Updateable } from "kysely";
+
 /**
  * 根据指定的属性类型映射来调整类型
  *
- * @template T 原始类型
- * @template R 类型映射 { 属性名: 新类型 }
+ * @param T 原始类型
+ * @param R 类型映射 { 属性名: 新类型 }
  * @returns 新的类型，属性类型被修改
  */
 export type ModifyKeys<T, R extends { [K in keyof T]?: unknown }> = {
@@ -12,7 +14,7 @@ export type ModifyKeys<T, R extends { [K in keyof T]?: unknown }> = {
 /**
  * 将对象的值类型转换为字符串
  *
- * @template T 原始类型
+ * @param T 原始类型
  * @returns 转换后的字符串
  */
 export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | number
@@ -27,4 +29,21 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
       } & {
         selfName: string;
       }
-    : string;
+  : string;
+    
+/**
+ * 生成通用数据类型
+ *
+ * @param T 原始类型
+ * @param K 
+ * @param MainTableDataFun
+ * @returns 转换后的类型
+ */
+export interface DataType<T, K, MainTableDataFun extends (...args: any[]) => any, MainFormDataFun extends (...args: any[]) => any> {
+  [key: string]: any;
+  Select: ModifyKeys<Selectable<T>, K>;
+  Insert: ModifyKeys<Insertable<T>, K>;
+  Update: ModifyKeys<Updateable<T>, K>;
+  MainTable: Awaited<ReturnType<MainTableDataFun>>;
+  MainFormData: Awaited<ReturnType<MainFormDataFun>>;
+}

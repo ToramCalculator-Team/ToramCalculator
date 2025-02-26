@@ -38,8 +38,8 @@ const Radio = (props: RadioProps) => {
             iconContainer: "border-accent-color",
           }
         : {
-            text: "text-mainText-color",
-            iconContainer: "border-mainText-color text-transparent",
+            text: "text-main-text-color",
+            iconContainer: "border-main-text-color text-transparent",
           },
     };
   });

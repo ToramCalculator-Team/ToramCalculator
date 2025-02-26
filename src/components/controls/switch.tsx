@@ -36,7 +36,7 @@ const Switch = (props: SwitchProps) => {
           }
         : {
             thumb: "",
-            track: "bg-boundary-color text-mainText-color justify-start",
+            track: "bg-boundary-color text-main-text-color justify-start",
           },
     };
   });

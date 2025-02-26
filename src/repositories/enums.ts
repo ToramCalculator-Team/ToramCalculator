@@ -215,7 +215,7 @@ export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
 // 防具
 export const CUSTOM_ARMOR_TYPE = ["Normal", "Light", "Heavy"] as const;
 // 装备
-export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, ...CUSTOM_ARMOR_TYPE, "AddEquip", "SpeEquip"] as const;
+export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "AddEquip", "SpeEquip"] as const;
 // 时装
 export const AVATAR_TYPE = ["Decoration", "Top", "Bottom"] as const;
 // 锻晶
@@ -441,7 +441,7 @@ export const WIKISCHEMA_TYPE = [
   "Character",
   ...WEAPON_TYPE,
   "WeaponEncAttrs",
-  ...CUSTOM_ARMOR_TYPE,
+  "Armor",
   "ArmorEncAttrs",
   "AddEquip",
   "SpeEquip",

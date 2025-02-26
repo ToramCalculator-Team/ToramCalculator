@@ -669,8 +669,8 @@ export default function FlowEditor(props: FlowEditorProps) {
     <Presence exitBeforeEnter>
       <Show when={true}>
         <Motion.div
-          animate={{ transform: "scale(1)", opacity: [0, 1] }}
-          exit={{ transform: "scale(1.05)", opacity: 0 }}
+          animate={{ scale: 1, opacity: [0, 1] }}
+          exit={{ scale: 1.05, opacity: 0 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`FlowEditorBox fixed left-0 top-0 z-50 flex h-full w-full scale-[105%] flex-col bg-primary-color-90 opacity-0`}
           id="FlowEditor"

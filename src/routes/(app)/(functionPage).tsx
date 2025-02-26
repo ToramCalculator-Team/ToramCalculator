@@ -23,7 +23,7 @@ const NavBtn = (props: {
       href={props.config.url}
       tabIndex={0}
       class={
-        `NavBtn btn-${props.config.btnName} group flex flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:gap-1` +
+        `NavBtn btn-${props.config.btnName} group flex shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:gap-1` +
         " " +
         props.class
       }
@@ -40,7 +40,7 @@ const NavBtn = (props: {
 
 const Divider = () => (
   <div class={"Divider hidden py-2 lg:flex lg:justify-center"}>
-    <div class="Line h-[2px] w-12 bg-brand-color-1st"></div>
+    <div class="Line bg-brand-color-1st h-[2px] w-12"></div>
   </div>
 );
 
@@ -53,20 +53,21 @@ const Nav = () => {
   const [wikiTableFilterRef, setWikiTableFilterRef] = createSignal<HTMLInputElement>();
   const location = useLocation();
   const active = (path: string) => (location.pathname.includes(path) ? "bg-area-color lg:bg-brand-color-1st" : "");
+  const [isPc] = createSignal(window.innerWidth > 1024);
 
   return (
     <Motion.div
-      animate={{ transform: "none", opacity: 1 }}
+      animate={{ transform: [isPc() ? "translateX(-30%)" : "translateY(100%)", "translateY(0)"], opacity: [0, 1] }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav ${isNavDialogOpen() ? "z-50" : "z-10"} flex w-dvw translate-y-full items-center justify-between bg-primary-color py-2 opacity-0 lg:h-dvh lg:w-24 lg:-translate-x-1/3 lg:translate-y-0 lg:flex-col lg:bg-area-color lg:py-5`}
+      class={`Nav ${isNavDialogOpen() ? "z-50" : "z-10"} bg-primary-color lg:bg-area-color flex w-dvw items-center justify-between py-2 lg:h-dvh lg:w-24 lg:flex-col lg:py-5`}
     >
       <div class="NavBtnGroup flex items-center overflow-y-hidden lg:flex-col lg:gap-0">
         <a
           href={"/"}
-          class="Home group hidden w-[20dvw] flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:flex lg:w-auto lg:p-0 lg:pb-6"
+          class="Home group hidden w-[20dvw] shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:flex lg:w-auto lg:p-0 lg:pb-6"
           tabIndex={1}
         >
-          <div class="iconArea rounded-full px-4 py-1 group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st lg:hidden">
+          <div class="iconArea group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st rounded-full px-4 py-1 lg:hidden">
             <Icon.Line.Home />
           </div>
           <Icon.Line.Logo class="hidden lg:block" />
@@ -76,9 +77,9 @@ const Nav = () => {
           {/* 移动端wiki切换按钮 */}
           <a
             href={`/wiki/${wikiClass()}`}
-            onclick={() => setIsWikiOpen(!isWikiOpen())}
+            onclick={() => {if(active(`/wiki/`)) setIsWikiOpen(!isWikiOpen())}}
             tabIndex={0}
-            class={`NavBtn btn-Wiki group flex w-[20dvw] flex-shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-none focus-within:outline-none lg:hidden lg:gap-1`}
+            class={`NavBtn btn-Wiki group flex w-[20dvw] shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:hidden lg:gap-1`}
           >
             <div
               class={`iconArea rounded-full p-3 lg:px-4 lg:py-1 ${active(`/wiki/${wikiClass()}`)} group-hover:bg-area-color group-focus:bg-area-color lg:group-hover:bg-brand-color-1st lg:group-focus:bg-brand-color-1st`}
@@ -87,18 +88,18 @@ const Nav = () => {
                 when={isWikiOpen()}
                 fallback={
                   <Motion.div
-                    animate={{ transform: "none", opacity: 1 }}
+                    animate={{ transform: ["rotate(90deg)", "none"] }}
                     transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                    class="h-6 w-6 rotate-90"
+                    class="h-6 w-6"
                   >
                     <Icon.Line.Calendar />
                   </Motion.div>
                 }
               >
                 <Motion.div
-                  animate={{ transform: "none", opacity: 1 }}
+                  animate={{ transform:  ["rotate(90deg)", "none"] }}
                   transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  class="h-6 w-6 -rotate-90"
+                  class="h-6 w-6"
                 >
                   <Icon.Line.Category2 />
                 </Motion.div>
@@ -108,15 +109,15 @@ const Nav = () => {
           </a>
           <Show when={isWikiOpen()}>
             <div class={`${isWikiOpen() ? "" : ""} WikiPageMeun flex h-full w-full items-center gap-1 pr-3`}>
-              <Button class="bg-primary-color" onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}>
+              <Button class="bg-primary-color!" onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}>
                 <Icon.Line.Receipt />
               </Button>
               <input
                 onInput={() => setStore("wiki", "filterStr", wikiTableFilterRef()?.value ?? "")}
                 ref={setWikiTableFilterRef}
-                class="w-full rounded bg-area-color p-3"
+                class="bg-area-color w-full rounded p-3"
               />
-              <Button class="bg-primary-color">
+              <Button class="bg-primary-color!">
                 <Icon.Line.Settings />
               </Button>
             </div>
@@ -135,7 +136,7 @@ const Nav = () => {
             element="div"
             options={{ scrollbars: { autoHide: "scroll" } }}
             defer
-            class="SubGroup !hidden flex-shrink flex-col overflow-y-auto lg:!flex"
+            class="SubGroup hidden! shrink flex-col overflow-y-auto lg:flex!"
           >
             <NavBtn
               config={{
@@ -192,8 +193,8 @@ const Nav = () => {
         <div
           class={`ModuleSwitcher ${isWikiOpen() ? "hidden" : ""} flex w-[20dvw] items-center justify-center lg:hidden`}
         >
-          <div class="Btn h-12 w-12 rounded-full bg-accent-color p-1">
-            <div class="Ring flex h-full w-full items-center justify-center rounded-full border border-primary-color text-primary-color">
+          <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
+            <div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
               53
             </div>
           </div>
@@ -237,26 +238,26 @@ const Nav = () => {
       <Presence exitBeforeEnter>
         <Show when={isNavDialogOpen()}>
           <Motion.div
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            animate={{ opacity: [0, 1] }}
+            exit={{ opacity: [1, 0] }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-            class={`NavDialogBox fixed left-0 top-0 z-50 flex h-full w-full flex-col items-center bg-area-color opacity-0`}
+            class={`NavDialogBox bg-area-color fixed bottom-0 left-0 z-50 flex h-dvh w-dvw flex-col items-center`}
           >
             <div
               class={`DialogCloseBtn block flex-1 cursor-pointer self-stretch`}
               onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}
             ></div>
             <Motion.div
-              animate={{ transform: "translateY(0)" }}
-              exit={{ transform: "translateY(24px)" }}
+              animate={{ transform: ["scale(1.05)", "scale(1)"] }}
+              exit={{ transform: ["scale(1)", "scale(1.05)"] }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`DialogContent flex min-h-12 w-[calc(100%-48px)] translate-y-6 flex-wrap items-center overflow-y-auto rounded bg-primary-color shadow-2xl shadow-dividing-color`}
+              class={`DialogContent bg-primary-color shadow-dividing-color flex min-h-12 w-[calc(100%-48px)] flex-wrap items-center overflow-y-auto rounded shadow-2xl`}
             >
               <For each={WIKI_TYPE}>
                 {(schemaName) => {
                   return (
                     <a
-                      class={`${schemaName} w-1/3 p-3 overflow-hidden text-ellipsis`}
+                      class={`${schemaName} w-1/3 overflow-hidden p-3 text-ellipsis`}
                       onClick={() => setWikiClass(schemaName)}
                       href={`/wiki/${wikiClass()}`}
                     >

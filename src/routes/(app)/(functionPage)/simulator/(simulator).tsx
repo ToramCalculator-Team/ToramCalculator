@@ -83,19 +83,19 @@ export default function SimulatorIndexClient() {
   //         </div>
   //         <div class="OtherData flex flex-1 gap-2">
   //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-  //             <span class="Key p-1 text-sm text-mainText-color">总耗时</span>
+  //             <span class="Key p-1 text-sm text-main-text-color">总耗时</span>
   //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
   //               {math.floor(math.abs(totalDuration))} 秒
   //             </span>
   //           </div>
   //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-  //             <span class="Key p-1 text-sm text-mainText-color">总伤害</span>
+  //             <span class="Key p-1 text-sm text-main-text-color">总伤害</span>
   //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
   //               {math.floor(math.abs(totalDamge) / 10000)} 万
   //             </span>
   //           </div>
   //           <div class="Duration flex flex-1 flex-col gap-1 rounded bg-area-color lg:p-4">
-  //             <span class="Key p-1 text-sm text-mainText-color">怪物剩余HP</span>
+  //             <span class="Key p-1 text-sm text-main-text-color">怪物剩余HP</span>
   //             <span class="Value p-1 text-xl lg:text-2xl lg:text-accent-color">
   //               {math.floor(math.abs(RemainingHp) / 10000)}万
   //             </span>
@@ -222,7 +222,7 @@ export default function SimulatorIndexClient() {
             <input
               type="search"
               placeholder={dictionary().ui.searchPlaceholder}
-              class="lg:border-b-1.5 w-full flex-1 rounded-sm border-dividing-color bg-area-color px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-mainText-color hover:bg-area-color focus:border-mainText-color focus:outline-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:px-5 lg:font-normal"
+              class="lg:border-b-1.5 w-full flex-1 rounded-sm border-dividing-color bg-area-color px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-main-text-color hover:bg-area-color focus:border-main-text-color focus:outline-hidden lg:flex-1 lg:rounded-none lg:bg-transparent lg:px-5 lg:font-normal"
             />
           </div>
         </div>

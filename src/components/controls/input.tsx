@@ -39,7 +39,7 @@ const Input = (props: InputProps) => {
   return (
     <fieldset class="flex flex-1 flex-col items-start p-2 gap-3">
       <span class="leading-none">{config().label}</span>
-      {config().description && <span class="text-sm text-mainText-color">{config().description}</span>}
+      {config().description && <span class="text-sm text-main-text-color">{config().description}</span>}
       {config().children}
     </fieldset>
   );

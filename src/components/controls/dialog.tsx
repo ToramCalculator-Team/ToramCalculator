@@ -7,21 +7,20 @@ export default function Dialog(props: { children: JSX.Element; state: boolean; s
     props.setState(false);
   };
 
-
   const [isPc, setIsPc] = createSignal(window.innerWidth > 1024);
 
   onMount(() => {
     console.log("--DialogBox render");
     window.addEventListener("resize", () => {
       setIsPc(window.innerWidth > 1024);
-    })
+    });
   });
 
   onCleanup(() => {
     console.log("--DialogBox cleanup");
     window.removeEventListener("resize", () => {
       setIsPc(window.innerWidth > 1024);
-    })
+    });
   });
 
   return (
@@ -31,14 +30,14 @@ export default function Dialog(props: { children: JSX.Element; state: boolean; s
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`DialogBox fixed justify-center left-0 top-0 z-50 flex flex-col lg:flex-row h-dvh w-dvw bg-primary-color-90 opacity-0`}
+          class={`DialogBox bg-primary-color-90 fixed top-0 left-0 z-50 flex h-dvh w-dvw flex-col justify-center opacity-0 lg:flex-row`}
         >
           <div class={`DialogCloseBtn block flex-1 cursor-pointer`} onClick={handleClose}></div>
           <Motion.div
-            animate={isPc() ? { transform: "translateX(0)" } : { transform: "scale(1)" }}
-            exit={isPc() ? { transform: "translateX(2.5rem)" } : { transform: "scale(0.95)" }}
+            animate={{ transform: [isPc() ? "translateX(10%)" : "translateY(10%)", "translateY(0)"] }}
+            exit={{ transform: ["translateY(0)", isPc() ? "translateX(10%)" : "translateY(10%)"] }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-            class={`DialogContent flex basis-[90%] lg:h-dvh lg:basis-4/5 flex-col items-center overflow-y-auto bg-primary-color shadow-2xl shadow-dividing-color ${isPc() ? "translate-x-10" : "scale-95"}`}
+            class={`DialogContent bg-primary-color shadow-dividing-color flex basis-[90%] flex-col items-center overflow-y-auto shadow-2xl lg:h-dvh lg:basis-4/5`}
           >
             {props.children}
           </Motion.div>

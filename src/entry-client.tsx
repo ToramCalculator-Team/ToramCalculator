@@ -6,11 +6,12 @@ import { mount, StartClient } from "@solidjs/start/client";
 import * as _ from "lodash-es";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
 import { createMob, defaultMob, findMobById } from "./repositories/mob";
-import { createSimulator, defaultSimulator, findSimulatorById } from "./repositories/simulator";
+import { createCharacter, defaultCharacter, findCharacterById } from "./repositories/character";
 import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/skill";
 import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/skillEffect";
 import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/crystal";
 import { store } from "./store";
+import { findSimulatorById, defaultSimulator, createSimulator } from "./repositories/simulator";
 
 console.log("entry-client");
 
@@ -84,6 +85,18 @@ try {
   });
   console.log("已创建新SkillEffect:", newSkillEffect);
 }
+
+// try {
+//   console.log("查询Character");
+//   const character = await findCharacterById(defaultCharacter.id);
+//   console.log("找到Character：", character);
+// } catch (e) {
+//   console.log(e);
+//   console.log("创建Character");
+//   const { statistic, team, ...character } = defaultCharacter;
+//   const newCharacter = await createCharacter(character);
+//   console.log("已创建newCharacter：", newCharacter);
+// }
 
 try {
   console.log("查询Simulator");

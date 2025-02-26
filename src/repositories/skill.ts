@@ -40,7 +40,6 @@ export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expres
 }
 
 export async function findSkillById(id: string) {
-  console.log("findSkillById", id);
   return await db
     .selectFrom("skill")
     .where("id", "=", id)
