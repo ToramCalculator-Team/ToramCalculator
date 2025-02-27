@@ -64,6 +64,19 @@ export default function Index() {
   const [mobList, { refetch: refetchMobList }] = createResource(findMobs);
   const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
 
+  createEffect(() => {
+    if (store.database.tableSyncState.mob && !store.database.firstSync) {
+      console.log("尝试重新获取MobList");
+      refetchMobList();
+    }
+  });
+  createEffect(() => {
+    if (store.database.tableSyncState.crystal && !store.database.firstSync) {
+      console.log("尝试重新获取CrystalList");
+      refetchCrystalList();
+    }
+  });
+
   const skillList = (): Skill[] => {
     return [];
   };
@@ -170,7 +183,7 @@ export default function Index() {
     return result;
   };
 
-  const search = () => {
+  const search = async () => {
     setIsNullResult(true);
     if (searchInputValue() === "" || searchInputValue() === null) {
       // console.log("输入值为空，不处理");
@@ -402,7 +415,7 @@ export default function Index() {
   // };
 
   onMount(() => {
-    console.log("Index loaded");
+    // console.log("Index loaded");
     // 浏览器后退事件监听
     const handlePopState = () => {
       setSearchResultOpened(false);
@@ -473,19 +486,19 @@ export default function Index() {
                   paddingBottom: [0, isPc() ? "3rem" : "0rem"],
                   gridTemplateRows: ["0fr", isPc() ? "1fr 0fr" : "1fr 1fr"],
                   filter: ["blur(20px)", "blur(0px)"],
-                  // flexBasis: [0, isPc() ? "auto" : "100%"],
                 }}
                 exit={{
                   opacity: [1, 0],
                   paddingBottom: 0,
-                  gridTemplateRows: ["1fr 1fr", "0fr"],
+                  gridTemplateRows: "0fr",
                   filter: ["blur(0px)", "blur(20px)"],
-                  // flexBasis: [isPc() ? "auto" : "100%", 0],
                 }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
                 class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden lg:flex-none`}
               >
-                <div class={`LogoBox self-end mb-2 overflow-hidden rounded backdrop-blur-sm lg:mb-0 dark:backdrop-blur-none`}>
+                <div
+                  class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm lg:mb-0 dark:backdrop-blur-none`}
+                >
                   <Icon.LogoText class="h-12 w-fit lg:h-auto" />
                 </div>
                 <h1 class={`text-main-text-color self-start py-4 lg:hidden`}>
@@ -495,20 +508,16 @@ export default function Index() {
             </Show>
           </Presence>
           <div
-            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 lg:hidden lg:flex-row ${
+            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 duration-700! lg:hidden lg:flex-row ${
               searchResultOpened() ? `flex-shrink-1 flex-grow-1 basis-[100%]` : `shrink-0 grow-0 basis-[0%] opacity-0`
             }`}
             style={
               searchResultOpened()
                 ? {
                     "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                    "transition-duration": "0.3s",
-                    "transition-timing-function": "ease-out",
                   }
                 : {
                     "clip-path": "inset(90% 5% 10% 5% round 12px)",
-                    "transition-duration": "0.7s",
-                    "transition-timing-function": "ease-out",
                   }
             }
           >
@@ -542,7 +551,7 @@ export default function Index() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${searchResultOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${searchResultOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
             >
               <input
                 id="searchInput-PC"
@@ -570,11 +579,12 @@ export default function Index() {
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
-                icon={<Icon.Line.Search />}
                 class="group-hover:text-accent-color lg:bg-transparent"
                 onClick={search}
                 tabindex={1}
-              ></Button>
+              >
+                <Icon.Line.Search />
+              </Button>
             </div>
             <div class="hidden w-60 flex-none lg:flex"></div>
           </Motion.div>
@@ -620,7 +630,7 @@ export default function Index() {
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 ease-linear lg:w-fit lg:bg-transparent lg:py-20 dark:lg:bg-transparent`}
+              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 lg:w-fit lg:bg-transparent dark:lg:bg-transparent`}
             >
               <div
                 class={`Content lg:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:backdrop-blur-sm ${searchResultOpened() ? `lg:p-0` : `lg:p-3`}`}

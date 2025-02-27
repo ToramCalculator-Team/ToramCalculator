@@ -196,7 +196,7 @@ export enum CharacterAttrEnum {
   BODYARMOR_BASE_VALUE, // 防具基础值
 }
 export type CharacterAttrType = keyof typeof CharacterAttrEnum;
-export enum MonsterAttrEnum {
+export enum mobAttrEnum {
   default,
   physicalAtk, // 物理攻击
   magicalAtk, // 魔法攻击
@@ -227,10 +227,10 @@ export enum MonsterAttrEnum {
   cspd, // 咏唱速度
   mspd, // 行动速度
 }
-export type MonsterAttrType = keyof typeof MonsterAttrEnum;
+export type mobAttrType = keyof typeof mobAttrEnum;
 export enum SkillAttrEnum {}
 export type SkillModifierType = keyof typeof SkillAttrEnum;
-export type AttrType = CharacterAttrType | MonsterAttrType | SkillModifierType;
+export type AttrType = CharacterAttrType | mobAttrType | SkillModifierType;
 export type SourceName = AttrType | "SYSTEM";
 
 type MainHandWeaponType = MainWeaponType | "None";
@@ -607,13 +607,13 @@ interface ModifiersData {
 }
 
 interface AttrData {
-  name: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum;
+  name: CharacterAttrEnum | mobAttrEnum | SkillAttrEnum;
   baseValue:
     | number
     | {
         value: number;
         sourceName: SourceName;
-        source: CharacterAttrEnum | MonsterAttrEnum | SkillAttrEnum | "SYSTEM";
+        source: CharacterAttrEnum | mobAttrEnum | SkillAttrEnum | "SYSTEM";
       }[];
   modifiers: ModifiersData;
 }

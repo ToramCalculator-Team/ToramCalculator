@@ -36,7 +36,7 @@ export default createHandler(() => (
               const storeStr = localStorage.getItem("store"); const storeCache = storeStr ? JSON.parse(storeStr) :
               undefined; const root = document.documentElement; let theme = "light"; if (storeCache) theme =
               storeCache.theme; root.classList.add(theme); let isAnimationEnabled = true; if (storeCache)
-              isAnimationEnabled = storeCache.settings.userInterface.isAnimationEnabled; isAnimationEnabled ??
+              isAnimationEnabled = storeCache.settings.userInterface.isAnimationEnabled; !isAnimationEnabled &&
               root.classList.add("transitionNone"); let language = "zh-CN"; if (storeCache) language =
               storeCache.settings.language; root.lang = language;
             </script>

@@ -5,9 +5,31 @@ import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
 import ddl from "~/../db/clientDB/ddl.sql?raw";
+import { type Store } from "~/store";
+import { DB } from "../../db/clientDB/generated/kysely/kyesely";
 
 const ELECTRIC_HOST = "http://localhost:3000";
 // const ELECTRIC_HOST = "https://test.kiaclouth.com";
+
+export interface syncMessage {
+  type: "sync";
+  data: {
+    tableName: keyof DB;
+    state: "start" | "success" | "fail";
+  };
+  timestamp: string;
+}
+
+const notifySyncProgress = (tableName: keyof DB) => {
+  self.postMessage({
+    type: "sync",
+    data: {
+      tableName: tableName,
+      state: "success",
+    },
+    timestamp: Date.now().toLocaleString(),
+  });
+};
 
 const migrates = [
   {
@@ -51,54 +73,69 @@ worker({
       }
     }
 
-    // const userShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
-    //   },
-    //   table: "user",
-    //   shapeKey: "users",
-    //   primaryKey: ["id"],
-    // });
-    // const userCreateDataShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="user_create_data"`,
-    //   },
-    //   table: "user_create_data",
-    //   shapeKey: "user_create_datas",
-    //   primaryKey: ["userId"],
-    // });
-    // const userUpdateDataShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="user_update_data"`,
-    //   },
-    //   table: "user_update_data",
-    //   shapeKey: "user_update_datas",
-    //   primaryKey: ["userId"],
-    // });
-    // const statisticsShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="statistics"`,
-    //   },
-    //   table: "statistics",
-    //   shapeKey: "statisticss",
-    //   primaryKey: ["id"],
-    // });
-    // const imageShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
-    //   },
-    //   table: "image",
-    //   shapeKey: "images",
-    //   primaryKey: ["id"],
-    // });
-    // const monsterShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="monster"`,
-    //   },
-    //   table: "monster",
-    //   shapeKey: "monsters",
-    //   primaryKey: ["id"],
-    // });
+    const userShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
+      },
+      table: "user",
+      shapeKey: "users",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("user"),
+    });
+    const accountShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="account"`,
+      },
+      table: "account",
+      shapeKey: "accounts",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("account"),
+    });
+    const userCreateDataShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="account_create_data"`,
+      },
+      table: "account_create_data",
+      shapeKey: "account_create_datas",
+      primaryKey: ["userId"],
+      onInitialSync: () => notifySyncProgress("account_create_data"),
+    });
+    const userUpdateDataShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="account_update_data"`,
+      },
+      table: "account_update_data",
+      shapeKey: "account_update_datas",
+      primaryKey: ["userId"],
+      onInitialSync: () => notifySyncProgress("account_update_data"),
+    });
+    const statisticShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="statistic"`,
+      },
+      table: "statistic",
+      shapeKey: "statistics",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("statistic"),
+    });
+    const imageShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
+      },
+      table: "image",
+      shapeKey: "images",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("image"),
+    });
+    const mobShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
+      },
+      table: "mob",
+      shapeKey: "mobs",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("mob"),
+    });
     // const modifierListShape = await pg.sync.syncShapeToTable({
     //   shape: {
     //     url: `${ELECTRIC_HOST}/v1/shape?table="modifier_list"`,

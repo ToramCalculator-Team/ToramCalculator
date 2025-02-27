@@ -82,7 +82,7 @@ export default function App() {
   // 实时更新本地存储
   createEffect(() => {
     localStorage.setItem("store", JSON.stringify(store));
-    console.log("本地存储更新");
+    // console.log("本地存储更新");
   });
 
   return (

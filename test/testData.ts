@@ -827,8 +827,8 @@ export const test: {
     updatedByAccountId: "",
     createdAt: new Date(),
     createdByAccountId: "",
-    statistics: defaultStatistic,
-    statisticsId: "",
+    statistic: defaultStatistic,
+    statisticId: "",
   },
 };
 

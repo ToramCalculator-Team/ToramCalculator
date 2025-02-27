@@ -138,7 +138,7 @@ const Setting = () => {
           animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
           exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SettingBox fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center`}
+          class={`SettingBox bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
         >
           <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => setStore("settingsDialogState", false)}>
             <Icon.Line.Close />
@@ -390,6 +390,13 @@ export default function AppMainContet(props: ParentProps) {
       }, 1000);
     }
     setStore("resourcesLoaded", true);
+    if (Object.values(store.database.tableSyncState).every((value) => value === true)) {
+      !store.database.firstSync &&
+        setTimeout(() => {
+          console.log("初次同步完毕");
+          setStore("database", "firstSync", true);
+        }, 1);
+    }
   });
 
   return (

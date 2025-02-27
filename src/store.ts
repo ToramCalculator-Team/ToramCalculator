@@ -7,6 +7,7 @@ import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
 import * as _ from "lodash-es";
 import { type CustomPet } from "./repositories/customPet";
+import { type DB } from "../db/clientDB/generated/kysely/kyesely";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
 
@@ -15,6 +16,11 @@ export type Store = {
   theme: "light" | "dark";
   settingsDialogState: boolean;
   resourcesLoaded: boolean;
+  database: {
+    inited: boolean;
+    firstSync: boolean;
+    tableSyncState: Partial<Record<keyof DB, boolean>>;
+  };
   settings: {
     userInterface: {
       isAnimationEnabled: boolean;
@@ -87,6 +93,19 @@ export const initialStore: Store = {
   version: 20250103,
   theme: "light",
   resourcesLoaded: false,
+  database:{
+    inited: false,
+    firstSync: false,
+    tableSyncState: {
+      account: false,
+      account_create_data: false,
+      account_update_data: false,
+      image: false,
+      mob: false,
+      statistic: false,
+      user: false,
+    },
+  },
   settings: {
     userInterface: {
       isAnimationEnabled: true,
