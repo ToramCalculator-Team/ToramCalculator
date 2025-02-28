@@ -8,8 +8,8 @@ import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { type Store } from "~/store";
 import { DB } from "../../db/clientDB/generated/kysely/kyesely";
 
-const ELECTRIC_HOST = "http://localhost:3000";
-// const ELECTRIC_HOST = "https://test.kiaclouth.com";
+// const ELECTRIC_HOST = "http://localhost:3000";
+const ELECTRIC_HOST = "https://test.kiaclouth.com";
 
 export interface syncMessage {
   type: "sync";
