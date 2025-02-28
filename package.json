@@ -2,7 +2,7 @@
   "name": "toram-calculator",
   "type": "module",
   "scripts": {
-    "dev:db-up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
+    "dev:backend-start": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "dev:db-ddl": "prisma migrate dev --name init --create-only --schema=db/clientDB/schema.prisma",
     "dev:db-type": "prisma generate --schema=db/clientDB/schema.prisma",
     "dev:db-push": "prisma db push --schema=db/clientDB/schema.prisma",

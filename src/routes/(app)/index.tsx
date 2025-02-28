@@ -448,33 +448,6 @@ export default function Index() {
           <span>CrystalList: {crystalList()?.length}</span>
           <span>searchResultOpened: {searchResultOpened().toString()}</span>
         </div>
-        <Motion.div
-          animate={{ opacity: [0, 1] }}
-          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          class={`Config absolute top-3 right-3 flex gap-1`}
-        >
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => setNodeEditorDialog(!nodeEditorDialog())}
-          >
-            <Icon.Line.Basketball />
-          </Button>
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
-          >
-            <Icon.Line.Light />
-          </Button>
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
-          >
-            <Icon.Line.Settings />
-          </Button>
-        </Motion.div>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
@@ -611,6 +584,33 @@ export default function Index() {
             </Show>
           </Presence>
         </div>
+        <Motion.div
+          animate={{ opacity: [0, 1] }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+          class={`Config absolute top-3 right-3 flex gap-1`}
+        >
+          <Button
+            class="outline-hidden focus-within:outline-hidden"
+            level="quaternary"
+            onClick={() => setNodeEditorDialog(!nodeEditorDialog())}
+          >
+            <Icon.Line.Basketball />
+          </Button>
+          <Button
+            class="outline-hidden focus-within:outline-hidden"
+            level="quaternary"
+            onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
+          >
+            <Icon.Line.Light />
+          </Button>
+          <Button
+            class="outline-hidden focus-within:outline-hidden"
+            level="quaternary"
+            onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
+          >
+            <Icon.Line.Settings />
+          </Button>
+        </Motion.div>
 
         <Presence exitBeforeEnter>
           <Show when={!searchResultOpened()}>

@@ -21,6 +21,7 @@ export interface syncMessage {
 }
 
 const notifySyncProgress = (tableName: keyof DB) => {
+  console.log(tableName + "已同步完毕");
   self.postMessage({
     type: "sync",
     data: {
