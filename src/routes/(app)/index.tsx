@@ -310,7 +310,7 @@ export default function Index() {
                             }
                           }}
                         >
-                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 font-bold">
+                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
                             {item?.name}
                           </div>
                           <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
@@ -440,14 +440,16 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <div
-          class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 hidden flex-col text-xs ${searchResultOpened() ? "" : "lg:flex"}`}
-        >
-          <span>MobList: {mobList()?.length}</span>
-          <span>SkillList: {skillList()?.length}</span>
-          <span>CrystalList: {crystalList()?.length}</span>
-          <span>searchResultOpened: {searchResultOpened().toString()}</span>
-        </div>
+        <Show when={isPc()}>
+          <div
+            class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
+          >
+            <span>MobList: {mobList()?.length}</span>
+            <span>SkillList: {skillList()?.length}</span>
+            <span>CrystalList: {crystalList()?.length}</span>
+            <span>searchResultOpened: {searchResultOpened().toString()}</span>
+          </div>
+        </Show>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >
@@ -587,7 +589,7 @@ export default function Index() {
         <Motion.div
           animate={{ opacity: [0, 1] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          class={`Config absolute top-3 right-3 flex gap-1`}
+          class={`Config absolute top-3 right-3 flex gap-1 ${searchResultOpened() ? `-z-10 lg:z-10` : ``}`}
         >
           <Button
             class="outline-hidden focus-within:outline-hidden"
