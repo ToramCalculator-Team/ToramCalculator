@@ -75,7 +75,7 @@ export default function MobIndexPage() {
       size: 220,
     },
     {
-      accessorKey: "mobType",
+      accessorKey: "type",
       header: () => MobDic(store.settings.language).type,
       cell: (info) => dictionary().enums.MobType[info.getValue<Enums["MobType"]>()],
       size: 120,
@@ -83,7 +83,7 @@ export default function MobIndexPage() {
     {
       accessorKey: "captureable",
       header: () => MobDic(store.settings.language).captureable,
-      cell: (info) => info.getValue(),
+      cell: (info) => info.getValue<Boolean>().toString(),
       size: 120,
     },
     {
@@ -104,9 +104,9 @@ export default function MobIndexPage() {
       size: 120,
     },
     {
-      accessorKey: "element",
+      accessorKey: "elementType",
       header: () => MobDic(store.settings.language).elementType,
-      cell: (info) => dictionary().enums.ElementType[info.getValue<Enums["ElementType"]>()],
+      cell: (info) => info.getValue<Enums["ElementType"]>(),
       size: 120,
     },
     {
@@ -152,7 +152,7 @@ export default function MobIndexPage() {
     {
       accessorKey: "actions",
       header: () => MobDic(store.settings.language).actions,
-      cell: (info) => info.getValue(),
+      cell: (info) => JSON.stringify(info.getValue<Object>()),
       size: 150,
     },
     // {
@@ -184,7 +184,7 @@ export default function MobIndexPage() {
       },
     });
   });
-  const mobTableHiddenData: Array<keyof Mob> = ["id", "type", "updatedByAccountId"];
+  const mobTableHiddenData: Array<keyof Mob> = ["id", "updatedByAccountId"];
   // 表头固定
   const getCommonPinningStyles = (column: Column<Mob>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -338,7 +338,7 @@ export default function MobIndexPage() {
                 id="MobSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-2 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
@@ -379,44 +379,44 @@ export default function MobIndexPage() {
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
-                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-dividing-color" : ""}`}
+                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
                   "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color lg:flex">
+                <div class="mask bg-brand-color-1st text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
                   <span class="text-3xl font-bold">Top.1</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
                   <span class="text-xl">{mobList()?.[0]?.name}</span>
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-dividing-color" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
                   "background-image": `url(${mobList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color lg:flex">
+                <div class="mask bg-brand-color-2nd text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
                   <span class="text-3xl font-bold">Top.2</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
                   <span class="text-xl">{mobList()?.[1]?.name}</span>
                 </div>
               </div>
               <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-dividing-color" : ""}`}
+                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
                   "background-image": `url(${mobList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color lg:flex">
+                <div class="mask bg-brand-color-3rd text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
                   <span class="text-3xl font-bold">Top.3</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
+                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
                   <span class="text-xl">{mobList()?.[2]?.name}</span>
                 </div>
               </div>
@@ -431,7 +431,7 @@ export default function MobIndexPage() {
               {dictionary().ui.mob.table.title}
             </div>
             <div
-              class={`Description flex-1 rounded bg-area-color p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.mob.table.description}
             </div>
@@ -450,12 +450,12 @@ export default function MobIndexPage() {
               options={{ scrollbars: { autoHide: "scroll" } }}
               ref={setVirtualScrollElement}
             >
-              {/* <div ref={virtualScrollElement!} class="TableBox VirtualScroll overflow-auto flex-1"> */}
+              {/* <div ref={setVirtualScrollElement} class="TableBox VirtualScroll overflow-auto flex-1"> */}
               <table class="Table relative w-full">
                 <thead class={`TableHead sticky top-0 z-10 flex`}>
                   <For each={table()!.getHeaderGroups()}>
                     {(headerGroup) => (
-                      <tr class="flex min-w-full gap-0 border-b-2 border-dividing-color">
+                      <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
                         <For each={headerGroup.headers}>
                           {(header) => {
                             const { column } = header;
@@ -475,7 +475,7 @@ export default function MobIndexPage() {
                                   {...{
                                     onClick: header.column.getToggleSortingHandler(),
                                   }}
-                                  class={`flex-1 py-4 text-left font-normal hover:bg-area-color ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                  class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
                                     header.column.getCanSort() ? "cursor-pointer select-none" : ""
                                   }`}
                                 >
@@ -505,7 +505,7 @@ export default function MobIndexPage() {
                             position: "absolute",
                             transform: `translateY(${virtualRow.start}px)`,
                           }}
-                          class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
+                          class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
                           onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                         >
                           <For each={row.getVisibleCells()}>
@@ -523,6 +523,17 @@ export default function MobIndexPage() {
                                   tdContent = (
                                     <>
                                       <span class="pb-1">{row.original.name}</span>
+                                      {/* <span class="text-sm font-normal text-main-text-color">
+                                        {row.getValue("belongToZones") ?? "无"}
+                                      </span> */}
+                                    </>
+                                  );
+                                  break;
+
+                                case "type":
+                                  tdContent = (
+                                    <>
+                                      <span class="pb-1">{row.original.type}</span>
                                       {/* <span class="text-sm font-normal text-main-text-color">
                                         {row.getValue("belongToZones") ?? "无"}
                                       </span> */}
@@ -563,8 +574,9 @@ export default function MobIndexPage() {
                                   try {
                                     const content = // 将首字母转换成大写
                                       dictionary().enums[
-                                      (cell.column.id.charAt(0).toLocaleUpperCase() + cell.column.id.slice(1)) as DicEnumsKeys]
-                                      [cell.getValue() as keyof DicEnumsKeysValue];
+                                        (cell.column.id.charAt(0).toLocaleUpperCase() +
+                                          cell.column.id.slice(1)) as DicEnumsKeys
+                                      ][cell.getValue() as keyof DicEnumsKeysValue];
                                     tdContent = content;
                                   } catch (error) {
                                     tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
@@ -603,7 +615,7 @@ export default function MobIndexPage() {
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.mob.news.title}</div>
-              <div class="Content flex flex-1 flex-col bg-area-color"></div>
+              <div class="Content bg-area-color flex flex-1 flex-col"></div>
             </Motion.div>
           </Show>
         </Presence>

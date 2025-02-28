@@ -2,7 +2,7 @@
   transition: transform 0s;
 }
 
-/* @media (max-width: 1024px) {
+@media (max-width: 1024px) {
   .blocklyToolboxDiv {
     height: auto !important;
     width: 100% !important;
@@ -16,21 +16,21 @@
     width: fit-content;
   }
 
-  .blocklyTreeRow {
+  /* .blocklyTreeRow {
     border-left: 0px !important;
     border-top: 2px !important;
-  }
+  } */
 
-  .blocklyFlyout {
+  /* .blocklyFlyout {
     transform: translate(0, 61px) !important;
     height: calc(100% - 61px) !important;
-  }
+  } */
 
   .blocklyBlockCanvas {
     
   }
   
-} */
+}
 
 .blocklyToolboxCategory {
   display: flex;

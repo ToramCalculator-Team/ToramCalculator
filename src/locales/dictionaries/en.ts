@@ -656,9 +656,7 @@ const dictionary: dictionary = {
       Shield: "",
       AddEquip: "",
       SpeEquip: "",
-      Normal: "",
-      Light: "",
-      Heavy: ""
+      Armor: "",
     },
     ItemType: {
       selfName: "",
@@ -700,9 +698,7 @@ const dictionary: dictionary = {
       EleRes: "",
       pRes: "",
       mRes: "",
-      Normal: "",
-      Light: "",
-      Heavy: ""
+      Armor: "",
     },
     RewardType: {
       selfName: "",
@@ -747,9 +743,7 @@ const dictionary: dictionary = {
       EleRes: "",
       pRes: "",
       mRes: "",
-      Normal: "",
-      Light: "",
-      Heavy: ""
+      Armor: "",
     },
     AbnormalType: {
       selfName: "",
@@ -871,9 +865,7 @@ const dictionary: dictionary = {
       EleRes: "",
       pRes: "",
       mRes: "",
-      Normal: "",
-      Light: "",
-      Heavy: ""
+      Armor: "",
     },
     RegisletType: {
       selfName: "",
@@ -956,10 +948,8 @@ const dictionary: dictionary = {
     },
     WikiSchemaType: {
       selfName: "",
-      Normal: "",
-      Light: "",
+      Armor: "",
       Mob: "",
-      Heavy: "",
       Magic: "",
       Metal: "",
       Cloth: "",
@@ -1021,9 +1011,7 @@ const dictionary: dictionary = {
       NinjutsuScroll: "",
       Shield: "",
       WeaponEncAttrs: "",
-      Normal: "",
-      Light: "",
-      Heavy: "",
+      Armor: "",
       ArmorEncAttrs: "",
       AddEquip: "",
       SpeEquip: "",
