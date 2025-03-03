@@ -8,8 +8,8 @@ import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { type Store } from "~/store";
 import { DB } from "../../db/clientDB/generated/kysely/kyesely";
 
-// const ELECTRIC_HOST = "http://localhost:3000";
-const ELECTRIC_HOST = "https://test.kiaclouth.com";
+// const ELECTRIC_HOST = "http://localhost:3000/v1/shape";
+const ELECTRIC_HOST = "https://test.kiaclouth.com/v1/shape";
 
 export interface syncMessage {
   type: "sync";
@@ -74,45 +74,72 @@ worker({
       }
     }
 
-    const userShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="user"`,
-      },
-      table: "user",
-      shapeKey: "users",
-      primaryKey: ["id"],
-      onInitialSync: () => notifySyncProgress("user"),
-    });
+    // const userShape = await pg.sync.syncShapeToTable({
+    //   shape: {
+    //     url: `${ELECTRIC_HOST}`,
+    //     params: {
+    //       table: "user",
+    //     }
+    //   },
+    //   table: "user",
+    //   shapeKey: "users",
+    //   primaryKey: ["id"],
+    //   onInitialSync: () => notifySyncProgress("user"),
+    // });
     const accountShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="account"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "account",
+        }
       },
       table: "account",
       shapeKey: "accounts",
       primaryKey: ["id"],
       onInitialSync: () => notifySyncProgress("account"),
     });
-    const userCreateDataShape = await pg.sync.syncShapeToTable({
+    const accountCreateDataShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="account_create_data"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "account_create_data",
+        }
       },
       table: "account_create_data",
       shapeKey: "account_create_datas",
       primaryKey: ["userId"],
       onInitialSync: () => notifySyncProgress("account_create_data"),
     });
-    const userUpdateDataShape = await pg.sync.syncShapeToTable({
+    const accountUpdateDataShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="account_update_data"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "account_update_data",
+        }
       },
       table: "account_update_data",
       shapeKey: "account_update_datas",
       primaryKey: ["userId"],
       onInitialSync: () => notifySyncProgress("account_update_data"),
     });
+    const playerShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "player",
+        }
+      },
+      table: "player",
+      shapeKey: "players",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("player"),
+    })
     const statisticShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="statistic"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "statistic",
+        }
       },
       table: "statistic",
       shapeKey: "statistics",
@@ -121,7 +148,10 @@ worker({
     });
     const imageShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="image"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "image",
+        }
       },
       table: "image",
       shapeKey: "images",
@@ -130,149 +160,233 @@ worker({
     });
     const mobShape = await pg.sync.syncShapeToTable({
       shape: {
-        url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
+        url: ELECTRIC_HOST,
+        params: {
+          table: "mob",
+        }
       },
       table: "mob",
       shapeKey: "mobs",
       primaryKey: ["id"],
       onInitialSync: () => notifySyncProgress("mob"),
     });
-    // const modifierListShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="modifier_list"`,
-    //   },
-    //   table: "modifier_list",
-    //   shapeKey: "modifier_lists",
-    //   primaryKey: ["id"],
-    // })
-    // const modifierShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="modifier"`,
-    //   },
-    //   table: "modifier",
-    //   shapeKey: "modifiers",
-    //   primaryKey: ["id"],
-    // })
-    // const crystalShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="crystal"`,
-    //   },
-    //   table: "crystal",
-    //   shapeKey: "crystals",
-    //   primaryKey: ["id"],
-    // })
-    // const mainWeaponShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="main_weapon"`,
-    //   },
-    //   table: "main_weapon",
-    //   shapeKey: "main_weapons",
-    //   primaryKey: ["id"],
-    // })
-    // const subWeaponShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="sub_weapon"`,
-    //   },
-    //   table: "sub_weapon",
-    //   shapeKey: "sub_weapons",
-    //   primaryKey: ["id"],
-    // })
-    // const bodyArmorShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="body_armor"`,
-    //   },
-    //   table: "body_armor",
-    //   shapeKey: "body_armors",
-    //   primaryKey: ["id"],
-    // })
-    // const additionalEquipmentShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="additional_equipment"`,
-    //   },
-    //   table: "additional_equipment",
-    //   shapeKey: "additional_equipments",
-    //   primaryKey: ["id"],
-    // })
-    // const specialEquipmentShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="special_equipment"`,
-    //   },
-    //   table: "special_equipment",
-    //   shapeKey: "special_equipments",
-    //   primaryKey: ["id"],
-    // })
-    // const petShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="pet"`,
-    //   },
-    //   table: "pet",
-    //   shapeKey: "pets",
-    //   primaryKey: ["id"],
-    // })
-    // const skillShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="skill"`,
-    //   },
-    //   table: "skill",
-    //   shapeKey: "skills",
-    //   primaryKey: ["id"],
-    // })
-    // const consumableShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="consumable"`,
-    //   },
-    //   table: "consumable",
-    //   shapeKey: "consumables",
-    //   primaryKey: ["id"],
-    // })
-    // const characterShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="character"`,
-    //   },
-    //   table: "character",
-    //   shapeKey: "characters",
-    //   primaryKey: ["id"],
-    // })
-    // const _simulatorTomemberShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="_simulatorTomember"`,
-    //   },
-    //   table: "_simulatorTomember",
-    //   shapeKey: "_simulatorTomembers",
-    //   primaryKey: ["simulatorId", "memberId"],
-    // })
-    // const memberShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="member"`,
-    //   },
-    //   table: "member",
-    //   shapeKey: "members",
-    //   primaryKey: ["id"],
-    // })
-    // const _simulatorTomobShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="_simulatorTomob"`,
-    //   },
-    //   table: "_simulatorTomob",
-    //   shapeKey: "_simulatorTomobs",
-    //   primaryKey: ["simulatorId", "mobId"],
-    // })
-    // const mobShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="mob"`,
-    //   },
-    //   table: "mob",
-    //   shapeKey: "mobs",
-    //   primaryKey: ["id"],
-    // })
-    // const simulatorShape = await pg.sync.syncShapeToTable({
-    //   shape: {
-    //     url: `${ELECTRIC_HOST}/v1/shape?table="simulator"`,
-    //   },
-    //   table: "simulator",
-    //   shapeKey: "simulators",
-    //   primaryKey: ["id"],
-    // });
+    const itemShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "item",
+        }
+      },
+      table: "item",
+      shapeKey: "items",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("item"),
+    })
+    const weaponShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "weapon",
+        }
+      },
+      table: "weapon",
+      shapeKey: "weapons",
+      primaryKey: ["itemId"],
+      onInitialSync: () => notifySyncProgress("weapon"),
+    });
+    const armorShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "armor",
+        }
+      },
+      table: "armor",
+      shapeKey: "armors",
+      primaryKey: ["itemId"],
+      onInitialSync: () => notifySyncProgress("armor"),
+    });
+    const addEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "additional_equipment",
+        }
+      },
+      table: "additional_equipment",
+      shapeKey: "additional_equipments",
+      primaryKey: ["itemId"],
+      onInitialSync: () => notifySyncProgress("additional_equipment"),
+    });
+    const speEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "special_equipment",
+        }
+      },
+      table: "special_equipment",
+      shapeKey: "special_equipments",
+      primaryKey: ["itemId"],
+      onInitialSync: () => notifySyncProgress("special_equipment"),
+    })
+    const avatarShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "avatar",
+        }
+      },
+      table: "avatar",
+      shapeKey: "avatars",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("avatar"),
+    })
+    const crystalShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "crystal",
+        }
+      },
+      table: "crystal",
+      shapeKey: "crystals",
+      primaryKey: ["itemId"],
+      onInitialSync: () => notifySyncProgress("crystal"),
+    })
+    const crystalToCustomWeaponShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: `"_crystalTocustom_weapon"`,
+        }
+      },
+      table: "_crystalTocustom_weapon",
+      shapeKey: "_crystalTocustom_weapons",
+      primaryKey: ["A", "B"],
+      onInitialSync: () => notifySyncProgress("_crystalTocustom_weapon"),
+    })
+    const crystalToCustomArmorShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: `"_crystalTocustom_armor"`,
+        }
+      },
+      table: "_crystalTocustom_armor",
+      shapeKey: "_crystalTocustom_armors",
+      primaryKey: ["A", "B"],
+      onInitialSync: () => notifySyncProgress("_crystalTocustom_armor"),
+    })
+    const crystalToCustomAddEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: `"_crystalTocustom_additional_equipment"`,
+        }
+      },
+      table: "_crystalTocustom_additional_equipment",
+      shapeKey: "_crystalTocustom_additional_equipments",
+      primaryKey: ["A", "B"],
+      onInitialSync: () => notifySyncProgress("_crystalTocustom_additional_equipment"),
+    })
+    const crystalToCustomSpeEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: `"_crystalTocustom_special_equipment"`,
+        }
+      },
+      table: "_crystalTocustom_special_equipment",
+      shapeKey: "_crystalTocustom_special_equipments",
+      primaryKey: ["A", "B"],
+      onInitialSync: () => notifySyncProgress("_crystalTocustom_special_equipment"),
+    })
+    
+    const skillShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "skill",
+        }
+      },
+      table: "skill",
+      shapeKey: "skills",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("skill"),
+    });
+    const skillEffectShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "skill_effect",
+        }
+      },
+      table: "skill_effect",
+      shapeKey: "skill_effects",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("skill_effect"),
+    });
+    const customWeaponShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "custom_weapon",
+        }
+      },
+      table: "custom_weapon",
+      shapeKey: "custom_weapons",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("custom_weapon"),
+    });
+    const customArmorShape = await pg.sync.syncShapeToTable({
+      shape: { 
+        url: ELECTRIC_HOST,
+        params: {
+          table: "custom_armor",
+        }
+      },
+      table: "custom_armor",
+      shapeKey: "custom_armors",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("custom_armor"),
+    });
+    const customAddEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "custom_additional_equipment",
+        }
+      },
+      table: "custom_additional_equipment",
+      shapeKey: "custom_additional_equipments",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("custom_additional_equipment"),
+    });
+    const customSpeEquipShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "custom_special_equipment",
+        }
+      },
+      table: "custom_special_equipment",
+      shapeKey: "custom_special_equipments",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("custom_special_equipment"),
+    });
+    const characterShape = await pg.sync.syncShapeToTable({
+      shape: {
+        url: ELECTRIC_HOST,
+        params: {
+          table: "character",
+        }
+      },
+      table: "character",
+      shapeKey: "characters",
+      primaryKey: ["id"],
+      onInitialSync: () => notifySyncProgress("character"),
+    });
 
     // console.log("PGliteWorker初始化完成.....");
 

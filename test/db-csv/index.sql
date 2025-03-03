@@ -1,1 +1,0 @@
-\copy "user"(id, name, email, "emailVerified", image, "userRole") FROM 'test/db-csv/user.csv' WITH (FORMAT csv, HEADER false);

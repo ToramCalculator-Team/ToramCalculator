@@ -27,9 +27,9 @@ export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "custom_weapo
         .selectFrom("item")
         .innerJoin("crystal", "item.id", "crystal.itemId")
         .innerJoin("_crystalTocustom_weapon", "item.id", "_crystalTocustom_weapon.A")
-        .whereRef("_crystalTocustom_weapon.B", "=", "custom_weapon.templateId")
+        .whereRef("_crystalTocustom_weapon.B", "=", "custom_weapon.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll("crystal"),
+        .selectAll(["item","crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
       eb

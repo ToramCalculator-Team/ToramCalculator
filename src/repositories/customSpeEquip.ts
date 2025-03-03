@@ -19,12 +19,12 @@ export function customSpeEquipSubRelations(
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_crystalTocustom_special_equipment")
-        .innerJoin("crystal", "_crystalTocustom_special_equipment.A", "crystal.itemId")
-        // .innerJoin("item", "crystal.itemId", "item.id")
-        .where("_crystalTocustom_special_equipment.B", "=", id)
-        .selectAll("crystal"),
-      // .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id"))),
+        .selectFrom("item")
+        .innerJoin("crystal", "item.id", "crystal.itemId")
+        .innerJoin("_crystalTocustom_special_equipment", "item.id", "_crystalTocustom_special_equipment.A")
+        .whereRef("_crystalTocustom_special_equipment.B", "=", "custom_special_equipment.id")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
+        .selectAll(["item","crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
       eb

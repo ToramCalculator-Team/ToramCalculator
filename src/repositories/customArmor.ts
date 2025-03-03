@@ -20,12 +20,12 @@ export function customArmorSubRelations(eb: ExpressionBuilder<DB, "custom_armor"
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_crystalTocustom_armor")
-        .innerJoin("crystal", "_crystalTocustom_armor.A", "crystal.itemId")
-        // .innerJoin("item", "crystal.itemId", "item.id")
-        .where("_crystalTocustom_armor.B", "=", id)
-        .selectAll("crystal"),
-      // .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id"))),
+        .selectFrom("item")
+        .innerJoin("crystal", "item.id", "crystal.itemId")
+        .innerJoin("_crystalTocustom_armor", "item.id", "_crystalTocustom_armor.A")
+        .whereRef("_crystalTocustom_armor.B", "=", "custom_armor.id")
+        .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
+        .selectAll(["item","crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(eb.selectFrom("armor").whereRef("armor.itemId", "=", "custom_armor.templateId").selectAll("armor"))
       .$notNull()

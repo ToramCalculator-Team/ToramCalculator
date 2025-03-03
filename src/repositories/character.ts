@@ -38,7 +38,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
     jsonObjectFrom(
       eb
         .selectFrom("custom_weapon")
-        .where("id", "=", id)
+        .whereRef("id", "=", "character.weaponId")
         .selectAll("custom_weapon")
         .select((eb) => customWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
@@ -47,7 +47,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
     jsonObjectFrom(
       eb
         .selectFrom("custom_weapon")
-        .where("id", "=", id)
+        .whereRef("id", "=", "character.subWeaponId")
         .selectAll("custom_weapon")
         .select((eb) => customWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
@@ -55,8 +55,8 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
       .as("subWeapon"),
     jsonObjectFrom(
       eb
-          .selectFrom("custom_armor")
-          .where("id", "=", id)
+        .selectFrom("custom_armor")
+        .whereRef("id", "=", "character.armorId")
           .selectAll("custom_armor")
           .select((eb) => customArmorSubRelations(eb, eb.val("character.armorId"))),
     )
@@ -64,8 +64,8 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
       .as("armor"),
     jsonObjectFrom(
       eb
-          .selectFrom("custom_additional_equipment")
-          .where("id", "=", id)
+        .selectFrom("custom_additional_equipment")
+        .whereRef("id", "=", "character.addEquipId")
           .selectAll("custom_additional_equipment")
           .select((eb) => customAddEquipSubRelations(eb, eb.val("character.addEquipId"))),
     )
@@ -74,7 +74,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
     jsonObjectFrom(
       eb
         .selectFrom("custom_special_equipment")
-        .where("id", "=", id)
+        .whereRef("id", "=", "character.speEquipId")
         .selectAll("custom_special_equipment")
         .select((eb) => customSpeEquipSubRelations(eb, eb.val("character.speEquipId"))),
     )
