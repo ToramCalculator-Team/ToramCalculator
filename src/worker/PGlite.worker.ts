@@ -73,18 +73,74 @@ worker({
         console.log(`已应用迁移: ${migration.name}`);
       }
     }
-    const crystalToCustomWeaponShape = await pg.sync.syncShapeToTable({
-      shape: {
-        url: ELECTRIC_HOST,
-        params: {
-          table: '"_crystaltocustom_weapon"',
+
+    const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
+      await pg.sync.syncShapeToTable({
+        shape: {
+          url: ELECTRIC_HOST,
+          params: {
+            table: urlParams ?? tableName,
+          },
         },
-      },
-      table: "_crystalTocustom_weapon",
-      shapeKey: `_crystalTocustom_weapons`,
-      primaryKey: ["A","B"],
-      onInitialSync: () => notifySyncProgress("_crystalTocustom_weapon"),
-    });
+        table: tableName,
+        shapeKey: `${tableName}s`,
+        primaryKey: primaryKey,
+        onInitialSync: () => notifySyncProgress(tableName),
+      });
+    };
+
+    const userShape = await syncTable("user", ["id"]);
+    const accountShape = await syncTable("account", ["id"]);
+    const accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
+    const accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);
+    const playerShape = await syncTable("player", ["id"]);
+    const statisticShape = await syncTable("statistic", ["id"]);
+    const imageShape = await syncTable("image", ["id"]);
+    const mobShape = await syncTable("mob", ["id"]);
+    const itemShape = await syncTable("item", ["id"]);
+    const weaponShape = await syncTable("weapon", ["itemId"]);
+    const armorShape = await syncTable("armor", ["itemId"]);
+    const addEquipShape = await syncTable("additional_equipment", ["itemId"]);
+    const speEquipShape = await syncTable("special_equipment", ["itemId"]);
+    const avatarShape = await syncTable("avatar", ["id"]);
+    const crystalShape = await syncTable("crystal", ["itemId"]);
+    const crystalToCustomWeaponShape = await syncTable(
+      "_crystalTocustom_weapon",
+      ["A", "B"],
+      `"_crystalTocustom_weapon"`,
+    );
+    const crystalToCustomArmorShape = await syncTable("_crystalTocustom_armor", ["A", "B"], `"_crystalTocustom_armor"`);
+    const crystalToCustomAddEquipShape = await syncTable(
+      "_crystalTocustom_additional_equipment",
+      ["A", "B"],
+      `"_crystalTocustom_additional_equipment"`,
+    );
+    const crystalToCustomSpeEquipShape = await syncTable(
+      "_crystalTocustom_special_equipment",
+      ["A", "B"],
+      `"_crystalTocustom_special_equipment"`,
+    );
+    const skillShape = await syncTable("skill", ["id"]);
+    const skillEffectShape = await syncTable("skill_effect", ["id"]);
+    const customWeaponShape = await syncTable("custom_weapon", ["id"]);
+    const customArmorShape = await syncTable("custom_armor", ["id"]);
+    const customAddEquipShape = await syncTable("custom_additional_equipment", ["id"]);
+    const customSpeEquipShape = await syncTable("custom_special_equipment", ["id"]);
+    const customPetShape = await syncTable("custom_pet", ["id"]);
+    const characterSkillShape = await syncTable("character_skill", ["id"]);
+    const characterToCharacterSkillShape = await syncTable(
+      "_characterTocharacter_skill",
+      ["A", "B"],
+      `"_characterTocharacter_skill"`,
+    );
+    const consumableShape = await syncTable("consumable", ["itemId"]);
+    const comboShape = await syncTable("combo", ["id"]);
+    const characterShape = await syncTable("character", ["id"]);
+    const mercenaryShape = await syncTable("mercenary", ["templateId"]);
+    const memberShape = await syncTable("member", ["id"]);
+    const teamShape = await syncTable("team", ["id"]);
+    const simulatorShape = await syncTable("simulator", ["id"]);
+    // console.log("PGliteWorker初始化完成.....");
 
     return pg;
   },
