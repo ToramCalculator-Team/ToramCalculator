@@ -182,7 +182,7 @@ model item {
 
     usedByDropItem    drop_item[]
     usedByRewardItem  reward[]
-    usedByTaskRequire task_require[]
+    usedByTaskRequire task_collect_require[]
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -200,7 +200,6 @@ model item {
 model recipe_ingredient {
     id String @id
 
-    type   String
     count  Int
     item   item?   @relation(fields: [itemId], references: [id])
     itemId String?
@@ -239,16 +238,16 @@ model task {
     name        String
     type        String
     description String
-    kills       kill_requirement[]
-    requires    task_require[] // type为
+    kills       task_kill_requirement[]
+    requires    task_collect_require[] // type为
     rewards     reward[]
 
     belongToNpc npc    @relation(fields: [npcId], references: [id])
     npcId       String
 }
 
-// 击杀要求
-model kill_requirement {
+// 任务击杀要求
+model task_kill_requirement {
     id String @id
 
     mob   mob?   @relation(fields: [mobId], references: [id])
@@ -259,16 +258,15 @@ model kill_requirement {
     taskId       String
 }
 
-// 配方项
-model task_require {
+// 任务收集需求项
+model task_collect_require {
     id String @id
 
-    type   String
     count  Int
     item   item?   @relation(fields: [itemId], references: [id])
     itemId String?
 
-    // 从属于配方
+    // 从属于任务
     belongTorecipe task   @relation(fields: [taskId], references: [id])
     taskId         String
 }
@@ -334,10 +332,10 @@ model mob {
     image       image     @relation(fields: [imageId], references: [id])
     imageId     String
 
-    belongToZones          zone[]
-    usedByKillRequirements kill_requirement[]
-    usedByMembers          member[]
-    usedByCustomPets       custom_pet[]
+    belongToZones              zone[]
+    usedByTaskKillRequirements task_kill_requirement[]
+    usedByMembers              member[]
+    usedByCustomPets           custom_pet[]
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
     updatedByAccountId String?
@@ -659,6 +657,7 @@ model custom_pet {
 
     template    mob    @relation(fields: [templateId], references: [id])
     templateId  String
+    name        String
     pStr        Int
     pInt        Int
     pVit        Int

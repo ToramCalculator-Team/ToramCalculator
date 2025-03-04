@@ -60,6 +60,16 @@ export async function findWeaponById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findWeapons() {
+  return await db
+    .selectFrom("item")
+    .innerJoin("weapon", "item.id", "weapon.itemId")
+    .selectAll(["item", "weapon"])
+    .select((eb) => weaponSubRelations(eb, eb.val("item.id")))
+    .select((eb) => itemSubRelations(eb, eb.val("item.id")))
+    .execute() as Weapon[];
+}
+
 export async function updateWeapon(id: string, updateWith: WeaponUpdate) {
   return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }

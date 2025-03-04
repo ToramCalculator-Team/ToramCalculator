@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, JSX, on, onCleanup, onMount, Show } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
@@ -8,7 +8,7 @@ import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
 import { findMobs, type Mob } from "~/repositories/mob";
-import { type Skill } from "~/repositories/skill";
+import { findSkills, type Skill } from "~/repositories/skill";
 import { findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
@@ -17,6 +17,8 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { User } from "~/repositories/user";
 import { findSimulators } from "~/repositories/simulator";
+import { createSyncResource } from "~/hooks/resource";
+import { findWeapons } from "~/repositories/weapon";
 
 type Related =
   | {
@@ -61,25 +63,10 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const [mobList, { refetch: refetchMobList }] = createResource(findMobs);
-  const [crystalList, { refetch: refetchCrystalList }] = createResource(findCrystals);
-
-  createEffect(() => {
-    if (store.database.tableSyncState.mob && !store.database.firstSync) {
-      console.log("尝试重新获取MobList");
-      refetchMobList();
-    }
-  });
-  createEffect(() => {
-    if (store.database.tableSyncState.crystal && !store.database.firstSync) {
-      console.log("尝试重新获取CrystalList");
-      refetchCrystalList();
-    }
-  });
-
-  const skillList = (): Skill[] => {
-    return [];
-  };
+  const mobList = createSyncResource("mob", findMobs);
+  const crystalList = createSyncResource("crystal", findCrystals);
+  const skillList = createSyncResource("skill", findSkills);
+  const weaponList = createSyncResource("weapon", findWeapons);
 
   // 搜索函数
   const mobHiddenData: Array<keyof Mob> = ["id", "image", "imageId", "updatedByAccountId", "createdByAccountId"];
@@ -440,7 +427,7 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        <Show when={isPc()}>
+        {/* <Show when={isPc()}>
           <div
             class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
           >
@@ -449,7 +436,7 @@ export default function Index() {
             <span>CrystalList: {crystalList()?.length}</span>
             <span>searchResultOpened: {searchResultOpened().toString()}</span>
           </div>
-        </Show>
+        </Show> */}
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
         >

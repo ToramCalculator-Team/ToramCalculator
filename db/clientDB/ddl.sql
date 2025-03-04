@@ -129,7 +129,6 @@ CREATE TABLE "item" (
 -- CreateTable
 CREATE TABLE "recipe_ingredient" (
     "id" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
     "count" INTEGER NOT NULL,
     "itemId" TEXT,
     "recipeId" TEXT NOT NULL,
@@ -163,24 +162,23 @@ CREATE TABLE "task" (
 );
 
 -- CreateTable
-CREATE TABLE "kill_requirement" (
+CREATE TABLE "task_kill_requirement" (
     "id" TEXT NOT NULL,
     "mobId" TEXT NOT NULL,
     "count" INTEGER NOT NULL,
     "taskId" TEXT NOT NULL,
 
-    CONSTRAINT "kill_requirement_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "task_kill_requirement_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "task_require" (
+CREATE TABLE "task_collect_require" (
     "id" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
     "count" INTEGER NOT NULL,
     "itemId" TEXT,
     "taskId" TEXT NOT NULL,
 
-    CONSTRAINT "task_require_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "task_collect_require_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -465,6 +463,7 @@ CREATE TABLE "character_skill" (
 CREATE TABLE "custom_pet" (
     "id" TEXT NOT NULL,
     "templateId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "pStr" INTEGER NOT NULL,
     "pInt" INTEGER NOT NULL,
     "pVit" INTEGER NOT NULL,

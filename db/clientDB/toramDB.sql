@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.3
+-- Dumped from database version 16.6
 -- Dumped by pg_dump version 16.3
 
--- Started on 2025-03-03 11:31:25
+-- Started on 2025-03-04 16:06:23
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -23,7 +23,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 264 (class 1259 OID 16737)
+-- TOC entry 215 (class 1259 OID 16385)
 -- Name: _BackRelation; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -36,7 +36,7 @@ CREATE TABLE public."_BackRelation" (
 ALTER TABLE public."_BackRelation" OWNER TO postgres;
 
 --
--- TOC entry 263 (class 1259 OID 16730)
+-- TOC entry 216 (class 1259 OID 16390)
 -- Name: _FrontRelation; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -49,7 +49,7 @@ CREATE TABLE public."_FrontRelation" (
 ALTER TABLE public."_FrontRelation" OWNER TO postgres;
 
 --
--- TOC entry 273 (class 1259 OID 16800)
+-- TOC entry 217 (class 1259 OID 16395)
 -- Name: _additional_equipmentTocrystal; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -62,7 +62,7 @@ CREATE TABLE public."_additional_equipmentTocrystal" (
 ALTER TABLE public."_additional_equipmentTocrystal" OWNER TO postgres;
 
 --
--- TOC entry 274 (class 1259 OID 16807)
+-- TOC entry 218 (class 1259 OID 16400)
 -- Name: _additional_equipmentToimage; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -75,7 +75,7 @@ CREATE TABLE public."_additional_equipmentToimage" (
 ALTER TABLE public."_additional_equipmentToimage" OWNER TO postgres;
 
 --
--- TOC entry 271 (class 1259 OID 16786)
+-- TOC entry 219 (class 1259 OID 16405)
 -- Name: _armorTocrystal; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -88,7 +88,7 @@ CREATE TABLE public."_armorTocrystal" (
 ALTER TABLE public."_armorTocrystal" OWNER TO postgres;
 
 --
--- TOC entry 272 (class 1259 OID 16793)
+-- TOC entry 220 (class 1259 OID 16410)
 -- Name: _armorToimage; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -101,7 +101,7 @@ CREATE TABLE public."_armorToimage" (
 ALTER TABLE public."_armorToimage" OWNER TO postgres;
 
 --
--- TOC entry 275 (class 1259 OID 16814)
+-- TOC entry 221 (class 1259 OID 16415)
 -- Name: _avatarTocharacter; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -114,7 +114,7 @@ CREATE TABLE public."_avatarTocharacter" (
 ALTER TABLE public."_avatarTocharacter" OWNER TO postgres;
 
 --
--- TOC entry 276 (class 1259 OID 16821)
+-- TOC entry 222 (class 1259 OID 16420)
 -- Name: _characterTocharacter_skill; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -127,7 +127,7 @@ CREATE TABLE public."_characterTocharacter_skill" (
 ALTER TABLE public."_characterTocharacter_skill" OWNER TO postgres;
 
 --
--- TOC entry 278 (class 1259 OID 16835)
+-- TOC entry 223 (class 1259 OID 16425)
 -- Name: _characterTocombo; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -140,7 +140,7 @@ CREATE TABLE public."_characterTocombo" (
 ALTER TABLE public."_characterTocombo" OWNER TO postgres;
 
 --
--- TOC entry 277 (class 1259 OID 16828)
+-- TOC entry 224 (class 1259 OID 16430)
 -- Name: _characterToconsumable; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -153,7 +153,7 @@ CREATE TABLE public."_characterToconsumable" (
 ALTER TABLE public."_characterToconsumable" OWNER TO postgres;
 
 --
--- TOC entry 268 (class 1259 OID 16765)
+-- TOC entry 225 (class 1259 OID 16435)
 -- Name: _crystalTocustom_additional_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -162,11 +162,13 @@ CREATE TABLE public."_crystalTocustom_additional_equipment" (
     "B" text NOT NULL
 );
 
+ALTER TABLE ONLY public."_crystalTocustom_additional_equipment" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."_crystalTocustom_additional_equipment" OWNER TO postgres;
 
 --
--- TOC entry 267 (class 1259 OID 16758)
+-- TOC entry 226 (class 1259 OID 16440)
 -- Name: _crystalTocustom_armor; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -175,11 +177,13 @@ CREATE TABLE public."_crystalTocustom_armor" (
     "B" text NOT NULL
 );
 
+ALTER TABLE ONLY public."_crystalTocustom_armor" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."_crystalTocustom_armor" OWNER TO postgres;
 
 --
--- TOC entry 270 (class 1259 OID 16779)
+-- TOC entry 227 (class 1259 OID 16445)
 -- Name: _crystalTocustom_special_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -188,11 +192,13 @@ CREATE TABLE public."_crystalTocustom_special_equipment" (
     "B" text NOT NULL
 );
 
+ALTER TABLE ONLY public."_crystalTocustom_special_equipment" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."_crystalTocustom_special_equipment" OWNER TO postgres;
 
 --
--- TOC entry 266 (class 1259 OID 16751)
+-- TOC entry 228 (class 1259 OID 16450)
 -- Name: _crystalTocustom_weapon; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -201,11 +207,13 @@ CREATE TABLE public."_crystalTocustom_weapon" (
     "B" text NOT NULL
 );
 
+ALTER TABLE ONLY public."_crystalTocustom_weapon" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."_crystalTocustom_weapon" OWNER TO postgres;
 
 --
--- TOC entry 269 (class 1259 OID 16772)
+-- TOC entry 229 (class 1259 OID 16455)
 -- Name: _crystalTospecial_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -214,11 +222,13 @@ CREATE TABLE public."_crystalTospecial_equipment" (
     "B" text NOT NULL
 );
 
+ALTER TABLE ONLY public."_crystalTospecial_equipment" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."_crystalTospecial_equipment" OWNER TO postgres;
 
 --
--- TOC entry 265 (class 1259 OID 16744)
+-- TOC entry 230 (class 1259 OID 16460)
 -- Name: _crystalToweapon; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -231,7 +241,7 @@ CREATE TABLE public."_crystalToweapon" (
 ALTER TABLE public."_crystalToweapon" OWNER TO postgres;
 
 --
--- TOC entry 281 (class 1259 OID 16856)
+-- TOC entry 231 (class 1259 OID 16465)
 -- Name: _imageToweapon; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -244,7 +254,7 @@ CREATE TABLE public."_imageToweapon" (
 ALTER TABLE public."_imageToweapon" OWNER TO postgres;
 
 --
--- TOC entry 279 (class 1259 OID 16842)
+-- TOC entry 232 (class 1259 OID 16470)
 -- Name: _memberToteam; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -257,7 +267,7 @@ CREATE TABLE public."_memberToteam" (
 ALTER TABLE public."_memberToteam" OWNER TO postgres;
 
 --
--- TOC entry 262 (class 1259 OID 16723)
+-- TOC entry 233 (class 1259 OID 16475)
 -- Name: _mobTozone; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -270,7 +280,7 @@ CREATE TABLE public."_mobTozone" (
 ALTER TABLE public."_mobTozone" OWNER TO postgres;
 
 --
--- TOC entry 280 (class 1259 OID 16849)
+-- TOC entry 234 (class 1259 OID 16480)
 -- Name: _simulatorToteam; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -283,7 +293,7 @@ CREATE TABLE public."_simulatorToteam" (
 ALTER TABLE public."_simulatorToteam" OWNER TO postgres;
 
 --
--- TOC entry 216 (class 1259 OID 16396)
+-- TOC entry 235 (class 1259 OID 16485)
 -- Name: account; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -308,7 +318,7 @@ ALTER TABLE ONLY public.account REPLICA IDENTITY FULL;
 ALTER TABLE public.account OWNER TO postgres;
 
 --
--- TOC entry 219 (class 1259 OID 16417)
+-- TOC entry 236 (class 1259 OID 16490)
 -- Name: account_create_data; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -322,7 +332,7 @@ ALTER TABLE ONLY public.account_create_data REPLICA IDENTITY FULL;
 ALTER TABLE public.account_create_data OWNER TO postgres;
 
 --
--- TOC entry 220 (class 1259 OID 16424)
+-- TOC entry 237 (class 1259 OID 16495)
 -- Name: account_update_data; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -336,7 +346,7 @@ ALTER TABLE ONLY public.account_update_data REPLICA IDENTITY FULL;
 ALTER TABLE public.account_update_data OWNER TO postgres;
 
 --
--- TOC entry 222 (class 1259 OID 16438)
+-- TOC entry 238 (class 1259 OID 16500)
 -- Name: activity; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -349,7 +359,7 @@ CREATE TABLE public.activity (
 ALTER TABLE public.activity OWNER TO postgres;
 
 --
--- TOC entry 240 (class 1259 OID 16569)
+-- TOC entry 239 (class 1259 OID 16505)
 -- Name: additional_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -363,11 +373,13 @@ CREATE TABLE public.additional_equipment (
     "itemId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.additional_equipment REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.additional_equipment OWNER TO postgres;
 
 --
--- TOC entry 223 (class 1259 OID 16445)
+-- TOC entry 240 (class 1259 OID 16510)
 -- Name: address; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -384,7 +396,7 @@ CREATE TABLE public.address (
 ALTER TABLE public.address OWNER TO postgres;
 
 --
--- TOC entry 238 (class 1259 OID 16555)
+-- TOC entry 241 (class 1259 OID 16515)
 -- Name: armor; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -398,11 +410,13 @@ CREATE TABLE public.armor (
     "itemId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.armor REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.armor OWNER TO postgres;
 
 --
--- TOC entry 239 (class 1259 OID 16562)
+-- TOC entry 242 (class 1259 OID 16520)
 -- Name: armor_enchantment_attributes; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -421,7 +435,7 @@ CREATE TABLE public.armor_enchantment_attributes (
 ALTER TABLE public.armor_enchantment_attributes OWNER TO postgres;
 
 --
--- TOC entry 253 (class 1259 OID 16660)
+-- TOC entry 243 (class 1259 OID 16525)
 -- Name: avatar; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -433,11 +447,13 @@ CREATE TABLE public.avatar (
     "playerId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.avatar REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.avatar OWNER TO postgres;
 
 --
--- TOC entry 254 (class 1259 OID 16667)
+-- TOC entry 244 (class 1259 OID 16530)
 -- Name: character; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -469,11 +485,13 @@ CREATE TABLE public."character" (
     "imageId" text NOT NULL
 );
 
+ALTER TABLE ONLY public."character" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public."character" OWNER TO postgres;
 
 --
--- TOC entry 250 (class 1259 OID 16639)
+-- TOC entry 245 (class 1259 OID 16535)
 -- Name: character_skill; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -488,7 +506,7 @@ CREATE TABLE public.character_skill (
 ALTER TABLE public.character_skill OWNER TO postgres;
 
 --
--- TOC entry 252 (class 1259 OID 16653)
+-- TOC entry 246 (class 1259 OID 16540)
 -- Name: combo; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -502,7 +520,7 @@ CREATE TABLE public.combo (
 ALTER TABLE public.combo OWNER TO postgres;
 
 --
--- TOC entry 244 (class 1259 OID 16597)
+-- TOC entry 247 (class 1259 OID 16545)
 -- Name: consumable; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -518,7 +536,7 @@ CREATE TABLE public.consumable (
 ALTER TABLE public.consumable OWNER TO postgres;
 
 --
--- TOC entry 236 (class 1259 OID 16540)
+-- TOC entry 248 (class 1259 OID 16550)
 -- Name: crystal; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -529,11 +547,13 @@ CREATE TABLE public.crystal (
     "itemId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.crystal REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.crystal OWNER TO postgres;
 
 --
--- TOC entry 248 (class 1259 OID 16625)
+-- TOC entry 249 (class 1259 OID 16555)
 -- Name: custom_additional_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -546,11 +566,13 @@ CREATE TABLE public.custom_additional_equipment (
     "masterId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.custom_additional_equipment REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.custom_additional_equipment OWNER TO postgres;
 
 --
--- TOC entry 247 (class 1259 OID 16618)
+-- TOC entry 250 (class 1259 OID 16560)
 -- Name: custom_armor; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -565,17 +587,20 @@ CREATE TABLE public.custom_armor (
     "masterId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.custom_armor REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.custom_armor OWNER TO postgres;
 
 --
--- TOC entry 251 (class 1259 OID 16646)
+-- TOC entry 251 (class 1259 OID 16565)
 -- Name: custom_pet; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.custom_pet (
     id text NOT NULL,
     "templateId" text NOT NULL,
+    name text NOT NULL,
     "pStr" integer NOT NULL,
     "pInt" integer NOT NULL,
     "pVit" integer NOT NULL,
@@ -599,7 +624,7 @@ CREATE TABLE public.custom_pet (
 ALTER TABLE public.custom_pet OWNER TO postgres;
 
 --
--- TOC entry 249 (class 1259 OID 16632)
+-- TOC entry 252 (class 1259 OID 16570)
 -- Name: custom_special_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -612,11 +637,13 @@ CREATE TABLE public.custom_special_equipment (
     "masterId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.custom_special_equipment REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.custom_special_equipment OWNER TO postgres;
 
 --
--- TOC entry 245 (class 1259 OID 16604)
+-- TOC entry 253 (class 1259 OID 16575)
 -- Name: custom_weapon; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -632,11 +659,13 @@ CREATE TABLE public.custom_weapon (
     "masterId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.custom_weapon REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.custom_weapon OWNER TO postgres;
 
 --
--- TOC entry 235 (class 1259 OID 16532)
+-- TOC entry 254 (class 1259 OID 16580)
 -- Name: drop_item; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -654,7 +683,7 @@ CREATE TABLE public.drop_item (
 ALTER TABLE public.drop_item OWNER TO postgres;
 
 --
--- TOC entry 261 (class 1259 OID 16716)
+-- TOC entry 255 (class 1259 OID 16585)
 -- Name: image; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -663,11 +692,13 @@ CREATE TABLE public.image (
     "dataUrl" text NOT NULL
 );
 
+ALTER TABLE ONLY public.image REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.image OWNER TO postgres;
 
 --
--- TOC entry 226 (class 1259 OID 16466)
+-- TOC entry 256 (class 1259 OID 16590)
 -- Name: item; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -681,26 +712,13 @@ CREATE TABLE public.item (
     "createdByAccountId" text
 );
 
+ALTER TABLE ONLY public.item REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.item OWNER TO postgres;
 
 --
--- TOC entry 230 (class 1259 OID 16494)
--- Name: kill_requirement; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.kill_requirement (
-    id text NOT NULL,
-    "mobId" text NOT NULL,
-    count integer NOT NULL,
-    "taskId" text NOT NULL
-);
-
-
-ALTER TABLE public.kill_requirement OWNER TO postgres;
-
---
--- TOC entry 233 (class 1259 OID 16515)
+-- TOC entry 258 (class 1259 OID 16600)
 -- Name: material; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -716,7 +734,7 @@ CREATE TABLE public.material (
 ALTER TABLE public.material OWNER TO postgres;
 
 --
--- TOC entry 257 (class 1259 OID 16688)
+-- TOC entry 259 (class 1259 OID 16605)
 -- Name: member; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -734,7 +752,7 @@ CREATE TABLE public.member (
 ALTER TABLE public.member OWNER TO postgres;
 
 --
--- TOC entry 255 (class 1259 OID 16674)
+-- TOC entry 260 (class 1259 OID 16610)
 -- Name: mercenary; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -751,7 +769,7 @@ CREATE TABLE public.mercenary (
 ALTER TABLE public.mercenary OWNER TO postgres;
 
 --
--- TOC entry 234 (class 1259 OID 16522)
+-- TOC entry 261 (class 1259 OID 16615)
 -- Name: mob; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -792,7 +810,7 @@ ALTER TABLE ONLY public.mob REPLICA IDENTITY FULL;
 ALTER TABLE public.mob OWNER TO postgres;
 
 --
--- TOC entry 225 (class 1259 OID 16459)
+-- TOC entry 262 (class 1259 OID 16620)
 -- Name: npc; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -807,7 +825,7 @@ CREATE TABLE public.npc (
 ALTER TABLE public.npc OWNER TO postgres;
 
 --
--- TOC entry 256 (class 1259 OID 16681)
+-- TOC entry 263 (class 1259 OID 16625)
 -- Name: player; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -819,11 +837,13 @@ CREATE TABLE public.player (
     "accountId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.player REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.player OWNER TO postgres;
 
 --
--- TOC entry 218 (class 1259 OID 16410)
+-- TOC entry 264 (class 1259 OID 16630)
 -- Name: post; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -839,7 +859,7 @@ CREATE TABLE public.post (
 ALTER TABLE public.post OWNER TO postgres;
 
 --
--- TOC entry 228 (class 1259 OID 16480)
+-- TOC entry 265 (class 1259 OID 16635)
 -- Name: recipe; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -857,13 +877,12 @@ CREATE TABLE public.recipe (
 ALTER TABLE public.recipe OWNER TO postgres;
 
 --
--- TOC entry 227 (class 1259 OID 16473)
+-- TOC entry 266 (class 1259 OID 16640)
 -- Name: recipe_ingredient; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.recipe_ingredient (
     id text NOT NULL,
-    type text NOT NULL,
     count integer NOT NULL,
     "itemId" text,
     "recipeId" text NOT NULL
@@ -873,7 +892,7 @@ CREATE TABLE public.recipe_ingredient (
 ALTER TABLE public.recipe_ingredient OWNER TO postgres;
 
 --
--- TOC entry 232 (class 1259 OID 16508)
+-- TOC entry 267 (class 1259 OID 16645)
 -- Name: reward; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -890,7 +909,7 @@ CREATE TABLE public.reward (
 ALTER TABLE public.reward OWNER TO postgres;
 
 --
--- TOC entry 217 (class 1259 OID 16403)
+-- TOC entry 268 (class 1259 OID 16650)
 -- Name: session; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -905,7 +924,7 @@ CREATE TABLE public.session (
 ALTER TABLE public.session OWNER TO postgres;
 
 --
--- TOC entry 259 (class 1259 OID 16702)
+-- TOC entry 269 (class 1259 OID 16655)
 -- Name: simulator; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -923,7 +942,7 @@ CREATE TABLE public.simulator (
 ALTER TABLE public.simulator OWNER TO postgres;
 
 --
--- TOC entry 242 (class 1259 OID 16583)
+-- TOC entry 270 (class 1259 OID 16660)
 -- Name: skill; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -942,11 +961,13 @@ CREATE TABLE public.skill (
     "createdByAccountId" text
 );
 
+ALTER TABLE ONLY public.skill REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.skill OWNER TO postgres;
 
 --
--- TOC entry 243 (class 1259 OID 16590)
+-- TOC entry 271 (class 1259 OID 16665)
 -- Name: skill_effect; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -973,11 +994,13 @@ CREATE TABLE public.skill_effect (
     "belongToskillId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.skill_effect REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.skill_effect OWNER TO postgres;
 
 --
--- TOC entry 241 (class 1259 OID 16576)
+-- TOC entry 272 (class 1259 OID 16670)
 -- Name: special_equipment; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -988,11 +1011,13 @@ CREATE TABLE public.special_equipment (
     "itemId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.special_equipment REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.special_equipment OWNER TO postgres;
 
 --
--- TOC entry 260 (class 1259 OID 16709)
+-- TOC entry 273 (class 1259 OID 16675)
 -- Name: statistic; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1004,11 +1029,13 @@ CREATE TABLE public.statistic (
     "viewTimestamps" timestamp(3) without time zone[]
 );
 
+ALTER TABLE ONLY public.statistic REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.statistic OWNER TO postgres;
 
 --
--- TOC entry 229 (class 1259 OID 16487)
+-- TOC entry 274 (class 1259 OID 16680)
 -- Name: task; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1025,11 +1052,11 @@ CREATE TABLE public.task (
 ALTER TABLE public.task OWNER TO postgres;
 
 --
--- TOC entry 231 (class 1259 OID 16501)
--- Name: task_require; Type: TABLE; Schema: public; Owner: postgres
+-- TOC entry 275 (class 1259 OID 16685)
+-- Name: task_collect_require; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.task_require (
+CREATE TABLE public.task_collect_require (
     id text NOT NULL,
     type text NOT NULL,
     count integer NOT NULL,
@@ -1038,10 +1065,25 @@ CREATE TABLE public.task_require (
 );
 
 
-ALTER TABLE public.task_require OWNER TO postgres;
+ALTER TABLE public.task_collect_require OWNER TO postgres;
 
 --
--- TOC entry 258 (class 1259 OID 16695)
+-- TOC entry 257 (class 1259 OID 16595)
+-- Name: task_kill_requirement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.task_kill_requirement (
+    id text NOT NULL,
+    "mobId" text NOT NULL,
+    count integer NOT NULL,
+    "taskId" text NOT NULL
+);
+
+
+ALTER TABLE public.task_kill_requirement OWNER TO postgres;
+
+--
+-- TOC entry 276 (class 1259 OID 16690)
 -- Name: team; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1056,7 +1098,7 @@ CREATE TABLE public.team (
 ALTER TABLE public.team OWNER TO postgres;
 
 --
--- TOC entry 215 (class 1259 OID 16389)
+-- TOC entry 277 (class 1259 OID 16695)
 -- Name: user; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1075,7 +1117,7 @@ ALTER TABLE ONLY public."user" REPLICA IDENTITY FULL;
 ALTER TABLE public."user" OWNER TO postgres;
 
 --
--- TOC entry 237 (class 1259 OID 16548)
+-- TOC entry 278 (class 1259 OID 16700)
 -- Name: weapon; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1092,11 +1134,13 @@ CREATE TABLE public.weapon (
     "itemId" text NOT NULL
 );
 
+ALTER TABLE ONLY public.weapon REPLICA IDENTITY FULL;
+
 
 ALTER TABLE public.weapon OWNER TO postgres;
 
 --
--- TOC entry 246 (class 1259 OID 16611)
+-- TOC entry 279 (class 1259 OID 16705)
 -- Name: weapon_enchantment_attributes; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1115,7 +1159,7 @@ CREATE TABLE public.weapon_enchantment_attributes (
 ALTER TABLE public.weapon_enchantment_attributes OWNER TO postgres;
 
 --
--- TOC entry 221 (class 1259 OID 16431)
+-- TOC entry 280 (class 1259 OID 16710)
 -- Name: world; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1128,7 +1172,7 @@ CREATE TABLE public.world (
 ALTER TABLE public.world OWNER TO postgres;
 
 --
--- TOC entry 224 (class 1259 OID 16452)
+-- TOC entry 281 (class 1259 OID 16715)
 -- Name: zone; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -1145,76 +1189,114 @@ CREATE TABLE public.zone (
 ALTER TABLE public.zone OWNER TO postgres;
 
 --
+-- TOC entry 3946 (class 0 OID 16385)
+-- Dependencies: 215
 -- Data for Name: _BackRelation; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_BackRelation" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3947 (class 0 OID 16390)
+-- Dependencies: 216
 -- Data for Name: _FrontRelation; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_FrontRelation" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3948 (class 0 OID 16395)
+-- Dependencies: 217
 -- Data for Name: _additional_equipmentTocrystal; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_additional_equipmentTocrystal" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3949 (class 0 OID 16400)
+-- Dependencies: 218
 -- Data for Name: _additional_equipmentToimage; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_additional_equipmentToimage" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3950 (class 0 OID 16405)
+-- Dependencies: 219
 -- Data for Name: _armorTocrystal; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_armorTocrystal" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3951 (class 0 OID 16410)
+-- Dependencies: 220
 -- Data for Name: _armorToimage; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_armorToimage" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3952 (class 0 OID 16415)
+-- Dependencies: 221
 -- Data for Name: _avatarTocharacter; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_avatarTocharacter" ("A", "B") FROM stdin;
+defaultAvatarTopId	defaultCharacterId
+defaultAvatarBottomId	defaultCharacterId
+defaultAvatarDecorationId	defaultCharacterId
 \.
 
+
 --
+-- TOC entry 3953 (class 0 OID 16420)
+-- Dependencies: 222
 -- Data for Name: _characterTocharacter_skill; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_characterTocharacter_skill" ("A", "B") FROM stdin;
+defaultCharacterId	defaultCharacterSkillId
 \.
 
+
 --
+-- TOC entry 3954 (class 0 OID 16425)
+-- Dependencies: 223
 -- Data for Name: _characterTocombo; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_characterTocombo" ("A", "B") FROM stdin;
+defaultCharacterId	defaultComboId
 \.
 
+
 --
+-- TOC entry 3955 (class 0 OID 16430)
+-- Dependencies: 224
 -- Data for Name: _characterToconsumable; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_characterToconsumable" ("A", "B") FROM stdin;
+defaultCharacterId	defaultItemConsumableId
 \.
 
+
 --
+-- TOC entry 3956 (class 0 OID 16435)
+-- Dependencies: 225
 -- Data for Name: _crystalTocustom_additional_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1223,7 +1305,10 @@ defaultItemAddEquipCrystalAId	defaultCustomAddEquipId
 defaultIteamAddEquipCrystalBId	defaultCustomAddEquipId
 \.
 
+
 --
+-- TOC entry 3957 (class 0 OID 16440)
+-- Dependencies: 226
 -- Data for Name: _crystalTocustom_armor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1232,7 +1317,10 @@ defaultIteamArmorCrystalAId	defaultCustomArmorId
 defaultItemArmorCrystalBId	defaultCustomArmorId
 \.
 
+
 --
+-- TOC entry 3958 (class 0 OID 16445)
+-- Dependencies: 227
 -- Data for Name: _crystalTocustom_special_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1243,6 +1331,8 @@ defaultItemSpeCrystalBId	defaultCustomSpeEquipId
 
 
 --
+-- TOC entry 3959 (class 0 OID 16450)
+-- Dependencies: 228
 -- Data for Name: _crystalTocustom_weapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1251,49 +1341,73 @@ defaultItemWeaponCrystalAId	defaultCustomWeaponId
 defaultItemWeaponCrystalBId	defaultCustomWeaponId
 \.
 
+
 --
+-- TOC entry 3960 (class 0 OID 16455)
+-- Dependencies: 229
 -- Data for Name: _crystalTospecial_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_crystalTospecial_equipment" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3961 (class 0 OID 16460)
+-- Dependencies: 230
 -- Data for Name: _crystalToweapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_crystalToweapon" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3962 (class 0 OID 16465)
+-- Dependencies: 231
 -- Data for Name: _imageToweapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_imageToweapon" ("A", "B") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3963 (class 0 OID 16470)
+-- Dependencies: 232
 -- Data for Name: _memberToteam; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_memberToteam" ("A", "B") FROM stdin;
+defaultMemberId	defaultTeamId
 \.
 
+
 --
+-- TOC entry 3964 (class 0 OID 16475)
+-- Dependencies: 233
 -- Data for Name: _mobTozone; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_mobTozone" ("A", "B") FROM stdin;
+defaultMobId	defaultZoneId
 \.
 
+
 --
+-- TOC entry 3965 (class 0 OID 16480)
+-- Dependencies: 234
 -- Data for Name: _simulatorToteam; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."_simulatorToteam" ("A", "B") FROM stdin;
+defaultSimulatorId	defaultTeamId
 \.
 
+
 --
+-- TOC entry 3966 (class 0 OID 16485)
+-- Dependencies: 235
 -- Data for Name: account; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1301,7 +1415,10 @@ COPY public.account (id, type, provider, "providerAccountId", refresh_token, acc
 cluhz95c5000078elg5r46i83	User	qq	591519722	\N	\N	\N	\N	\N	\N	\N	cluhz95c5000078elg5r46831
 \.
 
+
 --
+-- TOC entry 3967 (class 0 OID 16490)
+-- Dependencies: 236
 -- Data for Name: account_create_data; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1309,7 +1426,10 @@ COPY public.account_create_data ("accountId") FROM stdin;
 cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 3968 (class 0 OID 16495)
+-- Dependencies: 237
 -- Data for Name: account_update_data; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1317,14 +1437,21 @@ COPY public.account_update_data ("accountId") FROM stdin;
 cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 3969 (class 0 OID 16500)
+-- Dependencies: 238
 -- Data for Name: activity; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.activity (id, name) FROM stdin;
+defaultActivityId	defaultActivity
 \.
 
+
 --
+-- TOC entry 3970 (class 0 OID 16505)
+-- Dependencies: 239
 -- Data for Name: additional_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1332,14 +1459,21 @@ COPY public.additional_equipment (name, "baseDef", modifiers, "colorA", "colorB"
 defaultAddEquipId	10	{"maxMp + 300","cspd + 400","mPie + 20%"}	0	0	0	defaultIteamAddEquipId
 \.
 
+
 --
+-- TOC entry 3971 (class 0 OID 16510)
+-- Dependencies: 240
 -- Data for Name: address; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.address (id, name, type, x, y, "worldId") FROM stdin;
+defaultAddressId	defaultAddress	Normal	0	0	defaultWorld
 \.
 
+
 --
+-- TOC entry 3972 (class 0 OID 16515)
+-- Dependencies: 241
 -- Data for Name: armor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1347,49 +1481,78 @@ COPY public.armor (name, "baseDef", modifiers, "colorA", "colorB", "colorC", "it
 defaultArmor	10	{}	0	0	0	defaultItemArmor
 \.
 
+
 --
+-- TOC entry 3973 (class 0 OID 16520)
+-- Dependencies: 242
 -- Data for Name: armor_enchantment_attributes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.armor_enchantment_attributes (id, name, modifiers, details, "dataSources", "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
+defaultArmorEncId	defaultArmorEnc	{}	\N	system	defaultArmorEncStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 3974 (class 0 OID 16525)
+-- Dependencies: 243
 -- Data for Name: avatar; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.avatar (id, name, type, modifiers, "playerId") FROM stdin;
+defaultAvatarTopId	defaultAvatarTop	Top	{"str + 2%","mPie + 9%"}	defaultPlayerId
+defaultAvatarBottomId	defaultAvaterBottom	Bottom	{"mPie + 7%","distanceDamageBouns.short + 2%"}	defaultPlayerId
+defaultAvatarDecorationId	defaultAvatarDecoration	Decoration	{"dodge + 6","mPie + 7%"}	defaultPlayerId
 \.
 
+
 --
+-- TOC entry 3975 (class 0 OID 16530)
+-- Dependencies: 244
 -- Data for Name: character; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public."character" (id, name, lv, str, "int", vit, agi, dex, "personalityType", "personalityValue", "weaponId", "subWeaponId", "armorId", "addEquipId", "speEquipId", cooking, modifiers, "partnerSkillAId", "partnerSkillAType", "partnerSkillBId", "partnerSkillBType", "masterId", details, "statisticId", "imageId") FROM stdin;
 defaultCharacterId	defaultCharacter	280	0	480	0	0	247	None	0	defaultCustomWeaponId	defaultCustomSubWeaponId	defaultCustomArmorId	defaultCustomAddEquipId	defaultCustomSpeEquipId	{}	{}					defaultPlayerId		defaultCharacterStatisticId	system
 \.
+
+
 --
+-- TOC entry 3976 (class 0 OID 16535)
+-- Dependencies: 245
 -- Data for Name: character_skill; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.character_skill (id, lv, "isStarGem", "templateId") FROM stdin;
+defaultCharacterSkillId	10	f	defaultSkillId
 \.
 
+
 --
+-- TOC entry 3977 (class 0 OID 16540)
+-- Dependencies: 246
 -- Data for Name: combo; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.combo (id, name, combo) FROM stdin;
+defaultComboId	defaultCombo	{}
 \.
 
+
 --
+-- TOC entry 3978 (class 0 OID 16545)
+-- Dependencies: 247
 -- Data for Name: consumable; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.consumable (name, "itemId", type, "effectDuration", effects) FROM stdin;
+defaultConsumableId	defaultItemConsumableId	MaxHp	180	{"maxHp + 10%"}
 \.
 
+
 --
+-- TOC entry 3979 (class 0 OID 16550)
+-- Dependencies: 248
 -- Data for Name: crystal; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1404,7 +1567,10 @@ defaultArmorCrystalAId	ArmorCrystal	{"mAtk + 10%","int + 6%","cspd + 40%","ampr 
 defaultArmorCrystalBId	ArmorCrystal	{"pStabilitiy + 11%","str + 6%","vit + 6%","armor.type == \\"Light\\" && distanceDamageBouns.short + 11%","armor.type == \\"Light\\" && pStability - 5%","armor.type == \\"Heavy\\" && distanceDamageBouns.long + 11%","armor.type == \\"Heavy\\" && pStability - 5%"}	defaultItemArmorCrystalBId
 \.
 
+
 --
+-- TOC entry 3980 (class 0 OID 16555)
+-- Dependencies: 249
 -- Data for Name: custom_additional_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1412,7 +1578,10 @@ COPY public.custom_additional_equipment (id, name, def, "templateId", refinement
 defaultCustomAddEquipId	defaultCustomAddEquip	10	defaultIteamAddEquipId	15	defaultPlayerId
 \.
 
+
 --
+-- TOC entry 3981 (class 0 OID 16560)
+-- Dependencies: 250
 -- Data for Name: custom_armor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1422,13 +1591,19 @@ defaultCustomArmorId	defaultCustomArmor	10		defaultItemArmor	0	\N	defaultPlayerI
 
 
 --
+-- TOC entry 3982 (class 0 OID 16565)
+-- Dependencies: 251
 -- Data for Name: custom_pet; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.custom_pet (id, "templateId", "pStr", "pInt", "pVit", "pAgi", "pDex", str, "int", vit, agi, dex, "weaponType", "personaType", type, "weaponAtk", generation, "maxLv", "masterId") FROM stdin;
+COPY public.custom_pet (id, "templateId", name, "pStr", "pInt", "pVit", "pAgi", "pDex", str, "int", vit, agi, dex, "weaponType", "personaType", type, "weaponAtk", generation, "maxLv", "masterId") FROM stdin;
+defaultPetId	defaultMobId	defaultPet	72	99	277	61	61	118	277	637	124	100	Magictool	Devoted	PhysicalDefense	172	1	165	defaultPlayerId
 \.
 
+
 --
+-- TOC entry 3983 (class 0 OID 16570)
+-- Dependencies: 252
 -- Data for Name: custom_special_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1436,7 +1611,10 @@ COPY public.custom_special_equipment (id, name, def, "templateId", refinement, "
 defaultCustomSpeEquipId	defaultCustomSpeEquip	10	defaultItemSpeEquipId	15	defaultPlayerId
 \.
 
+
 --
+-- TOC entry 3984 (class 0 OID 16575)
+-- Dependencies: 253
 -- Data for Name: custom_weapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1445,14 +1623,21 @@ defaultCustomWeaponId	defaultCustomWeapon	462	70	10	defaultItemWeaponId	15	\N	de
 defaultCustomSubWeaponId	defaultCustomSubWeapon	0	0	0	defaultItemSubWeaponId	0	\N	defaultPlayerId
 \.
 
+
 --
+-- TOC entry 3985 (class 0 OID 16580)
+-- Dependencies: 254
 -- Data for Name: drop_item; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.drop_item (id, "itemId", probability, "relatedPartType", "relatedPartInfo", "breakReward", "dropById") FROM stdin;
+defaultDropItemWeaponId	defaultItemWeaponId	30	A			defaultMobId
 \.
 
+
 --
+-- TOC entry 3986 (class 0 OID 16585)
+-- Dependencies: 255
 -- Data for Name: image; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1460,55 +1645,68 @@ COPY public.image (id, "dataUrl") FROM stdin;
 system	
 \.
 
+
 --
+-- TOC entry 3987 (class 0 OID 16590)
+-- Dependencies: 256
 -- Data for Name: item; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.item (id, type, "dataSources", details, "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
-defaultItemSubWeaponId	NinjutsuScroll			defaultItemSubWeaponStatisticId	\N	\N
-defaultItemArmor	Liaght			defaultIteamArmorId	\N	\N
-defaultIteamAddEquipId	AddEquip			defaultIteamAddEquiStatisticId	\N	\N
-defaultItemSpeEquipId	SpeEquip			defaultItemSpeEquipStatisticId	\N	\N
-defaultItemAddEquipCrystalAId	AddEquipCrystal			defaultItemAddEquipCrystalAStatisticId	\N	\N
-defaultIteamAddEquipCrystalBId	AddEquipCrystal			defaultItemAddEquipCrystalBStatisticId	\N	\N
-defaultItemSpeEquipCrystalAId	SpeEquipCrystal			defaultItemSpeEquipCrystalAStatisticId	\N	\N
-defaultItemWeaponId	Magictool			defaultItemWeaponStatisticId	\N	\N
-defaultItemSpeCrystalBId	SpeEquipCrystal			defaultItemSpeEquipCrystalBStatisticId	\N	\N
-defaultItemWeaponCrystalAId	WeaponCrystal			defaultItemWeaponCrystalAStatisticId	\N	\N
-defaultItemWeaponCrystalBId	WeaponCrystal			defaultItemWeaponCrystalBStatisticId	\N	\N
-defaultIteamArmorCrystalAId	ArmorCrystal			defaultItemArmorCrystalAStatisticId	\N	\N
-defaultItemArmorCrystalBId	ArmorCrystal			defaultItemArmorCrystalBStatisticId	\N	\N
+defaultIteamAddEquipCrystalBId	AddEquipCrystal			defaultItemAddEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultIteamAddEquipId	AddEquip			defaultIteamAddEquiStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultIteamArmorCrystalAId	ArmorCrystal			defaultItemArmorCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemAddEquipCrystalAId	AddEquipCrystal			defaultItemAddEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemArmor	Liaght			defaultIteamArmorId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemArmorCrystalBId	ArmorCrystal			defaultItemArmorCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemConsumableId	Consumable			defaultItemConsumableId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeCrystalBId	SpeEquipCrystal			defaultItemSpeEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeEquipCrystalAId	SpeEquipCrystal			defaultItemSpeEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeEquipId	SpeEquip			defaultItemSpeEquipStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSubWeaponId	NinjutsuScroll			defaultItemSubWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponCrystalAId	WeaponCrystal			defaultItemWeaponCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponCrystalBId	WeaponCrystal			defaultItemWeaponCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponId	Magictool			defaultItemWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemMaterialMetalId	defaultItemMaterialMetal			defaultItemMaterialMetalStatisticId	\N	\N
 \.
 
---
--- Data for Name: kill_requirement; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.kill_requirement (id, "mobId", count, "taskId") FROM stdin;
-\.
 
 --
+-- TOC entry 3989 (class 0 OID 16600)
+-- Dependencies: 258
 -- Data for Name: material; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.material (name, "itemId", type, "ptValue", price) FROM stdin;
+defaultMaterialId	defaultItemMaterialMetalId	Metal	10	2
 \.
 
+
 --
+-- TOC entry 3990 (class 0 OID 16605)
+-- Dependencies: 259
 -- Data for Name: member; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.member (id, "order", "playerId", "partnerId", "mercenaryId", "mobId", "mobDifficultyFlag") FROM stdin;
+defaultMemberId	1	defaultPlayerId	\N	\N	\N	
 \.
 
+
 --
+-- TOC entry 3991 (class 0 OID 16610)
+-- Dependencies: 260
 -- Data for Name: mercenary; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.mercenary (type, "templateId", "skillAId", "skillAType", "skillBId", "skillBType") FROM stdin;
+Tank	defaultCharacterId				
 \.
 
+
 --
+-- TOC entry 3992 (class 0 OID 16615)
+-- Dependencies: 261
 -- Data for Name: mob; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1614,16 +1812,24 @@ clv6xtcs70021wv1fnuz01uwx	伽拉木瓦	Boss	f	247	26400	0	Wind	1	6260000	494	9	9
 clv6u8d9t000nwv1fjbmbyohh	佛拉布喇·远	Boss	f	184	19190	0	Normal	1	5150000	184	7	736	21	0	552	21	0	0	100	100	{}	仇恨值目标在7m外时的状态	fengli	30	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 clv6u40id000lwv1fw2chusr7	佛拉布喇·近	Boss	f	184	19190	0	Normal	1	5150000	552	21	184	7	0	276	0	14	0	100	100	{}	仇恨值目标7m内时的状态	fengli	32	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 clui7ar0n000z11my9mm10x0r	恶魔之门	Boss	f	60	1440	0	Dark	1	0	180	2	180	2	0	0	0	0	0	1	1	{}	不会动	fengli	89	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultMobId	defaultMon	Mob	t	1	1	0	Normal	1	100	0	0	0	0	0	0	0	0	50	50	50	{}	defaultData	system	defaultMobStatisticId	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 3993 (class 0 OID 16620)
+-- Dependencies: 262
 -- Data for Name: npc; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.npc (id, name, "imageId", "zoneId") FROM stdin;
+defaultNpcId	defaultNpc	system	defaultZoneId
 \.
 
+
 --
+-- TOC entry 3994 (class 0 OID 16625)
+-- Dependencies: 263
 -- Data for Name: player; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1631,62 +1837,96 @@ COPY public.player (id, name, "useIn", actions, "accountId") FROM stdin;
 defaultPlayerId	defaultPlayer		{}	cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 3995 (class 0 OID 16630)
+-- Dependencies: 264
 -- Data for Name: post; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.post (id, name, "createdAt", "updatedAt", "createdById") FROM stdin;
 \.
 
+
 --
+-- TOC entry 3996 (class 0 OID 16635)
+-- Dependencies: 265
 -- Data for Name: recipe; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.recipe (id, "weaponId", "armorId", "addEquipId", "speEquipId", "consumableId", "activityId") FROM stdin;
+defaultRecipeId	defaultItemWeaponId	\N	\N	\N	\N	\N
 \.
 
+
 --
+-- TOC entry 3997 (class 0 OID 16640)
+-- Dependencies: 266
 -- Data for Name: recipe_ingredient; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.recipe_ingredient (id, type, count, "itemId", "recipeId") FROM stdin;
+COPY public.recipe_ingredient (id, count, "itemId", "recipeId") FROM stdin;
+defaultRecipeIngId	10	defaultItemMaterialMetalId	defaultRecipeId
 \.
 
+
 --
+-- TOC entry 3998 (class 0 OID 16645)
+-- Dependencies: 267
 -- Data for Name: reward; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.reward (id, type, value, probability, "itemId", "taskId") FROM stdin;
+defaultReward	Item	10	100	defaultItemWeaponId	defaultTaskId
 \.
 
+
 --
+-- TOC entry 3999 (class 0 OID 16650)
+-- Dependencies: 268
 -- Data for Name: session; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.session (id, "sessionToken", expires, "accountId") FROM stdin;
 \.
 
+
 --
+-- TOC entry 4000 (class 0 OID 16655)
+-- Dependencies: 269
 -- Data for Name: simulator; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.simulator (id, name, "visibilityType", details, "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
+defaultSimulatorId	defaultSimulator	True	\N	defaultSimulatorStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 4001 (class 0 OID 16660)
+-- Dependencies: 270
 -- Data for Name: skill; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.skill (id, "treeType", "posX", "posY", tier, name, "isPassive", details, "dataSources", "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
+defaultSkillId	MagicSkill	1	1	1	Arrows	f			defaultSkillStatisticId	\N	\N
 \.
 
+
 --
+-- TOC entry 4002 (class 0 OID 16665)
+-- Dependencies: 271
 -- Data for Name: skill_effect; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.skill_effect (id, condition, "elementLogic", "chargingType", "distanceType", "targetType", "castingRange", "effectiveRange", "motionFixed", "motionModified", "chantingFixed", "chantingModified", "reservoirFixed", "reservoirModified", "startupFrames", cost, description, logic, details, "belongToskillId") FROM stdin;
+defaultSkillEffectId		"mainWeapon.ElementType"	Chanting	Both	Enemy	12	0	24	98	0	2	0	0	0	"100mp"		{}		defaultSkillId
 \.
+
+
 --
+-- TOC entry 4003 (class 0 OID 16670)
+-- Dependencies: 272
 -- Data for Name: special_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1694,7 +1934,10 @@ COPY public.special_equipment (name, "baseDef", modifiers, "itemId") FROM stdin;
 defaultSpeEquip	10	{"mPie + 10%"}	defaultItemSpeEquipId
 \.
 
+
 --
+-- TOC entry 4004 (class 0 OID 16675)
+-- Dependencies: 273
 -- Data for Name: statistic; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1816,30 +2059,63 @@ defaultItemWeaponStatisticId	2025-03-02 05:12:29.109	1970-01-01 00:00:00	{}	{}
 defaultItemSpeEquipCrystalBStatisticId	2025-03-02 05:12:29.109	1970-01-01 00:00:00	{}	{}
 defaultItemArmorCrystalAStatisticId	2025-03-02 05:33:28.07	1970-01-01 00:00:00	{}	{}
 defaultItemArmorCrystalBStatisticId	2025-03-02 05:33:55.82	1970-01-01 00:00:00	{}	{}
+defaultSkillStatisticId	2025-03-04 06:19:52.338	1970-01-01 00:00:00	{}	{}
+defaultMobStatisticId	2025-03-04 06:42:31.849	1970-01-01 00:00:00	{}	{}
+defaultArmorEncStatisticId	2025-03-04 06:46:02.414	1970-01-01 00:00:00	{}	{}
+defaultItemConsumableId	2025-03-04 06:51:07.252	1970-01-01 00:00:00	{}	{}
+defaultItemMaterialMetalStatisticId	2025-03-04 07:06:29.455	1970-01-01 00:00:00	{}	{}
+defaultSimulatorStatisticId	2025-03-04 07:19:23.238	1970-01-01 00:00:00	{}	{}
+defaultWeaponEncStatisticId	2025-03-04 07:29:12.641	1970-01-01 00:00:00	{}	{}
 \.
 
 
 --
+-- TOC entry 4005 (class 0 OID 16680)
+-- Dependencies: 274
 -- Data for Name: task; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.task (id, lv, name, type, description, "npcId") FROM stdin;
-\.
---
--- Data for Name: task_require; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.task_require (id, type, count, "itemId", "taskId") FROM stdin;
+defaultTaskId	0	defaultTask	Both		defaultNpcId
 \.
 
+
 --
+-- TOC entry 4006 (class 0 OID 16685)
+-- Dependencies: 275
+-- Data for Name: task_collect_require; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.task_collect_require (id, type, count, "itemId", "taskId") FROM stdin;
+defaultTaskCollectReqId	Metal	10	defaultItemMaterialMetalId	defaultTaskId
+\.
+
+
+--
+-- TOC entry 3988 (class 0 OID 16595)
+-- Dependencies: 257
+-- Data for Name: task_kill_requirement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.task_kill_requirement (id, "mobId", count, "taskId") FROM stdin;
+defaultKillReqId	defaultMobId	1	defaultTaskId
+\.
+
+
+--
+-- TOC entry 4007 (class 0 OID 16690)
+-- Dependencies: 276
 -- Data for Name: team; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.team (id, name, "order", gems) FROM stdin;
+defaultTeamId	defaultTeam	1	{}
 \.
 
+
 --
+-- TOC entry 4008 (class 0 OID 16695)
+-- Dependencies: 277
 -- Data for Name: user; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1850,7 +2126,10 @@ cluj6sptk0000e10ge9wetfz8	KiaClouth	591519722@qq.com	2024-04-11 07:47:29.523	\N	
 clujlndnd0000zkw9d9qfsmgz	KiaClouth	mayunlong16@foxmail.com	2024-04-07 10:46:23.639	\N	USER
 \.
 
+
 --
+-- TOC entry 4009 (class 0 OID 16700)
+-- Dependencies: 278
 -- Data for Name: weapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1859,28 +2138,42 @@ defaultWeapon	MigicTool	462	70	{"element = light","stro.normal + 25%","pAtk + 6%
 defaultSubWeapon	Ninjutsuscroll	0	0	{"aspd + 250"}	0	0	0	\N	defaultItemSubWeaponId
 \.
 
+
 --
+-- TOC entry 4010 (class 0 OID 16705)
+-- Dependencies: 279
 -- Data for Name: weapon_enchantment_attributes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.weapon_enchantment_attributes (id, name, modifiers, details, "dataSources", "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
+defaultWeaponEncId	defaultWeaponEnc	{"elementDamageBouns.dark + 22%","int + 10%","mAtk + 6%","accuracy - 6%","accuracy - 14","pPie - 6%"}	\N	\N	defaultWeaponEncStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 \.
 
+
 --
+-- TOC entry 4011 (class 0 OID 16710)
+-- Dependencies: 280
 -- Data for Name: world; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.world (id, name) FROM stdin;
+defaultWorld	defaultWorld
 \.
 
+
 --
+-- TOC entry 4012 (class 0 OID 16715)
+-- Dependencies: 281
 -- Data for Name: zone; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.zone (id, name, "linkZone", "rewardNodes", "activityId", "addressId") FROM stdin;
+defaultZoneId	defaultZone	{}	3	\N	defaultAddressId
 \.
 
+
 --
+-- TOC entry 3510 (class 2606 OID 16721)
 -- Name: _BackRelation _BackRelation_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1889,7 +2182,7 @@ ALTER TABLE ONLY public."_BackRelation"
 
 
 --
--- TOC entry 3624 (class 2606 OID 16736)
+-- TOC entry 3513 (class 2606 OID 16723)
 -- Name: _FrontRelation _FrontRelation_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1898,7 +2191,7 @@ ALTER TABLE ONLY public."_FrontRelation"
 
 
 --
--- TOC entry 3654 (class 2606 OID 16806)
+-- TOC entry 3516 (class 2606 OID 16725)
 -- Name: _additional_equipmentTocrystal _additional_equipmentTocrystal_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1907,7 +2200,7 @@ ALTER TABLE ONLY public."_additional_equipmentTocrystal"
 
 
 --
--- TOC entry 3657 (class 2606 OID 16813)
+-- TOC entry 3519 (class 2606 OID 16727)
 -- Name: _additional_equipmentToimage _additional_equipmentToimage_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1916,7 +2209,7 @@ ALTER TABLE ONLY public."_additional_equipmentToimage"
 
 
 --
--- TOC entry 3648 (class 2606 OID 16792)
+-- TOC entry 3522 (class 2606 OID 16729)
 -- Name: _armorTocrystal _armorTocrystal_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1925,7 +2218,7 @@ ALTER TABLE ONLY public."_armorTocrystal"
 
 
 --
--- TOC entry 3651 (class 2606 OID 16799)
+-- TOC entry 3525 (class 2606 OID 16731)
 -- Name: _armorToimage _armorToimage_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1934,7 +2227,7 @@ ALTER TABLE ONLY public."_armorToimage"
 
 
 --
--- TOC entry 3660 (class 2606 OID 16820)
+-- TOC entry 3528 (class 2606 OID 16733)
 -- Name: _avatarTocharacter _avatarTocharacter_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1943,7 +2236,7 @@ ALTER TABLE ONLY public."_avatarTocharacter"
 
 
 --
--- TOC entry 3663 (class 2606 OID 16827)
+-- TOC entry 3531 (class 2606 OID 16735)
 -- Name: _characterTocharacter_skill _characterTocharacter_skill_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1952,7 +2245,7 @@ ALTER TABLE ONLY public."_characterTocharacter_skill"
 
 
 --
--- TOC entry 3669 (class 2606 OID 16841)
+-- TOC entry 3534 (class 2606 OID 16737)
 -- Name: _characterTocombo _characterTocombo_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1961,7 +2254,7 @@ ALTER TABLE ONLY public."_characterTocombo"
 
 
 --
--- TOC entry 3666 (class 2606 OID 16834)
+-- TOC entry 3537 (class 2606 OID 16739)
 -- Name: _characterToconsumable _characterToconsumable_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1970,7 +2263,7 @@ ALTER TABLE ONLY public."_characterToconsumable"
 
 
 --
--- TOC entry 3639 (class 2606 OID 16771)
+-- TOC entry 3540 (class 2606 OID 16741)
 -- Name: _crystalTocustom_additional_equipment _crystalTocustom_additional_equipment_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1979,7 +2272,7 @@ ALTER TABLE ONLY public."_crystalTocustom_additional_equipment"
 
 
 --
--- TOC entry 3636 (class 2606 OID 16764)
+-- TOC entry 3543 (class 2606 OID 16743)
 -- Name: _crystalTocustom_armor _crystalTocustom_armor_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1988,7 +2281,7 @@ ALTER TABLE ONLY public."_crystalTocustom_armor"
 
 
 --
--- TOC entry 3645 (class 2606 OID 16785)
+-- TOC entry 3546 (class 2606 OID 16745)
 -- Name: _crystalTocustom_special_equipment _crystalTocustom_special_equipment_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1997,7 +2290,7 @@ ALTER TABLE ONLY public."_crystalTocustom_special_equipment"
 
 
 --
--- TOC entry 3633 (class 2606 OID 16757)
+-- TOC entry 3549 (class 2606 OID 16747)
 -- Name: _crystalTocustom_weapon _crystalTocustom_weapon_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2006,7 +2299,7 @@ ALTER TABLE ONLY public."_crystalTocustom_weapon"
 
 
 --
--- TOC entry 3642 (class 2606 OID 16778)
+-- TOC entry 3552 (class 2606 OID 16749)
 -- Name: _crystalTospecial_equipment _crystalTospecial_equipment_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2015,7 +2308,7 @@ ALTER TABLE ONLY public."_crystalTospecial_equipment"
 
 
 --
--- TOC entry 3630 (class 2606 OID 16750)
+-- TOC entry 3555 (class 2606 OID 16751)
 -- Name: _crystalToweapon _crystalToweapon_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2024,7 +2317,7 @@ ALTER TABLE ONLY public."_crystalToweapon"
 
 
 --
--- TOC entry 3678 (class 2606 OID 16862)
+-- TOC entry 3558 (class 2606 OID 16753)
 -- Name: _imageToweapon _imageToweapon_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2033,7 +2326,7 @@ ALTER TABLE ONLY public."_imageToweapon"
 
 
 --
--- TOC entry 3672 (class 2606 OID 16848)
+-- TOC entry 3561 (class 2606 OID 16755)
 -- Name: _memberToteam _memberToteam_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2042,7 +2335,7 @@ ALTER TABLE ONLY public."_memberToteam"
 
 
 --
--- TOC entry 3621 (class 2606 OID 16729)
+-- TOC entry 3564 (class 2606 OID 16757)
 -- Name: _mobTozone _mobTozone_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2051,7 +2344,7 @@ ALTER TABLE ONLY public."_mobTozone"
 
 
 --
--- TOC entry 3675 (class 2606 OID 16855)
+-- TOC entry 3567 (class 2606 OID 16759)
 -- Name: _simulatorToteam _simulatorToteam_AB_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2060,7 +2353,7 @@ ALTER TABLE ONLY public."_simulatorToteam"
 
 
 --
--- TOC entry 3522 (class 2606 OID 16423)
+-- TOC entry 3573 (class 2606 OID 16761)
 -- Name: account_create_data account_create_data_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2069,7 +2362,7 @@ ALTER TABLE ONLY public.account_create_data
 
 
 --
--- TOC entry 3513 (class 2606 OID 16402)
+-- TOC entry 3570 (class 2606 OID 16763)
 -- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2078,7 +2371,7 @@ ALTER TABLE ONLY public.account
 
 
 --
--- TOC entry 3524 (class 2606 OID 16430)
+-- TOC entry 3575 (class 2606 OID 16765)
 -- Name: account_update_data account_update_data_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2087,7 +2380,7 @@ ALTER TABLE ONLY public.account_update_data
 
 
 --
--- TOC entry 3528 (class 2606 OID 16444)
+-- TOC entry 3577 (class 2606 OID 16767)
 -- Name: activity activity_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2096,7 +2389,7 @@ ALTER TABLE ONLY public.activity
 
 
 --
--- TOC entry 3572 (class 2606 OID 16575)
+-- TOC entry 3579 (class 2606 OID 16769)
 -- Name: additional_equipment additional_equipment_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2105,7 +2398,7 @@ ALTER TABLE ONLY public.additional_equipment
 
 
 --
--- TOC entry 3530 (class 2606 OID 16451)
+-- TOC entry 3581 (class 2606 OID 16771)
 -- Name: address address_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2114,7 +2407,7 @@ ALTER TABLE ONLY public.address
 
 
 --
--- TOC entry 3569 (class 2606 OID 16568)
+-- TOC entry 3585 (class 2606 OID 16773)
 -- Name: armor_enchantment_attributes armor_enchantment_attributes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2123,7 +2416,7 @@ ALTER TABLE ONLY public.armor_enchantment_attributes
 
 
 --
--- TOC entry 3567 (class 2606 OID 16561)
+-- TOC entry 3583 (class 2606 OID 16775)
 -- Name: armor armor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2132,7 +2425,7 @@ ALTER TABLE ONLY public.armor
 
 
 --
--- TOC entry 3600 (class 2606 OID 16666)
+-- TOC entry 3588 (class 2606 OID 16777)
 -- Name: avatar avatar_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2141,7 +2434,7 @@ ALTER TABLE ONLY public.avatar
 
 
 --
--- TOC entry 3603 (class 2606 OID 16673)
+-- TOC entry 3591 (class 2606 OID 16779)
 -- Name: character character_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2150,7 +2443,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3594 (class 2606 OID 16645)
+-- TOC entry 3594 (class 2606 OID 16781)
 -- Name: character_skill character_skill_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2159,7 +2452,7 @@ ALTER TABLE ONLY public.character_skill
 
 
 --
--- TOC entry 3598 (class 2606 OID 16659)
+-- TOC entry 3596 (class 2606 OID 16783)
 -- Name: combo combo_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2168,7 +2461,7 @@ ALTER TABLE ONLY public.combo
 
 
 --
--- TOC entry 3581 (class 2606 OID 16603)
+-- TOC entry 3598 (class 2606 OID 16785)
 -- Name: consumable consumable_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2177,7 +2470,7 @@ ALTER TABLE ONLY public.consumable
 
 
 --
--- TOC entry 3563 (class 2606 OID 16546)
+-- TOC entry 3600 (class 2606 OID 16787)
 -- Name: crystal crystal_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2186,7 +2479,7 @@ ALTER TABLE ONLY public.crystal
 
 
 --
--- TOC entry 3590 (class 2606 OID 16631)
+-- TOC entry 3602 (class 2606 OID 16789)
 -- Name: custom_additional_equipment custom_additional_equipment_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2195,7 +2488,7 @@ ALTER TABLE ONLY public.custom_additional_equipment
 
 
 --
--- TOC entry 3588 (class 2606 OID 16624)
+-- TOC entry 3604 (class 2606 OID 16791)
 -- Name: custom_armor custom_armor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2204,7 +2497,7 @@ ALTER TABLE ONLY public.custom_armor
 
 
 --
--- TOC entry 3596 (class 2606 OID 16652)
+-- TOC entry 3606 (class 2606 OID 16793)
 -- Name: custom_pet custom_pet_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2213,7 +2506,7 @@ ALTER TABLE ONLY public.custom_pet
 
 
 --
--- TOC entry 3592 (class 2606 OID 16638)
+-- TOC entry 3608 (class 2606 OID 16795)
 -- Name: custom_special_equipment custom_special_equipment_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2222,7 +2515,7 @@ ALTER TABLE ONLY public.custom_special_equipment
 
 
 --
--- TOC entry 3583 (class 2606 OID 16610)
+-- TOC entry 3610 (class 2606 OID 16797)
 -- Name: custom_weapon custom_weapon_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2231,7 +2524,7 @@ ALTER TABLE ONLY public.custom_weapon
 
 
 --
--- TOC entry 3561 (class 2606 OID 16538)
+-- TOC entry 3612 (class 2606 OID 16799)
 -- Name: drop_item drop_item_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2240,7 +2533,7 @@ ALTER TABLE ONLY public.drop_item
 
 
 --
--- TOC entry 3619 (class 2606 OID 16722)
+-- TOC entry 3614 (class 2606 OID 16801)
 -- Name: image image_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2249,7 +2542,7 @@ ALTER TABLE ONLY public.image
 
 
 --
--- TOC entry 3536 (class 2606 OID 16472)
+-- TOC entry 3616 (class 2606 OID 16803)
 -- Name: item item_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2258,16 +2551,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3550 (class 2606 OID 16500)
--- Name: kill_requirement kill_requirement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.kill_requirement
-    ADD CONSTRAINT kill_requirement_pkey PRIMARY KEY (id);
-
-
---
--- TOC entry 3556 (class 2606 OID 16521)
+-- TOC entry 3621 (class 2606 OID 16807)
 -- Name: material material_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2276,7 +2560,7 @@ ALTER TABLE ONLY public.material
 
 
 --
--- TOC entry 3610 (class 2606 OID 16694)
+-- TOC entry 3623 (class 2606 OID 16809)
 -- Name: member member_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2285,7 +2569,7 @@ ALTER TABLE ONLY public.member
 
 
 --
--- TOC entry 3606 (class 2606 OID 16680)
+-- TOC entry 3625 (class 2606 OID 16811)
 -- Name: mercenary mercenary_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2294,7 +2578,7 @@ ALTER TABLE ONLY public.mercenary
 
 
 --
--- TOC entry 3558 (class 2606 OID 16528)
+-- TOC entry 3627 (class 2606 OID 16813)
 -- Name: mob mob_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2303,7 +2587,7 @@ ALTER TABLE ONLY public.mob
 
 
 --
--- TOC entry 3534 (class 2606 OID 16465)
+-- TOC entry 3630 (class 2606 OID 16815)
 -- Name: npc npc_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2312,7 +2596,7 @@ ALTER TABLE ONLY public.npc
 
 
 --
--- TOC entry 3608 (class 2606 OID 16687)
+-- TOC entry 3632 (class 2606 OID 16817)
 -- Name: player player_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2321,7 +2605,7 @@ ALTER TABLE ONLY public.player
 
 
 --
--- TOC entry 3520 (class 2606 OID 16416)
+-- TOC entry 3635 (class 2606 OID 16819)
 -- Name: post post_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2330,7 +2614,7 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 3539 (class 2606 OID 16479)
+-- TOC entry 3644 (class 2606 OID 16821)
 -- Name: recipe_ingredient recipe_ingredient_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2339,7 +2623,7 @@ ALTER TABLE ONLY public.recipe_ingredient
 
 
 --
--- TOC entry 3544 (class 2606 OID 16486)
+-- TOC entry 3640 (class 2606 OID 16823)
 -- Name: recipe recipe_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2348,7 +2632,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3554 (class 2606 OID 16514)
+-- TOC entry 3646 (class 2606 OID 16825)
 -- Name: reward reward_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2357,7 +2641,7 @@ ALTER TABLE ONLY public.reward
 
 
 --
--- TOC entry 3516 (class 2606 OID 16409)
+-- TOC entry 3648 (class 2606 OID 16827)
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2366,7 +2650,7 @@ ALTER TABLE ONLY public.session
 
 
 --
--- TOC entry 3614 (class 2606 OID 16708)
+-- TOC entry 3651 (class 2606 OID 16829)
 -- Name: simulator simulator_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2375,7 +2659,7 @@ ALTER TABLE ONLY public.simulator
 
 
 --
--- TOC entry 3579 (class 2606 OID 16596)
+-- TOC entry 3657 (class 2606 OID 16831)
 -- Name: skill_effect skill_effect_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2384,7 +2668,7 @@ ALTER TABLE ONLY public.skill_effect
 
 
 --
--- TOC entry 3576 (class 2606 OID 16589)
+-- TOC entry 3654 (class 2606 OID 16833)
 -- Name: skill skill_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2393,7 +2677,7 @@ ALTER TABLE ONLY public.skill
 
 
 --
--- TOC entry 3574 (class 2606 OID 16582)
+-- TOC entry 3659 (class 2606 OID 16835)
 -- Name: special_equipment special_equipment_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2402,7 +2686,7 @@ ALTER TABLE ONLY public.special_equipment
 
 
 --
--- TOC entry 3617 (class 2606 OID 16715)
+-- TOC entry 3661 (class 2606 OID 16837)
 -- Name: statistic statistic_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2411,7 +2695,25 @@ ALTER TABLE ONLY public.statistic
 
 
 --
--- TOC entry 3548 (class 2606 OID 16493)
+-- TOC entry 3665 (class 2606 OID 16841)
+-- Name: task_collect_require task_collect_require_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_collect_require
+    ADD CONSTRAINT task_collect_require_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3619 (class 2606 OID 16805)
+-- Name: task_kill_requirement task_kill_requirement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_kill_requirement
+    ADD CONSTRAINT task_kill_requirement_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3663 (class 2606 OID 16839)
 -- Name: task task_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2420,16 +2722,7 @@ ALTER TABLE ONLY public.task
 
 
 --
--- TOC entry 3552 (class 2606 OID 16507)
--- Name: task_require task_require_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.task_require
-    ADD CONSTRAINT task_require_pkey PRIMARY KEY (id);
-
-
---
--- TOC entry 3612 (class 2606 OID 16701)
+-- TOC entry 3667 (class 2606 OID 16843)
 -- Name: team team_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2438,7 +2731,7 @@ ALTER TABLE ONLY public.team
 
 
 --
--- TOC entry 3511 (class 2606 OID 16395)
+-- TOC entry 3670 (class 2606 OID 16845)
 -- Name: user user_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2447,7 +2740,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 3585 (class 2606 OID 16617)
+-- TOC entry 3674 (class 2606 OID 16847)
 -- Name: weapon_enchantment_attributes weapon_enchantment_attributes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2456,7 +2749,7 @@ ALTER TABLE ONLY public.weapon_enchantment_attributes
 
 
 --
--- TOC entry 3565 (class 2606 OID 16554)
+-- TOC entry 3672 (class 2606 OID 16849)
 -- Name: weapon weapon_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2465,7 +2758,7 @@ ALTER TABLE ONLY public.weapon
 
 
 --
--- TOC entry 3526 (class 2606 OID 16437)
+-- TOC entry 3677 (class 2606 OID 16851)
 -- Name: world world_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2474,7 +2767,7 @@ ALTER TABLE ONLY public.world
 
 
 --
--- TOC entry 3532 (class 2606 OID 16458)
+-- TOC entry 3679 (class 2606 OID 16853)
 -- Name: zone zone_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2483,7 +2776,7 @@ ALTER TABLE ONLY public.zone
 
 
 --
--- TOC entry 3628 (class 1259 OID 16882)
+-- TOC entry 3511 (class 1259 OID 16854)
 -- Name: _BackRelation_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2491,7 +2784,7 @@ CREATE INDEX "_BackRelation_B_index" ON public."_BackRelation" USING btree ("B")
 
 
 --
--- TOC entry 3625 (class 1259 OID 16881)
+-- TOC entry 3514 (class 1259 OID 16855)
 -- Name: _FrontRelation_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2499,7 +2792,7 @@ CREATE INDEX "_FrontRelation_B_index" ON public."_FrontRelation" USING btree ("B
 
 
 --
--- TOC entry 3655 (class 1259 OID 16891)
+-- TOC entry 3517 (class 1259 OID 16856)
 -- Name: _additional_equipmentTocrystal_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2507,7 +2800,7 @@ CREATE INDEX "_additional_equipmentTocrystal_B_index" ON public."_additional_equ
 
 
 --
--- TOC entry 3658 (class 1259 OID 16892)
+-- TOC entry 3520 (class 1259 OID 16857)
 -- Name: _additional_equipmentToimage_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2515,7 +2808,7 @@ CREATE INDEX "_additional_equipmentToimage_B_index" ON public."_additional_equip
 
 
 --
--- TOC entry 3649 (class 1259 OID 16889)
+-- TOC entry 3523 (class 1259 OID 16858)
 -- Name: _armorTocrystal_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2523,7 +2816,7 @@ CREATE INDEX "_armorTocrystal_B_index" ON public."_armorTocrystal" USING btree (
 
 
 --
--- TOC entry 3652 (class 1259 OID 16890)
+-- TOC entry 3526 (class 1259 OID 16859)
 -- Name: _armorToimage_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2531,7 +2824,7 @@ CREATE INDEX "_armorToimage_B_index" ON public."_armorToimage" USING btree ("B")
 
 
 --
--- TOC entry 3661 (class 1259 OID 16893)
+-- TOC entry 3529 (class 1259 OID 16860)
 -- Name: _avatarTocharacter_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2539,7 +2832,7 @@ CREATE INDEX "_avatarTocharacter_B_index" ON public."_avatarTocharacter" USING b
 
 
 --
--- TOC entry 3664 (class 1259 OID 16894)
+-- TOC entry 3532 (class 1259 OID 16861)
 -- Name: _characterTocharacter_skill_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2547,7 +2840,7 @@ CREATE INDEX "_characterTocharacter_skill_B_index" ON public."_characterTocharac
 
 
 --
--- TOC entry 3670 (class 1259 OID 16896)
+-- TOC entry 3535 (class 1259 OID 16862)
 -- Name: _characterTocombo_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2555,7 +2848,7 @@ CREATE INDEX "_characterTocombo_B_index" ON public."_characterTocombo" USING btr
 
 
 --
--- TOC entry 3667 (class 1259 OID 16895)
+-- TOC entry 3538 (class 1259 OID 16863)
 -- Name: _characterToconsumable_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2563,7 +2856,7 @@ CREATE INDEX "_characterToconsumable_B_index" ON public."_characterToconsumable"
 
 
 --
--- TOC entry 3640 (class 1259 OID 16886)
+-- TOC entry 3541 (class 1259 OID 16864)
 -- Name: _crystalTocustom_additional_equipment_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2571,7 +2864,7 @@ CREATE INDEX "_crystalTocustom_additional_equipment_B_index" ON public."_crystal
 
 
 --
--- TOC entry 3637 (class 1259 OID 16885)
+-- TOC entry 3544 (class 1259 OID 16865)
 -- Name: _crystalTocustom_armor_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2579,7 +2872,7 @@ CREATE INDEX "_crystalTocustom_armor_B_index" ON public."_crystalTocustom_armor"
 
 
 --
--- TOC entry 3646 (class 1259 OID 16888)
+-- TOC entry 3547 (class 1259 OID 16866)
 -- Name: _crystalTocustom_special_equipment_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2587,7 +2880,7 @@ CREATE INDEX "_crystalTocustom_special_equipment_B_index" ON public."_crystalToc
 
 
 --
--- TOC entry 3634 (class 1259 OID 16884)
+-- TOC entry 3550 (class 1259 OID 16867)
 -- Name: _crystalTocustom_weapon_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2595,7 +2888,7 @@ CREATE INDEX "_crystalTocustom_weapon_B_index" ON public."_crystalTocustom_weapo
 
 
 --
--- TOC entry 3643 (class 1259 OID 16887)
+-- TOC entry 3553 (class 1259 OID 16868)
 -- Name: _crystalTospecial_equipment_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2603,7 +2896,7 @@ CREATE INDEX "_crystalTospecial_equipment_B_index" ON public."_crystalTospecial_
 
 
 --
--- TOC entry 3631 (class 1259 OID 16883)
+-- TOC entry 3556 (class 1259 OID 16869)
 -- Name: _crystalToweapon_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2611,7 +2904,7 @@ CREATE INDEX "_crystalToweapon_B_index" ON public."_crystalToweapon" USING btree
 
 
 --
--- TOC entry 3679 (class 1259 OID 16899)
+-- TOC entry 3559 (class 1259 OID 16870)
 -- Name: _imageToweapon_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2619,7 +2912,7 @@ CREATE INDEX "_imageToweapon_B_index" ON public."_imageToweapon" USING btree ("B
 
 
 --
--- TOC entry 3673 (class 1259 OID 16897)
+-- TOC entry 3562 (class 1259 OID 16871)
 -- Name: _memberToteam_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2627,7 +2920,7 @@ CREATE INDEX "_memberToteam_B_index" ON public."_memberToteam" USING btree ("B")
 
 
 --
--- TOC entry 3622 (class 1259 OID 16880)
+-- TOC entry 3565 (class 1259 OID 16872)
 -- Name: _mobTozone_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2635,7 +2928,7 @@ CREATE INDEX "_mobTozone_B_index" ON public."_mobTozone" USING btree ("B");
 
 
 --
--- TOC entry 3676 (class 1259 OID 16898)
+-- TOC entry 3568 (class 1259 OID 16873)
 -- Name: _simulatorToteam_B_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2643,7 +2936,7 @@ CREATE INDEX "_simulatorToteam_B_index" ON public."_simulatorToteam" USING btree
 
 
 --
--- TOC entry 3514 (class 1259 OID 16864)
+-- TOC entry 3571 (class 1259 OID 16874)
 -- Name: account_provider_providerAccountId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2651,7 +2944,7 @@ CREATE UNIQUE INDEX "account_provider_providerAccountId_key" ON public.account U
 
 
 --
--- TOC entry 3570 (class 1259 OID 16874)
+-- TOC entry 3586 (class 1259 OID 16875)
 -- Name: armor_enchantment_attributes_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2659,7 +2952,7 @@ CREATE UNIQUE INDEX "armor_enchantment_attributes_statisticId_key" ON public.arm
 
 
 --
--- TOC entry 3601 (class 1259 OID 16878)
+-- TOC entry 3589 (class 1259 OID 16876)
 -- Name: character_imageId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2667,7 +2960,7 @@ CREATE UNIQUE INDEX "character_imageId_key" ON public."character" USING btree ("
 
 
 --
--- TOC entry 3604 (class 1259 OID 16877)
+-- TOC entry 3592 (class 1259 OID 16877)
 -- Name: character_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2675,7 +2968,7 @@ CREATE UNIQUE INDEX "character_statisticId_key" ON public."character" USING btre
 
 
 --
--- TOC entry 3537 (class 1259 OID 16867)
+-- TOC entry 3617 (class 1259 OID 16878)
 -- Name: item_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2683,7 +2976,7 @@ CREATE UNIQUE INDEX "item_statisticId_key" ON public.item USING btree ("statisti
 
 
 --
--- TOC entry 3559 (class 1259 OID 16873)
+-- TOC entry 3628 (class 1259 OID 16879)
 -- Name: mob_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2691,7 +2984,7 @@ CREATE UNIQUE INDEX "mob_statisticId_key" ON public.mob USING btree ("statisticI
 
 
 --
--- TOC entry 3518 (class 1259 OID 16866)
+-- TOC entry 3633 (class 1259 OID 16880)
 -- Name: post_name_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2699,7 +2992,7 @@ CREATE INDEX post_name_idx ON public.post USING btree (name);
 
 
 --
--- TOC entry 3540 (class 1259 OID 16870)
+-- TOC entry 3636 (class 1259 OID 16881)
 -- Name: recipe_addEquipId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2707,7 +3000,7 @@ CREATE UNIQUE INDEX "recipe_addEquipId_key" ON public.recipe USING btree ("addEq
 
 
 --
--- TOC entry 3541 (class 1259 OID 16869)
+-- TOC entry 3637 (class 1259 OID 16882)
 -- Name: recipe_armorId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2715,7 +3008,7 @@ CREATE UNIQUE INDEX "recipe_armorId_key" ON public.recipe USING btree ("armorId"
 
 
 --
--- TOC entry 3542 (class 1259 OID 16872)
+-- TOC entry 3638 (class 1259 OID 16883)
 -- Name: recipe_consumableId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2723,7 +3016,7 @@ CREATE UNIQUE INDEX "recipe_consumableId_key" ON public.recipe USING btree ("con
 
 
 --
--- TOC entry 3545 (class 1259 OID 16871)
+-- TOC entry 3641 (class 1259 OID 16884)
 -- Name: recipe_speEquipId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2731,7 +3024,7 @@ CREATE UNIQUE INDEX "recipe_speEquipId_key" ON public.recipe USING btree ("speEq
 
 
 --
--- TOC entry 3546 (class 1259 OID 16868)
+-- TOC entry 3642 (class 1259 OID 16885)
 -- Name: recipe_weaponId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2739,7 +3032,7 @@ CREATE UNIQUE INDEX "recipe_weaponId_key" ON public.recipe USING btree ("weaponI
 
 
 --
--- TOC entry 3517 (class 1259 OID 16865)
+-- TOC entry 3649 (class 1259 OID 16886)
 -- Name: session_sessionToken_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2747,7 +3040,7 @@ CREATE UNIQUE INDEX "session_sessionToken_key" ON public.session USING btree ("s
 
 
 --
--- TOC entry 3615 (class 1259 OID 16879)
+-- TOC entry 3652 (class 1259 OID 16887)
 -- Name: simulator_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2755,7 +3048,7 @@ CREATE UNIQUE INDEX "simulator_statisticId_key" ON public.simulator USING btree 
 
 
 --
--- TOC entry 3577 (class 1259 OID 16875)
+-- TOC entry 3655 (class 1259 OID 16888)
 -- Name: skill_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2763,7 +3056,7 @@ CREATE UNIQUE INDEX "skill_statisticId_key" ON public.skill USING btree ("statis
 
 
 --
--- TOC entry 3509 (class 1259 OID 16863)
+-- TOC entry 3668 (class 1259 OID 16889)
 -- Name: user_email_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2771,7 +3064,7 @@ CREATE UNIQUE INDEX user_email_key ON public."user" USING btree (email);
 
 
 --
--- TOC entry 3586 (class 1259 OID 16876)
+-- TOC entry 3675 (class 1259 OID 16890)
 -- Name: weapon_enchantment_attributes_statisticId_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -2779,7 +3072,7 @@ CREATE UNIQUE INDEX "weapon_enchantment_attributes_statisticId_key" ON public.we
 
 
 --
--- TOC entry 3766 (class 2606 OID 17330)
+-- TOC entry 3680 (class 2606 OID 16891)
 -- Name: _BackRelation _BackRelation_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2788,7 +3081,7 @@ ALTER TABLE ONLY public."_BackRelation"
 
 
 --
--- TOC entry 3767 (class 2606 OID 17335)
+-- TOC entry 3681 (class 2606 OID 16896)
 -- Name: _BackRelation _BackRelation_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2797,7 +3090,7 @@ ALTER TABLE ONLY public."_BackRelation"
 
 
 --
--- TOC entry 3764 (class 2606 OID 17320)
+-- TOC entry 3682 (class 2606 OID 16901)
 -- Name: _FrontRelation _FrontRelation_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2806,7 +3099,7 @@ ALTER TABLE ONLY public."_FrontRelation"
 
 
 --
--- TOC entry 3765 (class 2606 OID 17325)
+-- TOC entry 3683 (class 2606 OID 16906)
 -- Name: _FrontRelation _FrontRelation_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2815,7 +3108,7 @@ ALTER TABLE ONLY public."_FrontRelation"
 
 
 --
--- TOC entry 3784 (class 2606 OID 17420)
+-- TOC entry 3684 (class 2606 OID 16911)
 -- Name: _additional_equipmentTocrystal _additional_equipmentTocrystal_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2824,7 +3117,7 @@ ALTER TABLE ONLY public."_additional_equipmentTocrystal"
 
 
 --
--- TOC entry 3785 (class 2606 OID 17425)
+-- TOC entry 3685 (class 2606 OID 16916)
 -- Name: _additional_equipmentTocrystal _additional_equipmentTocrystal_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2833,7 +3126,7 @@ ALTER TABLE ONLY public."_additional_equipmentTocrystal"
 
 
 --
--- TOC entry 3786 (class 2606 OID 17430)
+-- TOC entry 3686 (class 2606 OID 16921)
 -- Name: _additional_equipmentToimage _additional_equipmentToimage_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2842,7 +3135,7 @@ ALTER TABLE ONLY public."_additional_equipmentToimage"
 
 
 --
--- TOC entry 3787 (class 2606 OID 17435)
+-- TOC entry 3687 (class 2606 OID 16926)
 -- Name: _additional_equipmentToimage _additional_equipmentToimage_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2851,7 +3144,7 @@ ALTER TABLE ONLY public."_additional_equipmentToimage"
 
 
 --
--- TOC entry 3780 (class 2606 OID 17400)
+-- TOC entry 3688 (class 2606 OID 16931)
 -- Name: _armorTocrystal _armorTocrystal_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2860,7 +3153,7 @@ ALTER TABLE ONLY public."_armorTocrystal"
 
 
 --
--- TOC entry 3781 (class 2606 OID 17405)
+-- TOC entry 3689 (class 2606 OID 16936)
 -- Name: _armorTocrystal _armorTocrystal_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2869,7 +3162,7 @@ ALTER TABLE ONLY public."_armorTocrystal"
 
 
 --
--- TOC entry 3782 (class 2606 OID 17410)
+-- TOC entry 3690 (class 2606 OID 16941)
 -- Name: _armorToimage _armorToimage_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2878,7 +3171,7 @@ ALTER TABLE ONLY public."_armorToimage"
 
 
 --
--- TOC entry 3783 (class 2606 OID 17415)
+-- TOC entry 3691 (class 2606 OID 16946)
 -- Name: _armorToimage _armorToimage_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2887,7 +3180,7 @@ ALTER TABLE ONLY public."_armorToimage"
 
 
 --
--- TOC entry 3788 (class 2606 OID 17440)
+-- TOC entry 3692 (class 2606 OID 16951)
 -- Name: _avatarTocharacter _avatarTocharacter_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2896,7 +3189,7 @@ ALTER TABLE ONLY public."_avatarTocharacter"
 
 
 --
--- TOC entry 3789 (class 2606 OID 17445)
+-- TOC entry 3693 (class 2606 OID 16956)
 -- Name: _avatarTocharacter _avatarTocharacter_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2905,7 +3198,7 @@ ALTER TABLE ONLY public."_avatarTocharacter"
 
 
 --
--- TOC entry 3790 (class 2606 OID 17450)
+-- TOC entry 3694 (class 2606 OID 16961)
 -- Name: _characterTocharacter_skill _characterTocharacter_skill_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2914,7 +3207,7 @@ ALTER TABLE ONLY public."_characterTocharacter_skill"
 
 
 --
--- TOC entry 3791 (class 2606 OID 17455)
+-- TOC entry 3695 (class 2606 OID 16966)
 -- Name: _characterTocharacter_skill _characterTocharacter_skill_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2923,7 +3216,7 @@ ALTER TABLE ONLY public."_characterTocharacter_skill"
 
 
 --
--- TOC entry 3794 (class 2606 OID 17470)
+-- TOC entry 3696 (class 2606 OID 16971)
 -- Name: _characterTocombo _characterTocombo_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2932,7 +3225,7 @@ ALTER TABLE ONLY public."_characterTocombo"
 
 
 --
--- TOC entry 3795 (class 2606 OID 17475)
+-- TOC entry 3697 (class 2606 OID 16976)
 -- Name: _characterTocombo _characterTocombo_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2941,7 +3234,7 @@ ALTER TABLE ONLY public."_characterTocombo"
 
 
 --
--- TOC entry 3792 (class 2606 OID 17460)
+-- TOC entry 3698 (class 2606 OID 16981)
 -- Name: _characterToconsumable _characterToconsumable_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2950,7 +3243,7 @@ ALTER TABLE ONLY public."_characterToconsumable"
 
 
 --
--- TOC entry 3793 (class 2606 OID 17465)
+-- TOC entry 3699 (class 2606 OID 16986)
 -- Name: _characterToconsumable _characterToconsumable_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2959,7 +3252,7 @@ ALTER TABLE ONLY public."_characterToconsumable"
 
 
 --
--- TOC entry 3774 (class 2606 OID 17370)
+-- TOC entry 3700 (class 2606 OID 16991)
 -- Name: _crystalTocustom_additional_equipment _crystalTocustom_additional_equipment_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2968,7 +3261,7 @@ ALTER TABLE ONLY public."_crystalTocustom_additional_equipment"
 
 
 --
--- TOC entry 3775 (class 2606 OID 17375)
+-- TOC entry 3701 (class 2606 OID 16996)
 -- Name: _crystalTocustom_additional_equipment _crystalTocustom_additional_equipment_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2977,7 +3270,7 @@ ALTER TABLE ONLY public."_crystalTocustom_additional_equipment"
 
 
 --
--- TOC entry 3772 (class 2606 OID 17360)
+-- TOC entry 3702 (class 2606 OID 17001)
 -- Name: _crystalTocustom_armor _crystalTocustom_armor_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2986,7 +3279,7 @@ ALTER TABLE ONLY public."_crystalTocustom_armor"
 
 
 --
--- TOC entry 3773 (class 2606 OID 17365)
+-- TOC entry 3703 (class 2606 OID 17006)
 -- Name: _crystalTocustom_armor _crystalTocustom_armor_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2995,7 +3288,7 @@ ALTER TABLE ONLY public."_crystalTocustom_armor"
 
 
 --
--- TOC entry 3778 (class 2606 OID 17390)
+-- TOC entry 3704 (class 2606 OID 17011)
 -- Name: _crystalTocustom_special_equipment _crystalTocustom_special_equipment_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3004,7 +3297,7 @@ ALTER TABLE ONLY public."_crystalTocustom_special_equipment"
 
 
 --
--- TOC entry 3779 (class 2606 OID 17395)
+-- TOC entry 3705 (class 2606 OID 17016)
 -- Name: _crystalTocustom_special_equipment _crystalTocustom_special_equipment_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3013,7 +3306,7 @@ ALTER TABLE ONLY public."_crystalTocustom_special_equipment"
 
 
 --
--- TOC entry 3770 (class 2606 OID 17350)
+-- TOC entry 3706 (class 2606 OID 17021)
 -- Name: _crystalTocustom_weapon _crystalTocustom_weapon_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3022,7 +3315,7 @@ ALTER TABLE ONLY public."_crystalTocustom_weapon"
 
 
 --
--- TOC entry 3771 (class 2606 OID 17355)
+-- TOC entry 3707 (class 2606 OID 17026)
 -- Name: _crystalTocustom_weapon _crystalTocustom_weapon_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3031,7 +3324,7 @@ ALTER TABLE ONLY public."_crystalTocustom_weapon"
 
 
 --
--- TOC entry 3776 (class 2606 OID 17380)
+-- TOC entry 3708 (class 2606 OID 17031)
 -- Name: _crystalTospecial_equipment _crystalTospecial_equipment_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3040,7 +3333,7 @@ ALTER TABLE ONLY public."_crystalTospecial_equipment"
 
 
 --
--- TOC entry 3777 (class 2606 OID 17385)
+-- TOC entry 3709 (class 2606 OID 17036)
 -- Name: _crystalTospecial_equipment _crystalTospecial_equipment_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3049,7 +3342,7 @@ ALTER TABLE ONLY public."_crystalTospecial_equipment"
 
 
 --
--- TOC entry 3768 (class 2606 OID 17340)
+-- TOC entry 3710 (class 2606 OID 17041)
 -- Name: _crystalToweapon _crystalToweapon_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3058,7 +3351,7 @@ ALTER TABLE ONLY public."_crystalToweapon"
 
 
 --
--- TOC entry 3769 (class 2606 OID 17345)
+-- TOC entry 3711 (class 2606 OID 17046)
 -- Name: _crystalToweapon _crystalToweapon_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3067,7 +3360,7 @@ ALTER TABLE ONLY public."_crystalToweapon"
 
 
 --
--- TOC entry 3800 (class 2606 OID 17500)
+-- TOC entry 3712 (class 2606 OID 17051)
 -- Name: _imageToweapon _imageToweapon_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3076,7 +3369,7 @@ ALTER TABLE ONLY public."_imageToweapon"
 
 
 --
--- TOC entry 3801 (class 2606 OID 17505)
+-- TOC entry 3713 (class 2606 OID 17056)
 -- Name: _imageToweapon _imageToweapon_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3085,7 +3378,7 @@ ALTER TABLE ONLY public."_imageToweapon"
 
 
 --
--- TOC entry 3796 (class 2606 OID 17480)
+-- TOC entry 3714 (class 2606 OID 17061)
 -- Name: _memberToteam _memberToteam_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3094,7 +3387,7 @@ ALTER TABLE ONLY public."_memberToteam"
 
 
 --
--- TOC entry 3797 (class 2606 OID 17485)
+-- TOC entry 3715 (class 2606 OID 17066)
 -- Name: _memberToteam _memberToteam_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3103,7 +3396,7 @@ ALTER TABLE ONLY public."_memberToteam"
 
 
 --
--- TOC entry 3762 (class 2606 OID 17310)
+-- TOC entry 3716 (class 2606 OID 17071)
 -- Name: _mobTozone _mobTozone_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3112,7 +3405,7 @@ ALTER TABLE ONLY public."_mobTozone"
 
 
 --
--- TOC entry 3763 (class 2606 OID 17315)
+-- TOC entry 3717 (class 2606 OID 17076)
 -- Name: _mobTozone _mobTozone_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3121,7 +3414,7 @@ ALTER TABLE ONLY public."_mobTozone"
 
 
 --
--- TOC entry 3798 (class 2606 OID 17490)
+-- TOC entry 3718 (class 2606 OID 17081)
 -- Name: _simulatorToteam _simulatorToteam_A_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3130,7 +3423,7 @@ ALTER TABLE ONLY public."_simulatorToteam"
 
 
 --
--- TOC entry 3799 (class 2606 OID 17495)
+-- TOC entry 3719 (class 2606 OID 17086)
 -- Name: _simulatorToteam _simulatorToteam_B_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3139,7 +3432,7 @@ ALTER TABLE ONLY public."_simulatorToteam"
 
 
 --
--- TOC entry 3683 (class 2606 OID 16915)
+-- TOC entry 3721 (class 2606 OID 17091)
 -- Name: account_create_data account_create_data_accountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3148,7 +3441,7 @@ ALTER TABLE ONLY public.account_create_data
 
 
 --
--- TOC entry 3684 (class 2606 OID 16920)
+-- TOC entry 3722 (class 2606 OID 17096)
 -- Name: account_update_data account_update_data_accountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3157,7 +3450,7 @@ ALTER TABLE ONLY public.account_update_data
 
 
 --
--- TOC entry 3680 (class 2606 OID 16900)
+-- TOC entry 3720 (class 2606 OID 17101)
 -- Name: account account_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3166,7 +3459,7 @@ ALTER TABLE ONLY public.account
 
 
 --
--- TOC entry 3721 (class 2606 OID 17105)
+-- TOC entry 3723 (class 2606 OID 17106)
 -- Name: additional_equipment additional_equipment_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3175,7 +3468,7 @@ ALTER TABLE ONLY public.additional_equipment
 
 
 --
--- TOC entry 3685 (class 2606 OID 16925)
+-- TOC entry 3724 (class 2606 OID 17111)
 -- Name: address address_worldId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3184,7 +3477,7 @@ ALTER TABLE ONLY public.address
 
 
 --
--- TOC entry 3718 (class 2606 OID 17100)
+-- TOC entry 3726 (class 2606 OID 17116)
 -- Name: armor_enchantment_attributes armor_enchantment_attributes_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3193,7 +3486,7 @@ ALTER TABLE ONLY public.armor_enchantment_attributes
 
 
 --
--- TOC entry 3719 (class 2606 OID 17090)
+-- TOC entry 3727 (class 2606 OID 17121)
 -- Name: armor_enchantment_attributes armor_enchantment_attributes_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3202,7 +3495,7 @@ ALTER TABLE ONLY public.armor_enchantment_attributes
 
 
 --
--- TOC entry 3720 (class 2606 OID 17095)
+-- TOC entry 3728 (class 2606 OID 17126)
 -- Name: armor_enchantment_attributes armor_enchantment_attributes_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3211,7 +3504,7 @@ ALTER TABLE ONLY public.armor_enchantment_attributes
 
 
 --
--- TOC entry 3717 (class 2606 OID 17085)
+-- TOC entry 3725 (class 2606 OID 17131)
 -- Name: armor armor_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3220,7 +3513,7 @@ ALTER TABLE ONLY public.armor
 
 
 --
--- TOC entry 3744 (class 2606 OID 17220)
+-- TOC entry 3729 (class 2606 OID 17136)
 -- Name: avatar avatar_playerId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3229,7 +3522,7 @@ ALTER TABLE ONLY public.avatar
 
 
 --
--- TOC entry 3745 (class 2606 OID 17240)
+-- TOC entry 3730 (class 2606 OID 17141)
 -- Name: character character_addEquipId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3238,7 +3531,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3746 (class 2606 OID 17235)
+-- TOC entry 3731 (class 2606 OID 17146)
 -- Name: character character_armorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3247,7 +3540,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3747 (class 2606 OID 17260)
+-- TOC entry 3732 (class 2606 OID 17151)
 -- Name: character character_imageId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3256,7 +3549,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3748 (class 2606 OID 17250)
+-- TOC entry 3733 (class 2606 OID 17156)
 -- Name: character character_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3265,7 +3558,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3741 (class 2606 OID 17205)
+-- TOC entry 3738 (class 2606 OID 17161)
 -- Name: character_skill character_skill_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3274,7 +3567,7 @@ ALTER TABLE ONLY public.character_skill
 
 
 --
--- TOC entry 3749 (class 2606 OID 17245)
+-- TOC entry 3734 (class 2606 OID 17166)
 -- Name: character character_speEquipId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3283,7 +3576,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3750 (class 2606 OID 17255)
+-- TOC entry 3735 (class 2606 OID 17171)
 -- Name: character character_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3292,7 +3585,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3751 (class 2606 OID 17230)
+-- TOC entry 3736 (class 2606 OID 17176)
 -- Name: character character_subWeaponId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3301,7 +3594,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3752 (class 2606 OID 17225)
+-- TOC entry 3737 (class 2606 OID 17181)
 -- Name: character character_weaponId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3310,7 +3603,7 @@ ALTER TABLE ONLY public."character"
 
 
 --
--- TOC entry 3727 (class 2606 OID 17135)
+-- TOC entry 3739 (class 2606 OID 17186)
 -- Name: consumable consumable_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3319,7 +3612,7 @@ ALTER TABLE ONLY public.consumable
 
 
 --
--- TOC entry 3715 (class 2606 OID 17075)
+-- TOC entry 3740 (class 2606 OID 17191)
 -- Name: crystal crystal_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3328,7 +3621,7 @@ ALTER TABLE ONLY public.crystal
 
 
 --
--- TOC entry 3737 (class 2606 OID 17190)
+-- TOC entry 3741 (class 2606 OID 17196)
 -- Name: custom_additional_equipment custom_additional_equipment_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3337,7 +3630,7 @@ ALTER TABLE ONLY public.custom_additional_equipment
 
 
 --
--- TOC entry 3738 (class 2606 OID 17185)
+-- TOC entry 3742 (class 2606 OID 17201)
 -- Name: custom_additional_equipment custom_additional_equipment_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3346,7 +3639,7 @@ ALTER TABLE ONLY public.custom_additional_equipment
 
 
 --
--- TOC entry 3734 (class 2606 OID 17175)
+-- TOC entry 3743 (class 2606 OID 17206)
 -- Name: custom_armor custom_armor_enchantmentAttributesId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3355,7 +3648,7 @@ ALTER TABLE ONLY public.custom_armor
 
 
 --
--- TOC entry 3735 (class 2606 OID 17180)
+-- TOC entry 3744 (class 2606 OID 17211)
 -- Name: custom_armor custom_armor_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3364,7 +3657,7 @@ ALTER TABLE ONLY public.custom_armor
 
 
 --
--- TOC entry 3736 (class 2606 OID 17170)
+-- TOC entry 3745 (class 2606 OID 17216)
 -- Name: custom_armor custom_armor_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3373,7 +3666,7 @@ ALTER TABLE ONLY public.custom_armor
 
 
 --
--- TOC entry 3742 (class 2606 OID 17215)
+-- TOC entry 3746 (class 2606 OID 17221)
 -- Name: custom_pet custom_pet_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3382,7 +3675,7 @@ ALTER TABLE ONLY public.custom_pet
 
 
 --
--- TOC entry 3743 (class 2606 OID 17210)
+-- TOC entry 3747 (class 2606 OID 17226)
 -- Name: custom_pet custom_pet_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3391,7 +3684,7 @@ ALTER TABLE ONLY public.custom_pet
 
 
 --
--- TOC entry 3739 (class 2606 OID 17200)
+-- TOC entry 3748 (class 2606 OID 17231)
 -- Name: custom_special_equipment custom_special_equipment_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3400,7 +3693,7 @@ ALTER TABLE ONLY public.custom_special_equipment
 
 
 --
--- TOC entry 3740 (class 2606 OID 17195)
+-- TOC entry 3749 (class 2606 OID 17236)
 -- Name: custom_special_equipment custom_special_equipment_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3409,7 +3702,7 @@ ALTER TABLE ONLY public.custom_special_equipment
 
 
 --
--- TOC entry 3728 (class 2606 OID 17145)
+-- TOC entry 3750 (class 2606 OID 17241)
 -- Name: custom_weapon custom_weapon_enchantmentAttributesId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3418,7 +3711,7 @@ ALTER TABLE ONLY public.custom_weapon
 
 
 --
--- TOC entry 3729 (class 2606 OID 17150)
+-- TOC entry 3751 (class 2606 OID 17246)
 -- Name: custom_weapon custom_weapon_masterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3427,7 +3720,7 @@ ALTER TABLE ONLY public.custom_weapon
 
 
 --
--- TOC entry 3730 (class 2606 OID 17140)
+-- TOC entry 3752 (class 2606 OID 17251)
 -- Name: custom_weapon custom_weapon_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3436,7 +3729,7 @@ ALTER TABLE ONLY public.custom_weapon
 
 
 --
--- TOC entry 3713 (class 2606 OID 17070)
+-- TOC entry 3753 (class 2606 OID 17256)
 -- Name: drop_item drop_item_dropById_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3445,7 +3738,7 @@ ALTER TABLE ONLY public.drop_item
 
 
 --
--- TOC entry 3714 (class 2606 OID 17065)
+-- TOC entry 3754 (class 2606 OID 17261)
 -- Name: drop_item drop_item_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3454,7 +3747,7 @@ ALTER TABLE ONLY public.drop_item
 
 
 --
--- TOC entry 3690 (class 2606 OID 16960)
+-- TOC entry 3755 (class 2606 OID 17266)
 -- Name: item item_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3463,7 +3756,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3691 (class 2606 OID 16950)
+-- TOC entry 3756 (class 2606 OID 17271)
 -- Name: item item_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3472,7 +3765,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3692 (class 2606 OID 16955)
+-- TOC entry 3757 (class 2606 OID 17276)
 -- Name: item item_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3481,25 +3774,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3702 (class 2606 OID 17010)
--- Name: kill_requirement kill_requirement_mobId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.kill_requirement
-    ADD CONSTRAINT "kill_requirement_mobId_fkey" FOREIGN KEY ("mobId") REFERENCES public.mob(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- TOC entry 3703 (class 2606 OID 17015)
--- Name: kill_requirement kill_requirement_taskId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.kill_requirement
-    ADD CONSTRAINT "kill_requirement_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES public.task(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- TOC entry 3708 (class 2606 OID 17040)
+-- TOC entry 3760 (class 2606 OID 17291)
 -- Name: material material_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3508,7 +3783,7 @@ ALTER TABLE ONLY public.material
 
 
 --
--- TOC entry 3755 (class 2606 OID 17285)
+-- TOC entry 3761 (class 2606 OID 17296)
 -- Name: member member_mercenaryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3517,7 +3792,7 @@ ALTER TABLE ONLY public.member
 
 
 --
--- TOC entry 3756 (class 2606 OID 17290)
+-- TOC entry 3762 (class 2606 OID 17301)
 -- Name: member member_mobId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3526,7 +3801,7 @@ ALTER TABLE ONLY public.member
 
 
 --
--- TOC entry 3757 (class 2606 OID 17280)
+-- TOC entry 3763 (class 2606 OID 17306)
 -- Name: member member_partnerId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3535,7 +3810,7 @@ ALTER TABLE ONLY public.member
 
 
 --
--- TOC entry 3758 (class 2606 OID 17275)
+-- TOC entry 3764 (class 2606 OID 17311)
 -- Name: member member_playerId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3544,7 +3819,7 @@ ALTER TABLE ONLY public.member
 
 
 --
--- TOC entry 3753 (class 2606 OID 17265)
+-- TOC entry 3765 (class 2606 OID 17316)
 -- Name: mercenary mercenary_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3553,7 +3828,7 @@ ALTER TABLE ONLY public.mercenary
 
 
 --
--- TOC entry 3709 (class 2606 OID 17060)
+-- TOC entry 3766 (class 2606 OID 17321)
 -- Name: mob mob_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3562,7 +3837,7 @@ ALTER TABLE ONLY public.mob
 
 
 --
--- TOC entry 3710 (class 2606 OID 17050)
+-- TOC entry 3767 (class 2606 OID 17326)
 -- Name: mob mob_imageId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3571,7 +3846,7 @@ ALTER TABLE ONLY public.mob
 
 
 --
--- TOC entry 3711 (class 2606 OID 17045)
+-- TOC entry 3768 (class 2606 OID 17331)
 -- Name: mob mob_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3580,7 +3855,7 @@ ALTER TABLE ONLY public.mob
 
 
 --
--- TOC entry 3712 (class 2606 OID 17055)
+-- TOC entry 3769 (class 2606 OID 17336)
 -- Name: mob mob_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3589,7 +3864,7 @@ ALTER TABLE ONLY public.mob
 
 
 --
--- TOC entry 3688 (class 2606 OID 16940)
+-- TOC entry 3770 (class 2606 OID 17341)
 -- Name: npc npc_imageId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3598,7 +3873,7 @@ ALTER TABLE ONLY public.npc
 
 
 --
--- TOC entry 3689 (class 2606 OID 16945)
+-- TOC entry 3771 (class 2606 OID 17346)
 -- Name: npc npc_zoneId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3607,7 +3882,7 @@ ALTER TABLE ONLY public.npc
 
 
 --
--- TOC entry 3754 (class 2606 OID 17270)
+-- TOC entry 3772 (class 2606 OID 17351)
 -- Name: player player_accountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3616,7 +3891,7 @@ ALTER TABLE ONLY public.player
 
 
 --
--- TOC entry 3682 (class 2606 OID 16910)
+-- TOC entry 3773 (class 2606 OID 17356)
 -- Name: post post_createdById_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3625,7 +3900,7 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 3695 (class 2606 OID 17000)
+-- TOC entry 3774 (class 2606 OID 17361)
 -- Name: recipe recipe_activityId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3634,7 +3909,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3696 (class 2606 OID 16985)
+-- TOC entry 3775 (class 2606 OID 17366)
 -- Name: recipe recipe_addEquipId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3643,7 +3918,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3697 (class 2606 OID 16980)
+-- TOC entry 3776 (class 2606 OID 17371)
 -- Name: recipe recipe_armorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3652,7 +3927,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3698 (class 2606 OID 16995)
+-- TOC entry 3777 (class 2606 OID 17376)
 -- Name: recipe recipe_consumableId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3661,7 +3936,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3693 (class 2606 OID 16965)
+-- TOC entry 3780 (class 2606 OID 17381)
 -- Name: recipe_ingredient recipe_ingredient_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3670,7 +3945,7 @@ ALTER TABLE ONLY public.recipe_ingredient
 
 
 --
--- TOC entry 3694 (class 2606 OID 16970)
+-- TOC entry 3781 (class 2606 OID 17386)
 -- Name: recipe_ingredient recipe_ingredient_recipeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3679,7 +3954,7 @@ ALTER TABLE ONLY public.recipe_ingredient
 
 
 --
--- TOC entry 3699 (class 2606 OID 16990)
+-- TOC entry 3778 (class 2606 OID 17391)
 -- Name: recipe recipe_speEquipId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3688,7 +3963,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3700 (class 2606 OID 16975)
+-- TOC entry 3779 (class 2606 OID 17396)
 -- Name: recipe recipe_weaponId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3697,7 +3972,7 @@ ALTER TABLE ONLY public.recipe
 
 
 --
--- TOC entry 3706 (class 2606 OID 17030)
+-- TOC entry 3782 (class 2606 OID 17401)
 -- Name: reward reward_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3706,7 +3981,7 @@ ALTER TABLE ONLY public.reward
 
 
 --
--- TOC entry 3707 (class 2606 OID 17035)
+-- TOC entry 3783 (class 2606 OID 17406)
 -- Name: reward reward_taskId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3715,7 +3990,7 @@ ALTER TABLE ONLY public.reward
 
 
 --
--- TOC entry 3681 (class 2606 OID 16905)
+-- TOC entry 3784 (class 2606 OID 17411)
 -- Name: session session_accountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3724,7 +3999,7 @@ ALTER TABLE ONLY public.session
 
 
 --
--- TOC entry 3759 (class 2606 OID 17305)
+-- TOC entry 3785 (class 2606 OID 17416)
 -- Name: simulator simulator_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3733,7 +4008,7 @@ ALTER TABLE ONLY public.simulator
 
 
 --
--- TOC entry 3760 (class 2606 OID 17295)
+-- TOC entry 3786 (class 2606 OID 17421)
 -- Name: simulator simulator_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3742,7 +4017,7 @@ ALTER TABLE ONLY public.simulator
 
 
 --
--- TOC entry 3761 (class 2606 OID 17300)
+-- TOC entry 3787 (class 2606 OID 17426)
 -- Name: simulator simulator_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3751,7 +4026,7 @@ ALTER TABLE ONLY public.simulator
 
 
 --
--- TOC entry 3723 (class 2606 OID 17125)
+-- TOC entry 3788 (class 2606 OID 17431)
 -- Name: skill skill_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3760,7 +4035,7 @@ ALTER TABLE ONLY public.skill
 
 
 --
--- TOC entry 3726 (class 2606 OID 17130)
+-- TOC entry 3791 (class 2606 OID 17436)
 -- Name: skill_effect skill_effect_belongToskillId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3769,7 +4044,7 @@ ALTER TABLE ONLY public.skill_effect
 
 
 --
--- TOC entry 3724 (class 2606 OID 17115)
+-- TOC entry 3789 (class 2606 OID 17441)
 -- Name: skill skill_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3778,7 +4053,7 @@ ALTER TABLE ONLY public.skill
 
 
 --
--- TOC entry 3725 (class 2606 OID 17120)
+-- TOC entry 3790 (class 2606 OID 17446)
 -- Name: skill skill_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3787,7 +4062,7 @@ ALTER TABLE ONLY public.skill
 
 
 --
--- TOC entry 3722 (class 2606 OID 17110)
+-- TOC entry 3792 (class 2606 OID 17451)
 -- Name: special_equipment special_equipment_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3796,7 +4071,43 @@ ALTER TABLE ONLY public.special_equipment
 
 
 --
--- TOC entry 3701 (class 2606 OID 17005)
+-- TOC entry 3794 (class 2606 OID 17461)
+-- Name: task_collect_require task_collect_require_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_collect_require
+    ADD CONSTRAINT "task_collect_require_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES public.item(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- TOC entry 3795 (class 2606 OID 17466)
+-- Name: task_collect_require task_collect_require_taskId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_collect_require
+    ADD CONSTRAINT "task_collect_require_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES public.task(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 3758 (class 2606 OID 17281)
+-- Name: task_kill_requirement task_kill_requirement_mobId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_kill_requirement
+    ADD CONSTRAINT "task_kill_requirement_mobId_fkey" FOREIGN KEY ("mobId") REFERENCES public.mob(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 3759 (class 2606 OID 17286)
+-- Name: task_kill_requirement task_kill_requirement_taskId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.task_kill_requirement
+    ADD CONSTRAINT "task_kill_requirement_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES public.task(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 3793 (class 2606 OID 17456)
 -- Name: task task_npcId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3805,25 +4116,7 @@ ALTER TABLE ONLY public.task
 
 
 --
--- TOC entry 3704 (class 2606 OID 17020)
--- Name: task_require task_require_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.task_require
-    ADD CONSTRAINT "task_require_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES public.item(id) ON UPDATE CASCADE ON DELETE SET NULL;
-
-
---
--- TOC entry 3705 (class 2606 OID 17025)
--- Name: task_require task_require_taskId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.task_require
-    ADD CONSTRAINT "task_require_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES public.task(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- TOC entry 3731 (class 2606 OID 17165)
+-- TOC entry 3797 (class 2606 OID 17471)
 -- Name: weapon_enchantment_attributes weapon_enchantment_attributes_createdByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3832,7 +4125,7 @@ ALTER TABLE ONLY public.weapon_enchantment_attributes
 
 
 --
--- TOC entry 3732 (class 2606 OID 17155)
+-- TOC entry 3798 (class 2606 OID 17476)
 -- Name: weapon_enchantment_attributes weapon_enchantment_attributes_statisticId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3841,7 +4134,7 @@ ALTER TABLE ONLY public.weapon_enchantment_attributes
 
 
 --
--- TOC entry 3733 (class 2606 OID 17160)
+-- TOC entry 3799 (class 2606 OID 17481)
 -- Name: weapon_enchantment_attributes weapon_enchantment_attributes_updatedByAccountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3850,7 +4143,7 @@ ALTER TABLE ONLY public.weapon_enchantment_attributes
 
 
 --
--- TOC entry 3716 (class 2606 OID 17080)
+-- TOC entry 3796 (class 2606 OID 17486)
 -- Name: weapon weapon_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3859,7 +4152,7 @@ ALTER TABLE ONLY public.weapon
 
 
 --
--- TOC entry 3686 (class 2606 OID 16930)
+-- TOC entry 3800 (class 2606 OID 17491)
 -- Name: zone zone_activityId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -3868,14 +4161,20 @@ ALTER TABLE ONLY public.zone
 
 
 --
--- TOC entry 3687 (class 2606 OID 16935)
+-- TOC entry 3801 (class 2606 OID 17496)
 -- Name: zone zone_addressId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.zone
     ADD CONSTRAINT "zone_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES public.address(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
--- Completed on 2025-03-03 11:31:33
+
+--
+-- TOC entry 3945 (class 6104 OID 16384)
+-- Name: electric_publication_default; Type: PUBLICATION; Schema: -; Owner: postgres
+--
+
+-- Completed on 2025-03-04 16:06:23
 
 --
 -- PostgreSQL database dump complete

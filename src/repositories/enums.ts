@@ -242,9 +242,11 @@ export const CONSUMABLE_TYPE = [
   "mRes",
 ] as const;
 // 道具
-export const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE, ...MATERIAL_TYPE, ...CONSUMABLE_TYPE] as const;
-// 任务奖励
-export const REWARD_TYPE = ["Exp", "Money", ...ITEM_TYPE] as const;
+export const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE, ...MATERIAL_TYPE, "Consumable"] as const;
+// 任务类型
+export const TASK_TYPE = ["Collect", "Defeat", "Both","Other"] as const;
+// 任务奖励类型
+export const REWARD_TYPE = ["Exp", "Money", "Item"] as const;
 // 配方
 export const RECIPE_TYPE = [...EQUIP_TYPE, ...CONSUMABLE_TYPE] as const;
 // 异常状态
