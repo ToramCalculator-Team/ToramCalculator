@@ -390,13 +390,6 @@ export default function AppMainContet(props: ParentProps) {
       }, 1000);
     }
     setStore("resourcesLoaded", true);
-    if (Object.values(store.database.tableSyncState).every((value) => value === true)) {
-      !store.database.firstSync &&
-        setTimeout(() => {
-          console.log("初次同步完毕");
-          setStore("database", "firstSync", true);
-        }, 1);
-    }
   });
 
   return (

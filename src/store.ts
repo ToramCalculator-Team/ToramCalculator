@@ -18,7 +18,6 @@ export type Store = {
   resourcesLoaded: boolean;
   database: {
     inited: boolean;
-    firstSync: boolean;
     tableSyncState: Partial<Record<keyof DB, boolean>>;
   };
   settings: {
@@ -95,7 +94,6 @@ export const initialStore: Store = {
   resourcesLoaded: false,
   database:{
     inited: false,
-    firstSync: false,
     tableSyncState: {
       account: false,
       account_create_data: false,
