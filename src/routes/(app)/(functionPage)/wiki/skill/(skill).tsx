@@ -28,77 +28,6 @@ import NodeEditor from "~/components/module/nodeEditor";
 import { updateSkillEffect } from "~/repositories/skillEffect";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 
-const skillTableHiddenData: Array<keyof Skill> = ["id"];
-// 表头固定
-const getCommonPinningStyles = (column: Column<Skill>): JSX.CSSProperties => {
-  const isPinned = column.getIsPinned();
-  const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-  const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
-  const styles: JSX.CSSProperties = {
-    position: isPinned ? "sticky" : "relative",
-    width: column.getSize().toString(),
-    "z-index": isPinned ? 1 : 0,
-  };
-  if (isPinned) {
-    styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-    styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-    styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
-  }
-  return styles;
-};
-
-function SkillTableTd(props: { cell: Cell<Skill, keyof Skill> }) {
-  // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
-  const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-
-  switch (props.cell.column.id as Exclude<keyof Skill, keyof typeof skillTableHiddenData>) {
-    case "name":
-      setTdContent(
-        <>
-          <span class="pb-1">{props.cell.getValue()}</span>
-          {/* <span class="pb-1">{row.original.name}</span> */}
-          {/* <span class="text-sm font-normal text-main-text-color">
-            {row.getValue("belongToZones") ?? "无"}
-          </span> */}
-        </>,
-      );
-      break;
-
-    default:
-      setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-      break;
-  }
-
-  return (
-    <td
-      style={{
-        ...getCommonPinningStyles(props.cell.column),
-        width: getCommonPinningStyles(props.cell.column).width + "px",
-      }}
-      class={"flex flex-col justify-center py-6"}
-    >
-      <Show
-        when={
-          Object.keys(dictionary().enums).includes(
-            "Skill" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
-          ) &&
-          Object.keys(
-            dictionary().enums[
-              ("Skill" +
-                props.cell.column.id.charAt(0).toLocaleUpperCase() +
-                props.cell.column.id.slice(1)) as DicEnumsKeys
-            ],
-          ).includes(props.cell.getValue())
-        }
-        fallback={tdContent()}
-      >
-        {dictionary().enums.SkillTreeType.BladeSkill}
-      </Show>
-    </td>
-  );
-}
-
 export default function SkillIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
@@ -180,6 +109,82 @@ export default function SkillIndexPage() {
       },
     });
   });
+
+  const skillTableHiddenData: Array<keyof Skill> = ["id"];
+  // 表头固定
+  const getCommonPinningStyles = (column: Column<Skill>): JSX.CSSProperties => {
+    const isPinned = column.getIsPinned();
+    const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
+    const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+    const styles: JSX.CSSProperties = {
+      position: isPinned ? "sticky" : "relative",
+      width: column.getSize().toString(),
+      "z-index": isPinned ? 1 : 0,
+    };
+    if (isPinned) {
+      styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
+      styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
+      styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+    }
+    return styles;
+  };
+
+  function SkillTableTd(props: { cell: Cell<Skill, keyof Skill> }) {
+    const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
+
+    switch (props.cell.column.id as Exclude<keyof Skill, keyof typeof skillTableHiddenData>) {
+      case "name":
+        setTdContent(
+          <>
+            <span class="pb-1">{props.cell.getValue()}</span>
+            {/* <span class="pb-1">{row.original.name}</span> */}
+            {/* <span class="text-sm font-normal text-main-text-color">
+            {row.getValue("belongToZones") ?? "无"}
+          </span> */}
+          </>,
+        );
+        break;
+
+      default:
+        setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
+        break;
+    }
+
+    return (
+      <td
+        style={{
+          ...getCommonPinningStyles(props.cell.column),
+          width: getCommonPinningStyles(props.cell.column).width + "px",
+        }}
+        class={"flex flex-col justify-center py-6"}
+      >
+        {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
+        <Show
+          when={
+            Object.keys(dictionary().enums).includes(
+              "Skill" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
+            ) &&
+            Object.keys(
+              dictionary().enums[
+                ("Skill" +
+                  props.cell.column.id.charAt(0).toLocaleUpperCase() +
+                  props.cell.column.id.slice(1)) as DicEnumsKeys
+              ],
+            ).includes(props.cell.getValue())
+          }
+          fallback={tdContent()}
+        >
+          {
+            dictionary().enums[
+              ("Skill" +
+                props.cell.column.id.charAt(0).toLocaleUpperCase() +
+                props.cell.column.id.slice(1)) as DicEnumsKeys
+            ][props.cell.getValue() as keyof DicEnumsKeysValue]
+          }
+        </Show>
+      </td>
+    );
+  }
 
   // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
@@ -310,7 +315,7 @@ export default function SkillIndexPage() {
                 id="SkillSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="h-[50px] w-full flex-1 rounded-none border-b-2 border-dividing-color bg-transparent px-3 py-2 backdrop-blur-xl placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-2 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
@@ -403,7 +408,7 @@ export default function SkillIndexPage() {
               {dictionary().ui.skill.table.title}
             </div>
             <div
-              class={`Description flex-1 rounded bg-area-color p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.skill.table.description}
             </div>
@@ -427,7 +432,7 @@ export default function SkillIndexPage() {
                 <thead class={`TableHead sticky top-0 z-10 flex`}>
                   <For each={table()!.getHeaderGroups()}>
                     {(headerGroup) => (
-                      <tr class="flex min-w-full gap-0 border-b-2 border-dividing-color">
+                      <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
                         <For each={headerGroup.headers}>
                           {(header) => {
                             const { column } = header;
@@ -447,7 +452,7 @@ export default function SkillIndexPage() {
                                   {...{
                                     onClick: header.column.getToggleSortingHandler(),
                                   }}
-                                  class={`flex-1 py-4 text-left font-normal hover:bg-area-color ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                  class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
                                     header.column.getCanSort() ? "cursor-pointer select-none" : ""
                                   }`}
                                 >
@@ -477,7 +482,7 @@ export default function SkillIndexPage() {
                             position: "absolute",
                             transform: `translateY(${virtualRow.start}px)`,
                           }}
-                          class={`group flex cursor-pointer border-b border-area-color transition-none hover:rounded hover:border-transparent hover:bg-area-color hover:font-bold`}
+                          class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
                           onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                         >
                           <For
@@ -505,7 +510,7 @@ export default function SkillIndexPage() {
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.skill.news.title}</div>
-              <div class="Content flex flex-1 flex-col bg-area-color"></div>
+              <div class="Content bg-area-color flex flex-1 flex-col"></div>
             </Motion.div>
           </Show>
         </Presence>

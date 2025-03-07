@@ -116,14 +116,11 @@ svg {
 }
 
 .transitionColorNone * {
-  transition:
-    color 0s !important,
-    background-color 0s !important,
-    border-color 0s !important,
-    opacity 0s !important;
+  transition: all 0s !important;
   transition-delay: 0s !important;
 }
 
+.transitionNone,
 .transitionNone * {
   transition: none !important;
   transition-delay: 0s !important;

@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import Fuse from "fuse.js";
 import {
+  Cell,
   Column,
   ColumnDef,
   createSolidTable,
@@ -184,6 +185,7 @@ export default function MobIndexPage() {
       },
     });
   });
+
   const mobTableHiddenData: Array<keyof Mob> = ["id", "updatedByAccountId"];
   // 表头固定
   const getCommonPinningStyles = (column: Column<Mob>): JSX.CSSProperties => {
@@ -202,6 +204,77 @@ export default function MobIndexPage() {
     }
     return styles;
   };
+
+  function MobTableTd(props: { cell: Cell<Mob, keyof Mob> }) {
+    const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
+
+    switch (props.cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenData>) {
+      case "elementType":
+        setTdContent(
+          {
+            Water: <Icon.Element.Water class="h-12 w-12" />,
+            Fire: <Icon.Element.Fire class="h-12 w-12" />,
+            Earth: <Icon.Element.Earth class="h-12 w-12" />,
+            Wind: <Icon.Element.Wind class="h-12 w-12" />,
+            Light: <Icon.Element.Light class="h-12 w-12" />,
+            Dark: <Icon.Element.Dark class="h-12 w-12" />,
+            Normal: <Icon.Element.NoElement class="h-12 w-12" />,
+          }[props.cell.getValue() as Enums["ElementType"]] ?? undefined,
+        );
+
+        break;
+
+      // 以下值需要添加百分比符号
+      case "physicalResistance":
+      case "magicalResistance":
+      case "dodge":
+      case "block":
+      case "normalAttackResistanceModifier":
+      case "physicalAttackResistanceModifier":
+      case "magicalAttackResistanceModifier":
+        setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) + "%");
+        break;
+
+      default:
+        setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
+        break;
+    }
+    return (
+      <td
+        style={{
+          ...getCommonPinningStyles(props.cell.column),
+          width: getCommonPinningStyles(props.cell.column).width + "px",
+        }}
+        class={"flex flex-col justify-center py-6"}
+      >
+        {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
+        <Show
+          when={
+            Object.keys(dictionary().enums).includes(
+              "Mob" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
+            ) &&
+            Object.keys(
+              dictionary().enums[
+                ("Mob" +
+                  props.cell.column.id.charAt(0).toLocaleUpperCase() +
+                  props.cell.column.id.slice(1)) as DicEnumsKeys
+              ],
+            ).includes(props.cell.getValue()) &&
+            props.cell.column.id !== "elementType" // elementType已特殊处理，再以文本显示
+          }
+          fallback={tdContent()}
+        >
+          {
+            dictionary().enums[
+              ("Mob" +
+                props.cell.column.id.charAt(0).toLocaleUpperCase() +
+                props.cell.column.id.slice(1)) as DicEnumsKeys
+            ][props.cell.getValue() as keyof DicEnumsKeysValue]
+          }
+        </Show>
+      </td>
+    );
+  }
 
   // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
@@ -508,94 +581,12 @@ export default function MobIndexPage() {
                           class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
                           onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                         >
-                          <For each={row.getVisibleCells()}>
-                            {(cell) => {
-                              const { column } = cell;
-                              if (mobTableHiddenData.includes(column.id as keyof Mob)) {
-                                // 默认隐藏的数据
-                                return;
-                              }
-
-                              let tdContent: JSX.Element;
-
-                              switch (cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenData>) {
-                                case "name":
-                                  tdContent = (
-                                    <>
-                                      <span class="pb-1">{row.original.name}</span>
-                                      {/* <span class="text-sm font-normal text-main-text-color">
-                                        {row.getValue("belongToZones") ?? "无"}
-                                      </span> */}
-                                    </>
-                                  );
-                                  break;
-
-                                case "type":
-                                  tdContent = (
-                                    <>
-                                      <span class="pb-1">{row.original.type}</span>
-                                      {/* <span class="text-sm font-normal text-main-text-color">
-                                        {row.getValue("belongToZones") ?? "无"}
-                                      </span> */}
-                                    </>
-                                  );
-                                  break;
-
-                                case "elementType":
-                                  {
-                                    const icon =
-                                      {
-                                        Water: <Icon.Element.Water class="h-12 w-12" />,
-                                        Fire: <Icon.Element.Fire class="h-12 w-12" />,
-                                        Earth: <Icon.Element.Earth class="h-12 w-12" />,
-                                        Wind: <Icon.Element.Wind class="h-12 w-12" />,
-                                        Light: <Icon.Element.Light class="h-12 w-12" />,
-                                        Dark: <Icon.Element.Dark class="h-12 w-12" />,
-                                        Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-                                      }[cell.getValue() as Enums["ElementType"]] ?? undefined;
-                                    tdContent = icon;
-                                  }
-                                  break;
-
-                                // 以下值需要添加百分比符号
-                                case "physicalResistance":
-                                case "magicalResistance":
-                                case "dodge":
-                                case "block":
-                                case "normalAttackResistanceModifier":
-                                case "physicalAttackResistanceModifier":
-                                case "magicalAttackResistanceModifier":
-                                  tdContent = <>{flexRender(cell.column.columnDef.cell, cell.getContext())}%</>;
-                                  break;
-
-                                case "criticalResistance":
-
-                                default:
-                                  try {
-                                    const content = // 将首字母转换成大写
-                                      dictionary().enums[
-                                        (cell.column.id.charAt(0).toLocaleUpperCase() +
-                                          cell.column.id.slice(1)) as DicEnumsKeys
-                                      ][cell.getValue() as keyof DicEnumsKeysValue];
-                                    tdContent = content;
-                                  } catch (error) {
-                                    tdContent = flexRender(cell.column.columnDef.cell, cell.getContext());
-                                  }
-                                  break;
-                              }
-
-                              return (
-                                <td
-                                  style={{
-                                    ...getCommonPinningStyles(column),
-                                    width: getCommonPinningStyles(column).width + "px",
-                                  }}
-                                  class={"flex flex-col justify-center py-6"}
-                                >
-                                  {tdContent}
-                                </td>
-                              );
-                            }}
+                          <For
+                            each={row
+                              .getVisibleCells()
+                              .filter((cell) => !mobTableHiddenData.includes(cell.column.id as keyof Mob))}
+                          >
+                            {(cell) => <MobTableTd cell={cell} />}
                           </For>
                         </tr>
                       );
