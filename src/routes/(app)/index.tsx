@@ -603,7 +603,7 @@ export default function Index() {
               /> */}
               <Button
                 ref={(el) => (searchButtonRef = el)}
-                class="group-hover:text-accent-color lg:bg-transparent"
+                class="group-hover:text-accent-color landscape:bg-transparent"
                 onClick={search}
                 tabindex={1}
               >
