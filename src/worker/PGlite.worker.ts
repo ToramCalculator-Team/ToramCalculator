@@ -75,7 +75,7 @@ worker({
     }
 
     const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
-      const tableParams = urlParams ?? tableName
+      const tableParams = urlParams ?? tableName;
       // console.log(tableParams)
       await pg.sync.syncShapeToTable({
         shape: {
@@ -140,7 +140,9 @@ worker({
     const characterShape = await syncTable("character", ["id"]);
     const mercenaryShape = await syncTable("mercenary", ["templateId"]);
     const memberShape = await syncTable("member", ["id"]);
+    const memberToTeamShape = await syncTable("_memberToteam", ["A", "B"], `"_memberToteam"`);
     const teamShape = await syncTable("team", ["id"]);
+    const simulatorToTeamShape = await syncTable("_simulatorToteam", ["A", "B"], `"_simulatorToteam"`);
     const simulatorShape = await syncTable("simulator", ["id"]);
     // console.log("PGliteWorker初始化完成.....");
 

@@ -1,4 +1,15 @@
-import { createEffect, createMemo, createResource, createSignal, JSX, on, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
@@ -19,6 +30,8 @@ import { User } from "~/repositories/user";
 import { findSimulators } from "~/repositories/simulator";
 import { createSyncResource } from "~/hooks/resource";
 import { findWeapons } from "~/repositories/weapon";
+import { useNavigate } from "@solidjs/router";
+import { dictionary } from "~/locales/dictionaries/type";
 
 type Related =
   | {
@@ -37,12 +50,12 @@ type Result =
 
 export default function Index() {
   let searchButtonRef: HTMLButtonElement;
-  let searchInputPCRef: HTMLInputElement;
-  let searchInputMobileRef: HTMLInputElement;
+  let searchInputRef: HTMLInputElement;
 
   type FinalResult = Partial<Record<"mobs" | "skills" | "crystals", Result[]>>;
 
-  const [nodeEditorDialog, setNodeEditorDialog] = createSignal(false);
+  const navigate = useNavigate();
+  // const [nodeEditorDialog, setNodeEditorDialog] = createSignal(false);
   const [flowEditorDialog, setFlowEditorDialog] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
@@ -57,6 +70,55 @@ export default function Index() {
   const [isPc, setIsPc] = createSignal(window.innerWidth > 1024);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
+
+  const [customMenuConfig] = createSignal<
+    {
+      href: string;
+      title: keyof dictionary["ui"]["nav"];
+      icon: keyof typeof Icon.Filled;
+    }[]
+  >([
+    {
+      href: "/wiki/mob",
+      title: "mobs",
+      icon: "Browser",
+    },
+    {
+      href: "/wiki/skill",
+      title: "skills",
+      icon: "Basketball",
+    },
+    {
+      href: "/wiki/equipment",
+      title: "equipments",
+      icon: "Category2",
+    },
+    {
+      href: "/wiki/crystal",
+      title: "crystals",
+      icon: "Box2",
+    },
+    {
+      href: "/wiki/pet",
+      title: "pets",
+      icon: "Heart",
+    },
+    {
+      href: "/wiki/building",
+      title: "items",
+      icon: "Layers",
+    },
+    {
+      href: "/character/defaultCharacterId",
+      title: "character",
+      icon: "User",
+    },
+    {
+      href: "simulator/defaultSimulatorId",
+      title: "simulator",
+      icon: "Gamepad",
+    },
+  ]);
   // const [UserList, { refetch: refetchUserList }] = createResource(
   //   async () =>
   //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
@@ -353,7 +415,7 @@ export default function Index() {
   //   switch (e.key) {
   //     case "Enter":
   //       {
-  //         if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
+  //         if (document.activeElement === searchInputRef || document.activeElement === searchInputMobileRef) {
   //           searchButtonRef.click();
   //         }
   //       }
@@ -363,8 +425,8 @@ export default function Index() {
   //         if (store.settingsDialogState) {
   //           setStore("settingsDialogState", false);
   //           e.stopPropagation();
-  //         } else if (document.activeElement === searchInputPCRef) {
-  //           searchInputPCRef.blur();
+  //         } else if (document.activeElement === searchInputRef) {
+  //           searchInputRef.blur();
   //           e.stopPropagation();
   //         } else if (document.activeElement === searchInputMobileRef) {
   //           searchInputMobileRef.blur();
@@ -373,8 +435,8 @@ export default function Index() {
   //           setSearchResultOpened(false);
   //           e.stopPropagation();
   //         }
-  //         if (document.activeElement === searchInputPCRef || document.activeElement === searchInputMobileRef) {
-  //           searchInputPCRef.blur();
+  //         if (document.activeElement === searchInputRef || document.activeElement === searchInputMobileRef) {
+  //           searchInputRef.blur();
   //           searchInputMobileRef.blur();
   //         }
   //       }
@@ -382,7 +444,7 @@ export default function Index() {
   //     case "s":
   //     case "S":
   //       {
-  //         if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
+  //         if (document.activeElement !== searchInputRef && document.activeElement !== searchInputMobileRef) {
   //           setStore("settingsDialogState", true);
   //         }
   //       }
@@ -390,8 +452,8 @@ export default function Index() {
   //     case "·":
   //     case "`":
   //       {
-  //         if (document.activeElement !== searchInputPCRef && document.activeElement !== searchInputMobileRef) {
-  //           searchInputPCRef.focus();
+  //         if (document.activeElement !== searchInputRef && document.activeElement !== searchInputMobileRef) {
+  //           searchInputRef.focus();
   //           e.preventDefault(); // 阻止默认输入行为
   //         }
   //       }
@@ -494,7 +556,7 @@ export default function Index() {
               filter: ["blur(0px)", "blur(20px)"],
             }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-            class={`FunctionBox flex w-full flex-col justify-between lg:flex-row`}
+            class={`FunctionBox flex w-full flex-col justify-center lg:justify-between landscape:flex-row`}
           >
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
@@ -513,21 +575,21 @@ export default function Index() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! lg:border-b-2 lg:focus-within:px-4 lg:hover:px-4 ${searchResultOpened() ? `lg:basis-[100%]` : `lg:basis-[426px]`}`}
+              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${searchResultOpened() ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
             >
               <input
-                id="searchInput-PC"
-                ref={searchInputPCRef!}
+                id="searchInput"
+                ref={searchInputRef!}
                 type="text"
-                placeholder={getGreetings() + "," + dictionary().ui.index.adventurer}
+                placeholder={isPc() ? getGreetings() + "," + dictionary().ui.index.adventurer : dictionary().ui.searchPlaceholder}
                 value={searchInputValue()}
                 tabIndex={1}
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="focus:placeholder:text-accent-color placeholder:text-boundary-color hidden w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden lg:flex lg:bg-transparent dark:mix-blend-normal"
+                class="focus:placeholder:text-accent-color portrait:bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden lg:flex lg:bg-transparent dark:mix-blend-normal"
               />
-              <input
+              {/* <input
                 id="searchInput-Mobile"
                 ref={searchInputMobileRef!}
                 type="text"
@@ -538,7 +600,7 @@ export default function Index() {
                   setSearchInputValue(e.target.value);
                 }}
                 class="bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur-sm placeholder:font-normal lg:hidden dark:mix-blend-normal"
-              />
+              /> */}
               <Button
                 ref={(el) => (searchButtonRef = el)}
                 class="group-hover:text-accent-color lg:bg-transparent"
@@ -581,7 +643,9 @@ export default function Index() {
           <Button
             class="outline-hidden focus-within:outline-hidden"
             level="quaternary"
-            onClick={() => setNodeEditorDialog(!nodeEditorDialog())}
+            onClick={() => {
+              navigate("repl");
+            }}
           >
             <Icon.Line.Basketball />
           </Button>
@@ -619,140 +683,43 @@ export default function Index() {
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 lg:w-fit lg:bg-transparent dark:lg:bg-transparent`}
+              class={`Bottom portrait:bg-accent-color portrait:dark:bg-area-color landscape:hidden portrait:grid landscape:lg:grid w-full shrink-0 self-center p-6 lg:w-fit lg:bg-transparent dark:lg:bg-transparent`}
             >
               <div
-                class={`Content lg:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded lg:flex-1 lg:justify-center lg:backdrop-blur-sm ${searchResultOpened() ? `lg:p-0` : `lg:p-3`}`}
+                class={`Content lg:bg-area-color portrait:overflow-hidden flex gap-3 rounded lg:flex-1 lg:justify-center lg:backdrop-blur-sm portrait:flex-wrap lg:landscape:p-3`}
               >
-                <a
-                  tabIndex={2}
-                  href={"/wiki/mob"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Browser class="text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.mobs}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/wiki/skill"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Basketball class="text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.skills}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/wiki/equipment"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Category2 class="text-brand-color-3rd group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.equipments}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/wiki/crystal"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Box2 class="text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.crystals}</span>
-                  </Button>
-                </a>
-
-                <a
-                  tabIndex={2}
-                  href={"/wiki/pet"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Heart class="text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.pets}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/building"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Layers class="text-brand-color-3rd group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.items}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/character"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.User class="text-brand-color-1st group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.character}</span>
-                  </Button>
-                </a>
-                <a
-                  tabIndex={2}
-                  href={"/simulator/defaultSimulatorId"}
-                  class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded lg:basis-auto"
-                >
-                  <Button
-                    class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color lg:bg-accent-color w-full flex-col lg:w-fit lg:flex-row"
-                    level="primary"
-                    tabIndex={-1}
-                    icon={
-                      <Icon.Filled.Gamepad class="text-brand-color-2nd group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 lg:h-6 lg:w-6" />
-                    }
-                  >
-                    <span class="text-sm text-nowrap text-ellipsis lg:text-base">{dictionary().ui.nav.simulator}</span>
-                  </Button>
-                </a>
+                <For each={customMenuConfig()}>
+                  {(menuItem, index) => {
+                    const IconComponent = Icon.Filled[menuItem.icon];
+                    const brandColor = {
+                      1: "1st",
+                      2: "2nd",
+                      3: "3rd",
+                    }[1 + (index() % 3)];
+                    return (
+                      <a
+                        tabIndex={2}
+                        href={menuItem.href}
+                        class="flex-none overflow-hidden rounded portrait:basis-[calc(33.33%-8px)] landscape:basis-auto"
+                      >
+                        <Button
+                          class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
+                          level="primary"
+                          tabIndex={-1}
+                          icon={
+                            <IconComponent
+                              class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
+                            />
+                          }
+                        >
+                          <span class="text-sm text-nowrap text-ellipsis landscape:text-base landscape:hidden landscape:lg:block">
+                            {dictionary().ui.nav[menuItem.title]}
+                          </span>
+                        </Button>
+                      </a>
+                    );
+                  }}
+                </For>
               </div>
             </Motion.div>
           </Show>

@@ -282,21 +282,22 @@ export default function Home(props: ParentProps) {
   return (
     <Motion.main class="flex h-full w-full flex-col-reverse lg:flex-row">
       <Nav />
-      {/* <OverlayScrollbarsComponent
+      <OverlayScrollbarsComponent
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
-        class="z-40 h-full w-full"
-      > */}
-        <Motion.div
+        id="#mainContent"
+        class="z-40 h-full w-full lg:px-12 bg-primary-color-90"
+      >
+        {/* <Motion.div
           animate={{ opacity: 1 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
           id="mainContent"
           class="Content overflow-hidden flex h-full w-full flex-1 flex-col opacity-0"
-        >
+        > */}
           {props.children}
-        </Motion.div>
-      {/* </OverlayScrollbarsComponent> */}
+        {/* </Motion.div> */}
+      </OverlayScrollbarsComponent>
     </Motion.main>
   );
 }

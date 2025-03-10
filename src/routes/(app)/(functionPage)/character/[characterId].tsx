@@ -13,5 +13,5 @@ export default function CharactePage() {
         class="h-full w-full"
       > 
       <pre>{JSON.stringify(character(), null, 2)}</pre>
-  </OverlayScrollbarsComponent>) ;
+  </OverlayScrollbarsComponent>);
 }

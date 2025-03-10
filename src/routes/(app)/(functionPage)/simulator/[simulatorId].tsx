@@ -11,16 +11,14 @@ import {
   Show,
   JSX,
   on,
+  Switch,
+  Match,
 } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/controls/button";
 import Dialog from "~/components/controls/dialog";
-import {
-  Simulator,
-  defaultSimulator,
-  findSimulatorById,
-} from "~/repositories/simulator";
+import { Simulator, defaultSimulator, findSimulatorById } from "~/repositories/simulator";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/components/icon";
 import * as _ from "lodash-es";
@@ -99,7 +97,7 @@ export default function SimulatorIndexClient() {
     </div>
   );
 
-  const Divider = () => <div class="Divider h-[1px] w-full flex-none bg-dividing-color"></div>;
+  const Divider = () => <div class="Divider bg-dividing-color h-[1px] w-full flex-none"></div>;
 
   function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
     const container = document.createElement("div");
@@ -244,10 +242,7 @@ export default function SimulatorIndexClient() {
           },
           sequence: _.cloneDeep(
             // (simulator()?.team[memberIndex()]?.flow as CustomStateMachineStep[]) ??
-            [
-              ExecutableSteps.createTextStep("开始!"),
-              ExecutableSteps.createTextStep("结束"),
-            ],
+            [ExecutableSteps.createTextStep("开始!"), ExecutableSteps.createTextStep("结束")],
           ),
         },
         {
@@ -255,9 +250,9 @@ export default function SimulatorIndexClient() {
           undoStackSize: 10,
           toolbox: toolboxConfiguration()
             ? {
-              ...toolboxConfiguration(),
-              isCollapsed: isToolboxCollapsed(),
-            }
+                ...toolboxConfiguration(),
+                isCollapsed: isToolboxCollapsed(),
+              }
             : false,
           steps: stepsConfiguration(),
           validator: validatorConfiguration(),
@@ -270,7 +265,7 @@ export default function SimulatorIndexClient() {
             rootEditorProvider,
             stepEditorProvider,
           },
-          customActionHandler: () => { },
+          customActionHandler: () => {},
           // extensions,
           // i18n,
           isReadonly: isReadonly(),
@@ -285,9 +280,9 @@ export default function SimulatorIndexClient() {
         // setStore("simulator", "team", memberIndex(), "flow", structuredClone(sequence));
       }
     });
-    designer()?.onSelectedStepIdChanged.subscribe((stepId) => { });
-    designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => { });
-    designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => { });
+    designer()?.onSelectedStepIdChanged.subscribe((stepId) => {});
+    designer()?.onIsToolboxCollapsedChanged.subscribe((isCollapsed) => {});
+    designer()?.onIsEditorCollapsedChanged.subscribe((isCollapsed) => {});
   };
 
   onMount(() => {
@@ -306,71 +301,7 @@ export default function SimulatorIndexClient() {
         </div>
       </div>
 
-      <div class="MobsConfig flex flex-col gap-3 p-3">
-        <div class="ModuleTitle flex h-12 w-full items-center text-xl">
-          {dictionary().ui.simulator.simulatorPage.mobsConfig.title}
-        </div>
-        <div class="ModuleContent flex flex-col gap-6">
-          <For each={simulator()?.team}>
-            {(mob, index) => {
-              function setStarArr(star: number) {
-                const newStarArray = [...starArray()];
-                newStarArray[index()] = star;
-                setStarArray(newStarArray);
-              }
-              return (
-                <div class="flex flex-col items-center rounded bg-accent-color bg-right shadow-card shadow-dividing-color lg:flex-row lg:gap-6">
-                  {/* <div class="MobsName z-10 shrink-0 px-6 py-3 text-xl text-primary-color">
-                    {mob.mob?.name ?? ""}
-                  </div>
-                  <div class="MobsConfig z-10 flex flex-1 shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
-                    <div
-                      class="MobsAugment flex shrink-0 cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
-                      onMouseEnter={() => setStarArr(0)}
-                      onMouseLeave={() => {
-                        setStarArr(mob.star);
-                      }}
-                      onClick={() => updateMob(simulator()!.mobs[index()].id, { star: starArray()[index()] })}
-                    >
-                      <Icon.Filled.Star
-                        onMouseEnter={() => setStarArr(1)}
-                        class={`${starArray()[index()] >= 1 ? "text-brand-color-1st" : "text-primary-color-30"} hover:text-primary-color`}
-                      />
-                      <Icon.Filled.Star
-                        onMouseEnter={() => setStarArr(2)}
-                        class={`${starArray()[index()] >= 2 ? "text-brand-color-2nd" : "text-primary-color-30"} hover:text-primary-color`}
-                      />
-                      <Icon.Filled.Star
-                        onMouseEnter={() => setStarArr(3)}
-                        class={`${starArray()[index()] >= 3 ? "text-brand-color-3rd" : "text-primary-color-30"} hover:text-primary-color`}
-                      />
-                      <Icon.Filled.Star
-                        onMouseEnter={() => setStarArr(4)}
-                        class={`${starArray()[index()] >= 4 ? "text-brand-color-4th" : "text-primary-color-30"} hover:text-primary-color`}
-                      />
-                    </div>
-                    <Button class="text-primary-color" icon={<Icon.Line.Swap />}>
-                      {dictionary().ui.actions.swap}
-                    </Button>
-                    <Button class="text-primary-color" icon={<Icon.Line.ZoomIn />}>
-                      {dictionary().ui.actions.checkInfo}
-                    </Button>
-                  </div>
-                  <div
-                    class="MobsBG z-0 w-1/2 self-stretch rounded"
-                    style={{
-                      "background-image": `url(${mob?.mob?.image?.dataUrl})`,
-                      "background-position-y": "40%",
-                    }}
-                  >
-                    <div class="Mask to-accent-color-0 h-full w-1/2 bg-linear-to-r from-accent-color"></div>
-                  </div> */}
-                </div>
-              );
-            }}
-          </For>
-        </div>
-      </div>
+      <pre class="SimulatorObj flex flex-col gap-3 p-3">{JSON.stringify(simulator(), null, 2)}</pre>
 
       <div class="TeamConfig flex flex-col gap-3 p-3">
         <div class="ModuleTitle flex h-12 w-full items-center text-xl">
@@ -378,38 +309,77 @@ export default function SimulatorIndexClient() {
         </div>
         <div class="ModuleContent flex flex-wrap gap-3">
           <For each={simulator()?.team}>
-            {(member, index) => {
+            {(team, index) => {
+              function setStarArr(star: number) {
+                const newStarArray = [...starArray()];
+                newStarArray[index()] = star;
+                setStarArray(newStarArray);
+              }
               return (
-                <div class="Member flex border-b-2 border-accent-color p-1">
-                  {/* <div
-                    onClick={() => showDesigner(index())}
-                    class="InfoRow cursor-pointer gap-6 rounded p-2 hover:bg-dividing-color"
-                  >
-                    <div class="Info flex flex-col gap-2 px-3">
-                      <div class="MemberName text-lg font-bold">{member.character?.name ?? "未知"}</div>
-                      <div class="MenberConfig flex flex-1 gap-1 text-main-text-color">
-                        <span>{member.character?.lv ?? "未知"}</span>-
-                        <span>
-                          {
-                            dictionary().db.enums.MainWeaponType[
-                              member.character?.mainWeapon?.mainWeaponType ?? "NO_WEAPON"
-                            ]
-                          }
-                        </span>
-                        -
-                        <span>
-                          {
-                            dictionary().db.enums.SubWeaponType[
-                              member.character?.subWeapon?.subWeaponType ?? "NO_WEAPON"
-                            ]
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    <div class="Funtion"></div>
-                  </div>
-                  <div class="FlowRow"></div> */}
-                </div>
+                <For each={team.members}>
+                  {(member, index) => {
+                    return (
+                      <Switch fallback={<div>未找到</div>}>
+                        <Match when={member.playerId}>
+                          <>is player</>
+                        </Match>
+                        <Match when={member.mobId}>
+                          <>is mob, difficulty: {member.mobDifficultyFlag}</>
+                        </Match>
+                        <Match when={member.mercenaryId}>
+                          <>is mercenary</>
+                        </Match>
+                      </Switch>
+                    );
+                  }}
+                </For>
+                // <div class="bg-accent-color shadow-card shadow-dividing-color flex flex-col items-center rounded bg-right lg:flex-row lg:gap-6">
+                //   <div class="MobsName z-10 shrink-0 px-6 py-3 text-xl text-primary-color">
+                //     {mob.mob?.name ?? ""}
+                //   </div>
+                //   <div class="MobsConfig z-10 flex flex-1 shrink-0 flex-col gap-6 px-6 py-3 lg:flex-row">
+                //     <div
+                //       class="MobsAugment flex shrink-0 cursor-pointer items-center gap-3 rounded p-3 px-6 py-3 hover:bg-primary-color-10"
+                //       onMouseEnter={() => setStarArr(0)}
+                //       onMouseLeave={() => {
+                //         setStarArr(mob.star);
+                //       }}
+                //       onClick={() => updateMob(simulator()!.mobs[index()].id, { star: starArray()[index()] })}
+                //     >
+                //       <Icon.Filled.Star
+                //         onMouseEnter={() => setStarArr(1)}
+                //         class={`${starArray()[index()] >= 1 ? "text-brand-color-1st" : "text-primary-color-30"} hover:text-primary-color`}
+                //       />
+                //       <Icon.Filled.Star
+                //         onMouseEnter={() => setStarArr(2)}
+                //         class={`${starArray()[index()] >= 2 ? "text-brand-color-2nd" : "text-primary-color-30"} hover:text-primary-color`}
+                //       />
+                //       <Icon.Filled.Star
+                //         onMouseEnter={() => setStarArr(3)}
+                //         class={`${starArray()[index()] >= 3 ? "text-brand-color-3rd" : "text-primary-color-30"} hover:text-primary-color`}
+                //       />
+                //       <Icon.Filled.Star
+                //         onMouseEnter={() => setStarArr(4)}
+                //         class={`${starArray()[index()] >= 4 ? "text-brand-color-4th" : "text-primary-color-30"} hover:text-primary-color`}
+                //       />
+                //     </div>
+                //     <Button class="text-primary-color" icon={<Icon.Line.Swap />}>
+                //       {dictionary().ui.actions.swap}
+                //     </Button>
+                //     <Button class="text-primary-color" icon={<Icon.Line.ZoomIn />}>
+                //       {dictionary().ui.actions.checkInfo}
+                //     </Button>
+                //   </div>
+                //   <div
+                //     class="MobsBG z-0 w-1/2 self-stretch rounded"
+                //     style={{
+                //       "background-image": `url(${mob?.mob?.image?.dataUrl})`,
+                //       "background-position-y": "40%",
+                //     }}
+                //   >
+                //     <div class="Mask to-accent-color-0 h-full w-1/2 bg-linear-to-r from-accent-color"></div>
+                //   </div>
+                // </div>
               );
             }}
           </For>
@@ -419,7 +389,7 @@ export default function SimulatorIndexClient() {
               onClick={async () => {
                 // simulator() && addMemberToSimulator(simulator()!.id, defaultMember);
               }}
-              class="InfoRow flex cursor-pointer items-center gap-6 rounded bg-area-color p-2 hover:bg-dividing-color"
+              class="InfoRow bg-area-color hover:bg-dividing-color flex cursor-pointer items-center gap-6 rounded p-2"
             >
               <div class="Info flex flex-col items-center justify-center gap-2 px-3">
                 <Icon.Line.AddUser />
@@ -448,7 +418,7 @@ export default function SimulatorIndexClient() {
 
       <Dialog state={dialogState()} setState={setDialogState}>
         <div ref={setPlaceholder} id="sqd-placeholder" class="FlowEditor h-full w-full"></div>
-        <div class="FunctionArea flex w-full gap-2 border-t-2 border-accent-color p-3">
+        <div class="FunctionArea border-accent-color flex w-full gap-2 border-t-2 p-3">
           <Button
             level="primary"
             disabled={designer()?.isReadonly()}

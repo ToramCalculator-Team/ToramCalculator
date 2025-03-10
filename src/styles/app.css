@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import url(flowEditor.css) layer(utilities);
-@import url(monster.css) layer(utilities);
+@import url(wikiBanner.css) layer(utilities);
 @import url(babylonjs.css) layer(utilities);
 @import url(blockly.css);
 @import url(resourseLoadedAnimation.css) layer(utilities);
@@ -139,3 +139,20 @@ svg {
 *:focus-visible {
   outline-color: rgb(var(--brand-1st));
 }
+
+@media screen and (orientation: portrait) {
+  .ori {
+    transform: rotate(0deg);
+    writing-mode: horizontal-tb; /* 文字水平排列 */
+    text-orientation: mixed;     /* 默认文字方向 */
+  }
+}
+
+@media screen and (orientation: landscape) {
+  .ori {
+    transform: rotate(90deg);
+    writing-mode: vertical-rl; /* 文字从上到下垂直排列 */
+    text-orientation: upright;  /* 文字保持直立，不倒转 */
+  }
+}
+

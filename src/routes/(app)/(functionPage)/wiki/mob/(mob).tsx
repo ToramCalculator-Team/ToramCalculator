@@ -497,7 +497,7 @@ export default function MobIndexPage() {
           </Motion.div>
         </Show>
       </Presence>
-      <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
+      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
@@ -525,7 +525,7 @@ export default function MobIndexPage() {
             >
               {/* <div ref={setVirtualScrollElement} class="TableBox VirtualScroll overflow-auto flex-1"> */}
               <table class="Table relative w-full">
-                <thead class={`TableHead sticky top-0 z-10 flex`}>
+                <thead class={`TableHead sticky top-0 z-10 flex bg-primary-color`}>
                   <For each={table()!.getHeaderGroups()}>
                     {(headerGroup) => (
                       <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">

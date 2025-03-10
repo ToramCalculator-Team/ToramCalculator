@@ -13,7 +13,7 @@ export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expressi
       eb
         .selectFrom("_memberToteam")
         .innerJoin("member", "_memberToteam.A", "member.id")
-        .where("_memberToteam.B", "=", id)
+        .whereRef("_memberToteam.B", "=", "team.id")
         .select(["member.playerId", "member.mercenaryId", "member.mobId", "member.mobDifficultyFlag"]),
     ).as("members"),
   ];
