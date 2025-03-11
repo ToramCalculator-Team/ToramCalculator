@@ -19,7 +19,7 @@
     // 现在开始只处理GET请求
     if (event.request.method !== 'GET') return;
 
-    console.log("SW: fetch", event.request.url);
+    // console.log("SW: fetch", event.request.url);
   });
 })(self as any);
 

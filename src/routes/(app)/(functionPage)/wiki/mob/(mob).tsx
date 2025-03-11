@@ -13,7 +13,6 @@ import { createVirtualizer, Virtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
-import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/image";
 import { type Mob, MobDic, defaultMob, findMobs } from "~/repositories/mob";

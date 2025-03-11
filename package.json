@@ -70,7 +70,7 @@
     "solid-motionone": "^1.0.1",
     "solid-rete-plugin": "^0.1.18",
     "tailwindcss": "^4.0.9",
-    "vinxi": "^0.4.1",
+    "vinxi": "^0.5.3",
     "xstate": "^5.19.2",
     "zod": "^3.23.8"
   },

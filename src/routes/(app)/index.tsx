@@ -5,10 +5,12 @@ import {
   createSignal,
   For,
   JSX,
+  Match,
   on,
   onCleanup,
   onMount,
   Show,
+  Switch,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
@@ -18,9 +20,9 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
-import { findMobs, type Mob } from "~/repositories/mob";
-import { findSkills, type Skill } from "~/repositories/skill";
-import { findCrystals, type Crystal } from "~/repositories/crystal";
+import { defaultMob, findMobById, findMobs, type Mob } from "~/repositories/mob";
+import { findSkillById, findSkills, type Skill } from "~/repositories/skill";
+import { findCrystalById, findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/skillEffect";
@@ -32,6 +34,9 @@ import { createSyncResource } from "~/hooks/resource";
 import { findWeapons } from "~/repositories/weapon";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/dictionaries/type";
+import Dialog from "~/components/controls/dialog";
+import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
+import { findZoneById } from "~/repositories/zone";
 
 type Related =
   | {
@@ -48,26 +53,37 @@ type Result =
     }
   | undefined;
 
+type FinalResult = Partial<Record<keyof DB, Result[]>>;
+
 export default function Index() {
   let searchButtonRef: HTMLButtonElement;
   let searchInputRef: HTMLInputElement;
 
-  type FinalResult = Partial<Record<"mobs" | "skills" | "crystals", Result[]>>;
-
   const navigate = useNavigate();
   // const [nodeEditorDialog, setNodeEditorDialog] = createSignal(false);
-  const [flowEditorDialog, setFlowEditorDialog] = createSignal(false);
+  const [dialogState, setDialogState] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
-    mobs: [],
-    skills: [],
-    crystals: [],
+    mob: [],
+    skill: [],
+    crystal: [],
   });
   const [searchResultOpened, setSearchResultOpened] = createSignal(false);
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
-  const [currentCardId, setCurrentCardId] = createSignal<string>("defaultId");
-  const [isPc, setIsPc] = createSignal(window.innerWidth > 1024);
+  const [currentCardId, setCurrentCardId] = createSignal<string>(defaultMob.id);
+  const [currentCardType, setCurrentCardType] = createSignal<keyof DB>("mob");
+  const [isLandscape, setisLandscape] = createSignal(window.innerWidth > window.innerHeight);
+  const landscapeQuery = window.matchMedia("(orientation: landscape)");
+
+  landscapeQuery.addEventListener("change", (e) => {
+    if (e.matches) {
+      setisLandscape(true);
+    } else {
+      setisLandscape(false);
+    }
+  });
+
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
@@ -129,6 +145,82 @@ export default function Index() {
   const crystalList = createSyncResource("crystal", findCrystals);
   const skillList = createSyncResource("skill", findSkills);
   const weaponList = createSyncResource("weapon", findWeapons);
+
+  const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
+    switch (currentCardType()) {
+      case "_additional_equipmentTocrystal":
+      case "_additional_equipmentToimage":
+      case "_armorTocrystal":
+      case "_armorToimage":
+      case "_avatarTocharacter":
+      case "_BackRelation":
+      case "_characterTocharacter_skill":
+      case "_characterTocombo":
+      case "_characterToconsumable":
+      case "_crystalTocustom_additional_equipment":
+      case "_crystalTocustom_armor":
+      case "_crystalTocustom_special_equipment":
+      case "_crystalTocustom_weapon":
+      case "_crystalTospecial_equipment":
+      case "_crystalToweapon":
+      case "_FrontRelation":
+      case "_imageToweapon":
+      case "_memberToteam":
+      case "_mobTozone":
+      case "_simulatorToteam":
+      case "account":
+      case "account_create_data":
+      case "account_update_data":
+      case "activity":
+      case "additional_equipment":
+      case "address":
+      case "armor":
+      case "armor_enchantment_attributes":
+      case "avatar":
+      case "character":
+      case "character_skill":
+      case "combo":
+      case "consumable":
+      case "crystal":
+        return findCrystalById(currentCardId());
+      case "custom_additional_equipment":
+      case "custom_armor":
+      case "custom_pet":
+      case "custom_special_equipment":
+      case "custom_weapon":
+      case "drop_item":
+      case "image":
+      case "item":
+      case "material":
+      case "member":
+      case "mercenary":
+      case "mob":
+        return findMobById(currentCardId());
+      case "npc":
+      case "player":
+      case "post":
+      case "recipe":
+      case "recipe_ingredient":
+      case "reward":
+      case "session":
+      case "simulator":
+      case "skill":
+        return findSkillById(currentCardId());
+      case "skill_effect":
+      case "special_equipment":
+      case "statistic":
+      case "task":
+      case "task_collect_require":
+      case "task_kill_requirement":
+      case "team":
+      case "user":
+      case "weapon":
+      case "weapon_enchantment_attributes":
+      case "world":
+      case "zone":
+        return findZoneById(currentCardId());
+    }
+  });
 
   // 搜索函数
   const mobHiddenData: Array<keyof Mob> = ["id", "image", "imageId", "updatedByAccountId", "createdByAccountId"];
@@ -250,9 +342,9 @@ export default function Index() {
     const searchValue = isNumber ? parsedInput : searchInputValue();
 
     const finalResult: FinalResult = {
-      mobs: searchInList(mobList() ?? [], searchValue, mobHiddenData),
-      skills: searchInList(skillList() ?? [], searchValue, skillHiddenData),
-      crystals: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
+      mob: searchInList(mobList() ?? [], searchValue, mobHiddenData),
+      skill: searchInList(skillList() ?? [], searchValue, skillHiddenData),
+      crystal: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -264,138 +356,6 @@ export default function Index() {
       resultListSate.push(true);
     });
     setResultListState(resultListSate);
-  };
-
-  // 生成搜索结果列表DOM
-  const generateSearchResultDom = (dialogStatus: boolean) => {
-    return isNullResult() ? (
-      <div
-        class={`NullResult flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 lg:p-0 ${
-          dialogStatus ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <span class="NullResultWarring text-xl leading-loose font-bold lg:text-2xl">
-          {dictionary().ui.index.nullSearchResultWarring}
-        </span>
-        <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
-          {dictionary()
-            .ui.index.nullSearchResultTips.split("\n")
-            .map((line, index) => (
-              <span>
-                {line}
-                <br />
-              </span>
-            ))}
-        </p>
-      </div>
-    ) : (
-      <div class={`ResultContent bg-area-color flex h-full flex-1 flex-col gap-2 rounded p-2 backdrop-blur-md`}>
-        <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer>
-          {Object.entries(searchResult()).map(([key, value], groupIndex) => {
-            let icon: JSX.Element = null;
-            let groupName = "未知分类";
-            switch (key) {
-              case "skills":
-                icon = <Icon.Line.Basketball />;
-                groupName = dictionary().ui.nav.skills;
-                break;
-              case "crystals":
-                icon = <Icon.Line.Box2 />;
-                groupName = dictionary().ui.nav.crystals;
-                break;
-              case "mobs":
-                icon = <Icon.Line.Calendar />;
-                groupName = dictionary().ui.nav.mobs;
-                break;
-              default:
-                break;
-            }
-
-            return (
-              value.length > 0 && (
-                <div class="RsultGroup flex flex-col gap-1">
-                  <button
-                    onClick={() =>
-                      setResultListState([
-                        ...resultListSate().slice(0, groupIndex),
-                        !resultListSate()[groupIndex],
-                        ...resultListSate().slice(groupIndex + 1),
-                      ])
-                    }
-                    class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex] ? "" : ""} rounded px-3 py-4`}
-                  >
-                    {icon}
-                    <span class="w-full text-left">
-                      {groupName} [{value.length}]
-                    </span>
-                    {resultListSate()[groupIndex] ? (
-                      <Icon.Line.Left class="rotate-[360deg]" />
-                    ) : (
-                      <Icon.Line.Left class="rotate-[270deg]" />
-                    )}
-                  </button>
-                  <div class="Content flex flex-col gap-1">
-                    {value.map((item, index) => {
-                      return (
-                        <Motion.button
-                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex] ? "" : "hidden"} border-dividing-color bg-primary-color focus-within:bg-area-color rounded border p-3 outline-hidden focus-within:outline-hidden`}
-                          animate={{
-                            opacity: [0, 1],
-                            transform: ["translateY(30px)", "translateY(0)"],
-                          }}
-                          transition={{
-                            duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                            delay: store.settings.userInterface.isAnimationEnabled
-                              ? index < 10
-                                ? 0.3 + index * 0.07
-                                : 0
-                              : 0,
-                          }}
-                          onClick={() => {
-                            if (item?.data.id === currentCardId()) {
-                              setCurrentCardId("defaultId");
-                            } else {
-                              setCurrentCardId(item?.data.id ?? "未知ID");
-                            }
-                          }}
-                        >
-                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
-                            {item?.name}
-                          </div>
-                          <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
-                            {item?.relateds.map((related, index) => {
-                              return (
-                                <div class="Related w-fit pr-2">
-                                  <span>
-                                    {related?.key}: {related?.value}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div
-                            class={`Data ${currentCardId() === item?.data.id ? "flex" : "hidden"} bg-area-color w-full flex-1 flex-wrap rounded p-1`}
-                          >
-                            {JSON.stringify(_.omit(item?.data, mobHiddenData), null, 2)
-                              .split(",")
-                              .map((line, index) => (
-                                <span class="text-left lg:basis-1/4">
-                                  {line}
-                                  <br />
-                                </span>
-                              ))}
-                          </div>
-                        </Motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )
-            );
-          })}
-        </OverlayScrollbarsComponent>
-      </div>
-    );
   };
 
   // 问候语计算方法
@@ -489,144 +449,8 @@ export default function Index() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        {/* <Show when={isPc()}>
-          <div
-            class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
-          >
-            <span>MobList: {mobList()?.length}</span>
-            <span>SkillList: {skillList()?.length}</span>
-            <span>CrystalList: {crystalList()?.length}</span>
-            <span>searchResultOpened: {searchResultOpened().toString()}</span>
-          </div>
-        </Show> */}
         <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full lg:mx-auto lg:max-w-[1536px] lg:p-3`}
-        >
-          <Presence exitBeforeEnter>
-            <Show when={!searchResultOpened()}>
-              <Motion.div
-                animate={{
-                  opacity: [0, 1],
-                  paddingBottom: [0, isPc() ? "3rem" : "0rem"],
-                  gridTemplateRows: ["0fr", isPc() ? "1fr 0fr" : "1fr 1fr"],
-                  filter: ["blur(20px)", "blur(0px)"],
-                }}
-                exit={{
-                  opacity: [1, 0],
-                  paddingBottom: 0,
-                  gridTemplateRows: "0fr",
-                  filter: ["blur(0px)", "blur(20px)"],
-                }}
-                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-                class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden lg:flex-none`}
-              >
-                <div
-                  class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm lg:mb-0 dark:backdrop-blur-none`}
-                >
-                  <Icon.LogoText class="h-12 w-fit lg:h-auto" />
-                </div>
-                <h1 class={`text-main-text-color self-start py-4 lg:hidden`}>
-                  {getGreetings() + ",  " + dictionary().ui.index.adventurer}
-                </h1>
-              </Motion.div>
-            </Show>
-          </Presence>
-          <div
-            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 duration-700! lg:hidden lg:flex-row ${
-              searchResultOpened() ? `flex-shrink-1 flex-grow-1 basis-[100%]` : `shrink-0 grow-0 basis-[0%] opacity-0`
-            }`}
-            style={
-              searchResultOpened()
-                ? {
-                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                  }
-                : {
-                    "clip-path": "inset(90% 5% 10% 5% round 12px)",
-                  }
-            }
-          >
-            {generateSearchResultDom(searchResultOpened())}
-          </div>
-
-          <Motion.div
-            animate={{
-              filter: ["blur(20px)", "blur(0px)"],
-            }}
-            exit={{
-              filter: ["blur(0px)", "blur(20px)"],
-            }}
-            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-            class={`FunctionBox flex w-full flex-col justify-center lg:justify-between landscape:flex-row`}
-          >
-            <div
-              class={`BackButton m-0 hidden w-full flex-none self-start lg:m-0 lg:flex lg:w-60 ${
-                searchResultOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
-              }`}
-            >
-              <Button
-                level="quaternary"
-                onClick={() => {
-                  setSearchResultOpened(false);
-                }}
-                class="w-full outline-hidden focus-within:outline-hidden"
-              >
-                <Icon.Line.Back />
-                <span class="w-full text-left">{dictionary().ui.actions.back}</span>
-              </Button>
-            </div>
-            <div
-              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${searchResultOpened() ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
-            >
-              <input
-                id="searchInput"
-                ref={searchInputRef!}
-                type="text"
-                placeholder={isPc() ? getGreetings() + "," + dictionary().ui.index.adventurer : dictionary().ui.searchPlaceholder}
-                value={searchInputValue()}
-                tabIndex={1}
-                onInput={(e) => {
-                  setSearchInputValue(e.target.value);
-                }}
-                class="focus:placeholder:text-accent-color portrait:bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden lg:flex lg:bg-transparent dark:mix-blend-normal"
-              />
-              <Button
-                ref={(el) => (searchButtonRef = el)}
-                class="group-hover:text-accent-color landscape:bg-transparent"
-                onClick={search}
-                tabindex={1}
-              >
-                <Icon.Line.Search />
-              </Button>
-            </div>
-            <div class="hidden w-60 flex-none lg:flex"></div>
-          </Motion.div>
-          <Presence exitBeforeEnter>
-            <Show when={searchResultOpened()}>
-              <Motion.div
-                animate={{
-                  clipPath: ["inset(10% 10% 90% 10% round 12px)", "inset(0% 0% 0% 0% round 12px)"],
-                  opacity: [0, 1],
-                  flexBasis: ["0%", "100%"],
-                  flexGrow: [0, 1],
-                }}
-                exit={{
-                  clipPath: ["inset(0% 0% 0% 0% round 12px)", "inset(10% 25% 90% 25% round 12px)"],
-                  opacity: [1, 0],
-                  flexBasis: ["100%", "0%"],
-                  flexGrow: [1, 0],
-                }}
-                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-                class={`ResultPC hidden lg:flex lg:h-full lg:flex-1 lg:flex-row lg:gap-1 lg:overflow-y-hidden`}
-              >
-                {generateSearchResultDom(searchResultOpened())}
-              </Motion.div>
-            </Show>
-          </Presence>
-        </div>
-        <Motion.div
-          animate={{ opacity: [0, 1] }}
-          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          class={`Config absolute top-3 right-3 flex gap-1 ${searchResultOpened() ? `-z-10 lg:z-10` : ``}`}
+          class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${searchResultOpened() ? `z-0 opacity-0` : `z-10 opacity-100`}`}
         >
           <Button
             class="outline-hidden focus-within:outline-hidden"
@@ -651,7 +475,278 @@ export default function Index() {
           >
             <Icon.Line.Settings />
           </Button>
-        </Motion.div>
+        </div>
+        {/* <Show when={isLandscape()}>
+          <div
+            class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
+          >
+            <span>MobList: {mobList()?.length}</span>
+            <span>SkillList: {skillList()?.length}</span>
+            <span>CrystalList: {crystalList()?.length}</span>
+            <span>searchResultOpened: {searchResultOpened().toString()}</span>
+          </div>
+        </Show> */}
+        <div
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
+        >
+          <Presence exitBeforeEnter>
+            <Show when={!searchResultOpened()}>
+              <Motion.div
+                animate={{
+                  opacity: [0, 1],
+                  paddingBottom: [0, isLandscape() ? "3rem" : "0rem"],
+                  gridTemplateRows: ["0fr", isLandscape() ? "1fr 0fr" : "1fr 1fr"],
+                  filter: ["blur(20px)", "blur(0px)"],
+                }}
+                exit={{
+                  opacity: [1, 0],
+                  paddingBottom: 0,
+                  gridTemplateRows: "0fr",
+                  filter: ["blur(0px)", "blur(20px)"],
+                }}
+                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+                class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden landscape:flex-none`}
+              >
+                <div
+                  class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
+                >
+                  <Icon.LogoText class="h-12 w-fit landscape:h-auto" />
+                </div>
+                <h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
+                  {getGreetings() + ",  " + dictionary().ui.index.adventurer}
+                </h1>
+              </Motion.div>
+            </Show>
+          </Presence>
+          {/* <div
+            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 duration-700! landscape:hidden landscape:flex-row ${
+              searchResultOpened() ? `flex-shrink-1 flex-grow-1 basis-[100%]` : `shrink-0 grow-0 basis-[0%] opacity-0`
+            }`}
+            style={
+              searchResultOpened()
+                ? {
+                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
+                  }
+                : {
+                    "clip-path": "inset(90% 5% 10% 5% round 12px)",
+                  }
+            }
+          >
+            {generateSearchResultDom(searchResultOpened())}
+          </div> */}
+
+          <Motion.div
+            animate={{
+              filter: ["blur(20px)", "blur(0px)"],
+            }}
+            exit={{
+              filter: ["blur(0px)", "blur(20px)"],
+            }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+            class={`FunctionBox flex w-full flex-col justify-center landscape:flex-row landscape:justify-between`}
+          >
+            <div
+              class={`BackButton m-0 hidden w-full flex-none self-start landscape:m-0 landscape:flex landscape:w-60 ${
+                searchResultOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
+              }`}
+            >
+              <Button
+                level="quaternary"
+                onClick={() => {
+                  setSearchResultOpened(false);
+                }}
+                class="w-full outline-hidden focus-within:outline-hidden"
+              >
+                <Icon.Line.Back />
+                <span class="w-full text-left">{dictionary().ui.actions.back}</span>
+              </Button>
+            </div>
+            <div
+              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${searchResultOpened() ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
+            >
+              <input
+                id="searchInput"
+                ref={searchInputRef!}
+                type="text"
+                placeholder={
+                  isLandscape()
+                    ? getGreetings() + "," + dictionary().ui.index.adventurer
+                    : dictionary().ui.searchPlaceholder
+                }
+                value={searchInputValue()}
+                tabIndex={1}
+                onInput={(e) => {
+                  setSearchInputValue(e.target.value);
+                }}
+                class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
+              />
+              <Button
+                ref={(el) => (searchButtonRef = el)}
+                class="group-hover:text-accent-color landscape:bg-transparent"
+                onClick={search}
+                tabindex={1}
+              >
+                <Icon.Line.Search />
+              </Button>
+            </div>
+            <div class="hidden w-60 flex-none landscape:flex"></div>
+          </Motion.div>
+          <Presence exitBeforeEnter>
+            <Show when={searchResultOpened()}>
+              <Motion.div
+                animate={{
+                  clipPath: [
+                    isLandscape() ? "inset(10% 10% 90% 10% round 12px)" : "inset(90% 5% 10% 5% round 12px)",
+                    "inset(0% 0% 0% 0% round 12px)",
+                  ],
+                  opacity: [0, 1],
+                  flexBasis: ["0%", "100%"],
+                  flexGrow: [0, 1],
+                }}
+                exit={{
+                  clipPath: [
+                    "inset(0% 0% 0% 0% round 12px)",
+                    isLandscape() ? "inset(10% 25% 90% 25% round 12px)" : "inset(90% 5% 10% 5% round 12px)",
+                  ],
+                  opacity: [1, 0],
+                  flexBasis: ["100%", "0%"],
+                  flexGrow: [1, 0],
+                }}
+                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+                class={`Result mt-1 flex h-full gap-1 overflow-y-hidden`}
+              >
+                <Show
+                  when={!isNullResult()}
+                  fallback={
+                    <div
+                      class={`NullResult } flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 landscape:p-0`}
+                    >
+                      <span class="NullResultWarring text-xl leading-loose font-bold landscape:text-2xl">
+                        {dictionary().ui.index.nullSearchResultWarring}
+                      </span>
+                      <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
+                        {dictionary()
+                          .ui.index.nullSearchResultTips.split("\n")
+                          .map((line, index) => (
+                            <span>
+                              {line}
+                              <br />
+                            </span>
+                          ))}
+                      </p>
+                    </div>
+                  }
+                >
+                  <div
+                    class={`ResultContent bg-area-color flex h-full flex-1 flex-col gap-2 rounded p-2 backdrop-blur-md`}
+                  >
+                    <OverlayScrollbarsComponent
+                      element="div"
+                      class="w-full"
+                      options={{ scrollbars: { autoHide: "scroll" } }}
+                      defer
+                    >
+                      <For each={Object.entries(searchResult())}>
+                        {([key, groupResultValue], groupIndex) => {
+                          const groupType = key as keyof DB;
+                          let icon: JSX.Element = null;
+                          let groupName = "未知分类";
+                          switch (groupType) {
+                            case "skill":
+                              icon = <Icon.Line.Basketball />;
+                              groupName = dictionary().ui.nav.skills;
+                              break;
+                            case "crystal":
+                              icon = <Icon.Line.Box2 />;
+                              groupName = dictionary().ui.nav.crystals;
+                              break;
+                            case "mob":
+                              icon = <Icon.Line.Calendar />;
+                              groupName = dictionary().ui.nav.mobs;
+                              break;
+                            default:
+                              break;
+                          }
+
+                          return (
+                            <Show when={groupResultValue.length > 0}>
+                              <div class={`ResultGroup flex flex-col gap-1`}>
+                                <button
+                                  onClick={() =>
+                                    setResultListState([
+                                      ...resultListSate().slice(0, groupIndex()),
+                                      !resultListSate()[groupIndex()],
+                                      ...resultListSate().slice(groupIndex() + 1),
+                                    ])
+                                  }
+                                  class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                >
+                                  {icon}
+                                  <span class="w-full text-left">
+                                    {groupName} [{groupResultValue.length}]
+                                  </span>
+                                  {resultListSate()[groupIndex()] ? (
+                                    <Icon.Line.Left class="rotate-[360deg]" />
+                                  ) : (
+                                    <Icon.Line.Left class="rotate-[270deg]" />
+                                  )}
+                                </button>
+                                <div class="Content flex flex-col gap-1">
+                                  <For each={groupResultValue}>
+                                    {(resultItem, index) => {
+                                      return (
+                                        <Motion.button
+                                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} border-dividing-color bg-primary-color focus-within:bg-area-color rounded border p-3 outline-hidden focus-within:outline-hidden`}
+                                          animate={{
+                                            opacity: [0, 1],
+                                            transform: ["translateY(30px)", "translateY(0)"],
+                                          }}
+                                          transition={{
+                                            duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                            delay: store.settings.userInterface.isAnimationEnabled
+                                              ? index() < 10
+                                                ? 0.3 + index() * 0.07
+                                                : 0
+                                              : 0,
+                                          }}
+                                          onClick={async () => {
+                                            setCurrentCardId(resultItem?.data.id ?? defaultMob.id);
+                                            setCurrentCardType(groupType);
+                                            await refetchData();
+                                            setDialogState(true);
+                                          }}
+                                        >
+                                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
+                                            {resultItem?.name}
+                                          </div>
+                                          <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
+                                            {resultItem?.relateds.map((related, index) => {
+                                              return (
+                                                <div class="Related w-fit pr-2 text-left">
+                                                  <span>
+                                                    {related?.key}: {related?.value}
+                                                  </span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </Motion.button>
+                                      );
+                                    }}
+                                  </For>
+                                </div>
+                              </div>
+                            </Show>
+                          );
+                        }}
+                      </For>
+                    </OverlayScrollbarsComponent>
+                  </div>
+                </Show>
+              </Motion.div>
+            </Show>
+          </Presence>
+        </div>
 
         <Presence exitBeforeEnter>
           <Show when={!searchResultOpened()}>
@@ -659,22 +754,22 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBottom: [0, isPc() ? "5rem" : "1.5rem"],
-                paddingTop: [0, isPc() ? "5rem" : "1.5rem"],
+                // paddingBottom: [0, isLandscape() ? "5rem" : "1.5rem"],
+                // paddingTop: [0, isLandscape() ? "5rem" : "1.5rem"],
                 filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
                 gridTemplateRows: ["1fr", "0fr"],
-                paddingBottom: 0,
-                paddingTop: 0,
+                // paddingBottom: 0,
+                // paddingTop: 0,
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom portrait:bg-accent-color portrait:dark:bg-area-color landscape:hidden portrait:grid landscape:lg:grid w-full shrink-0 self-center p-6 lg:w-fit lg:bg-transparent dark:lg:bg-transparent`}
+              class={`Bottom bg-accent-color dark:bg-area-color w-full py-6 landscape:pb-14 lg:landscape:py-20 shrink-0 self-center p-6 grid landscape:w-fit landscape:bg-transparent landscape:grid dark:landscape:bg-transparent`}
             >
               <div
-                class={`Content lg:bg-area-color portrait:overflow-hidden flex gap-3 rounded lg:flex-1 lg:justify-center lg:backdrop-blur-sm portrait:flex-wrap lg:landscape:p-3`}
+                class={`Content lg:landscape:bg-area-color flex gap-3 rounded flex-wrap overflow-hidden landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:p-3`}
               >
                 <For each={customMenuConfig()}>
                   {(menuItem, index) => {
@@ -688,7 +783,7 @@ export default function Index() {
                       <a
                         tabIndex={2}
                         href={menuItem.href}
-                        class="flex-none overflow-hidden rounded portrait:basis-[calc(33.33%-8px)] landscape:basis-auto"
+                        class="flex-none overflow-hidden rounded basis-[calc(33.33%-8px)] landscape:basis-auto"
                       >
                         <Button
                           class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
@@ -700,7 +795,7 @@ export default function Index() {
                             />
                           }
                         >
-                          <span class="text-sm text-nowrap text-ellipsis landscape:text-base landscape:hidden landscape:lg:block">
+                          <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
                             {dictionary().ui.nav[menuItem.title]}
                           </span>
                         </Button>
@@ -713,6 +808,12 @@ export default function Index() {
           </Show>
         </Presence>
       </Motion.div>
+
+      <Dialog state={dialogState()} setState={setDialogState}>
+        <OverlayScrollbarsComponent element="div" class="w-full" options={{ scrollbars: { autoHide: "scroll" } }} defer>
+          <pre class="p-3">{JSON.stringify(data(), null, 2)}</pre>
+        </OverlayScrollbarsComponent>
+      </Dialog>
       <Filing />
     </MetaProvider>
   );
