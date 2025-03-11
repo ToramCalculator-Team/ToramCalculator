@@ -589,18 +589,6 @@ export default function Index() {
                 }}
                 class="focus:placeholder:text-accent-color portrait:bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden lg:flex lg:bg-transparent dark:mix-blend-normal"
               />
-              {/* <input
-                id="searchInput-Mobile"
-                ref={searchInputMobileRef!}
-                type="text"
-                placeholder={dictionary().ui.searchPlaceholder}
-                value={searchInputValue()}
-                tabIndex={1}
-                onInput={(e) => {
-                  setSearchInputValue(e.target.value);
-                }}
-                class="bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply backdrop-blur-sm placeholder:font-normal lg:hidden dark:mix-blend-normal"
-              /> */}
               <Button
                 ref={(el) => (searchButtonRef = el)}
                 class="group-hover:text-accent-color landscape:bg-transparent"
