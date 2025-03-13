@@ -11,6 +11,7 @@ import {
   onMount,
   Show,
   Switch,
+  useContext,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
@@ -37,6 +38,7 @@ import { dictionary } from "~/locales/dictionaries/type";
 import Dialog from "~/components/controls/dialog";
 import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
 import { findZoneById } from "~/repositories/zone";
+import { MediaContext } from "~/contexts/Media";
 
 type Related =
   | {
@@ -60,7 +62,6 @@ export default function Index() {
   let searchInputRef: HTMLInputElement;
 
   const navigate = useNavigate();
-  // const [nodeEditorDialog, setNodeEditorDialog] = createSignal(false);
   const [dialogState, setDialogState] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
@@ -73,16 +74,7 @@ export default function Index() {
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>(defaultMob.id);
   const [currentCardType, setCurrentCardType] = createSignal<keyof DB>("mob");
-  const [isLandscape, setisLandscape] = createSignal(window.innerWidth > window.innerHeight);
-  const landscapeQuery = window.matchMedia("(orientation: landscape)");
-
-  landscapeQuery.addEventListener("change", (e) => {
-    if (e.matches) {
-      setisLandscape(true);
-    } else {
-      setisLandscape(false);
-    }
-  });
+  const { width, height, orientation } = useContext(MediaContext);
 
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
@@ -141,10 +133,10 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const mobList = createSyncResource("mob", findMobs);
-  const crystalList = createSyncResource("crystal", findCrystals);
-  const skillList = createSyncResource("skill", findSkills);
-  const weaponList = createSyncResource("weapon", findWeapons);
+  const [mobList] = createSyncResource("mob", findMobs);
+  const [crystalList] = createSyncResource("crystal", findCrystals);
+  const [skillList] = createSyncResource("skill", findSkills);
+  const [weaponList] = createSyncResource("weapon", findWeapons);
 
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
@@ -476,7 +468,7 @@ export default function Index() {
             <Icon.Line.Settings />
           </Button>
         </div>
-        {/* <Show when={isLandscape()}>
+        {/* <Show when={orientation === "landscape"}>
           <div
             class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
           >
@@ -494,8 +486,8 @@ export default function Index() {
               <Motion.div
                 animate={{
                   opacity: [0, 1],
-                  paddingBottom: [0, isLandscape() ? "3rem" : "0rem"],
-                  gridTemplateRows: ["0fr", isLandscape() ? "1fr 0fr" : "1fr 1fr"],
+                  paddingBottom: [0, orientation === "landscape" ? "3rem" : "0rem"],
+                  gridTemplateRows: ["0fr", orientation === "landscape" ? "1fr 0fr" : "1fr 1fr"],
                   filter: ["blur(20px)", "blur(0px)"],
                 }}
                 exit={{
@@ -518,22 +510,6 @@ export default function Index() {
               </Motion.div>
             </Show>
           </Presence>
-          {/* <div
-            class={`ResultMo flex flex-1 flex-col gap-1 overflow-hidden pb-3 duration-700! landscape:hidden landscape:flex-row ${
-              searchResultOpened() ? `flex-shrink-1 flex-grow-1 basis-[100%]` : `shrink-0 grow-0 basis-[0%] opacity-0`
-            }`}
-            style={
-              searchResultOpened()
-                ? {
-                    "clip-path": "inset(0% 0% 0% 0% round 12px)",
-                  }
-                : {
-                    "clip-path": "inset(90% 5% 10% 5% round 12px)",
-                  }
-            }
-          >
-            {generateSearchResultDom(searchResultOpened())}
-          </div> */}
 
           <Motion.div
             animate={{
@@ -569,7 +545,7 @@ export default function Index() {
                 ref={searchInputRef!}
                 type="text"
                 placeholder={
-                  isLandscape()
+                  orientation === "landscape"
                     ? getGreetings() + "," + dictionary().ui.index.adventurer
                     : dictionary().ui.searchPlaceholder
                 }
@@ -596,7 +572,9 @@ export default function Index() {
               <Motion.div
                 animate={{
                   clipPath: [
-                    isLandscape() ? "inset(10% 10% 90% 10% round 12px)" : "inset(90% 5% 10% 5% round 12px)",
+                    orientation === "landscape"
+                      ? "inset(10% 10% 90% 10% round 12px)"
+                      : "inset(90% 5% 10% 5% round 12px)",
                     "inset(0% 0% 0% 0% round 12px)",
                   ],
                   opacity: [0, 1],
@@ -606,7 +584,9 @@ export default function Index() {
                 exit={{
                   clipPath: [
                     "inset(0% 0% 0% 0% round 12px)",
-                    isLandscape() ? "inset(10% 25% 90% 25% round 12px)" : "inset(90% 5% 10% 5% round 12px)",
+                    orientation === "landscape"
+                      ? "inset(10% 25% 90% 25% round 12px)"
+                      : "inset(90% 5% 10% 5% round 12px)",
                   ],
                   opacity: [1, 0],
                   flexBasis: ["100%", "0%"],
@@ -754,22 +734,18 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                // paddingBottom: [0, isLandscape() ? "5rem" : "1.5rem"],
-                // paddingTop: [0, isLandscape() ? "5rem" : "1.5rem"],
                 filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
                 gridTemplateRows: ["1fr", "0fr"],
-                // paddingBottom: 0,
-                // paddingTop: 0,
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color w-full py-6 landscape:pb-14 lg:landscape:py-20 shrink-0 self-center p-6 grid landscape:w-fit landscape:bg-transparent landscape:grid dark:landscape:bg-transparent`}
+              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 py-6 landscape:grid landscape:w-fit landscape:bg-transparent landscape:pb-14 lg:landscape:py-20 dark:landscape:bg-transparent`}
             >
               <div
-                class={`Content lg:landscape:bg-area-color flex gap-3 rounded flex-wrap overflow-hidden landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:p-3`}
+                class={`Content lg:landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:p-3`}
               >
                 <For each={customMenuConfig()}>
                   {(menuItem, index) => {
@@ -783,7 +759,7 @@ export default function Index() {
                       <a
                         tabIndex={2}
                         href={menuItem.href}
-                        class="flex-none overflow-hidden rounded basis-[calc(33.33%-8px)] landscape:basis-auto"
+                        class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto"
                       >
                         <Button
                           class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"

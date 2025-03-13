@@ -2,8 +2,10 @@
 @import url(flowEditor.css) layer(utilities);
 @import url(wikiBanner.css) layer(utilities);
 @import url(babylonjs.css) layer(utilities);
-@import url(blockly.css);
 @import url(resourseLoadedAnimation.css) layer(utilities);
+
+@import url(blockly.css);
+@import url(overlayscrollbars.css);
 
 @plugin '@tailwindcss/typography';
 

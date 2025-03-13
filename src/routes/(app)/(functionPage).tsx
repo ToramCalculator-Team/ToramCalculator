@@ -287,7 +287,10 @@ export default function Home(props: ParentProps) {
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
         id="#mainContent"
-        class="z-40 h-full w-full lg:px-12 bg-primary-color-90"
+        class="z-40 h-full w-full lg:landscape:px-12 bg-primary-color-90"
+        style={{
+          "transition-duration": "all 0s !important"
+        }}
       >
         {/* <Motion.div
           animate={{ opacity: 1 }}

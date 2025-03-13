@@ -43,35 +43,14 @@ export type Store = {
     };
   };
   indexPage: {};
-  wiki: {
-    filterStr: string;
-    mobPage: {
-      augmented: boolean;
-      mobId: string;
-      mobList: Mob[];
-      mobDialogState: boolean;
-      mobFormState: FormSate;
-      filterState: boolean;
+  wiki: Partial<{
+    [T in keyof DB]: {
+      id: string;
+      dialogState: boolean;
+      formState: FormSate;
+      filter: Partial<Record<keyof DB[T], boolean>>;
     };
-    petPage: {
-      petId: String;
-      petList: CustomPet[];
-    };
-    crystalPage: {
-      crystalId: string;
-      crystalList: Crystal[];
-      crystalDialogState: boolean;
-      crystalFormState: FormSate;
-      filterState: boolean;
-    };
-    skillPage: {
-      skillId: string;
-      skillList: Skill[];
-      skillDialogState: boolean;
-      skillFormState: FormSate;
-      filterState: boolean;
-    };
-  };
+  }>;
   characterPage: {
     characterId: string;
     characterList: Character[];
@@ -92,7 +71,7 @@ export const initialStore: Store = {
   version: 20250103,
   theme: "light",
   resourcesLoaded: false,
-  database:{
+  database: {
     inited: false,
     tableSyncState: {
       account: false,
@@ -129,32 +108,11 @@ export const initialStore: Store = {
   settingsDialogState: false,
   indexPage: {},
   wiki: {
-    filterStr: "",
-    mobPage: {
-      augmented: true,
-      mobId: "defaultMobId",
-      mobList: [],
-      mobDialogState: false,
-      mobFormState: "DISPLAY",
-      filterState: false,
-    },
-    petPage: {
-      petId: "",
-      petList: [],
-    },
-    crystalPage: {
-      crystalId: "defaultCrystalId",
-      crystalList: [],
-      crystalDialogState: false,
-      crystalFormState: "CREATE",
-      filterState: false,
-    },
-    skillPage: {
-      skillId: "defaultSkillId",
-      skillList: [],
-      skillDialogState: false,
-      skillFormState: "CREATE",
-      filterState: false,
+    mob: {
+      id: "defaultMobId",
+      dialogState: false,
+      formState: "DISPLAY",
+      filter: {},
     },
   },
   characterPage: {
@@ -185,7 +143,7 @@ const safeParse = (data: string) => {
 };
 
 const getActStore = () => {
-  console.log("store")
+  // console.log("store")
   if (!actStore) {
     const isBrowser = typeof window !== "undefined";
     if (isBrowser) {

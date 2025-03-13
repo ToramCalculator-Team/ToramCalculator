@@ -75,11 +75,14 @@ export async function findMobById(id: string) {
 }
 
 export async function findMobs() {
-  return (await db
+  const startTime = performance.now()
+  const result = (await db
     .selectFrom("mob")
     .selectAll("mob")
     .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
     .execute()) as Mob[];
+  console.log("耗时", performance.now() - startTime);
+  return result;
 }
 
 export async function updateMob(id: string, updateWith: MobUpdate) {

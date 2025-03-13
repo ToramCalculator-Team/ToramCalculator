@@ -39,11 +39,11 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
  * @param MainTableDataFun
  * @returns 转换后的类型
  */
-export interface DataType<T, K, MainTableDataFun extends (...args: any[]) => any, MainFormDataFun extends (...args: any[]) => any> {
+export interface DataType<T, MainTableDataFun extends (...args: any[]) => any, MainFormDataFun extends (...args: any[]) => any> {
   [key: string]: any;
-  Select: ModifyKeys<Selectable<T>, K>;
-  Insert: ModifyKeys<Insertable<T>, K>;
-  Update: ModifyKeys<Updateable<T>, K>;
+  Select: Selectable<T>;
+  Insert: Insertable<T>;
+  Update: Updateable<T>;
   MainTable: Awaited<ReturnType<MainTableDataFun>>;
   MainFormData: Awaited<ReturnType<MainFormDataFun>>;
 }

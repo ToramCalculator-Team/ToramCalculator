@@ -1,11 +1,11 @@
 import { type Mob } from "~/repositories/mob";
 import { dictionary } from "~/locales/dictionaries/type";
-import { MobDifficultyFlag } from "~/repositories/enums";
+import { Enums } from "~/repositories/enums";
 import { getDictionary } from "~/locales/i18n";
 
 export const generateMobByStar = (
   baseMob: Mob,
-  flag: MobDifficultyFlag,
+  flag: Enums["MobDifficultyFlag"],
 ): Mob => {
   const rate: {
     lv: number;
@@ -59,12 +59,6 @@ export const generateMobByStar = (
 
   const resultMob = {
     ...baseMob,
-    name: {
-      "zh-CN": baseMob.name["zh-CN"] + getDictionary("zh-CN").ui.mob.difficultyflag[flag],
-      "zh-TW": baseMob.name["zh-TW"] + getDictionary("zh-TW").ui.mob.difficultyflag[flag],
-      en: baseMob.name.en + getDictionary("en").ui.mob.difficultyflag[flag],
-      ja: baseMob.name.ja + getDictionary("ja").ui.mob.difficultyflag[flag],
-    },
     baseLv: baseMob.baseLv + rate.lv,
     experience: baseMob.experience * rate.experience,
     maxhp: baseMob.maxhp * rate.maxhp,
@@ -85,7 +79,7 @@ export const generateAugmentedMobList = (baseMobList: Mob[]) => {
   const result: Mob[] = [];
   baseMobList.forEach((mob) => {
     // 表中记录的是1星状态下的定点王数据， 2 / 3 / 4 星的经验和HP为1星的 2 / 5 / 10 倍；物防、魔防、回避值为1星的 2 / 4 / 6 倍。
-    if (mob.mobType !== "Boss") {
+    if (mob.type !== "Boss") {
       result.push(mob);
     } else {
       result.push(

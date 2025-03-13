@@ -13,7 +13,7 @@ import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/
 import { store } from "./store";
 import { findSimulatorById, defaultSimulator, createSimulator } from "./repositories/simulator";
 
-console.log("entry-client");
+// console.log("entry-client");
 
 if (!store.resourcesLoaded) {
   // 资源加载进度

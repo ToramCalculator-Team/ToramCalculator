@@ -11,6 +11,7 @@ import Input, { type InputComponentType } from "~/components/controls/input";
 import Switch from "~/components/controls/switch";
 import Radio from "~/components/controls/radio";
 import BabylonBg from "~/components/module/babylonBg";
+import { MediaProvider } from "~/contexts/Media-component";
 
 const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
   const toCss = (cssObject: JSX.CSSProperties | string) =>
@@ -393,7 +394,7 @@ export default function AppMainContet(props: ParentProps) {
   });
 
   return (
-    <>
+    <MediaProvider>
       <Show when={store.settings.userInterface.is3DbackgroundDisabled}>
         <BabylonBg />
       </Show>
@@ -418,6 +419,6 @@ export default function AppMainContet(props: ParentProps) {
         </Presence> */}
       </Motion.div>
       <Setting />
-    </>
+    </MediaProvider>
   );
 }

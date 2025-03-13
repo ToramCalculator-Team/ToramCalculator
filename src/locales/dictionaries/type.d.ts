@@ -180,7 +180,6 @@ export interface dictionary {
       modifiers: string;
       staticModifiers: string;
       dynamicModifiers: string;
-      // dialogData: ConvertToAllString<CharacterData>;
       simulatorPage: {
         mobsConfig: {
           title: string;

@@ -1,22 +1,12 @@
-import { Expression, ExpressionBuilder, Insertable, Selectable, Updateable } from "kysely";
-import { db } from "./database";
-import { account, DB } from "~/../db/clientDB/generated/kysely/kyesely";
+import { Expression, ExpressionBuilder } from "kysely";
+import { db, typeDB } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ModifyKeys, ConvertToAllString, DataType } from "./untils";
-import { Enums } from "./enums";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export interface Account
-  extends DataType<
-    account,
-    {
-      type: Enums["AccountType"];
-    },
-    typeof findAccountById,
-    typeof createAccount
-  > {}
+export interface Account extends DataType<typeDB["account"], typeof findAccountById, typeof createAccount> {}
 
-export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
+export function accountSubRelations(eb: ExpressionBuilder<typeDB, "account">, accountId: Expression<string>) {
   return [
     // jsonArrayFrom(eb.selectFrom("character").where("character.masterId", "=", accountId).selectAll("character")).as(
     //   "characters",
@@ -64,6 +54,13 @@ export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accoun
   ];
 }
 
+export const selectAccount = async (id: string): Promise<Account["Select"]> => {
+  const startTime = performance.now();
+  const account = await db.selectFrom("account").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
+  const time = performance.now() - startTime;
+  return account;
+};
+
 export async function findAccountById(id: string) {
   const account = await db
     .selectFrom("account")
@@ -84,7 +81,6 @@ export async function updateAccount(id: string, updateWith: Account["Update"]) {
       .executeTakeFirst();
     return account;
   });
-  // await db.updateTable('account').set(updateWith).where('id', '=', id).execute()
 }
 
 export async function createAccount(account: Account["Insert"]) {

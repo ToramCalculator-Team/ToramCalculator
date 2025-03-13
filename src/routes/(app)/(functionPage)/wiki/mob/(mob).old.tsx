@@ -1,17 +1,42 @@
-import { createMemo, createResource, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
-import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  Suspense,
+} from "solid-js";
+import Fuse from "fuse.js";
+import {
+  Cell,
+  Column,
+  ColumnDef,
+  createSolidTable,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+} from "@tanstack/solid-table";
+import { createVirtualizer, Virtualizer } from "@tanstack/solid-virtual";
 import { Motion, Presence } from "solid-motionone";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
+
 import { defaultImage } from "~/repositories/image";
-import { type Mob, MobDic, defaultMob, findMobById, findMobs } from "~/repositories/mob";
+import { type Mob, MobDic, defaultMob, findMobs } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
+import { generateAugmentedMobList } from "~/lib/mob";
 import * as Icon from "~/components/icon";
+import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
 import { type Enums } from "~/repositories/enums";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 import { createSyncResource } from "~/hooks/resource";
-import VirtualTable from "~/components/module/virtualTable";
-import { getCommonPinningStyles } from "~/lib/table";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -19,9 +44,9 @@ export default function MobIndexPage() {
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
-  const [formState, setformState] = createSignal<FormSate>("CREATE");
+  const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
-  const setMobformState = (newState: FormSate): void => {
+  const setMobFormState = (newState: FormSate): void => {
     setStore("wiki", "mob", {
       formState: newState,
     });
@@ -30,8 +55,10 @@ export default function MobIndexPage() {
     setStore("wiki", "mob", "id", newMob.id);
   };
 
+  // table原始数据------------------------------------------------------------
+
   // table
-  const mobColumns: ColumnDef<Mob>[] = [
+  const columns: ColumnDef<Mob>[] = [
     {
       accessorKey: "id",
       header: () => MobDic(store.settings.language).id,
@@ -133,14 +160,53 @@ export default function MobIndexPage() {
     // },
   ];
   const [mobList] = createSyncResource("mob", findMobs);
-  const [mob, { refetch: refetchMob }] = createResource(store.wiki.mob?.id, findMobById);
+  const table = createSolidTable({
+    data: [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    debugTable: true,
+    initialState: {
+      sorting: [
+        {
+          id: "experience",
+          desc: true, // 默认按热度降序排列
+        },
+      ],
+    },
+  });
+  createEffect(() => {
+    console.log("表格数据更新");
+    table.setOptions((prev) => ({
+      ...prev,
+      data: mobList() ?? [], // 这里的数据变化应该触发表格更新
+    }));
+  });
+  createMemo(() => mobList() ?? []);
 
-  const mobTableHiddenColumns: Array<keyof Mob> = ["id", "updatedByAccountId"];
+  const mobTableHiddenData: Array<keyof Mob> = ["id", "updatedByAccountId"];
+  // 表头固定
+  const getCommonPinningStyles = (column: Column<Mob>): JSX.CSSProperties => {
+    const isPinned = column.getIsPinned();
+    const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
+    const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+    const styles: JSX.CSSProperties = {
+      position: isPinned ? "sticky" : "relative",
+      width: column.getSize().toString(),
+      "z-index": isPinned ? 1 : 0,
+    };
+    if (isPinned) {
+      styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
+      styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
+      styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+    }
+    return styles;
+  };
 
-  function mobTdGenerator(props: { cell: Cell<Mob, keyof Mob> }) {
+  function MobTableTdGenerator(props: { cell: Cell<Mob, keyof Mob> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
 
-    switch (props.cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenColumns>) {
+    switch (props.cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenData>) {
       case "elementType":
         setTdContent(
           {
@@ -208,6 +274,117 @@ export default function MobIndexPage() {
     );
   }
 
+  // 列表虚拟化区域----------------------------------------------------------
+  const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
+    undefined,
+  );
+
+  const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | undefined>(undefined);
+
+  // 搜索使用的基准列表--------------------------------------------------------
+  let actualList = generateAugmentedMobList(mobList() ?? []);
+
+  // 搜索框行为函数
+  // 定义搜索时需要忽略的数据
+  const mobSearchHiddenData: Array<keyof Mob> = [
+    "id",
+    "experience",
+    "radius",
+    "updatedByAccountId",
+    "createdByAccountId",
+  ];
+
+  // 搜索
+  const searchMob = (value: string, list: Mob[]) => {
+    const fuse = new Fuse(list, {
+      keys: Object.keys(defaultMob).filter((key) => !mobSearchHiddenData.includes(key as keyof Mob)),
+    });
+    return fuse.search(value).map((result) => result.item);
+  };
+
+  const handleSearchChange = (key: string) => {
+    if (key === "" || key === null) {
+      console.log(actualList);
+    } else {
+      console.log(searchMob(key, actualList));
+    }
+  };
+
+  const handleMouseDown = (id: string, e: MouseEvent) => {
+    if (e.button !== 0) return;
+    const startX = e.pageX;
+    const startY = e.pageY;
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      offsetX = e.pageX - startX;
+      offsetY = e.pageY - startY;
+      if (!isDragging) {
+        // 判断是否开始拖动
+        isDragging = Math.abs(offsetX) > 3 || Math.abs(offsetY) > 3;
+      }
+      if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = virtualScrollElement()?.osInstance()?.elements().viewport?.parentElement;
+        if (parent) {
+          parent.style.transition = "none";
+          parent.style.transition = "none";
+          // parent.scrollTop -= offsetY / 100;
+          parent.scrollLeft += offsetX / 100;
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      if (!isDragging) {
+        console.log(id);
+        const targetMob = (mobList() ?? []).find((mob) => mob.id === id);
+        if (targetMob) {
+          setMob(targetMob);
+          setDialogState(true);
+          setMobFormState("DISPLAY");
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleUKeyPress = (e: KeyboardEvent) => {
+    if (e.key === "u") {
+      setStore("wiki", "mob", {
+        dialogState: true,
+        formState: "CREATE",
+      });
+    }
+  };
+
+  createEffect(
+    // on(
+    //   mobList,
+    () => {
+      console.log("设置虚拟化器");
+      setVirtualizer(
+        createVirtualizer({
+          count: mobList()?.length ?? 0,
+          getScrollElement: () => {
+            return virtualScrollElement()?.osInstance()?.elements().viewport ?? null;
+          },
+          estimateSize: () => 96,
+          overscan: 5,
+        }),
+      );
+    },
+    //   { defer: true },
+    // ),
+  );
+
   // u键监听
   onMount(() => {
     console.log("--Mob Client Render");
@@ -215,6 +392,7 @@ export default function MobIndexPage() {
 
   onCleanup(() => {
     console.log("--Mob Client Unmount");
+    document.removeEventListener("keydown", handleUKeyPress);
   });
 
   return (
@@ -235,6 +413,7 @@ export default function MobIndexPage() {
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
                 class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-2 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
                 size="sm"
@@ -319,7 +498,7 @@ export default function MobIndexPage() {
           </Motion.div>
         </Show>
       </Presence>
-      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden px-3 portrait:py-3 lg:flex-row">
+      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
@@ -339,15 +518,83 @@ export default function MobIndexPage() {
               {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-          <VirtualTable
-            tableName="mob"
-            item={mob}
-            itemList={() => mobList() ?? []}
-            itemDic={MobDic}
-            tableColumns={mobColumns}
-            tableHiddenColumns={mobTableHiddenColumns}
-            tableTdGenerator={mobTdGenerator}
-          />
+          <OverlayScrollbarsComponent
+            element="div"
+            options={{ scrollbars: { autoHide: "scroll" } }}
+            ref={setVirtualScrollElement}
+          >
+            {/* <div ref={setVirtualScrollElement} class="TableBox VirtualScroll overflow-auto flex-1"> */}
+            <table class="Table relative w-full">
+              <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
+                <For each={table.getHeaderGroups()}>
+                  {(headerGroup) => (
+                    <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
+                      <For each={headerGroup.headers}>
+                        {(header) => {
+                          const { column } = header;
+                          if (mobTableHiddenData.includes(column.id as keyof Mob)) {
+                            // 默认隐藏的数据
+                            return;
+                          }
+                          return (
+                            <th
+                              style={{
+                                ...getCommonPinningStyles(column),
+                                width: getCommonPinningStyles(column).width + "px",
+                              }}
+                              class="flex flex-col"
+                            >
+                              <div
+                                {...{
+                                  onClick: header.column.getToggleSortingHandler(),
+                                }}
+                                class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                  header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                                }`}
+                              >
+                                {MobDic(store.settings.language)[column.id as keyof Mob] as string}
+                                {{
+                                  asc: " ↓",
+                                  desc: " ↑",
+                                }[header.column.getIsSorted() as string] ?? null}
+                              </div>
+                            </th>
+                          );
+                        }}
+                      </For>
+                    </tr>
+                  )}
+                </For>
+              </thead>
+              <tbody style={{ height: `${virtualizer()?.getTotalSize()}px` }} class={`TableBodyrelative`}>
+                <For each={virtualizer()?.getVirtualItems()}>
+                  {(virtualRow) => {
+                    const row = table.getRowModel().rows[virtualRow.index];
+                    return (
+                      <tr
+                        data-index={virtualRow.index}
+                        style={{
+                          position: "absolute",
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                        class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
+                        onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                      >
+                        <For
+                          each={row
+                            .getVisibleCells()
+                            .filter((cell) => !mobTableHiddenData.includes(cell.column.id as keyof Mob))}
+                        >
+                          {(cell) => <MobTableTdGenerator cell={cell} />}
+                        </For>
+                      </tr>
+                    );
+                  }}
+                </For>
+              </tbody>
+            </table>
+            {/* </div> */}
+          </OverlayScrollbarsComponent>
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isFormFullscreen()}>
@@ -362,6 +609,9 @@ export default function MobIndexPage() {
           </Show>
         </Presence>
       </div>
+      <Dialog state={dialogState()} setState={setDialogState}>
+        {"emmm..."}
+      </Dialog>
     </>
   );
 }

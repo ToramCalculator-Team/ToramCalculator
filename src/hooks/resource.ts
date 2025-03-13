@@ -1,10 +1,7 @@
 import { createResource, createEffect, on } from "solid-js";
 import { store } from "~/store";
 
-export function createSyncResource<T>(
-  table: keyof typeof store.database.tableSyncState,
-  fetcher: () => Promise<T>
-) {
+export function createSyncResource<T>(table: keyof typeof store.database.tableSyncState, fetcher: () => Promise<T>) {
   const [resource, { refetch }] = createResource(fetcher);
 
   createEffect(
@@ -14,9 +11,9 @@ export function createSyncResource<T>(
         console.log(`sync: ${table} changed`);
         refetch();
       },
-      { defer: true }
-    )
+      { defer: true },
+    ),
   );
 
-  return resource;
+  return [resource, { refetch }] as const;
 }
