@@ -319,7 +319,7 @@ export default function MobIndexPage() {
           </Motion.div>
         </Show>
       </Presence>
-      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden px-3 portrait:py-3 lg:flex-row">
+      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:p-3 lg:flex-row">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>

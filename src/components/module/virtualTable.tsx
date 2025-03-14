@@ -1,4 +1,4 @@
-import { createEffect, createResource, createSignal, For, JSX, on } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, JSX, on, Show } from "solid-js";
 import { Cell, Column, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -7,9 +7,9 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
 import { type Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "~/repositories/untils";
-import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
 import { Portal } from "solid-js/web";
 import Dialog from "../controls/dialog";
+import { typeDB } from "~/repositories/database";
 
 export default function VirtualTable<
   Item extends {
@@ -17,7 +17,7 @@ export default function VirtualTable<
     id: string;
   },
 >(props: {
-  tableName: keyof DB;
+  tableName: keyof typeDB;
   item: () => Item;
   itemList: () => Item[];
   itemDic: (locale: Locale) => ConvertToAllString<Item>;
@@ -25,7 +25,6 @@ export default function VirtualTable<
   tableHiddenColumns: Array<keyof Item>;
   tableTdGenerator: (props: { cell: Cell<Item, keyof Item> }) => JSX.Element;
 }) {
-
   // 列固定
   const getCommonPinningStyles = (column: Column<Item>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -90,9 +89,28 @@ export default function VirtualTable<
   // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
 
+  // const table = createMemo(() => {
+  //   // console.log(props.itemList().length);
+  //   return createSolidTable({
+  //     data: props.itemList() ?? [],
+  //     columns: props.tableColumns,
+  //     getCoreRowModel: getCoreRowModel(),
+  //     getSortedRowModel: getSortedRowModel(),
+  //     debugTable: true,
+  //     initialState: {
+  //       sorting: [
+  //         {
+  //           id: "experience",
+  //           desc: true, // 默认按热度降序排列
+  //         },
+  //       ],
+  //     },
+  //   });
+  // });
+
   // 只在初始化时创建 `table`
   const table = createSolidTable({
-    data: [],
+    data: props.itemList() ?? [],
     columns: props.tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -109,10 +127,66 @@ export default function VirtualTable<
 
   // 创建 `virtualizer`
   const virtualizer = createVirtualizer({
-    count: 0,
+    count: table.getRowCount(),
     getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
     estimateSize: () => 96,
     overscan: 5,
+  });
+
+  // const virtualizer = createMemo(() => {
+  //   console.log("Virtualizer Memo", table().getRowCount());
+  //   return createVirtualizer({
+  //     count: table().getRowCount() ?? 0,
+  //     getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
+  //     estimateSize: () => 96,
+  //     overscan: 5,
+  //   });
+  // });
+
+  const tableBodyDom = createMemo(() => {
+    // const list = props.itemList() ?? [];
+    // if(list.length === 0) return <></>;
+    // table.setOptions((prev) => ({
+    //   ...prev,
+    //   data: list,
+    // }));
+    // virtualizer.options.count = list.length;
+    // virtualizer._willUpdate();
+    console.log(
+      "TableRows:",
+      table.getRowCount()
+    );
+    return (
+      <tbody style={{ height: `${virtualizer.getTotalSize()}px` }} class={`TableBodyrelative`}>
+        <For each={virtualizer.getVirtualItems()}>
+          {(virtualRow) => {
+            const row = table.getRowModel().rows[virtualRow.index];
+            if (!row) {
+              return null;
+            }
+            return (
+              <tr
+                data-index={virtualRow.index}
+                style={{
+                  position: "absolute",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b px-6 transition-none hover:rounded hover:border-transparent hover:font-bold`}
+              >
+                <For
+                  each={row
+                    .getVisibleCells()
+                    .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Item))}
+                >
+                  {(cell) => props.tableTdGenerator({ cell })}
+                </For>
+              </tr>
+            );
+          }}
+        </For>
+      </tbody>
+    );
   });
 
   // 副作用：监听 `itemList`
@@ -150,7 +224,7 @@ export default function VirtualTable<
         <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
           <For each={table.getHeaderGroups()}>
             {(headerGroup) => (
-              <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
+              <tr class="border-dividing-color flex min-w-full gap-0 border-b-2 px-6">
                 <For each={headerGroup.headers}>
                   {(header) => {
                     const { column } = header;
@@ -170,7 +244,7 @@ export default function VirtualTable<
                           {...{
                             onClick: header.column.getToggleSortingHandler(),
                           }}
-                          class={`hover:bg-area-color flex-1 py-4 text-left font-normal lg:py-6 ${
+                          class={`hover:bg-area-color flex-1 py-3 text-left font-normal lg:py-6 ${
                             header.column.getCanSort() ? "cursor-pointer select-none" : ""
                           }`}
                         >
@@ -179,6 +253,10 @@ export default function VirtualTable<
                               column.id as keyof ConvertToAllString<Item>
                             ] as string
                           }
+                          {{
+                            asc: " ↓",
+                            desc: " ↑",
+                          }[header.column.getIsSorted() as string] ?? null}
                         </div>
                       </th>
                     );
@@ -188,35 +266,7 @@ export default function VirtualTable<
             )}
           </For>
         </thead>
-        <tbody style={{ height: `${virtualizer.getTotalSize()}px` }} class={`TableBodyrelative`}>
-          <For each={virtualizer.getVirtualItems()}>
-            {(virtualRow) => {
-              const row = table.getRowModel().rows[virtualRow.index];
-              if (!row) {
-                return null;
-              }
-              return (
-                <tr
-                  data-index={virtualRow.index}
-                  style={{
-                    position: "absolute",
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                  class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
-                >
-                  <For
-                    each={row
-                      .getVisibleCells()
-                      .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Item))}
-                  >
-                    {(cell) => props.tableTdGenerator({ cell })}
-                  </For>
-                </tr>
-              );
-            }}
-          </For>
-        </tbody>
+        {tableBodyDom()}
       </table>
       <Portal>
         <Dialog
@@ -229,13 +279,7 @@ export default function VirtualTable<
             options={{ scrollbars: { autoHide: "scroll" } }}
             defer
           >
-            <pre class="p-3">
-              {JSON.stringify(
-                props.item(),
-                null,
-                2,
-              )}
-            </pre>
+            <pre class="p-3">{JSON.stringify(props.item(), null, 2)}</pre>
           </OverlayScrollbarsComponent>
         </Dialog>
       </Portal>

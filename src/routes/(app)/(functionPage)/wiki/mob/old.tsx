@@ -1,16 +1,4 @@
-import {
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  JSX,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  Suspense,
-} from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import Fuse from "fuse.js";
 import {
   Cell,
@@ -36,7 +24,6 @@ import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
 import { type Enums } from "~/repositories/enums";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
-import { createSyncResource } from "~/hooks/resource";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -57,6 +44,7 @@ export default function MobIndexPage() {
 
   // table原始数据------------------------------------------------------------
 
+  const [mobList, { refetch: refetchMobList }] = createResource(findMobs);
   // table
   const columns: ColumnDef<Mob>[] = [
     {
@@ -159,30 +147,28 @@ export default function MobIndexPage() {
     //   size: 150,
     // },
   ];
-  const [mobList] = createSyncResource("mob", findMobs);
-  const table = createSolidTable({
-    data: [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-    initialState: {
-      sorting: [
-        {
-          id: "experience",
-          desc: true, // 默认按热度降序排列
-        },
-      ],
-    },
+  const table = createMemo(() => {
+    if (!mobList()) {
+      return undefined;
+    }
+    return createSolidTable({
+      get data() {
+        return mobList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
+      },
+      columns,
+      getCoreRowModel: getCoreRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+      debugTable: true,
+      initialState: {
+        sorting: [
+          {
+            id: "experience",
+            desc: true, // 默认按热度降序排列
+          },
+        ],
+      },
+    });
   });
-  createEffect(() => {
-    console.log("表格数据更新");
-    table.setOptions((prev) => ({
-      ...prev,
-      data: mobList() ?? [], // 这里的数据变化应该触发表格更新
-    }));
-  });
-  createMemo(() => mobList() ?? []);
 
   const mobTableHiddenData: Array<keyof Mob> = ["id", "updatedByAccountId"];
   // 表头固定
@@ -203,7 +189,7 @@ export default function MobIndexPage() {
     return styles;
   };
 
-  function MobTableTdGenerator(props: { cell: Cell<Mob, keyof Mob> }) {
+  function MobTableTd(props: { cell: Cell<Mob, keyof Mob> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
 
     switch (props.cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenData>) {
@@ -358,36 +344,33 @@ export default function MobIndexPage() {
 
   const handleUKeyPress = (e: KeyboardEvent) => {
     if (e.key === "u") {
-      setStore("wiki", "mob", {
+      setStore("wiki", "mobPage", {
         dialogState: true,
         formState: "CREATE",
       });
     }
   };
 
-  createEffect(
-    // on(
-    //   mobList,
-    () => {
-      console.log("设置虚拟化器");
-      setVirtualizer(
-        createVirtualizer({
-          count: mobList()?.length ?? 0,
-          getScrollElement: () => {
-            return virtualScrollElement()?.osInstance()?.elements().viewport ?? null;
-          },
-          estimateSize: () => 96,
-          overscan: 5,
-        }),
-      );
-    },
-    //   { defer: true },
-    // ),
-  );
+  createEffect(() => {
+    setVirtualizer(
+      createVirtualizer({
+        get count() {
+          return table()?.getRowCount() ?? 0;
+        },
+        getScrollElement: () => {
+          return virtualScrollElement()?.osInstance()?.elements().viewport ?? null;
+        },
+        estimateSize: () => 96,
+        overscan: 5,
+      }),
+    );
+  });
 
   // u键监听
   onMount(() => {
     console.log("--Mob Client Render");
+    // u键监听
+    document.addEventListener("keydown", handleUKeyPress);
   });
 
   onCleanup(() => {
@@ -421,7 +404,7 @@ export default function MobIndexPage() {
                 class="flex lg:hidden"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("wiki", "mob", {
+                  setStore("wiki", "mobPage", {
                     dialogState: true,
                     formState: "CREATE",
                   });
@@ -432,7 +415,7 @@ export default function MobIndexPage() {
                 class="hidden lg:flex"
                 onClick={() => {
                   setMob(defaultMob);
-                  setStore("wiki", "mob", {
+                  setStore("wiki", "mobPage", {
                     dialogState: true,
                     formState: "CREATE",
                   });
@@ -518,83 +501,86 @@ export default function MobIndexPage() {
               {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-          <OverlayScrollbarsComponent
-            element="div"
-            options={{ scrollbars: { autoHide: "scroll" } }}
-            ref={setVirtualScrollElement}
-          >
-            {/* <div ref={setVirtualScrollElement} class="TableBox VirtualScroll overflow-auto flex-1"> */}
-            <table class="Table relative w-full">
-              <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
-                <For each={table.getHeaderGroups()}>
-                  {(headerGroup) => (
-                    <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
-                      <For each={headerGroup.headers}>
-                        {(header) => {
-                          const { column } = header;
-                          if (mobTableHiddenData.includes(column.id as keyof Mob)) {
-                            // 默认隐藏的数据
-                            return;
-                          }
-                          return (
-                            <th
-                              style={{
-                                ...getCommonPinningStyles(column),
-                                width: getCommonPinningStyles(column).width + "px",
-                              }}
-                              class="flex flex-col"
-                            >
-                              <div
-                                {...{
-                                  onClick: header.column.getToggleSortingHandler(),
+          <Show when={table()}>
+            <OverlayScrollbarsComponent
+              element="div"
+              options={{ scrollbars: { autoHide: "scroll" } }}
+              ref={setVirtualScrollElement}
+            >
+              {/* <div ref={setVirtualScrollElement} class="TableBox VirtualScroll overflow-auto flex-1"> */}
+              <table class="Table relative w-full">
+                <thead class={`TableHead sticky top-0 z-10 flex bg-primary-color`}>
+                  <For each={table()!.getHeaderGroups()}>
+                    {(headerGroup) => (
+                      <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
+                        <For each={headerGroup.headers}>
+                          {(header) => {
+                            const { column } = header;
+                            if (mobTableHiddenData.includes(column.id as keyof Mob)) {
+                              // 默认隐藏的数据
+                              return;
+                            }
+                            return (
+                              <th
+                                style={{
+                                  ...getCommonPinningStyles(column),
+                                  width: getCommonPinningStyles(column).width + "px",
                                 }}
-                                class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
-                                  header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                                }`}
+                                class="flex flex-col"
                               >
-                                {MobDic(store.settings.language)[column.id as keyof Mob] as string}
-                                {{
-                                  asc: " ↓",
-                                  desc: " ↑",
-                                }[header.column.getIsSorted() as string] ?? null}
-                              </div>
-                            </th>
-                          );
-                        }}
-                      </For>
-                    </tr>
-                  )}
-                </For>
-              </thead>
-              <tbody style={{ height: `${virtualizer()?.getTotalSize()}px` }} class={`TableBodyrelative`}>
-                <For each={virtualizer()?.getVirtualItems()}>
-                  {(virtualRow) => {
-                    const row = table.getRowModel().rows[virtualRow.index];
-                    return (
-                      <tr
-                        data-index={virtualRow.index}
-                        style={{
-                          position: "absolute",
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
-                        class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
-                        onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                      >
-                        <For
-                          each={row
-                            .getVisibleCells()
-                            .filter((cell) => !mobTableHiddenData.includes(cell.column.id as keyof Mob))}
-                        >
-                          {(cell) => <MobTableTdGenerator cell={cell} />}
+                                <div
+                                  {...{
+                                    onClick: header.column.getToggleSortingHandler(),
+                                  }}
+                                  class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
+                                    header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                                  }`}
+                                >
+                                  {MobDic(store.settings.language)[column.id as keyof Mob] as string}
+                                  {{
+                                    asc: " ↓",
+                                    desc: " ↑",
+                                  }[header.column.getIsSorted() as string] ?? null}
+                                </div>
+                              </th>
+                            );
+                          }}
                         </For>
                       </tr>
-                    );
-                  }}
-                </For>
-              </tbody>
-            </table>
-            {/* </div> */}
-          </OverlayScrollbarsComponent>
+                    )}
+                  </For>
+                </thead>
+                <tbody style={{ height: `${virtualizer()?.getTotalSize()}px` }} class={`TableBodyrelative`}>
+                  <For each={virtualizer()?.getVirtualItems()}>
+                    {(virtualRow) => {
+                      const row = table()!.getRowModel().rows[virtualRow.index];
+                      return (
+                        <tr
+                          data-index={virtualRow.index}
+                          // ref={(node) => virtualizer.measureElement(node)}
+                          style={{
+                            position: "absolute",
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                          class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
+                          onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                        >
+                          <For
+                            each={row
+                              .getVisibleCells()
+                              .filter((cell) => !mobTableHiddenData.includes(cell.column.id as keyof Mob))}
+                          >
+                            {(cell) => <MobTableTd cell={cell} />}
+                          </For>
+                        </tr>
+                      );
+                    }}
+                  </For>
+                </tbody>
+              </table>
+              {/* </div> */}
+            </OverlayScrollbarsComponent>
+          </Show>
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isFormFullscreen()}>
