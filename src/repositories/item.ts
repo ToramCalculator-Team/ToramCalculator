@@ -1,19 +1,14 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
-import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
+import { Expression, ExpressionBuilder } from "kysely";
+import { db, typeDB } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { type Enums, ITEM_TYPE } from "./enums";
-import { ModifyKeys } from "./untils";
+import { DataType } from "./untils";
 
-export type Item = ModifyKeys<Awaited<ReturnType<typeof findItemById>>, {
-  type: Enums["ItemType"];
-}>;
-export type NewItem = Insertable<item>;
-export type ItemUpdate = Updateable<item>;
+export interface Item extends DataType<typeDB["item"], typeof findItemById, typeof createItem> {}
 
-export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
+export function itemSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expression<string>) {
   return [
     jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
       .$notNull()
@@ -45,11 +40,11 @@ export async function findItemById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateItem(id: string, updateWith: ItemUpdate) {
+export async function updateItem(id: string, updateWith: Item["Update"]) {
   return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createItem(newItem: NewItem) {
+export async function createItem(newItem: Item["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const item = await trx.insertInto("item").values(newItem).returningAll().executeTakeFirstOrThrow();
     return item;
@@ -69,15 +64,15 @@ const itemsShared = {
   createdByAccountId: defaultAccount.id,
 };
 
-const items: Partial<Record<Enums["ItemType"], Item>> = {};
+const items: Partial<Record<Enums["ItemType"], Item["Insert"]>> = {};
 for (const key of ITEM_TYPE) {
   items[key] = {
     id: `default${key}Id`,
     type: key,
-    statistic: defaultStatistics[key],
+    // statistic: defaultStatistics[key],
     statisticId: defaultStatistics[key].id,
     ...itemsShared,
   };
 }
 
-export const defaultItems = items as Record<Enums["ItemType"], Item>;
+export const defaultItems = items;

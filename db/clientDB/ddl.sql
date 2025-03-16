@@ -117,8 +117,6 @@ CREATE TABLE "npc" (
 CREATE TABLE "item" (
     "id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
-    "dataSources" TEXT NOT NULL,
-    "details" TEXT NOT NULL,
     "statisticId" TEXT NOT NULL,
     "updatedByAccountId" TEXT,
     "createdByAccountId" TEXT,
@@ -196,10 +194,12 @@ CREATE TABLE "reward" (
 -- CreateTable
 CREATE TABLE "material" (
     "name" TEXT NOT NULL,
-    "itemId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "ptValue" INTEGER NOT NULL,
     "price" INTEGER NOT NULL,
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
 
     CONSTRAINT "material_pkey" PRIMARY KEY ("itemId")
 );
@@ -256,6 +256,8 @@ CREATE TABLE "crystal" (
     "name" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "modifiers" TEXT[],
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "crystal_pkey" PRIMARY KEY ("itemId")
@@ -272,6 +274,8 @@ CREATE TABLE "weapon" (
     "colorB" INTEGER NOT NULL,
     "colorC" INTEGER NOT NULL,
     "elementType" TEXT,
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "weapon_pkey" PRIMARY KEY ("itemId")
@@ -285,6 +289,8 @@ CREATE TABLE "armor" (
     "colorA" INTEGER NOT NULL,
     "colorB" INTEGER NOT NULL,
     "colorC" INTEGER NOT NULL,
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "armor_pkey" PRIMARY KEY ("itemId")
@@ -312,6 +318,8 @@ CREATE TABLE "additional_equipment" (
     "colorA" INTEGER NOT NULL,
     "colorB" INTEGER NOT NULL,
     "colorC" INTEGER NOT NULL,
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "additional_equipment_pkey" PRIMARY KEY ("itemId")
@@ -322,6 +330,8 @@ CREATE TABLE "special_equipment" (
     "name" TEXT NOT NULL,
     "baseDef" INTEGER NOT NULL,
     "modifiers" TEXT[],
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
 
     CONSTRAINT "special_equipment_pkey" PRIMARY KEY ("itemId")
@@ -374,10 +384,12 @@ CREATE TABLE "skill_effect" (
 -- CreateTable
 CREATE TABLE "consumable" (
     "name" TEXT NOT NULL,
-    "itemId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "effectDuration" INTEGER NOT NULL,
     "effects" TEXT[],
+    "dataSources" TEXT NOT NULL,
+    "details" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
 
     CONSTRAINT "consumable_pkey" PRIMARY KEY ("itemId")
 );

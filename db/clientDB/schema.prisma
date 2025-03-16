@@ -177,9 +177,6 @@ model item {
     consumable consumable?
     material   material?
 
-    dataSources String
-    details     String
-
     usedByDropItem    drop_item[]
     usedByRewardItem  reward[]
     usedByTaskRequire task_collect_require[]
@@ -288,12 +285,16 @@ model reward {
 // 素材物品
 model material {
     name         String
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
 
     type    String
     ptValue Int
     price   Int
+
+    dataSources String
+    details     String
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
 }
 
 // 怪物
@@ -364,6 +365,9 @@ model crystal {
     type      String
     modifiers String[]
 
+    dataSources String
+    details     String
+
     front crystal[] @relation("FrontRelation")
     back  crystal[] @relation("BackRelation")
 
@@ -398,6 +402,9 @@ model weapon {
     recipe          recipe?
     elementType     String?
 
+    dataSources String
+    details     String
+
     usedBy custom_weapon[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
@@ -415,6 +422,9 @@ model armor {
     colorC          Int
     image           image[]
     recipe          recipe?
+
+    dataSources String
+    details     String
 
     usedBy custom_armor[]
 
@@ -454,6 +464,9 @@ model additional_equipment {
     image           image[]
     recipe          recipe?
 
+    dataSources String
+    details     String
+
     usedBy custom_additional_equipment[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
@@ -467,6 +480,9 @@ model special_equipment {
     defaultCrystals crystal[]
     modifiers       String[]
     recipe          recipe?
+
+    dataSources String
+    details     String
 
     usedBy custom_special_equipment[]
 
@@ -530,12 +546,16 @@ model skill_effect {
 // 消耗品
 model consumable {
     name         String
-    belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
 
     type           String
     effectDuration Int
     effects        String[]
+
+    dataSources String
+    details     String
+    
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
     recipe         recipe?
 
     usedBy character[]

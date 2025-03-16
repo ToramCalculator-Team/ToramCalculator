@@ -1,24 +1,17 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
-import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
+import { Expression, ExpressionBuilder } from "kysely";
+import { db, typeDB } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, StatisticDic } from "./statistic";
-import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";
-import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
+import {  recipeSubRelations } from "./recipe";
 import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { mobSubRelations } from "./mob";
-import { Enums } from "./enums";
+import { createId } from '@paralleldrive/cuid2';
 
-export type AddEquip = ModifyKeys<Awaited<ReturnType<typeof findAddEquipById>>, {
-  type: Enums["ItemType"]
-}>;
-export type NewAddEquip = Insertable<item>;
-export type AddEquipUpdate = Updateable<item>;
+export interface AddEquip extends DataType<typeDB["additional_equipment"], typeof findAddEquipById, typeof createAddEquip> {}
 
-export function addEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
+export function addEquipSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expression<string>) {
   return [
       jsonArrayFrom(
         eb
@@ -56,14 +49,29 @@ export async function findAddEquipById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateAddEquip(id: string, updateWith: AddEquipUpdate) {
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+export async function updateAddEquip(id: string, updateWith: AddEquip["Update"]) {
+  return await db.updateTable("additional_equipment").set(updateWith).where("additional_equipment.itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createAddEquip(newAddEquip: NewAddEquip) {
+export async function createAddEquip(newAddEquip: AddEquip["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    const item = await trx.insertInto("item").values(newAddEquip).returningAll().executeTakeFirstOrThrow();
-    return item;
+    const statistic = await trx.insertInto("statistic").values({
+      id: createId(),
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      usageTimestamps: [],
+      viewTimestamps: [],
+    }).returningAll().executeTakeFirstOrThrow();
+    const item = await trx.insertInto("item").values({
+      id: createId(),
+      type: "AddEquip",
+      statisticId: statistic.id,
+    }).returningAll().executeTakeFirstOrThrow();
+    const addEquip = await trx.insertInto("additional_equipment").values({
+      ...newAddEquip,
+      itemId: item.id,
+    }).returningAll().executeTakeFirstOrThrow();
+    return addEquip;
   });
 }
 
@@ -72,122 +80,72 @@ export async function deleteAddEquip(id: string) {
 }
 
 // default
-export const defaultAddEquip: AddEquip = {
+export const defaultAddEquip: AddEquip["Insert"] = {
   name: "defaultAddEquip",
-  id: "defaultAddEquipId",
-  type: "AddEquip",
   modifiers: [],
   itemId: "defaultAddEquipId",
-  defaultCrystals: [],
   baseDef: 0,
   colorA: 0,
   colorB: 0,
   colorC: 0,
   dataSources: "",
   details: "",
-  dropBy: [],
-  rewardBy: [],
-  recipe: defaultRecipes.AddEquip,
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics.AddEquip,
-  statisticId: defaultStatistics.AddEquip.id,
 };
 
 // Dictionary
-export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip> => {
+export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "追加装备",
         name: "名称",
-        id: "ID",
-        type: "道具类型",
         modifiers: "属性",
         itemId: "所属道具ID",
-        defaultCrystals: "附加锻晶",
         baseDef: "防御力",
         colorA: "颜色A",
         colorB: "颜色B",
         colorC: "颜色C",
         dataSources: "数据来源",
         details: "额外说明",
-        dropBy: "掉落于怪物",
-        rewardBy: "奖励于任务",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "创建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "统计信息ID",
       };
     case "zh-TW":
       return {
         selfName: "追加裝備",
         name: "名称",
-        id: "ID",
-        type: "道具類型",
         modifiers: "屬性",
         itemId: "所屬道具ID",
-        defaultCrystals: "附加鑽晶",
         baseDef: "防禦力",
         colorA: "顏色A",
         colorB: "顏色B",
         colorC: "顏色C",
         dataSources: "資料來源",
         details: "額外說明",
-        dropBy: "掉落於怪物",
-        rewardBy: "獎勵於任務",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "創建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "統計信息ID",
       };
     case "en":
       return {
         selfName: "Additional Equipment",
         name: "Name",
-        id: "ID",
-        type: "Item Type",
         modifiers: "Modifiers",
         itemId: "ItemId",
-        defaultCrystals: "Default Crystals",
         baseDef: "Base Def",
         colorA: "Color A",
         colorB: "Color B",
         colorC: "Color C",
         dataSources: "Data Sources",
         details: "Details",
-        dropBy: "Drop By",
-        rewardBy: "Reward By",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "Updated By Account Id",
-        createdByAccountId: "Created By Account Id",
-        statistic: StatisticDic(locale),
-        statisticId: "Statistic Id",
       };
     case "ja":
       return {
         selfName: "追加装備",
         name: "名前",
-        id: "ID",
-        type: "アイテムタイプ",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
-        defaultCrystals: "デフォルトクリスタル",
         baseDef: "防御力",
         colorA: "色A",
         colorB: "色B",
         colorC: "色C",
         dataSources: "データソース",
         details: "追加詳細",
-        dropBy: "ドロップバイ",
-        rewardBy: "報酬バイ",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "アカウントIDによって更新",
-        createdByAccountId: "アカウントIDによって作成",
-        statistic: StatisticDic(locale),
-        statisticId: "統計ID",
       };
   }
 };

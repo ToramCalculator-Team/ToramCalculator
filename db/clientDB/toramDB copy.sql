@@ -370,8 +370,6 @@ CREATE TABLE public.additional_equipment (
     "colorA" integer NOT NULL,
     "colorB" integer NOT NULL,
     "colorC" integer NOT NULL,
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL
 );
 
@@ -409,8 +407,6 @@ CREATE TABLE public.armor (
     "colorA" integer NOT NULL,
     "colorB" integer NOT NULL,
     "colorC" integer NOT NULL,
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL
 );
 
@@ -530,8 +526,6 @@ ALTER TABLE public.combo OWNER TO postgres;
 
 CREATE TABLE public.consumable (
     name text NOT NULL,
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL,
     type text NOT NULL,
     "effectDuration" integer NOT NULL,
@@ -550,8 +544,6 @@ CREATE TABLE public.crystal (
     name text NOT NULL,
     type text NOT NULL,
     modifiers text[],
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL
 );
 
@@ -713,6 +705,8 @@ ALTER TABLE public.image OWNER TO postgres;
 CREATE TABLE public.item (
     id text NOT NULL,
     type text NOT NULL,
+    "dataSources" text NOT NULL,
+    details text NOT NULL,
     "statisticId" text NOT NULL,
     "updatedByAccountId" text,
     "createdByAccountId" text
@@ -730,8 +724,6 @@ ALTER TABLE public.item OWNER TO postgres;
 
 CREATE TABLE public.material (
     name text NOT NULL,
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL,
     type text NOT NULL,
     "ptValue" integer NOT NULL,
@@ -1016,8 +1008,6 @@ CREATE TABLE public.special_equipment (
     name text NOT NULL,
     "baseDef" integer NOT NULL,
     modifiers text[],
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL
 );
 
@@ -1141,8 +1131,6 @@ CREATE TABLE public.weapon (
     "colorB" integer NOT NULL,
     "colorC" integer NOT NULL,
     "elementType" text,
-    "dataSources" text NOT NULL,
-    details text NOT NULL,
     "itemId" text NOT NULL
 );
 
@@ -1467,8 +1455,8 @@ defaultActivityId	defaultActivity
 -- Data for Name: additional_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.additional_equipment (name, "baseDef", modifiers, "colorA", "colorB", "colorC", "dataSources", details, "itemId") FROM stdin;
-defaultAddEquipId	10	{"maxMp + 300","cspd + 400","mPie + 20%"}	0	0	0			defaultIteamAddEquipId
+COPY public.additional_equipment (name, "baseDef", modifiers, "colorA", "colorB", "colorC", "itemId") FROM stdin;
+defaultAddEquipId	10	{"maxMp + 300","cspd + 400","mPie + 20%"}	0	0	0	defaultIteamAddEquipId
 \.
 
 
@@ -1489,8 +1477,8 @@ defaultAddressId	defaultAddress	Normal	0	0	defaultWorld
 -- Data for Name: armor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.armor (name, "baseDef", modifiers, "colorA", "colorB", "colorC", "dataSources", details, "itemId") FROM stdin;
-defaultArmor	10	{}	0	0	0			defaultItemArmor
+COPY public.armor (name, "baseDef", modifiers, "colorA", "colorB", "colorC", "itemId") FROM stdin;
+defaultArmor	10	{}	0	0	0	defaultItemArmor
 \.
 
 
@@ -1557,8 +1545,8 @@ defaultComboId	defaultCombo	{}
 -- Data for Name: consumable; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.consumable (name, "dataSources", details, "itemId", type, "effectDuration", effects) FROM stdin;
-defaultConsumableId			defaultItemConsumableId	MaxHp	180	{"maxHp + 10%"}
+COPY public.consumable (name, "itemId", type, "effectDuration", effects) FROM stdin;
+defaultConsumableId	defaultItemConsumableId	MaxHp	180	{"maxHp + 10%"}
 \.
 
 
@@ -1568,15 +1556,15 @@ defaultConsumableId			defaultItemConsumableId	MaxHp	180	{"maxHp + 10%"}
 -- Data for Name: crystal; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.crystal (name, type, modifiers, "dataSources", details, "itemId") FROM stdin;
-defaultAddEquipCrystalBId	AddEquipCrystal	{"distanceDamageBouns.short + 10%","maxHp + 30%","cr + 50%","maxMp - 100","armor.type == \\"Light\\" && pPie - 10%"}			defaultIteamAddEquipCrystalBId
-defaultAddEquipCrystalAId	AddEuipCrystal	{"distanceDamageBonus.short + 12%","distanceDamageBonus.long + 6%","accuracy + 10%","aspd - 900","mainWeapon.type == \\"Migictool\\" && mspd + 5%","subWeapon.type == \\"Ninjutsuscroll\\" && pPie + 10%"}			defaultItemAddEquipCrystalAId
-defaultSpeEquipCrystalAId	SpeEquipCrystal	{"mAtk + 9%","cspd + 9%","anticipate + 9%","mainWeapon.typ == \\"Rod\\" && aggro - 9%","subWeapon.type == \\"Shield\\" && aggro + 9%"}			defaultItemSpeEquipCrystalAId
-defaultSpeEquipCrystalBId	SpeCrystal	{"dictanceDamageBouns.short + 9%","accuracy + 5%","maxMp + 200","maxHp - 300","cr - 7"}			defaultItemSpeCrystalBId
-defaultWeaponCrystalAId	WeaponCrystal	{"mAtk + 8%","mPie + 20%","cspd - 16%"}			defaultItemWeaponCrystalAId
-defaultWeaponCrystalBId	WeaponCrystal	{"mAtk + 10%","mPie + 7%","aggro - 11%","mDef - 30%"}			defaultItemWeaponCrystalBId
-defaultArmorCrystalAId	ArmorCrystal	{"mAtk + 10%","int + 6%","cspd + 40%","ampr + 10%"}			defaultIteamArmorCrystalAId
-defaultArmorCrystalBId	ArmorCrystal	{"pStabilitiy + 11%","str + 6%","vit + 6%","armor.type == \\"Light\\" && distanceDamageBouns.short + 11%","armor.type == \\"Light\\" && pStability - 5%","armor.type == \\"Heavy\\" && distanceDamageBouns.long + 11%","armor.type == \\"Heavy\\" && pStability - 5%"}			defaultItemArmorCrystalBId
+COPY public.crystal (name, type, modifiers, "itemId") FROM stdin;
+defaultAddEquipCrystalBId	AddEquipCrystal	{"distanceDamageBouns.short + 10%","maxHp + 30%","cr + 50%","maxMp - 100","armor.type == \\"Light\\" && pPie - 10%"}	defaultIteamAddEquipCrystalBId
+defaultAddEquipCrystalAId	AddEuipCrystal	{"distanceDamageBonus.short + 12%","distanceDamageBonus.long + 6%","accuracy + 10%","aspd - 900","mainWeapon.type == \\"Migictool\\" && mspd + 5%","subWeapon.type == \\"Ninjutsuscroll\\" && pPie + 10%"}	defaultItemAddEquipCrystalAId
+defaultSpeEquipCrystalAId	SpeEquipCrystal	{"mAtk + 9%","cspd + 9%","anticipate + 9%","mainWeapon.typ == \\"Rod\\" && aggro - 9%","subWeapon.type == \\"Shield\\" && aggro + 9%"}	defaultItemSpeEquipCrystalAId
+defaultSpeEquipCrystalBId	SpeCrystal	{"dictanceDamageBouns.short + 9%","accuracy + 5%","maxMp + 200","maxHp - 300","cr - 7"}	defaultItemSpeCrystalBId
+defaultWeaponCrystalAId	WeaponCrystal	{"mAtk + 8%","mPie + 20%","cspd - 16%"}	defaultItemWeaponCrystalAId
+defaultWeaponCrystalBId	WeaponCrystal	{"mAtk + 10%","mPie + 7%","aggro - 11%","mDef - 30%"}	defaultItemWeaponCrystalBId
+defaultArmorCrystalAId	ArmorCrystal	{"mAtk + 10%","int + 6%","cspd + 40%","ampr + 10%"}	defaultIteamArmorCrystalAId
+defaultArmorCrystalBId	ArmorCrystal	{"pStabilitiy + 11%","str + 6%","vit + 6%","armor.type == \\"Light\\" && distanceDamageBouns.short + 11%","armor.type == \\"Light\\" && pStability - 5%","armor.type == \\"Heavy\\" && distanceDamageBouns.long + 11%","armor.type == \\"Heavy\\" && pStability - 5%"}	defaultItemArmorCrystalBId
 \.
 
 
@@ -1664,22 +1652,22 @@ system
 -- Data for Name: item; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.item (id, type, "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
-defaultIteamAddEquipCrystalBId	AddEquipCrystal	defaultItemAddEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultIteamAddEquipId	AddEquip	defaultIteamAddEquiStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultIteamArmorCrystalAId	ArmorCrystal	defaultItemArmorCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemAddEquipCrystalAId	AddEquipCrystal	defaultItemAddEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemArmor	Liaght	defaultIteamArmorId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemArmorCrystalBId	ArmorCrystal	defaultItemArmorCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemConsumableId	Consumable	defaultItemConsumableId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemSpeCrystalBId	SpeEquipCrystal	defaultItemSpeEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemSpeEquipCrystalAId	SpeEquipCrystal	defaultItemSpeEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemSpeEquipId	SpeEquip	defaultItemSpeEquipStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemSubWeaponId	NinjutsuScroll	defaultItemSubWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemWeaponCrystalAId	WeaponCrystal	defaultItemWeaponCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemWeaponCrystalBId	WeaponCrystal	defaultItemWeaponCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemWeaponId	Magictool	defaultItemWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultItemMaterialMetalId	defaultItemMaterialMetal	defaultItemMaterialMetalStatisticId	\N	\N
+COPY public.item (id, type, "dataSources", details, "statisticId", "updatedByAccountId", "createdByAccountId") FROM stdin;
+defaultIteamAddEquipCrystalBId	AddEquipCrystal			defaultItemAddEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultIteamAddEquipId	AddEquip			defaultIteamAddEquiStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultIteamArmorCrystalAId	ArmorCrystal			defaultItemArmorCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemAddEquipCrystalAId	AddEquipCrystal			defaultItemAddEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemArmor	Liaght			defaultIteamArmorId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemArmorCrystalBId	ArmorCrystal			defaultItemArmorCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemConsumableId	Consumable			defaultItemConsumableId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeCrystalBId	SpeEquipCrystal			defaultItemSpeEquipCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeEquipCrystalAId	SpeEquipCrystal			defaultItemSpeEquipCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSpeEquipId	SpeEquip			defaultItemSpeEquipStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemSubWeaponId	NinjutsuScroll			defaultItemSubWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponCrystalAId	WeaponCrystal			defaultItemWeaponCrystalAStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponCrystalBId	WeaponCrystal			defaultItemWeaponCrystalBStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemWeaponId	Magictool			defaultItemWeaponStatisticId	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultItemMaterialMetalId	defaultItemMaterialMetal			defaultItemMaterialMetalStatisticId	\N	\N
 \.
 
 
@@ -1689,8 +1677,8 @@ defaultItemMaterialMetalId	defaultItemMaterialMetal	defaultItemMaterialMetalStat
 -- Data for Name: material; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.material (name, "dataSources", details, "itemId", type, "ptValue", price) FROM stdin;
-defaultMaterialId 			defaultItemMaterialMetalId	Metal	10	2
+COPY public.material (name, "itemId", type, "ptValue", price) FROM stdin;
+defaultMaterialId	defaultItemMaterialMetalId	Metal	10	2
 \.
 
 
@@ -1824,7 +1812,7 @@ clv6xtcs70021wv1fnuz01uwx	伽拉木瓦	Boss	f	247	26400	0	Wind	1	6260000	494	9	9
 clv6u8d9t000nwv1fjbmbyohh	佛拉布喇·远	Boss	f	184	19190	0	Normal	1	5150000	184	7	736	21	0	552	21	0	0	100	100	{}	仇恨值目标在7m外时的状态	fengli	30	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 clv6u40id000lwv1fw2chusr7	佛拉布喇·近	Boss	f	184	19190	0	Normal	1	5150000	552	21	184	7	0	276	0	14	0	100	100	{}	仇恨值目标7m内时的状态	fengli	32	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 clui7ar0n000z11my9mm10x0r	恶魔之门	Boss	f	60	1440	0	Dark	1	0	180	2	180	2	0	0	0	0	0	1	1	{}	不会动	fengli	89	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
-defaultMobId	defaultMob	Mob	t	1	1	0	Normal	1	100	0	0	0	0	0	0	0	0	50	50	50	{}	defaultData	system	defaultMobStatisticId	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
+defaultMobId	defaultMon	Mob	t	1	1	0	Normal	1	100	0	0	0	0	0	0	0	0	50	50	50	{}	defaultData	system	defaultMobStatisticId	system	cluhz95c5000078elg5r46i83	cluhz95c5000078elg5r46i83
 \.
 
 
@@ -1942,8 +1930,8 @@ defaultSkillEffectId		"mainWeapon.ElementType"	Chanting	Both	Enemy	12	0	24	98	0	
 -- Data for Name: special_equipment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.special_equipment (name, "baseDef", modifiers, "dataSources", details, "itemId") FROM stdin;
-defaultSpeEquip	10	{"mPie + 10%"}			defaultItemSpeEquipId
+COPY public.special_equipment (name, "baseDef", modifiers, "itemId") FROM stdin;
+defaultSpeEquip	10	{"mPie + 10%"}	defaultItemSpeEquipId
 \.
 
 
@@ -2145,9 +2133,9 @@ clujlndnd0000zkw9d9qfsmgz	KiaClouth	mayunlong16@foxmail.com	2024-04-07 10:46:23.
 -- Data for Name: weapon; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.weapon (name, type, "baseAbi", stability, modifiers, "colorA", "colorB", "colorC", "elementType", "dataSources", details, "itemId") FROM stdin;
-defaultWeapon	MigicTool	462	70	{"element = light","stro.normal + 25%","pAtk + 6%","mAtk + 12%","cr + 60","anticipate + 60%","pRes + 30%","mRes + 30%","ailmentResistance + 15%","weaponRange - 3"}	0	0	0	Normal			defaultItemWeaponId
-defaultSubWeapon	Ninjutsuscroll	0	0	{"aspd + 250"}	0	0	0	Normal			defaultItemSubWeaponId
+COPY public.weapon (name, type, "baseAbi", stability, modifiers, "colorA", "colorB", "colorC", "elementType", "itemId") FROM stdin;
+defaultWeapon	MigicTool	462	70	{"element = light","stro.normal + 25%","pAtk + 6%","mAtk + 12%","cr + 60","anticipate + 60%","pRes + 30%","mRes + 30%","ailmentResistance + 15%","weaponRange - 3"}	0	0	0	Normal	defaultItemWeaponId
+defaultSubWeapon	Ninjutsuscroll	0	0	{"aspd + 250"}	0	0	0	\N	defaultItemSubWeaponId
 \.
 
 
