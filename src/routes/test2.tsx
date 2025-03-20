@@ -28,7 +28,7 @@ function App() {
         </For>
       </div>
       <h1>{mobId()}</h1>
-      <pre class="bg-primary-color">{mob()?.name}</pre>
+      <pre class="bg-primary-color">{JSON.stringify(mob.latest, null, 2)}</pre>
     </div>
   );
 }

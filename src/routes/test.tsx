@@ -69,7 +69,7 @@ function Test() {
         </For>
       </div>
       <h1>{itemId()}</h1>
-      <pre class="bg-primary-color">{item()?.name}</pre>
+      <pre class="bg-primary-color">{item.latest?.name}</pre>
     </div>
   );
 }

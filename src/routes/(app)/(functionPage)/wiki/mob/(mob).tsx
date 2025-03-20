@@ -363,7 +363,7 @@ export default function MobIndexPage() {
             options={{ scrollbars: { autoHide: "scroll" } }}
             defer
           >
-            <pre class="p-3">{JSON.stringify(mob(), null, 2)}</pre>
+            <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
           </OverlayScrollbarsComponent>
         </Dialog>
       </Portal>
