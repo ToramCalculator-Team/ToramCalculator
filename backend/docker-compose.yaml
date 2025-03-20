@@ -22,6 +22,9 @@ services:
     image: electricsql/electric
     environment:
       DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:${PG_PORT}/${PG_DBNAME}?sslmode=disable
+      # Not suitable for production. Only use insecure mode in development or if you've otherwise secured the Electric API.
+      # See https://electric-sql.com/docs/guides/security
+      ELECTRIC_INSECURE: true
     ports:
       - ${ELECTRIC_PORT}:3000
     depends_on:

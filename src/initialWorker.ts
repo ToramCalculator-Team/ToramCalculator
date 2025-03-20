@@ -3,8 +3,9 @@ import { live } from "@electric-sql/pglite/live";
 import PGWorker from "~/worker/PGlite.worker?worker";
 import { setStore, store } from "./store";
 import { type syncMessage } from "./worker/PGlite.worker";
+import { electricSync } from "@electric-sql/pglite-sync";
 
-// console.log(performance.now(), "PGliteWorker初始化开始");
+console.log(performance.now(), "PGliteWorker初始化开始");
 const pg_worker = new PGWorker();
 
 // 同步状态接受
@@ -12,13 +13,14 @@ pg_worker.onmessage = (e) => {
   if (e.type === "message") {
     if (e.data.type === "sync") {
       const data = (e.data as syncMessage).data;
-      setStore("database","tableSyncState", data.tableName, true);
+      setStore("database", "tableSyncState", data.tableName, true);
       // console.log(data.tableName + "已同步完毕");
     }
   }
 };
+
 const pgWorker = await PGliteWorker.create(pg_worker, {
-  extensions: { live },
+  extensions: { live, sync: electricSync({ debug: false }) },
 });
 
 // console.log(performance.now(), "PGliteWorker初始化完成");

@@ -95,9 +95,9 @@ export default createHandler(() => (
             <script>
               {`try {
                 storeCache.resourcesLoaded; document.getElementById("loader").remove();
-                console.log("资源加载完成");
+                // console.log("资源加载完成");
               } catch (error) {
-                console.log("初次加载资源");
+                // console.log("初次加载资源");
               }`}
             </script>
             {scripts}
