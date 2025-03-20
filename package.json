@@ -47,6 +47,7 @@
     "@tailwindcss/postcss": "^4.0.9",
     "@tailwindcss/typography": "^0.5.14",
     "@tailwindcss/vite": "^4.0.9",
+    "@tanstack/solid-form": "^1.1.0",
     "@tanstack/solid-table": "^8.20.1",
     "@tanstack/solid-virtual": "^3.9.0",
     "blockly": "^11.2.1",

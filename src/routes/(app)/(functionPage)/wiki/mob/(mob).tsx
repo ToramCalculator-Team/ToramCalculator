@@ -1,13 +1,11 @@
 import { createMemo, createResource, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { defaultImage } from "~/repositories/image";
 import { type Mob, MobDic, defaultMob, findMobById, findMobs } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
-import { type Enums } from "~/repositories/enums";
 import { createSyncResource } from "~/hooks/resource";
 import VirtualTable from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
@@ -22,17 +20,12 @@ export default function MobIndexPage() {
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
-  const [formState, setformState] = createSignal<FormSate>("CREATE");
+  const [dialogContent, setDialogContent] = createSignal<JSX.Element>();
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
-  const setMobformState = (newState: FormSate): void => {
-    setStore("wiki", "mob", {
-      formState: newState,
-    });
-  };
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
-  const [mob , {refetch: refetchMob}] = createResource(() => store.wiki.mob?.id, findMobById);
+  const [mob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
 
   // table
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
@@ -186,18 +179,17 @@ export default function MobIndexPage() {
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
           when={
-            props.cell.column.id in dictionary().enums.mob &&
-            props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
+            props.cell.column.id in dictionary().enums.mob && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
           }
           fallback={tdContent()}
         >
-          {
-            dictionary().enums.mob[props.cell.column.id as MobKeys][props.cell.getValue() as MobValueKeys<MobKeys>]
-          }
+          {dictionary().enums.mob[props.cell.column.id as MobKeys][props.cell.getValue() as MobValueKeys<MobKeys>]}
         </Show>
       </td>
     );
   }
+
+  // form
 
   // u键监听
   onMount(() => {
@@ -310,7 +302,7 @@ export default function MobIndexPage() {
           </Motion.div>
         </Show>
       </Presence>
-      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:p-3 lg:flex-row">
+      <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>

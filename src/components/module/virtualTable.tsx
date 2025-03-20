@@ -74,8 +74,6 @@ export default function VirtualTable<
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
-        console.log(id);
-        setStore("wiki", props.tableName, "id", id);
         setStore("wiki", props.tableName, "dialogState", true);
         setStore("wiki", props.tableName, "formState", "DISPLAY");
       }
@@ -151,10 +149,7 @@ export default function VirtualTable<
     // }));
     // virtualizer.options.count = list.length;
     // virtualizer._willUpdate();
-    console.log(
-      "TableRows:",
-      table.getRowCount()
-    );
+    console.log("TableRows:", table.getRowCount());
     return (
       <tbody style={{ height: `${virtualizer.getTotalSize()}px` }} class={`TableBodyrelative`}>
         <For each={virtualizer.getVirtualItems()}>
@@ -171,6 +166,7 @@ export default function VirtualTable<
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
                 onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
                 class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b px-6 transition-none hover:rounded hover:border-transparent hover:font-bold`}
               >
                 <For
