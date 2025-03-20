@@ -1,21 +1,16 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
-import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, ModifyKeys } from "./untils";
-import { Enums } from "./enums";
+import { ConvertToAllString, DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
+import { armor, DB } from "../../db/clientDB/generated/kysely/kyesely";
 
-export type Armor = ModifyKeys<Awaited<ReturnType<typeof findArmorById>>, {
-  type: Enums["ItemType"]
-}>;
-export type NewArmor = Insertable<item>;
-export type ArmorUpdate = Updateable<item>;
+export interface Armor extends DataType<armor, typeof findArmorById, typeof createArmor> {}
 
 export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
@@ -27,12 +22,6 @@ export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Express
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("defaultCrystals"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("recipe")
-        .where("recipe.armorId", "=", id)
-        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
-    ).as("recipe"),
   ];
 }
 
@@ -47,14 +36,41 @@ export async function findArmorById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateArmor(id: string, updateWith: ArmorUpdate) {
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+export async function updateArmor(id: string, updateWith: Armor["Update"]) {
+  return await db.updateTable("armor").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createArmor(newArmor: NewArmor) {
+export async function createArmor(newArmor: Armor["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    const item = await trx.insertInto("item").values(newArmor).returningAll().executeTakeFirstOrThrow();
-    return item;
+    const statistic = await trx
+      .insertInto("statistic")
+      .values({
+        id: createId(),
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        usageTimestamps: [],
+        viewTimestamps: [],
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const item = await trx
+      .insertInto("item")
+      .values({
+        id: createId(),
+        tableType: "armor",
+        statisticId: statistic.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const armor = await trx
+      .insertInto("armor")
+      .values({
+        ...newArmor,
+        itemId: item.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return armor;
   });
 }
 
@@ -63,10 +79,10 @@ export async function deleteArmor(id: string) {
 }
 
 // default
-export const defaultArmor: Armor = {
+export const defaultArmor: Armor["MainTable"] = {
   name: "defaultArmor",
   id: "defaultArmorId",
-  type: "Armor",
+  tableType: "armor",
   modifiers: [],
   itemId: "defaultArmorId",
   defaultCrystals: [],
@@ -78,7 +94,6 @@ export const defaultArmor: Armor = {
   details: "",
   dropBy: [],
   rewardBy: [],
-  recipe: defaultRecipes.Armor,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
   statistic: defaultStatistics.Armor,
@@ -86,14 +101,14 @@ export const defaultArmor: Armor = {
 };
 
 // Dictionary
-export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
+export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["MainTable"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "防具装备",
         name: "名称",
         id: "ID",
-        type:"道具类型",
+        tableType: "",
         modifiers: "属性",
         itemId: "所属道具ID",
         defaultCrystals: "附加锻晶",
@@ -105,7 +120,6 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         details: "额外说明",
         dropBy: "掉落于怪物",
         rewardBy: "奖励于任务",
-        recipe: RecipeDic(locale),
         updatedByAccountId: "更新者ID",
         createdByAccountId: "创建者ID",
         statistic: StatisticDic(locale),
@@ -116,7 +130,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "防具裝備",
         name: "名称",
         id: "ID",
-        type:"道具類型",
+        tableType: "",
         modifiers: "屬性",
         itemId: "所屬道具ID",
         defaultCrystals: "附加鑽晶",
@@ -128,7 +142,6 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         details: "額外說明",
         dropBy: "掉落於怪物",
         rewardBy: "獎勵於任務",
-        recipe: RecipeDic(locale),
         updatedByAccountId: "更新者ID",
         createdByAccountId: "創建者ID",
         statistic: StatisticDic(locale),
@@ -139,7 +152,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "Armor",
         name: "Name",
         id: "ID",
-        type: "Item Type",
+        tableType: "",
         modifiers: "Modifiers",
         itemId: "ItemId",
         defaultCrystals: "Default Crystals",
@@ -151,7 +164,6 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         details: "Details",
         dropBy: "Drop By",
         rewardBy: "Reward By",
-        recipe: RecipeDic(locale),
         updatedByAccountId: "Updated By Account Id",
         createdByAccountId: "Created By Account Id",
         statistic: StatisticDic(locale),
@@ -162,7 +174,7 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         selfName: "鎧",
         name: "名前",
         id: "ID",
-        type: "アイテムタイプ",
+        tableType: "",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
         defaultCrystals: "デフォルトクリスタル",
@@ -174,7 +186,6 @@ export const ArmorDic = (locale: Locale): ConvertToAllString<Armor> => {
         details: "追加詳細",
         dropBy: "ドロップバイ",
         rewardBy: "報酬バイ",
-        recipe: RecipeDic(locale),
         updatedByAccountId: "アカウントIDによって更新",
         createdByAccountId: "アカウントIDによって作成",
         statistic: StatisticDic(locale),

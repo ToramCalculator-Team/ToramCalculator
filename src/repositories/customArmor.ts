@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, custom_armor } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_armor } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { ArmorDic, defaultArmor } from "./armor";
@@ -10,61 +10,61 @@ import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Enums } from "./enums";
 
-export type CustomArmor = ModifyKeys<Awaited<ReturnType<typeof findCustomArmorById>>, {
-  type: Enums["Custom_armorType"]
+export type PlayerArmor = ModifyKeys<Awaited<ReturnType<typeof findPlayerArmorById>>, {
+  type: Enums["Player_armorType"]
 }>;
-export type NewCustomArmor = Insertable<custom_armor>;
-export type CustomArmorUpdate = Updateable<custom_armor>;
+export type NewPlayerArmor = Insertable<player_armor>;
+export type PlayerArmorUpdate = Updateable<player_armor>;
 
-export function customArmorSubRelations(eb: ExpressionBuilder<DB, "custom_armor">, id: Expression<string>) {
+export function customArmorSubRelations(eb: ExpressionBuilder<DB, "player_armor">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
         .selectFrom("item")
         .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalTocustom_armor", "item.id", "_crystalTocustom_armor.A")
-        .whereRef("_crystalTocustom_armor.B", "=", "custom_armor.id")
+        .innerJoin("_crystalToplayer_armor", "item.id", "_crystalToplayer_armor.A")
+        .whereRef("_crystalToplayer_armor.B", "=", "player_armor.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item","crystal"]),
     ).as("crystalList"),
-    jsonObjectFrom(eb.selectFrom("armor").whereRef("armor.itemId", "=", "custom_armor.templateId").selectAll("armor"))
+    jsonObjectFrom(eb.selectFrom("armor").whereRef("armor.itemId", "=", "player_armor.templateId").selectAll("armor"))
       .$notNull()
       .as("template"),
     jsonObjectFrom(
       eb
         .selectFrom("armor_enchantment_attributes")
-        .whereRef("armor_enchantment_attributes.id", "=", "custom_armor.enchantmentAttributesId")
+        .whereRef("armor_enchantment_attributes.id", "=", "player_armor.enchantmentAttributesId")
         .selectAll("armor_enchantment_attributes"),
     ).$notNull().as("enchantmentAttributes"),
   ];
 }
 
-export async function findCustomArmorById(id: string) {
+export async function findPlayerArmorById(id: string) {
   return await db
-    .selectFrom("custom_armor")
+    .selectFrom("player_armor")
     .where("id", "=", id)
-    .selectAll("custom_armor")
+    .selectAll("player_armor")
     .select((eb) => customArmorSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCustomArmor(id: string, updateWith: CustomArmorUpdate) {
-  return await db.updateTable("custom_armor").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function updatePlayerArmor(id: string, updateWith: PlayerArmorUpdate) {
+  return await db.updateTable("player_armor").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createCustomArmor(newArmor: NewCustomArmor) {
+export async function createPlayerArmor(newArmor: NewPlayerArmor) {
   return await db.transaction().execute(async (trx) => {
-    const custom_armor = await trx.insertInto("custom_armor").values(newArmor).returningAll().executeTakeFirstOrThrow();
-    return custom_armor;
+    const player_armor = await trx.insertInto("player_armor").values(newArmor).returningAll().executeTakeFirstOrThrow();
+    return player_armor;
   });
 }
 
-export async function deleteCustomArmor(id: string) {
-  return await db.deleteFrom("custom_armor").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deletePlayerArmor(id: string) {
+  return await db.deleteFrom("player_armor").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultCustomArmor: CustomArmor = {
+export const defaultPlayerArmor: PlayerArmor = {
   id: "defaultArmorId",
   name: "默认自定义防具",
   def: 0,
@@ -79,7 +79,7 @@ export const defaultCustomArmor: CustomArmor = {
 };
 
 // Dictionary
-export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> => {
+export const PlayerArmorDic = (locale: Locale): ConvertToAllString<PlayerArmor> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -113,7 +113,7 @@ export const CustomArmorDic = (locale: Locale): ConvertToAllString<CustomArmor> 
       };
     case "en":
       return {
-        selfName: "Custom Armor",
+        selfName: "Player Armor",
         id: "ID",
         name: "Name",
         def: "Def",

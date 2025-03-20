@@ -1,19 +1,4 @@
-import { type Enums } from "~/repositories/enums";
-
-
-// 字典对象类型
-type Dictionary<A extends string> = {
-  [key in A | "selfName"]: string;
-};
-
-// 自动生成 Enums 类型
-export type DicEnums = {
-  [K in (keyof Enums)]: Dictionary<Enums[K]>;
-};
-
-// 表格内工具类
-export type DicEnumsKeys = keyof DicEnums;
-export type DicEnumsKeysValue = DicEnums[DicEnumsKeys];
+import { DataEnums } from "../../../db/clientDB/generated/dataEnums";
 
 export interface dictionary {
   ui: {
@@ -194,6 +179,6 @@ export interface dictionary {
       description: string;
     };
   };
-  enums: DicEnums;
+  enums: DataEnums;
 }
 

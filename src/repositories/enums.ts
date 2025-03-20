@@ -132,8 +132,14 @@ export const USER_ROLE = ["USER", "ADMIN"] as const;
 export const ELEMENT_TYPE = ["Normal", "Light", "Dark", "Water", "Fire", "Earth", "Wind"] as const;
 // 怪物分类枚举
 export const MOB_TYPE = ["Mob", "MiniBoss", "Boss"] as const;
+// Boss部位类型
+export const BOSS_PART_TYPE = ["A", "B", "C"] as const;
+// Boss部位破坏奖励类型
+export const BOSS_PART_REWARD_TYPE = ["None", "CanDrop", "DropUp"] as const;
 // 个人能力值类型枚举
 export const PERSONALITY_TYPE = ["None", "Luk", "Cri", "Tec", "Men"] as const;
+// 伙伴技能类型
+export const PARTNER_SKILL_TYPE = ["Passive", "Active"] as const;
 // 技能目标类型
 export const SKILL_TARGET_TYPE = ["None", "Self", "Player", "Enemy"] as const;
 // 技能充能类型枚举（咏唱、蓄力）
@@ -195,7 +201,7 @@ export const MERCENARY_SKILL_TYPE = ["Active", "Passive"] as const;
 // 其他用户可见性
 export const VISIBILITY = ["Public", "Private"] as const;
 // 账号类型
-export const ACCOUNT_TYPES = ["Admin", "User"] as const;
+export const ACCOUNT_TYPE = ["Admin", "User"] as const;
 // 主武器类型
 export const MAIN_WEAPON_TYPE = [
   "OneHandSword",
@@ -244,7 +250,7 @@ export const CONSUMABLE_TYPE = [
 // 道具
 export const ITEM_TYPE = [...EQUIP_TYPE, ...CRYSTAL_TYPE, ...MATERIAL_TYPE, "Consumable"] as const;
 // 任务类型
-export const TASK_TYPE = ["Collect", "Defeat", "Both","Other"] as const;
+export const TASK_TYPE = ["Collect", "Defeat", "Both", "Other"] as const;
 // 任务奖励类型
 export const REWARD_TYPE = ["Exp", "Money", "Item"] as const;
 // 配方
@@ -462,7 +468,7 @@ export const WIKI_TYPE = [
   "Crystal",
   "Item",
   "Skill",
-  "Pet"
+  "Pet",
 ] as const;
 export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
 
@@ -476,14 +482,14 @@ type ModelFieldPairs = {
 
 // 创建模型名称+字段名称组合的映射
 type ModelFieldMap = {
-  [Pair in ModelFieldPairs as `${Capitalize<Pair['model'] & string>}${Capitalize<Pair['field'] & string>}`]: Pair;
+  [Pair in ModelFieldPairs as `${Capitalize<Pair["model"] & string>}${Capitalize<Pair["field"] & string>}`]: Pair;
 };
 
 // 创建一个辅助类型，确保只能使用有效的键
 type CreateEnums<T extends Partial<Record<keyof ModelFieldMap, any>>> = T;
 
 export type Enums = CreateEnums<{
-  Custom_armorType: (typeof CUSTOM_ARMOR_TYPE)[number];
+  Player_armorType: (typeof CUSTOM_ARMOR_TYPE)[number];
   RewardType: (typeof REWARD_TYPE)[number];
   AvatarType: (typeof AVATAR_TYPE)[number];
   ModifierType: (typeof MODIFIER_TYPE)[number];
@@ -510,7 +516,7 @@ export type Enums = CreateEnums<{
   MercenaryType: (typeof MERCENARY_TYPE)[number];
   MercenarySkillType: (typeof MERCENARY_SKILL_TYPE)[number];
   Visibility: (typeof VISIBILITY)[number];
-  AccountType: (typeof ACCOUNT_TYPES)[number];
+  AccountType: (typeof ACCOUNT_TYPE)[number];
   MainWeaponType: (typeof MAIN_WEAPON_TYPE)[number];
   SubWeaponType: (typeof SUB_WEAPON_TYPE)[number];
   WeaponType: (typeof WEAPON_TYPE)[number];

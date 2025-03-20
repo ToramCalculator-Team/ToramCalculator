@@ -1,26 +1,26 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { db, typeDB } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { itemSubRelations } from "./item";
-import {  recipeSubRelations } from "./recipe";
+import { recipeSubRelations } from "./recipe";
 import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { mobSubRelations } from "./mob";
-import { createId } from '@paralleldrive/cuid2';
+import { createId } from "@paralleldrive/cuid2";
 
-export interface AddEquip extends DataType<typeDB["additional_equipment"], typeof findAddEquipById, typeof createAddEquip> {}
+export interface AddEquip
+  extends DataType<typeDB["additional_equipment"], typeof findAddEquipById, typeof createAddEquip> {}
 
 export function addEquipSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expression<string>) {
   return [
-      jsonArrayFrom(
-        eb
-          .selectFrom("mob")
-          .innerJoin("drop_item","drop_item.dropById","mob.id")
-          .where("drop_item.itemId", "=", id)
-          .selectAll("mob")
-          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-      ).as("dropBy"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("mob")
+        .innerJoin("drop_item", "drop_item.dropById", "mob.id")
+        .where("drop_item.itemId", "=", id)
+        .selectAll("mob")
+        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
+    ).as("dropBy"),
     jsonArrayFrom(
       eb
         .selectFrom("_additional_equipmentTocrystal")
@@ -39,38 +39,58 @@ export function addEquipSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: 
 }
 
 export async function findAddEquipById(id: string) {
-  return await db
-    .selectFrom("item")
-    .innerJoin("additional_equipment", "item.id", "additional_equipment.itemId")
-    .where("id", "=", id)
-    .selectAll(["item", "additional_equipment"])
-    .select((eb) => addEquipSubRelations(eb, eb.val(id)))
-    .select((eb) => itemSubRelations(eb, eb.val(id)))
+  const addEquip = await db
+    .selectFrom("additional_equipment")
+    .where("itemId", "=", id)
+    .selectAll()
     .executeTakeFirstOrThrow();
+  return addEquip;
+}
+
+export async function findAddEquips() {
+  const addEquips = await db.selectFrom("additional_equipment").selectAll().execute();
+  return addEquips;
 }
 
 export async function updateAddEquip(id: string, updateWith: AddEquip["Update"]) {
-  return await db.updateTable("additional_equipment").set(updateWith).where("additional_equipment.itemId", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .updateTable("additional_equipment")
+    .set(updateWith)
+    .where("additional_equipment.itemId", "=", id)
+    .returningAll()
+    .executeTakeFirst();
 }
 
 export async function createAddEquip(newAddEquip: AddEquip["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    const statistic = await trx.insertInto("statistic").values({
-      id: createId(),
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      usageTimestamps: [],
-      viewTimestamps: [],
-    }).returningAll().executeTakeFirstOrThrow();
-    const item = await trx.insertInto("item").values({
-      id: createId(),
-      type: "AddEquip",
-      statisticId: statistic.id,
-    }).returningAll().executeTakeFirstOrThrow();
-    const addEquip = await trx.insertInto("additional_equipment").values({
-      ...newAddEquip,
-      itemId: item.id,
-    }).returningAll().executeTakeFirstOrThrow();
+    const statistic = await trx
+      .insertInto("statistic")
+      .values({
+        id: createId(),
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        usageTimestamps: [],
+        viewTimestamps: [],
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const item = await trx
+      .insertInto("item")
+      .values({
+        id: createId(),
+        type: "AddEquip",
+        statisticId: statistic.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const addEquip = await trx
+      .insertInto("additional_equipment")
+      .values({
+        ...newAddEquip,
+        itemId: item.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
     return addEquip;
   });
 }

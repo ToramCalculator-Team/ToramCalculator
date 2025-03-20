@@ -149,10 +149,10 @@ export default function Index() {
       case "_characterTocharacter_skill":
       case "_characterTocombo":
       case "_characterToconsumable":
-      case "_crystalTocustom_additional_equipment":
-      case "_crystalTocustom_armor":
-      case "_crystalTocustom_special_equipment":
-      case "_crystalTocustom_weapon":
+      case "_crystalToplayer_additional_equipment":
+      case "_crystalToplayer_armor":
+      case "_crystalToplayer_special_equipment":
+      case "_crystalToplayer_weapon":
       case "_crystalTospecial_equipment":
       case "_crystalToweapon":
       case "_FrontRelation":
@@ -175,11 +175,11 @@ export default function Index() {
       case "consumable":
       case "crystal":
         return findCrystalById(currentCardId());
-      case "custom_additional_equipment":
-      case "custom_armor":
-      case "custom_pet":
-      case "custom_special_equipment":
-      case "custom_weapon":
+      case "player_additional_equipment":
+      case "player_armor":
+      case "player_pet":
+      case "player_special_equipment":
+      case "player_weapon":
       case "drop_item":
       case "image":
       case "item":

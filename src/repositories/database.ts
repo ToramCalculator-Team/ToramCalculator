@@ -3,7 +3,6 @@ import { Kysely, PostgresDialect } from "kysely";
 import { PGliteDialect } from "./dialect/dialect";
 import { pgWorker } from "~/initialWorker";
 import { Pool } from "pg";
-import { ModifyKeys } from "./untils";
 
 // 已知的可加成项
 export const MODIFIER_TYPE = [
@@ -477,167 +476,6 @@ export const WIKI_TYPE = [
 ] as const;
 export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
 
-export type typeDB = ModifyKeys<
-  DB,
-  {
-    account: ModifyKeys<
-      DB["account"],
-      {
-        type: (typeof ACCOUNT_TYPE)[number];
-      }
-    >;
-    address: ModifyKeys<
-      DB["address"],
-      {
-        type: (typeof ADDRESS_TYPE)[number];
-      }
-    >;
-    avatar: ModifyKeys<
-      DB["avatar"],
-      {
-        type: (typeof AVATAR_TYPE)[number];
-      }
-    >;
-    character: ModifyKeys<
-      DB["character"],
-      {
-        personalityType: (typeof PERSONALITY_TYPE)[number];
-        partnerSkillAType: (typeof PARTNER_SKILL_TYPE)[number];
-        partnerSkillBType: (typeof PARTNER_SKILL_TYPE)[number];
-      }
-    >;
-    character_skill: ModifyKeys<
-      DB["character_skill"],
-      {
-        lv: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-      }
-    >;
-    consumable: ModifyKeys<
-      DB["consumable"],
-      {
-        type: (typeof CONSUMABLE_TYPE)[number];
-      }
-    >;
-    crystal: ModifyKeys<
-      DB["crystal"],
-      {
-        type: (typeof CRYSTAL_TYPE)[number];
-      }
-    >;
-    custom_additional_equipment: ModifyKeys<
-      DB["custom_additional_equipment"],
-      {
-        refinement: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
-      }
-    >;
-    custom_armor: ModifyKeys<
-      DB["custom_armor"],
-      {
-        type: (typeof CUSTOM_ARMOR_TYPE)[number];
-        refinement: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
-      }
-    >;
-    custom_pet: ModifyKeys<
-      DB["custom_pet"],
-      {
-        weaponType: (typeof MAIN_WEAPON_TYPE)[number];
-        personaType: (typeof PET_PERSONA_TYPE)[number];
-        type: (typeof PET_TYPE)[number];
-      }
-    >;
-    custom_weapon: ModifyKeys<
-      DB["custom_weapon"],
-      {
-        refinement: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
-      }
-    >;
-    drop_item: ModifyKeys<
-      DB["drop_item"],
-      {
-        relatedPartType: (typeof BOSS_PART_TYPE)[number];
-        breakReward: (typeof PART_BREAK_REWARD)[number];
-      }
-    >;
-    item: ModifyKeys<
-      DB["item"],
-      {
-        type: (typeof ITEM_TYPE)[number];
-      }
-    >;
-    material: ModifyKeys<
-      DB["material"],
-      {
-        type: (typeof MATERIAL_TYPE)[number];
-      }
-    >;
-    member: ModifyKeys<
-      DB["member"],
-      {
-        mobDifficultyFlag: (typeof MOB_DIFFICULTY_FLAG)[number];
-      }
-    >;
-    mercenary: ModifyKeys<
-      DB["mercenary"],
-      {
-        type: (typeof MERCENARY_TYPE)[number];
-        skillAType: (typeof PARTNER_SKILL_TYPE)[number];
-        skillBType: (typeof PARTNER_SKILL_TYPE)[number];
-      }
-    >;
-    mob: ModifyKeys<
-      DB["mob"],
-      {
-        type: (typeof MOB_TYPE)[number];
-        elementType: (typeof ELEMENT_TYPE)[number];
-      }
-    >;
-    reward: ModifyKeys<
-      DB["reward"],
-      {
-        type: (typeof REWARD_TYPE)[number];
-      }
-    >;
-    simulator: ModifyKeys<
-      DB["simulator"],
-      {
-        visibilityType: (typeof VISIBILITY)[number];
-      }
-    >;
-    skill: ModifyKeys<
-      DB["skill"],
-      {
-        treeType: (typeof SKILL_TREE_TYPE)[number];
-      }
-    >;
-    skill_effect: ModifyKeys<
-      DB["skill_effect"],
-      {
-        chargingType: (typeof SKILL_CHARGING_TYPE)[number];
-        distanceType: (typeof SKILL_DISTANCE_RESIST_TYPE)[number];
-        targetType: (typeof SKILL_TARGET_TYPE)[number];
-      }
-    >;
-    task: ModifyKeys<
-      DB["task"],
-      {
-        type: (typeof TASK_TYPE)[number];
-      }
-    >;
-    user: ModifyKeys<
-      DB["user"],
-      {
-        roleType: (typeof USER_ROLE)[number];
-      }
-    >;
-    weapon: ModifyKeys<
-      DB["weapon"],
-      {
-        type: (typeof WEAPON_TYPE)[number];
-        elementType: (typeof ELEMENT_TYPE)[number];
-      }
-    >;
-  }
->;
 // const PGdialect = new PostgresDialect({
 //   pool: new Pool({
 //     database: 'postgres',
@@ -654,7 +492,7 @@ export type typeDB = ModifyKeys<
 
 // debugger
 const initialDatabase = async () => {
-  return new Kysely<typeDB>({
+  return new Kysely<DB>({
     dialect: new PGliteDialect(pgWorker),
     // log(event) {
     //   if (event.level === "query") {

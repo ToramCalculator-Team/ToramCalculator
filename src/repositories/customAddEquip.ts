@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, custom_additional_equipment } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_additional_equipment } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { AddEquipDic, defaultAddEquip } from "./addEquip";
@@ -8,12 +8,12 @@ import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 
-export type CustomAddEquip = Awaited<ReturnType<typeof findCustomAddEquipById>>;
-export type NewCustomAddEquip = Insertable<custom_additional_equipment>;
-export type CustomAddEquipUpdate = Updateable<custom_additional_equipment>;
+export type PlayerAddEquip = Awaited<ReturnType<typeof findPlayerAddEquipById>>;
+export type NewPlayerAddEquip = Insertable<player_additional_equipment>;
+export type PlayerAddEquipUpdate = Updateable<player_additional_equipment>;
 
 export function customAddEquipSubRelations(
-  eb: ExpressionBuilder<DB, "custom_additional_equipment">,
+  eb: ExpressionBuilder<DB, "player_additional_equipment">,
   id: Expression<string>,
 ) {
   return [
@@ -21,55 +21,55 @@ export function customAddEquipSubRelations(
       eb
         .selectFrom("item")
         .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalTocustom_additional_equipment", "item.id", "_crystalTocustom_additional_equipment.A")
-        .whereRef("_crystalTocustom_additional_equipment.B", "=", "custom_additional_equipment.id")
+        .innerJoin("_crystalToplayer_additional_equipment", "item.id", "_crystalToplayer_additional_equipment.A")
+        .whereRef("_crystalToplayer_additional_equipment.B", "=", "player_additional_equipment.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item","crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
       eb
         .selectFrom("additional_equipment")
-        .whereRef("additional_equipment.itemId", "=", "custom_additional_equipment.templateId")
+        .whereRef("additional_equipment.itemId", "=", "player_additional_equipment.templateId")
         .selectAll("additional_equipment"),
     ).$notNull().as("template"),
   ];
 }
 
-export async function findCustomAddEquipById(id: string) {
+export async function findPlayerAddEquipById(id: string) {
   return await db
-    .selectFrom("custom_additional_equipment")
+    .selectFrom("player_additional_equipment")
     .where("id", "=", id)
-    .selectAll("custom_additional_equipment")
+    .selectAll("player_additional_equipment")
     .select((eb) => customAddEquipSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCustomAddEquip(id: string, updateWith: CustomAddEquipUpdate) {
+export async function updatePlayerAddEquip(id: string, updateWith: PlayerAddEquipUpdate) {
   return await db
-    .updateTable("custom_additional_equipment")
+    .updateTable("player_additional_equipment")
     .set(updateWith)
     .where("id", "=", id)
     .returningAll()
     .executeTakeFirst();
 }
 
-export async function createCustomAddEquip(newAddEquip: NewCustomAddEquip) {
+export async function createPlayerAddEquip(newAddEquip: NewPlayerAddEquip) {
   return await db.transaction().execute(async (trx) => {
-    const custom_additional_equipment = await trx
-      .insertInto("custom_additional_equipment")
+    const player_additional_equipment = await trx
+      .insertInto("player_additional_equipment")
       .values(newAddEquip)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return custom_additional_equipment;
+    return player_additional_equipment;
   });
 }
 
-export async function deleteCustomAddEquip(id: string) {
-  return await db.deleteFrom("custom_additional_equipment").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deletePlayerAddEquip(id: string) {
+  return await db.deleteFrom("player_additional_equipment").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultCustomAddEquip: CustomAddEquip = {
+export const defaultPlayerAddEquip: PlayerAddEquip = {
   id: "defaultAddEquipId",
   name: "默认自定义追加装备",
   def: 0,
@@ -81,7 +81,7 @@ export const defaultCustomAddEquip: CustomAddEquip = {
 };
 
 // Dictionary
-export const CustomAddEquipDic = (locale: Locale): ConvertToAllString<CustomAddEquip> => {
+export const PlayerAddEquipDic = (locale: Locale): ConvertToAllString<PlayerAddEquip> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -109,7 +109,7 @@ export const CustomAddEquipDic = (locale: Locale): ConvertToAllString<CustomAddE
       };
     case "en":
       return {
-        selfName: "Custom Armor",
+        selfName: "Player Armor",
         id: "ID",
         name: "Name",
         def: "Def",

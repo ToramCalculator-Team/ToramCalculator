@@ -6,10 +6,6 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultTeam, teamSubRelations } from "./team";
 import { defaultAccount } from "./account";
 
-export type Simulator = Awaited<ReturnType<typeof findSimulatorById>>;
-export type NewSimulator = Insertable<simulator>;
-export type SimulatorUpdate = Updateable<simulator>;
-
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
   return [
     jsonObjectFrom(
@@ -23,14 +19,24 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
       .as("statistic"),
     jsonArrayFrom(
       eb
-        .selectFrom("_simulatorToteam")
-        .innerJoin("team", "_simulatorToteam.B", "team.id")
-        .whereRef("_simulatorToteam.A", "=", id)
+        .selectFrom("_campA")
+        .innerJoin("team", "_campA.B", "team.id")
+        .whereRef("_campA.A", "=", id)
         .selectAll("team")
         .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
     )
       .$notNull()
-      .as("team"),
+      .as("campA"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("_campB")
+          .innerJoin("team", "_campB.B", "team.id")
+          .whereRef("_campB.A", "=", id)
+          .selectAll("team")
+          .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
+      )
+        .$notNull()
+        .as("campB"),
   ];
 }
 
@@ -72,8 +78,7 @@ export const defaultSimulator: Simulator = {
   id: "defaultSimulatorId",
 
   name: "默认模拟器",
-  visibilityType: "Public",
-  team: [defaultTeam],
+  campA: [defaultTeam],
   details: "",
 
   statistic: defaultStatistics.Simulator,

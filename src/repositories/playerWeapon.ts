@@ -1,33 +1,25 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, custom_weapon } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_weapon, player_weapon } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Crystal, crystalSubRelations } from "./crystal";
 import { defaultWeapons, Weapon, WeaponDic, weaponSubRelations } from "./weapon";
 import { defaultAccount } from "./account";
 import { defaultWeaponEncAttributes, WeaponEncAttrDic } from "./weaponEncAttrs";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { StatisticDic } from "./statistic";
 
-export type CustomWeapon = ModifyKeys<
-  Awaited<ReturnType<typeof findCustomWeaponById>>,
-  {
-    crystalList: Crystal[];
-    template: Weapon;
-  }
->;
-export type NewCustomWeapon = Insertable<custom_weapon>;
-export type CustomWeaponUpdate = Updateable<custom_weapon>;
+export interface PlayerWeapon extends DataType<player_weapon, typeof find, typeof createAccount> {}
 
-export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "custom_weapon">, id: Expression<string>) {
+export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
         .selectFrom("item")
         .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalTocustom_weapon", "item.id", "_crystalTocustom_weapon.A")
-        .whereRef("_crystalTocustom_weapon.B", "=", "custom_weapon.id")
+        .innerJoin("_crystalToplayer_weapon", "item.id", "_crystalToplayer_weapon.A")
+        .whereRef("_crystalToplayer_weapon.B", "=", "player_weapon.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item","crystal"]),
     ).as("crystalList"),
@@ -35,7 +27,7 @@ export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "custom_weapo
       eb
         .selectFrom("item")
         .innerJoin("weapon", "item.id", "weapon.itemId")
-        .whereRef("weapon.itemId", "=", "custom_weapon.templateId")
+        .whereRef("weapon.itemId", "=", "player_weapon.templateId")
         .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
         .selectAll("weapon"),
     )
@@ -44,42 +36,42 @@ export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "custom_weapo
     jsonObjectFrom(
       eb
         .selectFrom("weapon_enchantment_attributes")
-        .whereRef("weapon_enchantment_attributes.id", "=", "custom_weapon.enchantmentAttributesId")
+        .whereRef("weapon_enchantment_attributes.id", "=", "player_weapon.enchantmentAttributesId")
         .selectAll("weapon_enchantment_attributes"),
     ).$notNull().as("enchantmentAttributes"),
   ];
 }
 
-export async function findCustomWeaponById(id: string) {
+export async function findPlayerWeaponById(id: string) {
   return await db
-    .selectFrom("custom_weapon")
+    .selectFrom("player_weapon")
     .where("id", "=", id)
-    .selectAll("custom_weapon")
+    .selectAll("player_weapon")
     .select((eb) => customWeaponSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCustomWeapon(id: string, updateWith: CustomWeaponUpdate) {
-  return await db.updateTable("custom_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function updatePlayerWeapon(id: string, updateWith: PlayerWeaponUpdate) {
+  return await db.updateTable("player_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createCustomWeapon(newWeapon: NewCustomWeapon) {
+export async function createPlayerWeapon(newWeapon: NewPlayerWeapon) {
   return await db.transaction().execute(async (trx) => {
-    const custom_weapon = await trx
-      .insertInto("custom_weapon")
+    const player_weapon = await trx
+      .insertInto("player_weapon")
       .values(newWeapon)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return custom_weapon;
+    return player_weapon;
   });
 }
 
-export async function deleteCustomWeapon(id: string) {
-  return await db.deleteFrom("custom_weapon").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deletePlayerWeapon(id: string) {
+  return await db.deleteFrom("player_weapon").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> = {
+export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon> = {
   mainHand: {
     id: "defaultWeaponId",
     name: "默认自定义主手",
@@ -111,7 +103,7 @@ export const defaultCustomWeapons: Record<"mainHand" | "subHand", CustomWeapon> 
 };
 
 // Dictionary
-export const CustomWeaponDic = (locale: Locale): ConvertToAllString<CustomWeapon> => {
+export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -159,7 +151,7 @@ export const CustomWeaponDic = (locale: Locale): ConvertToAllString<CustomWeapon
         masterId: "Master ID",
         baseAbi: "Base Attack",
         stability: "Stability",
-        selfName: "Custom Weapon",
+        selfName: "Player Weapon",
       }
     case "ja":
       return {

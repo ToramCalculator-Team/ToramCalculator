@@ -1,12 +1,13 @@
 import { Expression, ExpressionBuilder } from "kysely";
-import { db, typeDB } from "./database";
+import { db } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
+import { account, DB } from "../../db/clientDB/generated/kysely/kyesely";
 
-export interface Account extends DataType<typeDB["account"], typeof findAccountById, typeof createAccount> {}
+export interface Account extends DataType<account, typeof findAccountById, typeof createAccount> {}
 
-export function accountSubRelations(eb: ExpressionBuilder<typeDB, "account">, accountId: Expression<string>) {
+export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
   return [
     // jsonArrayFrom(eb.selectFrom("character").where("character.masterId", "=", accountId).selectAll("character")).as(
     //   "characters",
@@ -14,26 +15,26 @@ export function accountSubRelations(eb: ExpressionBuilder<typeDB, "account">, ac
     // jsonArrayFrom(eb.selectFrom("mercenary").where("mercenary.masterId", "=", accountId).selectAll("mercenary")).as(
     //   "mercenarys",
     // ),
-    // jsonArrayFrom(eb.selectFrom("custom_pet").where("custom_pet.masterId", "=", accountId).selectAll("custom_pet")).as(
+    // jsonArrayFrom(eb.selectFrom("player_pet").where("player_pet.masterId", "=", accountId).selectAll("player_pet")).as(
     //   "customPets",
     // ),
     // jsonArrayFrom(
-    //   eb.selectFrom("custom_weapon").where("custom_weapon.masterId", "=", accountId).selectAll("custom_weapon"),
+    //   eb.selectFrom("player_weapon").where("player_weapon.masterId", "=", accountId).selectAll("player_weapon"),
     // ).as("weapons"),
     // jsonArrayFrom(
-    //   eb.selectFrom("custom_armor").where("custom_armor.masterId", "=", accountId).selectAll("custom_armor"),
+    //   eb.selectFrom("player_armor").where("player_armor.masterId", "=", accountId).selectAll("player_armor"),
     // ).as("armors"),
     // jsonArrayFrom(
     //   eb
-    //     .selectFrom("custom_additional_equipment")
-    //     .where("custom_additional_equipment.masterId", "=", accountId)
-    //     .selectAll("custom_additional_equipment"),
+    //     .selectFrom("player_additional_equipment")
+    //     .where("player_additional_equipment.masterId", "=", accountId)
+    //     .selectAll("player_additional_equipment"),
     // ).as("addEquips"),
     // jsonArrayFrom(
     //   eb
-    //     .selectFrom("custom_special_equipment")
-    //     .where("custom_special_equipment.masterId", "=", accountId)
-    //     .selectAll("custom_special_equipment"),
+    //     .selectFrom("player_special_equipment")
+    //     .where("player_special_equipment.masterId", "=", accountId)
+    //     .selectAll("player_special_equipment"),
     // ).as("speEquips"),
     jsonObjectFrom(
       eb
@@ -55,9 +56,7 @@ export function accountSubRelations(eb: ExpressionBuilder<typeDB, "account">, ac
 }
 
 export const selectAccount = async (id: string): Promise<Account["Select"]> => {
-  const startTime = performance.now();
   const account = await db.selectFrom("account").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
-  const time = performance.now() - startTime;
   return account;
 };
 
@@ -94,7 +93,6 @@ export async function deleteAccount(id: string) {
 // default
 export const defaultAccount: Account["Insert"] = {
   id: "defaultAccount",
-  type: "User",
   provider: "",
   providerAccountId: "",
   refresh_token: null,
@@ -108,13 +106,12 @@ export const defaultAccount: Account["Insert"] = {
 };
 
 // 设计为Form字段字典，但是由于Table字段是此对象子集，因此通用
-export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"]> => {
+export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "账号",
         id: "ID",
-        type: "账号类型",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -124,21 +121,12 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"
         scope: "",
         id_token: "",
         session_state: "",
-        userId: "",
-        create: {
-          accountId: "",
-          selfName: "",
-        },
-        update: {
-          accountId: "",
-          selfName: "",
-        },
+        userId: ""
       };
     case "zh-TW":
       return {
         selfName: "帳號",
         id: "ID",
-        type: "帳號類型",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -149,20 +137,11 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"
         id_token: "",
         session_state: "",
         userId: "",
-        create: {
-          accountId: "",
-          selfName: "",
-        },
-        update: {
-          accountId: "",
-          selfName: "",
-        },
       };
     case "en":
       return {
         selfName: "Account",
         id: "ID",
-        type: "Account Type",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -173,20 +152,11 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"
         id_token: "",
         session_state: "",
         userId: "",
-        create: {
-          accountId: "",
-          selfName: "",
-        },
-        update: {
-          accountId: "",
-          selfName: "",
-        },
       };
     case "ja":
       return {
         selfName: "アカウント",
         id: "ID",
-        type: "アカウントタイプ",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -197,14 +167,6 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Default"
         id_token: "",
         session_state: "",
         userId: "",
-        create: {
-          accountId: "",
-          selfName: "",
-        },
-        update: {
-          accountId: "",
-          selfName: "",
-        },
       };
   }
 };

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, custom_special_equipment } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_special_equipment } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { defaultSpeEquip, SpeEquip, SpeEquipDic } from "./speEquip";
@@ -8,12 +8,12 @@ import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 
-export type CustomSpeEquip = Awaited<ReturnType<typeof findCustomSpeEquipById>>;
-export type NewCustomSpeEquip = Insertable<custom_special_equipment>;
-export type CustomSpeEquipUpdate = Updateable<custom_special_equipment>;
+export type PlayerSpeEquip = Awaited<ReturnType<typeof findPlayerSpeEquipById>>;
+export type NewPlayerSpeEquip = Insertable<player_special_equipment>;
+export type PlayerSpeEquipUpdate = Updateable<player_special_equipment>;
 
 export function customSpeEquipSubRelations(
-  eb: ExpressionBuilder<DB, "custom_special_equipment">,
+  eb: ExpressionBuilder<DB, "player_special_equipment">,
   id: Expression<string>,
 ) {
   return [
@@ -21,55 +21,55 @@ export function customSpeEquipSubRelations(
       eb
         .selectFrom("item")
         .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalTocustom_special_equipment", "item.id", "_crystalTocustom_special_equipment.A")
-        .whereRef("_crystalTocustom_special_equipment.B", "=", "custom_special_equipment.id")
+        .innerJoin("_crystalToplayer_special_equipment", "item.id", "_crystalToplayer_special_equipment.A")
+        .whereRef("_crystalToplayer_special_equipment.B", "=", "player_special_equipment.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item","crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
       eb
         .selectFrom("special_equipment")
-        .whereRef("special_equipment.itemId", "=", "custom_special_equipment.templateId")
+        .whereRef("special_equipment.itemId", "=", "player_special_equipment.templateId")
         .selectAll("special_equipment"),
     ).$notNull().as("template"),
   ];
 }
 
-export async function findCustomSpeEquipById(id: string) {
+export async function findPlayerSpeEquipById(id: string) {
   return await db
-    .selectFrom("custom_special_equipment")
+    .selectFrom("player_special_equipment")
     .where("id", "=", id)
-    .selectAll("custom_special_equipment")
+    .selectAll("player_special_equipment")
     .select((eb) => customSpeEquipSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCustomSpeEquip(id: string, updateWith: CustomSpeEquipUpdate) {
+export async function updatePlayerSpeEquip(id: string, updateWith: PlayerSpeEquipUpdate) {
   return await db
-    .updateTable("custom_special_equipment")
+    .updateTable("player_special_equipment")
     .set(updateWith)
     .where("id", "=", id)
     .returningAll()
     .executeTakeFirst();
 }
 
-export async function createCustomSpeEquip(newSpeEquip: NewCustomSpeEquip) {
+export async function createPlayerSpeEquip(newSpeEquip: NewPlayerSpeEquip) {
   return await db.transaction().execute(async (trx) => {
-    const custom_special_equipment = await trx
-      .insertInto("custom_special_equipment")
+    const player_special_equipment = await trx
+      .insertInto("player_special_equipment")
       .values(newSpeEquip)
       .returningAll()
       .executeTakeFirstOrThrow();
-    return custom_special_equipment;
+    return player_special_equipment;
   });
 }
 
-export async function deleteCustomSpeEquip(id: string) {
-  return await db.deleteFrom("custom_special_equipment").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deletePlayerSpeEquip(id: string) {
+  return await db.deleteFrom("player_special_equipment").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultCustomSpeEquip: CustomSpeEquip = {
+export const defaultPlayerSpeEquip: PlayerSpeEquip = {
   id: "defaultSpeEquipId",
   name: "默认自定义特殊装备",
   def: 0,
@@ -80,7 +80,7 @@ export const defaultCustomSpeEquip: CustomSpeEquip = {
   masterId: defaultAccount.id,
 };
 // Dictionary
-export const CustomSpeEquipDic = (locale: Locale): ConvertToAllString<CustomSpeEquip> => {
+export const PlayerSpeEquipDic = (locale: Locale): ConvertToAllString<PlayerSpeEquip> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -108,7 +108,7 @@ export const CustomSpeEquipDic = (locale: Locale): ConvertToAllString<CustomSpeE
       };
     case "en":
       return {
-        selfName: "Custom Armor",
+        selfName: "Player Armor",
         id: "ID",
         name: "Name",
         def: "Def",

@@ -1,21 +1,21 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, custom_pet } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_pet } from "~/../db/clientDB/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultMob, MobDic, mobSubRelations } from "./mob";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 
-export type CustomPet = Awaited<ReturnType<typeof findCustomPetById>>;
-export type NewCustomPet = Insertable<custom_pet>;
-export type CustomPetUpdate = Updateable<custom_pet>;
+export type PlayerPet = Awaited<ReturnType<typeof findPlayerPetById>>;
+export type NewPlayerPet = Insertable<player_pet>;
+export type PlayerPetUpdate = Updateable<player_pet>;
 
-export function customPetSubRelations(eb: ExpressionBuilder<DB, "custom_pet">, id: Expression<string>) {
+export function customPetSubRelations(eb: ExpressionBuilder<DB, "player_pet">, id: Expression<string>) {
   return [
     jsonObjectFrom(
       eb
         .selectFrom("mob")
-        .whereRef("id", "=", "custom_pet.templateId")
+        .whereRef("id", "=", "player_pet.templateId")
         .selectAll("mob")
         .select((eb) => mobSubRelations(eb, eb.val(id))),
     )
@@ -24,24 +24,24 @@ export function customPetSubRelations(eb: ExpressionBuilder<DB, "custom_pet">, i
   ];
 }
 
-export async function findCustomPetById(id: string) {
+export async function findPlayerPetById(id: string) {
   return await db
-    .selectFrom("custom_pet")
+    .selectFrom("player_pet")
     .where("id", "=", id)
-    .selectAll("custom_pet")
+    .selectAll("player_pet")
     .select((eb) => customPetSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCustomPet(id: string, updateWith: CustomPetUpdate) {
-  return await db.updateTable("custom_pet").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function updatePlayerPet(id: string, updateWith: PlayerPetUpdate) {
+  return await db.updateTable("player_pet").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function deleteCustomPet(id: string) {
-  return await db.deleteFrom("custom_pet").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deletePlayerPet(id: string) {
+  return await db.deleteFrom("player_pet").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultCustomPet: CustomPet = {
+export const defaultPlayerPet: PlayerPet = {
   id: "",
   template: defaultMob,
   templateId: defaultMob.id,
@@ -66,7 +66,7 @@ export const defaultCustomPet: CustomPet = {
 
 
 // Dictionary
-export const CustomPetDic = (locale: Locale): ConvertToAllString<CustomPet> => {
+export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet> => {
   switch (locale) {
     case "zh-CN":
       return {

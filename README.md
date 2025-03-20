@@ -70,32 +70,43 @@ subject: 对 commit 的简短描述
 
 #### 启动后端服务
 ```bash
-# 启动postgreSQL和Electric服务
-docker compose up
+# 0.需要安装docker
 
-# 填充测试数据(将此sql文件中的架构和数据填充到postgres数据库)
-psql -U postgres -h localhost -d postgres -f .\test\db-csv\toram.sql 
+# 1.启动postgreSQL和Electric服务
+docker compose --env-file .env -f ./backend/docker-compose.yaml up
+
+# 2.将测试数据sql复制进容器
+docker cp ./db/clientDB/toramDB.sql toram-calculator-postgres-1:/
+
+# 3.还原数据库
+docker exec -i toram-calculator-postgres-1 psql -U postgres -d postgres -f toramDB.sql
 ```
 
 #### 启动前端应用
 ```bash
-# install dependencies
-# 安装依赖
+# 0.需要安装pnpm
+
+# 1.安装依赖
 pnpm install
 
-# generate types
-# 生成静态数据类型
+# 2.生成schema.prisma
+node db/clientDB/generator.js 
+
+# 2.生成PGlite的DDL
+pnpm dev:db-ddl
+
+# 3.由于目前无法保证同步顺序因此需要删除DDL中的外键关联
+node db/clientDB/remove_foreign_keys.js
+
+# 3.生成本地数据类型
 pnpm dev:db-type
 
-# start dev
-# 以开发模式试运行
+# 4.以开发模式试运行
 pnpm dev
 
-# build production
-# 构建生产模式代码
+# 5.构建生产模式代码
 pnpm build
 
-# run
-# 以生成模式运行
+# 6.以生成模式运行
 pnpm start
 ```

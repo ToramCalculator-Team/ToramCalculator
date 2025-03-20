@@ -1,0 +1,851 @@
+// generator client {
+//     provider        = "prisma-client-js"
+//     previewFeatures = ["relationJoins"]
+// }
+
+generator zod {
+    provider                 = "zod-prisma-types"
+    output                   = "./zod"
+    fileName                 = "zod.ts"
+    writeNullishInModelTypes = false // 是否将可选字段类型转换为 null | undefined
+    useMultipleFiles         = false // 是否生成拆分的ts
+    createInputTypes         = false // 是否生成input类型
+}
+
+generator kysely {
+    provider     = "prisma-kysely"
+    output       = "./kysely"
+    fileName     = "kyesely.ts"
+    enumFileName = "enums.ts"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("PG_URL")
+}
+
+model user {
+    id            String    @id
+    name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+    role          String
+    accounts      account[]
+    sessions      session[]
+    posts         post[]
+}
+
+model account {
+    id                String   @id
+    provider          String
+    providerAccountId String
+    refresh_token     String?
+    access_token      String?
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String?
+    session_state     String?
+    user              user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId            String
+    players           player[]
+
+    create account_create_data?
+    update account_update_data?
+
+    @@unique([provider, providerAccountId])
+}
+
+model session {
+    id           String   @id
+    sessionToken String   @unique
+    expires      DateTime
+    user         user     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId    String
+}
+
+model post {
+    id          String   @id
+    name        String
+    createdAt   DateTime
+    updatedAt   DateTime @updatedAt
+    createdBy   user     @relation(fields: [createdById], references: [id])
+    createdById String
+
+    @@index([name])
+}
+
+// 账户创建内容
+model account_create_data {
+    mobs            mob[]
+    items           item[]
+    skills          skill[]
+    simulators      simulator[]
+    belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String      @id
+}
+
+// 账户更新内容
+model account_update_data {
+    mobs            mob[]
+    items           item[]
+    skills          skill[]
+    simulator       simulator[]
+    belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String      @id
+}
+
+// wiki内容 ----------------------------------------------------------------------------------------------
+
+// 世界
+model world {
+    id String @id
+
+    name      String
+    addresses address[]
+}
+
+// 地点
+model address {
+    id String @id
+
+    name String
+    type String
+    posX Int
+    posY Int
+
+    zones zone[]
+
+    belongToWorld world  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+    worldId       String
+}
+
+// 活动
+model activity {
+    id   String @id
+    name String
+
+    zones   zone[]
+    recipes recipe[]
+}
+
+// 地点区域
+model zone {
+    id String @id
+
+    name        String
+    linkZone    String[]
+    rewardNodes Int?
+    mobs        mob[]
+    npcs        npc[]
+
+    belongToActivity activity? @relation(fields: [activityId], references: [id])
+    activityId       String?
+    belongToAddress  address   @relation(fields: [addressId], references: [id])
+    addressId        String
+}
+
+model image {
+    id String @id
+
+    dataUrl String
+
+    belongToNpc      npc?    @relation(fields: [npcId], references: [id])
+    npcId            String?
+    belongToWeapon   weapon? @relation(fields: [weaponId], references: [itemId])
+    weaponId         String?
+    belongToArmor    armor?  @relation(fields: [armorId], references: [itemId])
+    armorId          String?
+    belongToOptEquip option? @relation(fields: [optEquipId], references: [itemId])
+    optEquipId       String?
+    usedByMob        mob?    @relation(fields: [mobId], references: [id])
+    mobId            String?
+}
+
+// 统计字段
+model statistic {
+    id String @id
+
+    updatedAt       DateTime   @updatedAt
+    createdAt       DateTime
+    usageTimestamps DateTime[]
+    viewTimestamps  DateTime[]
+
+    belongToMob       mob?
+    belongToItem      item?
+    belongToSkill     skill?
+    belongToCharacter character?
+    belongToSimulator simulator?
+}
+
+// 怪物
+model mob {
+    id String @id
+
+    name                             String
+    type                             String
+    captureable                      Boolean
+    baseLv                           Int
+    experience                       Int
+    partsExperience                  Int
+    initialElement                   String
+    radius                           Int
+    maxhp                            Int
+    physicalDefense                  Int
+    physicalResistance               Int
+    magicalDefense                   Int
+    magicalResistance                Int
+    criticalResistance               Int
+    avoidance                        Int
+    dodge                            Int
+    block                            Int
+    normalAttackResistanceModifier   Int
+    physicalAttackResistanceModifier Int
+    magicalAttackResistanceModifier  Int
+    actions                          Json
+
+    drops drop_item[]
+
+    details     String
+    dataSources String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+    image       image[]
+
+    belongToZones              zone[]
+    usedByTaskKillRequirements task_kill_requirement[]
+    usedByMembers              member[]
+    usedByPlayerPets           player_pet[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+}
+
+// 道具
+model item {
+    id        String @id
+    tableType String
+
+    weapon     weapon?
+    armor      armor?
+    option     option?
+    special    special?
+    crystal    crystal?
+    consumable consumable?
+    material   material?
+
+    recipe recipe?
+
+    usedByDropItem    drop_item[]
+    usedByRewardItem  reward[]
+    usedByTaskRequire task_collect_require[]
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+
+    // 道具可以作为其他道具的配方原料
+    usedInIngredient recipe_ingredient[]
+}
+
+// 素材物品
+model material {
+    name String
+
+    type    String
+    ptValue Int
+    price   Int
+
+    dataSources String
+    details     String
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 消耗品
+model consumable {
+    name String
+
+    type           String
+    effectDuration Int
+    effects        String[]
+
+    dataSources String
+    details     String
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+    // recipe       recipe?
+
+    usedBy character[]
+}
+
+// 锻晶
+model crystal {
+    name      String
+    type      String
+    modifiers String[]
+
+    dataSources String
+    details     String
+
+    front crystal[] @relation("FrontRelation")
+    back  crystal[] @relation("BackRelation")
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+
+    usedByWeapon         weapon[]
+    usedByPlayerWeapon   player_weapon[]
+    usedByArmor          armor[]
+    usedByPlayerArmor    player_armor[]
+    usedByOptEquip       option[]
+    usedByPlayerOptEquip player_option[]
+    usedBySpeEquip       special[]
+    usedByPlayerSpeEquip player_special[]
+
+    frontRelated crystal[] @relation("FrontRelation")
+    backRelated  crystal[] @relation("BackRelation")
+}
+
+// 武器
+model weapon {
+    name            String
+    type            String
+    baseAbi         Int
+    stability       Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    // recipe          recipe?
+    elementType     String
+
+    dataSources String
+    details     String
+
+    usedBy player_weapon[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 防具
+model armor {
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    // recipe          recipe?
+
+    dataSources String
+    details     String
+
+    usedBy player_armor[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 追加装备
+model option {
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    colorA          Int
+    colorB          Int
+    colorC          Int
+    image           image[]
+    // recipe          recipe?
+
+    dataSources String
+    details     String
+
+    usedBy player_option[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 特殊装备
+model special {
+    name            String
+    baseDef         Int
+    defaultCrystals crystal[]
+    modifiers       String[]
+    // recipe          recipe?
+
+    dataSources String
+    details     String
+
+    usedBy player_special[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @id
+}
+
+// 配方
+model recipe {
+    id String @id
+
+    recipeEntries recipe_ingredient[]
+
+    belongToItem item   @relation(fields: [itemId], references: [id])
+    itemId       String @unique
+
+    inActivity activity? @relation(fields: [activityId], references: [id])
+    activityId String?
+}
+
+// 配方项
+model recipe_ingredient {
+    id String @id
+
+    count  Int
+    type   String // 货币或者道具
+    item   item?   @relation(fields: [itemId], references: [id])
+    itemId String?
+
+    // 从属于配方
+    belongTorecipe recipe @relation(fields: [recipeId], references: [id])
+    recipeId       String
+}
+
+// 掉落物
+model drop_item {
+    id String @id
+
+    item            item   @relation(fields: [itemId], references: [id])
+    itemId          String
+    probability     Int
+    relatedPartType String
+    relatedPartInfo String
+    breakRewardType String
+
+    dropBy   mob    @relation(fields: [dropById], references: [id])
+    dropById String
+}
+
+// NPC
+model npc {
+    id String @id
+
+    name String
+
+    tasks task[]
+    image image[]
+
+    belongToZone zone   @relation(fields: [zoneId], references: [id])
+    zoneId       String
+}
+
+// 任务
+model task {
+    id String @id
+
+    lv          Int
+    name        String
+    type        String
+    description String
+    kills       task_kill_requirement[]
+    requires    task_collect_require[]
+    rewards     reward[]
+
+    belongToNpc npc    @relation(fields: [npcId], references: [id])
+    npcId       String
+}
+
+// 任务击杀要求
+model task_kill_requirement {
+    id String @id
+
+    mob   mob    @relation(fields: [mobId], references: [id])
+    mobId String
+    count Int
+
+    belongToTask task   @relation(fields: [taskId], references: [id])
+    taskId       String
+}
+
+// 任务收集需求项
+model task_collect_require {
+    id String @id
+
+    count  Int
+    item   item   @relation(fields: [itemId], references: [id])
+    itemId String
+
+    // 从属于任务
+    belongTorecipe task   @relation(fields: [taskId], references: [id])
+    taskId         String
+}
+
+// 任务奖励
+model reward {
+    id String @id
+
+    type        String
+    value       Int
+    probability Int
+    item        item?   @relation(fields: [itemId], references: [id]) // 仅当type为item时生效
+    itemId      String?
+
+    belongToTask task   @relation(fields: [taskId], references: [id])
+    taskId       String
+}
+
+// 技能
+model skill {
+    id String @id
+
+    treeType     String
+    posX         Int
+    posY         Int
+    tier         Int
+    name         String
+    isPassive    Boolean
+    chargingType String
+    distanceType String
+    targetType   String // 目标类型: 自己\队友\敌人
+    effect       skill_effect[]
+
+    details     String
+    dataSources String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    usedByCharacterSkill character_skill[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+}
+
+// 技能效果
+model skill_effect {
+    id String @id
+
+    condition         String
+    elementLogic      String
+    castingRange      Int
+    effectiveRange    Int
+    motionFixed       String
+    motionModified    String
+    chantingFixed     String
+    chantingModified  String
+    reservoirFixed    String
+    reservoirModified String
+    startupFrames     String
+    cost              String
+    description       String
+    logic             Json
+    details           String
+
+    belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
+    belongToskillId String
+}
+
+// 模拟器内容 ----------------------------------------------------------------------------------------------
+
+// 资产归属和操作实体
+model player {
+    id String @id
+
+    name    String
+    useIn   String
+    actions Json
+
+    pets       player_pet[]
+    weapons    player_weapon[]
+    armors     player_armor[]
+    optEquips  player_option[]
+    speEquips  player_special[]
+    avatars    avatar[]
+    characters character[]
+
+    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String
+
+    usedByMember member[]
+}
+
+// 玩家自定义武器
+model player_weapon {
+    id String @id
+
+    name       String
+    baseAbi    Int // 当模板不存在时生效
+    stability  Int // 当模板不存在时生效
+    extraAbi   Int
+    template   weapon?   @relation(fields: [templateId], references: [itemId])
+    templateId String?
+    refinement Int
+    modifiers  String[]
+    crystals   crystal[]
+
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String
+
+    usedByMainHand character[] @relation("weapon")
+    usedBySubHand  character[] @relation("subWeapon")
+}
+
+// 玩家自定义身体装备
+model player_armor {
+    id String @id
+
+    name       String
+    def        Int
+    ability    String
+    template   armor?    @relation(fields: [templateId], references: [itemId])
+    templateId String?
+    refinement Int
+    modifiers  String[]
+    crystals   crystal[]
+
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String
+
+    usedBy character[]
+}
+
+// 玩家自定义追加装备
+model player_option {
+    id String @id
+
+    name       String
+    extraAbi   Int
+    template   option    @relation(fields: [templateId], references: [itemId])
+    templateId String
+    refinement Int
+    crystals   crystal[]
+
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String
+
+    usedBy character[]
+}
+
+// 玩家自定义特殊装备
+model player_special {
+    id String @id
+
+    name       String
+    extraAbi   Int
+    template   special   @relation(fields: [templateId], references: [itemId])
+    templateId String
+    crystals   crystal[]
+
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String
+
+    usedBy character[]
+}
+
+// 自定义宠物
+model player_pet {
+    id String @id
+
+    template    mob    @relation(fields: [templateId], references: [id])
+    templateId  String
+    name        String
+    pStr        Int
+    pInt        Int
+    pVit        Int
+    pAgi        Int
+    pDex        Int
+    str         Int
+    int         Int
+    vit         Int
+    agi         Int
+    dex         Int
+    weaponType  String
+    personaType String
+    type        String
+    weaponAtk   Int
+    generation  Int
+    maxLv       Int
+
+    master   player @relation(fields: [masterId], references: [id])
+    masterId String
+}
+
+// 时装
+model avatar {
+    id String @id
+
+    name           String
+    type           String
+    modifiers      String[]
+    belongToPlayer player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+    playerId       String
+
+    usedBy character[]
+}
+
+// 机体
+model character {
+    id   String @id
+    name String
+
+    lv                Int
+    str               Int
+    int               Int
+    vit               Int
+    agi               Int
+    dex               Int
+    personalityType   String
+    personalityValue  Int
+    weapon            player_weapon     @relation("weapon", fields: [weaponId], references: [id])
+    weaponId          String
+    subWeapon         player_weapon     @relation("subWeapon", fields: [subWeaponId], references: [id])
+    subWeaponId       String
+    armor             player_armor      @relation(fields: [armorId], references: [id])
+    armorId           String
+    optEquip          player_option     @relation(fields: [optEquipId], references: [id])
+    optEquipId        String
+    speEquip          player_special    @relation(fields: [speEquipId], references: [id])
+    speEquipId        String
+    avatars           avatar[]
+    cooking           String[]
+    modifiers         String[]
+    skills            character_skill[]
+    partnerSkillAId   String
+    partnerSkillAType String
+    partnerSkillBId   String
+    partnerSkillBType String
+    consumableList    consumable[]
+    combos            combo[]
+    master            player            @relation(fields: [masterId], references: [id])
+    masterId          String
+
+    details String
+
+    usedInMercenary mercenary?
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+}
+
+// 角色习得技能
+model character_skill {
+    id String @id
+
+    lv         Int
+    isStarGem  Boolean
+    template   skill   @relation(fields: [templateId], references: [id])
+    templateId String
+
+    usedBy combo_step[]
+
+    belongToCharacter character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+    characterId       String
+}
+
+// 连击
+model combo {
+    id String @id
+
+    disable Boolean
+    name    String
+    content combo_step[]
+
+    belongToCharacter character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+    characterId       String
+}
+
+// 连击步骤
+model combo_step {
+    id String @id
+
+    type             String
+    characterSkill   character_skill @relation(fields: [characterSkillId], references: [id])
+    characterSkillId String
+
+    belongToCombo combo  @relation(fields: [comboId], references: [id], onDelete: Cascade)
+    comboId       String
+}
+
+// 佣兵
+model mercenary {
+    type       String
+    template   character @relation(fields: [templateId], references: [id])
+    templateId String    @id
+
+    skillAId   String
+    skillAType String
+    skillBId   String
+    skillBType String
+
+    usedByMemberPartner   member[] @relation("partner")
+    usedByMemberMercenary member[] @relation("mercenary")
+}
+
+// 模拟器
+model simulator {
+    id String @id
+
+    name  String
+    campA team[] @relation("campA")
+    campB team[] @relation("campB")
+
+    details String?
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
+}
+
+// 队伍
+model team {
+    id String @id
+
+    name    String?
+    members member[]
+    gems    String[]
+
+    usedByCampA simulator[] @relation("campA")
+    usedByCampB simulator[] @relation("campB")
+}
+
+// 队伍成员
+model member {
+    id String @id
+
+    name              String
+    order             Int
+    player            player?    @relation(fields: [playerId], references: [id])
+    playerId          String?
+    partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])
+    partnerId         String?
+    mercenary         mercenary? @relation("mercenary", fields: [mercenaryId], references: [templateId])
+    mercenaryId       String?
+    mob               mob?       @relation(fields: [mobId], references: [id])
+    mobId             String?
+    mobDifficultyFlag String // 仅当类型为Boss时生效
+
+    belongToTeams team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+    teamId        String
+}

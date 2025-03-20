@@ -49,13 +49,12 @@ mount(() => <StartClient />, document.getElementById("app")!);
 // try {
 //   // console.log("查询Mob");
 //   const mob = await findMobById(defaultMob.id);
-//   // console.log("找到Mob:", mob);
+//   console.log("找到Mob:", mob);
 // } catch (e) {
 //   // console.log(e);
 //   // console.log("创建Mob");
-//   const { statistic, image, belongToZones, ...mob } = defaultMob;
-//   const newMob = await createMob(mob);
-//   // console.log("已创建新Mob:", newMob);
+//   const newMob = await createMob(defaultMob);
+//   console.log("已创建新Mob:", newMob);
 // }
 
 // let newSkill: Skill = defaultSkill;

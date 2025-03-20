@@ -6,7 +6,7 @@ import { type Skill } from "./repositories/skill";
 import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
 import * as _ from "lodash-es";
-import { type CustomPet } from "./repositories/customPet";
+import { type PlayerPet } from "./repositories/customPet";
 import { type DB } from "../db/clientDB/generated/kysely/kyesely";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
@@ -131,8 +131,6 @@ export const initialStore: Store = {
   },
 };
 
-let actStore: Store;
-
 const safeParse = (data: string) => {
   try {
     return JSON.parse(data);
@@ -143,36 +141,32 @@ const safeParse = (data: string) => {
 };
 
 const getActStore = () => {
-  // console.log("store")
-  if (!actStore) {
-    const isBrowser = typeof window !== "undefined";
-    if (isBrowser) {
-      const storage = localStorage.getItem("store");
-      if (storage) {
-        const oldStore = safeParse(storage) || {};
-        const newStore = initialStore;
+  const isBrowser = typeof window !== "undefined";
+  if (isBrowser) {
+    const storage = localStorage.getItem("store");
+    if (storage) {
+      const oldStore = safeParse(storage) || {};
+      const newStore = initialStore;
 
-        // 排除版本信息
-        const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
-        const { version: newVersion, ...newStoreWithoutVersion } = newStore;
+      // 排除版本信息
+      const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
+      const { version: newVersion, ...newStoreWithoutVersion } = newStore;
 
-        let mergedStore: Store;
-        if (oldVersion && oldVersion === newVersion) {
-          mergedStore = _.merge({}, newStore, oldStore);
-        } else {
-          mergedStore = _.merge({}, newStoreWithoutVersion, oldStoreWithoutVersion);
-          mergedStore.version = newVersion;
-          localStorage.setItem("store", JSON.stringify(mergedStore));
-        }
-        actStore = mergedStore;
+      let mergedStore: Store;
+      if (oldVersion && oldVersion === newVersion) {
+        mergedStore = _.merge({}, newStore, oldStore);
       } else {
-        console.log(performance.now(), "初始化本地配置");
-        localStorage.setItem("store", JSON.stringify(initialStore));
-        actStore = initialStore;
+        mergedStore = _.merge({}, newStoreWithoutVersion, oldStoreWithoutVersion);
+        mergedStore.version = newVersion;
+        localStorage.setItem("store", JSON.stringify(mergedStore));
       }
+      return mergedStore;
+    } else {
+      console.log(performance.now(), "初始化本地配置");
+      localStorage.setItem("store", JSON.stringify(initialStore));
     }
   }
-  return actStore;
+  return initialStore;
 };
 
 const [store, setStore] = createStore<Store>(getActStore());

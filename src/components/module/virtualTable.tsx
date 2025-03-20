@@ -9,7 +9,7 @@ import { type Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "~/repositories/untils";
 import { Portal } from "solid-js/web";
 import Dialog from "../controls/dialog";
-import { typeDB } from "~/repositories/database";
+import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
 
 export default function VirtualTable<
   Item extends {
@@ -17,8 +17,7 @@ export default function VirtualTable<
     id: string;
   },
 >(props: {
-  tableName: keyof typeDB;
-  item: () => Item;
+  tableName: keyof DB;
   itemList: () => Item[];
   itemDic: (locale: Locale) => ConvertToAllString<Item>;
   tableColumns: ColumnDef<Item>[];
@@ -268,21 +267,6 @@ export default function VirtualTable<
         </thead>
         {tableBodyDom()}
       </table>
-      <Portal>
-        <Dialog
-          state={store.wiki[props.tableName]?.dialogState ?? false}
-          setState={(state: boolean) => setStore("wiki", props.tableName, "dialogState", state)}
-        >
-          <OverlayScrollbarsComponent
-            element="div"
-            class="w-full"
-            options={{ scrollbars: { autoHide: "scroll" } }}
-            defer
-          >
-            <pre class="p-3">{JSON.stringify(props.item(), null, 2)}</pre>
-          </OverlayScrollbarsComponent>
-        </Dialog>
-      </Portal>
     </OverlayScrollbarsComponent>
   );
 }

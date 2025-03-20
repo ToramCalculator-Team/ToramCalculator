@@ -35,7 +35,6 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
  * 生成通用数据类型
  *
  * @param T 原始类型
- * @param K 
  * @param MainTableDataFun
  * @returns 转换后的类型
  */

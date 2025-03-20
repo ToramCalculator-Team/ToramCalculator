@@ -8,10 +8,13 @@ import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
 import { type Enums } from "~/repositories/enums";
-import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 import { createSyncResource } from "~/hooks/resource";
 import VirtualTable from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
+import { DataEnums } from "../../../../../../db/clientDB/generated/dataEnums";
+import { Portal } from "solid-js/web";
+import Dialog from "~/components/controls/dialog";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -26,12 +29,13 @@ export default function MobIndexPage() {
       formState: newState,
     });
   };
-  const setMob = (newMob: Mob): void => {
+  const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
+  const [mob , {refetch: refetchMob}] = createResource(() => store.wiki.mob?.id, findMobById);
 
   // table
-  const mobColumns: ColumnDef<Mob>[] = [
+  const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
     {
       accessorKey: "id",
       header: () => MobDic(store.settings.language).id,
@@ -47,7 +51,7 @@ export default function MobIndexPage() {
     {
       accessorKey: "type",
       header: () => MobDic(store.settings.language).type,
-      cell: (info) => dictionary().enums.MobType[info.getValue<Enums["MobType"]>()],
+      cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
       size: 120,
     },
     {
@@ -74,9 +78,9 @@ export default function MobIndexPage() {
       size: 120,
     },
     {
-      accessorKey: "elementType",
-      header: () => MobDic(store.settings.language).elementType,
-      cell: (info) => info.getValue<Enums["ElementType"]>(),
+      accessorKey: "initialElement",
+      header: () => MobDic(store.settings.language).initialElement,
+      cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
       size: 120,
     },
     {
@@ -133,15 +137,15 @@ export default function MobIndexPage() {
     // },
   ];
   const [mobList] = createSyncResource("mob", findMobs);
-  const [mob, { refetch: refetchMob }] = createResource(store.wiki.mob?.id, findMobById);
 
-  const mobTableHiddenColumns: Array<keyof Mob> = ["id", "updatedByAccountId"];
+  const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
 
-  function mobTdGenerator(props: { cell: Cell<Mob, keyof Mob> }) {
+  function mobTdGenerator(props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-
-    switch (props.cell.column.id as Exclude<keyof Mob, keyof typeof mobTableHiddenColumns>) {
-      case "elementType":
+    type MobKeys = keyof DataEnums["mob"];
+    type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
+    switch (props.cell.column.id as keyof Mob["MainTable"]) {
+      case "initialElement":
         setTdContent(
           {
             Water: <Icon.Element.Water class="h-12 w-12" />,
@@ -151,7 +155,7 @@ export default function MobIndexPage() {
             Light: <Icon.Element.Light class="h-12 w-12" />,
             Dark: <Icon.Element.Dark class="h-12 w-12" />,
             Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-          }[props.cell.getValue() as Enums["ElementType"]] ?? undefined,
+          }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined,
         );
 
         break;
@@ -182,26 +186,13 @@ export default function MobIndexPage() {
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
           when={
-            Object.keys(dictionary().enums).includes(
-              "Mob" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
-            ) &&
-            Object.keys(
-              dictionary().enums[
-                ("Mob" +
-                  props.cell.column.id.charAt(0).toLocaleUpperCase() +
-                  props.cell.column.id.slice(1)) as DicEnumsKeys
-              ],
-            ).includes(props.cell.getValue()) &&
-            props.cell.column.id !== "elementType" // elementType已特殊处理，再以文本显示
+            props.cell.column.id in dictionary().enums.mob &&
+            props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
           }
           fallback={tdContent()}
         >
           {
-            dictionary().enums[
-              ("Mob" +
-                props.cell.column.id.charAt(0).toLocaleUpperCase() +
-                props.cell.column.id.slice(1)) as DicEnumsKeys
-            ][props.cell.getValue() as keyof DicEnumsKeysValue]
+            dictionary().enums.mob[props.cell.column.id as MobKeys][props.cell.getValue() as MobValueKeys<MobKeys>]
           }
         </Show>
       </td>
@@ -277,7 +268,7 @@ export default function MobIndexPage() {
                 class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(1)}
                 style={{
-                  "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
@@ -291,7 +282,7 @@ export default function MobIndexPage() {
                 class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(2)}
                 style={{
-                  "background-image": `url(${mobList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  // "background-image": `url(${mobList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
@@ -305,7 +296,7 @@ export default function MobIndexPage() {
                 class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-dividing-color shadow-lg" : ""}`}
                 onMouseEnter={() => setActiveBannerIndex(3)}
                 style={{
-                  "background-image": `url(${mobList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                  // "background-image": `url(${mobList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
                   "background-position": "center center",
                 }}
               >
@@ -341,7 +332,6 @@ export default function MobIndexPage() {
           </div>
           <VirtualTable
             tableName="mob"
-            item={mob}
             itemList={() => mobList() ?? []}
             itemDic={MobDic}
             tableColumns={mobColumns}
@@ -362,6 +352,21 @@ export default function MobIndexPage() {
           </Show>
         </Presence>
       </div>
+      <Portal>
+        <Dialog
+          state={store.wiki.mob?.dialogState ?? false}
+          setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
+        >
+          <OverlayScrollbarsComponent
+            element="div"
+            class="w-full"
+            options={{ scrollbars: { autoHide: "scroll" } }}
+            defer
+          >
+            <pre class="p-3">{JSON.stringify(mob(), null, 2)}</pre>
+          </OverlayScrollbarsComponent>
+        </Dialog>
+      </Portal>
     </>
   );
 }

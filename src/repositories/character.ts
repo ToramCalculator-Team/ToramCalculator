@@ -4,19 +4,19 @@ import { DB, character } from "~/../db/clientDB/generated/kysely/kyesely";
 import { defaultStatistics, Statistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Combo, comboSubRelations } from "./combo";
-import { CustomWeapon, CustomWeaponDic, customWeaponSubRelations, defaultCustomWeapons } from "./customWeapon";
-import { CustomArmor, CustomArmorDic, customArmorSubRelations, defaultCustomArmor } from "./customArmor";
-import { CustomAddEquip, CustomAddEquipDic, customAddEquipSubRelations, defaultCustomAddEquip } from "./customAddEquip";
-import { CustomSpeEquip, CustomSpeEquipDic, customSpeEquipSubRelations, defaultCustomSpeEquip } from "./customSpeEquip";
+import { PlayerWeapon, PlayerWeaponDic, customWeaponSubRelations, defaultPlayerWeapons } from "./playerWeapon";
+import { PlayerArmor, PlayerArmorDic, customArmorSubRelations, defaultPlayerArmor } from "./customArmor";
+import { PlayerAddEquip, PlayerAddEquipDic, customAddEquipSubRelations, defaultPlayerAddEquip } from "./customAddEquip";
+import { PlayerSpeEquip, PlayerSpeEquipDic, customSpeEquipSubRelations, defaultPlayerSpeEquip } from "./customSpeEquip";
 import { ConvertToAllString, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export type Character = ModifyKeys<Awaited<ReturnType<typeof findCharacterById>>, {
-  weapon: CustomWeapon;
-  subWeapon: CustomWeapon;
-  armor: CustomArmor;
-  addEquip: CustomAddEquip;
-  speEquip: CustomSpeEquip;
+  weapon: PlayerWeapon;
+  subWeapon: PlayerWeapon;
+  armor: PlayerArmor;
+  addEquip: PlayerAddEquip;
+  speEquip: PlayerSpeEquip;
   combos: Combo[];
   statistic: Statistic;
 }>;
@@ -37,45 +37,45 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
       .as("combos"),
     jsonObjectFrom(
       eb
-        .selectFrom("custom_weapon")
+        .selectFrom("player_weapon")
         .whereRef("id", "=", "character.weaponId")
-        .selectAll("custom_weapon")
+        .selectAll("player_weapon")
         .select((eb) => customWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
       .$notNull()
       .as("weapon"),
     jsonObjectFrom(
       eb
-        .selectFrom("custom_weapon")
+        .selectFrom("player_weapon")
         .whereRef("id", "=", "character.subWeaponId")
-        .selectAll("custom_weapon")
+        .selectAll("player_weapon")
         .select((eb) => customWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
       .$notNull()
       .as("subWeapon"),
     jsonObjectFrom(
       eb
-        .selectFrom("custom_armor")
+        .selectFrom("player_armor")
         .whereRef("id", "=", "character.armorId")
-          .selectAll("custom_armor")
+          .selectAll("player_armor")
           .select((eb) => customArmorSubRelations(eb, eb.val("character.armorId"))),
     )
       .$notNull()
       .as("armor"),
     jsonObjectFrom(
       eb
-        .selectFrom("custom_additional_equipment")
+        .selectFrom("player_additional_equipment")
         .whereRef("id", "=", "character.addEquipId")
-          .selectAll("custom_additional_equipment")
+          .selectAll("player_additional_equipment")
           .select((eb) => customAddEquipSubRelations(eb, eb.val("character.addEquipId"))),
     )
       .$notNull()
       .as("addEquip"),
     jsonObjectFrom(
       eb
-        .selectFrom("custom_special_equipment")
+        .selectFrom("player_special_equipment")
         .whereRef("id", "=", "character.speEquipId")
-        .selectAll("custom_special_equipment")
+        .selectAll("player_special_equipment")
         .select((eb) => customSpeEquipSubRelations(eb, eb.val("character.speEquipId"))),
     )
       .$notNull()
@@ -136,16 +136,16 @@ export const defaultCharacter: Character = {
   dex: 0,
   personalityType: "None",
   personalityValue: 0,
-  weapon: defaultCustomWeapons.mainHand,
-  weaponId: defaultCustomWeapons.mainHand.id,
-  subWeapon: defaultCustomWeapons.subHand,
-  subWeaponId: defaultCustomWeapons.subHand.id,
-  armor: defaultCustomArmor,
-  armorId: defaultCustomArmor.id,
-  addEquip: defaultCustomAddEquip,
-  addEquipId: defaultCustomAddEquip.id,
-  speEquip: defaultCustomSpeEquip,
-  speEquipId: defaultCustomSpeEquip.id,
+  weapon: defaultPlayerWeapons.mainHand,
+  weaponId: defaultPlayerWeapons.mainHand.id,
+  subWeapon: defaultPlayerWeapons.subHand,
+  subWeaponId: defaultPlayerWeapons.subHand.id,
+  armor: defaultPlayerArmor,
+  armorId: defaultPlayerArmor.id,
+  addEquip: defaultPlayerAddEquip,
+  addEquipId: defaultPlayerAddEquip.id,
+  speEquip: defaultPlayerSpeEquip,
+  speEquipId: defaultPlayerSpeEquip.id,
   cooking: [],
   combos: [],
   modifiers: [],
@@ -176,15 +176,15 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         dex: "灵巧",
         personalityType: "个人能力类型",
         personalityValue: "个人能力值",
-        weapon: CustomWeaponDic(locale),
+        weapon: PlayerWeaponDic(locale),
         weaponId: "主手武器ID",
-        subWeapon: CustomWeaponDic(locale),
+        subWeapon: PlayerWeaponDic(locale),
         subWeaponId: "副手武器ID",
-        armor: CustomArmorDic(locale),
+        armor: PlayerArmorDic(locale),
         armorId: "防具ID",
-        addEquip: CustomAddEquipDic(locale),
+        addEquip: PlayerAddEquipDic(locale),
         addEquipId: "追加装备ID",
-        speEquip: CustomSpeEquipDic(locale),
+        speEquip: PlayerSpeEquipDic(locale),
         speEquipId: "特殊装备ID",
         cooking: "料理",
         combos: "连击",
@@ -212,15 +212,15 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         dex: "灵巧",
         personalityType: "個人能力類型",
         personalityValue: "個人能力值",
-        weapon: CustomWeaponDic(locale),
+        weapon: PlayerWeaponDic(locale),
         weaponId: "主手武器ID",
-        subWeapon: CustomWeaponDic(locale),
+        subWeapon: PlayerWeaponDic(locale),
         subWeaponId: "副手武器ID",
-        armor: CustomArmorDic(locale),
+        armor: PlayerArmorDic(locale),
         armorId: "防具ID",
-        addEquip: CustomAddEquipDic(locale),
+        addEquip: PlayerAddEquipDic(locale),
         addEquipId: "追加裝備ID",
-        speEquip: CustomSpeEquipDic(locale),
+        speEquip: PlayerSpeEquipDic(locale),
         speEquipId: "特殊裝備ID",
         cooking: "料理",
         combos: "連擊",
@@ -248,15 +248,15 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         dex: "Dexterity",
         personalityType: "Personality Type",
         personalityValue: "Personality Value",
-        weapon: CustomWeaponDic(locale),
+        weapon: PlayerWeaponDic(locale),
         weaponId: "Weapon ID",
-        subWeapon: CustomWeaponDic(locale),
+        subWeapon: PlayerWeaponDic(locale),
         subWeaponId: "Sub Weapon ID",
-        armor: CustomArmorDic(locale),
+        armor: PlayerArmorDic(locale),
         armorId: "Armor ID",
-        addEquip: CustomAddEquipDic(locale),
+        addEquip: PlayerAddEquipDic(locale),
         addEquipId: "Add Equip ID",
-        speEquip: CustomSpeEquipDic(locale),
+        speEquip: PlayerSpeEquipDic(locale),
         speEquipId: "Spe Equip ID",
         cooking: "Cooking",
         combos: "Combos",
@@ -284,15 +284,15 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character> => {
         dex: "速度",
         personalityType: "個性",
         personalityValue: "個性値",
-        weapon: CustomWeaponDic(locale),
+        weapon: PlayerWeaponDic(locale),
         weaponId: "武器ID",
-        subWeapon: CustomWeaponDic(locale),
+        subWeapon: PlayerWeaponDic(locale),
         subWeaponId: "副武器ID",
-        armor: CustomArmorDic(locale),
+        armor: PlayerArmorDic(locale),
         armorId: "防具ID",
-        addEquip: CustomAddEquipDic(locale),
+        addEquip: PlayerAddEquipDic(locale),
         addEquipId: "追加装備ID",
-        speEquip: CustomSpeEquipDic(locale),
+        speEquip: PlayerSpeEquipDic(locale),
         speEquipId: "特殊装備ID",
         cooking: "料理",
         combos: "連擊",

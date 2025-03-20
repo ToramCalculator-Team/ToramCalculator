@@ -6,18 +6,10 @@ import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, ModifyKeys } from "./untils";
-import { type Enums } from "./enums";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
-export type Mob = ModifyKeys<
-  Awaited<ReturnType<typeof findMobById>>,
-  {
-    type: Enums["MobType"];
-    element: Enums["ElementType"];
-  }
->;
-export type NewMob = Insertable<mob>;
-export type MobUpdate = Updateable<mob>;
+export interface Mob extends DataType<mob, typeof findMobById, typeof createMob> {}
 
 export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
   return [
@@ -59,9 +51,6 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
     )
       .$notNull()
       .as("statistic"),
-    jsonObjectFrom(eb.selectFrom("image").whereRef("id", "=", "mob.imageId").selectAll("image"))
-      .$notNull()
-      .as("image"),
   ];
 }
 
@@ -70,44 +59,46 @@ export async function findMobById(id: string) {
     .selectFrom("mob")
     .where("id", "=", id)
     .selectAll("mob")
-    .select((eb) => mobSubRelations(eb, eb.val(id)))
+    // .select((eb) => mobSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
 export async function findMobs() {
-  const startTime = performance.now()
   const result = (await db
     .selectFrom("mob")
     .selectAll("mob")
     .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
-    .execute()) as Mob[];
-  console.log("耗时", performance.now() - startTime);
+    .execute());
   return result;
 }
 
-export async function updateMob(id: string, updateWith: MobUpdate) {
-  return (await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst()) as Mob;
+export async function updateMob(id: string, updateWith: Mob["Update"]) {
+  return await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function insertMob(trx: Transaction<DB>, newMob: NewMob) {
-  const statistic = await insertStatistic(trx, defaultStatistics.Mob);
-  const image = await trx.insertInto("image").values(defaultImage).returningAll().executeTakeFirstOrThrow();
-  const mob = await trx
-    .insertInto("mob")
-    .values({
-      ...newMob,
-      statisticId: statistic.id,
-      imageId: image.id,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
 
-  return mob as Mob;
-}
-
-export async function createMob(newMob: NewMob) {
+export async function createMob(newMob: Mob["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    return await insertMob(trx, newMob);
+    const statistic = await trx
+      .insertInto("statistic")
+      .values({
+        id: createId(),
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        usageTimestamps: [],
+        viewTimestamps: [],
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const mob = await trx
+      .insertInto("mob")
+      .values({
+        ...newMob,
+        statisticId: statistic.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return mob;
   });
 }
 
@@ -116,7 +107,7 @@ export async function deleteMob(id: string) {
 }
 
 // default
-export const defaultMob: Mob = {
+export const defaultMob: Mob["Select"] = {
   id: "defaultMobId",
   name: "defaultMob",
   type: "Boss",
@@ -124,7 +115,6 @@ export const defaultMob: Mob = {
   actions: [],
   baseLv: 0,
   experience: 0,
-  elementType: "Normal",
   radius: 0,
   maxhp: 0,
   physicalDefense: 0,
@@ -139,19 +129,16 @@ export const defaultMob: Mob = {
   physicalAttackResistanceModifier: 0,
   magicalAttackResistanceModifier: 0,
   partsExperience: 0,
-  belongToZones: [],
+  initialElement: "Normal",
   details: "defaultExtraDetails",
   dataSources: "defaultDataSources",
   statisticId: defaultStatistics.Mob.id,
-  statistic: defaultStatistics.Mob,
-  imageId: defaultImage.id,
-  image: defaultImage,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,
 };
 
 // Dictionary
-export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
+export const MobDic = (locale: Locale): ConvertToAllString<Mob["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -163,7 +150,7 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         actions: "行为",
         baseLv: "基础等级",
         experience: "经验",
-        elementType: "元素属性",
+        initialElement: "元素属性",
         radius: "半径",
         maxhp: "最大生命值",
         physicalDefense: "物理防御",
@@ -178,13 +165,9 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理伤害惯性变动率",
         magicalAttackResistanceModifier: "魔法伤害惯性变动率",
         partsExperience: "部件经验",
-        belongToZones: "所属区域",
         details: "额外说明",
         dataSources: "数据来源",
         statisticId: "统计信息ID",
-        statistic: StatisticDic(locale),
-        imageId: "图片ID",
-        image: ImageDic(locale),
         updatedByAccountId: "更新者ID",
         createdByAccountId: "创建者ID",
       };
@@ -198,7 +181,7 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         actions: "行為",
         baseLv: "基礎等級",
         experience: "經驗",
-        elementType: "元素屬性",
+        initialElement: "元素屬性",
         radius: "半徑",
         maxhp: "最大生命值",
         physicalDefense: "物理防禦",
@@ -213,13 +196,9 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理傷害惡性變動率",
         magicalAttackResistanceModifier: "魔法傷害惡性變動率",
         partsExperience: "部件經驗",
-        belongToZones: "所屬區域",
         details: "額外說明",
         dataSources: "數據來源",
         statisticId: "統計信息ID",
-        statistic: StatisticDic(locale),
-        imageId: "圖片ID",
-        image: ImageDic(locale),
         updatedByAccountId: "更新者ID",
         createdByAccountId: "創建者ID",
       };
@@ -233,7 +212,7 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         actions: "Actions",
         baseLv: "Base Level",
         experience: "Experience",
-        elementType: "Element Type",
+        initialElement: "Element Type",
         radius: "Radius",
         maxhp: "Max HP",
         physicalDefense: "Physical Defense",
@@ -248,13 +227,9 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "Physical Attack Resistance Modifier",
         magicalAttackResistanceModifier: "Magical Attack Resistance Modifier",
         partsExperience: "Parts Experience",
-        belongToZones: "Belong To Zones",
         details: "Details",
         dataSources: "Data Sources",
         statisticId: "Statistic ID",
-        statistic: StatisticDic(locale),
-        imageId: "Image ID",
-        image: ImageDic(locale),
         updatedByAccountId: "Updated By Account ID",
         createdByAccountId: "Created By Account ID",
       };
@@ -268,7 +243,7 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         actions: "行動",
         baseLv: "基本レベル",
         experience: "経験",
-        elementType: "要素",
+        initialElement: "要素",
         radius: "半径",
         maxhp: "最大HP",
         physicalDefense: "物理的防御",
@@ -283,13 +258,9 @@ export const MobDic = (locale: Locale): ConvertToAllString<Mob> => {
         physicalAttackResistanceModifier: "物理攻撃耐性変動率",
         magicalAttackResistanceModifier: "魔法攻撃耐性変動率",
         partsExperience: "部品経験",
-        belongToZones: "所属ゾーン",
         details: "追加情報",
         dataSources: "データソース",
         statisticId: "統計情報ID",
-        statistic: StatisticDic(locale),
-        imageId: "画像ID",
-        image: ImageDic(locale),
         updatedByAccountId: "更新者ID",
         createdByAccountId: "作成者ID",
       };
