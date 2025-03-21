@@ -79,10 +79,10 @@ pnpm backend:up
 # 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
 node db/generator.js
 
-# 4.根据生成的DDL为数据库创建架构
+# 4.根据生成的schema.prisma初始化数据库
 pnpm prisma db push --schema db/serverDB/schema.prisma
 
-# 5.将测试数据sql复制进容器
+# 5.将测试数据导入数据库(在windows上可以使用gitbash来执行)
 bash db_restore.sh
 ```
 
