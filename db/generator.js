@@ -79,6 +79,7 @@ while ((match = objectRegex.exec(enumsContent)) !== null) {
 }
 
 // **第三步：读取 baseSchema.prisma 并替换枚举**
+// **第三步：读取 baseSchema.prisma 并替换枚举**
 const schemaContent = fs.readFileSync(baseSchemaPath, "utf-8");
 const lines = schemaContent.split("\n");
 
@@ -145,7 +146,7 @@ fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
 fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 
 // 写入 clientDB/schema.prisma（保留 generator 配置）
-fs.writeFileSync(clientDBSchemaPath, finalSchema, "utf-8");
+fs.writeFileSync(clientDBSchemaPath, schemaContent.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), "utf-8");
 
 // 写入 serverDB/schema.prisma（删除 generator 配置）
 fs.writeFileSync(serverDBSchemaPath, finalSchema, "utf-8");

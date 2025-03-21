@@ -32,5 +32,6 @@ Thumbs.db
 #db
 db/serverDB/schema.prisma
 db/clientDB/schema.prisma
+db/clientDB/ddl.sql
 db/clientDB/zod
 db/clientDB/kysely

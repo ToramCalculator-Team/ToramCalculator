@@ -4,8 +4,8 @@ import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { live } from "@electric-sql/pglite/live";
-import ddl from "~/../db/clientDB/generated/ddl.sql?raw";
-import { DB } from "../../db/clientDB/generated/kysely/kyesely";
+import ddl from "~/../db/clientDB/ddl.sql?raw";
+import { DB } from "../../db/clientDB/kysely/kyesely";
 
 const ELECTRIC_HOST = "http://localhost:3000/v1/shape";
 // const ELECTRIC_HOST = "https://test.kiaclouth.com/v1/shape";

@@ -71,9 +71,9 @@ subject: 对 commit 的简短描述
 #### 启动后端服务
 ```bash
 # 0.启动postgreSQL和Electric服务
-pnpm backedn:up
+pnpm backend:up
 
-# 1.生成服务端数据库架构（同时会生成客户端数据库架构）
+# 1.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
 node db/generator.js
 
 # 2.根据生成的DDL为数据库创建架构

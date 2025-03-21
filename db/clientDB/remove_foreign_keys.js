@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ddlFilePath = path.join(__dirname, "generated/ddl.sql");
+const ddlFilePath = path.join(__dirname, "ddl.sql");
 
 // 读取文件内容
 let ddlContent = fs.readFileSync(ddlFilePath, "utf-8");
