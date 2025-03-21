@@ -70,28 +70,28 @@ subject: 对 commit 的简短描述
 
 #### 启动后端服务
 ```bash
-# 0.启动postgreSQL和Electric服务
+# 1.安装依赖
+pnpm install
+
+# 2.启动postgreSQL和Electric服务
 pnpm backend:up
 
-# 1.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
+# 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
 node db/generator.js
 
-# 2.根据生成的DDL为数据库创建架构
+# 4.根据生成的DDL为数据库创建架构
 pnpm prisma db push --schema db/serverDB/schema.prisma
 
-# 3.将测试数据sql复制进容器
+# 5.将测试数据sql复制进容器
 bash db_restore.sh
 ```
 
 #### 启动前端应用
 ```bash
-# 1.安装依赖
-pnpm install
-
-# 2.生成PGlite的DDL
+# 1.生成PGlite的DDL
 pnpm dev:db-ddl
 
-# 3.由于目前无法保证同步顺序因此需要删除DDL中的外键关联
+# 2.由于目前无法保证同步顺序因此需要删除DDL中的外键关联
 node db/clientDB/remove_foreign_keys.js
 
 # 3.生成本地数据类型
