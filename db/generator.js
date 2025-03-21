@@ -1,3 +1,6 @@
+/**
+ * 此脚本用于根据ts枚举和基本数据模式生成客户端和服务端prisma架构 
+ */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,8 +10,9 @@ const __dirname = path.dirname(__filename);
 
 const enumsFilePath = path.join(__dirname, "enums.ts");
 const baseSchemaPath = path.join(__dirname, "baseSchema.prisma");
-const outputSchemaPath = path.join(__dirname, "generated/schema.prisma");
-const dataEnumsPath = path.join(__dirname, "generated/dataEnums.ts");
+const serverDBSchemaPath = path.join(__dirname, "serverDB/schema.prisma");
+const clientDBSchemaPath = path.join(__dirname, "clientDB/schema.prisma");
+const dataEnumsPath = path.join(__dirname, "dataEnums.ts");
 
 // **预处理 enums.ts，去除所有注释**
 let enumsContent = fs.readFileSync(enumsFilePath, "utf-8");
@@ -82,7 +86,27 @@ let newSchema = "";
 const enumDefinitions = [];
 
 let currentModel = "";
+let skipGenerators = false;  // ✅ 新增：标记是否跳过 generator 块
+
 for (const line of lines) {
+  // 检测 generator 块开始
+  if (line.trim().startsWith("generator ")) {
+    skipGenerators = true;  // ✅ 开始跳过 generator 块
+    continue;  // 跳过当前行
+  }
+
+  // 检测 generator 块结束
+  if (skipGenerators && line.trim() === "") {
+    skipGenerators = false;  // ✅ 结束跳过 generator 块
+    continue;  // 跳过空行
+  }
+
+  // 如果处于跳过 generator 块的状态，则跳过当前行
+  if (skipGenerators) {
+    continue;
+  }
+
+  // 处理模型和枚举替换逻辑
   const modelMatch = line.match(/model (\w+) {/);
   if (modelMatch) {
     currentModel = modelMatch[1];
@@ -113,13 +137,20 @@ for (const line of lines) {
   newSchema += newLine + "\n";
 }
 
+// 添加枚举定义
 const finalSchema = newSchema + "\n" + enumDefinitions.join("\n\n");
-fs.mkdirSync(path.dirname(outputSchemaPath))
-fs.writeFileSync(outputSchemaPath, finalSchema, "utf-8");
+
+// 创建目录并写入文件
+fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
+fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
+
+// 写入 clientDB/schema.prisma（保留 generator 配置）
+fs.writeFileSync(clientDBSchemaPath, finalSchema, "utf-8");
+
+// 写入 serverDB/schema.prisma（删除 generator 配置）
+fs.writeFileSync(serverDBSchemaPath, finalSchema, "utf-8");
 
 console.log("✅ schema.prisma 生成完成！");
-
-
 
 // **第四步：生成 dataEnums.ts**
 const dataEnums = {};

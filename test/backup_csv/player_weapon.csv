@@ -1,0 +1,3 @@
+id,name,baseAbi,stability,extraAbi,templateId,refinement,modifiers,masterId
+defaultPlayerSubWeaponId,defaultPlayerSubWeapon,0,0,0,defaultItemSubWeaponId,0,{},defaultPlayerId
+defaultPlayerWeaponId,defaultPlayerWeapon,0,0,10,defaultItemWeaponId,15,{},defaultPlayerId

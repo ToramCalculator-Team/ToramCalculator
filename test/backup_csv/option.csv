@@ -1,0 +1,2 @@
+name,baseDef,modifiers,colorA,colorB,colorC,dataSources,details,itemId
+defaultOptEquipId,0,"{""maxMp + 300"",""cspd + 400"",""mPie + 20%""}",0,0,0,"","",defaultIteamOptEquipId

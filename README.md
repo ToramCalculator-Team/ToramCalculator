@@ -70,27 +70,23 @@ subject: 对 commit 的简短描述
 
 #### 启动后端服务
 ```bash
-# 0.需要安装docker
+# 0.启动postgreSQL和Electric服务
+pnpm backedn:up
 
-# 1.启动postgreSQL和Electric服务
-docker compose --env-file .env -f ./backend/docker-compose.yaml up
+# 1.生成服务端数据库架构（同时会生成客户端数据库架构）
+node db/generator.js
 
-# 2.将测试数据sql复制进容器
-docker cp ./db/clientDB/toramDB.sql toram-calculator-postgres-1:/
+# 2.根据生成的DDL为数据库创建架构
+pnpm prisma db push --schema db/serverDB/schema.prisma
 
-# 3.还原数据库
-docker exec -i toram-calculator-postgres-1 psql -U postgres -d postgres -f toramDB.sql
+# 3.将测试数据sql复制进容器
+bash db_restore.sh
 ```
 
 #### 启动前端应用
 ```bash
-# 0.需要安装pnpm
-
 # 1.安装依赖
 pnpm install
-
-# 2.生成schema.prisma
-node db/clientDB/generator.js 
 
 # 2.生成PGlite的DDL
 pnpm dev:db-ddl

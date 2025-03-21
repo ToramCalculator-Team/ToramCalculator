@@ -1,0 +1,4 @@
+id,name,type,modifiers,playerId
+defaultAvatarTopId,defaultAvatarTop,Top,"{""str + 2%"",""mPie + 9%""}",defaultPlayerId
+defaultAvatarBottomId,defaultAvaterBottom,Bottom,"{""mPie + 7%"",""distanceDamageBouns.short + 2%""}",defaultPlayerId
+defaultAvatarDecorationId,defaultAvatarDecoration,Decoration,"{""dodge + 6"",""mPie + 7%""}",defaultPlayerId

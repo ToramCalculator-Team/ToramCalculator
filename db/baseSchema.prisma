@@ -1,6 +1,6 @@
 // generator client {
 //     provider        = "prisma-client-js"
-//     previewFeatures = ["relationJoins"]
+//     previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
 // }
 
 generator zod {
@@ -207,7 +207,7 @@ model mob {
 
     drops drop_item[]
 
-    details     String
+    details     String?
     dataSources String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -265,7 +265,7 @@ model material {
     price   Int
 
     dataSources String
-    details     String
+    details     String?
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -280,7 +280,7 @@ model consumable {
     effects        String[]
 
     dataSources String
-    details     String
+    details     String?
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -296,7 +296,7 @@ model crystal {
     modifiers String[]
 
     dataSources String
-    details     String
+    details     String?
 
     front crystal[] @relation("FrontRelation")
     back  crystal[] @relation("BackRelation")
@@ -333,7 +333,7 @@ model weapon {
     elementType     String
 
     dataSources String
-    details     String
+    details     String?
 
     usedBy player_weapon[]
 
@@ -354,7 +354,7 @@ model armor {
     // recipe          recipe?
 
     dataSources String
-    details     String
+    details     String?
 
     usedBy player_armor[]
 
@@ -375,7 +375,7 @@ model option {
     // recipe          recipe?
 
     dataSources String
-    details     String
+    details     String?
 
     usedBy player_option[]
 
@@ -392,7 +392,7 @@ model special {
     // recipe          recipe?
 
     dataSources String
-    details     String
+    details     String?
 
     usedBy player_special[]
 
@@ -525,7 +525,7 @@ model skill {
     targetType   String // 目标类型: 自己\队友\敌人
     effect       skill_effect[]
 
-    details     String
+    details     String?
     dataSources String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -557,7 +557,7 @@ model skill_effect {
     cost              String
     description       String
     logic             Json
-    details           String
+    details           String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
     belongToskillId String
@@ -728,16 +728,16 @@ model character {
     cooking           String[]
     modifiers         String[]
     skills            character_skill[]
-    partnerSkillAId   String
+    partnerSkillAId   String?
     partnerSkillAType String
-    partnerSkillBId   String
+    partnerSkillBId   String?
     partnerSkillBType String
     consumableList    consumable[]
     combos            combo[]
     master            player            @relation(fields: [masterId], references: [id])
     masterId          String
 
-    details String
+    details String?
 
     usedInMercenary mercenary?
 

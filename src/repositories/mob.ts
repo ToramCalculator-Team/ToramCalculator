@@ -63,19 +63,23 @@ export async function findMobById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findMobsLike(searchString: string) {
+  const results = await db.selectFrom("mob").where("name", "like", `%${searchString}%`).selectAll().execute();
+  return results;
+}
+
 export async function findMobs() {
-  const result = (await db
+  const result = await db
     .selectFrom("mob")
     .selectAll("mob")
     .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
-    .execute());
+    .execute();
   return result;
 }
 
 export async function updateMob(id: string, updateWith: Mob["Update"]) {
   return await db.updateTable("mob").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
-
 
 export async function createMob(newMob: Mob["Insert"]) {
   return await db.transaction().execute(async (trx) => {

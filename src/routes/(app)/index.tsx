@@ -21,7 +21,7 @@ import { getDictionary, Locale } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
-import { defaultMob, findMobById, findMobs, type Mob } from "~/repositories/mob";
+import { defaultMob, findMobById, findMobs, findMobsLike, type Mob } from "~/repositories/mob";
 import { findSkillById, findSkills, type Skill } from "~/repositories/skill";
 import { findCrystalById, findCrystals, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
@@ -47,13 +47,7 @@ type Related =
     }
   | undefined;
 
-type Result =
-  | {
-      name: string;
-      relateds: Related[];
-      data: Mob | Skill | Crystal;
-    }
-  | undefined;
+type Result = Mob["Select"];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
 
@@ -133,52 +127,12 @@ export default function Index() {
   //       console.log(res);
   //     }),
   // );
-  const [mobList] = createSyncResource("mob", findMobs);
-  const [crystalList] = createSyncResource("crystal", findCrystals);
-  const [skillList] = createSyncResource("skill", findSkills);
-  const [weaponList] = createSyncResource("weapon", findWeapons);
 
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
-      case "_additional_equipmentTocrystal":
-      case "_additional_equipmentToimage":
-      case "_armorTocrystal":
-      case "_armorToimage":
-      case "_avatarTocharacter":
-      case "_BackRelation":
-      case "_characterTocharacter_skill":
-      case "_characterTocombo":
-      case "_characterToconsumable":
-      case "_crystalToplayer_additional_equipment":
-      case "_crystalToplayer_armor":
-      case "_crystalToplayer_special_equipment":
-      case "_crystalToplayer_weapon":
-      case "_crystalTospecial_equipment":
-      case "_crystalToweapon":
-      case "_FrontRelation":
-      case "_imageToweapon":
-      case "_memberToteam":
-      case "_mobTozone":
-      case "_simulatorToteam":
-      case "account":
-      case "account_create_data":
-      case "account_update_data":
-      case "activity":
-      case "additional_equipment":
-      case "address":
-      case "armor":
-      case "armor_enchantment_attributes":
-      case "avatar":
-      case "character":
-      case "character_skill":
-      case "combo":
-      case "consumable":
       case "crystal":
         return findCrystalById(currentCardId());
-      case "player_additional_equipment":
-      case "player_armor":
       case "player_pet":
-      case "player_special_equipment":
       case "player_weapon":
       case "drop_item":
       case "image":
@@ -199,7 +153,6 @@ export default function Index() {
       case "skill":
         return findSkillById(currentCardId());
       case "skill_effect":
-      case "special_equipment":
       case "statistic":
       case "task":
       case "task_collect_require":
@@ -207,7 +160,6 @@ export default function Index() {
       case "team":
       case "user":
       case "weapon":
-      case "weapon_enchantment_attributes":
       case "world":
       case "zone":
         return findZoneById(currentCardId());
@@ -215,7 +167,7 @@ export default function Index() {
   });
 
   // 搜索函数
-  const mobHiddenData: Array<keyof Mob> = ["id", "image", "imageId", "updatedByAccountId", "createdByAccountId"];
+  const mobHiddenData: Array<keyof Mob["Select"]> = ["id", "updatedByAccountId", "createdByAccountId"];
   const skillHiddenData: Array<keyof (Skill & SkillEffect)> = [
     "id",
     "belongToskillId",
@@ -223,64 +175,6 @@ export default function Index() {
     "createdByAccountId",
   ];
   const crystalHiddenData: Array<keyof Crystal> = [];
-
-  // 对象属性字符串匹配方法
-  const keyWordSearch = <T extends Record<string, unknown>>(
-    obj: T,
-    keyWord: string | number,
-    hiddenData: string[],
-    path: string[] = [],
-    relateds: Related[] = [],
-  ): Related[] | undefined => {
-    Object.keys(obj).forEach((key) => {
-      const currentPath = [...path, key];
-      if (hiddenData.some((data) => data === key)) return;
-      if (_.isArray(obj[key])) {
-        const currentArr = obj[key] as unknown[];
-        currentArr.forEach((item) => {
-          const subRealateds = keyWordSearch(item as Record<string, unknown>, keyWord, hiddenData, currentPath);
-          if (subRealateds) relateds = relateds.concat(subRealateds);
-        });
-      } else if (_.isObject(obj[key])) {
-        const currentObj = obj[key] as Record<string, unknown>;
-        const subRealateds = keyWordSearch(currentObj, keyWord, hiddenData, currentPath);
-        if (subRealateds) relateds = relateds.concat(subRealateds);
-      } else if (_.isNumber(obj[key])) {
-        // console.log("数字类型：", currentPath.join("."), obj[key]);
-        const value = obj[key] as number;
-        if (value === keyWord) {
-          relateds.push({ key: currentPath.join("."), value: value });
-        } else if (typeof keyWord === "string") {
-          try {
-            // const node = parse(keyWord);
-            // const nodeString = node.toString();
-            // math表达式匹配
-            // console.log("准备评估：", keyWord, "上下文为：", { [`${key}`]: value }, "节点类型为：", node.type);
-            if (evaluate(keyWord, { [`${key}`]: value })) {
-              relateds.push({ key: currentPath.join("."), value: value });
-            }
-          } catch (error) {}
-        }
-      } else if (_.isString(obj[key])) {
-        const value = obj[key] as string;
-        // console.log("字符串类型：", currentPath.join("."), obj[key]);
-        if (typeof keyWord === "string") {
-          // console.log("在：", value, "中寻找：", keyWord);
-          if (value.match(keyWord)) {
-            // console.log("符合条件");
-            // 常规字符串匹配
-            relateds.push({ key: currentPath.join("."), value: value });
-          }
-        }
-      } else {
-        // console.log("未知类型：", currentPath.join("."), obj[key]);
-      }
-    });
-    if (relateds.length > 0) {
-      // console.log("在：", path.join("."), "匹配的结果：", relateds);
-      return relateds;
-    }
-  };
 
   // 变量对象，返回所有字符串属性值组成的数组
   function getAllValues(obj: Record<string, unknown>) {
@@ -300,22 +194,6 @@ export default function Index() {
     return values;
   }
 
-  const searchInList = <T extends Mob | Skill | Crystal>(list: T[], key: string | number, hiddenData: string[]) => {
-    if (!key) return;
-    const result: Result[] = [];
-    list.forEach((item) => {
-      keyWordSearch(item, key, hiddenData)
-        ? result.push({
-            name: item.name,
-            relateds: keyWordSearch(item, key, hiddenData)!,
-            data: item,
-          })
-        : null;
-    });
-    // console.log("搜索结果：", result);
-    return result;
-  };
-
   const search = async () => {
     setIsNullResult(true);
     if (searchInputValue() === "" || searchInputValue() === null) {
@@ -329,14 +207,15 @@ export default function Index() {
       history.pushState({ popup: true }, "");
     }
 
-    const parsedInput = parseFloat(searchInputValue());
-    const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
-    const searchValue = isNumber ? parsedInput : searchInputValue();
+    // 将数字字符串转换成数字
+    // const parsedInput = parseFloat(searchInputValue());
+    // const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
+    // const searchValue = isNumber ? parsedInput : searchInputValue();
 
     const finalResult: FinalResult = {
-      mob: searchInList(mobList() ?? [], searchValue, mobHiddenData),
-      skill: searchInList(skillList() ?? [], searchValue, skillHiddenData),
-      crystal: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
+      mob: await findMobsLike(searchInputValue()),
+      // skill: searchInList(skillList() ?? [], searchValue, skillHiddenData),
+      // crystal: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
     };
     setSearchResult(finalResult);
     // 动态初始化列表状态
@@ -472,9 +351,9 @@ export default function Index() {
           <div
             class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
           >
-            <span>MobList: {mobList()?.length}</span>
-            <span>SkillList: {skillList()?.length}</span>
-            <span>CrystalList: {crystalList()?.length}</span>
+            <span>MobList: {mobList.latest?.length}</span>
+            <span>SkillList: {skillList.latest?.length}</span>
+            <span>CrystalList: {crystalList.latest?.length}</span>
             <span>searchResultOpened: {searchResultOpened().toString()}</span>
           </div>
         </Show> */}
@@ -684,13 +563,13 @@ export default function Index() {
                                           transition={{
                                             duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
                                             delay: store.settings.userInterface.isAnimationEnabled
-                                              ? index() < 10
-                                                ? 0.3 + index() * 0.07
+                                              ? index() < 15
+                                                ? groupIndex() * 0.3 + index() * 0.07
                                                 : 0
                                               : 0,
                                           }}
                                           onClick={async () => {
-                                            setCurrentCardId(resultItem?.data.id ?? defaultMob.id);
+                                            setCurrentCardId(resultItem.id ?? defaultMob.id);
                                             setCurrentCardType(groupType);
                                             await refetchData();
                                             setDialogState(true);
@@ -699,7 +578,7 @@ export default function Index() {
                                           <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
                                             {resultItem?.name}
                                           </div>
-                                          <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
+                                          {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
                                             {resultItem?.relateds.map((related, index) => {
                                               return (
                                                 <div class="Related w-fit pr-2 text-left">
@@ -709,7 +588,7 @@ export default function Index() {
                                                 </div>
                                               );
                                             })}
-                                          </div>
+                                          </div> */}
                                         </Motion.button>
                                       );
                                     }}

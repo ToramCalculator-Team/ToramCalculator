@@ -2,7 +2,7 @@ import { DB } from "~/../db/clientDB/generated/kysely/kyesely";
 import { Kysely, PostgresDialect } from "kysely";
 import { PGliteDialect } from "./dialect/dialect";
 import { pgWorker } from "~/initialWorker";
-import { Pool } from "pg";
+// import { Pool } from "pg";
 
 // const PGdialect = new PostgresDialect({
 //   pool: new Pool({
@@ -12,10 +12,6 @@ import { Pool } from "pg";
 //     port: 5432,
 //     max: 10,
 //   })
-// })
-
-// export const db = new Kysely<DB>({
-//   dialect: PGdialect,
 // })
 
 // debugger

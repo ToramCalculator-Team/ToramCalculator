@@ -29,6 +29,8 @@ gitignore
 .DS_Store
 Thumbs.db
 
-#prisma
-db/serverDB/migrations
-db/clientDB/migrations
+#db
+db/serverDB/schema.prisma
+db/clientDB/schema.prisma
+db/clientDB/zod
+db/clientDB/kysely
