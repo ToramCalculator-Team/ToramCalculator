@@ -5,7 +5,7 @@ import { setStore, store } from "./store";
 import { type syncMessage } from "./worker/PGlite.worker";
 import { electricSync } from "@electric-sql/pglite-sync";
 
-console.log(performance.now(), "PGliteWorker初始化开始");
+// console.log(performance.now(), "PGliteWorker初始化开始");
 const pg_worker = new PGWorker();
 
 // 同步状态接受
