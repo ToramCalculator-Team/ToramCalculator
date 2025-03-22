@@ -1,18 +1,6 @@
-import {
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  JSX,
-  onCleanup,
-  onMount,
-  Show,
-  Switch,
-  useContext,
-} from "solid-js";
+import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
-import { evaluate } from "mathjs";
 
 import { getDictionary, Locale } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -35,20 +23,13 @@ import { setStore, store } from "~/store";
 import { pgWorker } from "~/initialWorker";
 import { User } from "~/repositories/user";
 
-type Related =
-  | {
-      key: string;
-      value: string | number;
-    }
-  | undefined;
-
 type Result = Mob["Select"];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
 
 export default function Index() {
-  let searchButtonRef: HTMLButtonElement;
-  let searchInputRef: HTMLInputElement;
+  let searchButtonRef!: HTMLButtonElement;
+  let searchInputRef!: HTMLInputElement;
 
   const navigate = useNavigate();
   const [dialogState, setDialogState] = createSignal(false);
@@ -68,6 +49,7 @@ export default function Index() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
+  // 自定义首页导航配置
   const [customMenuConfig] = createSignal<
     {
       href: string;
@@ -116,12 +98,12 @@ export default function Index() {
       icon: "Gamepad",
     },
   ]);
-  const [UserList, { refetch: refetchUserList }] = createResource(
-    async () =>
-      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-        console.log(res);
-      }),
-  );
+  // const [UserList, { refetch: refetchUserList }] = createResource(
+  //   async () =>
+  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+  //       console.log(res);
+  //     }),
+  // );
 
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
@@ -161,7 +143,7 @@ export default function Index() {
     }
   });
 
-  // 搜索函数
+  // 搜索时需要放弃检查的列
   const mobHiddenData: Array<keyof Mob["Select"]> = ["id", "updatedByAccountId", "createdByAccountId"];
   const skillHiddenData: Array<keyof (Skill & SkillEffect)> = [
     "id",
@@ -170,24 +152,6 @@ export default function Index() {
     "createdByAccountId",
   ];
   const crystalHiddenData: Array<keyof Crystal> = [];
-
-  // 变量对象，返回所有字符串属性值组成的数组
-  function getAllValues(obj: Record<string, unknown>) {
-    const values: string[] = [];
-
-    function collectValues(o: object) {
-      _.forOwn(o, (value) => {
-        if (_.isObject(value) && !_.isArray(value)) {
-          collectValues(value);
-        } else if (_.isString(value)) {
-          values.push(value);
-        }
-      });
-    }
-
-    collectValues(obj);
-    return values;
-  }
 
   const search = async () => {
     setIsNullResult(true);
@@ -209,11 +173,10 @@ export default function Index() {
 
     const finalResult: FinalResult = {
       mob: await findMobsLike(searchInputValue()),
-      // skill: searchInList(skillList() ?? [], searchValue, skillHiddenData),
-      // crystal: searchInList(crystalList() ?? [], searchValue, crystalHiddenData),
     };
     setSearchResult(finalResult);
-    // 动态初始化列表状态
+
+    // 所有部分结果都为空时，显示无结果提示
     const resultListSate: boolean[] = [];
     Object.entries(finalResult).forEach(([_key, value]) => {
       if (value.length > 0) {
@@ -236,73 +199,70 @@ export default function Index() {
     }
   };
 
-  // 键盘事件
-  // const handleKeyPress = (e: KeyboardEvent) => {
-  //   switch (e.key) {
-  //     case "Enter":
-  //       {
-  //         if (document.activeElement === searchInputRef || document.activeElement === searchInputMobileRef) {
-  //           searchButtonRef.click();
-  //         }
-  //       }
-  //       break;
-  //     case "Escape":
-  //       {
-  //         if (store.settingsDialogState) {
-  //           setStore("settingsDialogState", false);
-  //           e.stopPropagation();
-  //         } else if (document.activeElement === searchInputRef) {
-  //           searchInputRef.blur();
-  //           e.stopPropagation();
-  //         } else if (document.activeElement === searchInputMobileRef) {
-  //           searchInputMobileRef.blur();
-  //           e.stopPropagation();
-  //         } else if (searchResultOpened()) {
-  //           setSearchResultOpened(false);
-  //           e.stopPropagation();
-  //         }
-  //         if (document.activeElement === searchInputRef || document.activeElement === searchInputMobileRef) {
-  //           searchInputRef.blur();
-  //           searchInputMobileRef.blur();
-  //         }
-  //       }
-  //       break;
-  //     case "s":
-  //     case "S":
-  //       {
-  //         if (document.activeElement !== searchInputRef && document.activeElement !== searchInputMobileRef) {
-  //           setStore("settingsDialogState", true);
-  //         }
-  //       }
-  //       break;
-  //     case "·":
-  //     case "`":
-  //       {
-  //         if (document.activeElement !== searchInputRef && document.activeElement !== searchInputMobileRef) {
-  //           searchInputRef.focus();
-  //           e.preventDefault(); // 阻止默认输入行为
-  //         }
-  //       }
-  //       break;
-  //     default:
-  //       break;
-  //   }
-  // };
-
   onMount(() => {
     // console.log("Index loaded");
+
+    // 键盘事件
+    const handleKeyPress = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "Enter":
+          {
+            if (document.activeElement === searchInputRef) {
+              searchButtonRef.click();
+            }
+          }
+          break;
+        case "Escape":
+          {
+            if (store.settingsDialogState) {
+              setStore("settingsDialogState", false);
+              e.stopPropagation();
+            } else if (document.activeElement === searchInputRef) {
+              searchInputRef.blur();
+              e.stopPropagation();
+            } else if (searchResultOpened()) {
+              setSearchResultOpened(false);
+              e.stopPropagation();
+            }
+            if (document.activeElement === searchInputRef) {
+              searchInputRef.blur();
+            }
+          }
+          break;
+        case "s":
+        case "S":
+          {
+            if (document.activeElement !== searchInputRef) {
+              setStore("settingsDialogState", true);
+            }
+          }
+          break;
+        case "·":
+        case "`":
+          {
+            if (document.activeElement !== searchInputRef) {
+              searchInputRef.focus();
+              e.preventDefault(); // 阻止默认输入行为
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
     // 浏览器后退事件监听
-    const handlePopState = () => {
+    const handlePopState = (): void => {
       setSearchResultOpened(false);
       history.replaceState(null, "", location.href);
     };
 
     // 监听绑带与清除
-    // document.addEventListener("keydown", handleKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
     window.addEventListener("popstate", handlePopState);
 
     onCleanup(() => {
-      // document.removeEventListener("keydown", handleKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
       window.removeEventListener("popstate", handlePopState);
     });
   });
@@ -351,13 +311,13 @@ export default function Index() {
                 animate={{
                   opacity: [0, 1],
                   paddingBottom: [0, orientation === "landscape" ? "3rem" : "0rem"],
-                  gridTemplateRows: ["0fr", orientation === "landscape" ? "1fr 0fr" : "1fr 1fr"],
+                  height: ["0px", "120px"], // 临时数值
                   filter: ["blur(20px)", "blur(0px)"],
                 }}
                 exit={{
                   opacity: [1, 0],
                   paddingBottom: 0,
-                  gridTemplateRows: "0fr",
+                  height: 0, // 临时数值
                   filter: ["blur(0px)", "blur(20px)"],
                 }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
@@ -366,7 +326,7 @@ export default function Index() {
                 <div
                   class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
                 >
-                  <Icon.LogoText class="h-12 w-fit landscape:h-auto" />
+                  <Icon.LogoText class="h-12 landscape:h-auto" />
                 </div>
                 <h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
                   {getGreetings() + ",  " + dictionary().ui.index.adventurer}
@@ -435,12 +395,7 @@ export default function Index() {
             <Show when={searchResultOpened()}>
               <Motion.div
                 animate={{
-                  clipPath: [
-                    orientation === "landscape"
-                      ? "inset(10% 10% 90% 10% round 12px)"
-                      : "inset(90% 5% 10% 5% round 12px)",
-                    "inset(0% 0% 0% 0% round 12px)",
-                  ],
+                  clipPath: ["inset(10% 10% 90% 10% round 12px)", "inset(0% 0% 0% 0% round 12px)"],
                   opacity: [0, 1],
                   flexBasis: ["0%", "100%"],
                   flexGrow: [0, 1],
@@ -449,8 +404,8 @@ export default function Index() {
                   clipPath: [
                     "inset(0% 0% 0% 0% round 12px)",
                     orientation === "landscape"
-                      ? "inset(10% 25% 90% 25% round 12px)"
-                      : "inset(90% 5% 10% 5% round 12px)",
+                      ? "inset(30% 20% 70% 20% round 12px)"
+                      : "inset(10% 10% 90% 10% round 12px)",
                   ],
                   opacity: [1, 0],
                   flexBasis: ["100%", "0%"],
@@ -598,15 +553,19 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
+                paddingBottom: ["0rem", orientation === "landscape" ? (width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
+                paddingTop: ["0rem", orientation === "landscape" ? (width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
                 filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
                 gridTemplateRows: ["1fr", "0fr"],
+                paddingBottom: "0rem",
+                paddingTop: "0rem",
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 py-6 landscape:grid landscape:w-fit landscape:bg-transparent landscape:pb-14 lg:landscape:py-20 dark:landscape:bg-transparent`}
+              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 landscape:grid landscape:w-fit landscape:bg-transparent landscape:pb-14 lg:landscape:py-20 dark:landscape:bg-transparent`}
             >
               <div
                 class={`Content lg:landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:p-3`}
@@ -620,26 +579,39 @@ export default function Index() {
                       3: "3rd",
                     }[1 + (index() % 3)];
                     return (
-                      <a
-                        tabIndex={2}
-                        href={menuItem.href}
-                        class="flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto"
-                      >
-                        <Button
-                          class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
-                          level="primary"
-                          tabIndex={-1}
-                          icon={
-                            <IconComponent
-                              class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
-                            />
-                          }
-                        >
-                          <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
-                            {dictionary().ui.nav[menuItem.title]}
-                          </span>
-                        </Button>
-                      </a>
+                      <Presence exitBeforeEnter>
+                        <Show when={!searchResultOpened()}>
+                          <Motion.a
+                            tabIndex={2}
+                            href={menuItem.href}
+                            class={`flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
+                            animate={{
+                              opacity: [0, 1],
+                              transform: ["scale(0.2)", "scale(1)"],
+                            }}
+                            exit={{
+                              opacity: [1, 0],
+                              transform: ["scale(1)", "scale(0.2)"],
+                            }}
+                            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0, delay: index() * 0.04 }}
+                          >
+                            <Button
+                              class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
+                              level="primary"
+                              tabIndex={-1}
+                              icon={
+                                <IconComponent
+                                  class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
+                                />
+                              }
+                            >
+                              <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
+                                {dictionary().ui.nav[menuItem.title]}
+                              </span>
+                            </Button>
+                          </Motion.a>
+                        </Show>
+                      </Presence>
                     );
                   }}
                 </For>

@@ -67,7 +67,7 @@ export type Store = {
   };
 };
 
-export const initialStore: Store = {
+const initialStore: Store = {
   version: 20250103,
   theme: "light",
   resourcesLoaded: false,
