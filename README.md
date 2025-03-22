@@ -73,7 +73,7 @@ subject: 对 commit 的简短描述
 # 1.安装依赖
 pnpm install
 
-# 2.启动postgreSQL和Electric服务
+# 2.启动postgreSQL和Electric服务,确保postgreSQL和Electric服务都已启动后
 pnpm backend:up
 
 # 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
