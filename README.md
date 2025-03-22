@@ -103,6 +103,6 @@ pnpm dev
 # 5.构建生产模式代码
 pnpm build
 
-# 6.以生成模式运行
+# 6.以生产模式运行
 pnpm start
 ```
