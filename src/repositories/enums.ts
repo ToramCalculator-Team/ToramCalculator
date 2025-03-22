@@ -1,4 +1,4 @@
-import { DB } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB } from "~/../db/clientDB/kysely/kyesely";
 
 // 已知的可加成项
 export const MODIFIER_TYPE = [

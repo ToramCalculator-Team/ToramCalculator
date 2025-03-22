@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, item } from "~/../db/clientDB/kysely/kyesely";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { itemSubRelations } from "./item";

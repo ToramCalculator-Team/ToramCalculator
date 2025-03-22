@@ -7,7 +7,7 @@ import { type Character } from "./repositories/character";
 import { type Simulator } from "./repositories/simulator";
 import * as _ from "lodash-es";
 import { type PlayerPet } from "./repositories/customPet";
-import { type DB } from "../db/clientDB/generated/kysely/kyesely";
+import { type DB } from "../db/clientDB/kysely/kyesely";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
 

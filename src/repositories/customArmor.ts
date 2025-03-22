@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, player_armor } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, player_armor } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { ArmorDic, defaultArmor } from "./armor";

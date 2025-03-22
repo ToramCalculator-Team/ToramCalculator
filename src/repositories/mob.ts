@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, mob } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, mob } from "~/../db/clientDB/kysely/kyesely";
 import { createStatistic, defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";

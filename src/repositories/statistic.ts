@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, statistic } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, statistic } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";

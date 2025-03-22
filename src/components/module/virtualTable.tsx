@@ -9,7 +9,7 @@ import { type Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "~/repositories/untils";
 import { Portal } from "solid-js/web";
 import Dialog from "../controls/dialog";
-import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
+import { DB } from "../../../db/clientDB/kysely/kyesely";
 
 export default function VirtualTable<
   Item extends {

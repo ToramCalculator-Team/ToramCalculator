@@ -1,6 +1,6 @@
 import { Insertable, Selectable, Updateable } from "kysely";
 import { db } from "./database";
-import { image } from "~/../db/clientDB/generated/kysely/kyesely";
+import { image } from "~/../db/clientDB/kysely/kyesely";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 

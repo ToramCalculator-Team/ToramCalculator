@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, recipe } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, recipe } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { RECIPE_TYPE, type Enums } from "./enums";
 import { Locale } from "~/locales/i18n";

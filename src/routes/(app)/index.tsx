@@ -1,12 +1,9 @@
 import {
-  createEffect,
   createMemo,
   createResource,
   createSignal,
   For,
   JSX,
-  Match,
-  on,
   onCleanup,
   onMount,
   Show,
@@ -18,27 +15,25 @@ import * as _ from "lodash-es";
 import { evaluate } from "mathjs";
 
 import { getDictionary, Locale } from "~/locales/i18n";
-import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
-import { defaultMob, findMobById, findMobs, findMobsLike, type Mob } from "~/repositories/mob";
-import { findSkillById, findSkills, type Skill } from "~/repositories/skill";
-import { findCrystalById, findCrystals, type Crystal } from "~/repositories/crystal";
+import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/mob";
+import { findSkillById, type Skill } from "~/repositories/skill";
+import { findCrystalById, type Crystal } from "~/repositories/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/skillEffect";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { User } from "~/repositories/user";
-import { findSimulators } from "~/repositories/simulator";
-import { createSyncResource } from "~/hooks/resource";
-import { findWeapons } from "~/repositories/weapon";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/dictionaries/type";
 import Dialog from "~/components/controls/dialog";
-import { DB } from "../../../db/clientDB/generated/kysely/kyesely";
+import { DB } from "../../../db/clientDB/kysely/kyesely";
 import { findZoneById } from "~/repositories/zone";
 import { MediaContext } from "~/contexts/Media";
+import { setStore, store } from "~/store";
+import { pgWorker } from "~/initialWorker";
+import { User } from "~/repositories/user";
 
 type Related =
   | {
@@ -121,12 +116,12 @@ export default function Index() {
       icon: "Gamepad",
     },
   ]);
-  // const [UserList, { refetch: refetchUserList }] = createResource(
-  //   async () =>
-  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-  //       console.log(res);
-  //     }),
-  // );
+  const [UserList, { refetch: refetchUserList }] = createResource(
+    async () =>
+      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+        console.log(res);
+      }),
+  );
 
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
@@ -347,16 +342,6 @@ export default function Index() {
             <Icon.Line.Settings />
           </Button>
         </div>
-        {/* <Show when={orientation === "landscape"}>
-          <div
-            class={`QueryStarus text-accent-color-30 pointer-events-none absolute top-10 left-10 flex flex-col text-xs`}
-          >
-            <span>MobList: {mobList.latest?.length}</span>
-            <span>SkillList: {skillList.latest?.length}</span>
-            <span>CrystalList: {crystalList.latest?.length}</span>
-            <span>searchResultOpened: {searchResultOpened().toString()}</span>
-          </div>
-        </Show> */}
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
         >

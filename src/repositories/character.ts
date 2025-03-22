@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, character } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, character } from "~/../db/clientDB/kysely/kyesely";
 import { defaultStatistics, Statistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Combo, comboSubRelations } from "./combo";

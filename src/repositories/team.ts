@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, team } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, team } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 
 export type Team = Awaited<ReturnType<typeof findTeamById>>;

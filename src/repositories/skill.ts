@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, skill } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, skill } from "~/../db/clientDB/kysely/kyesely";
 import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultSkillEffect, SkillEffectDic, skillEffectSubRelations } from "./skillEffect";

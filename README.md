@@ -19,7 +19,7 @@
 - 数据层 (Data Layer):
 - - 负责数据的访问、存储和管理。
 - - 使用 pgLite、kysely、ElectricSQL、PostgreSQL 等技术。
-- - 处理本地数据库操作、数据同步、数据验证（zod）、数据搜索（fuse）等。
+- - 处理本地数据库操作、数据同步、数据验证（zod）、数据搜索等。
 - 基础设施层 (Infrastructure Layer):
 - - 负责提供底层支持，例如 ID 生成、JWT 处理、Cookie 管理等。
 - - 包含 cuid2、jose、js-cookie 等工具。

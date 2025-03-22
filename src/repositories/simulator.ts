@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, simulator } from "~/../db/clientDB/generated/kysely/kyesely";
+import { DB, simulator } from "~/../db/clientDB/kysely/kyesely";
 import { defaultStatistics, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultTeam, teamSubRelations } from "./team";
