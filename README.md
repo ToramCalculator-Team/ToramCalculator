@@ -34,7 +34,7 @@
 - - serverDB: 服务端数据库文件
 - public: 公共静态资源
 - src: 前端项目文件夹
-- - components: 页面组件
+- - components: 组件
 - - lib：工具函数库
 - - locales: 国际化相关
 - - repositories：数据库交互方法
