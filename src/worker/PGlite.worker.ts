@@ -90,7 +90,7 @@ worker({
       });
     };
 
-    const userShape = await syncTable('user', ["id"]);
+    // const userShape = await syncTable('user', ["id"]);
     const accountShape = await syncTable('account', ["id"]);
     const accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
     const accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);
@@ -105,22 +105,22 @@ worker({
     const speEquipShape = await syncTable("special", ["itemId"]);
     const avatarShape = await syncTable("avatar", ["id"]);
     const crystalShape = await syncTable("crystal", ["itemId"]);
-    const crystalToPlayerWeaponShape = await syncTable(
-      "_crystalToplayer_weapon",
-      ["A", "B"],
-      `"_crystalToplayer_weapon"`,
-    );
-    const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
-    const crystalToPlayerAddEquipShape = await syncTable(
-      "_crystalToplayer_option",
-      ["A", "B"],
-      `"_crystalToplayer_option"`,
-    );
-    const crystalToPlayerSpeEquipShape = await syncTable(
-      "_crystalToplayer_special",
-      ["A", "B"],
-      `"_crystalToplayer_special"`,
-    );
+    // const crystalToPlayerWeaponShape = await syncTable(
+    //   "_crystalToplayer_weapon",
+    //   ["A", "B"],
+    //   `"_crystalToplayer_weapon"`,
+    // );
+    // const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
+    // const crystalToPlayerAddEquipShape = await syncTable(
+    //   "_crystalToplayer_option",
+    //   ["A", "B"],
+    //   `"_crystalToplayer_option"`,
+    // );
+    // const crystalToPlayerSpeEquipShape = await syncTable(
+    //   "_crystalToplayer_special",
+    //   ["A", "B"],
+    //   `"_crystalToplayer_special"`,
+    // );
     const skillShape = await syncTable("skill", ["id"]);
     const skillEffectShape = await syncTable("skill_effect", ["id"]);
     const customWeaponShape = await syncTable("player_weapon", ["id"]);
