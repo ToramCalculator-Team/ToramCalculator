@@ -9,7 +9,7 @@ import Button from "~/components/controls/button";
 import { createSyncResource } from "~/hooks/resource";
 import VirtualTable from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
-import { DataEnums } from "../../../../../../db/clientDB/generated/dataEnums";
+import { DataEnums } from "~/../db/dataEnums";
 import { Portal } from "solid-js/web";
 import Dialog from "~/components/controls/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
