@@ -79,7 +79,6 @@ while ((match = objectRegex.exec(enumsContent)) !== null) {
 }
 
 // **第三步：读取 baseSchema.prisma 并替换枚举**
-// **第三步：读取 baseSchema.prisma 并替换枚举**
 const schemaContent = fs.readFileSync(baseSchemaPath, "utf-8");
 const lines = schemaContent.split("\n");
 

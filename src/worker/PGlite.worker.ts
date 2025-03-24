@@ -3,6 +3,7 @@
 import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { live } from "@electric-sql/pglite/live";
 import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { DB } from "../../db/clientDB/kysely/kyesely";
@@ -47,8 +48,13 @@ worker({
       extensions: {
         live,
         electric: electricSync({ debug: false }),
+        pg_trgm
       },
     });
+
+    // FTS相关插件
+    await pg.exec(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`)
+
     // 添加本地迁移记录表
     await pg.exec(`
       CREATE TABLE IF NOT EXISTS migrations (

@@ -17,7 +17,7 @@ ddlContent = ddlContent.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
 ddlContent = ddlContent.replace(/-- AddForeignKey\s*\n?/g, "");
 
 // **去除可能多余的空行**
-ddlContent = ddlContent.replace(/\n{2,}/g, "\n");
+// ddlContent = ddlContent.replace(/\n{2,}/g, "\n");
 
 fs.writeFileSync(ddlFilePath, ddlContent, "utf-8");
 
