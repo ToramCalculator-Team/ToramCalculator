@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 
@@ -44,10 +44,33 @@ export default function Index() {
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [currentCardId, setCurrentCardId] = createSignal<string>(defaultMob.id);
   const [currentCardType, setCurrentCardType] = createSignal<keyof DB>("mob");
-  const { width, height, orientation } = useContext(MediaContext);
+  const media = useContext(MediaContext);
 
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
+
+  // 页面附加功能（右上角按钮组）配置
+  const [extraFunctionConfig] = createSignal<
+    {
+      onClick: () => void;
+      icon: JSX.Element;
+    }[]
+  >([
+    {
+      onClick: () => {
+        navigate("repl");
+      },
+      icon: <Icon.Line.Basketball />,
+    },
+    {
+      onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
+      icon: <Icon.Line.Light />,
+    },
+    {
+      onClick: () => setStore("settingsDialogState", !store.settingsDialogState),
+      icon: <Icon.Line.Settings />,
+    },
+  ]);
 
   // 自定义首页导航配置
   const [customMenuConfig] = createSignal<
@@ -278,29 +301,19 @@ export default function Index() {
         <div
           class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${searchResultOpened() ? `z-0 opacity-0` : `z-10 opacity-100`}`}
         >
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => {
-              navigate("repl");
+          <For each={extraFunctionConfig()}>
+            {(config, index) => {
+              return (
+                <Button
+                  class="outline-hidden focus-within:outline-hidden"
+                  level="quaternary"
+                  onClick={config.onClick}
+                  icon={config.icon}
+                >
+                </Button>
+              )
             }}
-          >
-            <Icon.Line.Basketball />
-          </Button>
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
-          >
-            <Icon.Line.Light />
-          </Button>
-          <Button
-            class="outline-hidden focus-within:outline-hidden"
-            level="quaternary"
-            onClick={() => setStore("settingsDialogState", !store.settingsDialogState)}
-          >
-            <Icon.Line.Settings />
-          </Button>
+          </For>
         </div>
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
@@ -310,7 +323,7 @@ export default function Index() {
               <Motion.div
                 animate={{
                   opacity: [0, 1],
-                  paddingBottom: [0, orientation === "landscape" ? "3rem" : "0rem"],
+                  paddingBottom: [0, media.orientation === "landscape" ? "3rem" : "0rem"],
                   height: ["0px", "120px"], // 临时数值
                   filter: ["blur(20px)", "blur(0px)"],
                 }}
@@ -369,7 +382,7 @@ export default function Index() {
                 ref={searchInputRef!}
                 type="text"
                 placeholder={
-                  orientation === "landscape"
+                  media.orientation === "landscape"
                     ? getGreetings() + "," + dictionary().ui.index.adventurer
                     : dictionary().ui.searchPlaceholder
                 }
@@ -403,7 +416,7 @@ export default function Index() {
                 exit={{
                   clipPath: [
                     "inset(0% 0% 0% 0% round 12px)",
-                    orientation === "landscape"
+                    media.orientation === "landscape"
                       ? "inset(30% 20% 70% 20% round 12px)"
                       : "inset(10% 10% 90% 10% round 12px)",
                   ],
@@ -553,8 +566,8 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBottom: ["0rem", orientation === "landscape" ? (width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
-                paddingTop: ["0rem", orientation === "landscape" ? (width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
+                paddingBottom: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
+                paddingTop: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
                 filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
@@ -593,7 +606,10 @@ export default function Index() {
                               opacity: [1, 0],
                               transform: ["scale(1)", "scale(0.2)"],
                             }}
-                            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0, delay: index() * 0.04 }}
+                            transition={{
+                              duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                              delay: index() * 0.05,
+                            }}
                           >
                             <Button
                               class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
