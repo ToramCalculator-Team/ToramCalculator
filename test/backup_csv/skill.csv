@@ -1,1 +1,1 @@
-id,posX,posY,tier,name,isPassive,chargingType,distanceType,targetType,details,dataSources,statisticId,updatedByAccountId,createdByAccountId,treeType
+id,treeType,posX,posY,tier,name,isPassive,chargingType,distanceType,targetType,details,dataSources,statisticId,updatedByAccountId,createdByAccountId

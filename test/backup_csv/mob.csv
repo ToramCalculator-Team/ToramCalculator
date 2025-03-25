@@ -100,3 +100,4 @@ clv6xtcs70021wv1fnuz01uwx,伽拉木瓦,Boss,f,247,26400,0,Wind,1,6260000,494,9,9
 clv6u8d9t000nwv1fjbmbyohh,佛拉布喇·远,Boss,f,184,19190,0,Normal,1,5150000,184,7,736,21,0,552,21,0,0,100,100,{},仇恨值目标在7m外时的状态,fengli,30,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6u40id000lwv1fw2chusr7,佛拉布喇·近,Boss,f,184,19190,0,Normal,1,5150000,552,21,184,7,0,276,0,14,0,100,100,{},仇恨值目标7m内时的状态,fengli,32,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clui7ar0n000z11my9mm10x0r,恶魔之门,Boss,f,60,1440,0,Dark,1,0,180,2,180,2,0,0,0,0,0,1,1,{},不会动,fengli,89,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+defaultMobId,defaultMob,Mob,f,0,0,0,Normal,0,0,0,0,0,0,0,0,0,0,0,0,0,{},,"",defaultMobStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83

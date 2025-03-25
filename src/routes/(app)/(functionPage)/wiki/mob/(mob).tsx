@@ -19,13 +19,21 @@ export default function MobIndexPage() {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
   const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
-  const [dialogState, setDialogState] = createSignal(false);
-  const [dialogContent, setDialogContent] = createSignal<JSX.Element>();
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
   const [mob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
+  const [dialogState, setDialogState] = createSignal(false);
+  const [dialogContent, setDialogContent] = createSignal<JSX.Element>(
+    <OverlayScrollbarsComponent
+      element="div"
+      class="w-full"
+      options={{ scrollbars: { autoHide: "scroll" } }}
+      defer
+    >
+      <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
+    </OverlayScrollbarsComponent>);
 
   // table
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
@@ -205,7 +213,7 @@ export default function MobIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
-            class="Title hidden flex-col p-3 lg:flex lg:pt-12"
+            class="Title flex-col p-3 lg:flex lg:pt-12"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
           >
@@ -251,7 +259,7 @@ export default function MobIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
-            class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
+            class="Banner h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
           >
@@ -304,7 +312,7 @@ export default function MobIndexPage() {
       </Presence>
       <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
-          <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
+          <div class="Title  h-12 w-full items-center gap-3 flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.mob.table.title}
             </div>
@@ -349,14 +357,6 @@ export default function MobIndexPage() {
           state={store.wiki.mob?.dialogState ?? false}
           setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
         >
-          <OverlayScrollbarsComponent
-            element="div"
-            class="w-full"
-            options={{ scrollbars: { autoHide: "scroll" } }}
-            defer
-          >
-            <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
-          </OverlayScrollbarsComponent>
         </Dialog>
       </Portal>
     </>
