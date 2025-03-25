@@ -430,10 +430,16 @@ export default function Index() {
                 <Show
                   when={!isNullResult()}
                   fallback={
-                    <div
-                      class={`NullResult } flex h-full flex-1 flex-col items-center justify-center gap-12 p-6 landscape:p-0`}
+                    <Motion.div
+                      class={`NullResult flex flex-1 flex-col gap-12 p-6 landscape:p-0`}
+                      animate={{
+                        opacity: [0, 1],
+                        marginTop: ["0", "50vh"],
+                        transform: ["translateY(0) scale(0.8)", "translateY(-50%) scale(1)"],
+                       }}
+                      transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
                     >
-                      <span class="NullResultWarring text-xl leading-loose font-bold landscape:text-2xl">
+                      <span class="NullResultWarring text-xl text-center leading-loose font-bold landscape:text-2xl">
                         {dictionary().ui.index.nullSearchResultWarring}
                       </span>
                       <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
@@ -446,7 +452,7 @@ export default function Index() {
                             </span>
                           ))}
                       </p>
-                    </div>
+                    </Motion.div>
                   }
                 >
                   <div
@@ -566,22 +572,26 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBottom: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
-                paddingTop: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],
-                filter: ["blur(20px)", "blur(0px)"],
+                paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
                 gridTemplateRows: ["1fr", "0fr"],
-                paddingBottom: "0rem",
-                paddingTop: "0rem",
+                paddingBlock: "0rem",
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 self-center p-6 landscape:grid landscape:w-fit landscape:bg-transparent landscape:pb-14 lg:landscape:py-20 dark:landscape:bg-transparent`}
+              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 px-6 self-center landscape:grid landscape:w-fit landscape:bg-transparent`}
             >
-              <div
-                class={`Content lg:landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:p-3`}
+              <Motion.div
+                class={`Content lg:landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:px-3`}
+                animate={{
+                  paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "0.75rem" : "0") : "0"],
+                }}
+                exit={{
+                  paddingBlock: "0rem",
+                }}
+                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
               >
                 <For each={customMenuConfig()}>
                   {(menuItem, index) => {
@@ -631,7 +641,7 @@ export default function Index() {
                     );
                   }}
                 </For>
-              </div>
+              </Motion.div>
             </Motion.div>
           </Show>
         </Presence>

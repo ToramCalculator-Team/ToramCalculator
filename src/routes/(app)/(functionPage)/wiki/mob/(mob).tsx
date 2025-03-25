@@ -53,82 +53,82 @@ export default function MobIndexPage() {
       accessorKey: "type",
       header: () => MobDic(store.settings.language).type,
       cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
-      size: 120,
+      size: 160,
     },
     {
       accessorKey: "captureable",
       header: () => MobDic(store.settings.language).captureable,
       cell: (info) => info.getValue<Boolean>().toString(),
-      size: 120,
+      size: 160,
     },
     {
       accessorKey: "baseLv",
       header: () => MobDic(store.settings.language).baseLv,
       cell: (info) => info.getValue(),
-      size: 120,
+      size: 160,
     },
     {
       accessorKey: "experience",
       header: () => MobDic(store.settings.language).experience,
-      size: 120,
+      size: 180,
     },
     {
       accessorKey: "partsExperience",
       header: () => MobDic(store.settings.language).partsExperience,
       cell: (info) => info.getValue(),
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "initialElement",
       header: () => MobDic(store.settings.language).initialElement,
       cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
-      size: 120,
+      size: 180,
     },
     {
       accessorKey: "physicalDefense",
       header: () => MobDic(store.settings.language).physicalDefense,
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "physicalResistance",
       header: () => MobDic(store.settings.language).physicalResistance,
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "magicalDefense",
       header: () => MobDic(store.settings.language).magicalDefense,
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "magicalResistance",
       header: () => MobDic(store.settings.language).magicalResistance,
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "criticalResistance",
       header: () => MobDic(store.settings.language).criticalResistance,
-      size: 120,
+      size: 200,
     },
     {
       accessorKey: "avoidance",
       header: () => MobDic(store.settings.language).avoidance,
-      size: 100,
+      size: 160,
     },
     {
       accessorKey: "dodge",
       header: () => MobDic(store.settings.language).dodge,
-      size: 100,
+      size: 160,
     },
     {
       accessorKey: "block",
       header: () => MobDic(store.settings.language).block,
-      size: 100,
+      size: 160,
     },
     {
       accessorKey: "actions",
       header: () => MobDic(store.settings.language).actions,
       cell: (info) => JSON.stringify(info.getValue<Object>()),
-      size: 150,
+      size: 160,
     },
     // {
     //   accessorKey: "belongToZones",
@@ -182,7 +182,7 @@ export default function MobIndexPage() {
           ...getCommonPinningStyles(props.cell.column),
           width: getCommonPinningStyles(props.cell.column).width + "px",
         }}
-        class={"flex flex-col justify-center py-6"}
+        class={"flex flex-col justify-center p-6"}
       >
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
@@ -213,7 +213,7 @@ export default function MobIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
-            class="Title flex-col p-3 lg:flex lg:pt-12"
+            class="Title hidden flex-col p-3 lg:flex lg:pt-12"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
           >
@@ -259,7 +259,7 @@ export default function MobIndexPage() {
       <Presence exitBeforeEnter>
         <Show when={!isFormFullscreen()}>
           <Motion.div
-            class="Banner h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
+            class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
           >
@@ -312,7 +312,7 @@ export default function MobIndexPage() {
       </Presence>
       <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
-          <div class="Title  h-12 w-full items-center gap-3 flex">
+          <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.mob.table.title}
             </div>
@@ -357,6 +357,7 @@ export default function MobIndexPage() {
           state={store.wiki.mob?.dialogState ?? false}
           setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
         >
+          {dialogContent()}
         </Dialog>
       </Portal>
     </>

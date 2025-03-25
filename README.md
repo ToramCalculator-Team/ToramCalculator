@@ -84,6 +84,9 @@ pnpm prisma db push --schema db/serverDB/schema.prisma
 
 # 5.将测试数据导入数据库(在windows上可以使用gitbash来执行)
 bash db_restore.sh
+
+# 6.后端数据库web界面
+pnpm dev:db-studio
 ```
 
 #### 启动前端应用
