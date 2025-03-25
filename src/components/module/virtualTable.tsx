@@ -1,4 +1,15 @@
-import { createEffect, createMemo, createResource, createSignal, For, JSX, on, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSX,
+  on,
+  onMount,
+  Resource,
+  Show,
+} from "solid-js";
 import { Cell, Column, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -7,8 +18,6 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
 import { type Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "~/repositories/untils";
-import { Portal } from "solid-js/web";
-import Dialog from "../controls/dialog";
 import { DB } from "../../../db/clientDB/kysely/kyesely";
 
 export default function VirtualTable<
@@ -18,7 +27,7 @@ export default function VirtualTable<
   },
 >(props: {
   tableName: keyof DB;
-  itemList: () => Item[];
+  itemList: Resource<Item[]>;
   itemDic: (locale: Locale) => ConvertToAllString<Item>;
   tableColumns: ColumnDef<Item>[];
   tableHiddenColumns: Array<keyof Item>;
@@ -107,7 +116,7 @@ export default function VirtualTable<
 
   // 只在初始化时创建 `table`
   const table = createSolidTable({
-    data: props.itemList() ?? [],
+    data: props.itemList.latest ?? [],
     columns: props.tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -128,6 +137,7 @@ export default function VirtualTable<
     getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
     estimateSize: () => 96,
     overscan: 5,
+    // debug: true,
   });
 
   // const virtualizer = createMemo(() => {
@@ -141,15 +151,6 @@ export default function VirtualTable<
   // });
 
   const tableBodyDom = createMemo(() => {
-    // const list = props.itemList() ?? [];
-    // if(list.length === 0) return <></>;
-    // table.setOptions((prev) => ({
-    //   ...prev,
-    //   data: list,
-    // }));
-    // virtualizer.options.count = list.length;
-    // virtualizer._willUpdate();
-    console.log("TableRows:", table.getRowCount());
     return (
       <tbody style={{ height: `${virtualizer.getTotalSize()}px` }} class={`TableBodyrelative`}>
         <For each={virtualizer.getVirtualItems()}>
@@ -184,29 +185,26 @@ export default function VirtualTable<
     );
   });
 
-  // 副作用：监听 `itemList`
-  createEffect(
-    on(
-      props.itemList,
-      () => {
-        const list = props.itemList() ?? [];
-        table.setOptions((prev) => ({
-          ...prev,
-          data: list,
-        }));
-        virtualizer.options.count = list.length;
-        virtualizer._willUpdate();
-        console.log(
-          "TableRows:",
-          table.getRowCount(),
-          "VirtualItems:",
-          virtualizer.getVirtualItems().length,
-          Math.floor(performance.now()),
-        );
-      },
-      { defer: true },
-    ),
-  );
+  createEffect(async () => {
+    const list = props.itemList() ?? [];
+    table.setOptions((prev) => ({
+      ...prev,
+      data: list,
+    }));
+    virtualizer.options.count = list.length;
+    setTimeout(() => {
+      virtualizer._willUpdate();
+      console.log(
+        "TableRows:",
+        JSON.stringify(table.getRowCount()),
+        "VirtualCount:",
+        JSON.stringify(virtualizer.getVirtualIndexes().length),
+        "VirtualItems:",
+        JSON.stringify(virtualizer.getVirtualItems().length),
+        Math.floor(performance.now()),
+      );
+    }, 1);
+  });
 
   return (
     <OverlayScrollbarsComponent

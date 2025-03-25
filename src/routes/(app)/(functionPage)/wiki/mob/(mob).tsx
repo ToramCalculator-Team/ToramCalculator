@@ -18,24 +18,15 @@ export default function MobIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
+  const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
-  const [mob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
   const [dialogState, setDialogState] = createSignal(false);
-  const [dialogContent, setDialogContent] = createSignal<JSX.Element>(
-    <OverlayScrollbarsComponent
-      element="div"
-      class="w-full"
-      options={{ scrollbars: { autoHide: "scroll" } }}
-      defer
-    >
-      <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
-    </OverlayScrollbarsComponent>);
+  const [dialogContent, setDialogContent] = createSignal<JSX.Element>();
 
-  // table
+  // table config
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
     {
       accessorKey: "id",
@@ -138,6 +129,7 @@ export default function MobIndexPage() {
     // },
   ];
   const [mobList] = createSyncResource("mob", findMobs);
+  const [mob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
 
   const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
 
@@ -216,6 +208,7 @@ export default function MobIndexPage() {
             class="Title hidden flex-col p-3 lg:flex lg:pt-12"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           >
             <div class="Content flex flex-row items-center justify-between gap-4 py-3">
               <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
@@ -261,7 +254,8 @@ export default function MobIndexPage() {
           <Motion.div
             class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: [1, 0] }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
               <div
@@ -332,7 +326,7 @@ export default function MobIndexPage() {
           </div>
           <VirtualTable
             tableName="mob"
-            itemList={() => mobList() ?? []}
+            itemList={mobList}
             itemDic={MobDic}
             tableColumns={mobColumns}
             tableHiddenColumns={mobTableHiddenColumns}
@@ -352,12 +346,20 @@ export default function MobIndexPage() {
           </Show>
         </Presence>
       </div>
+
       <Portal>
         <Dialog
           state={store.wiki.mob?.dialogState ?? false}
           setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
         >
-          {dialogContent()}
+          <OverlayScrollbarsComponent
+            element="div"
+            class="w-full"
+            options={{ scrollbars: { autoHide: "scroll" } }}
+            defer
+          >
+            <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
+          </OverlayScrollbarsComponent>
         </Dialog>
       </Portal>
     </>

@@ -113,7 +113,7 @@ const Nav = () => {
                 <Icon.Line.Receipt />
               </Button>
               <input
-                onInput={() => setStore("wiki", "filterStr", wikiTableFilterRef()?.value ?? "")}
+                // onInput={() => setStore("wiki", "filterStr", wikiTableFilterRef()?.value ?? "")}
                 ref={setWikiTableFilterRef}
                 class="bg-area-color w-full rounded p-3"
               />
@@ -282,25 +282,25 @@ export default function Home(props: ParentProps) {
   return (
     <Motion.main class="flex h-full w-full flex-col-reverse lg:flex-row">
       <Nav />
-      <OverlayScrollbarsComponent
+      {/* <OverlayScrollbarsComponent
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
-        id="#mainContent"
+        id="mainContent"
         class="z-40 h-full w-full lg:landscape:px-12 bg-primary-color-90"
         style={{
           "transition-duration": "all 0s !important"
         }}
-      >
-        {/* <Motion.div
+      > */}
+        <Motion.div
           animate={{ opacity: 1 }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
           id="mainContent"
-          class="Content overflow-hidden flex h-full w-full flex-1 flex-col opacity-0"
-        > */}
+          class="Content overflow-hidden flex flex-col z-40 h-full w-full lg:landscape:px-12 bg-primary-color-90"
+        >
           {props.children}
-        {/* </Motion.div> */}
-      </OverlayScrollbarsComponent>
+        </Motion.div>
+      {/* </OverlayScrollbarsComponent> */}
     </Motion.main>
   );
 }
