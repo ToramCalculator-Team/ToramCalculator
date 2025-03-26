@@ -70,6 +70,14 @@ export async function findAccountById(id: string) {
   return account;
 }
 
+export async function findAccounts() {
+  const accounts = await db
+    .selectFrom("account")
+    .selectAll()
+    .execute();
+  return accounts;
+}
+
 export async function updateAccount(id: string, updateWith: Account["Update"]) {
   return await db.transaction().execute(async (trx) => {
     const account = await trx

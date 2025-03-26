@@ -1,7 +1,7 @@
-import { createMemo, createResource, createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, defaultMob, findMobById, findMobs } from "~/repositories/mob";
+import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/mob";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -13,6 +13,10 @@ import { DataEnums } from "~/../db/dataEnums";
 import { Portal } from "solid-js/web";
 import Dialog from "~/components/controls/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import { createForm } from "@tanstack/solid-form";
+import type { AnyFieldApi } from "@tanstack/solid-form";
+import { z, ZodFirstPartyTypeKind } from "zod";
+import { mobSchema } from "../../../../../../db/clientDB/zod";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -129,9 +133,11 @@ export default function MobIndexPage() {
     // },
   ];
   const [mobList] = createSyncResource("mob", findMobs);
-  const [mob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
+  const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
+  const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
 
   const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
+  const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = ["id", "createdByAccountId", "updatedByAccountId"];
 
   function mobTdGenerator(props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
@@ -190,6 +196,271 @@ export default function MobIndexPage() {
   }
 
   // form
+  interface FieldInfoProps {
+    field: AnyFieldApi;
+  }
+
+  function FieldInfo(props: FieldInfoProps) {
+    return (
+      <>
+        {props.field.state.meta.isTouched && props.field.state.meta.errors.length ? (
+          <em>{props.field.state.meta.errors.join(",")}</em>
+        ) : null}
+        {props.field.state.meta.isValidating ? "Validating..." : null}
+      </>
+    );
+  }
+
+  const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
+    if (schema === undefined || schema == null) {
+      return ZodFirstPartyTypeKind.ZodUndefined;
+    }
+    if ("_def" in schema) {
+      if ("innerType" in schema._def) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        return getZodType(schema._def.innerType);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        return schema._def.typeName as ZodFirstPartyTypeKind;
+      }
+    }
+    return ZodFirstPartyTypeKind.ZodUndefined;
+  };
+
+  function form() {
+    const form = createForm(() => ({
+      defaultValues: defaultMob,
+      onSubmit: async ({ value }) => {
+        // await createMob(value);
+        console.log(value);
+      },
+      // validatorAdapter: zodValidator,
+    }));
+
+    return (
+      <div>
+        <h1>{dictionary().ui.mob.pageTitle}</h1>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+        >
+          <fieldset class="dataKinds flex flex-row flex-wrap gap-y-[4px]">
+            <For each={Object.entries(formMob())}>
+              {(_field, index) => {
+                // 遍历怪物模型
+                const fieldKey = _field[0] as keyof Mob["MainForm"];
+                const fieldValue = _field[1];
+                // 过滤掉隐藏的数据
+                if (mobFormHiddenFields.includes(fieldKey)) return;
+                // 输入框的类型计算
+                const zodValue = mobSchema.shape[fieldKey];
+                // 判断字段类型
+                const valueType = getZodType(zodValue);
+                // 由于数组类型的值与常规变量值存在结构差异，因此在此进行区分
+                switch (valueType) {
+                  case ZodFirstPartyTypeKind.ZodEnum: {
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: mobSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => {
+                          const defaultFieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                          const fieldsetClass: string = defaultFieldsetClass;
+                          switch (fieldKey) {
+                            case "type":
+                            case "initialElement":
+                            default:
+                              break;
+                          }
+                          return (
+                            <fieldset class={fieldsetClass}>
+                              <span>
+                                <FieldInfo field={field()} />
+                              </span>
+                              <div
+                                class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}
+                              >
+                                {JSON.stringify(zodValue)}
+                                {/* {"options" in zodValue &&
+                                  zodValue.options.map((option) => {
+                                    const defaultInputClass = "mt-0.5 rounded px-4 py-2";
+                                    const defaultLabelSizeClass = "";
+                                    let inputClass = defaultInputClass;
+                                    let labelSizeClass = defaultLabelSizeClass;
+                                    let icon: JSX.Element = null;
+                                    return (
+                                      <label
+                                        class={`flex ${labelSizeClass} hover:border-transition-color-20 cursor-pointer items-center justify-between gap-1 rounded-full p-2 px-4 lg:basis-auto lg:flex-row-reverse lg:justify-end lg:gap-2 lg:rounded-sm lg:hover:opacity-100 ${field.getValue() === option ? "opacity-100" : "opacity-20"} ${mobFormState === "DISPLAY" ? "pointer-events-none border-transparent bg-transparent" : "border-transition-color-8 bg-transition-color-8 pointer-events-auto"}`}
+                                      >
+                                        {fieldKey}
+                                        <input
+                                          id={field().name + option}
+                                          name={field().name}
+                                          value={option}
+                                          checked={field().getValue() === option}
+                                          type="radio"
+                                          onBlur={field().handleBlur}
+                                          onChange={(e) => field().handleChange(e.target.value)}
+                                          class={inputClass}
+                                        />
+                                        {icon}
+                                      </label>
+                                    );
+                                  })} */}
+                              </div>
+                            </fieldset>
+                          );
+                        }}
+                      </form.Field>
+                    );
+                  }
+
+                  case ZodFirstPartyTypeKind.ZodNumber: {
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: mobSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => {
+                          const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                          const defaultInputBox = (
+                            <input
+                              autocomplete="off"
+                              id={field().name}
+                              name={field().name}
+                              value={field().state.value as number}
+                              type="number"
+                              onBlur={field().handleBlur}
+                              onChange={(e) => field().handleChange(parseFloat(e.target.value))}
+                              class={`mt-1 w-full flex-1 rounded px-4 py-2`}
+                            />
+                          );
+                          const fieldsetClass: string = defaultFieldsetClass;
+                          const inputBox: JSX.Element = defaultInputBox;
+                          return (
+                            <fieldset class={fieldsetClass}>
+                              <label html-for={field().name} class="flex w-full flex-col gap-1">
+                                <span>
+                                  <FieldInfo field={field()} />
+                                </span>
+                                {inputBox}
+                              </label>
+                            </fieldset>
+                          );
+                        }}
+                      </form.Field>
+                    );
+                  }
+                  case ZodFirstPartyTypeKind.ZodArray:
+                  case ZodFirstPartyTypeKind.ZodObject: {
+                    return fieldKey;
+                  }
+
+                  // 字符串输入
+                  default: {
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: mobSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => {
+                          const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                          const defaultInputBox = (
+                            <input
+                              value={field().state.value as string}
+                              id={field().name}
+                              name={field().name}
+                              type="text"
+                              onBlur={field().handleBlur}
+                              onChange={(e) => {
+                                const target = e.target
+                                field().handleChange(target.value);
+                              }}
+                              class=""
+                            />
+                          );
+                          let fieldsetClass: string = defaultFieldsetClass;
+                          let inputBox: JSX.Element = defaultInputBox;
+                          switch (fieldKey) {
+                            // case "id":
+                            // case "state":
+                            case "name":
+                              {
+                                fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
+                              }
+                              break;
+                            case "details":
+                              {
+                                inputBox = <></>;
+                                fieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                              }
+                              break;
+
+                            default:
+                              break;
+                          }
+
+                          return (
+                            <fieldset class={fieldsetClass}>
+                              <label html-for={field().name} class="flex w-full flex-col gap-1">
+                                {fieldKey}
+                                <span>
+                                  <FieldInfo field={field()} />
+                                </span>
+                                {inputBox}
+                              </label>
+                            </fieldset>
+                          );
+                        }}
+                      </form.Field>
+                    );
+                  }
+                }
+              }}
+            </For>
+          </fieldset>
+          <form.Subscribe
+            selector={(state) => ({
+              canSubmit: state.canSubmit,
+              isSubmitting: state.isSubmitting,
+            })}
+            children={(state) => {
+              return (
+                <button type="submit" disabled={!state().canSubmit}>
+                  {state().isSubmitting ? '...' : 'Submit'}
+                </button>
+              )
+            }}
+          />
+        </form>
+      </div>
+    );
+  }
+
+  // card
+  const Card = () => {
+    return <OverlayScrollbarsComponent
+      element="div"
+      class="w-full"
+      options={{ scrollbars: { autoHide: "scroll" } }}
+      defer
+    >
+      <pre class="p-3">{JSON.stringify(displayedMob.latest, null, 2)}</pre>
+    </OverlayScrollbarsComponent>
+  }
 
   // u键监听
   onMount(() => {
@@ -225,7 +496,8 @@ export default function MobIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
-                  setMob(defaultMob);
+                  setDialogContent("");
+                  setDialogState(true);
                   setStore("wiki", "mob", {
                     dialogState: true,
                     formState: "CREATE",
@@ -236,7 +508,8 @@ export default function MobIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {
-                  setMob(defaultMob);
+                  setDialogContent(form());
+                  setDialogState(true);
                   setStore("wiki", "mob", {
                     dialogState: true,
                     formState: "CREATE",
@@ -352,14 +625,7 @@ export default function MobIndexPage() {
           state={store.wiki.mob?.dialogState ?? false}
           setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
         >
-          <OverlayScrollbarsComponent
-            element="div"
-            class="w-full"
-            options={{ scrollbars: { autoHide: "scroll" } }}
-            defer
-          >
-            <pre class="p-3">{JSON.stringify(mob.latest, null, 2)}</pre>
-          </OverlayScrollbarsComponent>
+          {dialogContent()}
         </Dialog>
       </Portal>
     </>

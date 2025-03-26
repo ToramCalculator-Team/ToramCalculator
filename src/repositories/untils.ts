@@ -44,5 +44,5 @@ export interface DataType<T, MainTableDataFun extends (...args: any[]) => any, M
   Insert: Insertable<T>;
   Update: Updateable<T>;
   MainTable: Awaited<ReturnType<MainTableDataFun>>;
-  MainFormData: Awaited<ReturnType<MainFormDataFun>>;
+  MainForm: Awaited<ReturnType<MainFormDataFun>>;
 }

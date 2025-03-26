@@ -1,7 +1,7 @@
-// generator client {
-//     provider        = "prisma-client-js"
-//     previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
-// }
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
+}
 
 generator zod {
     provider                 = "zod-prisma-types"
