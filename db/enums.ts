@@ -125,8 +125,8 @@ export const MODIFIER_TYPE = [
   "gemPowderDrop", // 晶石粉末掉落
 ] as const;
 
-export const user = {
-  role: ["Admin", "User"], // 用户角色
+export const account = {
+  type: ["Admin", "User"], // 用户角色
 } as const;
 
 export const address = {

@@ -96,7 +96,7 @@ worker({
       });
     };
 
-    // const userShape = await syncTable('user', ["id"]);
+    const userShape = await syncTable('user', ["id"]);
     const accountShape = await syncTable('account', ["id"]);
     const accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
     const accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);

@@ -121,12 +121,12 @@ export default function Index() {
       icon: "Gamepad",
     },
   ]);
-  // const [UserList, { refetch: refetchUserList }] = createResource(
-  //   async () =>
-  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-  //       console.log(res);
-  //     }),
-  // );
+  const [UserList, { refetch: refetchUserList }] = createResource(
+    async () =>
+      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+        console.log(res);
+      }),
+  );
 
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
