@@ -14,15 +14,15 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
-import { defaultImage } from "~/repositories/image";
-import { type Mob, MobDic, defaultMob, findMobs } from "~/repositories/mob";
+import { defaultImage } from "~/repositories/client/image";
+import { type Mob, MobDic, defaultMob, findMobs } from "~/repositories/client/mob";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { generateAugmentedMobList } from "~/lib/mob";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
-import { type Enums } from "~/repositories/enums";
+import { type Enums } from "~/repositories/client/enums";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 
 export default function MobIndexPage() {

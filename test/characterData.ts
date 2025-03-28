@@ -1,6 +1,6 @@
-import { type Character } from "~/repositories/character";
+import { type Character } from "~/repositories/client/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MainWeaponType } from "~/repositories/enums";
+import { MainWeaponType } from "~/repositories/client/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,

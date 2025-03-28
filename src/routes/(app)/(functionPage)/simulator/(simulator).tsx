@@ -1,13 +1,13 @@
 import * as math from "mathjs";
 import { type computeInput, type computeOutput, type tSkill, type FrameData } from "~/worker/evaluate.old.worker";
-import { defaultMob, Mob } from "~/repositories/mob";
-import { defaultCharacter, Character } from "~/repositories/character";
+import { defaultMob, Mob } from "~/repositories/client/mob";
+import { defaultCharacter, Character } from "~/repositories/client/character";
 import { createEffect, createMemo, createSignal, JSX, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/controls/button";
 import Dialog from "~/components/controls/dialog";
-import { defaultSimulator, Simulator } from "~/repositories/simulator";
+import { defaultSimulator, Simulator } from "~/repositories/client/simulator";
 import { generateAugmentedMobList } from "~/lib/mob";
 import { test } from "~/../test/testData";
 

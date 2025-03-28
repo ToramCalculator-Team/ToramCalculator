@@ -5,23 +5,23 @@ import * as _ from "lodash-es";
 import { getDictionary, Locale } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
-import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/mob";
-import { findSkillById, type Skill } from "~/repositories/skill";
-import { findCrystalById, type Crystal } from "~/repositories/crystal";
+import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/client/mob";
+import { findSkillById, type Skill } from "~/repositories/client/skill";
+import { findCrystalById, type Crystal } from "~/repositories/client/crystal";
 import Filing from "~/components/module/filing";
 
-import { type SkillEffect } from "~/repositories/skillEffect";
+import { type SkillEffect } from "~/repositories/client/skillEffect";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/dictionaries/type";
 import Dialog from "~/components/controls/dialog";
 import { DB } from "../../../db/clientDB/kysely/kyesely";
-import { findZoneById } from "~/repositories/zone";
+import { findZoneById } from "~/repositories/client/zone";
 import { MediaContext } from "~/contexts/Media";
 import { setStore, store } from "~/store";
 import { pgWorker } from "~/initialWorker";
-import { User } from "~/repositories/user";
+import { User } from "~/repositories/client/user";
 
 type Result = Mob["Select"];
 

@@ -1,12 +1,12 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { type Mob } from "./repositories/mob";
-import { type Crystal } from "./repositories/crystal";
-import { type Skill } from "./repositories/skill";
-import { type Character } from "./repositories/character";
-import { type Simulator } from "./repositories/simulator";
+import { type Mob } from "./repositories/client/mob";
+import { type Crystal } from "./repositories/client/crystal";
+import { type Skill } from "./repositories/client/skill";
+import { type Character } from "./repositories/client/character";
+import { type Simulator } from "./repositories/client/simulator";
 import * as _ from "lodash-es";
-import { type PlayerPet } from "./repositories/customPet";
+import { type PlayerPet } from "./repositories/client/customPet";
 import { type DB } from "../db/clientDB/kysely/kyesely";
 
 export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
@@ -40,6 +40,13 @@ export type Store = {
         notifyOnLike: boolean;
         notifyOnBookmark: boolean;
       };
+    };
+  };
+  session: {
+    user: {
+      id?: string;
+      name?: string;
+      avatar?: string;
     };
   };
   indexPage: {};
@@ -104,6 +111,9 @@ const initialStore: Store = {
         notifyOnBookmark: true,
       },
     },
+  },
+  session: {
+    user: {},
   },
   settingsDialogState: false,
   indexPage: {},

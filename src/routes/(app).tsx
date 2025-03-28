@@ -1,5 +1,5 @@
 // import BabylonBg from "~/components/module/test2";
-import { For, type JSX, Show, type ParentProps, createMemo, createEffect, onMount, createSignal, on } from "solid-js";
+import { For, type JSX, Show, type ParentProps, createMemo, createEffect, onMount, createSignal, on, Accessor } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { setStore, store } from "~/store";
@@ -13,6 +13,7 @@ import Radio from "~/components/controls/radio";
 import BabylonBg from "~/components/module/babylonBg";
 import { MediaProvider } from "~/contexts/Media-component";
 import hotkeys from "hotkeys-js";
+import LoginForm from "~/components/module/loginFrom";
 
 const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | string }) => {
   const toCss = (cssObject: JSX.CSSProperties | string) =>
@@ -372,11 +373,37 @@ const Setting = () => {
   );
 };
 
+const LoginDialog = (props: {
+  state: Accessor<boolean>;
+  setState: (isOpen: boolean) => void;
+}) => {
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
+
+  return (
+    <Presence exitBeforeEnter>
+      <Show when={props.state()}>
+        <Motion.div
+          animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
+          exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+          class={`SettingBox bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
+        >
+          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => props.setState(false)}>
+            <Icon.Line.Close />
+          </Button>
+          <LoginForm />
+        </Motion.div>
+      </Show>
+    </Presence>
+  );
+};
+
 export default function AppMainContet(props: ParentProps) {
   const [hasInstalled, setHasInstalled] = createSignal(true);
+  const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
   // 热键
   hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", function (event, handler) {
-    // switch (handler.key) {
+    switch (handler.key) {
     //   case "enter":
     //     alert("you pressed enter!");
     //     break;
@@ -386,9 +413,9 @@ export default function AppMainContet(props: ParentProps) {
     //   case "ctrl+a":
     //     alert("you pressed ctrl+a!");
     //     break;
-    //   case "ctrl+b":
-    //     alert("you pressed ctrl+b!");
-    //     break;
+      case "ctrl+b":
+        setLoginDialogIsOpen((prev) => !prev);
+        break;
     //   case "r":
     //     alert("you pressed r!");
     //     break;
@@ -397,7 +424,7 @@ export default function AppMainContet(props: ParentProps) {
     //     break;
     //   default:
     //     alert(event);
-    // }
+    }
   });
 
   // 主题切换时
@@ -497,6 +524,7 @@ export default function AppMainContet(props: ParentProps) {
           </Show>
         </Presence> */}
       </Motion.div>
+      <LoginDialog state={loginDialogIsOpen} setState={setLoginDialogIsOpen} />
       <Setting />
     </MediaProvider>
   );

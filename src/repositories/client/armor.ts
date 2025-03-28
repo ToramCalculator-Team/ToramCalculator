@@ -8,7 +8,7 @@ import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { armor, DB } from "../../db/clientDB/kysely/kyesely";
+import { armor, DB } from "../../../db/clientDB/kysely/kyesely";
 
 export interface Armor extends DataType<armor, typeof findArmorById, typeof createArmor> {}
 

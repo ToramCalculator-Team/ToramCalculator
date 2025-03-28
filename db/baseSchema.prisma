@@ -24,17 +24,15 @@ datasource db {
     url      = env("PG_URL")
 }
 
-model User {
+model user {
     id            String    @id
     name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
     email         String?   @unique
     emailVerified DateTime?
     image         String?
     accounts      account[]
-    sessions      Session[]
+    sessions      session[]
     posts         post[]
-
-    @@map("user")
 }
 
 model account {
@@ -49,7 +47,7 @@ model account {
     scope             String?
     id_token          String?
     session_state     String?
-    user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user              user     @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId            String
     players           player[]
 
@@ -57,17 +55,14 @@ model account {
     update account_update_data?
 
     @@unique([provider, providerAccountId])
-    @@map("account")
 }
 
-model Session {
+model session {
     id           String   @id
     sessionToken String   @unique
     expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user         user     @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId       String
-
-    @@map("session")
 }
 
 model VerificationToken {
@@ -84,7 +79,7 @@ model post {
     name        String
     createdAt   DateTime
     updatedAt   DateTime @updatedAt
-    createdBy   User     @relation(fields: [createdById], references: [id])
+    createdBy   user     @relation(fields: [createdById], references: [id])
     createdById String
 
     @@index([name])

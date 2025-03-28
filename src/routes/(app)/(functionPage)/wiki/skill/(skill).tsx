@@ -15,17 +15,17 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import * as _ from "lodash-es";
 
-import { defaultImage } from "~/repositories/image";
-import { type Skill, SkillDic, defaultSkill, findSkillById, findSkills } from "~/repositories/skill";
+import { defaultImage } from "~/repositories/client/image";
+import { type Skill, SkillDic, defaultSkill, findSkillById, findSkills } from "~/repositories/client/skill";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
-import { type Enums } from "~/repositories/enums";
-import { findSimulatorById } from "~/repositories/simulator";
+import { type Enums } from "~/repositories/client/enums";
+import { findSimulatorById } from "~/repositories/client/simulator";
 import NodeEditor from "~/components/module/nodeEditor";
-import { updateSkillEffect } from "~/repositories/skillEffect";
+import { updateSkillEffect } from "~/repositories/client/skillEffect";
 import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
 
 export default function SkillIndexPage() {

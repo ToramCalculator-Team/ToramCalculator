@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/mob";
+import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
 import { FormSate, setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";

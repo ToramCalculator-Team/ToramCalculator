@@ -7,7 +7,7 @@ import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import Button from "~/components/controls/button";
-import { WIKI_TYPE } from "~/repositories/enums";
+import { WIKI_TYPE } from "~/repositories/client/enums";
 
 const NavBtn = (props: {
   config: {

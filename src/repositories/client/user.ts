@@ -1,5 +1,5 @@
 import { db } from "./database";
-import { user, DB } from "../../db/clientDB/kysely/kyesely";
+import { user, DB } from "../../../db/clientDB/kysely/kyesely";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 

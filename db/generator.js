@@ -87,21 +87,34 @@ const enumDefinitions = [];
 
 let currentModel = "";
 let skipGenerators = false;  // ✅ 新增：标记是否跳过 generator 块
+let kyselyGenerator = "";
+let inKyselyGenerator = false;
 
 for (const line of lines) {
-  // 检测 generator 块开始
+  // 处理 generator 块
   if (line.trim().startsWith("generator ")) {
-    skipGenerators = true;  // ✅ 开始跳过 generator 块
-    continue;  // 跳过当前行
+    if (line.includes("kysely")) {
+      inKyselyGenerator = true;
+      kyselyGenerator += line + "\n";
+    } else {
+      skipGenerators = true;
+    }
+    continue;
   }
 
-  // 检测 generator 块结束
   if (skipGenerators && line.trim() === "") {
-    skipGenerators = false;  // ✅ 结束跳过 generator 块
-    continue;  // 跳过空行
+    skipGenerators = false;
+    continue;
   }
 
-  // 如果处于跳过 generator 块的状态，则跳过当前行
+  if (inKyselyGenerator) {
+    kyselyGenerator += line + "\n";
+    if (line.trim() === "}") {
+      inKyselyGenerator = false;
+    }
+    continue;
+  }
+
   if (skipGenerators) {
     continue;
   }
@@ -147,8 +160,8 @@ fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 // 写入 clientDB/schema.prisma（保留 generator 配置）
 fs.writeFileSync(clientDBSchemaPath, schemaContent.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), "utf-8");
 
-// 写入 serverDB/schema.prisma（删除 generator 配置）
-fs.writeFileSync(serverDBSchemaPath, finalSchema, "utf-8");
+// 写入 serverDB/schema.prisma（保留 generator kysely）
+fs.writeFileSync(serverDBSchemaPath, kyselyGenerator + "\n" + finalSchema, "utf-8");
 
 console.log("✅ schema.prisma 生成完成！");
 

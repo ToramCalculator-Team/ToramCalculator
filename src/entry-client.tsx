@@ -5,13 +5,13 @@ import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 import { mount, StartClient } from "@solidjs/start/client";
 import * as _ from "lodash-es";
 import serviceWorkerUrl from "~/worker/service.worker?worker&url";
-import { createMob, defaultMob, findMobById } from "./repositories/mob";
-import { createCharacter, defaultCharacter, findCharacterById } from "./repositories/character";
-import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/skill";
-import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/skillEffect";
-import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/crystal";
+import { createMob, defaultMob, findMobById } from "./repositories/client/mob";
+import { createCharacter, defaultCharacter, findCharacterById } from "./repositories/client/character";
+import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/client/skill";
+import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/client/skillEffect";
+import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/client/crystal";
 import { store } from "./store";
-import { findSimulatorById, defaultSimulator, createSimulator } from "./repositories/simulator";
+import { findSimulatorById, defaultSimulator, createSimulator } from "./repositories/client/simulator";
 
 // console.log("entry-client");
 

@@ -17,7 +17,7 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
 import { type Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "~/repositories/untils";
+import { ConvertToAllString } from "~/repositories/client/untils";
 import { DB } from "../../../db/clientDB/kysely/kyesely";
 
 export default function VirtualTable<

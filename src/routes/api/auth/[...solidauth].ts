@@ -3,6 +3,18 @@ import Github from "@auth/solid-start/providers/github";
 import Email from "@auth/solid-start/providers/nodemailer";
 import Discord from "@auth/solid-start/providers/discord";
 import QQ from "./qq";
+import PostgresAdapter from "@auth/pg-adapter";
+import { Pool } from "pg";
+
+const pool = new Pool({
+  host: process.env.PG_HOST,
+  user: process.env.PG_USERNAME,
+  password: process.env.PG_PASSWORD,
+  database: process.env.PG_DBNAME,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
 export const authOpts: SolidAuthConfig = {
   // callbacks: {
@@ -16,6 +28,7 @@ export const authOpts: SolidAuthConfig = {
   //     };
   //   },
   // },
+  adapter: PostgresAdapter(pool),
   providers: [
     QQ({
       issuer: "KiaClouth",
@@ -43,7 +56,7 @@ export const authOpts: SolidAuthConfig = {
     }),
   ],
   debug: true,
-  // secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET,
   // pages: {
   //   signIn: '/uth/signIn'
   // }

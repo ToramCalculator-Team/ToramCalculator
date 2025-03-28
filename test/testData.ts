@@ -1,16 +1,16 @@
-import { Simulator } from "~/repositories/simulator";
-import { Character } from "~/repositories/character";
-import { defaultConsumable } from "~/repositories/consumable";
-import { defaultImage } from "~/repositories/image";
-import { defaultMember, Member } from "~/repositories/member";
-import { defaultMob } from "~/repositories/mob";
-import { defaultWeaponEncAttributes } from "~/repositories/weaponEncAttrs";
-import { Mob } from "~/repositories/mob";
-import { defaultCustomPet } from "~/repositories/customPet";
-import { defaultSkill, Skill } from "~/repositories/skill";
-import { defaultStatistic } from "~/repositories/statistic";
+import { Simulator } from "~/repositories/client/simulator";
+import { Character } from "~/repositories/client/character";
+import { defaultConsumable } from "~/repositories/client/consumable";
+import { defaultImage } from "~/repositories/client/image";
+import { defaultMember, Member } from "~/repositories/client/member";
+import { defaultMob } from "~/repositories/client/mob";
+import { defaultWeaponEncAttributes } from "~/repositories/client/weaponEncAttrs";
+import { Mob } from "~/repositories/client/mob";
+import { defaultCustomPet } from "~/repositories/client/customPet";
+import { defaultSkill, Skill } from "~/repositories/client/skill";
+import { defaultStatistic } from "~/repositories/client/statistic";
 import { skillSequenceList } from "~/routes/(app)/(functionPage)/simulator/(simulator)";
-import { CharacterSkill } from "~/repositories/characterSkill";
+import { CharacterSkill } from "~/repositories/client/characterSkill";
 
 const sszw: CharacterSkill = {
   id: "",

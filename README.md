@@ -86,19 +86,16 @@ pnpm prisma db push --schema db/serverDB/schema.prisma
 bash db/restore.sh
 
 # 6.后端数据库web界面
-pnpm dev:db-studio
+pnpm backend:db-studio
 ```
 
 #### 启动前端应用
 ```bash
-# 1.生成PGlite的DDL
-pnpm dev:db-ddl
+# 1.生成PGlite的DDL(由于目前无法保证同步顺序因此需要删除DDL中的外键关联)
+pnpm generate:client-ddl && node db/clientDB/remove_foreign_keys.js
 
-# 2.由于目前无法保证同步顺序因此需要删除DDL中的外键关联
-node db/clientDB/remove_foreign_keys.js
-
-# 3.生成本地数据类型
-pnpm dev:db-type
+# 3.生成数据类型
+pnpm generate:type
 
 # 4.以开发模式试运行
 pnpm dev

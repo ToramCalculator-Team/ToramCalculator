@@ -1,13 +1,9 @@
-import { createEffect, createMemo, createResource, createSignal, For, JSX, on, Show } from "solid-js";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
-
-import { setStore, store } from "~/store";
-import { type Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "~/repositories/client/untils";
-import { DB } from "~/../db/clientDB/kysely/kyesely";
+import Button from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
+import { getUser } from "~/lib/session";
+import { setStore } from "~/store";
+import defaultUserAvatarUrl from "/icons/512.png?url";
 
 interface FieldInfoProps {
   field: AnyFieldApi;
@@ -24,26 +20,58 @@ function FieldInfo(props: FieldInfoProps) {
   );
 }
 
-export default function Form<Item>(props: {
-  tableName: keyof DB;
-  item: () => Item;
-  itemDic: (locale: Locale) => ConvertToAllString<Item>;
-  formHiddenColumns: Array<keyof Item>;
-}) {
+interface LoginFormProps {
+  userName: string;
+  userId: string;
+  email: string;
+  password: string;
+}
+
+const defaultValues: LoginFormProps = {
+  userName: "",
+  userId: "cluhz95c5000078elg5r46831",
+  email: "",
+  password: "",
+};
+
+export default function LoginForm() {
   const form = createForm(() => ({
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-    },
+    defaultValues: defaultValues,
     onSubmit: async ({ value }) => {
-      // Do something with form data
-      console.log(value);
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          credentials: "include",  // 关键：确保请求携带 Cookie
+        });
+  
+        const responseText = await response.text(); // 读取返回内容
+        console.log("服务器响应:", response.status, responseText); // 打印返回状态码和内容
+  
+        if (!response.ok) {
+          console.error("登录失败", response.status, responseText);
+          return;
+        }
+  
+        const user = await getUser();
+        console.log("获取到的用户信息:", user);
+  
+        if (user) {
+          setStore("session", "user", "id", user.id);
+          setStore("session", "user", "name", user.name ?? "无名氏");
+          setStore("session", "user", "avatar", user.image ?? defaultUserAvatarUrl);
+        }
+      } catch (error) {
+        console.error("请求错误:", error);
+      }
     },
   }));
+  
 
   return (
     <div>
-      <h1>Simple Form Example</h1>
+      <h1>登录</h1>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -54,14 +82,9 @@ export default function Form<Item>(props: {
         <div>
           {/* A type-safe field component*/}
           <form.Field
-            name="firstName"
+            name="email"
             validators={{
-              onChange: ({ value }) =>
-                !value
-                  ? "A first name is required"
-                  : value.length < 3
-                    ? "First name must be at least 3 characters"
-                    : undefined,
+              onChange: ({ value }) => (!value ? "邮件地址不填写的话，没办法找到你的信息哦" : undefined),
               onChangeAsyncDebounceMs: 500,
               onChangeAsync: async ({ value }) => {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -88,10 +111,28 @@ export default function Form<Item>(props: {
         </div>
         <div>
           <form.Field
-            name="lastName"
+            name="userName"
             children={(field) => (
               <>
-                <label for={field().name}>Last Name:</label>
+                <label for={field().name}>用户名（目前是个摆设）:</label>
+                <input
+                  id={field().name}
+                  name={field().name}
+                  value={field().state.value}
+                  onBlur={field().handleBlur}
+                  onInput={(e) => field().handleChange(e.target.value)}
+                />
+                <FieldInfo field={field()} />
+              </>
+            )}
+          />
+        </div>
+        <div>
+          <form.Field
+            name="password"
+            children={(field) => (
+              <>
+                <label for={field().name}>密码（也是个摆设）:</label>
                 <input
                   id={field().name}
                   name={field().name}

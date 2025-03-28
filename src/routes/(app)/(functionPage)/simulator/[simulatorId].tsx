@@ -1,5 +1,5 @@
-import { Mob } from "~/repositories/mob";
-import { Character, CharacterDic } from "~/repositories/character";
+import { Mob } from "~/repositories/client/mob";
+import { Character, CharacterDic } from "~/repositories/client/character";
 import {
   Accessor,
   createEffect,
@@ -18,7 +18,7 @@ import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import Button from "~/components/controls/button";
 import Dialog from "~/components/controls/dialog";
-import { Simulator, defaultSimulator, findSimulatorById } from "~/repositories/simulator";
+import { Simulator, defaultSimulator, findSimulatorById } from "~/repositories/client/simulator";
 import { useParams } from "@solidjs/router";
 import * as Icon from "~/components/icon";
 import * as _ from "lodash-es";

@@ -12,7 +12,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 })
  
-export const { } = SolidAuth({
+export const { GET, POST } = SolidAuth({
   adapter: PostgresAdapter(pool),
   providers: [],
 })

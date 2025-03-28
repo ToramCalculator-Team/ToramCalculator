@@ -1,6 +1,6 @@
-import { type Mob } from "~/repositories/mob";
+import { type Mob } from "~/repositories/client/mob";
 import { dictionary } from "~/locales/dictionaries/type";
-import { Enums } from "~/repositories/enums";
+import { Enums } from "~/repositories/client/enums";
 import { getDictionary } from "~/locales/i18n";
 
 export const generateMobByStar = (

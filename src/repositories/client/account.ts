@@ -3,7 +3,7 @@ import { db } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { account, DB } from "../../db/clientDB/kysely/kyesely";
+import { account, DB } from "../../../db/clientDB/kysely/kyesely";
 
 export interface Account extends DataType<account, typeof findAccountById, typeof createAccount> {}
 

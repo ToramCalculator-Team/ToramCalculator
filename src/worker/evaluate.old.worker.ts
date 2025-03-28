@@ -4,11 +4,11 @@ import * as _ from "lodash-es";
 import { type $Enums } from "@prisma/client";
 import { type getDictionary } from "~/locales/i18n";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { ModifierType } from "~/repositories/enums";
-import { type Character } from "~/repositories/character";
-import { type Monster } from "~/repositories/mob";
-import { type SkillEffect } from "~/repositories/skillEffect";
-import { type ModifierList } from "~/repositories/weaponEncAttrs";
+import { ModifierType } from "~/repositories/client/enums";
+import { type Character } from "~/repositories/client/character";
+import { type Monster } from "~/repositories/client/mob";
+import { type SkillEffect } from "~/repositories/client/skillEffect";
+import { type ModifierList } from "~/repositories/client/weaponEncAttrs";
 import { Modifier } from "~/repositories/modifier";
 
 const fps = 60;

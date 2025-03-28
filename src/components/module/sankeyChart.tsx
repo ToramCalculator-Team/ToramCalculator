@@ -6,7 +6,7 @@ import {
   isModifiers,
   modifiers,
 } from "~/worker/evaluate.old.worker";
-import { Character } from "~/repositories/character";
+import { Character } from "~/repositories/client/character";
 import stringToColor from "~/lib/untils/stringToColor";
 
 function SankeyChart(props: { character: Character }) {
