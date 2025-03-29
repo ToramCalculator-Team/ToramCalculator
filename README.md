@@ -79,7 +79,7 @@ pnpm backend:up
 # 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
 node db/generator.js
 
-# 4.根据生成的schema.prisma初始化数据库
+# 4.根据生成的schema.prisma初始化数据库,并生成服务端数据模型ts类型
 pnpm prisma db push --schema db/serverDB/schema.prisma
 
 # 5.将测试数据导入数据库(在windows上可以使用gitbash来执行)
@@ -94,8 +94,8 @@ pnpm backend:db-studio
 # 1.生成PGlite的DDL(由于目前无法保证同步顺序因此需要删除DDL中的外键关联)
 pnpm generate:client-ddl && node db/clientDB/remove_foreign_keys.js
 
-# 3.生成数据类型
-pnpm generate:type
+# 3.生成客户端数据模型ts类型
+pnpm generate:client-type
 
 # 4.以开发模式试运行
 pnpm dev

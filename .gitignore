@@ -35,4 +35,5 @@ db/clientDB/schema.prisma
 db/clientDB/ddl.sql
 db/clientDB/zod
 db/clientDB/kysely
+db/serverDB/kysely
 db/dataEnums.ts

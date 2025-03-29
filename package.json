@@ -7,7 +7,7 @@
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
     "backend:db-studio": "prisma studio --schema=db/serverDB/schema.prisma",
     "generate:client-ddl": "prisma migrate diff --from-empty --to-schema-datasource db/clientDB/schema.prisma --script > db/clientDB/ddl.sql",
-    "generate:type": "prisma generate --schema=db/clientDB/schema.prisma && prisma generate --schema=db/serverDB/schema.prisma",
+    "generate:client-type": "prisma generate --schema=db/clientDB/schema.prisma",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",

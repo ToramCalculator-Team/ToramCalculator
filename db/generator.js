@@ -1,5 +1,5 @@
 /**
- * 此脚本用于根据ts枚举和基本数据模式生成客户端和服务端prisma架构 
+ * 此脚本用于根据ts枚举和基本数据模式生成客户端和服务端prisma架构
  */
 import fs from "fs";
 import path from "path";
@@ -32,7 +32,7 @@ while ((match = arrayRegex.exec(enumsContent)) !== null) {
     .filter((v) => v.length > 0);
 
   extractedArrays.set(arrayName, values);
-  console.log(`✅ 解析数组: ${arrayName} -> ${values.join(", ")}`);
+  // console.log(`✅ 解析数组: ${arrayName} -> ${values.join(", ")}`);
 }
 
 // **第二步：解析对象**
@@ -60,7 +60,7 @@ while ((match = objectRegex.exec(enumsContent)) !== null) {
         const referencedArray = value.slice(3);
         if (extractedArrays.has(referencedArray)) {
           values.push(...extractedArrays.get(referencedArray));
-          console.log(`🔄 展开 ${referencedArray} -> ${extractedArrays.get(referencedArray).join(", ")}`);
+          // console.log(`🔄 展开 ${referencedArray} -> ${extractedArrays.get(referencedArray).join(", ")}`);
         } else {
           console.warn(`⚠️ 警告: 找不到 ${referencedArray}，无法展开`);
         }
@@ -86,9 +86,10 @@ let newSchema = "";
 const enumDefinitions = [];
 
 let currentModel = "";
-let skipGenerators = false;  // ✅ 新增：标记是否跳过 generator 块
+let skipGenerators = false;
 let kyselyGenerator = "";
 let inKyselyGenerator = false;
+let clientGenerators = ""; // ✅ 记录 clientDB 的 generator
 
 for (const line of lines) {
   // 处理 generator 块
@@ -96,19 +97,23 @@ for (const line of lines) {
     if (line.includes("kysely")) {
       inKyselyGenerator = true;
       kyselyGenerator += line + "\n";
+      clientGenerators += line + "\n";
     } else {
       skipGenerators = true;
+      clientGenerators += line + "\n";
     }
     continue;
   }
 
   if (skipGenerators && line.trim() === "") {
     skipGenerators = false;
+    clientGenerators += "\n"; // ✅ 保持换行
     continue;
   }
 
   if (inKyselyGenerator) {
     kyselyGenerator += line + "\n";
+    clientGenerators += line + "\n";
     if (line.trim() === "}") {
       inKyselyGenerator = false;
     }
@@ -116,6 +121,7 @@ for (const line of lines) {
   }
 
   if (skipGenerators) {
+    clientGenerators += line + "\n"; // ✅ 继续记录 client 的 generator
     continue;
   }
 
@@ -157,10 +163,10 @@ const finalSchema = newSchema + "\n" + enumDefinitions.join("\n\n");
 fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
 fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 
-// 写入 clientDB/schema.prisma（保留 generator 配置）
-fs.writeFileSync(clientDBSchemaPath, schemaContent.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), "utf-8");
+// ✅ clientDB/schema.prisma（保留原有 generator）
+fs.writeFileSync(clientDBSchemaPath, clientGenerators + "\n" + finalSchema, "utf-8");
 
-// 写入 serverDB/schema.prisma（保留 generator kysely）
+// ✅ serverDB/schema.prisma（仅保留 kysely 相关的 generator）
 fs.writeFileSync(serverDBSchemaPath, kyselyGenerator + "\n" + finalSchema, "utf-8");
 
 console.log("✅ schema.prisma 生成完成！");
@@ -182,7 +188,12 @@ export type DataEnums = {
 ${Object.entries(dataEnums)
   .map(([modelName, fields]) => {
     return `  ${modelName}: {\n${Object.entries(fields)
-      .map(([fieldName, values]) => `    ${fieldName}: { ${Object.keys(values).map((v) => `${v}: string`).join("; ")} };`)
+      .map(
+        ([fieldName, values]) =>
+          `    ${fieldName}: { ${Object.keys(values)
+            .map((v) => `${v}: string`)
+            .join("; ")} };`,
+      )
       .join("\n")}\n  };`;
   })
   .join("\n")}

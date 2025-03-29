@@ -165,8 +165,10 @@ export const item = {
   tableType: ["weapon", "armor", "option", "special", "crystal", "consumable", "material"], // 道具多态关联表类型
 } as const;
 
+export const material_type = ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"] as const;
+
 export const material = {
-  type: ["Metal", "Cloth", "Beast", "Wood", "Drug", "Magic"], // 素材类型
+  type: [...material_type], // 素材类型
 } as const;
 
 export const consumable = {
@@ -178,7 +180,7 @@ export const crystal = {
 } as const;
 
 export const recipe_ingredient = {
-  type: ["gold", ...material.type, "item"] // 配方项类型
+  type: ["gold", ...material_type, "item"] // 配方项类型
 } as const;
 
 export const drop_item = {
