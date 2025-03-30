@@ -1,15 +1,17 @@
 import { Expression, ExpressionBuilder } from "kysely";
-import { db, typeDB } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { type Enums, ITEM_TYPE } from "./enums";
 import { DataType } from "./untils";
+import { DB, item } from "../../../db/clientDB/kysely/kyesely";
+import { item_tableType } from "../../../db/clientDB/kysely/enums";
+import { db } from "./database";
 
-export interface Item extends DataType<typeDB["item"], typeof findItemById, typeof createItem> {}
+export interface Item extends DataType<item, typeof findItemById, typeof createItem> {}
 
-export function itemSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expression<string>) {
-  return [
+export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>, type: item_tableType) {
+  const baseSubRelations = [
     jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
       .$notNull()
       .as("statistic"),
@@ -19,7 +21,7 @@ export function itemSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expr
         .innerJoin("mob", "drop_item.dropById", "mob.id")
         .where("drop_item.itemId", "=", id)
         .select(["mob.id", "mob.name"]),
-    ).as("dropBy"),
+    ).as("dropByMob"),
     jsonArrayFrom(
       eb
         .selectFrom("reward")
@@ -27,16 +29,47 @@ export function itemSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expr
         .innerJoin("npc", "task.npcId", "npc.id")
         .where("reward.itemId", "=", id)
         .select(["npc.id", "npc.name", "task.id", "task.name"]),
-    ).as("rewardBy"),
+    ).as("rewardByNpcTask"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("task_collect_require")
+        .innerJoin("task", "task_collect_require.taskId", "task.id")
+        .where("task_collect_require.itemId", "=", id)
+        .select(["task.id", "task.name"]),
+    ).as("collectRequireByTask"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("recipe_ingredient")
+        .innerJoin("item", "recipe_ingredient.itemId", "item.id")
+        .where("recipe_ingredient.recipeId", "=", id)
+        .select(["item.id"]),
+    ).as("recipeEntries"),
   ];
+
+  switch (type) {
+    case "weapon":
+      return [...baseSubRelations, eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon").as("weapon")];
+    case "armor":
+      return [...baseSubRelations, eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor").as("armor")];
+    case "option":
+      return [...baseSubRelations, eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option").as("option")];
+    case "special":
+      return [...baseSubRelations, eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special").as("special")];
+    case "crystal":
+      return [...baseSubRelations, eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal").as("crystal")];
+    case "consumable":
+      return [...baseSubRelations, eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable").as("consumable")];
+    case "material":
+      return [...baseSubRelations, eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material").as("material")];
+  }
 }
 
-export async function findItemById(id: string) {
+export async function findItemById(id: string, type: item_tableType) {
   return await db
     .selectFrom("item")
     .where("id", "=", id)
     .selectAll("item")
-    .select((eb) => itemSubRelations(eb, eb.val(id)))
+    .select((eb) => itemSubRelations(eb, eb.val(id), type))
     .executeTakeFirstOrThrow();
 }
 
@@ -68,7 +101,7 @@ const items: Partial<Record<Enums["ItemType"], Item["Insert"]>> = {};
 for (const key of ITEM_TYPE) {
   items[key] = {
     id: `default${key}Id`,
-    type: key,
+    tableType: key,
     // statistic: defaultStatistics[key],
     statisticId: defaultStatistics[key].id,
     ...itemsShared,
