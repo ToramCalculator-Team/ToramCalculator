@@ -2,16 +2,10 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, skill_effect } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export type SkillEffect = ModifyKeys<
-  Awaited<ReturnType<typeof findSkillEffectById>>,
-  {
-  }
->;
-export type NewSkillEffect = Insertable<skill_effect>;
-export type SkillEffectUpdate = Updateable<skill_effect>;
+export interface SkillEffect extends DataType<skill_effect, typeof findSkillEffects, typeof createSkillEffect> {}
 
 export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect">, id: Expression<string>) {
   return [];
@@ -26,17 +20,24 @@ export async function findSkillEffectById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateSkillEffect(id: string, updateWith: SkillEffectUpdate) {
+export async function findSkillEffects() {
+  return await db
+    .selectFrom("skill_effect")
+    .selectAll("skill_effect")
+    .execute();
+}
+
+export async function updateSkillEffect(id: string, updateWith: SkillEffect["Update"]) {
   return await db.updateTable("skill_effect").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createSkillEffect(newSkillEffect: NewSkillEffect) {
+export async function insertSkillEffect(newSkillEffect: SkillEffect["Insert"]) {
+  return await db.insertInto("skill_effect").values(newSkillEffect).returningAll().executeTakeFirstOrThrow();
+}
+
+export async function createSkillEffect(newSkillEffect: SkillEffect["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    const skill_effect = await trx
-      .insertInto("skill_effect")
-      .values(newSkillEffect)
-      .returningAll()
-      .executeTakeFirstOrThrow();
+    const skill_effect = await insertSkillEffect(newSkillEffect);
     return skill_effect;
   });
 }
@@ -46,7 +47,7 @@ export async function deleteSkillEffect(id: string) {
 }
 
 // default
-export const defaultSkillEffect: SkillEffect = {
+export const defaultSkillEffect: SkillEffect["Insert"] = {
   id: "defaultSkillEffectId",
   condition: "",
   description: "",
@@ -60,24 +61,19 @@ export const defaultSkillEffect: SkillEffect = {
   cost: "",
   belongToskillId: "",
   details: "",
-  targetType: "",
   castingRange: 0,
   effectiveRange: 0,
   elementLogic: "",
-  chargingType: "",
-  distanceType: "",
   logic: {},
 };
 
-export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> => {
+export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect["MainForm"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         id: "ID",
         condition: "条件",
         elementLogic: "元素逻辑",
-        chargingType: "施法动作类型",
-        distanceType: "距离威力类型",
         logic: "逻辑",
         description: "文字描述",
         motionFixed: "固定动画时长",
@@ -91,7 +87,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         belongToskillId: "",
         details: "逻辑描述",
         selfName: "技能效果",
-        targetType: "目标类型",
         castingRange: "施法距离",
         effectiveRange: "技能效果范围",
       };
@@ -100,8 +95,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         id: "ID",
         condition: "條件",
         elementLogic: "元素邏輯",
-        chargingType: "施法動作類型",
-        distanceType: "距離威力類型",
         logic: "邏輯",
         description: "文字描述",
         motionFixed: "固定動畫時長",
@@ -115,7 +108,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         belongToskillId: "",
         details: "邏輯描述",
         selfName: "技能效果",
-        targetType: "目標類型",
         castingRange: "施法距離",
         effectiveRange: "技能效果範圍",
       };
@@ -124,8 +116,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         id: "ID",
         condition: "Condition",
         elementLogic: "Element logic",
-        chargingType: "Charging type",
-        distanceType: "Distance type",
         logic: "Logic",
         description: "Text description",
         motionFixed: "Fixed animation duration",
@@ -139,7 +129,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         belongToskillId: "",
         details: "Logic description",
         selfName: "Skill effect",
-        targetType: "Target type",
         castingRange: "Casting range",
         effectiveRange: "Skill effect range",
       };
@@ -148,8 +137,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         id: "ID",
         condition: "条件",
         elementLogic: "元素ロジック",
-        chargingType: "施法アニメーションタイプ",
-        distanceType: "距離威力タイプ",
         logic: "ロジック",
         description: "テキスト説明",
         motionFixed: "固定アニメーション時間",
@@ -163,7 +150,6 @@ export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect> 
         belongToskillId: "",
         details: "ロジック説明",
         selfName: "スキル効果",
-        targetType: "対象タイプ",
         castingRange: "射程距離",
         effectiveRange: "スキル効果範囲",
       };

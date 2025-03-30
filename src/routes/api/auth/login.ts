@@ -1,6 +1,7 @@
 import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
+import { findUserById } from "~/repositories/server/user";
 
 export async function POST(event: APIEvent) {
   try {
@@ -12,11 +13,16 @@ export async function POST(event: APIEvent) {
       return new Response("Missing userId", { status: 400 });
     }
 
-    console.log("登录者 userId:", userId);
+    const user = await findUserById(userId);
+    if (!user) {
+      return new Response("User not found", { status: 404 });
+    }
+
+    console.log("登录者:", user.name);
 
     // 生成 JWT
     const jwtPayload = {
-      userId: userId, // 显式存储 userId
+      sub: userId,
       iat: Math.floor(Date.now() / 1000),
     };
 

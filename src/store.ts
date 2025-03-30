@@ -1,15 +1,9 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
-import { type Mob } from "./repositories/client/mob";
-import { type Crystal } from "./repositories/client/crystal";
-import { type Skill } from "./repositories/client/skill";
-import { type Character } from "./repositories/client/character";
-import { type Simulator } from "./repositories/client/simulator";
 import * as _ from "lodash-es";
-import { type PlayerPet } from "./repositories/client/customPet";
 import { type DB } from "../db/clientDB/kysely/kyesely";
 
-export type FormSate = "CREATE" | "UPDATE" | "DISPLAY";
+export type DialogType = "form" | "card";
 
 export type Store = {
   version: number;
@@ -53,25 +47,11 @@ export type Store = {
   wiki: Partial<{
     [T in keyof DB]: {
       id: string;
-      dialogState: boolean;
-      formState: FormSate;
+      dialogType: DialogType;
+      dialogIsOpen: boolean;
       filter: Partial<Record<keyof DB[T], boolean>>;
     };
   }>;
-  characterPage: {
-    characterId: string;
-    characterList: Character[];
-    characterDialogState: boolean;
-    characterFormState: FormSate;
-    filterState: boolean;
-  };
-  simulatorPage: {
-    simulatorId: string;
-    simulatorList: Simulator[];
-    simulatorDialogState: boolean;
-    simulatorFormState: FormSate;
-    filterState: boolean;
-  };
 };
 
 const initialStore: Store = {
@@ -120,24 +100,10 @@ const initialStore: Store = {
   wiki: {
     mob: {
       id: "defaultMobId",
-      dialogState: false,
-      formState: "DISPLAY",
+      dialogType: "card",
+      dialogIsOpen: false,
       filter: {},
     },
-  },
-  characterPage: {
-    characterId: "defaultCharacterId",
-    characterList: [],
-    characterDialogState: false,
-    characterFormState: "CREATE",
-    filterState: false,
-  },
-  simulatorPage: {
-    simulatorId: "defaultSimulatorId",
-    simulatorList: [],
-    simulatorDialogState: false,
-    simulatorFormState: "CREATE",
-    filterState: false,
   },
 };
 

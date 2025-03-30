@@ -2,7 +2,7 @@ import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount,
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
 import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
-import { FormSate, setStore, store } from "~/store";
+import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
@@ -27,8 +27,6 @@ export default function MobIndexPage() {
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
-  const [dialogState, setDialogState] = createSignal(false);
-  const [dialogContent, setDialogContent] = createSignal<JSX.Element>();
 
   // table config
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
@@ -134,7 +132,6 @@ export default function MobIndexPage() {
   ];
   const [mobList] = createSyncResource("mob", findMobs);
   const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
-  const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
 
   const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
   const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = ["id", "createdByAccountId", "updatedByAccountId"];
@@ -196,6 +193,7 @@ export default function MobIndexPage() {
   }
 
   // form
+  const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
   interface FieldInfoProps {
     field: AnyFieldApi;
   }
@@ -227,7 +225,7 @@ export default function MobIndexPage() {
     return ZodFirstPartyTypeKind.ZodUndefined;
   };
 
-  function form() {
+  const form = () => {
     const form = createForm(() => ({
       defaultValues: defaultMob,
       onSubmit: async ({ value }) => {
@@ -284,9 +282,7 @@ export default function MobIndexPage() {
                               <span>
                                 <FieldInfo field={field()} />
                               </span>
-                              <div
-                                class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}
-                              >
+                              <div class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}>
                                 {JSON.stringify(zodValue)}
                                 {/* {"options" in zodValue &&
                                   zodValue.options.map((option) => {
@@ -386,7 +382,7 @@ export default function MobIndexPage() {
                               type="text"
                               onBlur={field().handleBlur}
                               onChange={(e) => {
-                                const target = e.target
+                                const target = e.target;
                                 field().handleChange(target.value);
                               }}
                               class=""
@@ -440,35 +436,40 @@ export default function MobIndexPage() {
             children={(state) => {
               return (
                 <button type="submit" disabled={!state().canSubmit}>
-                  {state().isSubmitting ? '...' : 'Submit'}
+                  {state().isSubmitting ? "..." : "Submit"}
                 </button>
-              )
+              );
             }}
           />
         </form>
       </div>
     );
-  }
+  };
 
   // card
-  const Card = () => {
-    return <OverlayScrollbarsComponent
-      element="div"
-      class="w-full"
-      options={{ scrollbars: { autoHide: "scroll" } }}
-      defer
-    >
-      <pre class="p-3">{JSON.stringify(displayedMob.latest, null, 2)}</pre>
-    </OverlayScrollbarsComponent>
-  }
+  const card = () => {
+    return (
+      <OverlayScrollbarsComponent element="div" class="w-full" options={{ scrollbars: { autoHide: "scroll" } }} defer>
+        <pre class="p-3">{JSON.stringify(displayedMob.latest, null, 2)}</pre>
+      </OverlayScrollbarsComponent>
+    );
+  };
 
-  // u键监听
+  const dialogContet = createMemo(() => {
+    switch (store.wiki.mob?.dialogType) {
+      case "form":
+        return form();
+      case "card":
+        return card();
+    }
+  });
+
   onMount(() => {
-    console.log("--Mob Client Render");
+    console.log("--Mob Page Render");
   });
 
   onCleanup(() => {
-    console.log("--Mob Client Unmount");
+    console.log("--Mob Page Unmount");
   });
 
   return (
@@ -496,11 +497,9 @@ export default function MobIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="flex lg:hidden"
                 onClick={() => {
-                  setDialogContent("");
-                  setDialogState(true);
                   setStore("wiki", "mob", {
-                    dialogState: true,
-                    formState: "CREATE",
+                    dialogType: "form",
+                    dialogIsOpen: true,
                   });
                 }}
               ></Button>
@@ -508,11 +507,9 @@ export default function MobIndexPage() {
                 icon={<Icon.Line.CloudUpload />}
                 class="hidden lg:flex"
                 onClick={() => {
-                  setDialogContent(form());
-                  setDialogState(true);
                   setStore("wiki", "mob", {
-                    dialogState: true,
-                    formState: "CREATE",
+                    dialogType: "form",
+                    dialogIsOpen: true,
                   });
                 }}
               >
@@ -622,10 +619,10 @@ export default function MobIndexPage() {
 
       <Portal>
         <Dialog
-          state={store.wiki.mob?.dialogState ?? false}
-          setState={(state: boolean) => setStore("wiki", "mob", "dialogState", state)}
+          state={store.wiki.mob?.dialogIsOpen ?? false}
+          setState={(state: boolean) => setStore("wiki", "mob", "dialogIsOpen", state)}
         >
-          {dialogContent()}
+          {dialogContet()}
         </Dialog>
       </Portal>
     </>

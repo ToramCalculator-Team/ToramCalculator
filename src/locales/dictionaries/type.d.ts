@@ -1,4 +1,4 @@
-import { DataEnums } from "../../../db/clientDB/generated/dataEnums";
+import { DataEnums } from "../../../db/dataEnums";
 
 export interface dictionary {
   ui: {
@@ -23,6 +23,9 @@ export interface dictionary {
       checkInfo: string;
       zoomIn: string;
       zoomOut: string;
+      logIn: string;
+      logOut: string;
+      switchUser: string;
     };
     nav: {
       home: string;

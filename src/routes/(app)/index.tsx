@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
+import { Accessor, createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 
@@ -22,10 +22,36 @@ import { MediaContext } from "~/contexts/Media";
 import { setStore, store } from "~/store";
 import { pgWorker } from "~/initialWorker";
 import { User } from "~/repositories/client/user";
+import LoginForm from "~/components/module/loginFrom";
 
 type Result = Mob["Select"];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
+
+const LoginDialog = (props: {
+  state: Accessor<boolean>;
+  setState: (isOpen: boolean) => void;
+}) => {
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
+
+  return (
+    <Presence exitBeforeEnter>
+      <Show when={props.state()}>
+        <Motion.div
+          animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
+          exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+          class={`DialogBox z-40 bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
+        >
+          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => props.setState(false)}>
+            <Icon.Line.Close />
+          </Button>
+          <LoginForm />
+        </Motion.div>
+      </Show>
+    </Presence>
+  );
+};
 
 export default function Index() {
   let searchButtonRef!: HTMLButtonElement;
@@ -33,6 +59,7 @@ export default function Index() {
 
   const navigate = useNavigate();
   const [dialogState, setDialogState] = createSignal(false);
+  const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
     mob: [],
@@ -323,7 +350,7 @@ export default function Index() {
               <Motion.div
                 animate={{
                   opacity: [0, 1],
-                  paddingBottom: [0, media.orientation === "landscape" ? "3rem" : "0rem"],
+                  paddingBottom: [0, media.orientation === "landscape" ? (media.width > 1024 ? "3rem" : "1rem") : "0rem"],
                   height: ["0px", "120px"], // 临时数值
                   filter: ["blur(20px)", "blur(0px)"],
                 }}
@@ -338,6 +365,7 @@ export default function Index() {
               >
                 <div
                   class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
+                  onClick={() => setLoginDialogIsOpen(true)}
                 >
                   <Icon.LogoText class="h-12 landscape:h-auto" />
                 </div>
@@ -572,7 +600,7 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "3.5rem") : "1.5rem"],filter: ["blur(20px)", "blur(0px)"],
+                paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "1.5rem"],filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
@@ -581,12 +609,12 @@ export default function Index() {
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color dark:bg-area-color grid w-full shrink-0 px-6 self-center landscape:grid landscape:w-fit landscape:bg-transparent`}
+              class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 px-6 self-center landscape:grid landscape:w-fit landscape:bg-transparent`}
             >
               <Motion.div
-                class={`Content lg:landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm lg:landscape:px-3`}
+                class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm landscape:px-3`}
                 animate={{
-                  paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "0.75rem" : "0") : "0"],
+                  paddingBlock: ["0rem", media.orientation === "landscape" ? "0.75rem": "0"],
                 }}
                 exit={{
                   paddingBlock: "0rem",
@@ -653,6 +681,7 @@ export default function Index() {
         </OverlayScrollbarsComponent>
       </Dialog>
       <Filing />
+      <LoginDialog state={loginDialogIsOpen} setState={setLoginDialogIsOpen} />
     </MetaProvider>
   );
 }

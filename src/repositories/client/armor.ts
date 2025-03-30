@@ -1,16 +1,16 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, StatisticDic } from "./statistic";
+import { defaultStatistics, insertStatistic, StatisticDic } from "./statistic";
 import { defaultAccount } from "./account";
 import { crystalSubRelations } from "./crystal";
 import { itemSubRelations } from "./item";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { armor, DB } from "../../../db/clientDB/kysely/kyesely";
+import { armor, DB, item } from "../../../db/clientDB/kysely/kyesely";
 
-export interface Armor extends DataType<armor, typeof findArmorById, typeof createArmor> {}
+export interface Armor extends DataType<armor, typeof findArmors, typeof createArmor> {}
 
 export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
@@ -32,27 +32,28 @@ export async function findArmorById(id: string) {
     .where("id", "=", id)
     .selectAll(["item", "armor"])
     .select((eb) => armorSubRelations(eb, eb.val(id)))
-    .select((eb) => itemSubRelations(eb, eb.val(id)))
+    .select((eb) => itemSubRelations(eb, eb.val(id),"armor"))
     .executeTakeFirstOrThrow();
+}
+
+export async function findArmors() {
+  return await db
+    .selectFrom("item")
+    .innerJoin("armor", "item.id", "armor.itemId")
+    .selectAll(["item", "armor"])
+    .execute();
 }
 
 export async function updateArmor(id: string, updateWith: Armor["Update"]) {
   return await db.updateTable("armor").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createArmor(newArmor: Armor["Insert"]) {
+export async function createArmor(newArmor: item & {
+  armor: armor
+}) {
   return await db.transaction().execute(async (trx) => {
-    const statistic = await trx
-      .insertInto("statistic")
-      .values({
-        id: createId(),
-        updatedAt: new Date(),
-        createdAt: new Date(),
-        usageTimestamps: [],
-        viewTimestamps: [],
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+    const { armor: armorInput, ...itemInput } = newArmor;
+    const statistic = await insertStatistic(trx);
     const item = await trx
       .insertInto("item")
       .values({
@@ -79,7 +80,7 @@ export async function deleteArmor(id: string) {
 }
 
 // default
-export const defaultArmor: Armor["MainTable"] = {
+export const defaultArmor: Armor["Insert"] = {
   name: "defaultArmor",
   id: "defaultArmorId",
   tableType: "armor",
@@ -101,7 +102,7 @@ export const defaultArmor: Armor["MainTable"] = {
 };
 
 // Dictionary
-export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["MainTable"]> => {
+export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["MainForm"]> => {
   switch (locale) {
     case "zh-CN":
       return {

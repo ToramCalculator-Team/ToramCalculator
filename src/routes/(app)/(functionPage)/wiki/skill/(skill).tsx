@@ -1,5 +1,4 @@
 import { createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
-import Fuse from "fuse.js";
 import {
   Cell,
   Column,
@@ -26,7 +25,9 @@ import { type Enums } from "~/repositories/client/enums";
 import { findSimulatorById } from "~/repositories/client/simulator";
 import NodeEditor from "~/components/module/nodeEditor";
 import { updateSkillEffect } from "~/repositories/client/skillEffect";
-import { DicEnumsKeys, DicEnumsKeysValue } from "~/locales/dictionaries/type";
+import { DataEnums } from "../../../../../../db/dataEnums";
+import VirtualTable from "~/components/module/virtualTable";
+import { Portal } from "solid-js/web";
 
 export default function SkillIndexPage() {
   // UI文本字典
@@ -37,31 +38,23 @@ export default function SkillIndexPage() {
   const [formState, setFormState] = createSignal<FormSate>("CREATE");
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setSkillFormState = (newState: FormSate): void => {
-    setStore("wiki", "skillPage", {
-      skillFormState: newState,
+    setStore("wiki", "skill", {
+      formState: newState,
     });
   };
-  const setSkillList = (newList: Skill[]): void => {
-    setStore("wiki", "skillPage", {
-      skillList: newList,
-    });
-  };
-  const setFilterState = (newState: boolean): void => {
-    setStore("wiki", "skillPage", {
-      filterState: newState,
-    });
-  };
-  const setSkill = (newSkill: Skill): void => {
-    setStore("wiki", "skillPage", "skillId", newSkill.id);
+  const setSkill = (newSkill: Skill["Insert"]): void => {
+    setStore("wiki", "skill", "id", newSkill.id);
   };
 
   // table原始数据------------------------------------------------------------
 
   const [skillList, { refetch: refetchSkillList }] = createResource(findSkills);
-  const [skill, { refetch: refetchSkill }] = createResource(() => findSkillById(store.wiki.skillPage.skillId));
+  const [skill, { refetch: refetchSkill }] = createResource(() =>
+    findSkillById(store.wiki.skill?.id ?? defaultSkill.id),
+  );
 
   // table
-  const columns: ColumnDef<Skill>[] = [
+  const skillColumns: ColumnDef<Skill["MainTable"]>[] = [
     {
       accessorKey: "id",
       header: () => SkillDic(store.settings.language).id,
@@ -77,7 +70,7 @@ export default function SkillIndexPage() {
     {
       accessorKey: "treeType",
       header: () => SkillDic(store.settings.language).treeType,
-      cell: (info) => dictionary().enums.SkillTreeType[info.getValue<Enums["SkillTreeType"]>()],
+      cell: (info) => dictionary().enums.skill.treeType[info.getValue<keyof DataEnums["skill"]["treeType"]>()],
       size: 120,
     },
     {
@@ -87,215 +80,68 @@ export default function SkillIndexPage() {
       size: 120,
     },
   ];
-  const table = createMemo(() => {
-    if (!skillList()) {
-      return undefined;
-    }
-    return createSolidTable({
-      get data() {
-        return skillList() ?? []; // 使用 getter 确保表格能动态响应数据的变化
-      },
-      columns,
-      getCoreRowModel: getCoreRowModel(),
-      getSortedRowModel: getSortedRowModel(),
-      debugTable: true,
-      initialState: {
-        sorting: [
-          {
-            id: "tier",
-            desc: true, // 默认按热度降序排列
-          },
-        ],
-      },
-    });
-  });
 
-  const skillTableHiddenData: Array<keyof Skill> = ["id"];
-  // 表头固定
-  const getCommonPinningStyles = (column: Column<Skill>): JSX.CSSProperties => {
-    const isPinned = column.getIsPinned();
-    const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-    const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
-    const styles: JSX.CSSProperties = {
-      position: isPinned ? "sticky" : "relative",
-      width: column.getSize().toString(),
-      "z-index": isPinned ? 1 : 0,
-    };
-    if (isPinned) {
-      styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-      styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-      styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
-    }
-    return styles;
-  };
+  const skillTableHiddenColumns: Array<keyof Skill["MainTable"][number]> = ["id"];
 
-  function SkillTableTd(props: { cell: Cell<Skill, keyof Skill> }) {
+  function skillTdGenerator(props:{ cell: Cell<Skill["MainTable"], keyof Skill["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
+    type SkillKeys = keyof DataEnums["skill"];
+    type SkillValueKeys<T extends SkillKeys> = keyof DataEnums["skill"][T];
 
-    switch (props.cell.column.id as Exclude<keyof Skill, keyof typeof skillTableHiddenData>) {
+    switch (props.cell.column.id as keyof Skill["MainTable"][number]) {
+      case "id":
+      case "treeType":
+      case "posX":
+      case "posY":
+      case "tier":
       case "name":
-        setTdContent(
-          <>
-            <span class="pb-1">{props.cell.getValue()}</span>
-            {/* <span class="pb-1">{row.original.name}</span> */}
-            {/* <span class="text-sm font-normal text-main-text-color">
-            {row.getValue("belongToZones") ?? "无"}
-          </span> */}
-          </>,
-        );
-        break;
+      case "isPassive":
+      case "chargingType":
+      case "distanceType":
+      case "targetType":
+      case "details":
+      case "dataSources":
+      case "statisticId":
+      case "updatedByAccountId":
+      case "createdByAccountId":
 
       default:
         setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
         break;
     }
-
     return (
       <td
         style={{
           ...getCommonPinningStyles(props.cell.column),
           width: getCommonPinningStyles(props.cell.column).width + "px",
         }}
-        class={"flex flex-col justify-center py-6"}
+        class={"flex flex-col justify-center p-6"}
       >
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
           when={
-            Object.keys(dictionary().enums).includes(
-              "Skill" + props.cell.column.id.charAt(0).toLocaleUpperCase() + props.cell.column.id.slice(1),
-            ) &&
-            Object.keys(
-              dictionary().enums[
-                ("Skill" +
-                  props.cell.column.id.charAt(0).toLocaleUpperCase() +
-                  props.cell.column.id.slice(1)) as DicEnumsKeys
-              ],
-            ).includes(props.cell.getValue())
+            props.cell.column.id in dictionary().enums.skill && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
           }
           fallback={tdContent()}
         >
           {
-            dictionary().enums[
-              ("Skill" +
-                props.cell.column.id.charAt(0).toLocaleUpperCase() +
-                props.cell.column.id.slice(1)) as DicEnumsKeys
-            ][props.cell.getValue() as keyof DicEnumsKeysValue]
+            dictionary().enums.skill[props.cell.column.id as SkillKeys][
+              props.cell.getValue() as SkillValueKeys<SkillKeys>
+            ]
           }
         </Show>
       </td>
     );
   }
 
-  // 列表虚拟化区域----------------------------------------------------------
-  const [virtualScrollElement, setVirtualScrollElement] = createSignal<OverlayScrollbarsComponentRef | undefined>(
-    undefined,
-  );
-
-  const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | undefined>(undefined);
-
-  // 搜索使用的基准列表--------------------------------------------------------
-  let actualList = skillList() ?? [];
-
-  // 搜索框行为函数
-  // 定义搜索时需要忽略的数据
-  const skillSearchHiddenData: Array<keyof Skill> = ["id", "updatedByAccountId", "createdByAccountId"];
-
-  // 搜索
-  const searchSkill = (value: string, list: Skill[]) => {
-    const fuse = new Fuse(list, {
-      keys: Object.keys(defaultSkill).filter((key) => !skillSearchHiddenData.includes(key as keyof Skill)),
-    });
-    return fuse.search(value).map((result) => result.item);
-  };
-
-  const handleSearchChange = (key: string) => {
-    if (key === "" || key === null) {
-      console.log(actualList);
-    } else {
-      console.log(searchSkill(key, actualList));
-    }
-  };
-
-  const handleMouseDown = (id: string, e: MouseEvent) => {
-    if (e.button !== 0) return;
-    const startX = e.pageX;
-    const startY = e.pageY;
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      offsetX = e.pageX - startX;
-      offsetY = e.pageY - startY;
-      if (!isDragging) {
-        // 判断是否开始拖动
-        isDragging = Math.abs(offsetX) > 3 || Math.abs(offsetY) > 3;
-      }
-      if (isDragging) {
-        e.preventDefault();
-        e.stopPropagation();
-        const parent = virtualScrollElement()?.osInstance()?.elements().viewport?.parentElement;
-        if (parent) {
-          parent.style.transition = "none";
-          parent.style.transition = "none";
-          // parent.scrollTop -= offsetY / 100;
-          parent.scrollLeft += offsetX / 100;
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      if (!isDragging) {
-        console.log(id);
-        const targetSkill = (skillList() ?? []).find((skill) => skill.id === id);
-        if (targetSkill) {
-          setSkill(targetSkill);
-          setDialogState(true);
-          setSkillFormState("DISPLAY");
-        }
-      }
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const handleUKeyPress = (e: KeyboardEvent) => {
-    if (e.key === "u") {
-      setStore("wiki", "skillPage", {
-        skillDialogState: true,
-        skillFormState: "CREATE",
-      });
-    }
-  };
-
-  createEffect(() => {
-    setVirtualizer(
-      createVirtualizer({
-        get count() {
-          return table()?.getRowCount() ?? 0;
-        },
-        getScrollElement: () => {
-          return virtualScrollElement()?.osInstance()?.elements().viewport ?? null;
-        },
-        estimateSize: () => 96,
-        overscan: 5,
-      }),
-    );
-  });
-
   // u键监听
   onMount(() => {
     console.log("--Skill Client Render");
     // u键监听
-    document.addEventListener("keydown", handleUKeyPress);
   });
 
   onCleanup(() => {
     console.log("--Skill Client Unmount");
-    document.removeEventListener("keydown", handleUKeyPress);
   });
 
   return (
@@ -316,7 +162,7 @@ export default function SkillIndexPage() {
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
                 class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-2 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
-                onChange={(e) => handleSearchChange(e.target.value)}
+                // onChange={(e) => handleSearchChange(e.target.value)}
               />
               <Button // 仅移动端显示
                 size="sm"
@@ -324,9 +170,9 @@ export default function SkillIndexPage() {
                 class="flex lg:hidden"
                 onClick={() => {
                   setSkill(defaultSkill);
-                  setStore("wiki", "skillPage", {
-                    skillDialogState: true,
-                    skillFormState: "CREATE",
+                  setStore("wiki", "skill", {
+                    dialogState: true,
+                    formState: "CREATE",
                   });
                 }}
               ></Button>
@@ -335,9 +181,9 @@ export default function SkillIndexPage() {
                 class="hidden lg:flex"
                 onClick={() => {
                   setSkill(defaultSkill);
-                  setStore("wiki", "skillPage", {
-                    skillDialogState: true,
-                    skillFormState: "CREATE",
+                  setStore("wiki", "skill", {
+                    dialogState: true,
+                    formState: "CREATE",
                   });
                 }}
               >
@@ -353,52 +199,7 @@ export default function SkillIndexPage() {
             class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
-          >
-            {/* <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
-              <div
-                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-lg shadow-dividing-color" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(1)}
-                style={{
-                  "background-image": `url(${skillList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? skillList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
-                }}
-              >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-1st p-8 text-primary-color lg:flex">
-                  <span class="text-3xl font-bold">Top.1</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{skillList()?.[0]?.name[store.settings.language]}</span>
-                </div>
-              </div>
-              <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-lg shadow-dividing-color" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(2)}
-                style={{
-                  "background-image": `url(${skillList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? skillList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
-                }}
-              >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-2nd p-8 text-primary-color lg:flex">
-                  <span class="text-3xl font-bold">Top.2</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{skillList()?.[1]?.name[store.settings.language]}</span>
-                </div>
-              </div>
-              <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-lg shadow-dividing-color" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(3)}
-                style={{
-                  "background-image": `url(${skillList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? skillList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
-                }}
-              >
-                <div class="mask hidden h-full flex-col justify-center gap-2 bg-brand-color-3rd p-8 text-primary-color lg:flex">
-                  <span class="text-3xl font-bold">Top.3</span>
-                  <div class="h-[1px] w-[110px] bg-primary-color"></div>
-                  <span class="text-xl">{skillList()?.[2]?.name[store.settings.language]}</span>
-                </div>
-              </div>
-            </div> */}
-          </Motion.div>
+          ></Motion.div>
         </Show>
       </Presence>
       <div class="Table&News flex flex-1 flex-col gap-3 overflow-hidden p-3 lg:flex-row">
@@ -421,86 +222,15 @@ export default function SkillIndexPage() {
               {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-          <Show when={table()}>
-            <OverlayScrollbarsComponent
-              element="div"
-              options={{ scrollbars: { autoHide: "scroll" } }}
-              ref={setVirtualScrollElement}
-            >
-              {/* <div ref={virtualScrollElement!} class="TableBox VirtualScroll overflow-auto flex-1"> */}
-              <table class="Table relative w-full">
-                <thead class={`TableHead sticky top-0 z-10 flex`}>
-                  <For each={table()!.getHeaderGroups()}>
-                    {(headerGroup) => (
-                      <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
-                        <For each={headerGroup.headers}>
-                          {(header) => {
-                            const { column } = header;
-                            if (skillTableHiddenData.includes(column.id as keyof Skill)) {
-                              // 默认隐藏的数据
-                              return;
-                            }
-                            return (
-                              <th
-                                style={{
-                                  ...getCommonPinningStyles(column),
-                                  width: getCommonPinningStyles(column).width + "px",
-                                }}
-                                class="flex flex-col"
-                              >
-                                <div
-                                  {...{
-                                    onClick: header.column.getToggleSortingHandler(),
-                                  }}
-                                  class={`hover:bg-area-color flex-1 py-4 text-left font-normal ${isFormFullscreen() ? "lg:py-6" : "lg:py-3"} ${
-                                    header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                                  }`}
-                                >
-                                  {SkillDic(store.settings.language)[column.id as keyof Skill] as string}
-                                  {{
-                                    asc: " ↓",
-                                    desc: " ↑",
-                                  }[header.column.getIsSorted() as string] ?? null}
-                                </div>
-                              </th>
-                            );
-                          }}
-                        </For>
-                      </tr>
-                    )}
-                  </For>
-                </thead>
-                <tbody style={{ height: `${virtualizer()?.getTotalSize()}px` }} class={`TableBodyrelative`}>
-                  <For each={virtualizer()?.getVirtualItems()}>
-                    {(virtualRow) => {
-                      const row = table()!.getRowModel().rows[virtualRow.index];
-                      return (
-                        <tr
-                          data-index={virtualRow.index}
-                          // ref={(node) => virtualizer.measureElement(node)}
-                          style={{
-                            position: "absolute",
-                            transform: `translateY(${virtualRow.start}px)`,
-                          }}
-                          class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
-                          onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                        >
-                          <For
-                            each={row
-                              .getVisibleCells()
-                              .filter((cell) => !skillTableHiddenData.includes(cell.column.id as keyof Skill))}
-                          >
-                            {(cell) => <SkillTableTd cell={cell} />}
-                          </For>
-                        </tr>
-                      );
-                    }}
-                  </For>
-                </tbody>
-              </table>
-              {/* </div> */}
-            </OverlayScrollbarsComponent>
-          </Show>
+
+          <VirtualTable
+            tableName="skill"
+            itemList={skillList}
+            itemDic={SkillDic}
+            tableColumns={skillColumns}
+            tableHiddenColumns={skillTableHiddenColumns}
+            tableTdGenerator={skillTdGenerator}
+          />
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isFormFullscreen()}>
@@ -515,21 +245,24 @@ export default function SkillIndexPage() {
           </Show>
         </Presence>
       </div>
-      <Dialog state={dialogState()} setState={setDialogState}>
-        {/* <pre>{JSON.stringify(skill(), null, 2)}</pre> */}
-        <NodeEditor
-          data={async () => {
-            await refetchSkill();
-            return skill()!.effects[0].logic as Record<string, any>;
-          }}
-          setData={async (data) => {
-            const curSkillEffect = skill()?.effects[0];
-            if (!curSkillEffect) return;
-            // console.log("/////");
-            await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, logic: data });
-          }}
-        />
-      </Dialog>
+
+      <Portal>
+        <Dialog state={dialogState()} setState={setDialogState}>
+          {/* <pre>{JSON.stringify(skill(), null, 2)}</pre> */}
+          <NodeEditor
+            data={async () => {
+              await refetchSkill();
+              return skill()!.effects[0].logic as Record<string, any>;
+            }}
+            setData={async (data) => {
+              const curSkillEffect = skill()?.effects[0];
+              if (!curSkillEffect) return;
+              // console.log("/////");
+              await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, logic: data });
+            }}
+          />
+        </Dialog>
+      </Portal>
     </>
   );
 }

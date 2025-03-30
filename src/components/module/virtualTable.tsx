@@ -83,8 +83,10 @@ export default function VirtualTable<
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
-        setStore("wiki", props.tableName, "dialogState", true);
-        setStore("wiki", props.tableName, "formState", "DISPLAY");
+        setStore("wiki", props.tableName, {
+          dialogType: "card",
+          dialogIsOpen: true,
+        });
       }
     };
 

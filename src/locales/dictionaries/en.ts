@@ -59,6 +59,9 @@ const dictionary: dictionary = {
       checkInfo: "Check Info",
       zoomIn: "Zoom In",
       zoomOut: "Zoom Out",
+      logIn: "Log In",
+      logOut: "Log Out",
+      switchUser: "Switch User",
     },
     nav: {
       home: "Home",
@@ -312,8 +315,8 @@ const dictionary: dictionary = {
   },
   
   enums: {
-    user: {
-      role: {
+    account: {
+      type: {
         Admin: "管理员",
         User: "用户"
       }
@@ -385,7 +388,13 @@ const dictionary: dictionary = {
     recipe_ingredient: {
       type: {
         gold: "",
-        item: ""
+        item: "",
+        Metal: "",
+        Cloth: "",
+        Beast: "",
+        Wood: "",
+        Drug: "",
+        Magic: ""
       }
     },
     drop_item: {

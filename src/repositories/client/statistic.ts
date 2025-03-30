@@ -5,6 +5,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 import { STATISTIC_TYPE, WIKISCHEMA_TYPE, type Enums } from "./enums";
+import { createId } from "@paralleldrive/cuid2";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -28,15 +29,18 @@ export async function findStatisticById(id: string) {
 //   await db.updateTable('statistic').set(updateWith).where('id', '=', id).execute()
 // }
 
-export async function insertStatistic(trx: Transaction<DB>, newStatistic: NewStatistic) {
-  const statistic = await trx.insertInto("statistic").values(newStatistic).returningAll().executeTakeFirstOrThrow();
-  return statistic;
-}
-
-export async function createStatistic(newStatistic: NewStatistic) {
-  return await db.transaction().execute(async (trx) => {
-    return await insertStatistic(trx, newStatistic);
-  });
+export async function insertStatistic(trx: Transaction<DB>) {
+  return await trx
+    .insertInto("statistic")
+    .values({
+      id: createId(),
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      usageTimestamps: [],
+      viewTimestamps: [],
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
 export async function deleteStatistic(id: string) {

@@ -101,6 +101,7 @@ export async function deleteAccount(id: string) {
 // default
 export const defaultAccount: Account["Insert"] = {
   id: "defaultAccount",
+  type: "User",
   provider: "",
   providerAccountId: "",
   refresh_token: null,
@@ -120,6 +121,7 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]
       return {
         selfName: "账号",
         id: "ID",
+        type: "类型",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -135,6 +137,7 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]
       return {
         selfName: "帳號",
         id: "ID",
+        type: "類型",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -150,6 +153,7 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]
       return {
         selfName: "Account",
         id: "ID",
+        type: "Type",
         provider: "",
         providerAccountId: "",
         refresh_token: "",
@@ -165,6 +169,7 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]
       return {
         selfName: "アカウント",
         id: "ID",
+        type: "タイプ",
         provider: "",
         providerAccountId: "",
         refresh_token: "",

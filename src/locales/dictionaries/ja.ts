@@ -58,6 +58,9 @@ const dictionary: dictionary = {
       checkInfo: "情報を確認",
       zoomIn: "拡大",
       zoomOut: "縮小",
+      logIn: "ログイン",
+      logOut: "ログアウト",
+      switchUser: "ユーザー切り替え",
     },
     nav: {
       home: "ホーム",
@@ -313,10 +316,10 @@ const dictionary: dictionary = {
     },
   },
   enums: {
-    user: {
-      role: {
-        Admin: "管理员",
-        User: "用户"
+    account: {
+      type: {
+        Admin: "管理者",
+        User: "ユーザー"
       }
     },
     address: {
@@ -386,7 +389,13 @@ const dictionary: dictionary = {
     recipe_ingredient: {
       type: {
         gold: "",
-        item: ""
+        item: "",
+        Metal: "",
+        Cloth: "",
+        Beast: "",
+        Wood: "",
+        Drug: "",
+        Magic: ""
       }
     },
     drop_item: {

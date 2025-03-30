@@ -1,16 +1,26 @@
 "use server";
-import { useSession } from "vinxi/http";
 import { findUserById, User } from "~/repositories/server/user";
+import { jwtVerify } from "jose";
+import { getCookie } from "vinxi/http";
 
-export async function getUser(): Promise<User | null> {
+async function verifyJWT(token: string, secret: string) {
+  const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+  // console.log("解析出的 User ID:", payload.sub); // 直接获取用户 ID
+  return payload.sub; // 返回用户 ID
+}
+
+export async function getUserByCookie(): Promise<User | null> {
   const secrt = process.env.AUTH_SECRET;
-  console.log("secrt", secrt);
+  // console.log("secrt", secrt);
   if (!secrt) return null;
-  const session = await useSession({
-    password: secrt,
-  });
-  console.log("session data:", session.data); // 检查解析出的数据
-  const userId = session.data.userId;
+
+  const token = getCookie("jwt");
+  // console.log("token", token);
+  if (!token) return null;
+
+  const userId = await verifyJWT(token, secrt);
   if (!userId) return null;
+
+  const user = await findUserById(userId);
   return await findUserById(userId);
 }
