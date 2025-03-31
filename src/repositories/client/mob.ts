@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/../db/clientDB/kysely/kyesely";
-import { createStatistic, defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
 import { defaultImage, ImageDic } from "./image";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
@@ -9,7 +9,10 @@ import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 
-export interface Mob extends DataType<mob, typeof findMobById, typeof createMob> {}
+export interface Mob extends DataType<mob> {
+  MainTable: Awaited<ReturnType<typeof findMobs>>[number]
+  MainForm: mob
+}
 
 export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
   return [
@@ -20,28 +23,13 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
         .where("_mobTozone.A", "=", id)
         .select("zone.name"),
     ).as("belongToZones"),
-    // jsonArrayFrom(
-    //   eb
-    //     .selectFrom("drop_item")
-    //     .innerJoin("item", "item.id", "drop_item.itemId")
-    //     .innerJoin("weapon", "item.id", "weapon.itemId")
-    //     .innerJoin("armor", "item.id", "armor.itemId")
-    //     .innerJoin("additional_equipment", "item.id", "additional_equipment.itemId")
-    //     .innerJoin("special_equipment", "item.id", "special_equipment.itemId")
-    //     .innerJoin("crystal", "item.id", "crystal.itemId")
-    //     .innerJoin("consumable", "item.id", "consumable.itemId")
-    //     .innerJoin("material", "item.id", "material.itemId")
-    //     .where("drop_item.dropById", "=", id)
-    //     .select([
-    //       "weapon.name",
-    //       "armor.name",
-    //       "additional_equipment.name",
-    //       "special_equipment.name",
-    //       "crystal.name",
-    //       "consumable.name",
-    //       "material.name",
-    //     ]),
-    // ).as("dropItems"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("drop_item")
+        .innerJoin("item", "item.id", "drop_item.itemId")
+        .where("drop_item.dropById", "=", id)
+        .selectAll("item"),
+    ).as("dropItems"),
     jsonObjectFrom(
       eb
         .selectFrom("statistic")
@@ -59,7 +47,7 @@ export async function findMobById(id: string) {
     .selectFrom("mob")
     .where("id", "=", id)
     .selectAll("mob")
-    // .select((eb) => mobSubRelations(eb, eb.val(id)))
+    .select((eb) => mobSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
@@ -72,7 +60,6 @@ export async function findMobs() {
   const result = await db
     .selectFrom("mob")
     .selectAll("mob")
-    .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
     .execute();
   return result;
 }

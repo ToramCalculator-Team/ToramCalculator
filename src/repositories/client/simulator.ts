@@ -5,6 +5,12 @@ import { defaultStatistics, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultTeam, teamSubRelations } from "./team";
 import { defaultAccount } from "./account";
+import { DataType } from "./untils";
+
+export interface Simulator extends DataType<simulator> {
+  MainTable: Awaited<ReturnType<typeof findSimulators>>[number]
+  MainForm: simulator
+}
 
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
   return [
@@ -59,11 +65,11 @@ export async function findSimulators() {
   return res;
 }
 
-export async function updateSimulator(id: string, updateWith: SimulatorUpdate) {
+export async function updateSimulator(id: string, updateWith: Simulator["Update"]) {
   return await db.updateTable("simulator").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createSimulator(newSimulator: NewSimulator) {
+export async function createSimulator(newSimulator: Simulator["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const simulator = await trx.insertInto("simulator").values(newSimulator).returningAll().executeTakeFirstOrThrow();
     return simulator;
@@ -74,14 +80,12 @@ export async function deleteSimulator(id: string) {
   return await db.deleteFrom("simulator").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultSimulator: Simulator = {
+export const defaultSimulator: Simulator["Insert"] = {
   id: "defaultSimulatorId",
 
   name: "默认模拟器",
-  campA: [defaultTeam],
   details: "",
 
-  statistic: defaultStatistics.Simulator,
   statisticId: defaultStatistics.Simulator.id,
   updatedByAccountId: defaultAccount.id,
   createdByAccountId: defaultAccount.id,

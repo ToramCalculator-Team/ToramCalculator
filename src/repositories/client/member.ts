@@ -4,10 +4,13 @@ import { DB, member } from "~/../db/clientDB/kysely/kyesely";
 import { defaultPlayer, playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultMob } from "./mob";
+import { DataType } from "./untils";
+import { defaultMercenary } from "./mercenary";
 
-export type Member = Awaited<ReturnType<typeof findMemberById>>;
-export type NewMember = Insertable<member>;
-export type MemberUpdate = Updateable<member>;
+export interface Member extends DataType<member> {
+  MainTable: Awaited<ReturnType<typeof findMembers>>[number]
+  MainForm: member
+}
 
 export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
   return [
@@ -37,11 +40,18 @@ export async function findMemberById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateMember(id: string, updateWith: MemberUpdate) {
+export async function findMembers() {
+  return await db
+    .selectFrom("member")
+    .selectAll("member")
+    .execute();
+}
+
+export async function updateMember(id: string, updateWith: Member["Update"]) {
   return await db.updateTable("member").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createMember(newMember: NewMember) {
+export async function createMember(newMember: Member["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const member = await trx
       .insertInto("member")
@@ -59,16 +69,14 @@ export async function deleteMember(id: string) {
   return await db.deleteFrom("member").where("id", "=", id).returningAll().executeTakeFirst();
 }
 // Default
-export const defaultMember: Member = {
+export const defaultMember: Member["Insert"] = {
   id: "",
-  player: defaultPlayer,
+  name: "",
+  teamId: "",
   playerId: "",
-  mob: defaultMob,
   mobId: defaultMob.id,
   mobDifficultyFlag: "Easy",
-  mercenary: null,
-  mercenaryId: null,
-  partner: null,
-  partnerId: null,
+  mercenaryId: defaultMercenary.templateId,
+  partnerId: defaultPlayer.id,
   order: 0
 };

@@ -5,7 +5,10 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export interface SkillEffect extends DataType<skill_effect, typeof findSkillEffects, typeof createSkillEffect> {}
+export interface SkillEffect extends DataType<skill_effect> {
+    MainTable: Awaited<ReturnType<typeof findSkillEffects>>[number]
+    MainForm: skill_effect
+}
 
 export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect">, id: Expression<string>) {
   return [];

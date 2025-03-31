@@ -107,7 +107,7 @@ worker({
     const itemShape = await syncTable("item", ["id"]);
     const weaponShape = await syncTable("weapon", ["itemId"]);
     const armorShape = await syncTable("armor", ["itemId"]);
-    const addEquipShape = await syncTable("option", ["itemId"]);
+    const optEquipShape = await syncTable("option", ["itemId"]);
     const speEquipShape = await syncTable("special", ["itemId"]);
     const avatarShape = await syncTable("avatar", ["id"]);
     const crystalShape = await syncTable("crystal", ["itemId"]);
@@ -117,7 +117,7 @@ worker({
     //   `"_crystalToplayer_weapon"`,
     // );
     // const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
-    // const crystalToPlayerAddEquipShape = await syncTable(
+    // const crystalToPlayerOptEquipShape = await syncTable(
     //   "_crystalToplayer_option",
     //   ["A", "B"],
     //   `"_crystalToplayer_option"`,
@@ -129,10 +129,10 @@ worker({
     // );
     const skillShape = await syncTable("skill", ["id"]);
     const skillEffectShape = await syncTable("skill_effect", ["id"]);
-    const customWeaponShape = await syncTable("player_weapon", ["id"]);
-    const customArmorShape = await syncTable("player_armor", ["id"]);
-    const customAddEquipShape = await syncTable("player_option", ["id"]);
-    const customSpeEquipShape = await syncTable("player_special", ["id"]);
+    const playerWeponShape = await syncTable("player_weapon", ["id"]);
+    const playerArmorShape = await syncTable("player_armor", ["id"]);
+    const playerOptEquipShape = await syncTable("player_option", ["id"]);
+    const playerSpeEquipShape = await syncTable("player_special", ["id"]);
     const customPetShape = await syncTable("player_pet", ["id"]);
     const characterSkillShape = await syncTable("character_skill", ["id"]);
     const consumableShape = await syncTable("consumable", ["itemId"]);

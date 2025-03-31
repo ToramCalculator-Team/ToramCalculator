@@ -1,5 +1,5 @@
 import { Expression, ExpressionBuilder } from "kysely";
-import { db, typeDB } from "./database";
+import { db } from "./database";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { recipeSubRelations } from "./recipe";
 import { crystalSubRelations } from "./crystal";
@@ -7,165 +7,107 @@ import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 import { mobSubRelations } from "./mob";
 import { createId } from "@paralleldrive/cuid2";
+import { DB, option } from "../../../db/clientDB/kysely/kyesely";
 
-export interface AddEquip
-  extends DataType<typeDB["additional_equipment"], typeof findAddEquipById, typeof createAddEquip> {}
+export interface OptEquip extends DataType<option> {
+  MainTable: Awaited<ReturnType<typeof findOptEquips>>[number];
+  MainForm: option;
+}
 
-export function addEquipSubRelations(eb: ExpressionBuilder<typeDB, "item">, id: Expression<string>) {
+export function optEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("mob")
-        .innerJoin("drop_item", "drop_item.dropById", "mob.id")
-        .where("drop_item.itemId", "=", id)
-        .selectAll("mob")
-        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-    ).as("dropBy"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_additional_equipmentTocrystal")
-        .innerJoin("crystal", "_additional_equipmentTocrystal.B", "crystal.itemId")
-        .where("_additional_equipmentTocrystal.A", "=", id)
+        .selectFrom("_crystalTooption")
+        .innerJoin("crystal", "_crystalTooption.A", "crystal.itemId")
+        .where("_crystalTooption.B", "=", id)
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("defaultCrystals"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("recipe")
-        .where("recipe.addEquipId", "=", id)
-        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
-    ).as("recipe"),
   ];
 }
 
-export async function findAddEquipById(id: string) {
-  const addEquip = await db
-    .selectFrom("additional_equipment")
-    .where("itemId", "=", id)
-    .selectAll()
-    .executeTakeFirstOrThrow();
-  return addEquip;
+export async function findOptEquipById(id: string) {
+  const optEquip = await db.selectFrom("option").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
+  return optEquip;
 }
 
-export async function findAddEquips() {
-  const addEquips = await db.selectFrom("additional_equipment").selectAll().execute();
-  return addEquips;
+export async function findOptEquips() {
+  const optEquips = await db.selectFrom("option").selectAll().execute();
+  return optEquips;
 }
 
-export async function updateAddEquip(id: string, updateWith: AddEquip["Update"]) {
+export async function updateOptEquip(id: string, updateWith: OptEquip["Update"]) {
   return await db
-    .updateTable("additional_equipment")
+    .updateTable("option")
     .set(updateWith)
-    .where("additional_equipment.itemId", "=", id)
+    .where("option.itemId", "=", id)
     .returningAll()
     .executeTakeFirst();
 }
 
-export async function createAddEquip(newAddEquip: AddEquip["Insert"]) {
+export async function createOptEquip(newOptEquip: OptEquip["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-    const statistic = await trx
-      .insertInto("statistic")
-      .values({
-        id: createId(),
-        updatedAt: new Date(),
-        createdAt: new Date(),
-        usageTimestamps: [],
-        viewTimestamps: [],
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    const item = await trx
-      .insertInto("item")
-      .values({
-        id: createId(),
-        type: "AddEquip",
-        statisticId: statistic.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    const addEquip = await trx
-      .insertInto("additional_equipment")
-      .values({
-        ...newAddEquip,
-        itemId: item.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return addEquip;
+
   });
 }
 
-export async function deleteAddEquip(id: string) {
+export async function deleteOptEquip(id: string) {
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
 // default
-export const defaultAddEquip: AddEquip["Insert"] = {
-  name: "defaultAddEquip",
+export const defaultOptEquip: OptEquip["Insert"] = {
   modifiers: [],
-  itemId: "defaultAddEquipId",
+  itemId: "defaultOptEquipId",
   baseDef: 0,
   colorA: 0,
   colorB: 0,
   colorC: 0,
-  dataSources: "",
-  details: "",
 };
 
 // Dictionary
-export const AddEquipDic = (locale: Locale): ConvertToAllString<AddEquip["Insert"]> => {
+export const OptEquipDic = (locale: Locale): ConvertToAllString<OptEquip["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "追加装备",
-        name: "名称",
         modifiers: "属性",
         itemId: "所属道具ID",
         baseDef: "防御力",
         colorA: "颜色A",
         colorB: "颜色B",
         colorC: "颜色C",
-        dataSources: "数据来源",
-        details: "额外说明",
       };
     case "zh-TW":
       return {
         selfName: "追加裝備",
-        name: "名称",
         modifiers: "屬性",
         itemId: "所屬道具ID",
         baseDef: "防禦力",
         colorA: "顏色A",
         colorB: "顏色B",
         colorC: "顏色C",
-        dataSources: "資料來源",
-        details: "額外說明",
       };
     case "en":
       return {
         selfName: "Additional Equipment",
-        name: "Name",
         modifiers: "Modifiers",
         itemId: "ItemId",
         baseDef: "Base Def",
         colorA: "Color A",
         colorB: "Color B",
         colorC: "Color C",
-        dataSources: "Data Sources",
-        details: "Details",
       };
     case "ja":
       return {
         selfName: "追加装備",
-        name: "名前",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
         baseDef: "防御力",
         colorA: "色A",
         colorB: "色B",
         colorC: "色C",
-        dataSources: "データソース",
-        details: "追加詳細",
       };
   }
 };

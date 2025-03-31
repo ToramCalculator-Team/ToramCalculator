@@ -318,8 +318,8 @@ const dictionary: dictionary = {
   enums: {
     account: {
       type: {
-        Admin: "管理者",
-        User: "ユーザー"
+        Admin: "管理员",
+        User: "用户"
       }
     },
     address: {
@@ -341,14 +341,14 @@ const dictionary: dictionary = {
       initialElement: elementType
     },
     item: {
-      tableType: {
-        weapon: "",
-        armor: "",
-        option: "",
-        special: "",
-        crystal: "",
-        consumable: "",
-        material: ""
+      type: {
+        Weapon: "",
+        Armor: "",
+        Option: "",
+        Special: "",
+        Crystal: "",
+        Consumable: "",
+        Material: ""
       }
     },
     material: {
@@ -388,8 +388,8 @@ const dictionary: dictionary = {
     },
     recipe_ingredient: {
       type: {
-        gold: "",
-        item: "",
+        Gold: "",
+        Item: "",
         Metal: "",
         Cloth: "",
         Beast: "",
@@ -404,7 +404,7 @@ const dictionary: dictionary = {
         B: "",
         C: ""
       },
-      breakReward: {
+      breakRewardType: {
         None: "",
         CanDrop: "",
         DropUp: ""
@@ -585,7 +585,34 @@ const dictionary: dictionary = {
         Lunatic: "",
         Ultimate: ""
       }
-    }
+    },
+    user: {},
+    session: {},
+    VerificationToken: {},
+    post: {},
+    account_create_data: {},
+    account_update_data: {},
+    world: {},
+    activity: {},
+    zone: {},
+    image: {},
+    statistic: {},
+    armor: {},
+    option: {},
+    special: {},
+    recipe: {},
+    npc: {},
+    task_kill_requirement: {},
+    task_collect_require: {},
+    skill_effect: {},
+    player: {},
+    player_weapon: {},
+    player_option: {},
+    player_special: {},
+    character_skill: {},
+    combo: {},
+    simulator: {},
+    team: {}
   },
 };
 

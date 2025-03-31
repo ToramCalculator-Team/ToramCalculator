@@ -2,14 +2,14 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, zone } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
 
-export type Zone = ModifyKeys<Awaited<ReturnType<typeof findZoneById>>, {
-}>;
-export type NewZone = Insertable<zone>;
-export type ZoneUpdate = Updateable<zone>;
+export interface Zone extends DataType<zone> {
+  MainTable: Awaited<ReturnType<typeof findZones>>[number];
+  MainForm: zone;
+}
 
 export function zoneSubRelations(eb: ExpressionBuilder<DB, "zone">, id: Expression<string>) {
   return [
@@ -21,9 +21,7 @@ export function zoneSubRelations(eb: ExpressionBuilder<DB, "zone">, id: Expressi
         .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
         .selectAll("mob"),
     ).as("mobs"),
-    jsonArrayFrom(
-      eb.selectFrom("npc").where("npc.zoneId", "=", id).selectAll("npc"),
-    ).as("npcs"),
+    jsonArrayFrom(eb.selectFrom("npc").where("npc.zoneId", "=", id).selectAll("npc")).as("npcs"),
   ];
 }
 
@@ -36,7 +34,11 @@ export async function findZoneById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateZone(id: string, updateWith: ZoneUpdate) {
+export async function findZones() {
+  return await db.selectFrom("zone").selectAll("zone").execute();
+}
+
+export async function updateZone(id: string, updateWith: Zone["Update"]) {
   return await db.updateTable("zone").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
@@ -44,19 +46,17 @@ export async function deleteZone(id: string) {
   return await db.deleteFrom("zone").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultZone: Zone = {
+export const defaultZone: Zone["Insert"] = {
   id: "defaultZoneId",
   name: "defaultZone",
   linkZone: [],
   rewardNodes: 0,
   activityId: null,
   addressId: "",
-  mobs: [],
-  npcs: [],
 };
 
 // Dictionary
-export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
+export const ZoneDic = (locale: Locale): ConvertToAllString<Zone["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -67,8 +67,6 @@ export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
         rewardNodes: "道具点数量",
         activityId: "所属活动ID",
         addressId: "所属地图Id",
-        mobs: "此区域的怪物",
-        npcs: "此区域的NPC",
       };
     case "zh-TW":
       return {
@@ -79,8 +77,6 @@ export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
         rewardNodes: "道具點數數量",
         activityId: "所屬活動ID",
         addressId: "所屬地圖Id",
-        mobs: "此區域的怪物",
-        npcs: "此區域的NPC",
       };
     case "en":
       return {
@@ -91,8 +87,6 @@ export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
         rewardNodes: "Reward Nodes",
         activityId: "Activity ID",
         addressId: "Address ID",
-        mobs: "Mobs",
-        npcs: "NPCs",
       };
     case "ja":
       return {
@@ -103,8 +97,6 @@ export const ZoneDic = (locale: Locale): ConvertToAllString<Zone> => {
         rewardNodes: "報酬ノード数",
         activityId: "アクティビティID",
         addressId: "アドレスID",
-        mobs: "モブ",
-        npcs: "NPC",
       };
   }
 };

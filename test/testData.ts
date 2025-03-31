@@ -6,7 +6,7 @@ import { defaultMember, Member } from "~/repositories/client/member";
 import { defaultMob } from "~/repositories/client/mob";
 import { defaultWeaponEncAttributes } from "~/repositories/client/weaponEncAttrs";
 import { Mob } from "~/repositories/client/mob";
-import { defaultCustomPet } from "~/repositories/client/customPet";
+import { defaultCustomPet } from "~/repositories/client/playerPet";
 import { defaultSkill, Skill } from "~/repositories/client/skill";
 import { defaultStatistic } from "~/repositories/client/statistic";
 import { skillSequenceList } from "~/routes/(app)/(functionPage)/simulator/(simulator)";
@@ -518,7 +518,7 @@ export const test: {
           }
         },
         armorId: "",
-        addEquip: {
+        optEquip: {
           id: "",
           name: "饼干腰翼",
           refinement: 0,
@@ -562,7 +562,7 @@ export const test: {
             baseDef: 0
           }
         },
-        addEquipId: "",
+        optEquipId: "",
         speEquip: {
           id: "",
           name: "读星提灯",

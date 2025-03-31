@@ -2,16 +2,16 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, task } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export type Task = ModifyKeys<Awaited<ReturnType<typeof findTaskById>>, {
-}>;
-export type NewTask = Insertable<task>;
-export type TaskUpdate = Updateable<task>;
+export interface Task extends DataType<task> {
+  MainTable: Awaited<ReturnType<typeof findTasks>>[number]
+  MainForm: task
+}
 
 export function taskSubRelations(eb: ExpressionBuilder<DB, "task">, id: Expression<string>) {
-  return [jsonArrayFrom(eb.selectFrom("reward").where("reward.taskId", "=", id).selectAll("reward")).as("rewards")];
+  return [jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.taskId", "=", id).selectAll("task_reward")).as("rewards")];
 }
 
 export async function findTaskById(id: string) {
@@ -23,7 +23,14 @@ export async function findTaskById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateTask(id: string, updateWith: TaskUpdate) {
+export async function findTasks() {
+  return await db
+    .selectFrom("task")
+    .selectAll("task")
+    .execute();
+}
+
+export async function updateTask(id: string, updateWith: Task["Update"]) {
   return await db.updateTable("task").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
@@ -31,18 +38,17 @@ export async function deleteTask(id: string) {
   return await db.deleteFrom("task").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultTask: Task = {
+export const defaultTask: Task["Insert"] = {
   id: "defaultTaskId",
   name: "defaultTask",
   lv: 0,
   npcId: "",
-  rewards: [],
-  type: "",
+  type: "Collect",
   description: "defaultTask description",
 };
 
 // Dictionary
-export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
+export const TaskDic = (locale: Locale): ConvertToAllString<Task["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -51,7 +57,6 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         id: "ID",
         lv: "等级限制",
         npcId: "所属NPCID",
-        rewards: "奖励列表",
         type: "任务类型",
         description: "任务描述",
       };
@@ -62,7 +67,6 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         id: "ID",
         lv: "等級限制",
         npcId: "所屬NPCID",
-        rewards: "獎勵列表",
         type: "任務類型",
         description: "任務描述",
       };
@@ -73,7 +77,6 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         id: "ID",
         lv: "Level Limit",
         npcId: "NPC ID",
-        rewards: "Rewards",
         type: "Task Type",
         description: "Task Description",
       };
@@ -84,7 +87,6 @@ export const TaskDic = (locale: Locale): ConvertToAllString<Task> => {
         id: "ID",
         lv: "レベル制限",
         npcId: "NPC ID",
-        rewards: "報酬一覧",
         type: "任務タイプ",
         description: "任務説明",
       };

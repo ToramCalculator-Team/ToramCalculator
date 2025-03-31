@@ -1,4 +1,5 @@
 import {
+  Accessor,
   createEffect,
   createMemo,
   createResource,
@@ -9,6 +10,7 @@ import {
   onMount,
   Resource,
   Show,
+  useContext,
 } from "solid-js";
 import { Cell, Column, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
@@ -16,9 +18,12 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
-import { type Locale } from "~/locales/i18n";
+import { getDictionary, type Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "~/repositories/client/untils";
 import { DB } from "../../../db/clientDB/kysely/kyesely";
+import Button from "../controls/button";
+import { Motion, Presence } from "solid-motionone";
+import { MediaContext } from "~/contexts/Media";
 
 export default function VirtualTable<
   Item extends {
@@ -32,7 +37,12 @@ export default function VirtualTable<
   tableColumns: ColumnDef<Item>[];
   tableHiddenColumns: Array<keyof Item>;
   tableTdGenerator: (props: { cell: Cell<Item, keyof Item> }) => JSX.Element;
+  filterIsOpen: Accessor<boolean>;
+  setFilterIsOpen: (isOpen: boolean) => void;
 }) {
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const media = useContext(MediaContext);
   // 列固定
   const getCommonPinningStyles = (column: Column<Item>): JSX.CSSProperties => {
     const isPinned = column.getIsPinned();
@@ -209,60 +219,119 @@ export default function VirtualTable<
   });
 
   return (
-    <OverlayScrollbarsComponent
-      element="div"
-      options={{ scrollbars: { autoHide: "scroll" } }}
-      ref={setVirtualScrollRef}
-      class="h-full"
-    >
-      <table class="Table relative w-full">
-        <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
-          <For each={table.getHeaderGroups()}>
-            {(headerGroup) => (
-              <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
-                <For each={headerGroup.headers}>
-                  {(header) => {
-                    const { column } = header;
-                    if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
-                      // 默认隐藏的数据
-                      return;
-                    }
-                    return (
-                      <th
-                        style={{
-                          ...getCommonPinningStyles(column),
-                          width: getCommonPinningStyles(column).width + "px",
-                        }}
-                        class="flex flex-col"
-                      >
-                        <div
-                          {...{
-                            onClick: header.column.getToggleSortingHandler(),
+    <>
+      <Presence exitBeforeEnter>
+        <Show when={props.filterIsOpen()}>
+          <Motion.div
+            animate={{
+              opacity: [0, 1],
+              gridTemplateRows: ["0fr", "1fr"],
+              paddingBlock: ["0rem", "1rem"],
+              filter: ["blur(20px)", "blur(0px)"],
+            }}
+            exit={{
+              opacity: [1, 0],
+              gridTemplateRows: ["1fr", "0fr"],
+              paddingBlock: ["1rem", "0rem"],
+              filter: ["blur(0px)", "blur(20px)"],
+            }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+            class={`FilterBox grid portrait:px-6`}
+          >
+            <div
+              class={`Content flex flex-col gap-2 overflow-hidden ${props.filterIsOpen() ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"} `}
+            >
+              <div class="content flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  level={table.getIsAllColumnsVisible() ? "default" : "primary"}
+                  onClick={table.getToggleAllColumnsVisibilityHandler()}
+                >
+                  ALL
+                </Button>
+                {table.getAllLeafColumns().map((column) => {
+                  if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
+                    // 默认隐藏的数据
+                    return;
+                  }
+                  return (
+                    <Button
+                      size="sm"
+                      level={column.getIsVisible() ? "default" : "primary"}
+                      onClick={column.getToggleVisibilityHandler()}
+                    >
+                      {column.id}
+                    </Button>
+                  );
+                })}
+              </div>
+              {/* <div class="module flex flex-col gap-3">
+                <div class="title">{dictionary.ui.monster.augmented}</div>
+                <div class="content flex flex-wrap gap-2">
+                  <Button level="tertiary" onClick={() => setAugmented(!augmented)}>
+                    {augmented ? "Yes" : "No"}
+                  </Button>
+                </div>
+              </div> */}
+            </div>
+          </Motion.div>
+        </Show>
+      </Presence>
+      <OverlayScrollbarsComponent
+        element="div"
+        options={{ scrollbars: { autoHide: "scroll" } }}
+        ref={setVirtualScrollRef}
+        class="h-full flex-1"
+      >
+        <table class="Table relative w-full">
+          <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
+            <For each={table.getHeaderGroups()}>
+              {(headerGroup) => (
+                <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
+                  <For each={headerGroup.headers}>
+                    {(header) => {
+                      const { column } = header;
+                      if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
+                        // 默认隐藏的数据
+                        return;
+                      }
+                      return (
+                        <th
+                          style={{
+                            ...getCommonPinningStyles(column),
+                            width: getCommonPinningStyles(column).width + "px",
                           }}
-                          class={`hover:bg-area-color flex-1 px-6 py-3 text-left font-normal lg:py-6 ${
-                            header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                          }`}
+                          class="flex flex-col"
                         >
-                          {
-                            props.itemDic(store.settings.language)[
-                              column.id as keyof ConvertToAllString<Item>
-                            ] as string
-                          }
-                          {{
-                            asc: " ↓",
-                            desc: " ↑",
-                          }[header.column.getIsSorted() as string] ?? null}
-                        </div>
-                      </th>
-                    );
-                  }}
-                </For>
-              </tr>
-            )}
-          </For>
-        </thead>
-        {tableBodyDom()}
-      </table>
-    </OverlayScrollbarsComponent>
+                          <div
+                            {...{
+                              onClick: header.column.getToggleSortingHandler(),
+                            }}
+                            class={`hover:bg-area-color flex-1 px-6 py-3 text-left font-normal lg:py-6 ${
+                              header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                            }`}
+                          >
+                            {
+                              props.itemDic(store.settings.language)[
+                                column.id as keyof ConvertToAllString<Item>
+                              ] as string
+                            }
+                            {{
+                              asc: " ↓",
+                              desc: " ↑",
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </div>
+                        </th>
+                      );
+                    }}
+                  </For>
+                </tr>
+              )}
+            </For>
+          </thead>
+          {tableBodyDom()}
+        </table>
+      </OverlayScrollbarsComponent>
+    </>
   );
 }

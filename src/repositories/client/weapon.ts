@@ -1,37 +1,23 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, StatisticDic } from "./statistic";
-import { defaultAccount } from "./account";
-import { crystalSubRelations } from "./crystal";
-import { itemSubRelations } from "./item";
-import { defaultRecipes, recipeSubRelations } from "./recipe";
-import { type Enums } from "./enums";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { insertStatistic, StatisticDic } from "./statistic";
+import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
-import { mobSubRelations } from "./mob";
+import { ConvertToAllString, DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
+import { weapon, crystal, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { insertRecipe } from "./recipe";
+import { insertImage } from "./image";
+import { insertRecipeIngredient } from "./recipeIngredient";
+import { insertItem } from "./item";
 
-export type Weapon = ModifyKeys<
-  Awaited<ReturnType<typeof findWeaponById>>,
-  {
-    type: Enums["WeaponType"];
-    element: Enums["WeaponElementType"];
-  }
->;
-export type NewWeapon = Insertable<item>;
-export type WeaponUpdate = Updateable<item>;
+export interface Weapon extends DataType<weapon> {
+  MainTable: Awaited<ReturnType<typeof findWeapons>>[number];
+}
 
 export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
-      jsonArrayFrom(
-        eb
-          .selectFrom("mob")
-          .innerJoin("drop_item","drop_item.dropById","mob.id")
-          .where("drop_item.itemId", "=", id)
-          .selectAll("mob")
-          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-      ).as("dropBy"),
     jsonArrayFrom(
       eb
         .selectFrom("_crystalToplayer_weapon")
@@ -40,44 +26,79 @@ export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expres
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("defaultCrystals"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("recipe")
-        .where("recipe.consumableId", "=", id)
-        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
-    ).as("recipe"),
   ];
 }
 
-export async function findWeaponById(id: string) {
+export async function findWeaponByItemId(id: string) {
   return await db
-    .selectFrom("item")
-    .innerJoin("weapon", "item.id", "weapon.itemId")
-    .where("id", "=", id)
-    .selectAll(["item", "weapon"])
+    .selectFrom("weapon")
+    .innerJoin("item", "item.id", "weapon.itemId")
+    .where("item.id", "=", id)
+    .selectAll("weapon")
     .select((eb) => weaponSubRelations(eb, eb.val(id)))
-    .select((eb) => itemSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
 export async function findWeapons() {
   return await db
-    .selectFrom("item")
-    .innerJoin("weapon", "item.id", "weapon.itemId")
+    .selectFrom("weapon")
+    .innerJoin("item", "item.id", "weapon.itemId")
     .selectAll(["item", "weapon"])
-    .select((eb) => weaponSubRelations(eb, eb.val("item.id")))
-    .select((eb) => itemSubRelations(eb, eb.val("item.id")))
-    .execute() as Weapon[];
+    .execute();
 }
 
-export async function updateWeapon(id: string, updateWith: WeaponUpdate) {
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+export async function updateWeapon(id: string, updateWith: Weapon["Update"]) {
+  return await db.updateTable("weapon").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createWeapon(newWeapon: NewWeapon) {
+export async function insertWeapon(trx: Transaction<DB>, newWeapon: Weapon["Insert"]) {
+  const weapon = await db.insertInto("weapon").values(newWeapon).returningAll().executeTakeFirstOrThrow();
+  return weapon;
+}
+
+export async function createWeapon(
+  newWeapon: item & {
+    weapon: weapon & {
+      defaultCrystals: crystal[];
+      image: image;
+    };
+    repice: recipe & {
+      ingredients: recipe_ingredient[];
+    };
+  },
+) {
   return await db.transaction().execute(async (trx) => {
-    const item = await trx.insertInto("item").values(newWeapon).returningAll().executeTakeFirstOrThrow();
-    return item;
+    const { weapon: _weaponInput, repice: recipeInput, ...itemInput } = newWeapon;
+    const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...weaponInput } = _weaponInput;
+    const { ingredients: recipeIngredientsInput } = recipeInput;
+    const image = await insertImage(trx, imageInput);
+    const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
+    const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
+    const recipeIngredients = await Promise.all(
+      recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
+    );
+    const statistic = await insertStatistic(trx);
+    const item = await insertItem(trx, {
+      ...itemInput,
+      id: createId(),
+      statisticId: statistic.id,
+    });
+    const weapon = await insertWeapon(trx, {
+      ...weaponInput,
+      itemId: item.id,
+    });
+    return {
+      ...item,
+      weapon: {
+        ...weapon,
+        defaultCrystals,
+        image,
+      },
+      recipe: {
+        ...recipe,
+        ingredients: recipeIngredients,
+      },
+    };
   });
 }
 
@@ -85,274 +106,73 @@ export async function deleteWeapon(id: string) {
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
 
-// 武器公共属性
-const defaultWeaponShared = {
-  baseAbi: 0,
+// default
+export const defaultWeapon: Weapon["Insert"] = {
+  modifiers: [],
+  itemId: "defaultWeaponId",
+  type: "Magictool",
   stability: 0,
-  defaultCrystals: [],
+  elementType: "Normal",
+  baseAbi: 0,
   colorA: 0,
   colorB: 0,
   colorC: 0,
-  modifiers: [],
-  dataSources: "",
-  details: "",
-  dropBy: [],
-  rewardBy: [],
-  updatedAt: new Date(),
-  createdAt: new Date(),
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-};
-
-// default
-export const defaultWeapons: Record<Enums["WeaponType"], Weapon> = {
-  OneHandSword: {
-    name: "defaultOneHandSword",
-    id: "defaultWeaponOneHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "OneHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.OneHandSword,
-    statistic: defaultStatistics.OneHandSword,
-    statisticId: defaultStatistics.OneHandSword.id,
-    ...defaultWeaponShared,
-  },
-  TwoHandSword: {
-    name: "defaultTwoHandSword",
-    id: "defaultWeaponTwoHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "TwoHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.TwoHandSword,
-    statistic: defaultStatistics.TwoHandSword,
-    statisticId: defaultStatistics.TwoHandSword.id,
-    ...defaultWeaponShared,
-  },
-  Bow: {
-    name: "defaultBow",
-    id: "defaultWeaponBowId",
-    itemId: "defaultWeaponId",
-    type: "Bow",
-    elementType:"Normal",
-    recipe: defaultRecipes.Bow,
-    statistic: defaultStatistics.Bow,
-    statisticId: defaultStatistics.Bow.id,
-    ...defaultWeaponShared,
-  },
-  Bowgun: {
-    name: "defaultBowgun",
-    id: "defaultWeaponBowgunId",
-    itemId: "defaultWeaponId",
-    type: "Bowgun",
-    elementType:"Normal",
-    recipe: defaultRecipes.Bowgun,
-    statistic: defaultStatistics.Bowgun,
-    statisticId: defaultStatistics.Bowgun.id,
-    ...defaultWeaponShared,
-  },
-  Rod: {
-    name: "defaultRod",
-    id: "defaultWeaponRodId",
-    itemId: "defaultWeaponId",
-    type: "Rod",
-    elementType:"Normal",
-    recipe: defaultRecipes.Rod,
-    statistic: defaultStatistics.Rod,
-    statisticId: defaultStatistics.Rod.id,
-    ...defaultWeaponShared,
-  },
-  Magictool: {
-    name: "defaultMagictool",
-    id: "defaultWeaponMagictoolId",
-    itemId: "defaultWeaponId",
-    type: "Magictool",
-    elementType:"Normal",
-    recipe: defaultRecipes.Magictool,
-    statistic: defaultStatistics.Magictool,
-    statisticId: defaultStatistics.Magictool.id,
-    ...defaultWeaponShared,
-  },
-  Knuckle: {
-    name: "defaultKnuckle",
-    id: "defaultWeaponKnuckleId",
-    itemId: "defaultWeaponId",
-    type: "Knuckle",
-    elementType:"Normal",
-    recipe: defaultRecipes.Knuckle,
-    statistic: defaultStatistics.Knuckle,
-    statisticId: defaultStatistics.Knuckle.id,
-    ...defaultWeaponShared,
-  },
-  Halberd: {
-    name: "defaultHalberd",
-    id: "defaultWeaponHalberdId",
-    itemId: "defaultWeaponId",
-    type: "Halberd",
-    elementType:"Normal",
-    recipe: defaultRecipes.Halberd,
-    statistic: defaultStatistics.Halberd,
-    statisticId: defaultStatistics.Halberd.id,
-    ...defaultWeaponShared,
-  },
-  Katana: {
-    name: "defaultKatana",
-    id: "defaultWeaponKatanaId",
-    itemId: "defaultWeaponId",
-    type: "Katana",
-    elementType:"Normal",
-    recipe: defaultRecipes.Katana,
-    statistic: defaultStatistics.Katana,
-    statisticId: defaultStatistics.Katana.id,
-    ...defaultWeaponShared,
-  },
-  Arrow: {
-    name: "defaultArrow",
-    id: "defaultWeaponOneHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "OneHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.Arrow,
-    statistic: defaultStatistics.Arrow,
-    statisticId: defaultStatistics.Arrow.id,
-    ...defaultWeaponShared,
-  },
-  ShortSword: {
-    name: "defaultShortSword",
-    id: "defaultWeaponOneHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "OneHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.ShortSword,
-    statistic: defaultStatistics.ShortSword,
-    statisticId: defaultStatistics.ShortSword.id,
-    ...defaultWeaponShared,
-  },
-  NinjutsuScroll: {
-    name: "defaultNinjutsuScroll",
-    id: "defaultWeaponOneHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "OneHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.NinjutsuScroll,
-    statistic: defaultStatistics.NinjutsuScroll,
-    statisticId: defaultStatistics.NinjutsuScroll.id,
-    ...defaultWeaponShared,
-  },
-  Shield: {
-    name: "defaultShield",
-    id: "defaultWeaponOneHandSwordId",
-    itemId: "defaultWeaponId",
-    type: "OneHandSword",
-    elementType:"Normal",
-    recipe: defaultRecipes.Shield,
-    statistic: defaultStatistics.Shield,
-    statisticId: defaultStatistics.Shield.id,
-    ...defaultWeaponShared,
-  },
 };
 
 // Dictionary
-export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon> => {
+export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
-        selfName: "武器",
-        name: "名称",
-        id: "ID",
-        baseAbi: "基础攻击力",
+        modifiers: "属性",
+        itemId: "所属道具ID",
+        type: "武器类型",
         stability: "稳定率",
-        defaultCrystals: "默认锻晶",
+        elementType: "觉醒属性",
+        baseAbi: "攻击力",
         colorA: "颜色A",
         colorB: "颜色B",
         colorC: "颜色C",
-        modifiers: "属性",
-        dataSources: "数据来源",
-        details: "额外说明",
-        dropBy: "掉落于",
-        rewardBy: "奖励于",
-        itemId: "道具ID",
-        type: "武器类型",
-        elementType:"固有元素属性",
-        recipe: "配方",
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "创建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "统计信息ID",
+        selfName: "武器",
       };
     case "zh-TW":
       return {
         selfName: "武器",
-        name: "名称",
-        id: "ID",
-        baseAbi: "基礎攻擊力",
+        modifiers: "屬性",
+        type: "武器類型",
         stability: "穩定率",
-        defaultCrystals: "預設鑄晶",
+        elementType: "觉醒屬性",
+        itemId: "所屬道具ID",
+        baseAbi: "攻擊力",
         colorA: "顏色A",
         colorB: "顏色B",
         colorC: "顏色C",
-        modifiers: "屬性",
-        dataSources: "資料來源",
-        details: "額外說明",
-        dropBy: "掉落於",
-        rewardBy: "獎勵於",
-        itemId: "道具ID",
-        type: "武器類型",
-        elementType:"固有元素屬性",
-        recipe: "配方",
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "創建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "統計資料ID",
       };
     case "en":
       return {
-        selfName: "weapon",
-        name: "name",
-        id: "id",
-        baseAbi: "baseAbi",
-        stability: "stability",
-        defaultCrystals: "defaultCrystals",
-        colorA: "colorA",
-        colorB: "colorB",
-        colorC: "colorC",
-        modifiers: "modifiers",
-        dataSources: "dataSources",
-        details: "details",
-        dropBy: "dropBy",
-        rewardBy: "rewardBy",
-        itemId: "itemId",
-        type: "type",
-        elementType:"elementType",
-        recipe: "recipe",
-        updatedByAccountId: "updatedByAccountId",
-        createdByAccountId: "createdByAccountId",
-        statistic: StatisticDic(locale),
-        statisticId: "statisticId",
+        selfName: "Weapon",
+        modifiers: "Modifiers",
+        type: "Type",
+        stability: "Stability",
+        elementType: "Element Type",
+        itemId: "ItemId",
+        baseAbi: "Base Abi",
+        colorA: "Color A",
+        colorB: "Color B",
+        colorC: "Color C",
       };
     case "ja":
       return {
         selfName: "武器",
-        name: "名称",
-        id: "ID",
+        modifiers: "補正項目",
+        type: "武器タイプ",
+        stability: "スタビリティ",
+        elementType: "觉醒属性",
+        itemId: "所属アイテムID",
         baseAbi: "基本攻撃力",
-        stability: "安定率",
-        defaultCrystals: "デフォルトクリスタル",
         colorA: "色A",
         colorB: "色B",
         colorC: "色C",
-        modifiers: "属性",
-        dataSources: "データソース",
-        details: "詳細",
-        dropBy: "ドロップ",
-        rewardBy: "報酬",
-        itemId: "アイテムID",
-        type: "武器タイプ",
-        elementType:"固有元素属性",
-        recipe: "レシピ",
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "作成者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "統計情報ID",
       };
   }
 };

@@ -1,2 +1,2 @@
-name,baseDef,modifiers,dataSources,details,itemId
-defaultSpeEquip,10,"{""mPie + 10%"",""maxMp + 300""}","","",defaultItemSpeEquipId
+baseDef,modifiers,itemId
+10,"{""mPie + 10%"",""maxMp + 300""}",defaultItemSpeEquipId

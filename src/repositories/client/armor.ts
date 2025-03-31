@@ -1,16 +1,20 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, insertStatistic, StatisticDic } from "./statistic";
-import { defaultAccount } from "./account";
-import { crystalSubRelations } from "./crystal";
-import { itemSubRelations } from "./item";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { insertStatistic, StatisticDic } from "./statistic";
+import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { armor, DB, item } from "../../../db/clientDB/kysely/kyesely";
+import { armor, crystal, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { insertRecipe } from "./recipe";
+import { insertImage } from "./image";
+import { insertRecipeIngredient } from "./recipeIngredient";
+import { insertItem } from "./item";
 
-export interface Armor extends DataType<armor, typeof findArmors, typeof createArmor> {}
+export interface Armor extends DataType<armor> {
+  MainTable: Awaited<ReturnType<typeof findArmors>>[number]
+ }
 
 export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
@@ -25,21 +29,20 @@ export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Express
   ];
 }
 
-export async function findArmorById(id: string) {
+export async function findArmorByItemId(id: string) {
   return await db
-    .selectFrom("item")
-    .innerJoin("armor", "item.id", "armor.itemId")
-    .where("id", "=", id)
-    .selectAll(["item", "armor"])
+    .selectFrom("armor")
+    .innerJoin("item", "item.id", "armor.itemId")
+    .where("item.id", "=", id)
+    .selectAll("armor")
     .select((eb) => armorSubRelations(eb, eb.val(id)))
-    .select((eb) => itemSubRelations(eb, eb.val(id),"armor"))
     .executeTakeFirstOrThrow();
 }
 
 export async function findArmors() {
   return await db
-    .selectFrom("item")
-    .innerJoin("armor", "item.id", "armor.itemId")
+    .selectFrom("armor")
+    .innerJoin("item", "item.id", "armor.itemId")
     .selectAll(["item", "armor"])
     .execute();
 }
@@ -48,30 +51,54 @@ export async function updateArmor(id: string, updateWith: Armor["Update"]) {
   return await db.updateTable("armor").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createArmor(newArmor: item & {
-  armor: armor
-}) {
+export async function insertArmor(trx: Transaction<DB>, newArmor: Armor["Insert"]) {
+  const armor = await db.insertInto("armor").values(newArmor).returningAll().executeTakeFirstOrThrow();
+  return armor;
+}
+
+export async function createArmor(
+  newArmor: item & {
+    armor: armor & {
+      defaultCrystals: crystal[];
+      image: image;
+    };
+    repice: recipe & {
+      ingredients: recipe_ingredient[];
+    };
+  },
+) {
   return await db.transaction().execute(async (trx) => {
-    const { armor: armorInput, ...itemInput } = newArmor;
+    const { armor: _armorInput, repice: recipeInput, ...itemInput } = newArmor;
+    const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...armorInput } = _armorInput;
+    const { ingredients: recipeIngredientsInput } = recipeInput;
+    const image = await insertImage(trx, imageInput);
+    const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
+    const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
+    const recipeIngredients = await Promise.all(
+      recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
+    );
     const statistic = await insertStatistic(trx);
-    const item = await trx
-      .insertInto("item")
-      .values({
-        id: createId(),
-        tableType: "armor",
-        statisticId: statistic.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    const armor = await trx
-      .insertInto("armor")
-      .values({
-        ...newArmor,
-        itemId: item.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return armor;
+    const item = await insertItem(trx, {
+      ...itemInput,
+      id: createId(),
+      statisticId: statistic.id
+    });
+    const armor = await insertArmor(trx, {
+      ...armorInput,
+      itemId: item.id,
+    });
+    return {
+      ...item,
+      armor: {
+        ...armor,
+        defaultCrystals,
+        image,
+      },
+      recipe: {
+        ...recipe,
+        ingredients: recipeIngredients,
+      },
+    };
   });
 }
 
@@ -81,116 +108,56 @@ export async function deleteArmor(id: string) {
 
 // default
 export const defaultArmor: Armor["Insert"] = {
-  name: "defaultArmor",
-  id: "defaultArmorId",
-  tableType: "armor",
   modifiers: [],
   itemId: "defaultArmorId",
-  defaultCrystals: [],
   baseDef: 0,
   colorA: 0,
   colorB: 0,
   colorC: 0,
-  dataSources: "",
-  details: "",
-  dropBy: [],
-  rewardBy: [],
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics.Armor,
-  statisticId: defaultStatistics.Armor.id,
 };
 
 // Dictionary
-export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["MainForm"]> => {
+export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
-        selfName: "防具装备",
-        name: "名称",
-        id: "ID",
-        tableType: "",
         modifiers: "属性",
         itemId: "所属道具ID",
-        defaultCrystals: "附加锻晶",
         baseDef: "防御力",
         colorA: "颜色A",
         colorB: "颜色B",
         colorC: "颜色C",
-        dataSources: "数据来源",
-        details: "额外说明",
-        dropBy: "掉落于怪物",
-        rewardBy: "奖励于任务",
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "创建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "统计信息ID",
+        selfName: "防具装备",
       };
     case "zh-TW":
       return {
         selfName: "防具裝備",
-        name: "名称",
-        id: "ID",
-        tableType: "",
         modifiers: "屬性",
         itemId: "所屬道具ID",
-        defaultCrystals: "附加鑽晶",
         baseDef: "防禦力",
         colorA: "顏色A",
         colorB: "顏色B",
         colorC: "顏色C",
-        dataSources: "資料來源",
-        details: "額外說明",
-        dropBy: "掉落於怪物",
-        rewardBy: "獎勵於任務",
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "創建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "統計信息ID",
       };
     case "en":
       return {
         selfName: "Armor",
-        name: "Name",
-        id: "ID",
-        tableType: "",
         modifiers: "Modifiers",
         itemId: "ItemId",
-        defaultCrystals: "Default Crystals",
         baseDef: "Base Def",
         colorA: "Color A",
         colorB: "Color B",
         colorC: "Color C",
-        dataSources: "Data Sources",
-        details: "Details",
-        dropBy: "Drop By",
-        rewardBy: "Reward By",
-        updatedByAccountId: "Updated By Account Id",
-        createdByAccountId: "Created By Account Id",
-        statistic: StatisticDic(locale),
-        statisticId: "Statistic Id",
       };
     case "ja":
       return {
         selfName: "鎧",
-        name: "名前",
-        id: "ID",
-        tableType: "",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
-        defaultCrystals: "デフォルトクリスタル",
         baseDef: "防御力",
         colorA: "色A",
         colorB: "色B",
         colorC: "色C",
-        dataSources: "データソース",
-        details: "追加詳細",
-        dropBy: "ドロップバイ",
-        rewardBy: "報酬バイ",
-        updatedByAccountId: "アカウントIDによって更新",
-        createdByAccountId: "アカウントIDによって作成",
-        statistic: StatisticDic(locale),
-        statisticId: "統計ID",
       };
   }
 };

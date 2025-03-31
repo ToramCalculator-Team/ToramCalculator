@@ -7,7 +7,7 @@ import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
 import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/client/mob";
 import { findSkillById, type Skill } from "~/repositories/client/skill";
-import { findCrystalById, type Crystal } from "~/repositories/client/crystal";
+import { findCrystalByItemId, type Crystal } from "~/repositories/client/crystal";
 import Filing from "~/components/module/filing";
 
 import { type SkillEffect } from "~/repositories/client/skillEffect";
@@ -158,7 +158,7 @@ export default function Index() {
   const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
     switch (currentCardType()) {
       case "crystal":
-        return findCrystalById(currentCardId());
+        return findCrystalByItemId(currentCardId());
       case "player_pet":
       case "player_weapon":
       case "drop_item":
@@ -174,7 +174,7 @@ export default function Index() {
       case "post":
       case "recipe":
       case "recipe_ingredient":
-      case "reward":
+      case "task_reward":
       case "session":
       case "simulator":
       case "skill":

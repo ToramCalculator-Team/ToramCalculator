@@ -2,15 +2,12 @@ import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, avatar } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { Enums } from "./enums";
 
-export type Avatar = ModifyKeys<Awaited<ReturnType<typeof findAvatarById>>, {
-  type: Enums["AvatarType"];
-}>;
-export type NewAvatar = Insertable<avatar>;
-export type AvatarUpdate = Updateable<avatar>;
+export interface Avatar extends DataType<avatar> {
+  MainTable: Awaited<ReturnType<typeof findAvatars>>[number]
+}
 
 export function avatarSubRelations(eb: ExpressionBuilder<DB, "avatar">, id: Expression<string>) {
   return [];
@@ -25,7 +22,11 @@ export async function findAvatarById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateAvatar(id: string, updateWith: AvatarUpdate) {
+export async function findAvatars() {
+  return await db.selectFrom("avatar").selectAll("avatar").execute();
+}
+
+export async function updateAvatar(id: string, updateWith: Avatar["Update"]) {
   return await db.updateTable("avatar").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
@@ -33,7 +34,7 @@ export async function deleteAvatar(id: string) {
   return await db.deleteFrom("avatar").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultAvatar: Avatar = {
+export const defaultAvatar: Avatar["Insert"] = {
   id: "defaultAvatarId",
   name: "defaultAvatar",
   type: "Top",
@@ -42,7 +43,7 @@ export const defaultAvatar: Avatar = {
 };
 
 // Dictionary
-export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar> => {
+export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {

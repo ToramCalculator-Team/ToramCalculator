@@ -1,16 +1,19 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
-import { type Enums, ITEM_TYPE } from "./enums";
-import { DataType } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { DB, item } from "../../../db/clientDB/kysely/kyesely";
-import { item_tableType } from "../../../db/clientDB/kysely/enums";
+import { ItemType } from "../../../db/clientDB/kysely/enums";
 import { db } from "./database";
+import { ITEM_TYPE } from "../../../db/enums";
+import { Locale } from "~/locales/i18n";
 
-export interface Item extends DataType<item, typeof findItemById, typeof createItem> {}
+export interface Item extends DataType<item> {
+  MainTable: Awaited<ReturnType<typeof findItems>>[number];
+}
 
-export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>, type: item_tableType) {
+export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>, type: ItemType) {
   const baseSubRelations = [
     jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
       .$notNull()
@@ -47,24 +50,45 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
   ];
 
   switch (type) {
-    case "weapon":
-      return [...baseSubRelations, eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon").as("weapon")];
-    case "armor":
-      return [...baseSubRelations, eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor").as("armor")];
-    case "option":
-      return [...baseSubRelations, eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option").as("option")];
-    case "special":
-      return [...baseSubRelations, eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special").as("special")];
-    case "crystal":
-      return [...baseSubRelations, eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal").as("crystal")];
-    case "consumable":
-      return [...baseSubRelations, eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable").as("consumable")];
-    case "material":
-      return [...baseSubRelations, eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material").as("material")];
+    case "Weapon":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon").as("weapon"),
+      ];
+    case "Armor":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor").as("armor"),
+      ];
+    case "Option":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option").as("option"),
+      ];
+    case "Special":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special").as("special"),
+      ];
+    case "Crystal":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal").as("crystal"),
+      ];
+    case "Consumable":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable").as("consumable"),
+      ];
+    case "Material":
+      return [
+        ...baseSubRelations,
+        eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material").as("material"),
+      ];
   }
 }
 
-export async function findItemById(id: string, type: item_tableType) {
+export async function findItemById(id: string, type: ItemType) {
   return await db
     .selectFrom("item")
     .where("id", "=", id)
@@ -73,8 +97,17 @@ export async function findItemById(id: string, type: item_tableType) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findItems() {
+  return await db.selectFrom("item").selectAll("item").execute();
+}
+
 export async function updateItem(id: string, updateWith: Item["Update"]) {
   return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function insertItem(trx: Transaction<DB>, newItem: Item["Insert"]) {
+  const item = await trx.insertInto("item").values(newItem).returningAll().executeTakeFirstOrThrow();
+  return item;
 }
 
 export async function createItem(newItem: Item["Insert"]) {
@@ -97,11 +130,12 @@ const itemsShared = {
   createdByAccountId: defaultAccount.id,
 };
 
-const items: Partial<Record<Enums["ItemType"], Item["Insert"]>> = {};
+const items: Partial<Record<ItemType, Item["Insert"]>> = {};
 for (const key of ITEM_TYPE) {
   items[key] = {
     id: `default${key}Id`,
-    tableType: key,
+    name: `default${key}`,
+    type: key,
     // statistic: defaultStatistics[key],
     statisticId: defaultStatistics[key].id,
     ...itemsShared,
@@ -109,3 +143,20 @@ for (const key of ITEM_TYPE) {
 }
 
 export const defaultItems = items;
+
+export const ItemDic = (locale: Locale): ConvertToAllString<Item["Insert"]> => {
+  switch (locale) {
+    case "zh-CN":
+    case "zh-TW":
+    case "en":
+    case "ja":
+      return {
+        id: "",
+        type: "",
+        name: "",
+        dataSources: "",
+        statisticId: "",
+        selfName: "",
+      };
+  }
+};

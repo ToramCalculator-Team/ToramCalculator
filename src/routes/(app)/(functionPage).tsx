@@ -7,7 +7,7 @@ import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import Button from "~/components/controls/button";
-import { WIKI_TYPE } from "~/repositories/client/enums";
+import { DataEnums } from "../../../db/dataEnums";
 
 const NavBtn = (props: {
   config: {
@@ -49,11 +49,41 @@ const Nav = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [isWikiOpen, setIsWikiOpen] = createSignal(false);
   const [isNavDialogOpen, setIsNavDialogOpen] = createSignal(false);
-  const [wikiClass, setWikiClass] = createSignal("mob");
+  const [wikiClass, setWikiClass] = createSignal<keyof DataEnums>("mob");
   const [wikiTableFilterRef, setWikiTableFilterRef] = createSignal<HTMLInputElement>();
   const location = useLocation();
   const active = (path: string) => (location.pathname.includes(path) ? "bg-area-color lg:bg-brand-color-1st" : "");
   const [isPc] = createSignal(window.innerWidth > 1024);
+  const navHiddenTables: (keyof DataEnums)[] = [
+    "VerificationToken",
+    "account",
+    "account_create_data",
+    "account_update_data",
+    "avatar",
+    "character",
+    "character_skill",
+    "combo",
+    "combo_step",
+    "drop_item",
+    "image",
+    "member",
+    "mercenary",
+    "player",
+    "player_armor",
+    "player_option",
+    "player_pet",
+    "player_special",
+    "player_weapon",
+    "post",
+    "recipe_ingredient",
+    "session",
+    "skill_effect",
+    "statistic",
+    "task_collect_require",
+    "task_kill_requirement",
+    "task_reward",
+    "user",
+  ];
 
   return (
     <Motion.div
@@ -77,7 +107,9 @@ const Nav = () => {
           {/* 移动端wiki切换按钮 */}
           <a
             href={`/wiki/${wikiClass()}`}
-            onclick={() => {if(active(`/wiki/`)) setIsWikiOpen(!isWikiOpen())}}
+            onclick={() => {
+              if (active(`/wiki/`)) setIsWikiOpen(!isWikiOpen());
+            }}
             tabIndex={0}
             class={`NavBtn btn-Wiki group flex w-[20dvw] shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:hidden lg:gap-1`}
           >
@@ -97,7 +129,7 @@ const Nav = () => {
                 }
               >
                 <Motion.div
-                  animate={{ transform:  ["rotate(90deg)", "none"] }}
+                  animate={{ transform: ["rotate(90deg)", "none"] }}
                   transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
                   class="h-6 w-6"
                 >
@@ -253,15 +285,17 @@ const Nav = () => {
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
               class={`DialogContent bg-primary-color shadow-dividing-color flex min-h-12 w-[calc(100%-48px)] flex-wrap items-center overflow-y-auto rounded shadow-2xl`}
             >
-              <For each={WIKI_TYPE}>
-                {(schemaName) => {
+              <For each={Object.keys(dictionary().enums)}>
+                {(_schemaKey, index) => {
+                  const schemaKey = _schemaKey as keyof DataEnums;
+                  if (navHiddenTables.includes(schemaKey)) return null;
                   return (
                     <a
-                      class={`${schemaName} w-1/3 overflow-hidden p-3 text-ellipsis`}
-                      onClick={() => setWikiClass(schemaName)}
+                      class={`${schemaKey} w-1/3 overflow-hidden p-3 text-ellipsis`}
+                      onClick={() => setWikiClass(schemaKey)}
                       href={`/wiki/${wikiClass()}`}
                     >
-                      {schemaName}
+                      {schemaKey}
                     </a>
                   );
                 }}
@@ -292,14 +326,14 @@ export default function Home(props: ParentProps) {
           "transition-duration": "all 0s !important"
         }}
       > */}
-        <Motion.div
-          animate={{ opacity: 1 }}
-          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-          id="mainContent"
-          class="Content overflow-hidden flex flex-col z-40 h-full w-full lg:landscape:px-12 bg-primary-color-90"
-        >
-          {props.children}
-        </Motion.div>
+      <Motion.div
+        animate={{ opacity: 1 }}
+        transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+        id="mainContent"
+        class="Content bg-primary-color-90 z-40 flex h-full w-full flex-col overflow-hidden lg:landscape:px-12"
+      >
+        {props.children}
+      </Motion.div>
       {/* </OverlayScrollbarsComponent> */}
     </Motion.main>
   );

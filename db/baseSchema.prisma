@@ -37,7 +37,7 @@ model user {
 
 model account {
     id                String   @id
-    type              String
+    type              String // Enum ACCOUNT_TYPE
     provider          String
     providerAccountId String
     refresh_token     String?
@@ -120,7 +120,7 @@ model address {
     id String @id
 
     name String
-    type String
+    type String // Enum ADDRESS_TYPE
     posX Int
     posY Int
 
@@ -193,12 +193,12 @@ model mob {
     id String @id
 
     name                             String
-    type                             String
+    type                             String // Enum MOB_TYPE
     captureable                      Boolean
     baseLv                           Int
     experience                       Int
     partsExperience                  Int
-    initialElement                   String
+    initialElement                   String // Enum ELEMENT_TYPE
     radius                           Int
     maxhp                            Int
     physicalDefense                  Int
@@ -237,8 +237,12 @@ model mob {
 
 // 道具
 model item {
-    id        String @id
-    tableType String
+    id   String @id
+    type String // Enum ITEM_TYPE
+    name String
+
+    dataSources String
+    details     String?
 
     weapon     weapon?
     armor      armor?
@@ -251,7 +255,7 @@ model item {
     recipe recipe?
 
     usedByDropItem    drop_item[]
-    usedByRewardItem  reward[]
+    usedByRewardItem  task_reward[]
     usedByTaskRequire task_collect_require[]
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -268,14 +272,9 @@ model item {
 
 // 素材物品
 model material {
-    name String
-
-    type    String
+    type    String // Enum MATERIAL_TYPE
     ptValue Int
     price   Int
-
-    dataSources String
-    details     String?
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -283,14 +282,9 @@ model material {
 
 // 消耗品
 model consumable {
-    name String
-
-    type           String
+    type           String // Enum CONSUMABLE_TYPE
     effectDuration Int
     effects        String[]
-
-    dataSources String
-    details     String?
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -301,12 +295,8 @@ model consumable {
 
 // 锻晶
 model crystal {
-    name      String
-    type      String
+    type      String // Enum CRYSTAL_TYPE
     modifiers String[]
-
-    dataSources String
-    details     String?
 
     front crystal[] @relation("FrontRelation")
     back  crystal[] @relation("BackRelation")
@@ -329,8 +319,7 @@ model crystal {
 
 // 武器
 model weapon {
-    name            String
-    type            String
+    type            String // Enum WEAPON_TYPE
     baseAbi         Int
     stability       Int
     defaultCrystals crystal[]
@@ -339,11 +328,7 @@ model weapon {
     colorB          Int
     colorC          Int
     image           image[]
-    // recipe          recipe?
-    elementType     String
-
-    dataSources String
-    details     String?
+    elementType     String // Enum ELEMENT_TYPE
 
     usedBy player_weapon[]
 
@@ -353,7 +338,6 @@ model weapon {
 
 // 防具
 model armor {
-    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -361,10 +345,6 @@ model armor {
     colorB          Int
     colorC          Int
     image           image[]
-    // recipe          recipe?
-
-    dataSources String
-    details     String?
 
     usedBy player_armor[]
 
@@ -374,7 +354,6 @@ model armor {
 
 // 追加装备
 model option {
-    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -382,10 +361,6 @@ model option {
     colorB          Int
     colorC          Int
     image           image[]
-    // recipe          recipe?
-
-    dataSources String
-    details     String?
 
     usedBy player_option[]
 
@@ -395,14 +370,9 @@ model option {
 
 // 特殊装备
 model special {
-    name            String
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
-    // recipe          recipe?
-
-    dataSources String
-    details     String?
 
     usedBy player_special[]
 
@@ -428,7 +398,7 @@ model recipe_ingredient {
     id String @id
 
     count  Int
-    type   String // 货币或者道具
+    type   String // Enum RECIPE_INGREDIENT_TYPE
     item   item?   @relation(fields: [itemId], references: [id])
     itemId String?
 
@@ -444,9 +414,9 @@ model drop_item {
     item            item   @relation(fields: [itemId], references: [id])
     itemId          String
     probability     Int
-    relatedPartType String
+    relatedPartType String // Enum BOSS_PART_TYPE
     relatedPartInfo String
-    breakRewardType String
+    breakRewardType String // Enum BOSS_PART_BREAK_REWARD_TYPE
 
     dropBy   mob    @relation(fields: [dropById], references: [id])
     dropById String
@@ -471,11 +441,11 @@ model task {
 
     lv          Int
     name        String
-    type        String
+    type        String // Enum TASK_TYPE
     description String
     kills       task_kill_requirement[]
     requires    task_collect_require[]
-    rewards     reward[]
+    rewards     task_reward[]
 
     belongToNpc npc    @relation(fields: [npcId], references: [id])
     npcId       String
@@ -507,10 +477,10 @@ model task_collect_require {
 }
 
 // 任务奖励
-model reward {
+model task_reward {
     id String @id
 
-    type        String
+    type        String // Enum TASK_REWARD_TYPE
     value       Int
     probability Int
     item        item?   @relation(fields: [itemId], references: [id]) // 仅当type为item时生效
@@ -524,18 +494,18 @@ model reward {
 model skill {
     id String @id
 
-    treeType     String
+    treeType     String // Enum SKILL_TREE_TYPE
     posX         Int
     posY         Int
     tier         Int
     name         String
     isPassive    Boolean
-    chargingType String
-    distanceType String
-    targetType   String // 目标类型: 自己\队友\敌人
+    chargingType String // Enum SKILL_CHARGING_TYPE
+    distanceType String // Enum SKILL_DISTANCE_TYPE
+    targetType   String // Enum SKILL_TARGET_TYPE
     effect       skill_effect[]
 
-    details     String?
+    details     String
     dataSources String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -623,8 +593,8 @@ model player_armor {
     id String @id
 
     name       String
-    def        Int
-    ability    String
+    extraAbi   Int
+    ability    String  // Enum PLAYER_ARMOR_ABILITY_TYPE
     template   armor?    @relation(fields: [templateId], references: [itemId])
     templateId String?
     refinement Int
@@ -687,9 +657,9 @@ model player_pet {
     vit         Int
     agi         Int
     dex         Int
-    weaponType  String
-    personaType String
-    type        String
+    weaponType  String // Enum MAIN_WEAPON_TYPE
+    personaType String // Enum PET_PERSONA_TYPE
+    type        String // Enum PET_TYPE
     weaponAtk   Int
     generation  Int
     maxLv       Int
@@ -703,7 +673,7 @@ model avatar {
     id String @id
 
     name           String
-    type           String
+    type           String // Enum AVATAR_TYPE
     modifiers      String[]
     belongToPlayer player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
     playerId       String
@@ -722,7 +692,7 @@ model character {
     vit               Int
     agi               Int
     dex               Int
-    personalityType   String
+    personalityType   String // Enum CHARACTER_PERSONALITY_TYPE
     personalityValue  Int
     weapon            player_weapon     @relation("weapon", fields: [weaponId], references: [id])
     weaponId          String
@@ -739,9 +709,9 @@ model character {
     modifiers         String[]
     skills            character_skill[]
     partnerSkillAId   String?
-    partnerSkillAType String
+    partnerSkillAType String // Enum PARTNER_SKILL_TYPE
     partnerSkillBId   String?
-    partnerSkillBType String
+    partnerSkillBType String // Enum PARTNER_SKILL_TYPE
     consumableList    consumable[]
     combos            combo[]
     master            player            @relation(fields: [masterId], references: [id])
@@ -786,7 +756,7 @@ model combo {
 model combo_step {
     id String @id
 
-    type             String
+    type             String // Enum COMBO_STEP_TYPE
     characterSkill   character_skill @relation(fields: [characterSkillId], references: [id])
     characterSkillId String
 
@@ -796,14 +766,14 @@ model combo_step {
 
 // 佣兵
 model mercenary {
-    type       String
+    type       String // Enum MERCENARY_TYPE
     template   character @relation(fields: [templateId], references: [id])
     templateId String    @id
 
     skillAId   String
-    skillAType String
+    skillAType String // Enum PARTNER_SKILL_TYPE
     skillBId   String
-    skillBType String
+    skillBType String // Enum PARTNER_SKILL_TYPE
 
     usedByMemberPartner   member[] @relation("partner")
     usedByMemberMercenary member[] @relation("mercenary")

@@ -30,6 +30,7 @@
     "prisma-kysely": "^1.8.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0",
+    "vite-plugin-top-level-await": "^1.5.0",
     "zod-prisma-types": "latest"
   },
   "dependencies": {

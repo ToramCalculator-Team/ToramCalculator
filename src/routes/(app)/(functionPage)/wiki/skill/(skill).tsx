@@ -16,32 +16,25 @@ import * as _ from "lodash-es";
 
 import { defaultImage } from "~/repositories/client/image";
 import { type Skill, SkillDic, defaultSkill, findSkillById, findSkills } from "~/repositories/client/skill";
-import { FormSate, setStore, store } from "~/store";
+import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Dialog from "~/components/controls/dialog";
 import Button from "~/components/controls/button";
-import { type Enums } from "~/repositories/client/enums";
 import { findSimulatorById } from "~/repositories/client/simulator";
 import NodeEditor from "~/components/module/nodeEditor";
 import { updateSkillEffect } from "~/repositories/client/skillEffect";
 import { DataEnums } from "../../../../../../db/dataEnums";
 import VirtualTable from "~/components/module/virtualTable";
 import { Portal } from "solid-js/web";
+import { getCommonPinningStyles } from "~/lib/table";
 
 export default function SkillIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
+  const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
   const [dialogState, setDialogState] = createSignal(false);
-  const [formState, setFormState] = createSignal<FormSate>("CREATE");
-  const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
-  const setSkillFormState = (newState: FormSate): void => {
-    setStore("wiki", "skill", {
-      formState: newState,
-    });
-  };
   const setSkill = (newSkill: Skill["Insert"]): void => {
     setStore("wiki", "skill", "id", newSkill.id);
   };
@@ -54,6 +47,7 @@ export default function SkillIndexPage() {
   );
 
   // table
+  const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(true);
   const skillColumns: ColumnDef<Skill["MainTable"]>[] = [
     {
       accessorKey: "id",
@@ -81,14 +75,14 @@ export default function SkillIndexPage() {
     },
   ];
 
-  const skillTableHiddenColumns: Array<keyof Skill["MainTable"][number]> = ["id"];
+  const skillTableHiddenColumns: Array<keyof Skill["MainTable"]> = ["id"];
 
   function skillTdGenerator(props:{ cell: Cell<Skill["MainTable"], keyof Skill["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
     type SkillKeys = keyof DataEnums["skill"];
     type SkillValueKeys<T extends SkillKeys> = keyof DataEnums["skill"][T];
 
-    switch (props.cell.column.id as keyof Skill["MainTable"][number]) {
+    switch (props.cell.column.id as keyof Skill["MainTable"]) {
       case "id":
       case "treeType":
       case "posX":
@@ -171,8 +165,8 @@ export default function SkillIndexPage() {
                 onClick={() => {
                   setSkill(defaultSkill);
                   setStore("wiki", "skill", {
-                    dialogState: true,
-                    formState: "CREATE",
+                    dialogType: "form",
+                    dialogIsOpen: true,
                   });
                 }}
               ></Button>
@@ -182,8 +176,8 @@ export default function SkillIndexPage() {
                 onClick={() => {
                   setSkill(defaultSkill);
                   setStore("wiki", "skill", {
-                    dialogState: true,
-                    formState: "CREATE",
+                    dialogType: "form",
+                    dialogIsOpen: true,
                   });
                 }}
               >
@@ -230,6 +224,8 @@ export default function SkillIndexPage() {
             tableColumns={skillColumns}
             tableHiddenColumns={skillTableHiddenColumns}
             tableTdGenerator={skillTdGenerator}
+            filterIsOpen={tableFilterIsOpen}
+            setFilterIsOpen={setTableFilterIsOpen}
           />
         </div>
         <Presence exitBeforeEnter>

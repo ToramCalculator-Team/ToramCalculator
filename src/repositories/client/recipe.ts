@@ -1,16 +1,15 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, recipe } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { RECIPE_TYPE, type Enums } from "./enums";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
+import { ItemType } from "../../../db/clientDB/kysely/enums";
+import { ITEM_TYPE } from "../../../db/enums";
 
-export type Recipe = ModifyKeys<Awaited<ReturnType<typeof findRecipeById>>, {
-  
-}>;
-export type NewRecipe = Insertable<recipe>;
-export type RecipeUpdate = Updateable<recipe>;
+export interface Recipe extends DataType<recipe> {
+  MainTable: Awaited<ReturnType<typeof findRecipes>>[number]
+}
 
 export function recipeSubRelations(eb: ExpressionBuilder<DB, "recipe">, id: Expression<string>) {
   return [
@@ -29,89 +28,75 @@ export async function findRecipeById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateRecipe(id: string, updateWith: RecipeUpdate) {
+export async function findRecipes() {
+  return await db
+    .selectFrom("recipe")
+    .selectAll("recipe")
+    .execute();
+}
+
+export async function updateRecipe(id: string, updateWith: Recipe["Update"]) {
   return await db.updateTable("recipe").set(updateWith).where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createRecipe(newRecipe: NewRecipe) {
-  return await db.transaction().execute(async (trx) => {
-    const recipe = await trx.insertInto("recipe").values(newRecipe).returningAll().executeTakeFirstOrThrow();
-    return recipe;
-  });
+export async function insertRecipe(trx: Transaction<DB>,newRecipe: Recipe["Insert"]) {
+  const recipe = await trx.insertInto("recipe").values(newRecipe).returningAll().executeTakeFirstOrThrow();
+  return recipe;
 }
 
 export async function deleteRecipe(id: string) {
   return await db.deleteFrom("recipe").where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-const recipes: Partial<Record<Enums["RecipeType"], Recipe>> = {};
-for (const key of RECIPE_TYPE) {
+const recipes: Partial<Record<ItemType, Recipe["Insert"]>> = {};
+for (const key of ITEM_TYPE) {
   const recipeWeaponShared = {
     weaponId: "",
     armorId: "",
     activityId: "",
     recipeEntries: [],
-    addEquipId: "",
+    optEquipId: "",
     speEquipId: "",
     consumableId: "",
   };
   recipes[key] = {
-    id: `default${key}StatisticId`,
+    id: `default${key}RecipeId`,
+    itemId:`default${key}ItemId`,
     ...recipeWeaponShared,
   };
 }
 
-export const defaultRecipes = recipes as Record<Enums["RecipeType"], Recipe>;
+export const defaultRecipes = recipes as Record<ItemType, Recipe["Insert"]>;
 
-export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe> => {
+export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
-        selfName: "账号",
-        id: "defaultConsumableRecipe",
-        activityId: "null",
-        recipeEntries: "[]",
-        weaponId: "null",
-        armorId: "null",
-        addEquipId: "null",
-        speEquipId: "null",
-        consumableId: "",
+        selfName: "配方",
+        id: "ID",
+        activityId: "所属活动ID",
+        itemId: "所属道具ID",
       };
     case "zh-TW":
       return {
-        selfName: "账号",
-        id: "defaultConsumableRecipe",
-        activityId: "null",
-        recipeEntries: "[]",
-        weaponId: "null",
-        armorId: "null",
-        addEquipId: "null",
-        speEquipId: "null",
-        consumableId: "",
+        selfName: "配方",
+        id: "ID",
+        activityId: "所屬活動ID",
+        itemId: "所屬道具ID",
       };
     case "en":
       return {
-        selfName: "账号",
-        id: "defaultConsumableRecipe",
-        activityId: "null",
-        recipeEntries: "[]",
-        weaponId: "null",
-        armorId: "null",
-        addEquipId: "null",
-        speEquipId: "null",
-        consumableId: "",
+        selfName: "Recipe",
+        id: "ID",
+        activityId: "Activity ID",
+        itemId: "Item ID",
       };
     case "ja":
       return {
-        selfName: "账号",
-        id: "defaultConsumableRecipe",
-        activityId: "null",
-        recipeEntries: "[]",
-        weaponId: "null",
-        armorId: "null",
-        addEquipId: "null",
-        speEquipId: "null",
-        consumableId: "",
+        selfName: "レシピ",
+        id: "ID",
+        activityId: "アクティビティID",
+        itemId: "アイテムID",
       };
   }
 };

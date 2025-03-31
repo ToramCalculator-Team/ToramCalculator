@@ -35,14 +35,11 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
  * 生成通用数据类型
  *
  * @param T 原始类型
- * @param MainTableDataFun
  * @returns 转换后的类型
  */
-export interface DataType<T, MainTableDataFun extends (...args: any[]) => any, MainFormDataFun extends (...args: any[]) => any> {
+export interface DataType<T> {
   [key: string]: any;
   Select: Selectable<T>;
   Insert: Insertable<T>;
   Update: Updateable<T>;
-  MainTable: Awaited<ReturnType<MainTableDataFun>>;
-  MainForm: Awaited<ReturnType<MainFormDataFun>>;
 }

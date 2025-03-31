@@ -1,18 +1,19 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, player_weapon, player_weapon } from "~/../db/clientDB/kysely/kyesely";
+import { DB, player_weapon } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { Crystal, crystalSubRelations } from "./crystal";
-import { defaultWeapons, Weapon, WeaponDic, weaponSubRelations } from "./weapon";
+import { crystalSubRelations } from "./crystal";
+import { weaponSubRelations } from "./weapon";
 import { defaultAccount } from "./account";
-import { defaultWeaponEncAttributes, WeaponEncAttrDic } from "./weaponEncAttrs";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { StatisticDic } from "./statistic";
 
-export interface PlayerWeapon extends DataType<player_weapon, typeof find, typeof createAccount> {}
+export interface PlayerWeapon extends DataType<player_weapon> {
+  MainTable: Awaited<ReturnType<typeof findPlayerWeapons>>[number];
+  MainForm: player_weapon;
+}
 
-export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
+export function playerWeponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -21,7 +22,7 @@ export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapo
         .innerJoin("_crystalToplayer_weapon", "item.id", "_crystalToplayer_weapon.A")
         .whereRef("_crystalToplayer_weapon.B", "=", "player_weapon.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll(["item","crystal"]),
+        .selectAll(["item", "crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
       eb
@@ -33,12 +34,6 @@ export function customWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapo
     )
       .$notNull()
       .as("template"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("weapon_enchantment_attributes")
-        .whereRef("weapon_enchantment_attributes.id", "=", "player_weapon.enchantmentAttributesId")
-        .selectAll("weapon_enchantment_attributes"),
-    ).$notNull().as("enchantmentAttributes"),
   ];
 }
 
@@ -47,15 +42,23 @@ export async function findPlayerWeaponById(id: string) {
     .selectFrom("player_weapon")
     .where("id", "=", id)
     .selectAll("player_weapon")
-    .select((eb) => customWeaponSubRelations(eb, eb.val(id)))
+    .select((eb) => playerWeponSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updatePlayerWeapon(id: string, updateWith: PlayerWeaponUpdate) {
+export async function findPlayerWeapons() {
+  return await db.selectFrom("player_weapon").selectAll("player_weapon").execute();
+}
+
+export async function updatePlayerWeapon(id: string, updateWith: PlayerWeapon["Update"]) {
   return await db.updateTable("player_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createPlayerWeapon(newWeapon: NewPlayerWeapon) {
+export async function insertPlayerWeapon(trx: Transaction<DB>, newWeapon: PlayerWeapon["Insert"]) {
+  return await trx.insertInto("player_weapon").values(newWeapon).returningAll().executeTakeFirstOrThrow();
+}
+
+export async function createPlayerWeapon(newWeapon: PlayerWeapon["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const player_weapon = await trx
       .insertInto("player_weapon")
@@ -71,17 +74,13 @@ export async function deletePlayerWeapon(id: string) {
 }
 
 // default
-export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon> = {
+export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon["Insert"]> = {
   mainHand: {
     id: "defaultWeaponId",
     name: "默认自定义主手",
     extraAbi: 0,
-    enchantmentAttributes: defaultWeaponEncAttributes,
-    enchantmentAttributesId: defaultWeaponEncAttributes.id,
-    template: defaultWeapons.OneHandSword,
-    templateId: defaultWeapons.OneHandSword.id,
     refinement: 0,
-    crystalList: [],
+    modifiers: [],
     masterId: defaultAccount.id,
     baseAbi: 0,
     stability: 0,
@@ -90,12 +89,8 @@ export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon> 
     id: "defaultWeaponId",
     name: "默认自定义副手",
     extraAbi: 0,
-    enchantmentAttributes: defaultWeaponEncAttributes,
-    enchantmentAttributesId: defaultWeaponEncAttributes.id,
-    template: defaultWeapons.Shield,
-    templateId: defaultWeapons.Shield.id,
     refinement: 0,
-    crystalList: [],
+    modifiers: [],
     masterId: defaultAccount.id,
     baseAbi: 0,
     stability: 0,
@@ -103,19 +98,15 @@ export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon> 
 };
 
 // Dictionary
-export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon> => {
+export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         id: "ID",
         name: "名称",
         extraAbi: "额外基础攻击力",
-        enchantmentAttributes: WeaponEncAttrDic(locale),
-        enchantmentAttributesId: "附魔ID",
-        template: WeaponDic(locale),
-        templateId: "模板ID",
         refinement: "精炼值",
-        crystalList: "锻晶",
+        modifiers: "加成属性",
         masterId: "所有者ID",
         baseAbi: "基础攻击力",
         stability: "稳定率",
@@ -126,12 +117,8 @@ export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon
         id: "ID",
         name: "名称",
         extraAbi: "額外基礎攻擊力",
-        enchantmentAttributes: WeaponEncAttrDic(locale),
-        enchantmentAttributesId: "附魔ID",
-        template: WeaponDic(locale),
-        templateId: "模板ID",
         refinement: "精炼值",
-        crystalList: "鑄晶",
+        modifiers: "加成屬性",
         masterId: "所有者ID",
         baseAbi: "基礎攻擊力",
         stability: "穩定率",
@@ -142,32 +129,24 @@ export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon
         id: "ID",
         name: "Name",
         extraAbi: "Extra Base Attack",
-        enchantmentAttributes: WeaponEncAttrDic(locale),
-        enchantmentAttributesId: "Enchantment Attributes ID",
-        template: WeaponDic(locale),
-        templateId: "Template ID",
         refinement: "Refinement",
-        crystalList: "Crystals",
+        modifiers: "Modifiers",
         masterId: "Master ID",
         baseAbi: "Base Attack",
         stability: "Stability",
         selfName: "Player Weapon",
-      }
+      };
     case "ja":
       return {
         id: "ID",
         name: "名前",
         extraAbi: "追加基本攻撃力",
-        enchantmentAttributes: WeaponEncAttrDic(locale),
-        enchantmentAttributesId: "附魔属性ID",
-        template: WeaponDic(locale),
-        templateId: "テンプレートID",
         refinement: "精炼度",
-        crystalList: "鑄石",
+        modifiers: "加成属性",
         masterId: "マスターID",
         baseAbi: "基本攻撃力",
         stability: "安定度",
         selfName: "カスタム武器",
-      }
+      };
   }
 };

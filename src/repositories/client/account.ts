@@ -1,11 +1,13 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { account, DB } from "../../../db/clientDB/kysely/kyesely";
 
-export interface Account extends DataType<account, typeof findAccountById, typeof createAccount> {}
+export interface Account extends DataType<account> {
+  MainTable: Awaited<ReturnType<typeof findAccounts>>[number]
+}
 
 export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
   return [
@@ -26,15 +28,15 @@ export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accoun
     // ).as("armors"),
     // jsonArrayFrom(
     //   eb
-    //     .selectFrom("player_additional_equipment")
-    //     .where("player_additional_equipment.masterId", "=", accountId)
-    //     .selectAll("player_additional_equipment"),
-    // ).as("addEquips"),
+    //     .selectFrom("player_option")
+    //     .where("player_option.masterId", "=", accountId)
+    //     .selectAll("player_option"),
+    // ).as("optEquips"),
     // jsonArrayFrom(
     //   eb
-    //     .selectFrom("player_special_equipment")
-    //     .where("player_special_equipment.masterId", "=", accountId)
-    //     .selectAll("player_special_equipment"),
+    //     .selectFrom("player_special")
+    //     .where("player_special.masterId", "=", accountId)
+    //     .selectAll("player_special"),
     // ).as("speEquips"),
     jsonObjectFrom(
       eb

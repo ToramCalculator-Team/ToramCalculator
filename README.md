@@ -77,7 +77,7 @@ pnpm install
 pnpm backend:up
 
 # 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
-node db/generator.js
+tsx db/generator.js
 
 # 4.根据生成的schema.prisma初始化数据库,并生成服务端数据模型ts类型
 pnpm prisma db push --schema db/serverDB/schema.prisma

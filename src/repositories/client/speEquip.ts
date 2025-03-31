@@ -1,69 +1,104 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
-import { DB, item } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics, StatisticDic } from "./statistic";
-import { defaultAccount } from "./account";
-import { crystalSubRelations } from "./crystal";
-import { itemSubRelations } from "./item";
-import { defaultRecipes, RecipeDic, recipeSubRelations } from "./recipe";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { insertStatistic, StatisticDic } from "./statistic";
+import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
-import { mobSubRelations } from "./mob";
-import { type Enums } from "./enums";
+import { ConvertToAllString, DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
+import { special, crystal, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { insertRecipe } from "./recipe";
+import { insertImage } from "./image";
+import { insertRecipeIngredient } from "./recipeIngredient";
+import { insertItem } from "./item";
 
-export type SpeEquip = ModifyKeys<Awaited<ReturnType<typeof findSpeEquipById>>, {
-  type: Enums["ItemType"]
-}>;
-export type NewSpeEquip = Insertable<item>;
-export type SpeEquipUpdate = Updateable<item>;
+export interface SpeEquip extends DataType<special> {
+  MainTable: Awaited<ReturnType<typeof findSpeEquips>>[number]
+ }
 
 export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_crystalTospecial_equipment")
-        .innerJoin("crystal", "_crystalTospecial_equipment.A", "crystal.itemId")
-        .where("_crystalTospecial_equipment.B", "=", id)
+        .selectFrom("_crystalTospecial")
+        .innerJoin("crystal", "_crystalTospecial.A", "crystal.itemId")
+        .where("_crystalTospecial.B", "=", id)
         .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
     ).as("defaultCrystals"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("mob")
-        .innerJoin("drop_item","drop_item.dropById","mob.id")
-        .where("drop_item.itemId", "=", id)
-        .selectAll("mob")
-        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-    ).as("dropBy"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("recipe")
-        .where("recipe.speEquipId", "=", id)
-        .select((eb) => recipeSubRelations(eb, eb.val("recipe.id"))),
-    ).as("recipe"),
   ];
 }
 
-export async function findSpeEquipById(id: string) {
+export async function findSpeEquipByItemId(id: string) {
   return await db
-    .selectFrom("item")
-    .innerJoin("special_equipment", "item.id", "special_equipment.itemId")
-    .where("id", "=", id)
-    .selectAll(["item", "special_equipment"])
+    .selectFrom("special")
+    .innerJoin("item", "item.id", "special.itemId")
+    .where("item.id", "=", id)
+    .selectAll("special")
     .select((eb) => speEquipSubRelations(eb, eb.val(id)))
-    .select((eb) => itemSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateSpeEquip(id: string, updateWith: SpeEquipUpdate) {
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+export async function findSpeEquips() {
+  return await db
+    .selectFrom("special")
+    .innerJoin("item", "item.id", "special.itemId")
+    .selectAll(["item", "special"])
+    .execute();
 }
 
-export async function createSpeEquip(newSpeEquip: NewSpeEquip) {
+export async function updateSpeEquip(id: string, updateWith: SpeEquip["Update"]) {
+  return await db.updateTable("special").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function insertSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip["Insert"]) {
+  const speEquip = await db.insertInto("special").values(newSpeEquip).returningAll().executeTakeFirstOrThrow();
+  return speEquip;
+}
+
+export async function createSpeEquip(
+  newSpeEquip: item & {
+    speEquip: special & {
+      defaultCrystals: crystal[];
+      image: image;
+    };
+    repice: recipe & {
+      ingredients: recipe_ingredient[];
+    };
+  },
+) {
   return await db.transaction().execute(async (trx) => {
-    const item = await trx.insertInto("item").values(newSpeEquip).returningAll().executeTakeFirstOrThrow();
-    return item;
+    const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpeEquip;
+    const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;
+    const { ingredients: recipeIngredientsInput } = recipeInput;
+    const image = await insertImage(trx, imageInput);
+    const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
+    const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
+    const recipeIngredients = await Promise.all(
+      recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
+    );
+    const statistic = await insertStatistic(trx);
+    const item = await insertItem(trx, {
+      ...itemInput,
+      id: createId(),
+      statisticId: statistic.id
+    });
+    const speEquip = await insertSpeEquip(trx, {
+      ...speEquipInput,
+      itemId: item.id,
+    });
+    return {
+      ...item,
+      speEquip: {
+        ...speEquip,
+        defaultCrystals,
+        image,
+      },
+      recipe: {
+        ...recipe,
+        ingredients: recipeIngredients,
+      },
+    };
   });
 }
 
@@ -72,107 +107,42 @@ export async function deleteSpeEquip(id: string) {
 }
 
 // default
-export const defaultSpeEquip: SpeEquip = {
-  name: "defaultSpeEquip",
-  id: "defaultSpeEquipId",
-  type: "SpeEquip",
+export const defaultSpeEquip: SpeEquip["Insert"] = {
   modifiers: [],
   itemId: "defaultSpeEquipId",
   baseDef: 0,
-  dataSources: "",
-  details: "",
-  dropBy: [],
-  rewardBy: [],
-  recipe: defaultRecipes.SpeEquip,
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-  statistic: defaultStatistics.SpeEquip,
-  statisticId: defaultStatistics.SpeEquip.id,
-  defaultCrystals: [],
 };
 
 // Dictionary
-export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip> => {
+export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
-        selfName: "追加装备",
-        name: "名称",
-        id: "ID",
-        type: "道具类型",
+        selfName: "特殊装备",
         modifiers: "属性",
         itemId: "所属道具ID",
-        defaultCrystals: "附加锻晶",
         baseDef: "防御力",
-        dataSources: "数据来源",
-        details: "额外说明",
-        dropBy: "掉落于怪物",
-        rewardBy: "奖励于任务",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "创建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "统计信息ID",
       };
     case "zh-TW":
       return {
-        selfName: "追加裝備",
-        name: "名称",
-        id: "ID",
-        type: "道具類型",
+        selfName: "特殊裝備",
         modifiers: "屬性",
         itemId: "所屬道具ID",
-        defaultCrystals: "附加鑽晶",
         baseDef: "防禦力",
-        dataSources: "資料來源",
-        details: "額外說明",
-        dropBy: "掉落於怪物",
-        rewardBy: "獎勵於任務",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "更新者ID",
-        createdByAccountId: "創建者ID",
-        statistic: StatisticDic(locale),
-        statisticId: "統計信息ID",
       };
     case "en":
       return {
-        selfName: "Additional Equipment",
-        name: "Name",
-        id: "ID",
-        type: "Item Type",
+        selfName: "Special Equipment",
         modifiers: "Modifiers",
         itemId: "ItemId",
-        defaultCrystals: "Default Crystals",
         baseDef: "Base Def",
-        dataSources: "Data Sources",
-        details: "Details",
-        dropBy: "Drop By",
-        rewardBy: "Reward By",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "Updated By Account Id",
-        createdByAccountId: "Created By Account Id",
-        statistic: StatisticDic(locale),
-        statisticId: "Statistic Id",
       };
     case "ja":
       return {
-        selfName: "追加装備",
-        name: "名前",
-        id: "ID",
-        type: "アイテムタイプ",
+        selfName: "特殊装備",
         modifiers: "補正項目",
         itemId: "所属アイテムID",
-        defaultCrystals: "デフォルトクリスタル",
         baseDef: "防御力",
-        dataSources: "データソース",
-        details: "追加詳細",
-        dropBy: "ドロップバイ",
-        rewardBy: "報酬バイ",
-        recipe: RecipeDic(locale),
-        updatedByAccountId: "アカウントIDによって更新",
-        createdByAccountId: "アカウントIDによって作成",
-        statistic: StatisticDic(locale),
-        statisticId: "統計ID",
       };
   }
 };

@@ -1,13 +1,15 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, combo } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
+import { defaultCharacter } from "./character";
 
-export type Combo = Awaited<ReturnType<typeof findComboById>>;
-export type NewCombo = Insertable<combo>;
-export type ComboUpdate = Updateable<combo>;
+export interface Combo extends DataType<combo> {
+  MainTable: Awaited<ReturnType<typeof findCombos>>[number]
+  MainForm: combo
+}
 
 export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expression<string>) {
   return [];
@@ -22,11 +24,22 @@ export async function findComboById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCombo(id: string, updateWith: ComboUpdate) {
+export async function findCombos() {
+  return await db
+    .selectFrom("combo")
+    .selectAll("combo")
+    .execute();
+}
+
+export async function updateCombo(id: string, updateWith: Combo["Update"]) {
   return await db.updateTable("combo").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createCombo(newCombo: NewCombo) {
+export async function insertCombo(trx: Transaction<DB>, newCombo: Combo["Insert"]) {
+  return await trx.insertInto("combo").values(newCombo).returningAll().executeTakeFirstOrThrow();
+}
+
+export async function createCombo(newCombo: Combo["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const combo = await trx.insertInto("combo").values(newCombo).returningAll().executeTakeFirstOrThrow();
     return combo;
@@ -37,42 +50,47 @@ export async function deleteCombo(id: string) {
   return await db.deleteFrom("combo").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultCombo: Combo = {
+export const defaultCombo: Combo["Insert"] = {
   id: "defaultComboId",
   name: "defaultComboName",
-  combo:{},
+  disable: true,
+  characterId: defaultCharacter.id
 };
 
 // Dictionary
-export const ComborDic = (locale: Locale): ConvertToAllString<Combo> => {
+export const ComborDic = (locale: Locale): ConvertToAllString<Combo["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
-        selfName: "防具装备",
+        selfName: "连击",
         name: "名称",
         id: "ID",
-        combo: "连击序列",
+        disable: "是否开启",
+        characterId: "角色ID",
       };
     case "zh-TW":
       return {
-        selfName: "防具裝備",
+        selfName: "連擊",
         name: "名称",
         id: "ID",
-        combo: "連擊序列",
+        disable: "是否開啟",
+        characterId: "角色ID",
       };
     case "en":
       return {
-        selfName: "Armor",
+        selfName: "Combo",
         name: "Name",
         id: "ID",
-        combo: "Combo",
+        disable: "Disable",
+        characterId: "Character ID",
       };
     case "ja":
       return {
-        selfName: "鎧",
+        selfName: "コンボ",
         name: "名前",
         id: "ID",
-        combo: "コンボ",
+        disable: "無効",
+        characterId: "キャラクターID",
       };
   }
 };

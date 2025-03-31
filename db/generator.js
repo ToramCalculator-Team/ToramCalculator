@@ -1,10 +1,9 @@
-/**
- * 此脚本用于根据ts枚举和基本数据模式生成客户端和服务端prisma架构
- */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
+const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -14,190 +13,128 @@ const serverDBSchemaPath = path.join(__dirname, "serverDB/schema.prisma");
 const clientDBSchemaPath = path.join(__dirname, "clientDB/schema.prisma");
 const dataEnumsPath = path.join(__dirname, "dataEnums.ts");
 
-// **预处理 enums.ts，去除所有注释**
-let enumsContent = fs.readFileSync(enumsFilePath, "utf-8");
-enumsContent = enumsContent.replace(/\/\*[\s\S]*?\*\//g, ""); // 删除 /* */ 块注释
-enumsContent = enumsContent.replace(/\/\/[^\n]*/g, ""); // 删除 // 单行注释
+// PascalCase 转换函数
+const toPascalCase = (str) => str.toLowerCase().replace(/(?:^|_)([a-z])/g, (_, c) => c.toUpperCase());
 
-// **第一步：解析数组**
-const arrayRegex = /export const (\w+)\s*=\s*\[\s*([^]+?)\s*\]\s*as const;/g;
-const extractedArrays = new Map();
+// 解析 enums.ts
+const extractedEnums = new Map();
+const enumsModule = require(enumsFilePath);
 
-let match;
-while ((match = arrayRegex.exec(enumsContent)) !== null) {
-  const arrayName = match[1];
-  const values = match[2]
-    .split(",")
-    .map((v) => v.split("//")[0].trim().replace(/["']/g, "")) // 去掉单行注释
-    .filter((v) => v.length > 0);
-
-  extractedArrays.set(arrayName, values);
-  // console.log(`✅ 解析数组: ${arrayName} -> ${values.join(", ")}`);
-}
-
-// **第二步：解析对象**
-const objectRegex = /export const (\w+)\s*=\s*\{([^}]+)\}\s*as const;/g;
-const fieldRegex = /(\w+):\s*\[\s*([^]+?)\s*\]/g;
-const enumsMap = new Map();
-
-while ((match = objectRegex.exec(enumsContent)) !== null) {
-  const modelName = match[1];
-  const objectBody = match[2];
-
-  const fieldMap = new Map();
-
-  let fieldMatch;
-  while ((fieldMatch = fieldRegex.exec(objectBody)) !== null) {
-    const fieldName = fieldMatch[1];
-    const rawValues = fieldMatch[2]
-      .split(",")
-      .map((v) => v.split("//")[0].trim().replace(/["']/g, "")) // 去掉单行注释
-      .filter((v) => v.length > 0);
-
-    const values = [];
-    for (const value of rawValues) {
-      if (value.startsWith("...")) {
-        const referencedArray = value.slice(3);
-        if (extractedArrays.has(referencedArray)) {
-          values.push(...extractedArrays.get(referencedArray));
-          // console.log(`🔄 展开 ${referencedArray} -> ${extractedArrays.get(referencedArray).join(", ")}`);
-        } else {
-          console.warn(`⚠️ 警告: 找不到 ${referencedArray}，无法展开`);
-        }
-      } else {
-        values.push(value);
-      }
-    }
-
-    fieldMap.set(fieldName, values);
-  }
-
-  if (fieldMap.size > 0) {
-    enumsMap.set(modelName, fieldMap);
-    console.log(`✅ 解析对象: ${modelName}`);
+for (const [key, value] of Object.entries(enumsModule)) {
+  const enumName = toPascalCase(key);
+  if (Array.isArray(value)) {
+    extractedEnums.set(
+      enumName,
+      value.flatMap((v) => (v.startsWith("...") ? enumsModule[v.slice(3)] || [] : v))
+    );
   }
 }
 
-// **第三步：读取 baseSchema.prisma 并替换枚举**
-const schemaContent = fs.readFileSync(baseSchemaPath, "utf-8");
+// 解析 schema.prisma 并替换 // Enum ENUM_NAME
+let schemaContent = fs.readFileSync(baseSchemaPath, "utf-8");
 const lines = schemaContent.split("\n");
 
-let newSchema = "";
-const enumDefinitions = [];
-
+const enumModels = new Map();
+let updatedSchema = "";
+const enumDefinitions = new Map();
 let currentModel = "";
 let skipGenerators = false;
-let kyselyGenerator = "";
 let inKyselyGenerator = false;
-let clientGenerators = ""; // ✅ 记录 clientDB 的 generator
+let kyselyGenerator = "";
+let clientGenerators = [];
+let tempGenerator = [];
 
 for (const line of lines) {
+  const trimmed = line.trim();
+
   // 处理 generator 块
-  if (line.trim().startsWith("generator ")) {
-    if (line.includes("kysely")) {
+  if (trimmed.startsWith("generator ")) {
+    if (trimmed.includes("kysely")) {
       inKyselyGenerator = true;
-      kyselyGenerator += line + "\n";
-      clientGenerators += line + "\n";
+      tempGenerator = [line];
     } else {
       skipGenerators = true;
-      clientGenerators += line + "\n";
+      tempGenerator = [line];
     }
     continue;
   }
 
-  if (skipGenerators && line.trim() === "") {
-    skipGenerators = false;
-    clientGenerators += "\n"; // ✅ 保持换行
-    continue;
-  }
-
-  if (inKyselyGenerator) {
-    kyselyGenerator += line + "\n";
-    clientGenerators += line + "\n";
-    if (line.trim() === "}") {
-      inKyselyGenerator = false;
-    }
-    continue;
-  }
-
-  if (skipGenerators) {
-    clientGenerators += line + "\n"; // ✅ 继续记录 client 的 generator
-    continue;
-  }
-
-  // 处理模型和枚举替换逻辑
-  const modelMatch = line.match(/model (\w+) {/);
-  if (modelMatch) {
-    currentModel = modelMatch[1];
-  } else if (line.trim() === "}") {
-    currentModel = "";
-  }
-
-  let newLine = line;
-
-  if (currentModel && enumsMap.has(currentModel)) {
-    const fieldMatch = line.match(/\s*(\w+)\s+String/);
-    if (fieldMatch) {
-      const fieldName = fieldMatch[1];
-      const enumValues = enumsMap.get(currentModel)?.get(fieldName);
-
-      if (enumValues) {
-        const enumName = `${currentModel}_${fieldName}`;
-        newLine = newLine.replace("String", enumName);
-
-        if (!enumDefinitions.some((e) => e.includes(`enum ${enumName}`))) {
-          enumDefinitions.push(`enum ${enumName} {\n  ${enumValues.join("\n  ")}\n}`);
-          console.log(`✅ 生成枚举: ${enumName} -> ${enumValues.join(", ")}`);
-        }
+  if (inKyselyGenerator || skipGenerators) {
+    tempGenerator.push(line);
+    if (trimmed === "}") {
+      if (inKyselyGenerator) {
+        kyselyGenerator += tempGenerator.join("\n") + "\n";
+        inKyselyGenerator = false;
+      } else {
+        clientGenerators.push(tempGenerator.join("\n"));
+        skipGenerators = false;
       }
     }
+    continue;
   }
 
-  newSchema += newLine + "\n";
+  // 处理 model
+  const modelMatch = trimmed.match(/^model (\w+) \{$/);
+  if (modelMatch) {
+    currentModel = modelMatch[1];
+    enumModels.set(currentModel, new Map());
+    updatedSchema += line + "\n";
+    continue;
+  }
+
+  if (trimmed === "}") {
+    currentModel = "";
+    updatedSchema += line + "\n";
+    continue;
+  }
+
+  // 处理 // Enum
+  let newLine = line;
+  const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
+  if (enumMatch && currentModel) {
+    const [, fieldName, originalEnumName] = enumMatch;
+    const pascalCaseEnum = toPascalCase(originalEnumName);
+
+    if (extractedEnums.has(pascalCaseEnum)) {
+      newLine = line.replace("String", pascalCaseEnum);
+      if (!enumDefinitions.has(pascalCaseEnum)) {
+        enumDefinitions.set(
+          pascalCaseEnum,
+          `enum ${pascalCaseEnum} {\n  ${extractedEnums.get(pascalCaseEnum).join("\n  ")}\n}`
+        );
+      }
+      enumModels.get(currentModel).set(fieldName, originalEnumName);
+    }
+  }
+
+  updatedSchema += newLine + "\n";
 }
 
-// 添加枚举定义
-const finalSchema = newSchema + "\n" + enumDefinitions.join("\n\n");
-
-// 创建目录并写入文件
+// 合并最终 schema
+const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
 fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
 fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 
-// ✅ clientDB/schema.prisma（保留原有 generator）
-fs.writeFileSync(clientDBSchemaPath, clientGenerators + "\n" + finalSchema, "utf-8");
-
-// ✅ serverDB/schema.prisma（仅保留 kysely 相关的 generator）
+fs.writeFileSync(clientDBSchemaPath, clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema, "utf-8");
 fs.writeFileSync(serverDBSchemaPath, kyselyGenerator + "\n" + finalSchema, "utf-8");
 
 console.log("✅ schema.prisma 生成完成！");
 
-// **第四步：生成 dataEnums.ts**
-const dataEnums = {};
-for (const [modelName, fields] of enumsMap.entries()) {
-  dataEnums[modelName] = {};
-  for (const [fieldName, values] of fields.entries()) {
-    dataEnums[modelName][fieldName] = Object.fromEntries(values.map((v) => [v, ""]));
-  }
-}
+// 生成 DataEnums 类型
+const importStatements = Array.from(new Set(
+  [].concat(...Array.from(enumModels.values()).map(fieldMap => Array.from(fieldMap.values())))
+)).map(enumName => `import { ${enumName} } from "./enums";`).join("\n");
 
-const dataEnumsContent = `/* ⚠️ 本文件由 Node.js 生成，请勿手动修改！ */
+const dataEnumEntries = Array.from(enumModels.entries()).map(([modelName, fields]) => {
+  return `  ${modelName}: {\n` +
+    Array.from(fields.entries()).map(([fieldName, enumName]) =>
+      `    ${fieldName}: Record<(typeof ${enumName})[number], string>;`
+    ).join("\n") +
+    `\n  };`;
+}).join("\n");
 
-export const dataEnums = ${JSON.stringify(dataEnums, null, 2)} as const;
+const dataEnumsType = `${importStatements}\n\nexport type DataEnums = {\n${dataEnumEntries}\n};`;
 
-export type DataEnums = {
-${Object.entries(dataEnums)
-  .map(([modelName, fields]) => {
-    return `  ${modelName}: {\n${Object.entries(fields)
-      .map(
-        ([fieldName, values]) =>
-          `    ${fieldName}: { ${Object.keys(values)
-            .map((v) => `${v}: string`)
-            .join("; ")} };`,
-      )
-      .join("\n")}\n  };`;
-  })
-  .join("\n")}
-};`;
+fs.writeFileSync(dataEnumsPath, dataEnumsType, "utf-8");
 
-fs.writeFileSync(dataEnumsPath, dataEnumsContent, "utf-8");
 console.log("✅ dataEnums.ts 生成完成！");

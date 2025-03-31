@@ -13,7 +13,10 @@ import {
 import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export interface Skill extends DataType<skill, typeof findSkills, typeof createSkill> {}
+export interface Skill extends DataType<skill> {
+    MainTable: Awaited<ReturnType<typeof findSkills>>[number]
+    MainForm: skill
+}
 
 export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {
   return [
@@ -106,7 +109,7 @@ export const defaultSkill: Skill["Insert"] = {
   statisticId: defaultStatistics.Skill.id,
 };
 
-export const SkillDic = (locale: Locale): ConvertToAllString<Skill["MainForm"]["skill"]> => {
+export const SkillDic = (locale: Locale): ConvertToAllString<Skill["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

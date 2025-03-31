@@ -3,10 +3,17 @@ import { user, DB } from "../../../db/clientDB/kysely/kyesely";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
-export interface User extends DataType<user, typeof findUserById, typeof createUser> { }
+export interface User extends DataType<user> {
+  MainTable: Awaited<ReturnType<typeof findUsers>>[number]
+  MainForm: user
+ }
 
 export async function findUserById(id: string) {
   return await db.selectFrom("user").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
+}
+
+export async function findUsers() {
+  return await db.selectFrom("user").selectAll().execute();
 }
 
 export async function updateUser(id: string, updateWith: User["Update"]) {
@@ -31,7 +38,6 @@ export const defaultUser: User["Insert"] = {
   email: null,
   emailVerified: null,
   image: null,
-  role: "User",
 };
 
 export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
@@ -43,7 +49,6 @@ export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
         email: "邮箱",
         emailVerified: "邮箱验证",
         image: "图像",
-        role: "用户角色",
         selfName: "用户",
       };
     case "zh-TW":
@@ -53,7 +58,6 @@ export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
         email: "郵箱",
         emailVerified: "郵箱驗證",
         image: "圖像",
-        role: "用戶角色",
         selfName: "用戶",
       };
     case "en":
@@ -63,7 +67,6 @@ export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
         email: "Email",
         emailVerified: "Email Verified",
         image: "Image",
-        role: "User Role",
         selfName: "User",
       };
     case "ja":
@@ -73,7 +76,6 @@ export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
         email: "メールアドレス",
         emailVerified: "メール確認",
         image: "画像",
-        role: "ユーザー角色",
         selfName: "ユーザー",
       };
   }

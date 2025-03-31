@@ -1,4 +1,5 @@
 import { defineConfig } from "@solidjs/start/config";
+import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
   // middleware: "src/middleware.ts",
@@ -17,12 +18,12 @@ export default defineConfig({
         ],
         output: {
           paths: {
-            '@babylonjs/loaders': 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
-            '@babylonjs/inspector': 'https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js',
-            '@babylonjs/core': 'https://cdn.babylonjs.com/babylon.js',
-            '@babylonjs/materials': 'https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js',
-          }
-        }
+            "@babylonjs/loaders": "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js",
+            "@babylonjs/inspector": "https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js",
+            "@babylonjs/core": "https://cdn.babylonjs.com/babylon.js",
+            "@babylonjs/materials": "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js",
+          },
+        },
       },
     },
     worker: {
@@ -32,5 +33,13 @@ export default defineConfig({
     optimizeDeps: {
       exclude: ["@electric-sql/pglite"],
     },
+    plugins: [
+      topLevelAwait({
+        // The export name of top-level await promise for each chunk module
+        promiseExportName: "__tla",
+        // The function to generate import names of top-level await promise in each chunk module
+        promiseImportName: (i) => `__tla_${i}`,
+      }),
+    ],
   },
 });

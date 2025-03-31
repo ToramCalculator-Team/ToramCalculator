@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
+import { type Mob, MobDic, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -9,7 +9,6 @@ import Button from "~/components/controls/button";
 import { createSyncResource } from "~/hooks/resource";
 import VirtualTable from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
-import { DataEnums } from "~/../db/dataEnums";
 import { Portal } from "solid-js/web";
 import Dialog from "~/components/controls/dialog";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -17,6 +16,7 @@ import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
 import { mobSchema } from "../../../../../../db/clientDB/zod";
+import { DataEnums } from "../../../../../../db/dataEnums";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -29,6 +29,7 @@ export default function MobIndexPage() {
   };
 
   // table config
+  const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
     {
       accessorKey: "id",
@@ -64,12 +65,6 @@ export default function MobIndexPage() {
       accessorKey: "experience",
       header: () => MobDic(store.settings.language).experience,
       size: 180,
-    },
-    {
-      accessorKey: "partsExperience",
-      header: () => MobDic(store.settings.language).partsExperience,
-      cell: (info) => info.getValue(),
-      size: 200,
     },
     {
       accessorKey: "initialElement",
@@ -154,6 +149,13 @@ export default function MobIndexPage() {
           }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined,
         );
 
+        break;
+      case "experience":
+        setTdContent(
+          flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) +
+            "+" +
+            props.cell.row.original.partsExperience,
+        );
         break;
 
       // 以下值需要添加百分比符号
@@ -580,6 +582,14 @@ export default function MobIndexPage() {
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.mob.table.title}
             </div>
+            <Button
+              level="quaternary"
+              onClick={() => {
+                setTableFilterIsOpen(!tableFilterIsOpen());
+              }}
+            >
+              <Icon.Line.Filter />
+            </Button>
             <div
               class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
@@ -601,6 +611,8 @@ export default function MobIndexPage() {
             tableColumns={mobColumns}
             tableHiddenColumns={mobTableHiddenColumns}
             tableTdGenerator={mobTdGenerator}
+            filterIsOpen={tableFilterIsOpen}
+            setFilterIsOpen={setTableFilterIsOpen}
           />
         </div>
         <Presence exitBeforeEnter>

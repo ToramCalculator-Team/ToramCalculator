@@ -1,54 +1,55 @@
 import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
 import { db } from "./database";
-import { DB, reward } from "~/../db/clientDB/kysely/kyesely";
+import { DB, task_reward } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { defaultItems } from "./item";
-import { type Enums } from "./enums";
 
-export type Reward = ModifyKeys<
-  Awaited<ReturnType<typeof findRewardById>>,
-  {
-    type: Enums["RewardType"];
-  }
->;
-export type NewReward = Insertable<reward>;
-export type RewardUpdate = Updateable<reward>;
-
-export function rewardSubRelations(eb: ExpressionBuilder<DB, "reward">, id: Expression<string>) {
-  return [jsonObjectFrom(eb.selectFrom("item").whereRef("item.id", "=", "reward.itemId").selectAll("item")).as("item")];
+export interface TaskReward extends DataType<task_reward> {
+  MainTable: Awaited<ReturnType<typeof findTaskRewards>>[number]
+  MainForm: task_reward
 }
 
-export async function findRewardById(id: string) {
+export function taskRewardSubRelations(eb: ExpressionBuilder<DB, "task_reward">, id: Expression<string>) {
+  return [jsonObjectFrom(eb.selectFrom("item").whereRef("item.id", "=", "task_reward.itemId").selectAll("item")).as("item")];
+}
+
+export async function findTaskRewardById(id: string) {
   return await db
-    .selectFrom("reward")
+    .selectFrom("task_reward")
     .where("id", "=", id)
-    .selectAll("reward")
-    .select((eb) => rewardSubRelations(eb, eb.val(id)))
+    .selectAll("task_reward")
+    .select((eb) => taskRewardSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function updateReward(id: string, updateWith: RewardUpdate) {
-  return await db.updateTable("reward").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function findTaskRewards() {
+  return await db
+    .selectFrom("task_reward")
+    .selectAll("task_reward")
+    .execute();
 }
 
-export async function deleteReward(id: string) {
-  return await db.deleteFrom("reward").where("id", "=", id).returningAll().executeTakeFirst();
+export async function updateTaskReward(id: string, updateWith: TaskReward["Update"]) {
+  return await db.updateTable("task_reward").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultReward: Reward = {
+export async function deleteTaskReward(id: string) {
+  return await db.deleteFrom("task_reward").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export const defaultReward: TaskReward["Insert"] = {
   id: "defaultRewardId",
-  type: "OneHandSword",
+  type: "Exp",
   value: 0,
   probability: 0,
   itemId: null,
   taskId: "",
-  item: defaultItems.OneHandSword,
 };
 
 // Dictionary
-export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
+export const RewardDic = (locale: Locale): ConvertToAllString<TaskReward["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -59,7 +60,6 @@ export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
         value: "数量",
         probability: "概率",
         itemId: "物品ID",
-        item: "物品",
       };
     case "zh-TW":
       return {
@@ -70,7 +70,6 @@ export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
         value: "數量",
         probability: "概率",
         itemId: "物品ID",
-        item: "物品",
       };
     case "en":
       return {
@@ -81,7 +80,6 @@ export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
         value: "Value",
         probability: "Probability",
         itemId: "Item ID",
-        item: "Item",
       };
     case "ja":
       return {
@@ -92,7 +90,6 @@ export const RewardDic = (locale: Locale): ConvertToAllString<Reward> => {
         value: "数値",
         probability: "確率",
         itemId: "アイテムID",
-        item: "アイテム",
       };
   }
 };

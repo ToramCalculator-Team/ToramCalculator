@@ -4,11 +4,12 @@ import { DB, player_pet } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultMob, MobDic, mobSubRelations } from "./mob";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 
-export type PlayerPet = Awaited<ReturnType<typeof findPlayerPetById>>;
-export type NewPlayerPet = Insertable<player_pet>;
-export type PlayerPetUpdate = Updateable<player_pet>;
+export interface PlayerPet extends DataType<player_pet> {
+  MainTable: Awaited<ReturnType<typeof findPlayerPets>>[number]
+  MainForm: player_pet
+}
 
 export function customPetSubRelations(eb: ExpressionBuilder<DB, "player_pet">, id: Expression<string>) {
   return [
@@ -33,7 +34,14 @@ export async function findPlayerPetById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updatePlayerPet(id: string, updateWith: PlayerPetUpdate) {
+export async function findPlayerPets() {
+  return await db
+    .selectFrom("player_pet")
+    .selectAll("player_pet")
+    .execute();
+}
+
+export async function updatePlayerPet(id: string, updateWith: PlayerPet["Update"]) {
   return await db.updateTable("player_pet").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
@@ -41,10 +49,10 @@ export async function deletePlayerPet(id: string) {
   return await db.deleteFrom("player_pet").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultPlayerPet: PlayerPet = {
-  id: "",
-  template: defaultMob,
+export const defaultPlayerPet: PlayerPet["Insert"] = {
+  id: "defaultPlayerPetId",
   templateId: defaultMob.id,
+  name: "defaultPlayerPet",
   pStr: 0,
   pInt: 0,
   pVit: 0,
@@ -55,7 +63,7 @@ export const defaultPlayerPet: PlayerPet = {
   vit: 0,
   agi: 0,
   dex: 0,
-  weaponType: "",
+  weaponType: "Magictool",
   personaType: "Fervent",
   type: "AllTrades",
   weaponAtk: 0,
@@ -66,13 +74,13 @@ export const defaultPlayerPet: PlayerPet = {
 
 
 // Dictionary
-export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet> => {
+export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Insert"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "宠物",
         id: "ID",
-        template: MobDic(locale),
+        name: "名称",
         templateId: "模板ID",
         pStr: "力量潜力",
         pInt: "智力潜力",
@@ -96,7 +104,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet> => {
       return {
         selfName: "宠物",
         id: "ID",
-        template: MobDic(locale),
+        name: "名稱",
         templateId: "模板ID",
         pStr: "力量潛力",
         pInt: "智力潛力", 
@@ -120,7 +128,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet> => {
       return {
         selfName: "Pet",
         id: "ID",
-        template: MobDic(locale),
+        name: "Name",
         templateId: "Template ID",
         pStr: "Strength Potential",
         pInt: "Intelligence Potential",
@@ -144,7 +152,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet> => {
       return {
         selfName: "ペット",
         id: "ID",
-        template: MobDic(locale),
+        name: "名前",
         templateId: "テンプレートID",
         pStr: "筋力ポテンシャル",
         pInt: "知力ポテンシャル",

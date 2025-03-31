@@ -4,10 +4,12 @@ import { DB, player } from "~/../db/clientDB/kysely/kyesely";
 import { defaultCharacter, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { defaultAccount } from "./account";
+import { DataType } from "./untils";
 
-export type Player = Awaited<ReturnType<typeof findPlayerById>>;
-export type NewPlayer = Insertable<player>;
-export type PlayerUpdate = Updateable<player>;
+export interface Player extends DataType<player> {
+  MainTable: Awaited<ReturnType<typeof findPlayers>>[number];
+  MainForm: player;
+}
 
 export function playerSubRelations(eb: ExpressionBuilder<DB, "player">, id: Expression<string>) {
   return [
@@ -32,11 +34,15 @@ export async function findPlayerById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function updatePlayer(id: string, updateWith: PlayerUpdate) {
+export async function findPlayers() {
+  return await db.selectFrom("player").selectAll("player").execute();
+}
+
+export async function updatePlayer(id: string, updateWith: Player["Update"]) {
   return await db.updateTable("player").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function createPlayer(newPlayer: NewPlayer) {
+export async function createPlayer(newPlayer: Player["Insert"]) {
   return await db.transaction().execute(async (trx) => {
     const player = await trx
       .insertInto("player")
@@ -54,10 +60,9 @@ export async function deletePlayer(id: string) {
   return await db.deleteFrom("player").where("id", "=", id).returningAll().executeTakeFirst();
 }
 // Default
-export const defaultPlayer: Player = {
+export const defaultPlayer: Player["Insert"] = {
   id: "defaultPlayer",
   name: "默认玩家",
-  character: defaultCharacter,
   actions: [
     {
       id: "f6ga8jislfy0b1la9tb6kzd4",
