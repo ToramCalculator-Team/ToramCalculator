@@ -8,8 +8,8 @@ import { live } from "@electric-sql/pglite/live";
 import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { DB } from "../../db/clientDB/kysely/kyesely";
 
-const ELECTRIC_HOST = "http://localhost:3000/v1/shape";
-// const ELECTRIC_HOST = "https://test.kiaclouth.com/v1/shape";
+// const ELECTRIC_HOST = "http://localhost:3000/v1/shape";
+const ELECTRIC_HOST = "https://test.kiaclouth.com/v1/shape";
 
 export interface syncMessage {
   type: "sync";
