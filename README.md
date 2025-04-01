@@ -94,8 +94,8 @@ pnpm backend:db-studio
 # 1.生成PGlite的DDL(由于目前无法保证同步顺序因此需要删除DDL中的外键关联)
 pnpm generate:client-ddl && node db/clientDB/remove_foreign_keys.js
 
-# 3.生成客户端数据模型ts类型
-pnpm generate:client-type
+# 3.生成数据模型ts类型
+pnpm generate:type
 
 # 4.以开发模式试运行
 pnpm dev

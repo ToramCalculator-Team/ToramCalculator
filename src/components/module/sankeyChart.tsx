@@ -7,7 +7,7 @@ import {
   modifiers,
 } from "~/worker/evaluate.old.worker";
 import { Character } from "~/repositories/client/character";
-import stringToColor from "~/lib/untils/stringToColor";
+import stringToColor from "~/lib/stringToColor";
 
 function SankeyChart(props: { character: Character }) {
   let root: SVGSVGElement;

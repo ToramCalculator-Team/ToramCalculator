@@ -416,7 +416,7 @@ const dictionary: dictionary = {
         Other: ""
       }
     },
-    reward: {
+    task_reward: {
       type: {
         Exp: "",
         Money: "",

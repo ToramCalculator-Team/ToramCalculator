@@ -56,51 +56,51 @@ mount(() => <StartClient />, document.getElementById("app")!);
 //   console.log("已创建新Mob:", newMob);
 // }
 
-let newSkill: Skill["Select"] = defaultSkill;
-try {
-  // console.log("查询skill");
-  const skill = await findSkillById(defaultSkill.id);
-  // console.log("找到Skill:", skill);
-} catch (e) {
-  // console.log(e);
-  // console.log("创建Skill");
-  newSkill = await createSkill({skill:defaultSkill,skillEffects:[defaultSkillEffect]});
-  // console.log("已创建新Skill:", newSkill);
-}
+// let newSkill: Skill["Select"] = defaultSkill;
+// try {
+//   // console.log("查询skill");
+//   const skill = await findSkillById(defaultSkill.id);
+//   // console.log("找到Skill:", skill);
+// } catch (e) {
+//   // console.log(e);
+//   // console.log("创建Skill");
+//   newSkill = await createSkill({skill:defaultSkill,skillEffects:[defaultSkillEffect]});
+//   // console.log("已创建新Skill:", newSkill);
+// }
 
-try {
-  // console.log("查询skillEffect");
-  const skillEffect = await findSkillEffectById(defaultSkillEffect.id);
-  // console.log("找到SkillEffect:", skillEffect);
-} catch (e) {
-  // console.log(e);
-  // console.log("创建SkillEffect");
-  const newSkillEffect = await createSkillEffect({
-    ...defaultSkillEffect,
-    description: "测试SkillEffect",
-    belongToskillId: newSkill.id,
-  });
-  // console.log("已创建新SkillEffect:", newSkillEffect);
-}
+// try {
+//   // console.log("查询skillEffect");
+//   const skillEffect = await findSkillEffectById(defaultSkillEffect.id);
+//   // console.log("找到SkillEffect:", skillEffect);
+// } catch (e) {
+//   // console.log(e);
+//   // console.log("创建SkillEffect");
+//   const newSkillEffect = await createSkillEffect({
+//     ...defaultSkillEffect,
+//     description: "测试SkillEffect",
+//     belongToskillId: newSkill.id,
+//   });
+//   // console.log("已创建新SkillEffect:", newSkillEffect);
+// }
 
-try {
-  console.log("查询Character");
-  const character = await findCharacterById(defaultCharacter.id);
-  console.log("找到Character：", character);
-} catch (e) {
-  console.log(e);
-  console.log("创建Character");
-  const newCharacter = await createCharacter(defaultCharacter);
-  console.log("已创建newCharacter：", newCharacter);
-}
+// try {
+//   console.log("查询Character");
+//   const character = await findCharacterById(defaultCharacter.id);
+//   console.log("找到Character：", character);
+// } catch (e) {
+//   console.log(e);
+//   console.log("创建Character");
+//   const newCharacter = await createCharacter(defaultCharacter);
+//   console.log("已创建newCharacter：", newCharacter);
+// }
 
-try {
-  // console.log("查询Simulator");
-  const simulator = await findSimulatorById(defaultSimulator.id);
-  // console.log("找到Simulator：", simulator);
-} catch (e) {
-  // console.log(e);
-  // console.log("创建Simulator");
-  const newSimulator = await createSimulator(defaultSimulator);
-  // console.log("已创建newSimulator：", newSimulator);
-}
+// try {
+//   // console.log("查询Simulator");
+//   const simulator = await findSimulatorById(defaultSimulator.id);
+//   // console.log("找到Simulator：", simulator);
+// } catch (e) {
+//   // console.log(e);
+//   // console.log("创建Simulator");
+//   const newSimulator = await createSimulator(defaultSimulator);
+//   // console.log("已创建newSimulator：", newSimulator);
+// }

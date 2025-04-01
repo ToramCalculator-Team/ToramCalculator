@@ -1,8 +1,20 @@
-import { Accessor, createEffect, createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
+import {
+  Accessor,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSX,
+  onCleanup,
+  onMount,
+  Show,
+  useContext,
+} from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
 
-import { getDictionary, Locale } from "~/locales/i18n";
+import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
 import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/client/mob";
@@ -22,36 +34,11 @@ import { MediaContext } from "~/contexts/Media";
 import { setStore, store } from "~/store";
 import { pgWorker } from "~/initialWorker";
 import { User } from "~/repositories/client/user";
-import LoginForm from "~/components/module/loginFrom";
+import { LoginDialog } from "~/components/module/loginDialog";
 
 type Result = Mob["Select"];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
-
-const LoginDialog = (props: {
-  state: Accessor<boolean>;
-  setState: (isOpen: boolean) => void;
-}) => {
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
-
-  return (
-    <Presence exitBeforeEnter>
-      <Show when={props.state()}>
-        <Motion.div
-          animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-          exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`DialogBox z-40 bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-        >
-          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => props.setState(false)}>
-            <Icon.Line.Close />
-          </Button>
-          <LoginForm />
-        </Motion.div>
-      </Show>
-    </Presence>
-  );
-};
 
 export default function Index() {
   let searchButtonRef!: HTMLButtonElement;
@@ -336,9 +323,8 @@ export default function Index() {
                   level="quaternary"
                   onClick={config.onClick}
                   icon={config.icon}
-                >
-                </Button>
-              )
+                ></Button>
+              );
             }}
           </For>
         </div>
@@ -350,7 +336,10 @@ export default function Index() {
               <Motion.div
                 animate={{
                   opacity: [0, 1],
-                  paddingBottom: [0, media.orientation === "landscape" ? (media.width > 1024 ? "3rem" : "1rem") : "0rem"],
+                  paddingBottom: [
+                    0,
+                    media.orientation === "landscape" ? (media.width > 1024 ? "3rem" : "1rem") : "0rem",
+                  ],
                   height: ["0px", "120px"], // 临时数值
                   filter: ["blur(20px)", "blur(0px)"],
                 }}
@@ -462,12 +451,12 @@ export default function Index() {
                       class={`NullResult flex flex-1 flex-col gap-12 p-6 landscape:p-0`}
                       animate={{
                         opacity: [0, 1],
-                        marginTop: ["0", "50vh"],
+                        marginTop: ["0", "calc(50vh - 54px)"],
                         transform: ["translateY(0) scale(0.8)", "translateY(-50%) scale(1)"],
-                       }}
+                      }}
                       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
                     >
-                      <span class="NullResultWarring text-xl text-center leading-loose font-bold landscape:text-2xl">
+                      <span class="NullResultWarring text-center text-xl leading-loose font-bold landscape:text-2xl">
                         {dictionary().ui.index.nullSearchResultWarring}
                       </span>
                       <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
@@ -600,7 +589,11 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBlock: ["0rem", media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "1.5rem"],filter: ["blur(20px)", "blur(0px)"],
+                paddingBlock: [
+                  "0rem",
+                  media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "1.5rem",
+                ],
+                filter: ["blur(20px)", "blur(0px)"],
               }}
               exit={{
                 opacity: [1, 0],
@@ -609,12 +602,12 @@ export default function Index() {
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 px-6 self-center landscape:grid landscape:w-fit landscape:bg-transparent`}
+              class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 self-center px-6 landscape:grid landscape:w-fit landscape:bg-transparent`}
             >
               <Motion.div
-                class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:backdrop-blur-sm landscape:px-3`}
+                class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:px-3 landscape:backdrop-blur-sm`}
                 animate={{
-                  paddingBlock: ["0rem", media.orientation === "landscape" ? "0.75rem": "0"],
+                  paddingBlock: ["0rem", media.orientation === "landscape" ? "0.75rem" : "0"],
                 }}
                 exit={{
                   paddingBlock: "0rem",
@@ -635,14 +628,14 @@ export default function Index() {
                           <Motion.a
                             tabIndex={2}
                             href={menuItem.href}
-                            class={`flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
+                            class={`flex-none text-brand-color-1st text-brand-color-2nd text-brand-color-3rd basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
                             animate={{
                               opacity: [0, 1],
-                              transform: ["scale(0.2)", "scale(1)"],
+                              transform: ["scale(0.1)", "scale(1)"],
                             }}
                             exit={{
                               opacity: [1, 0],
-                              transform: ["scale(1)", "scale(0.2)"],
+                              transform: ["scale(1)", "scale(0.1)"],
                             }}
                             transition={{
                               duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
@@ -653,12 +646,10 @@ export default function Index() {
                               class="group bg-primary-color-10 dark:bg-primary-color dark:text-accent-color landscape:bg-accent-color w-full flex-col landscape:w-fit landscape:flex-row"
                               level="primary"
                               tabIndex={-1}
-                              icon={
-                                <IconComponent
-                                  class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
-                                />
-                              }
                             >
+                              <IconComponent
+                                class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
+                              />
                               <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
                                 {dictionary().ui.nav[menuItem.title]}
                               </span>

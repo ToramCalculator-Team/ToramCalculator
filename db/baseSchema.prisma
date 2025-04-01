@@ -824,7 +824,7 @@ model member {
     mercenaryId       String?
     mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
-    mobDifficultyFlag String // 仅当类型为Boss时生效
+    mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
 
     belongToTeams team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
     teamId        String

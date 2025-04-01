@@ -3,13 +3,16 @@
 import { worker } from "@electric-sql/pglite/worker";
 import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
-import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { DB } from "../../db/clientDB/kysely/kyesely";
 
-// const ELECTRIC_HOST = "http://localhost:3000/v1/shape";
-const ELECTRIC_HOST = "https://test.kiaclouth.com/v1/shape";
+const ELECTRIC_HOST =
+  (import.meta.env.PG_HOST ?? process.env.PG_HOST) == "localhost"
+    ? "http://localhost:3000/v1/shape"
+    : "https://test.kiaclouth.com/v1/shape";
+console.log("ELECTRIC_HOST:" + ELECTRIC_HOST);
 
 export interface syncMessage {
   type: "sync";
@@ -48,12 +51,12 @@ worker({
       extensions: {
         live,
         electric: electricSync({ debug: false }),
-        pg_trgm
+        pg_trgm,
       },
     });
 
     // FTS相关插件
-    await pg.exec(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`)
+    await pg.exec(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
 
     // 添加本地迁移记录表
     await pg.exec(`
@@ -97,7 +100,7 @@ worker({
     };
 
     // const userShape = await syncTable('user', ["id"]);
-    const accountShape = await syncTable('account', ["id"]);
+    const accountShape = await syncTable("account", ["id"]);
     const accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
     const accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);
     const playerShape = await syncTable("player", ["id"]);
