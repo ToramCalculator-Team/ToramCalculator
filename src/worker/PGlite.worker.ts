@@ -9,7 +9,7 @@ import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { DB } from "../../db/clientDB/kysely/kyesely";
 
 const ELECTRIC_HOST =
-  (import.meta.env.PG_HOST ?? process.env.PG_HOST) == "localhost"
+  import.meta.env.VITE_SERVER_HOST == "localhost"
     ? "http://localhost:3000/v1/shape"
     : "https://test.kiaclouth.com/v1/shape";
 console.log("ELECTRIC_HOST:" + ELECTRIC_HOST);

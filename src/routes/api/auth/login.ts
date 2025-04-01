@@ -10,12 +10,12 @@ export async function POST(event: APIEvent) {
     const { userId } = requestBody;
 
     if (!userId) {
-      return new Response("Missing userId", { status: 400 });
+      return new Response("缺少UserId", { status: 400 });
     }
 
     const user = await findUserById(userId);
     if (!user) {
-      return new Response("User not found", { status: 404 });
+      return new Response("没找到此UerId", { status: 404 });
     }
 
     console.log("登录者:", user.name);
@@ -26,7 +26,7 @@ export async function POST(event: APIEvent) {
       iat: Math.floor(Date.now() / 1000),
     };
 
-    const secret = new TextEncoder().encode(import.meta.env.AUTH_SECRET ?? process.env.AUTH_SECRET);
+    const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
 
     const jwt = await new SignJWT(jwtPayload)
       .setProtectedHeader({ alg: "HS256" })

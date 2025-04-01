@@ -41,7 +41,7 @@ const Button = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex flex-none items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass}`,
+      `${config().disableClass} cursor-pointer flex items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass}`,
     );
   });
 

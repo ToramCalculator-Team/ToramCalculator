@@ -1,6 +1,5 @@
-import { createEffect, createMemo, createSignal, JSX } from "solid-js";
+import { createEffect, createMemo, createSignal, JSX, Match, Show, Switch } from "solid-js";
 import * as _ from "lodash-es";
-import Switch from "./switch";
 
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
@@ -10,14 +9,13 @@ interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   description?: string;
   type?: InputComponentType;
   size?: Size;
+  state?: string | null;
 }
 
 const Input = (props: InputProps) => {
   const config = createMemo(() => {
     return {
-      label: props.title,
       description: props.description,
-      type: props.type,
       children: props.children,
       sizeClass: {
         sm: "gap-2 rounded px-4 py-3",
@@ -37,11 +35,50 @@ const Input = (props: InputProps) => {
   });
 
   return (
-    <fieldset class="flex flex-1 flex-col items-start p-2 gap-3">
-      <span class="leading-none">{config().label}</span>
-      {config().description && <span class="text-sm text-main-text-color">{config().description}</span>}
-      {config().children}
-    </fieldset>
+    <label class="flex flex-1 flex-col items-start gap-3 p-2">
+      <span class="leading-none">
+        <span>{props.title}</span>
+        &nbsp;&nbsp;
+        <span class="text-accent-color-70">{props.state}</span>
+      </span>
+      {config().description && <span class="text-main-text-color text-sm">{config().description}</span>}
+      <Show
+        when={props.children}
+        fallback={
+          <Switch fallback={<div>未找到</div>}>
+            <Match when={props.type === "text"}>
+              <input
+                {...props}
+                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+              />
+            </Match>
+            <Match when={props.type === "password"}>
+              <input
+                {...props}
+                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+              />
+            </Match>
+            <Match when={props.type === "number"}>
+              <input
+                {...props}
+                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+              />
+            </Match>
+            <Match when={props.type === "boolean"}>
+              <input {...props} />
+            </Match>
+            <Match when={props.type === "checkBox"}>
+              <input {...props} />
+            </Match>
+            <Match when={props.type === "radio"}>
+              <input {...props} />
+            </Match>
+          </Switch>
+        }
+      >
+        {config().children}
+      </Show>
+    </label>
   );
 };
 
