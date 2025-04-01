@@ -22,7 +22,7 @@ export default function MobIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
+  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
@@ -582,6 +582,11 @@ export default function MobIndexPage() {
             <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.mob.table.title}
             </div>
+            <div
+              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+            >
+              {dictionary().ui.mob.table.description}
+            </div>
             <Button
               level="quaternary"
               onClick={() => {
@@ -590,11 +595,6 @@ export default function MobIndexPage() {
             >
               <Icon.Line.Filter />
             </Button>
-            <div
-              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
-            >
-              {dictionary().ui.mob.table.description}
-            </div>
             <Button
               level="quaternary"
               onClick={() => {

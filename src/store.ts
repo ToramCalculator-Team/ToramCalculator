@@ -52,6 +52,9 @@ export type Store = {
       filter: Partial<Record<keyof DB[T], boolean>>;
     };
   }>;
+  character: {
+    id: string
+  }
 };
 
 const initialStore: Store = {
@@ -104,7 +107,16 @@ const initialStore: Store = {
       dialogIsOpen: false,
       filter: {},
     },
+    skill: {
+      id: "defaultSkillId",
+      dialogType: "card",
+      dialogIsOpen: false,
+      filter: {},
+    },
   },
+  character: {
+    id: "defaultCharacterId"
+  }
 };
 
 const safeParse = (data: string) => {

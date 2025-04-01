@@ -23,12 +23,6 @@ export default function SimulatorIndexClient() {
   // const calculatorWorker = new evaluateWorker();
 
   // 状态管理参数
-  const mobList = store.wiki.mobPage.mobList;
-  const setMobList = (value: Mob[]) => setStore("wiki","mobPage", "mobList", value);
-  const characterList = store.characterPage.characterList;
-  const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
-  const analyzeList = store.simulatorPage.simulatorList;
-  const setAnalyzeList = (value: Simulator[]) => setStore("simulatorPage", "simulatorList", value);
   const mob = defaultMob;
   const character = defaultCharacter;
   const simulator = defaultSimulator;
@@ -37,7 +31,6 @@ export default function SimulatorIndexClient() {
   const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
   const [dialogFrameData, setDialogFrameData] = createSignal<FrameData | null>(null);
   const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
-  const [defaultMobList] = createSignal(store.wiki.mobPage.mobList);
 
   function stringToColor(str: string): string {
     // 预定义的颜色数组
@@ -159,8 +152,6 @@ export default function SimulatorIndexClient() {
 
   onMount(() => {
     console.log("--ComboAnalyze Client Render");
-    setMobList(generateAugmentedMobList(defaultMobList()));
-    setCharacterList([defaultCharacter, defaultCharacter]);
 
     // calculatorWorker.onmessage = (e: MessageEvent<computeOutput>) => {
     //   const { type, computeResult } = e.data;

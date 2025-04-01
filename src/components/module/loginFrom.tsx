@@ -3,7 +3,7 @@ import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { getUserByCookie } from "~/lib/session";
 import { setStore, store } from "~/store";
-import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
+import defaultUserAvatarUrl from "~/../icons/512.png?url";
 import { createMemo } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 

@@ -33,7 +33,7 @@ export default function SkillIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(false);
+  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
   const [dialogState, setDialogState] = createSignal(false);
   const setSkill = (newSkill: Skill["Insert"]): void => {
     setStore("wiki", "skill", "id", newSkill.id);
@@ -47,7 +47,7 @@ export default function SkillIndexPage() {
   );
 
   // table
-  const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(true);
+  const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
   const skillColumns: ColumnDef<Skill["MainTable"]>[] = [
     {
       accessorKey: "id",

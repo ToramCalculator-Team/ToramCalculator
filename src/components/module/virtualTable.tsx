@@ -1,8 +1,6 @@
 import {
   Accessor,
-  createEffect,
   createMemo,
-  createResource,
   createSignal,
   For,
   JSX,
@@ -128,7 +126,9 @@ export default function VirtualTable<
 
   // 只在初始化时创建 `table`
   const table = createSolidTable({
-    data: props.itemList.latest ?? [],
+    get data() {
+      return props.itemList() ?? [];
+    },
     columns: props.tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -144,79 +144,41 @@ export default function VirtualTable<
   });
 
   // 创建 `virtualizer`
-  const virtualizer = createVirtualizer({
-    count: table.getRowCount(),
-    getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-    estimateSize: () => 96,
-    overscan: 5,
-    // debug: true,
-  });
-
-  // const virtualizer = createMemo(() => {
-  //   console.log("Virtualizer Memo", table().getRowCount());
-  //   return createVirtualizer({
-  //     count: table().getRowCount() ?? 0,
-  //     getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-  //     estimateSize: () => 96,
-  //     overscan: 5,
-  //   });
+  // const virtualizer = createVirtualizer({
+  //   get count() {
+  //     return table.getRowCount();
+  //   },
+  //   getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
+  //   estimateSize: () => 96,
+  //   overscan: 5,
+  //   // debug: true,
   // });
 
-  const tableBodyDom = createMemo(() => {
-    return (
-      <tbody style={{ height: `${virtualizer.getTotalSize()}px` }} class={`TableBodyrelative`}>
-        <For each={virtualizer.getVirtualItems()}>
-          {(virtualRow) => {
-            const row = table.getRowModel().rows[virtualRow.index];
-            if (!row) {
-              return null;
-            }
-            return (
-              <tr
-                data-index={virtualRow.index}
-                style={{
-                  position: "absolute",
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
-                class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
-              >
-                <For
-                  each={row
-                    .getVisibleCells()
-                    .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Item))}
-                >
-                  {(cell) => props.tableTdGenerator({ cell })}
-                </For>
-              </tr>
-            );
-          }}
-        </For>
-      </tbody>
-    );
+  const virtualizer = createMemo(() => {
+    return createVirtualizer({
+      count: table.getRowCount() ?? 0,
+      getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
+      estimateSize: () => 96,
+      overscan: 5,
+    });
   });
-
-  createEffect(async () => {
-    const list = props.itemList() ?? [];
-    table.setOptions((prev) => ({
-      ...prev,
-      data: list,
-    }));
-    virtualizer.options.count = list.length;
-    setTimeout(() => {
-      virtualizer._willUpdate();
-      console.log(
-        "TableRows:",
-        JSON.stringify(table.getRowCount()),
-        "VirtualCount:",
-        JSON.stringify(virtualizer.getVirtualIndexes().length),
-        "VirtualItems:",
-        JSON.stringify(virtualizer.getVirtualItems().length),
-        Math.floor(performance.now()),
-      );
-    }, 1);
-  });
+  
+  onMount(
+    () => {
+      setTimeout(() => {
+        virtualizer()._willUpdate();
+        console.log(
+          "TableRows:",
+          JSON.stringify(table.getRowCount()),
+          "VirtualCount:",
+          JSON.stringify(virtualizer().getVirtualIndexes().length),
+          "VirtualItems:",
+          JSON.stringify(virtualizer().getVirtualItems().length),
+          Math.floor(performance.now()),
+        );
+      }, 1);
+    }
+  )
 
   return (
     <>
@@ -329,7 +291,36 @@ export default function VirtualTable<
               )}
             </For>
           </thead>
-          {tableBodyDom()}
+          <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class={`TableBodyrelative`}>
+            <For each={virtualizer().getVirtualItems()}>
+              {(virtualRow) => {
+                const row = table.getRowModel().rows[virtualRow.index];
+                if (!row) {
+                  return null;
+                }
+                return (
+                  <tr
+                    data-index={virtualRow.index}
+                    style={{
+                      position: "absolute",
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                    onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
+                    class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
+                  >
+                    <For
+                      each={row
+                        .getVisibleCells()
+                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Item))}
+                    >
+                      {(cell) => props.tableTdGenerator({ cell })}
+                    </For>
+                  </tr>
+                );
+              }}
+            </For>
+          </tbody>
         </table>
       </OverlayScrollbarsComponent>
     </>

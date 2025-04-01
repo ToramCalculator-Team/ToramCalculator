@@ -8,17 +8,10 @@ export default function CharacterIndexPage() {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 状态管理参数
-  const characterList = store.characterPage.characterList;
-  const setCharacterList = (value: Character[]) => setStore("characterPage", "characterList", value);
-  const character = defaultCharacter;
-  const setCharacter = (value: Character) => setStore("characterPage", "characterId", value.id);
-
-  const [computeResult, setComputeResult] = createSignal<JSX.Element | null>(null);
-  const [dialogMeberIndex, setDialogMeberIndex] = createSignal<number>(0);
+  const setCharacter = (value: Character["Insert"]) => setStore("character", "id", value.id);
 
   onMount(() => {
     console.log("--CharacterIndexPage Render");
-    setCharacterList([defaultCharacter, defaultCharacter]);
     setCharacter(defaultCharacter);
 
     return () => {
