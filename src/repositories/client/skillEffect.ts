@@ -1,8 +1,7 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, skill_effect } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface SkillEffect extends DataType<skill_effect> {
@@ -50,8 +49,8 @@ export async function deleteSkillEffect(id: string) {
 }
 
 // default
-export const defaultSkillEffect: SkillEffect["Insert"] = {
-  id: "defaultSkillEffectId",
+export const defaultSkillEffect: SkillEffect["Select"] = {
+  id: "",
   condition: "",
   description: "",
   motionFixed: "",
@@ -70,7 +69,7 @@ export const defaultSkillEffect: SkillEffect["Insert"] = {
   logic: {},
 };
 
-export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect["MainForm"]> => {
+export const SkillEffectDic = (locale: Locale): ConvertToAllString<SkillEffect["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

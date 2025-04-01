@@ -1,13 +1,13 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, npc } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface Npc extends DataType<npc> {
-  MainTable: Awaited<ReturnType<typeof findNpcs>>[number]
-  MainForm: npc
+  MainTable: Awaited<ReturnType<typeof findNpcs>>[number];
+  MainForm: npc;
 }
 
 export function npcSubRelations(eb: ExpressionBuilder<DB, "npc">, id: Expression<string>) {
@@ -24,10 +24,7 @@ export async function findNpcById(id: string) {
 }
 
 export async function findNpcs() {
-  return await db
-    .selectFrom("npc")
-    .selectAll("npc")
-    .execute();
+  return await db.selectFrom("npc").selectAll("npc").execute();
 }
 
 export async function updateNpc(id: string, updateWith: Npc["Update"]) {
@@ -38,14 +35,14 @@ export async function deleteNpc(id: string) {
   return await db.deleteFrom("npc").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultNpc: Npc["Insert"] = {
-  id: "defaultNpcId",
-  name: "defaultNpc",
+export const defaultNpc: Npc["Select"] = {
+  id: "",
+  name: "",
   zoneId: "",
 };
 
 // Dictionary
-export const NpcDic = (locale: Locale): ConvertToAllString<Npc["Insert"]> => {
+export const NpcDic = (locale: Locale): ConvertToAllString<Npc["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

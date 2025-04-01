@@ -1,7 +1,7 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, team } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 
 export interface Team extends DataType<team> {
@@ -61,8 +61,8 @@ export async function deleteTeam(id: string) {
 }
 
 // default
-export const defaultTeam: Team["Insert"] = {
-  id: "defaultTeamId",
+export const defaultTeam: Team["Select"] = {
+  id: "",
   name: null,
   gems: [],
 };

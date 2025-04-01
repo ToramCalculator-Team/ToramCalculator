@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
+import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
@@ -13,8 +13,8 @@ import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
 
 export interface Armor extends DataType<armor> {
-  MainTable: Awaited<ReturnType<typeof findArmors>>[number]
- }
+  MainTable: Awaited<ReturnType<typeof findArmors>>[number];
+}
 
 export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
@@ -81,7 +81,7 @@ export async function createArmor(
     const item = await insertItem(trx, {
       ...itemInput,
       id: createId(),
-      statisticId: statistic.id
+      statisticId: statistic.id,
     });
     const armor = await insertArmor(trx, {
       ...armorInput,
@@ -107,9 +107,9 @@ export async function deleteArmor(id: string) {
 }
 
 // default
-export const defaultArmor: Armor["Insert"] = {
+export const defaultArmor: Armor["Select"] = {
   modifiers: [],
-  itemId: "defaultArmorId",
+  itemId: "",
   baseDef: 0,
   colorA: 0,
   colorB: 0,
@@ -117,7 +117,7 @@ export const defaultArmor: Armor["Insert"] = {
 };
 
 // Dictionary
-export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["Insert"]> => {
+export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

@@ -1,10 +1,9 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, task_reward } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import {  jsonObjectFrom } from "kysely/helpers/postgres";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { defaultItems } from "./item";
 
 export interface TaskReward extends DataType<task_reward> {
   MainTable: Awaited<ReturnType<typeof findTaskRewards>>[number]
@@ -39,8 +38,8 @@ export async function deleteTaskReward(id: string) {
   return await db.deleteFrom("task_reward").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultReward: TaskReward["Insert"] = {
-  id: "defaultRewardId",
+export const defaultReward: TaskReward["Select"] = {
+  id: "",
   type: "Exp",
   value: 0,
   probability: 0,
@@ -49,7 +48,7 @@ export const defaultReward: TaskReward["Insert"] = {
 };
 
 // Dictionary
-export const RewardDic = (locale: Locale): ConvertToAllString<TaskReward["Insert"]> => {
+export const RewardDic = (locale: Locale): ConvertToAllString<TaskReward["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

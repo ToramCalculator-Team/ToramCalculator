@@ -1,6 +1,5 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultStatistics } from "./statistic";
 import { defaultAccount } from "./account";
 import { ConvertToAllString, DataType } from "./untils";
 import { DB, item } from "../../../db/clientDB/kysely/kyesely";
@@ -27,10 +26,10 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
     ).as("dropByMob"),
     jsonArrayFrom(
       eb
-        .selectFrom("reward")
-        .innerJoin("task", "reward.taskId", "task.id")
+        .selectFrom("task_reward")
+        .innerJoin("task", "task_reward.taskId", "task.id")
         .innerJoin("npc", "task.npcId", "npc.id")
-        .where("reward.itemId", "=", id)
+        .where("task_reward.itemId", "=", id)
         .select(["npc.id", "npc.name", "task.id", "task.name"]),
     ).as("rewardByNpcTask"),
     jsonArrayFrom(
@@ -130,21 +129,21 @@ const itemsShared = {
   createdByAccountId: defaultAccount.id,
 };
 
-const items: Partial<Record<ItemType, Item["Insert"]>> = {};
+const items: Partial<Record<ItemType, Item["Select"]>> = {};
 for (const key of ITEM_TYPE) {
   items[key] = {
-    id: `default${key}Id`,
-    name: `default${key}`,
+    id: ``,
+    name: ``,
     type: key,
     // statistic: defaultStatistics[key],
-    statisticId: defaultStatistics[key].id,
+    statisticId: "",
     ...itemsShared,
   };
 }
 
 export const defaultItems = items;
 
-export const ItemDic = (locale: Locale): ConvertToAllString<Item["Insert"]> => {
+export const ItemDic = (locale: Locale): ConvertToAllString<Item["Select"]> => {
   switch (locale) {
     case "zh-CN":
     case "zh-TW":
@@ -157,6 +156,9 @@ export const ItemDic = (locale: Locale): ConvertToAllString<Item["Insert"]> => {
         dataSources: "",
         statisticId: "",
         selfName: "",
+        details: "",
+        updatedByAccountId: "",
+        createdByAccountId: "",
       };
   }
 };

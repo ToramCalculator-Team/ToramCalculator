@@ -1,13 +1,13 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, mercenary } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { characterSubRelations, defaultCharacter } from "./character";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { characterSubRelations } from "./character";
 import { DataType } from "./untils";
 
 export interface Mercenary extends DataType<mercenary> {
-  MainTable: Awaited<ReturnType<typeof findMercenarys>>[number]
-  MainForm: mercenary
+  MainTable: Awaited<ReturnType<typeof findMercenarys>>[number];
+  MainForm: mercenary;
 }
 
 export function mercenarySubRelations(eb: ExpressionBuilder<DB, "mercenary">) {
@@ -40,7 +40,12 @@ export async function findMercenarys() {
 }
 
 export async function updateMercenary(id: string, updateWith: Mercenary["Update"]) {
-  return await db.updateTable("mercenary").set(updateWith).where("mercenary.templateId", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .updateTable("mercenary")
+    .set(updateWith)
+    .where("mercenary.templateId", "=", id)
+    .returningAll()
+    .executeTakeFirst();
 }
 
 export async function createMercenary(newMercenary: Mercenary["Insert"]) {
@@ -55,9 +60,9 @@ export async function deleteMercenary(id: string) {
 }
 
 // default
-export const defaultMercenary: Mercenary["Insert"] = {
+export const defaultMercenary: Mercenary["Select"] = {
   type: "Tank",
-  templateId: defaultCharacter.id,
+  templateId: "",
   skillAId: "",
   skillAType: "Active",
   skillBId: "",

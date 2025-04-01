@@ -1,19 +1,19 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, character } from "~/../db/clientDB/kysely/kyesely";
-import { defaultStatistics, Statistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { defaultStatistics, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { Combo, comboSubRelations } from "./combo";
-import { PlayerWeapon, PlayerWeaponDic, playerWeponSubRelations, defaultPlayerWeapons } from "./playerWeapon";
-import { PlayerArmor, PlayerArmorDic, playerArmorSubRelations, defaultPlayerArmor } from "./playerArmor";
-import { PlayerOptEquip, PlayerOptEquipDic, playerOptEquipSubRelations, defaultPlayerOptEquip } from "./playerOptEquip";
-import { PlayerSpeEquip, PlayerSpeEquipDic, playerSpeEquipSubRelations, defaultPlayerSpeEquip } from "./playerSpeEquip";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { comboSubRelations } from "./combo";
+import { playerWeponSubRelations } from "./playerWeapon";
+import { playerArmorSubRelations } from "./playerArmor";
+import { playerOptEquipSubRelations } from "./playerOptEquip";
+import { playerSpeEquipSubRelations } from "./playerSpeEquip";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface Character extends DataType<character> {
-  MainTable: Awaited<ReturnType<typeof findCharacters>>[number]
-  MainForm: character
+  MainTable: Awaited<ReturnType<typeof findCharacters>>[number];
+  MainForm: character;
 }
 
 export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {
@@ -49,8 +49,8 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
       eb
         .selectFrom("player_armor")
         .whereRef("id", "=", "character.armorId")
-          .selectAll("player_armor")
-          .select((eb) => playerArmorSubRelations(eb, eb.val("character.armorId"))),
+        .selectAll("player_armor")
+        .select((eb) => playerArmorSubRelations(eb, eb.val("character.armorId"))),
     )
       .$notNull()
       .as("armor"),
@@ -58,8 +58,8 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
       eb
         .selectFrom("player_option")
         .whereRef("id", "=", "character.optEquipId")
-          .selectAll("player_option")
-          .select((eb) => playerOptEquipSubRelations(eb, eb.val("character.optEquipId"))),
+        .selectAll("player_option")
+        .select((eb) => playerOptEquipSubRelations(eb, eb.val("character.optEquipId"))),
     )
       .$notNull()
       .as("optEquip"),
@@ -94,10 +94,7 @@ export async function findCharacterById(id: string) {
 }
 
 export async function findCharacters() {
-  return await db
-    .selectFrom("character")
-    .selectAll("character")
-    .execute();
+  return await db.selectFrom("character").selectAll("character").execute();
 }
 
 export async function updateCharacter(id: string, updateWith: Character["Update"]) {
@@ -110,35 +107,43 @@ export async function insertCharacter(trx: Transaction<DB>, newCharacter: Charac
     .values(defaultStatistics.Character)
     .returningAll()
     .executeTakeFirstOrThrow();
-  const character = await trx.insertInto("character").values({
-    ...newCharacter,
-    statisticId: statistic.id,
-  }).returningAll().executeTakeFirstOrThrow();
+  const character = await trx
+    .insertInto("character")
+    .values({
+      ...newCharacter,
+      statisticId: statistic.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
   return { ...character, statistic };
 }
 
 export async function createCharacter(newCharacter: Character["Insert"]) {
   return await db.transaction().execute(async (trx) => {
-      const statistic = await trx
-        .insertInto("statistic")
-        .values(defaultStatistics.Character)
-        .returningAll()
-        .executeTakeFirstOrThrow();
-      const character = await trx.insertInto("character").values({
+    const statistic = await trx
+      .insertInto("statistic")
+      .values(defaultStatistics.Character)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const character = await trx
+      .insertInto("character")
+      .values({
         ...newCharacter,
         statisticId: statistic.id,
-      }).returningAll().executeTakeFirstOrThrow();
-      return { ...character, statistic };
-    });
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return { ...character, statistic };
+  });
 }
 
 export async function deleteCharacter(id: string) {
   return await db.deleteFrom("character").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultCharacter: Character["Insert"] = {
-  id: "defaultCharacterId",
-  name: "默认机体",
+export const defaultCharacter: Character["Select"] = {
+  id: "",
+  name: "",
   lv: 0,
   str: 0,
   int: 0,
@@ -147,11 +152,11 @@ export const defaultCharacter: Character["Insert"] = {
   dex: 0,
   personalityType: "None",
   personalityValue: 0,
-  weaponId: defaultPlayerWeapons.mainHand.id,
-  subWeaponId: defaultPlayerWeapons.subHand.id,
-  armorId: defaultPlayerArmor.id,
-  optEquipId: defaultPlayerOptEquip.id,
-  speEquipId: defaultPlayerSpeEquip.id,
+  weaponId: "",
+  subWeaponId: "",
+  armorId: "",
+  optEquipId: "",
+  speEquipId: "",
   cooking: [],
   modifiers: [],
   partnerSkillAId: "",
@@ -160,11 +165,11 @@ export const defaultCharacter: Character["Insert"] = {
   partnerSkillBType: "Active",
   masterId: "",
   details: "",
-  statisticId: defaultStatistics.Character.id,
+  statisticId: "",
 };
 
 // Dictionary
-export const CharacterDic = (locale: Locale): ConvertToAllString<Character["Insert"]> => {
+export const CharacterDic = (locale: Locale): ConvertToAllString<Character["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -221,7 +226,7 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character["Inse
         masterId: "所有者ID",
         details: "額外說明",
         statisticId: "統計信息ID",
-      }
+      };
     case "en":
       return {
         selfName: "Character",
@@ -249,7 +254,7 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character["Inse
         masterId: "Master ID",
         details: "Details",
         statisticId: "Statistic ID",
-      }
+      };
     case "ja":
       return {
         selfName: "キャラクター",
@@ -277,6 +282,6 @@ export const CharacterDic = (locale: Locale): ConvertToAllString<Character["Inse
         masterId: "所有者ID",
         details: "詳細",
         statisticId: "統計情報ID",
-      }
+      };
   }
 };

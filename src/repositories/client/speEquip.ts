@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
+import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
@@ -107,14 +107,14 @@ export async function deleteSpeEquip(id: string) {
 }
 
 // default
-export const defaultSpeEquip: SpeEquip["Insert"] = {
+export const defaultSpeEquip: SpeEquip["Select"] = {
   modifiers: [],
-  itemId: "defaultSpeEquipId",
+  itemId: "",
   baseDef: 0,
 };
 
 // Dictionary
-export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip["Insert"]> => {
+export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

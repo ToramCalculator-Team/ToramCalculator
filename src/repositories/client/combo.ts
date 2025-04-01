@@ -1,14 +1,12 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, combo } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
-import { defaultCharacter } from "./character";
 
 export interface Combo extends DataType<combo> {
-  MainTable: Awaited<ReturnType<typeof findCombos>>[number]
-  MainForm: combo
+  MainTable: Awaited<ReturnType<typeof findCombos>>[number];
+  MainForm: combo;
 }
 
 export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expression<string>) {
@@ -25,10 +23,7 @@ export async function findComboById(id: string) {
 }
 
 export async function findCombos() {
-  return await db
-    .selectFrom("combo")
-    .selectAll("combo")
-    .execute();
+  return await db.selectFrom("combo").selectAll("combo").execute();
 }
 
 export async function updateCombo(id: string, updateWith: Combo["Update"]) {
@@ -50,15 +45,15 @@ export async function deleteCombo(id: string) {
   return await db.deleteFrom("combo").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultCombo: Combo["Insert"] = {
-  id: "defaultComboId",
-  name: "defaultComboName",
+export const defaultCombo: Combo["Select"] = {
+  id: "",
+  name: "",
   disable: true,
-  characterId: defaultCharacter.id
+  characterId: "",
 };
 
 // Dictionary
-export const ComborDic = (locale: Locale): ConvertToAllString<Combo["Insert"]> => {
+export const ComborDic = (locale: Locale): ConvertToAllString<Combo["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

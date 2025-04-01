@@ -1,10 +1,8 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, player_armor } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultArmor, Armor, ArmorDic } from "./armor";
-import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 
@@ -66,18 +64,18 @@ export async function deletePlayerArmor(id: string) {
 }
 
 // default
-export const defaultPlayerArmor: PlayerArmor["Insert"] = {
-  id: "defaultArmorId",
-  name: "默认自定义特殊装备",
+export const defaultPlayerArmor: PlayerArmor["Select"] = {
+  id: "",
+  name: "",
   extraAbi: 0,
   ability: "Normal",
   modifiers: [],
   refinement: 0,
-  templateId: defaultArmor.itemId,
-  masterId: defaultAccount.id,
+  templateId: "",
+  masterId: "",
 };
 // Dictionary
-export const PlayerArmorDic = (locale: Locale): ConvertToAllString<PlayerArmor["Insert"]> => {
+export const PlayerArmorDic = (locale: Locale): ConvertToAllString<PlayerArmor["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

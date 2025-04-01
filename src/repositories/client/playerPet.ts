@@ -1,14 +1,14 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, player_pet } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob, MobDic, mobSubRelations } from "./mob";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
+import { mobSubRelations } from "./mob";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 
 export interface PlayerPet extends DataType<player_pet> {
-  MainTable: Awaited<ReturnType<typeof findPlayerPets>>[number]
-  MainForm: player_pet
+  MainTable: Awaited<ReturnType<typeof findPlayerPets>>[number];
+  MainForm: player_pet;
 }
 
 export function customPetSubRelations(eb: ExpressionBuilder<DB, "player_pet">, id: Expression<string>) {
@@ -35,10 +35,7 @@ export async function findPlayerPetById(id: string) {
 }
 
 export async function findPlayerPets() {
-  return await db
-    .selectFrom("player_pet")
-    .selectAll("player_pet")
-    .execute();
+  return await db.selectFrom("player_pet").selectAll("player_pet").execute();
 }
 
 export async function updatePlayerPet(id: string, updateWith: PlayerPet["Update"]) {
@@ -49,10 +46,10 @@ export async function deletePlayerPet(id: string) {
   return await db.deleteFrom("player_pet").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultPlayerPet: PlayerPet["Insert"] = {
-  id: "defaultPlayerPetId",
-  templateId: defaultMob.id,
-  name: "defaultPlayerPet",
+export const defaultPlayerPet: PlayerPet["Select"] = {
+  id: "",
+  templateId: "",
+  name: "",
   pStr: 0,
   pInt: 0,
   pVit: 0,
@@ -69,12 +66,11 @@ export const defaultPlayerPet: PlayerPet["Insert"] = {
   weaponAtk: 0,
   masterId: "",
   generation: 0,
-  maxLv: 0
+  maxLv: 0,
 };
 
-
 // Dictionary
-export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Insert"]> => {
+export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -98,7 +94,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         weaponAtk: "战斗力",
         masterId: "主人ID",
         maxLv: "最大等级",
-        generation: "代数"
+        generation: "代数",
       };
     case "zh-TW":
       return {
@@ -107,7 +103,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         name: "名稱",
         templateId: "模板ID",
         pStr: "力量潛力",
-        pInt: "智力潛力", 
+        pInt: "智力潛力",
         pVit: "耐力潛力",
         pAgi: "敏捷潛力",
         pDex: "靈巧潛力",
@@ -122,7 +118,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         weaponAtk: "戰鬥力",
         masterId: "主人ID",
         maxLv: "最大等級",
-        generation: "代數"
+        generation: "代數",
       };
     case "en":
       return {
@@ -132,11 +128,11 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         templateId: "Template ID",
         pStr: "Strength Potential",
         pInt: "Intelligence Potential",
-        pVit: "Vitality Potential", 
+        pVit: "Vitality Potential",
         pAgi: "Agility Potential",
         pDex: "Dexterity Potential",
         str: "Strength",
-        int: "Intelligence", 
+        int: "Intelligence",
         vit: "Vitality",
         agi: "Agility",
         dex: "Dexterity",
@@ -146,7 +142,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         weaponAtk: "Combat Power",
         masterId: "Master ID",
         maxLv: "Max Level",
-        generation: "Generation"
+        generation: "Generation",
       };
     case "ja":
       return {
@@ -157,7 +153,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         pStr: "筋力ポテンシャル",
         pInt: "知力ポテンシャル",
         pVit: "体力ポテンシャル",
-        pAgi: "敏捷性ポテンシャル", 
+        pAgi: "敏捷性ポテンシャル",
         pDex: "器用さポテンシャル",
         str: "筋力",
         int: "知力",
@@ -170,7 +166,7 @@ export const PlayerPetDic = (locale: Locale): ConvertToAllString<PlayerPet["Inse
         weaponAtk: "戦闘力",
         masterId: "マスターID",
         maxLv: "最大レベル",
-        generation: "世代"
+        generation: "世代",
       };
   }
 };

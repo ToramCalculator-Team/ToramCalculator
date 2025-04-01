@@ -1,10 +1,9 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, player_weapon } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { weaponSubRelations } from "./weapon";
-import { defaultAccount } from "./account";
 import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
@@ -74,35 +73,38 @@ export async function deletePlayerWeapon(id: string) {
 }
 
 // default
-export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon["Insert"]> = {
+export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon["Select"]> = {
   mainHand: {
-    id: "defaultWeaponId",
-    name: "默认自定义主手",
+    id: "",
+    templateId: "",
+    name: "",
     extraAbi: 0,
     refinement: 0,
     modifiers: [],
-    masterId: defaultAccount.id,
+    masterId: "",
     baseAbi: 0,
     stability: 0,
   },
   subHand: {
-    id: "defaultWeaponId",
-    name: "默认自定义副手",
+    id: "",
+    templateId: "",
+    name: "",
     extraAbi: 0,
     refinement: 0,
     modifiers: [],
-    masterId: defaultAccount.id,
+    masterId: "",
     baseAbi: 0,
     stability: 0,
   },
 };
 
 // Dictionary
-export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon["Insert"]> => {
+export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         id: "ID",
+        templateId: "模板ID",
         name: "名称",
         extraAbi: "额外基础攻击力",
         refinement: "精炼值",
@@ -115,6 +117,7 @@ export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon
     case "zh-TW":
       return {
         id: "ID",
+        templateId: "模板ID",
         name: "名称",
         extraAbi: "額外基礎攻擊力",
         refinement: "精炼值",
@@ -127,6 +130,7 @@ export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon
     case "en":
       return {
         id: "ID",
+        templateId: "Template ID",
         name: "Name",
         extraAbi: "Extra Base Attack",
         refinement: "Refinement",
@@ -139,6 +143,7 @@ export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon
     case "ja":
       return {
         id: "ID",
+        templateId: "テンプレートID",
         name: "名前",
         extraAbi: "追加基本攻撃力",
         refinement: "精炼度",

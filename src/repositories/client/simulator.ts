@@ -1,15 +1,14 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, simulator } from "~/../db/clientDB/kysely/kyesely";
-import { defaultStatistics, statisticSubRelations } from "./statistic";
+import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultTeam, teamSubRelations } from "./team";
-import { defaultAccount } from "./account";
+import { teamSubRelations } from "./team";
 import { DataType } from "./untils";
 
 export interface Simulator extends DataType<simulator> {
-  MainTable: Awaited<ReturnType<typeof findSimulators>>[number]
-  MainForm: simulator
+  MainTable: Awaited<ReturnType<typeof findSimulators>>[number];
+  MainForm: simulator;
 }
 
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
@@ -33,16 +32,16 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
     )
       .$notNull()
       .as("campA"),
-      jsonArrayFrom(
-        eb
-          .selectFrom("_campB")
-          .innerJoin("team", "_campB.B", "team.id")
-          .whereRef("_campB.A", "=", id)
-          .selectAll("team")
-          .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
-      )
-        .$notNull()
-        .as("campB"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_campB")
+        .innerJoin("team", "_campB.B", "team.id")
+        .whereRef("_campB.A", "=", id)
+        .selectAll("team")
+        .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
+    )
+      .$notNull()
+      .as("campB"),
   ];
 }
 
@@ -80,13 +79,13 @@ export async function deleteSimulator(id: string) {
   return await db.deleteFrom("simulator").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultSimulator: Simulator["Insert"] = {
-  id: "defaultSimulatorId",
+export const defaultSimulator: Simulator["templateId"] = {
+  id: "",
 
-  name: "默认模拟器",
+  name: "",
   details: "",
 
-  statisticId: defaultStatistics.Simulator.id,
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
+  statisticId: "",
+  updatedByAccountId: "",
+  createdByAccountId: "",
 };

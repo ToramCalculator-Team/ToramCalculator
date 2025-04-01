@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
+import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
@@ -107,9 +107,9 @@ export async function deleteWeapon(id: string) {
 }
 
 // default
-export const defaultWeapon: Weapon["Insert"] = {
+export const defaultWeapon: Weapon["Select"] = {
   modifiers: [],
-  itemId: "defaultWeaponId",
+  itemId: "",
   type: "Magictool",
   stability: 0,
   elementType: "Normal",
@@ -120,7 +120,7 @@ export const defaultWeapon: Weapon["Insert"] = {
 };
 
 // Dictionary
-export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon["Insert"]> => {
+export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

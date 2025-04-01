@@ -4,9 +4,9 @@ import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface User extends DataType<user> {
-  MainTable: Awaited<ReturnType<typeof findUsers>>[number]
-  MainForm: user
- }
+  MainTable: Awaited<ReturnType<typeof findUsers>>[number];
+  MainForm: user;
+}
 
 export async function findUserById(id: string) {
   return await db.selectFrom("user").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
@@ -32,9 +32,9 @@ export async function deleteUser(id: string) {
 }
 
 // default
-export const defaultUser: User["Insert"] = {
-  id: "defaultSelectUserId",
-  name: "defaultSelectUserName",
+export const defaultUser: User["Select"] = {
+  id: "",
+  name: "",
   email: null,
   emailVerified: null,
   image: null,
@@ -79,4 +79,4 @@ export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
         selfName: "ユーザー",
       };
   }
-}
+};

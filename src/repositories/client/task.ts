@@ -1,17 +1,21 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, task } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface Task extends DataType<task> {
-  MainTable: Awaited<ReturnType<typeof findTasks>>[number]
-  MainForm: task
+  MainTable: Awaited<ReturnType<typeof findTasks>>[number];
+  MainForm: task;
 }
 
 export function taskSubRelations(eb: ExpressionBuilder<DB, "task">, id: Expression<string>) {
-  return [jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.taskId", "=", id).selectAll("task_reward")).as("rewards")];
+  return [
+    jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.taskId", "=", id).selectAll("task_reward")).as(
+      "rewards",
+    ),
+  ];
 }
 
 export async function findTaskById(id: string) {
@@ -24,10 +28,7 @@ export async function findTaskById(id: string) {
 }
 
 export async function findTasks() {
-  return await db
-    .selectFrom("task")
-    .selectAll("task")
-    .execute();
+  return await db.selectFrom("task").selectAll("task").execute();
 }
 
 export async function updateTask(id: string, updateWith: Task["Update"]) {
@@ -38,17 +39,17 @@ export async function deleteTask(id: string) {
   return await db.deleteFrom("task").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultTask: Task["Insert"] = {
-  id: "defaultTaskId",
-  name: "defaultTask",
+export const defaultTask: Task["Select"] = {
+  id: "",
+  name: "",
   lv: 0,
   npcId: "",
   type: "Collect",
-  description: "defaultTask description",
+  description: "",
 };
 
 // Dictionary
-export const TaskDic = (locale: Locale): ConvertToAllString<Task["Insert"]> => {
+export const TaskDic = (locale: Locale): ConvertToAllString<Task["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

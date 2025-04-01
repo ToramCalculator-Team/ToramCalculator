@@ -1,11 +1,8 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
-import { createId } from "@paralleldrive/cuid2";
-import { consumable, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { consumable, DB, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
 import { ConsumableType } from "../../../db/clientDB/kysely/enums";
 
 export interface Consumable extends DataType<consumable> { 
@@ -71,7 +68,7 @@ const consumableShared = {
 };
 
 // default
-export const defaultConsumables: Record<ConsumableType, Consumable["Insert"]> = {
+export const defaultConsumables: Record<ConsumableType, Consumable["Select"]> = {
   MaxHp: {
     itemId: "defaultMaxHpModifierConsumableId",
     type: "MaxHp",
@@ -135,7 +132,7 @@ export const defaultConsumables: Record<ConsumableType, Consumable["Insert"]> = 
 };
 
 // Dictionary
-export const ConsumableDic = (locale: Locale): ConvertToAllString<Consumable["Insert"]> => {
+export const ConsumableDic = (locale: Locale): ConvertToAllString<Consumable["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

@@ -6,7 +6,7 @@ import { Locale } from "~/locales/i18n";
 import { account, DB } from "../../../db/clientDB/kysely/kyesely";
 
 export interface Account extends DataType<account> {
-  MainTable: Awaited<ReturnType<typeof findAccounts>>[number]
+  MainTable: Awaited<ReturnType<typeof findAccounts>>[number];
 }
 
 export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
@@ -73,10 +73,7 @@ export async function findAccountById(id: string) {
 }
 
 export async function findAccounts() {
-  const accounts = await db
-    .selectFrom("account")
-    .selectAll()
-    .execute();
+  const accounts = await db.selectFrom("account").selectAll().execute();
   return accounts;
 }
 
@@ -101,8 +98,8 @@ export async function deleteAccount(id: string) {
 }
 
 // default
-export const defaultAccount: Account["Insert"] = {
-  id: "defaultAccount",
+export const defaultAccount: Account["Select"] = {
+  id: "",
   type: "User",
   provider: "",
   providerAccountId: "",
@@ -117,7 +114,7 @@ export const defaultAccount: Account["Insert"] = {
 };
 
 // 设计为Form字段字典，但是由于Table字段是此对象子集，因此通用
-export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]> => {
+export const AccountDic = (locale: Locale): ConvertToAllString<Account["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -133,7 +130,7 @@ export const AccountDic = (locale: Locale): ConvertToAllString<Account["Insert"]
         scope: "",
         id_token: "",
         session_state: "",
-        userId: ""
+        userId: "",
       };
     case "zh-TW":
       return {

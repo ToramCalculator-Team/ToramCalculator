@@ -6,7 +6,6 @@ import { Character, findCharacterById } from "~/repositories/client/character";
 export default function CharactePage() {
   const params = useParams();
   const [character, { refetch: refetchCharacter }] = createResource(() => findCharacterById(params.characterId));
-  console.log(character());
   return (
     <OverlayScrollbarsComponent
       element="div"

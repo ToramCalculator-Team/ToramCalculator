@@ -1,14 +1,14 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, recipe } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 import { ItemType } from "../../../db/clientDB/kysely/enums";
 import { ITEM_TYPE } from "../../../db/enums";
 
 export interface Recipe extends DataType<recipe> {
-  MainTable: Awaited<ReturnType<typeof findRecipes>>[number]
+  MainTable: Awaited<ReturnType<typeof findRecipes>>[number];
 }
 
 export function recipeSubRelations(eb: ExpressionBuilder<DB, "recipe">, id: Expression<string>) {
@@ -29,17 +29,14 @@ export async function findRecipeById(id: string) {
 }
 
 export async function findRecipes() {
-  return await db
-    .selectFrom("recipe")
-    .selectAll("recipe")
-    .execute();
+  return await db.selectFrom("recipe").selectAll("recipe").execute();
 }
 
 export async function updateRecipe(id: string, updateWith: Recipe["Update"]) {
   return await db.updateTable("recipe").set(updateWith).where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function insertRecipe(trx: Transaction<DB>,newRecipe: Recipe["Insert"]) {
+export async function insertRecipe(trx: Transaction<DB>, newRecipe: Recipe["Insert"]) {
   const recipe = await trx.insertInto("recipe").values(newRecipe).returningAll().executeTakeFirstOrThrow();
   return recipe;
 }
@@ -48,7 +45,7 @@ export async function deleteRecipe(id: string) {
   return await db.deleteFrom("recipe").where("recipe.id", "=", id).returningAll().executeTakeFirst();
 }
 
-const recipes: Partial<Record<ItemType, Recipe["Insert"]>> = {};
+const recipes: Partial<Record<ItemType, Recipe["templateId"]>> = {};
 for (const key of ITEM_TYPE) {
   const recipeWeaponShared = {
     weaponId: "",
@@ -60,15 +57,15 @@ for (const key of ITEM_TYPE) {
     consumableId: "",
   };
   recipes[key] = {
-    id: `default${key}RecipeId`,
-    itemId:`default${key}ItemId`,
+    id: ``,
+    itemId: ``,
     ...recipeWeaponShared,
   };
 }
 
-export const defaultRecipes = recipes as Record<ItemType, Recipe["Insert"]>;
+export const defaultRecipes = recipes as Record<ItemType, Recipe["templateId"]>;
 
-export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe["Insert"]> => {
+export const RecipeDic = (locale: Locale): ConvertToAllString<Recipe["templateId"]> => {
   switch (locale) {
     case "zh-CN":
       return {

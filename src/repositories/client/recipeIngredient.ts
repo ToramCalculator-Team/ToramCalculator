@@ -1,7 +1,7 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, recipe_ingredient } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 
@@ -25,31 +25,50 @@ export async function findRecipeIngredientById(id: string) {
 }
 
 export async function findRecipeIngredients() {
-  return await db
-    .selectFrom("recipe_ingredient")
-    .selectAll("recipe_ingredient")
-    .execute();
+  return await db.selectFrom("recipe_ingredient").selectAll("recipe_ingredient").execute();
 }
 
 export async function updateRecipeIngredient(id: string, updateWith: RecipeIngredient["Update"]) {
-  return await db.updateTable("recipe_ingredient").set(updateWith).where("recipe_ingredient.id", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .updateTable("recipe_ingredient")
+    .set(updateWith)
+    .where("recipe_ingredient.id", "=", id)
+    .returningAll()
+    .executeTakeFirst();
 }
 
-export async function insertRecipeIngredient(trx: Transaction<DB>,newRecipe: RecipeIngredient["Insert"]) {
-  const recipeIngredient = await trx.insertInto("recipe_ingredient").values(newRecipe).returningAll().executeTakeFirstOrThrow();
+export async function insertRecipeIngredient(trx: Transaction<DB>, newRecipe: RecipeIngredient["Insert"]) {
+  const recipeIngredient = await trx
+    .insertInto("recipe_ingredient")
+    .values(newRecipe)
+    .returningAll()
+    .executeTakeFirstOrThrow();
   return recipeIngredient;
 }
 
 export async function deleteRecipeIngredient(id: string) {
-  return await db.deleteFrom("recipe_ingredient").where("recipe_ingredient.id", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .deleteFrom("recipe_ingredient")
+    .where("recipe_ingredient.id", "=", id)
+    .returningAll()
+    .executeTakeFirst();
 }
 
-export const RecipeDic = (locale: Locale): ConvertToAllString<RecipeIngredient["Insert"]> => {
+export const defaultRecipeIngredient: RecipeIngredient["Select"] = {
+  id: "",
+  count: 0,
+  type: "Gold",
+  itemId: "",
+  recipeId: "",
+};
+
+export const RecipeIngredientDic = (locale: Locale): ConvertToAllString<RecipeIngredient["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
         selfName: "配方项",
         id: "ID",
+        itemId: "道具ID",
         count: "数量",
         type: "类型",
         recipeId: "所属配方ID",
@@ -58,6 +77,7 @@ export const RecipeDic = (locale: Locale): ConvertToAllString<RecipeIngredient["
       return {
         selfName: "配方項",
         id: "ID",
+        itemId: "道具ID",
         count: "數量",
         type: "類型",
         recipeId: "所屬配方ID",
@@ -66,6 +86,7 @@ export const RecipeDic = (locale: Locale): ConvertToAllString<RecipeIngredient["
       return {
         selfName: "Recipe Item",
         id: "ID",
+        itemId: "Item ID",
         count: "Count",
         type: "Type",
         recipeId: "Recipe ID",
@@ -74,6 +95,7 @@ export const RecipeDic = (locale: Locale): ConvertToAllString<RecipeIngredient["
       return {
         selfName: "レシピアイテム",
         id: "ID",
+        itemId: "アイテムID",
         count: "数",
         type: "タイプ",
         recipeId: "レシピID",

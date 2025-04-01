@@ -1,7 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { db } from "./database";
 import { DB, statistic } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
@@ -86,7 +85,7 @@ type StatisticType = (typeof STATISTIC_TYPE)[number]
 const statistics: Partial<Record<StatisticType, Statistic>> = {};
 for (const key of STATISTIC_TYPE) {
   statistics[key] = {
-    id: `default${key}StatisticId`,
+    id: ``,
     ...statisticShared,
   };
 }

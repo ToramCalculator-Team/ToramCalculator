@@ -1,16 +1,14 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
-import { createId } from "@paralleldrive/cuid2";
-import { crystal, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { crystal, DB, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
 import { CrystalType } from "../../../db/clientDB/kysely/enums";
 
-export interface Crystal extends DataType<crystal> { 
-    MainTable: Awaited<ReturnType<typeof findCrystals>>[number]
-    MainForm: crystal
+export interface Crystal extends DataType<crystal> {
+  MainTable: Awaited<ReturnType<typeof findCrystals>>[number];
+  MainForm: crystal;
 }
 
 export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
@@ -68,14 +66,11 @@ export async function createCrystal(
     };
   },
 ) {
-  return await db.transaction().execute(async (trx) => {
-
-  });
+  return await db.transaction().execute(async (trx) => {});
 }
 
-
 // default
-export const defaultCrystals: Record<CrystalType, Crystal["Insert"]> = {
+export const defaultCrystals: Record<CrystalType, Crystal["Select"]> = {
   NormalCrystal: {
     modifiers: [],
     itemId: "defaultNormalCrystalItemId",
@@ -84,7 +79,7 @@ export const defaultCrystals: Record<CrystalType, Crystal["Insert"]> = {
   WeaponCrystal: {
     modifiers: [],
     itemId: "defaultWeaponCrystalItemId",
-    type: "WeaponCrystal"
+    type: "WeaponCrystal",
   },
   ArmorCrystal: {
     modifiers: [],
@@ -100,12 +95,11 @@ export const defaultCrystals: Record<CrystalType, Crystal["Insert"]> = {
     modifiers: [],
     itemId: "defaultSpecialCrystalId",
     type: "SpecialCrystal",
-  }
+  },
 };
 
-
 // Dictionary
-export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal["Insert"]> => {
+export const CrystalDic = (locale: Locale): ConvertToAllString<Crystal["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

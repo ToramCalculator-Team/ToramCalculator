@@ -1,9 +1,8 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, player } from "~/../db/clientDB/kysely/kyesely";
-import { defaultCharacter, characterSubRelations } from "./character";
+import { characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultAccount } from "./account";
 import { DataType } from "./untils";
 
 export interface Player extends DataType<player> {
@@ -60,7 +59,7 @@ export async function deletePlayer(id: string) {
   return await db.deleteFrom("player").where("id", "=", id).returningAll().executeTakeFirst();
 }
 // Default
-export const defaultPlayer: Player["Insert"] = {
+export const defaultPlayer: Player["Select"] = {
   id: "defaultPlayer",
   name: "默认玩家",
   actions: [
@@ -163,6 +162,6 @@ export const defaultPlayer: Player["Insert"] = {
       },
     },
   ],
-  useIn: defaultCharacter.id,
-  accountId: defaultAccount.id,
+  useIn: "",
+  accountId: "",
 };

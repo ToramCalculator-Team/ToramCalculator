@@ -1,12 +1,9 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { recipeSubRelations } from "./recipe";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
-import { mobSubRelations } from "./mob";
-import { createId } from "@paralleldrive/cuid2";
 import { DB, option } from "../../../db/clientDB/kysely/kyesely";
 
 export interface OptEquip extends DataType<option> {
@@ -47,9 +44,7 @@ export async function updateOptEquip(id: string, updateWith: OptEquip["Update"])
 }
 
 export async function createOptEquip(newOptEquip: OptEquip["Insert"]) {
-  return await db.transaction().execute(async (trx) => {
-
-  });
+  return await db.transaction().execute(async (trx) => {});
 }
 
 export async function deleteOptEquip(id: string) {
@@ -57,9 +52,9 @@ export async function deleteOptEquip(id: string) {
 }
 
 // default
-export const defaultOptEquip: OptEquip["Insert"] = {
+export const defaultOptEquip: OptEquip["Select"] = {
   modifiers: [],
-  itemId: "defaultOptEquipId",
+  itemId: "",
   baseDef: 0,
   colorA: 0,
   colorB: 0,
@@ -67,7 +62,7 @@ export const defaultOptEquip: OptEquip["Insert"] = {
 };
 
 // Dictionary
-export const OptEquipDic = (locale: Locale): ConvertToAllString<OptEquip["Insert"]> => {
+export const OptEquipDic = (locale: Locale): ConvertToAllString<OptEquip["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

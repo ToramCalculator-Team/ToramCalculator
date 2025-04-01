@@ -1,21 +1,15 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, skill } from "~/../db/clientDB/kysely/kyesely";
-import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
+import { insertStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import {
-  createSkillEffect,
-  defaultSkillEffect,
-  SkillEffect,
-  SkillEffectDic,
-  skillEffectSubRelations,
-} from "./skillEffect";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { createSkillEffect, SkillEffect, skillEffectSubRelations } from "./skillEffect";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface Skill extends DataType<skill> {
-    MainTable: Awaited<ReturnType<typeof findSkills>>[number]
-    MainForm: skill
+  MainTable: Awaited<ReturnType<typeof findSkills>>[number];
+  MainForm: skill;
 }
 
 export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {
@@ -49,10 +43,7 @@ export async function findSkillById(id: string) {
 }
 
 export async function findSkills() {
-  return await db
-    .selectFrom("skill")
-    .selectAll("skill")
-    .execute();
+  return await db.selectFrom("skill").selectAll("skill").execute();
 }
 
 export async function updateSkill(id: string, updateWith: Skill["Update"]) {
@@ -79,10 +70,7 @@ export async function createSkill(newSkill: { skill: Skill["Insert"]; skillEffec
     const skillEffects = await Promise.all(
       newSkill.skillEffects.map((skillEffect) => createSkillEffect({ ...skillEffect, belongToskillId: skill.id })),
     );
-    return {
-      skill,
-      skillEffects,
-    };
+    return skill;
   });
 }
 
@@ -91,9 +79,9 @@ export async function deleteSkill(id: string) {
 }
 
 // default
-export const defaultSkill: Skill["Insert"] = {
-  id: "defaultSkillId",
-  name: "defaultSkill",
+export const defaultSkill: Skill["Select"] = {
+  id: "",
+  name: "",
   treeType: "MagicSkill",
   posX: 0,
   posY: 0,
@@ -106,7 +94,7 @@ export const defaultSkill: Skill["Insert"] = {
   details: "",
   updatedByAccountId: "",
   createdByAccountId: "",
-  statisticId: defaultStatistics.Skill.id,
+  statisticId: "",
 };
 
 export const SkillDic = (locale: Locale): ConvertToAllString<Skill["Select"]> => {

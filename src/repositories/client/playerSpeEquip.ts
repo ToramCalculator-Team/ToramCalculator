@@ -1,22 +1,17 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, player_special } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultSpeEquip, SpeEquip, SpeEquipDic } from "./speEquip";
-import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 
-export interface PlayerSpeEquip extends DataType<player_special> { 
-    MainTable: Awaited<ReturnType<typeof findPlayerSpeEquips>>[number]
-    MainForm: player_special
+export interface PlayerSpeEquip extends DataType<player_special> {
+  MainTable: Awaited<ReturnType<typeof findPlayerSpeEquips>>[number];
+  MainForm: player_special;
 }
 
-export function playerSpeEquipSubRelations(
-  eb: ExpressionBuilder<DB, "player_special">,
-  id: Expression<string>,
-) {
+export function playerSpeEquipSubRelations(eb: ExpressionBuilder<DB, "player_special">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -25,14 +20,13 @@ export function playerSpeEquipSubRelations(
         .innerJoin("_crystalToplayer_special", "item.id", "_crystalToplayer_special.A")
         .whereRef("_crystalToplayer_special.B", "=", "player_special.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll(["item","crystal"]),
+        .selectAll(["item", "crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
-      eb
-        .selectFrom("special")
-        .whereRef("special.itemId", "=", "player_special.templateId")
-        .selectAll("special"),
-    ).$notNull().as("template"),
+      eb.selectFrom("special").whereRef("special.itemId", "=", "player_special.templateId").selectAll("special"),
+    )
+      .$notNull()
+      .as("template"),
   ];
 }
 
@@ -46,19 +40,11 @@ export async function findPlayerSpeEquipById(id: string) {
 }
 
 export async function findPlayerSpeEquips() {
-  return await db
-    .selectFrom("player_special")
-    .selectAll("player_special")
-    .execute();
+  return await db.selectFrom("player_special").selectAll("player_special").execute();
 }
 
 export async function updatePlayerSpeEquip(id: string, updateWith: PlayerSpeEquip["Update"]) {
-  return await db
-    .updateTable("player_special")
-    .set(updateWith)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst();
+  return await db.updateTable("player_special").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function insertPlayerSpeEquip(trx: Transaction<DB>, newSpeEquip: PlayerSpeEquip["Insert"]) {
@@ -86,15 +72,16 @@ export async function deletePlayerSpeEquip(id: string) {
 }
 
 // default
-export const defaultPlayerSpeEquip: PlayerSpeEquip["Insert"] = {
-  id: "defaultSpeEquipId",
-  name: "默认自定义特殊装备",
+export const defaultPlayerSpeEquip: PlayerSpeEquip["Select"] = {
+  id: "",
+  name: "",
   extraAbi: 0,
-  templateId: defaultSpeEquip.id,
-  masterId: defaultAccount.id,
+  templateId: "",
+  masterId: "",
 };
+
 // Dictionary
-export const PlayerSpeEquipDic = (locale: Locale): ConvertToAllString<PlayerSpeEquip["Insert"]> => {
+export const PlayerSpeEquipDic = (locale: Locale): ConvertToAllString<PlayerSpeEquip["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -122,7 +109,7 @@ export const PlayerSpeEquipDic = (locale: Locale): ConvertToAllString<PlayerSpeE
         extraAbi: "Extra Defense",
         templateId: "Template ID",
         masterId: "Master ID",
-      }
+      };
     case "ja":
       return {
         selfName: "カスタム追加装備",
@@ -131,8 +118,6 @@ export const PlayerSpeEquipDic = (locale: Locale): ConvertToAllString<PlayerSpeE
         extraAbi: "追加防御力",
         templateId: "テンプレートID",
         masterId: "所有者ID",
-      }
-      
+      };
   }
 };
-

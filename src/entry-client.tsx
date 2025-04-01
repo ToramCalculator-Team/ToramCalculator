@@ -9,7 +9,6 @@ import { createMob, defaultMob, findMobById } from "./repositories/client/mob";
 import { createCharacter, defaultCharacter, findCharacterById } from "./repositories/client/character";
 import { createSkill, defaultSkill, findSkillById, Skill, updateSkill } from "./repositories/client/skill";
 import { createSkillEffect, defaultSkillEffect, findSkillEffectById } from "./repositories/client/skillEffect";
-import { createCrystal, defaultCrystals, findCrystalById } from "./repositories/client/crystal";
 import { store } from "./store";
 import { findSimulatorById, defaultSimulator, createSimulator } from "./repositories/client/simulator";
 
@@ -57,54 +56,51 @@ mount(() => <StartClient />, document.getElementById("app")!);
 //   console.log("已创建新Mob:", newMob);
 // }
 
-// let newSkill: Skill = defaultSkill;
-// try {
-//   // console.log("查询skill");
-//   const skill = await findSkillById(defaultSkill.id);
-//   // console.log("找到Skill:", skill);
-// } catch (e) {
-//   // console.log(e);
-//   // console.log("创建Skill");
-//   const { statistic, effects, ...skill } = defaultSkill;
-//   newSkill = await createSkill(skill);
-//   // console.log("已创建新Skill:", newSkill);
-// }
+let newSkill: Skill["Select"] = defaultSkill;
+try {
+  // console.log("查询skill");
+  const skill = await findSkillById(defaultSkill.id);
+  // console.log("找到Skill:", skill);
+} catch (e) {
+  // console.log(e);
+  // console.log("创建Skill");
+  newSkill = await createSkill({skill:defaultSkill,skillEffects:[defaultSkillEffect]});
+  // console.log("已创建新Skill:", newSkill);
+}
 
-// try {
-//   // console.log("查询skillEffect");
-//   const skillEffect = await findSkillEffectById(defaultSkillEffect.id);
-//   // console.log("找到SkillEffect:", skillEffect);
-// } catch (e) {
-//   // console.log(e);
-//   // console.log("创建SkillEffect");
-//   const newSkillEffect = await createSkillEffect({
-//     ...defaultSkillEffect,
-//     description: "测试SkillEffect",
-//     belongToskillId: newSkill.id,
-//   });
-//   // console.log("已创建新SkillEffect:", newSkillEffect);
-// }
+try {
+  // console.log("查询skillEffect");
+  const skillEffect = await findSkillEffectById(defaultSkillEffect.id);
+  // console.log("找到SkillEffect:", skillEffect);
+} catch (e) {
+  // console.log(e);
+  // console.log("创建SkillEffect");
+  const newSkillEffect = await createSkillEffect({
+    ...defaultSkillEffect,
+    description: "测试SkillEffect",
+    belongToskillId: newSkill.id,
+  });
+  // console.log("已创建新SkillEffect:", newSkillEffect);
+}
 
-// // try {
-// //   console.log("查询Character");
-// //   const character = await findCharacterById(defaultCharacter.id);
-// //   console.log("找到Character：", character);
-// // } catch (e) {
-// //   console.log(e);
-// //   console.log("创建Character");
-// //   const { statistic, team, ...character } = defaultCharacter;
-// //   const newCharacter = await createCharacter(character);
-// //   console.log("已创建newCharacter：", newCharacter);
-// // }
+try {
+  console.log("查询Character");
+  const character = await findCharacterById(defaultCharacter.id);
+  console.log("找到Character：", character);
+} catch (e) {
+  console.log(e);
+  console.log("创建Character");
+  const newCharacter = await createCharacter(defaultCharacter);
+  console.log("已创建newCharacter：", newCharacter);
+}
 
-// try {
-//   // console.log("查询Simulator");
-//   const simulator = await findSimulatorById(defaultSimulator.id);
-//   // console.log("找到Simulator：", simulator);
-// } catch (e) {
-//   // console.log(e);
-//   // console.log("创建Simulator");
-//   const { statistic, team, ...simulator } = defaultSimulator;
-//   const newSimulator = await createSimulator(simulator);
-//   // console.log("已创建newSimulator：", newSimulator);
-// }
+try {
+  // console.log("查询Simulator");
+  const simulator = await findSimulatorById(defaultSimulator.id);
+  // console.log("找到Simulator：", simulator);
+} catch (e) {
+  // console.log(e);
+  // console.log("创建Simulator");
+  const newSimulator = await createSimulator(defaultSimulator);
+  // console.log("已创建newSimulator：", newSimulator);
+}

@@ -1,8 +1,8 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, zone } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { mobSubRelations } from "./mob";
 
@@ -46,9 +46,9 @@ export async function deleteZone(id: string) {
   return await db.deleteFrom("zone").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultZone: Zone["Insert"] = {
-  id: "defaultZoneId",
-  name: "defaultZone",
+export const defaultZone: Zone["Select"] = {
+  id: "",
+  name: "",
   linkZone: [],
   rewardNodes: 0,
   activityId: null,
@@ -56,7 +56,7 @@ export const defaultZone: Zone["Insert"] = {
 };
 
 // Dictionary
-export const ZoneDic = (locale: Locale): ConvertToAllString<Zone["Insert"]> => {
+export const ZoneDic = (locale: Locale): ConvertToAllString<Zone["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

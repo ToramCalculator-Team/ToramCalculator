@@ -1,11 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic, StatisticDic } from "./statistic";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
-import { createId } from "@paralleldrive/cuid2";
-import { material, DB, image, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
+import { DataType } from "./untils";
+import { material, DB, item, recipe, recipe_ingredient } from "../../../db/clientDB/kysely/kyesely";
 import { MaterialType } from "../../../db/clientDB/kysely/enums";
 
 export interface Material extends DataType<material> { 
@@ -62,39 +58,39 @@ export async function createMaterial(
 }
 
 // default
-export const defaultMaterial: Record<MaterialType, Material["Insert"]> = {
+export const defaultMaterial: Record<MaterialType, Material["Select"]> = {
   Magic: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Magic",
     ptValue: 0,
     price: 0,
   },
   Cloth: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Cloth",
     ptValue: 0,
     price: 0,
   },
   Beast: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Beast",
     ptValue: 0,
     price: 0,
   },
   Wood: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Wood",
     ptValue: 0,
     price: 0,
   },
   Drug: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Drug",
     ptValue: 0,
     price: 0,
   },
   Metal: {
-    itemId: "defaultMaterialId",
+    itemId: "",
     type: "Metal",
     ptValue: 0,
     price: 0,

@@ -1,22 +1,17 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, player_option } from "~/../db/clientDB/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { defaultOptEquip, OptEquip, OptEquipDic } from "./optEquip";
-import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
 import { ConvertToAllString, DataType } from "./untils";
 
-export interface PlayerOptEquip extends DataType<player_option> { 
-    MainTable: Awaited<ReturnType<typeof findPlayerOptEquips>>[number]
-    MainForm: player_option
+export interface PlayerOptEquip extends DataType<player_option> {
+  MainTable: Awaited<ReturnType<typeof findPlayerOptEquips>>[number];
+  MainForm: player_option;
 }
 
-export function playerOptEquipSubRelations(
-  eb: ExpressionBuilder<DB, "player_option">,
-  id: Expression<string>,
-) {
+export function playerOptEquipSubRelations(eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -25,14 +20,13 @@ export function playerOptEquipSubRelations(
         .innerJoin("_crystalToplayer_option", "item.id", "_crystalToplayer_option.A")
         .whereRef("_crystalToplayer_option.B", "=", "player_option.id")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll(["item","crystal"]),
+        .selectAll(["item", "crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
-      eb
-        .selectFrom("special")
-        .whereRef("special.itemId", "=", "player_option.templateId")
-        .selectAll("special"),
-    ).$notNull().as("template"),
+      eb.selectFrom("special").whereRef("special.itemId", "=", "player_option.templateId").selectAll("special"),
+    )
+      .$notNull()
+      .as("template"),
   ];
 }
 
@@ -46,19 +40,11 @@ export async function findPlayerOptEquipById(id: string) {
 }
 
 export async function findPlayerOptEquips() {
-  return await db
-    .selectFrom("player_option")
-    .selectAll("player_option")
-    .execute();
+  return await db.selectFrom("player_option").selectAll("player_option").execute();
 }
 
 export async function updatePlayerOptEquip(id: string, updateWith: PlayerOptEquip["Update"]) {
-  return await db
-    .updateTable("player_option")
-    .set(updateWith)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst();
+  return await db.updateTable("player_option").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
 export async function insertPlayerOptEquip(trx: Transaction<DB>, newOptEquip: PlayerOptEquip["Insert"]) {
@@ -86,16 +72,17 @@ export async function deletePlayerOptEquip(id: string) {
 }
 
 // default
-export const defaultPlayerOptEquip: PlayerOptEquip["Insert"] = {
-  id: "defaultOptEquipId",
-  name: "默认自定义特殊装备",
+export const defaultPlayerOptEquip: PlayerOptEquip["Select"] = {
+  id: "",
+  name: "",
   refinement: 0,
   extraAbi: 0,
-  templateId: defaultOptEquip.itemId,
-  masterId: defaultAccount.id,
+  templateId: "",
+  masterId: "",
 };
+
 // Dictionary
-export const PlayerOptEquipDic = (locale: Locale): ConvertToAllString<PlayerOptEquip["Insert"]> => {
+export const PlayerOptEquipDic = (locale: Locale): ConvertToAllString<PlayerOptEquip["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
@@ -126,7 +113,7 @@ export const PlayerOptEquipDic = (locale: Locale): ConvertToAllString<PlayerOptE
         extraAbi: "Extra Defense",
         templateId: "Template ID",
         masterId: "Master ID",
-      }
+      };
     case "ja":
       return {
         selfName: "カスタム追加装備",
@@ -136,8 +123,6 @@ export const PlayerOptEquipDic = (locale: Locale): ConvertToAllString<PlayerOptE
         extraAbi: "追加防御力",
         templateId: "テンプレートID",
         masterId: "所有者ID",
-      }
-      
+      };
   }
 };
-

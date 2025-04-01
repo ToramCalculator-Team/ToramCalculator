@@ -1,22 +1,24 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { db } from "./database";
 import { DB, character_skill } from "~/../db/clientDB/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
-import { defaultSkill, Skill, SkillDic, skillSubRelations } from "./skill";
-import { defaultCharacter } from "./character";
+import { skillSubRelations } from "./skill";
 
 export interface CharacterSkill extends DataType<character_skill> {
-  MainTable: Awaited<ReturnType<typeof findCharacterSkills>>[number]
-  MainForm: character_skill
+  MainTable: Awaited<ReturnType<typeof findCharacterSkills>>[number];
+  MainForm: character_skill;
 }
 
 export function character_skillSubRelations(eb: ExpressionBuilder<DB, "character_skill">, id: Expression<string>) {
   return [
     jsonObjectFrom(
-      eb.selectFrom("skill").whereRef("skill.id", "=", "character_skill.templateId")
-        .select((subEb) => skillSubRelations(subEb, subEb.val(id))).selectAll("skill"),
+      eb
+        .selectFrom("skill")
+        .whereRef("skill.id", "=", "character_skill.templateId")
+        .select((subEb) => skillSubRelations(subEb, subEb.val(id)))
+        .selectAll("skill"),
     ).as("template"),
   ];
 }
@@ -31,10 +33,7 @@ export async function findCharacterSkillById(id: string) {
 }
 
 export async function findCharacterSkills() {
-  return await db
-    .selectFrom("character_skill")
-    .selectAll("character_skill")
-    .execute();
+  return await db.selectFrom("character_skill").selectAll("character_skill").execute();
 }
 
 export async function updateCharacterSkill(id: string, updateWith: CharacterSkill["Update"]) {
@@ -49,16 +48,16 @@ export async function insertCharacterSkill(trx: Transaction<DB>, insertWith: Cha
   return await trx.insertInto("character_skill").values(insertWith).returningAll().executeTakeFirst();
 }
 
-export const defaultCharacterSkill: CharacterSkill["Insert"] = {
-  id: "defaultCharacterSkillId",
+export const defaultCharacterSkill: CharacterSkill["Select"] = {
+  id: "",
   lv: 0,
   isStarGem: false,
   templateId: "",
-  characterId: defaultCharacter.id
+  characterId: "",
 };
 
 // Dictionary
-export const CharacterSkillDic = (locale: Locale): ConvertToAllString<CharacterSkill["Insert"]> => {
+export const CharacterSkillDic = (locale: Locale): ConvertToAllString<CharacterSkill["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {

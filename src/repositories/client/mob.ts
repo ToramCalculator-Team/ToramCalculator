@@ -1,17 +1,15 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, mob } from "~/../db/clientDB/kysely/kyesely";
-import { defaultStatistics, insertStatistic, StatisticDic, statisticSubRelations } from "./statistic";
-import { defaultImage, ImageDic } from "./image";
+import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultAccount } from "./account";
 import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 
 export interface Mob extends DataType<mob> {
-  MainTable: Awaited<ReturnType<typeof findMobs>>[number]
-  MainForm: mob
+  MainTable: Awaited<ReturnType<typeof findMobs>>[number];
+  MainForm: mob;
 }
 
 export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
@@ -57,10 +55,7 @@ export async function findMobsLike(searchString: string) {
 }
 
 export async function findMobs() {
-  const result = await db
-    .selectFrom("mob")
-    .selectAll("mob")
-    .execute();
+  const result = await db.selectFrom("mob").selectAll("mob").execute();
   return result;
 }
 
@@ -99,8 +94,8 @@ export async function deleteMob(id: string) {
 
 // default
 export const defaultMob: Mob["Select"] = {
-  id: "defaultMobId",
-  name: "defaultMob",
+  id: "",
+  name: "",
   type: "Boss",
   captureable: false,
   actions: [],
@@ -121,11 +116,11 @@ export const defaultMob: Mob["Select"] = {
   magicalAttackResistanceModifier: 0,
   partsExperience: 0,
   initialElement: "Normal",
-  details: "defaultExtraDetails",
-  dataSources: "defaultDataSources",
-  statisticId: defaultStatistics.Mob.id,
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
+  details: "",
+  dataSources: "",
+  statisticId: "",
+  updatedByAccountId: "",
+  createdByAccountId: "",
 };
 
 // Dictionary

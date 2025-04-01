@@ -1,15 +1,13 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, member } from "~/../db/clientDB/kysely/kyesely";
-import { defaultPlayer, playerSubRelations } from "./player";
+import { playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultMob } from "./mob";
 import { DataType } from "./untils";
-import { defaultMercenary } from "./mercenary";
 
 export interface Member extends DataType<member> {
-  MainTable: Awaited<ReturnType<typeof findMembers>>[number]
-  MainForm: member
+  MainTable: Awaited<ReturnType<typeof findMembers>>[number];
+  MainForm: member;
 }
 
 export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
@@ -41,10 +39,7 @@ export async function findMemberById(id: string) {
 }
 
 export async function findMembers() {
-  return await db
-    .selectFrom("member")
-    .selectAll("member")
-    .execute();
+  return await db.selectFrom("member").selectAll("member").execute();
 }
 
 export async function updateMember(id: string, updateWith: Member["Update"]) {
@@ -69,14 +64,14 @@ export async function deleteMember(id: string) {
   return await db.deleteFrom("member").where("id", "=", id).returningAll().executeTakeFirst();
 }
 // Default
-export const defaultMember: Member["Insert"] = {
+export const defaultMember: Member["Select"] = {
   id: "",
   name: "",
   teamId: "",
   playerId: "",
-  mobId: defaultMob.id,
+  mobId: "",
   mobDifficultyFlag: "Easy",
-  mercenaryId: defaultMercenary.templateId,
-  partnerId: defaultPlayer.id,
-  order: 0
+  mercenaryId: "",
+  partnerId: "",
+  order: 0,
 };

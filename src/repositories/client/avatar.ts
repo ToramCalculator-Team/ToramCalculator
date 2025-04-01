@@ -1,12 +1,11 @@
-import { Expression, ExpressionBuilder, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder } from "kysely";
 import { db } from "./database";
 import { DB, avatar } from "~/../db/clientDB/kysely/kyesely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, ModifyKeys } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 
 export interface Avatar extends DataType<avatar> {
-  MainTable: Awaited<ReturnType<typeof findAvatars>>[number]
+  MainTable: Awaited<ReturnType<typeof findAvatars>>[number];
 }
 
 export function avatarSubRelations(eb: ExpressionBuilder<DB, "avatar">, id: Expression<string>) {
@@ -34,16 +33,16 @@ export async function deleteAvatar(id: string) {
   return await db.deleteFrom("avatar").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export const defaultAvatar: Avatar["Insert"] = {
-  id: "defaultAvatarId",
-  name: "defaultAvatar",
+export const defaultAvatar: Avatar["Select"] = {
+  id: "",
+  name: "",
   type: "Top",
   modifiers: [],
   playerId: "",
 };
 
 // Dictionary
-export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar["Insert"]> => {
+export const AvatarDic = (locale: Locale): ConvertToAllString<Avatar["Select"]> => {
   switch (locale) {
     case "zh-CN":
       return {
