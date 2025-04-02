@@ -10,6 +10,7 @@ import {
   onMount,
   Show,
   useContext,
+  on,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
@@ -236,6 +237,19 @@ export default function Index() {
     }
   };
 
+  // userName
+  const [userName, setUserName] = createSignal(store.session.user.name);
+
+  createEffect(
+    on(
+      () => store.session.user.name,
+      () => {
+        if (store.session.user.name) setUserName(store.session.user.name);
+        else setUserName(dictionary().ui.index.adventurer);
+      },
+    ),
+  );
+
   onMount(() => {
     // console.log("Index loaded");
 
@@ -351,7 +365,7 @@ export default function Index() {
                   <Icon.LogoText class="h-12 landscape:h-auto" />
                 </div>
                 <h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
-                  {getGreetings() + ",  " + dictionary().ui.index.adventurer}
+                  {getGreetings() + ",  " + userName()}
                 </h1>
               </Motion.div>
             </Show>
@@ -392,7 +406,7 @@ export default function Index() {
                 type="text"
                 placeholder={
                   media.orientation === "landscape"
-                    ? getGreetings() + "," + dictionary().ui.index.adventurer
+                    ? getGreetings() + "," + userName()
                     : dictionary().ui.searchPlaceholder
                 }
                 value={searchInputValue()}
@@ -620,7 +634,7 @@ export default function Index() {
                           <Motion.a
                             tabIndex={2}
                             href={menuItem.href}
-                            class={`flex-none text-brand-color-1st text-brand-color-2nd text-brand-color-3rd basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
+                            class={`text-brand-color-1st text-brand-color-2nd text-brand-color-3rd flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
                             animate={{
                               opacity: [0, 1],
                               transform: ["scale(0.1)", "scale(1)"],

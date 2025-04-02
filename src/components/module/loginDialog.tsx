@@ -192,17 +192,17 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
             <Show
               when={!store.session.user.id && props.state()}
               fallback={
-                <>
+                <div class="flex flex-col w-full items-center gap-4 lg:py-0">
                   <h1 class="text-3xl font-bold">{formTitle()}</h1>
-                  <div class="flex items-center gap-4">
-                    <Button class="LoginOut" onClick={logOut}>
+                  <div class="flex w-full items-center gap-1">
+                    <Button class="LoginOut flex-1" onClick={logOut}>
                       {dictionary().ui.actions.logOut}
                     </Button>
-                    <Button class={`CloseBtn`} onClick={() => props.setState(false)}>
+                    <Button class={`CloseBtn flex-1`} onClick={() => props.setState(false)}>
                       {dictionary().ui.actions.close}
                     </Button>
                   </div>
-                </>
+                </div>
               }
             >
               <h1 class="text-3xl font-bold">{formTitle()}</h1>
@@ -254,7 +254,34 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                     }}
                   />
                 </div>
-
+                <div>
+                  <form.Field
+                    name="password"
+                    validators={{
+                      onChange: ({ value }) => {
+                        const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                        if (!result.success) {
+                          return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
+                        }
+                      },
+                    }}
+                    children={(field) => (
+                      <Input
+                        title="密码"
+                        // description="也是个摆设"
+                        autocomplete="current-password"
+                        type="password"
+                        id={field().name}
+                        name={field().name}
+                        value={field().state.value}
+                        onBlur={field().handleBlur}
+                        onInput={(e) => field().handleChange(e.target.value)}
+                        state={fieldInfo(field())}
+                        class="w-full"
+                      />
+                    )}
+                  />
+                </div>
                 <Presence exitBeforeEnter>
                   <Show when={formModule() === "register"}>
                     <Motion.div
@@ -292,34 +319,6 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                     </Motion.div>
                   </Show>
                 </Presence>
-                <div>
-                  <form.Field
-                    name="password"
-                    validators={{
-                      onChange: ({ value }) => {
-                        const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-                        if (!result.success) {
-                          return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
-                        }
-                      },
-                    }}
-                    children={(field) => (
-                      <Input
-                        title="密码"
-                        // description="也是个摆设"
-                        autocomplete="current-password"
-                        type="password"
-                        id={field().name}
-                        name={field().name}
-                        value={field().state.value}
-                        onBlur={field().handleBlur}
-                        onInput={(e) => field().handleChange(e.target.value)}
-                        state={fieldInfo(field())}
-                        class="w-full"
-                      />
-                    )}
-                  />
-                </div>
                 <form.Subscribe
                   selector={(state) => ({
                     canSubmit: state.canSubmit,
