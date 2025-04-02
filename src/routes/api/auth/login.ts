@@ -1,23 +1,47 @@
 import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
-import { findUserByEmail, findUserById } from "~/repositories/server/user";
+import { findUserByEmail } from "~/repositories/server/user";
+import bcrypt from "bcrypt";
 
 export async function POST(event: APIEvent) {
   try {
     // 解析请求体
     const requestBody = await event.request.json();
-    const { email } = requestBody;
+    const { email, password } = requestBody;
 
     if (!email) {
-      return new Response("缺少邮箱", { status: 400 });
+      return new Response(JSON.stringify({ error: "缺少邮箱" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!password) {
+      return new Response(JSON.stringify({ error: "缺少密码" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const user = await findUserByEmail(email);
     if (!user) {
-      return new Response("没找到此用户", { status: 404 });
+      return new Response(JSON.stringify({ error: "用户不存在" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
+    // ✅ 使用 bcrypt 进行哈希比对
+    const isPasswordValid = await bcrypt.compare(password, user.password ?? "default_password");
+    if (!isPasswordValid) {
+      return new Response(JSON.stringify({ error: "密码错误" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ✅ 认证成功
     console.log("登录者:", user.name);
 
     // 生成 JWT

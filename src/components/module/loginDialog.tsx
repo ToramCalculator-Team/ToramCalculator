@@ -4,7 +4,7 @@ import type { AnyFieldApi } from "@tanstack/solid-form";
 import { emailExists, getUserByCookie } from "~/lib/session";
 import { setStore, store } from "~/store";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
-import { Accessor, createMemo, createSignal, Show } from "solid-js";
+import { Accessor, createEffect, createMemo, createSignal, on, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
 import * as Icon from "~/components/icon";
@@ -53,9 +53,9 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
         console.error("登录失败", response.status, responseText);
         switch (response.status) {
           case 400:
-            alert("登录失败");
+            alert("缺少邮箱或密码");
             break;
-          case 404:
+          case 401:
             alert("用户不存在");
             break;
           default:
@@ -129,6 +129,19 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       console.error("请求错误:", error);
     }
   };
+
+  const [deleteCount, setDeleteCount] = createSignal(0);
+
+  const deleteUser = async () => {
+    await fetch("/api/auth/delete");
+    setStore("session", "user", {
+      id: "",
+      name: "",
+      avatar: "",
+    });
+    props.setState(false);
+  };
+
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
@@ -164,6 +177,17 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       }
     },
   }));
+
+  // 关闭弹出层时重置表单
+  createEffect(
+    on(
+      () => props.state(),
+      () => {
+        setFormModule("unknown");
+        form.reset();
+      },
+    ),
+  );
 
   return (
     <Presence exitBeforeEnter>
@@ -255,7 +279,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                       }}
                       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
                     >
-                      <div class="w-full h-full overflow-hidden ">
+                      <div class="h-full w-full overflow-hidden">
                         <form.Field
                           name="userName"
                           children={(field) => (
@@ -281,6 +305,14 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                 <div>
                   <form.Field
                     name="password"
+                    validators={{
+                      onChange: ({ value }) => {
+                        const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                        if (!result.success) {
+                          return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
+                        }
+                      },
+                    }}
                     children={(field) => (
                       <Input
                         title="密码"

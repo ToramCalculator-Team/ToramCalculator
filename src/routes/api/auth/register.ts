@@ -2,7 +2,8 @@ import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
 import { createId } from "@paralleldrive/cuid2";
-import { createUser } from "~/repositories/server/user";
+import { createUser, findUserByEmail } from "~/repositories/server/user";
+import bcrypt from "bcrypt";
 
 export async function POST(event: APIEvent) {
   try {
@@ -10,19 +11,52 @@ export async function POST(event: APIEvent) {
     const requestBody = await event.request.json();
     const { email, userName, password } = requestBody;
 
-    if (!email) {
-      return new Response("缺少Email", { status: 400 });
+    // 🛑 校验输入
+    if (!email || !password) {
+      return new Response(JSON.stringify({ error: "缺少 Email 或密码" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
+    // 🛑 验证 Email 格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(JSON.stringify({ error: "无效的 Email 格式" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 🛑 密码长度校验（至少 8 个字符）
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: "密码必须至少 6 个字符" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ✅ 检查 Email 是否已注册
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return new Response(JSON.stringify({ error: "Email 已被注册" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ✅ 生成哈希密码
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ 创建用户
     console.log("注册者:", email);
     const userId = createId();
     const user = await createUser({
-      name: userName,
+      name: userName || email.split("@")[0], // 默认用户名
       email,
-      password,
+      password: hashedPassword, // 存储加密后的密码
       id: userId,
     });
-
     // 生成 JWT
     const jwtPayload = {
       sub: userId,
@@ -45,12 +79,15 @@ export async function POST(event: APIEvent) {
       maxAge: 30 * 24 * 60 * 60, // 30 天
     });
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
+    return new Response(JSON.stringify({ message: "注册成功", userId: user.id }), {
+      status: 201,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("注册错误:", error);
-    return new Response("Invalid request", { status: 400 });
+    return new Response(JSON.stringify({ error: "服务器错误" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

@@ -53,6 +53,8 @@
     "@tanstack/solid-form": "^1.1.0",
     "@tanstack/solid-table": "^8.20.1",
     "@tanstack/solid-virtual": "^3.9.0",
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^5.1.1",
     "blockly": "^11.2.1",
     "comlink": "^4.4.1",
     "d3": "^7.9.0",

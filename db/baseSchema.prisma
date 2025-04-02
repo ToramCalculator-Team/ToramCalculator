@@ -29,7 +29,7 @@ model user {
     name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
     email         String?   @unique
     emailVerified DateTime?
-    password      String?
+    password      String? ///  @zod.string.min(8, { message: "最少8个字符" })
     image         String?
     accounts      account[]
     sessions      session[]
