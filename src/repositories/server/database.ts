@@ -16,7 +16,6 @@ const poolConfig: pkg.PoolConfig = {
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 }
-console.log("poolConfig",poolConfig);
 
 const pool = new Pool(poolConfig);
 const PGdialect = new PostgresDialect({

@@ -46,7 +46,7 @@ export async function POST(event: APIEvent) {
     }
 
     // ✅ 生成哈希密码
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
     // ✅ 创建用户
     console.log("注册者:", email);

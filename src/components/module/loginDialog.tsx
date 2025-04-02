@@ -51,17 +51,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
 
       if (!response.ok) {
         console.error("登录失败", response.status, responseText);
-        switch (response.status) {
-          case 400:
-            alert("缺少邮箱或密码");
-            break;
-          case 401:
-            alert("用户不存在");
-            break;
-          default:
-            alert("登录失败");
-        }
-        return;
+        alert(responseText);
       }
 
       // 从服务端获取用户信息

@@ -33,7 +33,8 @@ export async function POST(event: APIEvent) {
     }
 
     // ✅ 使用 bcrypt 进行哈希比对
-    const isPasswordValid = await bcrypt.compare(password, user.password ?? "default_password");
+    const userPassword = user.password ?? "default_password";
+    const isPasswordValid = bcrypt.compareSync(password, userPassword);
     if (!isPasswordValid) {
       return new Response(JSON.stringify({ error: "密码错误" }), {
         status: 401,
