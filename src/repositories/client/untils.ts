@@ -29,8 +29,8 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
       } & {
         selfName: string;
       }
-  : string;
-    
+    : string;
+
 /**
  * 生成通用数据类型
  *
@@ -43,3 +43,21 @@ export interface DataType<T> {
   Insert: Insertable<T>;
   Update: Updateable<T>;
 }
+
+/**
+ * 根据对象类型生成各类UI需要的字典类型
+ * 
+ * @param T 原始类型
+ * @returns 转换后的类型
+ * cardFieldDescription: 卡片字段描述
+ * tableFieldDescription: 表格字段描述
+ * formFieldDescription: 表单字段描述
+ */
+export type ConvertToAllDetail<T> = {
+  [K in keyof ConvertToAllString<T>]: {
+    key: string;
+    cardFieldDescription?: string;
+    tableFieldDescription: string;
+    formFieldDescription: string;
+  };
+};

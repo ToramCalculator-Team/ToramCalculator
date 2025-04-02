@@ -4,6 +4,7 @@ import * as _ from "lodash-es";
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
 
+// class属性将分配值label标签
 interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   title: string;
   description?: string;
@@ -35,7 +36,7 @@ const Input = (props: InputProps) => {
   });
 
   return (
-    <label class="flex flex-1 flex-col items-start gap-3 p-2">
+    <label class={props.class ? ` flex flex-1 flex-col items-start gap-3 p-2 ` + " " + props.class : ` flex flex-1 flex-col items-start gap-3 p-2 `}>
       <span class="leading-none">
         <span>{props.title}</span>
         &nbsp;&nbsp;
@@ -49,19 +50,19 @@ const Input = (props: InputProps) => {
             <Match when={props.type === "text"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={`w-full text-accent-color bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "password"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={`w-full text-accent-color bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "number"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={`w-full text-accent-color bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "boolean"}>

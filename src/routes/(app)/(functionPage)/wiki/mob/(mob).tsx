@@ -17,6 +17,7 @@ import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
 import { mobSchema } from "../../../../../../db/clientDB/zod";
 import { DataEnums } from "../../../../../../db/dataEnums";
+import Input from "~/components/controls/input";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -196,19 +197,18 @@ export default function MobIndexPage() {
 
   // form
   const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
-  interface FieldInfoProps {
-    field: AnyFieldApi;
-  }
 
-  function FieldInfo(props: FieldInfoProps) {
-    return (
-      <>
-        {props.field.state.meta.isTouched && props.field.state.meta.errors.length ? (
-          <em>{props.field.state.meta.errors.join(",")}</em>
-        ) : null}
-        {props.field.state.meta.isValidating ? "Validating..." : null}
-      </>
-    );
+  function fieldInfo(field: AnyFieldApi): string {
+    const errors =
+      field.state.meta.isTouched && field.state.meta.errors.length ? field.state.meta.errors.join(",") : null;
+    const isValidating = field.state.meta.isValidating ? "..." : null;
+    if (errors) {
+      return errors;
+    }
+    if (isValidating) {
+      return isValidating;
+    }
+    return "";
   }
 
   const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
@@ -238,55 +238,54 @@ export default function MobIndexPage() {
     }));
 
     return (
-      <div>
-        <h1>{dictionary().ui.mob.pageTitle}</h1>
+      <div class="FormBox p-6">
+        <div class="Title flex p-2">
+          <h1 class="FormTitle text-2xl font-black">{dictionary().ui.mob.pageTitle}</h1>
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
             form.handleSubmit();
           }}
+          class="Form bg-area-color flex flex-col gap-3 p-2"
         >
-          <fieldset class="dataKinds flex flex-row flex-wrap gap-y-[4px]">
-            <For each={Object.entries(formMob())}>
-              {(_field, index) => {
-                // 遍历怪物模型
-                const fieldKey = _field[0] as keyof Mob["MainForm"];
-                const fieldValue = _field[1];
-                // 过滤掉隐藏的数据
-                if (mobFormHiddenFields.includes(fieldKey)) return;
-                // 输入框的类型计算
-                const zodValue = mobSchema.shape[fieldKey];
-                // 判断字段类型
-                const valueType = getZodType(zodValue);
-                // 由于数组类型的值与常规变量值存在结构差异，因此在此进行区分
-                switch (valueType) {
-                  case ZodFirstPartyTypeKind.ZodEnum: {
-                    return (
-                      <form.Field
-                        name={fieldKey}
-                        validators={{
-                          onChangeAsyncDebounceMs: 500,
-                          onChangeAsync: mobSchema.shape[fieldKey],
-                        }}
-                      >
-                        {(field) => {
-                          const defaultFieldsetClass = "flex basis-full flex-col gap-1 p-2";
-                          const fieldsetClass: string = defaultFieldsetClass;
-                          switch (fieldKey) {
-                            case "type":
-                            case "initialElement":
-                            default:
-                              break;
-                          }
-                          return (
-                            <fieldset class={fieldsetClass}>
-                              <span>
-                                <FieldInfo field={field()} />
-                              </span>
-                              <div class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}>
-                                {JSON.stringify(zodValue)}
-                                {/* {"options" in zodValue &&
+          <For each={Object.entries(formMob())}>
+            {(_field, index) => {
+              // 遍历怪物模型
+              const fieldKey = _field[0] as keyof Mob["MainForm"];
+              const fieldValue = _field[1];
+              // 过滤掉隐藏的数据
+              if (mobFormHiddenFields.includes(fieldKey)) return;
+              // 输入框的类型计算
+              const zodValue = mobSchema.shape[fieldKey];
+              // 判断字段类型
+              const valueType = getZodType(zodValue);
+              // 由于数组类型的值与常规变量值存在结构差异，因此在此进行区分
+              switch (valueType) {
+                case ZodFirstPartyTypeKind.ZodEnum: {
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: mobSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => {
+                        const defaultFieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                        const fieldsetClass: string = defaultFieldsetClass;
+                        switch (fieldKey) {
+                          case "type":
+                          case "initialElement":
+                          default:
+                            break;
+                        }
+                        return (
+                          <fieldset class={fieldsetClass}>
+                            <div class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}>
+                              {JSON.stringify(zodValue)}
+                              {/* {"options" in zodValue &&
                                   zodValue.options.map((option) => {
                                     const defaultInputClass = "mt-0.5 rounded px-4 py-2";
                                     const defaultLabelSizeClass = "";
@@ -312,124 +311,111 @@ export default function MobIndexPage() {
                                       </label>
                                     );
                                   })} */}
-                              </div>
-                            </fieldset>
-                          );
-                        }}
-                      </form.Field>
-                    );
-                  }
-
-                  case ZodFirstPartyTypeKind.ZodNumber: {
-                    return (
-                      <form.Field
-                        name={fieldKey}
-                        validators={{
-                          onChangeAsyncDebounceMs: 500,
-                          onChangeAsync: mobSchema.shape[fieldKey],
-                        }}
-                      >
-                        {(field) => {
-                          const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                          const defaultInputBox = (
-                            <input
-                              autocomplete="off"
-                              id={field().name}
-                              name={field().name}
-                              value={field().state.value as number}
-                              type="number"
-                              onBlur={field().handleBlur}
-                              onChange={(e) => field().handleChange(parseFloat(e.target.value))}
-                              class={`mt-1 w-full flex-1 rounded px-4 py-2`}
-                            />
-                          );
-                          const fieldsetClass: string = defaultFieldsetClass;
-                          const inputBox: JSX.Element = defaultInputBox;
-                          return (
-                            <fieldset class={fieldsetClass}>
-                              <label html-for={field().name} class="flex w-full flex-col gap-1">
-                                <span>
-                                  <FieldInfo field={field()} />
-                                </span>
-                                {inputBox}
-                              </label>
-                            </fieldset>
-                          );
-                        }}
-                      </form.Field>
-                    );
-                  }
-                  case ZodFirstPartyTypeKind.ZodArray:
-                  case ZodFirstPartyTypeKind.ZodObject: {
-                    return fieldKey;
-                  }
-
-                  // 字符串输入
-                  default: {
-                    return (
-                      <form.Field
-                        name={fieldKey}
-                        validators={{
-                          onChangeAsyncDebounceMs: 500,
-                          onChangeAsync: mobSchema.shape[fieldKey],
-                        }}
-                      >
-                        {(field) => {
-                          const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                          const defaultInputBox = (
-                            <input
-                              value={field().state.value as string}
-                              id={field().name}
-                              name={field().name}
-                              type="text"
-                              onBlur={field().handleBlur}
-                              onChange={(e) => {
-                                const target = e.target;
-                                field().handleChange(target.value);
-                              }}
-                              class=""
-                            />
-                          );
-                          let fieldsetClass: string = defaultFieldsetClass;
-                          let inputBox: JSX.Element = defaultInputBox;
-                          switch (fieldKey) {
-                            // case "id":
-                            // case "state":
-                            case "name":
-                              {
-                                fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
-                              }
-                              break;
-                            case "details":
-                              {
-                                inputBox = <></>;
-                                fieldsetClass = "flex basis-full flex-col gap-1 p-2";
-                              }
-                              break;
-
-                            default:
-                              break;
-                          }
-
-                          return (
-                            <fieldset class={fieldsetClass}>
-                              <label html-for={field().name} class="flex w-full flex-col gap-1">
-                                {fieldKey}
-                                <span>
-                                  <FieldInfo field={field()} />
-                                </span>
-                                {inputBox}
-                              </label>
-                            </fieldset>
-                          );
-                        }}
-                      </form.Field>
-                    );
-                  }
+                            </div>
+                          </fieldset>
+                        );
+                      }}
+                    </form.Field>
+                  );
                 }
-              }}
-            </For>
-          </fieldset>
+
+                case ZodFirstPartyTypeKind.ZodNumber: {
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: mobSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => {
+                        const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                        const defaultInputBox = (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey]}
+                            // description="一定要填"
+                            autocomplete="off"
+                            type="number"
+                            id={field().name}
+                            name={field().name}
+                            value={field().state.value as number}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => field().handleChange(parseFloat(e.target.value))}
+                            state={fieldInfo(field())}
+                            class="w-full bg-primary-color rounded-md"
+                          />
+                        );
+                        const fieldsetClass: string = defaultFieldsetClass;
+                        const inputBox: JSX.Element = defaultInputBox;
+                        return inputBox;
+                      }}
+                    </form.Field>
+                  );
+                }
+                case ZodFirstPartyTypeKind.ZodArray:
+                case ZodFirstPartyTypeKind.ZodObject: {
+                  return fieldKey;
+                }
+
+                // 字符串输入
+                default: {
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: mobSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => {
+                        const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                        const defaultInputBox = (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey]}
+                            // description="一定要填"
+                            autocomplete="off"
+                            type="text"
+                            id={field().name}
+                            name={field().name}
+                            value={field().state.value as string}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => {
+                              const target = e.target;
+                              field().handleChange(target.value);
+                            }}
+                            state={fieldInfo(field())}
+                            class="w-full border-1 border-dividing-color bg-primary-color rounded-md"
+                          />
+                        );
+                        let fieldsetClass: string = defaultFieldsetClass;
+                        let inputBox: JSX.Element = defaultInputBox;
+                        switch (fieldKey) {
+                          // case "id":
+                          // case "state":
+                          case "name":
+                            {
+                              fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
+                            }
+                            break;
+                          case "details":
+                            {
+                              inputBox = <></>;
+                              fieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                            }
+                            break;
+
+                          default:
+                            break;
+                        }
+
+                        return inputBox;
+                      }}
+                    </form.Field>
+                  );
+                }
+              }
+            }}
+          </For>
           <form.Subscribe
             selector={(state) => ({
               canSubmit: state.canSubmit,
@@ -437,9 +423,11 @@ export default function MobIndexPage() {
             })}
             children={(state) => {
               return (
-                <button type="submit" disabled={!state().canSubmit}>
-                  {state().isSubmitting ? "..." : "Submit"}
-                </button>
+                <div class="flex items-center gap-1 p-2">
+                  <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
+                    {state().isSubmitting ? "..." : dictionary().ui.actions.upload}
+                  </Button>
+                </div>
               );
             }}
           />
