@@ -1,28 +1,31 @@
 import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
-import { findUserByEmail, findUserById } from "~/repositories/server/user";
+import { createId } from "@paralleldrive/cuid2";
+import { createUser } from "~/repositories/server/user";
 
 export async function POST(event: APIEvent) {
   try {
     // 解析请求体
     const requestBody = await event.request.json();
-    const { email } = requestBody;
+    const { email, userName, password } = requestBody;
 
     if (!email) {
-      return new Response("缺少邮箱", { status: 400 });
+      return new Response("缺少Email", { status: 400 });
     }
 
-    const user = await findUserByEmail(email);
-    if (!user) {
-      return new Response("没找到此用户", { status: 404 });
-    }
-
-    console.log("登录者:", user.name);
+    console.log("注册者:", email);
+    const userId = createId();
+    const user = await createUser({
+      name: userName,
+      email,
+      password,
+      id: userId,
+    });
 
     // 生成 JWT
     const jwtPayload = {
-      sub: user.id,
+      sub: userId,
       iat: Math.floor(Date.now() / 1000),
     };
 
@@ -47,7 +50,7 @@ export async function POST(event: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("登录错误:", error);
+    console.error("注册错误:", error);
     return new Response("Invalid request", { status: 400 });
   }
 }

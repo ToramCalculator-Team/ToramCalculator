@@ -1,7 +1,7 @@
 import Button from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
-import { getUserByCookie } from "~/lib/session";
+import { emailExists, getUserByCookie } from "~/lib/session";
 import { setStore, store } from "~/store";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Accessor, createMemo, createSignal, Show } from "solid-js";
@@ -9,6 +9,7 @@ import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
 import * as Icon from "~/components/icon";
 import Input from "../controls/input";
+import { z } from "zod";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -24,15 +25,13 @@ function fieldInfo(field: AnyFieldApi): string {
 }
 
 interface LoginFormProps {
-  userName: string;
-  userId: string;
   email: string;
+  userName: string;
   password: string;
 }
 
 const defaultValues: LoginFormProps = {
   userName: "",
-  userId: "",
   email: "",
   password: "",
 };
@@ -90,18 +89,80 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
     });
     props.setState(false);
   };
+
+  const register = async (value: LoginFormProps) => {
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(value),
+        credentials: "include", // 关键：确保请求携带 Cookie
+      });
+
+      const responseText = await response.text(); // 读取返回内容
+      // console.log("服务器响应:", response.status, responseText); // 打印返回状态码和内容
+
+      if (!response.ok) {
+        console.error("注册失败", response.status, responseText);
+        switch (response.status) {
+          case 400:
+            alert("注册失败");
+            break;
+          default:
+            alert("注册失败");
+        }
+        return;
+      }
+
+      // 从服务端获取用户信息
+      const user = await getUserByCookie();
+      // console.log("获取到的用户信息:", user);
+
+      if (user) {
+        setStore("session", "user", "id", user.id);
+        setStore("session", "user", "name", user.name ?? "无名氏");
+        setStore("session", "user", "avatar", user.image ?? defaultUserAvatarUrl);
+      }
+
+      props.setState(false);
+    } catch (error) {
+      console.error("请求错误:", error);
+    }
+  };
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
+  const [formModule, setFormModule] = createSignal<"logIn" | "register" | "unknown">("unknown");
+
   const formTitle = createMemo(() => {
     const userName = () => store.session.user.name;
-    if (!store.session.user.id) return dictionary().ui.actions.logIn;
+    if (!store.session.user.id) {
+      switch (formModule()) {
+        case "logIn":
+          return dictionary().ui.actions.logIn;
+        case "register":
+          return dictionary().ui.actions.register;
+        default:
+          return dictionary().ui.actions.logIn + "/" + dictionary().ui.actions.register;
+      }
+    }
     return "Hi," + userName();
   });
 
   const form = createForm(() => ({
     defaultValues: defaultValues,
-    onSubmit: (data) => logIn(data.value),
+    onSubmit: (data) => {
+      switch (formModule()) {
+        case "logIn":
+          logIn(data.value);
+          break;
+        case "register":
+          register(data.value);
+          break;
+        default:
+          break;
+      }
+    },
   }));
 
   return (
@@ -113,7 +174,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`DialogBox bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
         >
-          <div class="Box max-h-[90vh] overflow-y-auto bg-primary-color shadow-dividing-color flex flex-col items-center gap-6 rounded-lg p-3 lg:p-12 shadow-2xl w-[80vw] lg:w-[560px]">
+          <div class="Box bg-primary-color shadow-dividing-color flex max-h-[90vh] w-[80vw] flex-col items-center gap-6 overflow-y-auto rounded-lg p-3 shadow-2xl lg:w-[560px] lg:p-12">
             <Show
               when={!store.session.user.id && props.state()}
               fallback={
@@ -142,20 +203,30 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                 <div>
                   {/* A type-safe field component*/}
                   <form.Field
-                    name="userId"
+                    name="email"
+                    asyncDebounceMs={500}
                     validators={{
-                      onChange: ({ value }) => (!value ? "ID是必填项" : undefined),
-                      onChangeAsyncDebounceMs: 500,
+                      onChange: ({ value }) => {
+                        const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                        if (!result.success) {
+                          return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
+                        }
+                      },
                       onChangeAsync: async ({ value }) => {
-                        await new Promise((resolve) => setTimeout(resolve, 1000));
-                        return value.includes("error") && 'No "error" allowed in first name';
+                        const result = await emailExists(value);
+                        if (result) {
+                          setFormModule("logIn");
+                        } else {
+                          setFormModule("register");
+                        }
                       },
                     }}
                     children={(field) => {
                       return (
                         <Input
-                          title="用户ID"
-                          description="一定要填"
+                          title="邮箱"
+                          // description="一定要填"
+                          autocomplete="email"
                           type="text"
                           id={field().name}
                           name={field().name}
@@ -169,33 +240,52 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                     }}
                   />
                 </div>
-                <div>
-                  <form.Field
-                    name="userName"
-                    children={(field) => (
-                      <Input
-                        title="用户名"
-                        description="目前是个摆设"
-                        autocomplete="off"
-                        type="text"
-                        id={field().name}
-                        name={field().name}
-                        value={field().state.value}
-                        onBlur={field().handleBlur}
-                        onInput={(e) => field().handleChange(e.target.value)}
-                        state={fieldInfo(field())}
-                        class="w-full"
-                      />
-                    )}
-                  />
-                </div>
+
+                <Presence exitBeforeEnter>
+                  <Show when={formModule() === "register"}>
+                    <Motion.div
+                      class={`grid`}
+                      animate={{
+                        gridTemplateRows: ["0fr", "1fr"],
+                        paddingBlock: ["0rem", "0.75rem"],
+                      }}
+                      exit={{
+                        paddingBlock: "0rem",
+                        gridTemplateRows: ["1fr", "0fr"],
+                      }}
+                      transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+                    >
+                      <div class="w-full h-full overflow-hidden ">
+                        <form.Field
+                          name="userName"
+                          children={(field) => (
+                            <Input
+                              title="用户名"
+                              // description="目前是个摆设"
+                              autocomplete="off"
+                              type="text"
+                              id={field().name}
+                              name={field().name}
+                              value={field().state.value}
+                              onBlur={field().handleBlur}
+                              onInput={(e) => field().handleChange(e.target.value)}
+                              state={fieldInfo(field())}
+                              class="w-full"
+                            />
+                          )}
+                        />
+                      </div>
+                    </Motion.div>
+                  </Show>
+                </Presence>
                 <div>
                   <form.Field
                     name="password"
                     children={(field) => (
                       <Input
                         title="密码"
-                        description="也是个摆设"
+                        // description="也是个摆设"
+                        autocomplete="current-password"
                         type="password"
                         id={field().name}
                         name={field().name}
@@ -216,8 +306,13 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                   children={(state) => {
                     return (
                       <div class="flex items-center gap-1 p-2">
-                        <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                          {state().isSubmitting ? "..." : dictionary().ui.actions.logIn}
+                        <Button
+                          level="primary"
+                          class={`SubmitBtn flex-1`}
+                          type="submit"
+                          disabled={formModule() === "unknown" || !state().canSubmit}
+                        >
+                          {state().isSubmitting ? "..." : formTitle()}
                         </Button>
                         <Button level="secondary" class={`CloseBtn w-fit`} onClick={() => props.setState(false)}>
                           {dictionary().ui.actions.close}

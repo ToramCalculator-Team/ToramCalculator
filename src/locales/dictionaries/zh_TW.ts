@@ -60,6 +60,7 @@ const dictionary: dictionary = {
       zoomOut: "縮小",
       logIn: "登入",
       logOut: "登出",
+      register: "註冊",
       switchUser: "切換用戶",
     },
     nav: {
@@ -586,7 +587,7 @@ const dictionary: dictionary = {
     },
     user: {},
     session: {},
-    VerificationToken: {},
+    verification_token: {},
     post: {},
     account_create_data: {},
     account_update_data: {},

@@ -29,6 +29,7 @@ model user {
     name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
     email         String?   @unique
     emailVerified DateTime?
+    password      String?
     image         String?
     accounts      account[]
     sessions      session[]
@@ -47,8 +48,8 @@ model account {
     scope             String?
     id_token          String?
     session_state     String?
-    user              user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId            String
+    user              user?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId            String?
     players           player[]
 
     create account_create_data?
@@ -65,13 +66,12 @@ model session {
     userId       String
 }
 
-model VerificationToken {
+model verification_token {
     identifier String
     token      String
     expires    DateTime
 
     @@unique([identifier, token])
-    @@map("verification_token")
 }
 
 model post {
@@ -594,7 +594,7 @@ model player_armor {
 
     name       String
     extraAbi   Int
-    ability    String  // Enum PLAYER_ARMOR_ABILITY_TYPE
+    ability    String // Enum PLAYER_ARMOR_ABILITY_TYPE
     template   armor?    @relation(fields: [templateId], references: [itemId])
     templateId String?
     refinement Int

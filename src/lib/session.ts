@@ -1,5 +1,5 @@
 "use server";
-import { findUserById, User } from "~/repositories/server/user";
+import { findUserByEmail, findUserById, User } from "~/repositories/server/user";
 import { jwtVerify } from "jose";
 import { getCookie } from "vinxi/http";
 
@@ -23,4 +23,9 @@ export async function getUserByCookie(): Promise<User | null> {
 
   const user = await findUserById(userId);
   return await findUserById(userId);
+}
+
+export async function emailExists(email: string) {
+  const user = await findUserByEmail(email);
+  return !!user;
 }

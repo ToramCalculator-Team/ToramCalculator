@@ -25,6 +25,7 @@ export interface dictionary {
       zoomOut: string;
       logIn: string;
       logOut: string;
+      register: string;
       switchUser: string;
     };
     nav: {

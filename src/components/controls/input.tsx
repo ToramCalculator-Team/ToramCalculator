@@ -39,7 +39,7 @@ const Input = (props: InputProps) => {
       <span class="leading-none">
         <span>{props.title}</span>
         &nbsp;&nbsp;
-        <span class="text-accent-color-70">{props.state}</span>
+        <span class="text-brand-color-3rd">{props.state}</span>
       </span>
       {config().description && <span class="text-main-text-color text-sm">{config().description}</span>}
       <Show
@@ -49,19 +49,19 @@ const Input = (props: InputProps) => {
             <Match when={props.type === "text"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "password"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "number"}>
               <input
                 {...props}
-                class={props.class ? `bg-area-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
+                class={props.class ? `bg-area-color text-accent-color rounded p-3 ` + " " + props.class : `bg-area-color rounded p-3`}
               />
             </Match>
             <Match when={props.type === "boolean"}>

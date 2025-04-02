@@ -61,6 +61,7 @@ const dictionary: dictionary = {
       zoomOut: "Zoom Out",
       logIn: "Log In",
       logOut: "Log Out",
+      register: "Register",
       switchUser: "Switch User",
     },
     nav: {
@@ -587,7 +588,7 @@ const dictionary: dictionary = {
     },
     user: {},
     session: {},
-    VerificationToken: {},
+    verification_token: {},
     post: {},
     account_create_data: {},
     account_update_data: {},

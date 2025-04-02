@@ -60,6 +60,7 @@ const dictionary: dictionary = {
       checkInfo: "查看详情",
       logIn: "登录",
       logOut: "登出",
+      register: "注册",
       switchUser: "切换用户"
     },
     nav: {
@@ -586,7 +587,7 @@ const dictionary: dictionary = {
     },
     user: {},
     session: {},
-    VerificationToken: {},
+    verification_token: {},
     post: {},
     account_create_data: {},
     account_update_data: {},

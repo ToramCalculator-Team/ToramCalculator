@@ -266,14 +266,6 @@ export default function Index() {
             }
           }
           break;
-        case "s":
-        case "S":
-          {
-            if (document.activeElement !== searchInputRef) {
-              setStore("settingsDialogState", true);
-            }
-          }
-          break;
         case "·":
         case "`":
           {
