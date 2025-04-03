@@ -13,11 +13,5 @@ export default function WikiPage(props: ParentProps) {
     console.log("--WikiPage Render");
   });
 
-  return (
-    <>
-      <main class="flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">
-        {props.children}
-      </main>
-    </>
-  );
+  return <div class="Wiki flex h-[calc(100dvh-67px)] w-full flex-col overflow-hidden lg:h-dvh">{props.children}</div>;
 }

@@ -71,7 +71,7 @@ export default function MobIndexPage() {
       accessorKey: "initialElement",
       header: () => MobDic(store.settings.language).initialElement,
       cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
-      size: 180,
+      size: 200,
     },
     {
       accessorKey: "physicalDefense",
@@ -180,7 +180,7 @@ export default function MobIndexPage() {
           ...getCommonPinningStyles(props.cell.column),
           width: getCommonPinningStyles(props.cell.column).width + "px",
         }}
-        class={"flex flex-col justify-center p-6"}
+        class={"flex flex-col justify-center text-main-text-color p-6"}
       >
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show

@@ -55,7 +55,7 @@ const Nav = () => {
   const active = (path: string) => (location.pathname.includes(path) ? "bg-area-color lg:bg-brand-color-1st" : "");
   const [isPc] = createSignal(window.innerWidth > 1024);
   const navHiddenTables: (keyof DataEnums)[] = [
-    "VerificationToken",
+    "verification_token",
     "account",
     "account_create_data",
     "account_update_data",
