@@ -238,7 +238,7 @@ export default function MobIndexPage() {
     }));
 
     return (
-      <div class="FormBox p-6">
+      <div class="FormBox w-full lg:p-6">
         <div class="Title flex p-2">
           <h1 class="FormTitle text-2xl font-black">{dictionary().ui.mob.pageTitle}</h1>
         </div>
@@ -273,46 +273,144 @@ export default function MobIndexPage() {
                       }}
                     >
                       {(field) => {
-                        const defaultFieldsetClass = "flex basis-full flex-col gap-1 p-2";
-                        const fieldsetClass: string = defaultFieldsetClass;
-                        switch (fieldKey) {
+                        const key = fieldKey as keyof DataEnums["mob"];
+                        const defaultInputClass = "mt-0.5 rounded px-4 py-2";
+                        const defaultLabelSizeClass = "";
+                        let icon: JSX.Element = null;
+                        let inputClass = defaultInputClass;
+                        let labelSizeClass = defaultLabelSizeClass;
+                        let content: JSX.Element = null;
+                        switch (key) {
                           case "type":
-                          case "initialElement":
-                          default:
+                            {
+                              const zodValue = mobSchema.shape[key];
+                              content =
+                                "options" in zodValue
+                                  ? zodValue.options.map((option) => {
+                                      switch (option) {
+                                        case "Mob":
+                                        case "MiniBoss":
+                                        case "Boss":
+                                      }
+                                      return (
+                                        <label
+                                          class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st opacity-100" : "border-transparent opacity-20"}`}
+                                        >
+                                          {icon}
+                                          {dictionary().enums.mob[key][option]}
+                                          <input
+                                            id={field().name + option}
+                                            name={field().name}
+                                            value={option}
+                                            checked={field().state.value === option}
+                                            type="radio"
+                                            onBlur={field().handleBlur}
+                                            onChange={(e) => field().handleChange(e.target.value)}
+                                            class={inputClass}
+                                          />
+                                        </label>
+                                      );
+                                    })
+                                  : null;
+                            }
+
                             break;
-                        }
-                        return (
-                          <fieldset class={fieldsetClass}>
-                            <div class={`inputContianer mt-1 flex flex-wrap self-start rounded lg:gap-2`}>
-                              {JSON.stringify(zodValue)}
-                              {/* {"options" in zodValue &&
-                                  zodValue.options.map((option) => {
-                                    const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-                                    const defaultLabelSizeClass = "";
-                                    let inputClass = defaultInputClass;
-                                    let labelSizeClass = defaultLabelSizeClass;
-                                    let icon: JSX.Element = null;
+
+                          case "initialElement": {
+                            const zodValue = mobSchema.shape[key];
+                            content =
+                              "options" in zodValue
+                                ? zodValue.options.map((option) => {
+                                    switch (option) {
+                                      case "Normal":
+                                        {
+                                          icon = <Icon.Element.NoElement class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "no-element basis-1/3";
+                                        }
+                                        break;
+                                      case "Light":
+                                        {
+                                          icon = <Icon.Element.Light class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "light basis-1/3";
+                                        }
+                                        break;
+                                      case "Dark":
+                                        {
+                                          (icon = <Icon.Element.Dark class="h-6 w-6" />),
+                                            (inputClass = "mt-0.5 hidden rounded px-4 py-2");
+                                          labelSizeClass = "dark basis-1/3";
+                                        }
+                                        break;
+                                      case "Water":
+                                        {
+                                          icon = <Icon.Element.Water class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "water basis-1/3";
+                                        }
+                                        break;
+                                      case "Fire":
+                                        {
+                                          icon = <Icon.Element.Fire class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "fire basis-1/3";
+                                        }
+                                        break;
+                                      case "Earth":
+                                        {
+                                          icon = <Icon.Element.Earth class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "earth basis-1/3";
+                                        }
+                                        break;
+                                      case "Wind":
+                                        {
+                                          icon = <Icon.Element.Wind class="h-6 w-6" />;
+                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                          labelSizeClass = "wind basis-1/3";
+                                        }
+                                        break;
+                                      default:
+                                        {
+                                          icon = null;
+                                          inputClass = defaultInputClass;
+                                          labelSizeClass = defaultLabelSizeClass;
+                                        }
+                                        break;
+                                    }
                                     return (
                                       <label
-                                        class={`flex ${labelSizeClass} hover:border-transition-color-20 cursor-pointer items-center justify-between gap-1 rounded-full p-2 px-4 lg:basis-auto lg:flex-row-reverse lg:justify-end lg:gap-2 lg:rounded-sm lg:hover:opacity-100 ${field.getValue() === option ? "opacity-100" : "opacity-20"} ${mobFormState === "DISPLAY" ? "pointer-events-none border-transparent bg-transparent" : "border-transition-color-8 bg-transition-color-8 pointer-events-auto"}`}
+                                        class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st" : "border-transparent opacity-20"}`}
                                       >
-                                        {fieldKey}
+                                        {icon}
+                                        {dictionary().enums.mob[key][option]}
                                         <input
                                           id={field().name + option}
                                           name={field().name}
                                           value={option}
-                                          checked={field().getValue() === option}
+                                          checked={field().state.value === option}
                                           type="radio"
                                           onBlur={field().handleBlur}
                                           onChange={(e) => field().handleChange(e.target.value)}
                                           class={inputClass}
                                         />
-                                        {icon}
                                       </label>
                                     );
-                                  })} */}
-                            </div>
-                          </fieldset>
+                                  })
+                                : null;
+                          }
+                        }
+                        return (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            {/* <div class="EnumsBox flex flex-col gap-1">{content}</div> */}
+                            {content}
+                          </Input>
                         );
                       }}
                     </form.Field>
@@ -332,8 +430,8 @@ export default function MobIndexPage() {
                         const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
                         const defaultInputBox = (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey]}
-                            // description="一定要填"
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
                             autocomplete="off"
                             type="number"
                             id={field().name}
@@ -342,7 +440,7 @@ export default function MobIndexPage() {
                             onBlur={field().handleBlur}
                             onChange={(e) => field().handleChange(parseFloat(e.target.value))}
                             state={fieldInfo(field())}
-                            class="w-full bg-primary-color rounded-md"
+                            class="bg-primary-color w-full rounded-md"
                           />
                         );
                         const fieldsetClass: string = defaultFieldsetClass;
@@ -355,6 +453,62 @@ export default function MobIndexPage() {
                 case ZodFirstPartyTypeKind.ZodArray:
                 case ZodFirstPartyTypeKind.ZodObject: {
                   return fieldKey;
+                }
+
+                case ZodFirstPartyTypeKind.ZodBoolean: {
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: mobSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => {
+                        const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                        const defaultInputBox = (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            autocomplete="off"
+                            type="boolean"
+                            id={field().name}
+                            name={field().name}
+                            value={field().state.value as string}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => {
+                              const target = e.target;
+                              field().handleChange(target.value);
+                            }}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          />
+                        );
+                        let fieldsetClass: string = defaultFieldsetClass;
+                        let inputBox: JSX.Element = defaultInputBox;
+                        switch (fieldKey) {
+                          // case "id":
+                          // case "state":
+                          case "name":
+                            {
+                              fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
+                            }
+                            break;
+                          case "details":
+                            {
+                              inputBox = <></>;
+                              fieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                            }
+                            break;
+
+                          default:
+                            break;
+                        }
+
+                        return inputBox;
+                      }}
+                    </form.Field>
+                  );
                 }
 
                 // 字符串输入
@@ -371,8 +525,8 @@ export default function MobIndexPage() {
                         const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
                         const defaultInputBox = (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey]}
-                            // description="一定要填"
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
                             autocomplete="off"
                             type="text"
                             id={field().name}
@@ -384,7 +538,7 @@ export default function MobIndexPage() {
                               field().handleChange(target.value);
                             }}
                             state={fieldInfo(field())}
-                            class="w-full border-1 border-dividing-color bg-primary-color rounded-md"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                           />
                         );
                         let fieldsetClass: string = defaultFieldsetClass;
