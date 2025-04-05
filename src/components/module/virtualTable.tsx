@@ -4,7 +4,6 @@ import {
   createSignal,
   For,
   JSX,
-  on,
   onMount,
   Resource,
   Show,
@@ -16,12 +15,12 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
-import { getDictionary, type Locale } from "~/locales/i18n";
 import { ConvertToAllDetail } from "~/repositories/client/untils";
 import { DB } from "../../../db/clientDB/kysely/kyesely";
 import Button from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
+import { Locale } from "~/locales/i18n";
 
 export default function VirtualTable<
   Item extends {
@@ -38,8 +37,6 @@ export default function VirtualTable<
   filterIsOpen: Accessor<boolean>;
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
-  // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
   const media = useContext(MediaContext);
   // 列固定
   const getCommonPinningStyles = (column: Column<Item>): JSX.CSSProperties => {
@@ -105,25 +102,6 @@ export default function VirtualTable<
   // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
 
-  // const table = createMemo(() => {
-  //   // console.log(props.itemList().length);
-  //   return createSolidTable({
-  //     data: props.itemList() ?? [],
-  //     columns: props.tableColumns,
-  //     getCoreRowModel: getCoreRowModel(),
-  //     getSortedRowModel: getSortedRowModel(),
-  //     debugTable: true,
-  //     initialState: {
-  //       sorting: [
-  //         {
-  //           id: "experience",
-  //           desc: true, // 默认按热度降序排列
-  //         },
-  //       ],
-  //     },
-  //   });
-  // });
-
   // 只在初始化时创建 `table`
   const table = createSolidTable({
     get data() {
@@ -142,17 +120,6 @@ export default function VirtualTable<
       ],
     },
   });
-
-  // 创建 `virtualizer`
-  // const virtualizer = createVirtualizer({
-  //   get count() {
-  //     return table.getRowCount();
-  //   },
-  //   getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-  //   estimateSize: () => 96,
-  //   overscan: 5,
-  //   // debug: true,
-  // });
 
   const virtualizer = createMemo(() => {
     return createVirtualizer({
@@ -307,7 +274,7 @@ export default function VirtualTable<
                     }}
                     onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                     onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
-                    class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent hover:font-bold`}
+                    class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent`}
                   >
                     <For
                       each={row

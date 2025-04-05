@@ -92,7 +92,7 @@ pnpm backend:db-studio
 #### 启动前端应用
 ```bash
 # 1.生成PGlite的DDL(由于目前无法保证同步顺序因此需要删除DDL中的外键关联)
-pnpm generate:client-ddl && node db/clientDB/remove_foreign_keys.js
+pnpm generate:client-ddl && node db/clientDB/ddl_transform.js
 
 # 3.生成数据模型ts类型
 pnpm generate:type

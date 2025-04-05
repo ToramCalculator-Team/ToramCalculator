@@ -815,7 +815,7 @@ model member {
     id String @id
 
     name              String
-    order             Int
+    sequence          Int
     player            player?    @relation(fields: [playerId], references: [id])
     playerId          String?
     partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])

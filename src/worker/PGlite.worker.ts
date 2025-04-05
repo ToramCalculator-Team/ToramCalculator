@@ -93,7 +93,7 @@ worker({
             table: tableParams,
           },
         },
-        table: tableName,
+        table: `${tableName}_synced`,
         shapeKey: `${tableName}s`,
         primaryKey: primaryKey,
         onInitialSync: () => notifySyncProgress(tableName),

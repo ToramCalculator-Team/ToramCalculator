@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import * as _ from "lodash-es";
 
-type Size = "sm" | "md" | "lg";
+type Size = "sm" | "md" | "lg" | "xl";
 type Level = "primary" | "secondary" | "default" | "quaternary";
 
 interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
