@@ -168,7 +168,8 @@ CREATE OR REPLACE VIEW "${tableName}" AS
     IF NEW."${name}" IS DISTINCT FROM synced."${name}" THEN
       changed_cols := array_append(changed_cols, '${name}');
     END IF;`,
-    ).join("");
+    )
+    .join("");
 
   const triggerFnInsert = `
 CREATE OR REPLACE FUNCTION ${tableName}_insert_trigger()
@@ -216,7 +217,8 @@ $$ LANGUAGE plpgsql;`;
         (name) =>
           `
     "${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
-      ).join(",")|| "-- no non-pk fields";
+      )
+      .join(",") || "-- no non-pk fields";
 
   const triggerFnUpdate = `
 CREATE OR REPLACE FUNCTION ${tableName}_update_trigger()
@@ -330,39 +332,50 @@ INSTEAD OF DELETE ON "${tableName}"
 FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_trigger();
 `;
 
-  const syncedCleanupTriggers = `
-CREATE OR REPLACE FUNCTION delete_local_on_synced_insert_and_update_trigger()
+  const syncedInsertUpdateCleanupFn = `
+CREATE OR REPLACE FUNCTION ${tableName}_delete_local_on_synced_insert_and_update_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
   DELETE FROM "${tableName}_local"
-    WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")}
-      AND write_id IS NOT NULL
-      AND write_id = NEW.write_id;
+  WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")}
+    AND write_id IS NOT NULL
+    AND write_id = NEW.write_id;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+`;
 
-CREATE OR REPLACE FUNCTION delete_local_on_synced_delete_trigger()
+  const syncedDeleteCleanupFn = `
+CREATE OR REPLACE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
   DELETE FROM "${tableName}_local"
-    WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
+  WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
   RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
+`;
 
+  const syncedTriggers = `
 CREATE OR REPLACE TRIGGER delete_local_on_synced_insert
 AFTER INSERT OR UPDATE ON "${tableName}_synced"
-FOR EACH ROW
-EXECUTE FUNCTION delete_local_on_synced_insert_and_update_trigger();
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_insert_and_update_trigger();
 
 CREATE OR REPLACE TRIGGER delete_local_on_synced_delete
 AFTER DELETE ON "${tableName}_synced"
-FOR EACH ROW
-EXECUTE FUNCTION delete_local_on_synced_delete_trigger();
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger();
 `;
 
-  return [view, triggerFnInsert, triggerFnUpdate, triggerFnDelete, triggers, syncedCleanupTriggers].join("\n");
+  return [
+    view,
+    triggerFnInsert,
+    triggerFnUpdate,
+    triggerFnDelete,
+    triggers,
+    syncedInsertUpdateCleanupFn,
+    syncedDeleteCleanupFn,
+    syncedTriggers,
+  ].join("\n");
 }
 
 // 匹配完整的 SQL 块（包括注释）
