@@ -80,6 +80,7 @@ export async function createMob(newMob: Mob["Insert"]) {
       .insertInto("mob")
       .values({
         ...newMob,
+        id: createId(),
         statisticId: statistic.id,
       })
       .returningAll()

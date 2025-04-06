@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
+import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -130,7 +130,6 @@ export default function MobIndexPage() {
   const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
 
   const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
-  const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = ["id", "createdByAccountId", "updatedByAccountId"];
 
   function mobTdGenerator(props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
@@ -197,6 +196,7 @@ export default function MobIndexPage() {
 
   // form
   const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
+  const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = ["id","statisticId", "createdByAccountId", "updatedByAccountId"];
 
   function fieldInfo(field: AnyFieldApi): string {
     const errors =
@@ -231,8 +231,8 @@ export default function MobIndexPage() {
     const form = createForm(() => ({
       defaultValues: defaultMob,
       onSubmit: async ({ value }) => {
-        // await createMob(value);
         console.log(value);
+        await createMob(value);
       },
       // validatorAdapter: zodValidator,
     }));

@@ -112,7 +112,7 @@ function generateView({ tableName, columns, constraints }) {
         .split(",")
         .map((s) => s.trim().replace(/"/g, ""))
     : [];
-  
+
   // 如果没有主键，跳过视图和触发器生成
   if (pkCols.length === 0) {
     return `-- Skipped ${tableName} (no primary key)\n`;
@@ -122,36 +122,38 @@ function generateView({ tableName, columns, constraints }) {
     pkCols.includes(name)
       ? `   COALESCE(local."${name}", synced."${name}") AS "${name}"`
       : `   CASE
-        WHEN '${name}' = ANY(local.changed_columns)
-            THEN local."${name}"
-            ELSE synced."${name}"
-        END AS "${name}"`,
+    WHEN '${name}' = ANY(local.changed_columns)
+      THEN local."${name}"
+      ELSE synced."${name}"
+    END AS "${name}"`,
   );
 
   let view = "";
 
   if (pkCols.length > 0) {
     const joinCondition = pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ");
-    const whereCondition = `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local.is_deleted = FALSE)`;
+    const whereCondition = `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`;
 
-    view = `CREATE OR REPLACE VIEW "${tableName}" AS
-    SELECT
-    ${selectLines.join(",\n")}
-    FROM "${tableName}_synced" AS synced
-    FULL OUTER JOIN "${tableName}_local" AS local
-    ON ${joinCondition}
-    WHERE ${whereCondition};`;
+    view = `
+CREATE OR REPLACE VIEW "${tableName}" AS
+  SELECT
+  ${selectLines.join(",\n")}
+  FROM "${tableName}_synced" AS synced
+  FULL OUTER JOIN "${tableName}_local" AS local
+  ON ${joinCondition}
+  WHERE ${whereCondition};`;
   } else {
     // 没有主键：使用 UNION ALL 合并 synced 和 local 表
-    view = `CREATE OR REPLACE VIEW "${tableName}" AS
-    SELECT
-    ${colNames.map((name) => `   synced."${name}" AS "${name}"`).join(",\n")}
-    FROM "${tableName}_synced" AS synced
-    UNION ALL
-    SELECT
-    ${colNames.map((name) => `   local."${name}" AS "${name}"`).join(",\n")}
-    FROM "${tableName}_local" AS local
-    WHERE local.is_deleted = FALSE;`;
+    view = `
+CREATE OR REPLACE VIEW "${tableName}" AS
+  SELECT
+  ${colNames.map((name) => `   synced."${name}" AS "${name}"`).join(",\n")}
+  FROM "${tableName}_synced" AS synced
+  UNION ALL
+  SELECT
+  ${colNames.map((name) => `   local."${name}" AS "${name}"`).join(",\n")}
+  FROM "${tableName}_local" AS local
+  WHERE local."is_deleted" = FALSE;`;
   }
 
   const jsonFields = colNames.map((name) => `'${name}', NEW."${name}"`).join(",\n      ");
@@ -163,21 +165,21 @@ function generateView({ tableName, columns, constraints }) {
     .filter((c) => !pkCols.includes(c))
     .map(
       (name) => `
-            IF NEW."${name}" IS DISTINCT FROM synced."${name}" THEN
-              changed_cols := array_append(changed_cols, '${name}');
-            END IF;`,
-    )
-    .join("\n");
+    IF NEW."${name}" IS DISTINCT FROM synced."${name}" THEN
+      changed_cols := array_append(changed_cols, '${name}');
+    END IF;`,
+    );
 
-  const triggerFnInsert = `CREATE OR REPLACE FUNCTION ${tableName}_insert_trigger()
+  const triggerFnInsert = `
+CREATE OR REPLACE FUNCTION ${tableName}_insert_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
     local_write_id UUID := gen_random_uuid();
 BEGIN
     INSERT INTO "${tableName}_local" (
-    ${colNames.join(", ")},
-    changed_columns,
-    write_id
+    ${colNames.map((name) => `"${name}"`).join(", ")},
+    "changed_columns",
+    "write_id"
     )
     VALUES (
     ${colNames.map((name) => `NEW."${name}"`).join(", ")},
@@ -189,10 +191,10 @@ BEGIN
     );
 
     INSERT INTO changes (
-    operation,
-    value,
-    write_id,
-    transaction_id
+    "operation",
+    "value",
+    "write_id",
+    "transaction_id"
     )
     VALUES (
     'insert',
@@ -212,11 +214,12 @@ $$ LANGUAGE plpgsql;`;
       .filter((c) => !pkCols.includes(c))
       .map(
         (name) =>
-          `"${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
-      )
-      .join(",\n      ") || "-- no non-pk fields";
+          `
+    "${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
+      ) || "-- no non-pk fields";
 
-  const triggerFnUpdate = `CREATE OR REPLACE FUNCTION ${tableName}_update_trigger()
+  const triggerFnUpdate = `
+CREATE OR REPLACE FUNCTION ${tableName}_update_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
     synced "${tableName}_synced"%ROWTYPE;
@@ -226,12 +229,10 @@ DECLARE
 BEGIN
     SELECT * INTO synced FROM "${tableName}_synced" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
     SELECT * INTO local FROM "${tableName}_local" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
-
     ${changedColsCheck || "-- no non-pk fields to track"}
-
     IF NOT FOUND THEN
     INSERT INTO "${tableName}_local" (
-        ${colNames.join(", ")},
+        ${colNames.map((name) => `"${name}"`).join(", ")},
         changed_columns,
         write_id
     )
@@ -274,7 +275,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;`;
 
-  const triggerFnDelete = `CREATE OR REPLACE FUNCTION ${tableName}_delete_trigger()
+  const triggerFnDelete = `
+CREATE OR REPLACE FUNCTION ${tableName}_delete_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
     local_write_id UUID := gen_random_uuid();
@@ -287,8 +289,8 @@ BEGIN
     ELSE
     INSERT INTO "${tableName}_local" (
         ${pkCols.join(", ")},
-        is_deleted,
-        write_id
+        "is_deleted",
+        "write_id"
     )
     VALUES (
         ${pkCols.map((pk) => `OLD."${pk}"`).join(", ")},
@@ -328,7 +330,39 @@ INSTEAD OF DELETE ON "${tableName}"
 FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_trigger();
 `;
 
-  return [view, triggerFnInsert, triggerFnUpdate, triggerFnDelete, triggers].join("\n\n");
+  const syncedCleanupTriggers = `
+CREATE OR REPLACE FUNCTION delete_local_on_synced_insert_and_update_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  DELETE FROM "${tableName}_local"
+    WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")}
+      AND write_id IS NOT NULL
+      AND write_id = NEW.write_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_local_on_synced_delete_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  DELETE FROM "${tableName}_local"
+    WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER delete_local_on_synced_insert
+AFTER INSERT OR UPDATE ON "${tableName}_synced"
+FOR EACH ROW
+EXECUTE FUNCTION delete_local_on_synced_insert_and_update_trigger();
+
+CREATE OR REPLACE TRIGGER delete_local_on_synced_delete
+AFTER DELETE ON "${tableName}_synced"
+FOR EACH ROW
+EXECUTE FUNCTION delete_local_on_synced_delete_trigger();
+`;
+
+  return [view, triggerFnInsert, triggerFnUpdate, triggerFnDelete, triggers, syncedCleanupTriggers].join("\n");
 }
 
 // 匹配完整的 SQL 块（包括注释）
@@ -349,8 +383,8 @@ for (const block of blocks) {
 
     const { tableName } = parsed;
 
-    output.push(`-- DROP original "${tableName}"`);
-    output.push(`DROP TABLE IF EXISTS "${tableName}";\n`);
+    // output.push(`-- DROP original "${tableName}"`);
+    // output.push(`DROP TABLE IF EXISTS "${tableName}";\n`);
 
     output.push(generateSyncedTable(parsed));
     output.push("");
@@ -366,5 +400,27 @@ for (const block of blocks) {
   }
 }
 
-fs.writeFileSync(ddlFilePath, output.join("\n"), "utf-8");
+const changesTable = `CREATE TABLE IF NOT EXISTS changes (
+  id BIGSERIAL PRIMARY KEY,
+  operation TEXT NOT NULL,
+  value JSONB NOT NULL,
+  write_id UUID NOT NULL,
+  transaction_id XID8 NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION changes_notify_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  NOTIFY changes;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER changes_notify
+AFTER INSERT ON changes
+FOR EACH ROW
+EXECUTE FUNCTION changes_notify_trigger();
+`;
+
+fs.writeFileSync(ddlFilePath, output.join("\n") + changesTable, "utf-8");
 console.log(`✅ 已转换ddl ${ddlFilePath}`);

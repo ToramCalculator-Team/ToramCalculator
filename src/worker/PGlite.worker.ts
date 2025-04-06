@@ -7,6 +7,7 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import ddl from "~/../db/clientDB/ddl.sql?raw";
 import { DB } from "../../db/clientDB/kysely/kyesely";
+import ChangeLogSynchronizer from "~/lib/sync";
 
 const ELECTRIC_HOST =
   import.meta.env.VITE_SERVER_HOST == "localhost"
@@ -147,6 +148,9 @@ worker({
     const teamShape = await syncTable("team", ["id"]);
     const simulatorShape = await syncTable("simulator", ["id"]);
     // console.log("PGliteWorker初始化完成.....");
+
+    const writePathSync = new ChangeLogSynchronizer(pg)
+    writePathSync.start()
 
     return pg;
   },
