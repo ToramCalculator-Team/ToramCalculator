@@ -168,7 +168,7 @@ CREATE OR REPLACE VIEW "${tableName}" AS
     IF NEW."${name}" IS DISTINCT FROM synced."${name}" THEN
       changed_cols := array_append(changed_cols, '${name}');
     END IF;`,
-    );
+    ).join("");
 
   const triggerFnInsert = `
 CREATE OR REPLACE FUNCTION ${tableName}_insert_trigger()
@@ -216,7 +216,7 @@ $$ LANGUAGE plpgsql;`;
         (name) =>
           `
     "${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
-      ) || "-- no non-pk fields";
+      ).join(",")|| "-- no non-pk fields";
 
   const triggerFnUpdate = `
 CREATE OR REPLACE FUNCTION ${tableName}_update_trigger()
