@@ -3,7 +3,7 @@ import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import Button from "~/components/controls/button";
 import CheckBox from "~/components/controls/checkBox";
-import Switch from "~/components/controls/switch";
+import Toggle from "~/components/controls/toggle";
 import Radio from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo } from "solid-js";
@@ -136,7 +136,7 @@ export const Setting = () => {
                       title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
                       description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
                       children: (
-                        <Switch
+                        <Toggle
                           name={dictionary().ui.settings.userInterface.isAnimationEnabled.title}
                           onClick={() => setStore("settings", "userInterface", "isAnimationEnabled", (prev) => !prev)}
                           checked={store.settings.userInterface.isAnimationEnabled}
@@ -147,7 +147,7 @@ export const Setting = () => {
                       title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
                       description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
                       children: (
-                        <Switch
+                        <Toggle
                           name={dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title}
                           onclick={() =>
                             setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
@@ -163,7 +163,7 @@ export const Setting = () => {
                       title: dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title,
                       description: dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.description,
                       children: (
-                        <Switch
+                        <Toggle
                           name={dictionary().ui.settings.statusAndSync.restorePreviousStateOnStartup.title}
                           onClick={() =>
                             setStore("settings", "statusAndSync", "restorePreviousStateOnStartup", (prev) => !prev)

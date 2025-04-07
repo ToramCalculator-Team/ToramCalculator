@@ -13,8 +13,8 @@ const ELECTRIC_HOST =
   import.meta.env.VITE_SERVER_HOST == "localhost"
     ? "http://localhost:3000/v1/shape"
     : "https://test.kiaclouth.com/v1/shape";
-console.log("VITE_SERVER_HOST:" + import.meta.env.VITE_SERVER_HOST);
-console.log("ELECTRIC_HOST:" + ELECTRIC_HOST);
+// console.log("VITE_SERVER_HOST:" + import.meta.env.VITE_SERVER_HOST);
+// console.log("ELECTRIC_HOST:" + ELECTRIC_HOST);
 
 export interface syncMessage {
   type: "sync";
@@ -26,7 +26,7 @@ export interface syncMessage {
 }
 
 const notifySyncProgress = (tableName: keyof DB) => {
-  console.log(tableName + "synced");
+  console.log(tableName + "已同步完成");
   self.postMessage({
     type: "sync",
     data: {

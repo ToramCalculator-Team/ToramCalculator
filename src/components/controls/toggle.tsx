@@ -1,52 +1,51 @@
-import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
-import * as _ from "lodash-es";
+import { createEffect, createMemo, createSignal, JSX } from "solid-js";
 
-type Size = "sm" | "md" | "lg";
+type Size = "sm" | "md" | "default" | "lg";
 
-interface MyToggleProps extends JSX.ButtonHTMLAttributes<HTMLDivElement> {
+interface SwitchProps extends JSX.HTMLAttributes<HTMLInputElement> {
+  name: string;
   size?: Size;
-  state?: boolean;
-  ref?: (el: HTMLDivElement) => void;
+  checked?: boolean;
 }
 
-const Toggle = (props: MyToggleProps) => {
-  const rest = _.omit(props, "size", "state");
+const Toggle = (props: SwitchProps) => {
   const config = createMemo(() => {
     return {
       sizeClass: {
-        sm: "p-0.5",
-        md: "p-1",
-        lg: "p-2",
-      }[props.size ?? "md"],
-      disableClass: rest.disabled ? "pointer-events-none opacity-50" : "",
-      activedClass: props.state ? "justify-start bg-brand-color-1st" : "justify-end bg-dividing-color",
+        sm: {
+          thumb: "gap-1 rounded px-4 py-1",
+          track: "gap-2 rounded px-4 py-1",
+        },
+        md: {
+          thumb: "gap-2 rounded px-4 py-2",
+          track: "gap-2 rounded px-4 py-2",
+        },
+        default: {
+          thumb: "top-1 w-8 h-8 rounded-md bg-primary-color",
+          track: "w-20 h-10 p-1 rounded",
+        },
+        lg: {
+          thumb: "gap-3 rounded-lg px-6 py-3",
+          track: "gap-3 rounded-lg px-6 py-3",
+        },
+      }[props.size ?? "default"],
+      stateClass: props.checked
+        ? {
+            thumb: "",
+            track: "bg-accent-color text-primary-color justify-end",
+          }
+        : {
+            thumb: "",
+            track: "bg-boundary-color text-main-text-color justify-start",
+          },
     };
   });
 
-  const [defaultToggleClassNames, setDefaultToggleClassNames] = createSignal("");
-  const [defaultThumbClassNames, setDefaultThumbClassNames] = createSignal("");
-  let switchRef: HTMLDivElement | undefined;
-
-  createEffect(() => {
-    setDefaultToggleClassNames(
-      `${config().disableClass} group cursor-pointer w-20 h-fit rounded-full flex flex-none items-center hover:underline ${config().sizeClass} ${config().activedClass} `,
-    );
-    setDefaultThumbClassNames(
-      `${config().disableClass} h-[34px] w-[34px] rounded-full bg-primary-color group-hover:scale-110`,
-    );
-  });
-
   return (
-    <div
-      tabIndex={0}
-      role="switch"
-      onKeyDown={(e) => e.key === "Enter" && switchRef?.click()}
-      ref={switchRef}
-      {...rest}
-      class={` ` + rest.class ? defaultToggleClassNames() + rest.class : defaultToggleClassNames()}
-    >
-      <div class={defaultThumbClassNames()}></div>
-    </div>
+    <label class={"Track flex items-center cursor-pointer " + config().sizeClass.track + " " + config().stateClass.track}>
+      <div class={"Thumb " + config().sizeClass.thumb + " " + config().stateClass.thumb}></div>
+      <input {...props} type="radio" class={"hidden"} />
+    </label>
   );
 };
 

@@ -18,6 +18,7 @@ import { z, ZodFirstPartyTypeKind } from "zod";
 import { mobSchema } from "../../../../../../db/clientDB/zod";
 import { DataEnums } from "../../../../../../db/dataEnums";
 import Input from "~/components/controls/input";
+import Toggle from "~/components/controls/toggle";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -179,7 +180,7 @@ export default function MobIndexPage() {
           ...getCommonPinningStyles(props.cell.column),
           width: getCommonPinningStyles(props.cell.column).width + "px",
         }}
-        class={"flex flex-col justify-center text-main-text-color p-6"}
+        class={"text-main-text-color flex flex-col justify-center p-6"}
       >
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
@@ -196,13 +197,19 @@ export default function MobIndexPage() {
 
   // form
   const [formMob, setFormMob] = createSignal<Mob["MainForm"]>(defaultMob);
-  const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = ["id","statisticId", "createdByAccountId", "updatedByAccountId"];
+  const mobFormHiddenFields: Array<keyof Mob["MainForm"]> = [
+    "id",
+    "statisticId",
+    "createdByAccountId",
+    "updatedByAccountId",
+  ];
 
   function fieldInfo(field: AnyFieldApi): string {
     const errors =
       field.state.meta.isTouched && field.state.meta.errors.length ? field.state.meta.errors.join(",") : null;
     const isValidating = field.state.meta.isValidating ? "..." : null;
     if (errors) {
+      console.log(field.state.meta.errors);
       return errors;
     }
     if (isValidating) {
@@ -279,14 +286,19 @@ export default function MobIndexPage() {
                         let icon: JSX.Element = null;
                         let inputClass = defaultInputClass;
                         let labelSizeClass = defaultLabelSizeClass;
-                        let content: JSX.Element = null;
                         switch (key) {
-                          case "type":
-                            {
-                              const zodValue = mobSchema.shape[key];
-                              content =
-                                "options" in zodValue
-                                  ? zodValue.options.map((option) => {
+                          case "type": {
+                            const zodValue = mobSchema.shape[key];
+                            return (
+                              <Input
+                                title={MobDic(store.settings.language)[fieldKey].key}
+                                description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                                state={fieldInfo(field())}
+                                class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              >
+                                <div class="EnumsBox flex flex-wrap gap-1">
+                                  <For each={zodValue.options}>
+                                    {(option) => {
                                       switch (option) {
                                         case "Mob":
                                         case "MiniBoss":
@@ -310,108 +322,108 @@ export default function MobIndexPage() {
                                           />
                                         </label>
                                       );
-                                    })
-                                  : null;
-                            }
-
-                            break;
+                                    }}
+                                  </For>
+                                </div>
+                              </Input>
+                            );
+                          }
 
                           case "initialElement": {
                             const zodValue = mobSchema.shape[key];
-                            content =
-                              "options" in zodValue
-                                ? zodValue.options.map((option) => {
-                                    switch (option) {
-                                      case "Normal":
-                                        {
-                                          icon = <Icon.Element.NoElement class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "no-element basis-1/3";
-                                        }
-                                        break;
-                                      case "Light":
-                                        {
-                                          icon = <Icon.Element.Light class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "light basis-1/3";
-                                        }
-                                        break;
-                                      case "Dark":
-                                        {
-                                          (icon = <Icon.Element.Dark class="h-6 w-6" />),
-                                            (inputClass = "mt-0.5 hidden rounded px-4 py-2");
-                                          labelSizeClass = "dark basis-1/3";
-                                        }
-                                        break;
-                                      case "Water":
-                                        {
-                                          icon = <Icon.Element.Water class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "water basis-1/3";
-                                        }
-                                        break;
-                                      case "Fire":
-                                        {
-                                          icon = <Icon.Element.Fire class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "fire basis-1/3";
-                                        }
-                                        break;
-                                      case "Earth":
-                                        {
-                                          icon = <Icon.Element.Earth class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "earth basis-1/3";
-                                        }
-                                        break;
-                                      case "Wind":
-                                        {
-                                          icon = <Icon.Element.Wind class="h-6 w-6" />;
-                                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                                          labelSizeClass = "wind basis-1/3";
-                                        }
-                                        break;
-                                      default:
-                                        {
-                                          icon = null;
-                                          inputClass = defaultInputClass;
-                                          labelSizeClass = defaultLabelSizeClass;
-                                        }
-                                        break;
-                                    }
-                                    return (
-                                      <label
-                                        class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st" : "border-transparent opacity-20"}`}
-                                      >
-                                        {icon}
-                                        {dictionary().enums.mob[key][option]}
-                                        <input
-                                          id={field().name + option}
-                                          name={field().name}
-                                          value={option}
-                                          checked={field().state.value === option}
-                                          type="radio"
-                                          onBlur={field().handleBlur}
-                                          onChange={(e) => field().handleChange(e.target.value)}
-                                          class={inputClass}
-                                        />
-                                      </label>
-                                    );
-                                  })
-                                : null;
+                            return (
+                              <Input
+                                title={MobDic(store.settings.language)[fieldKey].key}
+                                description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                                state={fieldInfo(field())}
+                                class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              >
+                                <div class="EnumsBox flex flex-wrap gap-1">
+                                  <For each={zodValue.options}>
+                                    {(option) => {
+                                      switch (option) {
+                                        case "Normal":
+                                          {
+                                            icon = <Icon.Element.NoElement class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "no-element basis-1/3";
+                                          }
+                                          break;
+                                        case "Light":
+                                          {
+                                            icon = <Icon.Element.Light class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "light basis-1/3";
+                                          }
+                                          break;
+                                        case "Dark":
+                                          {
+                                            (icon = <Icon.Element.Dark class="h-6 w-6" />),
+                                              (inputClass = "mt-0.5 hidden rounded px-4 py-2");
+                                            labelSizeClass = "dark basis-1/3";
+                                          }
+                                          break;
+                                        case "Water":
+                                          {
+                                            icon = <Icon.Element.Water class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "water basis-1/3";
+                                          }
+                                          break;
+                                        case "Fire":
+                                          {
+                                            icon = <Icon.Element.Fire class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "fire basis-1/3";
+                                          }
+                                          break;
+                                        case "Earth":
+                                          {
+                                            icon = <Icon.Element.Earth class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "earth basis-1/3";
+                                          }
+                                          break;
+                                        case "Wind":
+                                          {
+                                            icon = <Icon.Element.Wind class="h-6 w-6" />;
+                                            inputClass = "mt-0.5 hidden rounded px-4 py-2";
+                                            labelSizeClass = "wind basis-1/3";
+                                          }
+                                          break;
+                                        default:
+                                          {
+                                            icon = null;
+                                            inputClass = defaultInputClass;
+                                            labelSizeClass = defaultLabelSizeClass;
+                                          }
+                                          break;
+                                      }
+                                      return (
+                                        <label
+                                          class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st" : "border-transparent opacity-20"}`}
+                                        >
+                                          {icon}
+                                          {dictionary().enums.mob[key][option]}
+                                          <input
+                                            id={field().name + option}
+                                            name={field().name}
+                                            value={option}
+                                            checked={field().state.value === option}
+                                            type="radio"
+                                            onBlur={field().handleBlur}
+                                            onChange={(e) => field().handleChange(e.target.value)}
+                                            class={inputClass}
+                                          />
+                                        </label>
+                                      );
+                                    }}
+                                  </For>
+                                </div>
+                              </Input>
+                            );
                           }
                         }
-                        return (
-                          <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
-                            state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                          >
-                            {/* <div class="EnumsBox flex flex-col gap-1">{content}</div> */}
-                            {content}
-                          </Input>
-                        );
                       }}
                     </form.Field>
                   );
@@ -427,9 +439,26 @@ export default function MobIndexPage() {
                       }}
                     >
                       {(field) => {
-                        const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                        const defaultInputBox = (
-                          <Input
+                        switch (fieldKey) {
+                          case "baseLv":
+                          case "experience":
+                          case "partsExperience":
+                          case "initialElement":
+                          case "radius":
+                          case "maxhp":
+                          case "physicalDefense":
+                          case "physicalResistance":
+                          case "magicalDefense":
+                          case "magicalResistance":
+                          case "criticalResistance":
+                          case "avoidance":
+                          case "dodge":
+                          case "block":
+                          case "normalAttackResistanceModifier":
+                          case "physicalAttackResistanceModifier":
+                          case "magicalAttackResistanceModifier":
+                        }
+                        return (<Input
                             title={MobDic(store.settings.language)[fieldKey].key}
                             description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
                             autocomplete="off"
@@ -441,11 +470,7 @@ export default function MobIndexPage() {
                             onChange={(e) => field().handleChange(parseFloat(e.target.value))}
                             state={fieldInfo(field())}
                             class="bg-primary-color w-full rounded-md"
-                          />
-                        );
-                        const fieldsetClass: string = defaultFieldsetClass;
-                        const inputBox: JSX.Element = defaultInputBox;
-                        return inputBox;
+                          />);
                       }}
                     </form.Field>
                   );
@@ -465,47 +490,22 @@ export default function MobIndexPage() {
                       }}
                     >
                       {(field) => {
-                        const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                        const defaultInputBox = (
-                          <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
-                            autocomplete="off"
-                            type="boolean"
+                        return <Input
+                          title={MobDic(store.settings.language)[fieldKey].key}
+                          description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                          state={fieldInfo(field())}
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        >
+                          <Toggle
                             id={field().name}
-                            name={field().name}
-                            value={field().state.value as string}
-                            onBlur={field().handleBlur}
-                            onChange={(e) => {
-                              const target = e.target;
-                              field().handleChange(target.value);
+                            onClick={() => {
+                              field().setValue(!field().state.value);
                             }}
-                            state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            onBlur={field().handleBlur}
+                            name={field().name}
+                            checked={field().state.value as boolean}
                           />
-                        );
-                        let fieldsetClass: string = defaultFieldsetClass;
-                        let inputBox: JSX.Element = defaultInputBox;
-                        switch (fieldKey) {
-                          // case "id":
-                          // case "state":
-                          case "name":
-                            {
-                              fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
-                            }
-                            break;
-                          case "details":
-                            {
-                              inputBox = <></>;
-                              fieldsetClass = "flex basis-full flex-col gap-1 p-2";
-                            }
-                            break;
-
-                          default:
-                            break;
-                        }
-
-                        return inputBox;
+                        </Input>;
                       }}
                     </form.Field>
                   );

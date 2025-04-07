@@ -2,13 +2,13 @@ import { type dictionary } from "./type";
 
 
 const elementType={
-  Normal: "无属性",
-  Dark: "暗属性",
-  Earth: "地属性",
-  Fire: "火属性",
-  Light: "光属性",
-  Water: "水属性",
-  Wind: "风属性",
+  Normal: "Normal",
+  Dark: "Dark",
+  Earth: "Earth",
+  Fire: "Fire",
+  Light: "Light",
+  Water: "Water",
+  Wind: "Wind",
 }
 
 const MainWeaponType= {
@@ -334,9 +334,9 @@ const dictionary: dictionary = {
     },
     mob: {
       type: {
-        Boss: "定点王",
-        MiniBoss: "野王",
-        Mob: "小怪",
+        Boss: "BOSS",
+        MiniBoss: "MiniBoss",
+        Mob: "Mob",
       },
       initialElement: elementType
     },

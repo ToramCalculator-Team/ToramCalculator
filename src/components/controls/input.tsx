@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, JSX, Match, Show, Switch } from "solid-js";
 import * as _ from "lodash-es";
+import Toggle from "./toggle";
 
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
@@ -46,7 +47,7 @@ const Input = (props: InputProps) => {
       <Show
         when={props.children}
         fallback={
-          <Switch fallback={<div>未找到</div>}>
+          <Switch fallback={<div>未知类型的输入框</div>}>
             <Match when={props.type === "text"}>
               <input
                 {...props}
@@ -64,15 +65,6 @@ const Input = (props: InputProps) => {
                 {...props}
                 class={`w-full text-accent-color bg-area-color rounded p-3`}
               />
-            </Match>
-            <Match when={props.type === "boolean"}>
-              <input {...props} />
-            </Match>
-            <Match when={props.type === "checkBox"}>
-              <input {...props} />
-            </Match>
-            <Match when={props.type === "radio"}>
-              <input {...props} />
             </Match>
           </Switch>
         }
