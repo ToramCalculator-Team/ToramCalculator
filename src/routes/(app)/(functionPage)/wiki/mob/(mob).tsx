@@ -24,8 +24,8 @@ export default function MobIndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // 状态管理参数
-  const [isFormFullscreen, setIsFormFullscreen] = createSignal(true);
-  const [activeBannerIndex, setActiveBannerIndex] = createSignal(1);
+  const [isTableFullscreen, setIsTableFullscreen] = createSignal(false);
+  const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
   const setMob = (newMob: Mob["MainTable"]): void => {
     setStore("wiki", "mob", "id", newMob.id);
   };
@@ -136,6 +136,7 @@ export default function MobIndexPage() {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
     type MobKeys = keyof DataEnums["mob"];
     type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
+    let defaultTdClass = "text-main-text-color flex flex-col justify-center p-6"
     switch (props.cell.column.id as keyof Mob["MainTable"]) {
       case "initialElement":
         setTdContent(
@@ -169,6 +170,9 @@ export default function MobIndexPage() {
       case "magicalAttackResistanceModifier":
         setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) + "%");
         break;
+      
+      case "name": 
+        defaultTdClass = "text-accent-color flex flex-col justify-center p-6 "
 
       default:
         setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
@@ -180,7 +184,7 @@ export default function MobIndexPage() {
           ...getCommonPinningStyles(props.cell.column),
           width: getCommonPinningStyles(props.cell.column).width + "px",
         }}
-        class={"text-main-text-color flex flex-col justify-center p-6"}
+        class={defaultTdClass}
       >
         {/* 当此字段不存在于枚举类型中时，展示原始文本 */}
         <Show
@@ -255,7 +259,7 @@ export default function MobIndexPage() {
             e.stopPropagation();
             form.handleSubmit();
           }}
-          class="Form bg-area-color flex flex-col gap-3 p-2"
+          class="Form bg-area-color flex flex-col gap-2 p-2"
         >
           <For each={Object.entries(formMob())}>
             {(_field, index) => {
@@ -458,7 +462,8 @@ export default function MobIndexPage() {
                           case "physicalAttackResistanceModifier":
                           case "magicalAttackResistanceModifier":
                         }
-                        return (<Input
+                        return (
+                          <Input
                             title={MobDic(store.settings.language)[fieldKey].key}
                             description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
                             autocomplete="off"
@@ -470,7 +475,8 @@ export default function MobIndexPage() {
                             onChange={(e) => field().handleChange(parseFloat(e.target.value))}
                             state={fieldInfo(field())}
                             class="bg-primary-color w-full rounded-md"
-                          />);
+                          />
+                        );
                       }}
                     </form.Field>
                   );
@@ -490,22 +496,24 @@ export default function MobIndexPage() {
                       }}
                     >
                       {(field) => {
-                        return <Input
-                          title={MobDic(store.settings.language)[fieldKey].key}
-                          description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
-                          state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                        >
-                          <Toggle
-                            id={field().name}
-                            onClick={() => {
-                              field().setValue(!field().state.value);
-                            }}
-                            onBlur={field().handleBlur}
-                            name={field().name}
-                            checked={field().state.value as boolean}
-                          />
-                        </Input>;
+                        return (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <Toggle
+                              id={field().name}
+                              onClick={() => {
+                                field().setValue(!field().state.value);
+                              }}
+                              onBlur={field().handleBlur}
+                              name={field().name}
+                              checked={field().state.value as boolean}
+                            />
+                          </Input>
+                        );
                       }}
                     </form.Field>
                   );
@@ -577,9 +585,9 @@ export default function MobIndexPage() {
             })}
             children={(state) => {
               return (
-                <div class="flex items-center gap-1 p-2">
+                <div class="flex items-center gap-1">
                   <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                    {state().isSubmitting ? "..." : dictionary().ui.actions.upload}
+                    {state().isSubmitting ? "..." : dictionary().ui.actions.add}
                   </Button>
                 </div>
               );
@@ -619,7 +627,7 @@ export default function MobIndexPage() {
   return (
     <>
       <Presence exitBeforeEnter>
-        <Show when={!isFormFullscreen()}>
+        <Show when={!isTableFullscreen()}>
           <Motion.div
             class="Title hidden flex-col p-3 lg:flex lg:pt-12"
             animate={{ opacity: [0, 1] }}
@@ -634,7 +642,7 @@ export default function MobIndexPage() {
                 id="MobSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-2 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
               />
               <Button // 仅移动端显示
                 size="sm"
@@ -657,14 +665,14 @@ export default function MobIndexPage() {
                   });
                 }}
               >
-                {dictionary().ui.actions.upload} [u]
+                {dictionary().ui.actions.add}
               </Button>
             </div>
           </Motion.div>
         </Show>
       </Presence>
       <Presence exitBeforeEnter>
-        <Show when={!isFormFullscreen()}>
+        <Show when={!isTableFullscreen()}>
           <Motion.div
             class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
             animate={{ opacity: [0, 1] }}
@@ -672,48 +680,33 @@ export default function MobIndexPage() {
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           >
             <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
-              <div
-                class={`banner1 flex-none overflow-hidden rounded ${activeBannerIndex() === 1 ? "active shadow-dividing-color shadow-lg" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(1)}
-                style={{
-                  // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
+              <For each={[0, 1, 2]}>
+                {(_, index) => {
+                  const brandColor = {
+                    1: "1st",
+                    2: "2nd",
+                    3: "3rd",
+                  }[1 + (index() % 3)];
+                  return (
+                    <div
+                      class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
+                      onMouseEnter={() => setActiveBannerIndex(index())}
+                      style={{
+                        // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                        "background-position": "center center",
+                      }}
+                    >
+                      <div
+                        class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
+                      >
+                        <span class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}>TOP.{index() + 1}</span>
+                        <div class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}></div>
+                        <span class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}>{mobList()?.[index()]?.name}</span>
+                      </div>
+                    </div>
+                  );
                 }}
-              >
-                <div class="mask bg-brand-color-1st text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
-                  <span class="text-3xl font-bold">Top.1</span>
-                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
-                  <span class="text-xl">{mobList()?.[0]?.name}</span>
-                </div>
-              </div>
-              <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 2 ? "active shadow-dividing-color shadow-lg" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(2)}
-                style={{
-                  // "background-image": `url(${mobList()?.[1]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
-                }}
-              >
-                <div class="mask bg-brand-color-2nd text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
-                  <span class="text-3xl font-bold">Top.2</span>
-                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
-                  <span class="text-xl">{mobList()?.[1]?.name}</span>
-                </div>
-              </div>
-              <div
-                class={`banner2 flex-none overflow-hidden rounded ${activeBannerIndex() === 3 ? "active shadow-dividing-color shadow-lg" : ""}`}
-                onMouseEnter={() => setActiveBannerIndex(3)}
-                style={{
-                  // "background-image": `url(${mobList()?.[2]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                  "background-position": "center center",
-                }}
-              >
-                <div class="mask bg-brand-color-3rd text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex">
-                  <span class="text-3xl font-bold">Top.3</span>
-                  <div class="bg-primary-color h-[1px] w-[110px]"></div>
-                  <span class="text-xl">{mobList()?.[2]?.name}</span>
-                </div>
-              </div>
+              </For>
             </div>
           </Motion.div>
         </Show>
@@ -721,11 +714,11 @@ export default function MobIndexPage() {
       <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
         <div class="TableModule flex flex-1 flex-col overflow-hidden">
           <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
-            <div class={`Text text-xl ${isFormFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
+            <div class={`Text text-xl ${isTableFullscreen() ? "lg:hidden lg:opacity-0" : ""}`}>
               {dictionary().ui.mob.table.title}
             </div>
             <div
-              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isFormFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
+              class={`Description bg-area-color flex-1 rounded p-3 opacity-0 ${isTableFullscreen() ? "lg:opacity-100" : "lg:opacity-0"}`}
             >
               {dictionary().ui.mob.table.description}
             </div>
@@ -740,10 +733,10 @@ export default function MobIndexPage() {
             <Button
               level="quaternary"
               onClick={() => {
-                setIsFormFullscreen(!isFormFullscreen());
+                setIsTableFullscreen(!isTableFullscreen());
               }}
             >
-              {isFormFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
+              {isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
           <VirtualTable
@@ -758,14 +751,20 @@ export default function MobIndexPage() {
           />
         </div>
         <Presence exitBeforeEnter>
-          <Show when={!isFormFullscreen()}>
+          <Show when={!isTableFullscreen()}>
             <Motion.div
               animate={{ opacity: [0, 1] }}
               exit={{ opacity: 0 }}
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.mob.news.title}</div>
-              <div class="Content bg-area-color flex flex-1 flex-col"></div>
+              <div class="Content flex flex-1 flex-col">
+                <For each={[0, 1, 2]}>
+                  {() => {
+                    return <div></div>;
+                  }}
+                </For>
+              </div>
             </Motion.div>
           </Show>
         </Presence>

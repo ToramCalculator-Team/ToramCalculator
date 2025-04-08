@@ -49,7 +49,7 @@ export async function POST(event: APIEvent) {
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     // ✅ 创建用户
-    console.log("注册者:", email);
+    console.log("注册者:", userName);
     const userId = createId();
     const user = await createUser({
       name: userName || email.split("@")[0], // 默认用户名

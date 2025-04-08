@@ -274,7 +274,7 @@ export default function VirtualTable<
                     }}
                     onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                     onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
-                    class={`group border-area-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent`}
+                    class={`group border-dividing-color hover:bg-area-color flex cursor-pointer border-b transition-none hover:rounded hover:border-transparent`}
                   >
                     <For
                       each={row

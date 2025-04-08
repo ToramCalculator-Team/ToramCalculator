@@ -142,19 +142,14 @@ svg {
   outline-color: rgb(var(--brand-1st));
 }
 
-@media screen and (orientation: portrait) {
-  .ori {
-    transform: rotate(0deg);
-    writing-mode: horizontal-tb; /* 文字水平排列 */
-    text-orientation: mixed;     /* 默认文字方向 */
-  }
+/* 交互检测 */
+
+/* *:hover {
+  outline-color: rgb(var(--brand-3rd));
 }
 
-@media screen and (orientation: landscape) {
-  .ori {
-    transform: rotate(90deg);
-    writing-mode: vertical-rl; /* 文字从上到下垂直排列 */
-    text-orientation: upright;  /* 文字保持直立，不倒转 */
-  }
-}
+*:focus-visible {
+  background-color: red !important;
+  z-index: 9999;
+} */
 

@@ -179,8 +179,8 @@ DECLARE
 BEGIN
     INSERT INTO "${tableName}_local" (
     ${colNames.map((name) => `"${name}"`).join(", ")},
-    "changed_columns",
-    "write_id"
+    changed_columns,
+    write_id
     )
     VALUES (
     ${colNames.map((name) => `NEW."${name}"`).join(", ")},
@@ -192,10 +192,10 @@ BEGIN
     );
 
     INSERT INTO changes (
-    "operation",
-    "value",
-    "write_id",
-    "transaction_id"
+    operation,
+    value,
+    write_id,
+    transaction_id
     )
     VALUES (
     'insert',
@@ -396,17 +396,16 @@ for (const block of blocks) {
 
     const { tableName } = parsed;
 
+    output.push(`-- ${tableName}`);
+
     // output.push(`-- DROP original "${tableName}"`);
     // output.push(`DROP TABLE IF EXISTS "${tableName}";\n`);
 
     output.push(generateSyncedTable(parsed));
-    output.push("");
 
     output.push(generateLocalTable(parsed));
-    output.push("");
 
     output.push(generateView(parsed));
-    output.push("");
   } else {
     // 其余 SQL 保留
     output.push(block);
