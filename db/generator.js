@@ -116,7 +116,7 @@ fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
 fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 
 fs.writeFileSync(clientDBSchemaPath, clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema, "utf-8");
-fs.writeFileSync(serverDBSchemaPath, kyselyGenerator + "\n" + finalSchema, "utf-8");
+fs.writeFileSync(serverDBSchemaPath, finalSchema, "utf-8");
 
 console.log("✅ schema.prisma 生成完成！");
 

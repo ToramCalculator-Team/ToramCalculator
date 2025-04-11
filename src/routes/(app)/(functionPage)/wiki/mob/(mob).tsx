@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/client/mob";
+import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/mob";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -15,10 +15,11 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
-import { mobSchema } from "../../../../../../db/clientDB/zod";
-import { DataEnums } from "../../../../../../db/dataEnums";
+import { mobSchema } from "~/../db/zod";
+import { DataEnums } from "~/../db/dataEnums";
 import Input from "~/components/controls/input";
 import Toggle from "~/components/controls/toggle";
+import { getDB } from "~/repositories/database";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -127,7 +128,7 @@ export default function MobIndexPage() {
     //   size: 150,
     // },
   ];
-  const [mobList] = createSyncResource("mob", findMobs);
+  const [mobList, { refetch: refetchMobList }] = createSyncResource("mob", findMobs);
   const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
 
   const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
@@ -136,7 +137,7 @@ export default function MobIndexPage() {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
     type MobKeys = keyof DataEnums["mob"];
     type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
-    let defaultTdClass = "text-main-text-color flex flex-col justify-center p-6"
+    let defaultTdClass = "text-main-text-color flex flex-col justify-center p-6";
     switch (props.cell.column.id as keyof Mob["MainTable"]) {
       case "initialElement":
         setTdContent(
@@ -170,9 +171,9 @@ export default function MobIndexPage() {
       case "magicalAttackResistanceModifier":
         setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) + "%");
         break;
-      
-      case "name": 
-        defaultTdClass = "text-accent-color flex flex-col justify-center p-6 "
+
+      case "name":
+        defaultTdClass = "text-accent-color flex flex-col justify-center p-6 ";
 
       default:
         setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
@@ -242,8 +243,22 @@ export default function MobIndexPage() {
     const form = createForm(() => ({
       defaultValues: defaultMob,
       onSubmit: async ({ value }) => {
-        console.log(value);
-        await createMob(value);
+        const currentAccount = store.session.user.account;
+        if (!currentAccount) {
+          alert("请先登录");
+          return
+        }
+        const db = await getDB();
+        const mob = await db.transaction().execute(async (trx) => {
+          return await createMob(trx, {
+            ...value,
+            createdByAccountId: currentAccount.id,
+            updatedByAccountId: currentAccount.id,
+          });
+        });
+
+        refetchMobList();
+        setStore("wiki", "mob", "dialogIsOpen", false);
       },
       // validatorAdapter: zodValidator,
     }));
@@ -699,9 +714,19 @@ export default function MobIndexPage() {
                       <div
                         class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
                       >
-                        <span class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}>TOP.{index() + 1}</span>
-                        <div class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}></div>
-                        <span class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}>{mobList()?.[index()]?.name}</span>
+                        <span
+                          class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                        >
+                          TOP.{index() + 1}
+                        </span>
+                        <div
+                          class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
+                        ></div>
+                        <span
+                          class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                        >
+                          {mobList()?.[index()]?.name}
+                        </span>
                       </div>
                     </div>
                   );

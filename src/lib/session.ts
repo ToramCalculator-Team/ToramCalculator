@@ -1,5 +1,5 @@
 "use server";
-import { findUserByEmail, findUserById, User } from "~/repositories/server/user";
+import { findUserByEmail, findUserById, User } from "~/repositories/user";
 import { jwtVerify } from "jose";
 import { getCookie } from "vinxi/http";
 
@@ -9,7 +9,7 @@ async function verifyJWT(token: string, secret: string) {
   return payload.sub; // 返回用户 ID
 }
 
-export async function getUserByCookie(): Promise<User | null> {
+export async function getUserByCookie() {
   const secrt = process.env.AUTH_SECRET;
   // console.log("secrt", secrt);
   if (!secrt) return null;
@@ -22,7 +22,7 @@ export async function getUserByCookie(): Promise<User | null> {
   if (!userId) return null;
 
   const user = await findUserById(userId);
-  return await findUserById(userId);
+  return user;
 }
 
 export async function emailExists(email: string) {

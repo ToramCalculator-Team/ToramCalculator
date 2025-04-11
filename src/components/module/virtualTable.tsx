@@ -16,7 +16,7 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
 import { ConvertToAllDetail } from "~/repositories/client/untils";
-import { DB } from "../../../db/clientDB/kysely/kyesely";
+import { DB } from "~/../db/kysely/kyesely";
 import Button from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";

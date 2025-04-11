@@ -33,7 +33,6 @@ Thumbs.db
 db/serverDB/schema.prisma
 db/clientDB/schema.prisma
 db/clientDB/ddl.sql
-db/clientDB/zod
-db/clientDB/kysely
-db/serverDB/kysely
+db/zod
+db/kysely
 db/dataEnums.ts

@@ -1,7 +1,7 @@
 import { type Mob } from "~/repositories/client/mob";
 import { dictionary } from "~/locales/dictionaries/type";
 import { getDictionary } from "~/locales/i18n";
-import { MobDifficultyFlag } from "../../db/clientDB/kysely/enums";
+import { MobDifficultyFlag } from "../../db/kysely/enums";
 
 export const generateMobByStar = (
   baseMob: Mob,

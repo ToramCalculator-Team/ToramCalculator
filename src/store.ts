@@ -1,7 +1,8 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
 import * as _ from "lodash-es";
-import { type DB } from "../db/clientDB/kysely/kyesely";
+import { type DB } from "../db/kysely/kyesely";
+import { AccountType } from "../db/kysely/enums";
 
 export type DialogType = "form" | "card";
 
@@ -41,6 +42,10 @@ export type Store = {
       id?: string;
       name?: string;
       avatar?: string;
+      account?: {
+        id: string;
+        type: AccountType;
+      }
     };
   };
   indexPage: {};

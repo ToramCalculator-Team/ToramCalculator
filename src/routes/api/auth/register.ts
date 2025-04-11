@@ -2,8 +2,9 @@ import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
 import { createId } from "@paralleldrive/cuid2";
-import { createUser, findUserByEmail } from "~/repositories/server/user";
+import { createUser, findUserByEmail } from "~/repositories/user";
 import bcrypt from "bcrypt";
+import { getDB } from "~/repositories/database";
 
 export async function POST(event: APIEvent) {
   try {
@@ -50,16 +51,18 @@ export async function POST(event: APIEvent) {
 
     // ✅ 创建用户
     console.log("注册者:", userName);
-    const userId = createId();
-    const user = await createUser({
-      name: userName || email.split("@")[0], // 默认用户名
-      email,
-      password: hashedPassword, // 存储加密后的密码
-      id: userId,
+    const db = await getDB();
+    const user = await db.transaction().execute(async (trx) => {
+      return await createUser(trx, {
+        name: userName || email.split("@")[0], // 默认用户名
+        email,
+        password: hashedPassword, // 存储加密后的密码
+        id: "",
+      });
     });
     // 生成 JWT
     const jwtPayload = {
-      sub: userId,
+      sub: user.id,
       iat: Math.floor(Date.now() / 1000),
     };
 

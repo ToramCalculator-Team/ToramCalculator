@@ -10,6 +10,7 @@ import { Motion, Presence } from "solid-motionone";
 import * as Icon from "~/components/icon";
 import Input from "../controls/input";
 import { z } from "zod";
+import { findAccountById } from "~/repositories/account";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -59,9 +60,17 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       // console.log("获取到的用户信息:", user);
 
       if (user) {
-        setStore("session", "user", "id", user.id);
-        setStore("session", "user", "name", user.name ?? "无名氏");
-        setStore("session", "user", "avatar", user.image ?? defaultUserAvatarUrl);
+        setStore("session", "user", {
+          id: user.id,
+          name: user.name ?? "未命名用户",
+          avatar: user.image ?? defaultUserAvatarUrl,
+        });
+        if (user.accounts) {
+          setStore("session", "user", "account", {
+            id: user.accounts[0].id,
+            type: user.accounts[0].type,
+          });
+        }
       }
 
       props.setState(false);
@@ -109,9 +118,17 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       // console.log("获取到的用户信息:", user);
 
       if (user) {
-        setStore("session", "user", "id", user.id);
-        setStore("session", "user", "name", user.name ?? "无名氏");
-        setStore("session", "user", "avatar", user.image ?? defaultUserAvatarUrl);
+        setStore("session", "user", {
+          id: user.id,
+          name: user.name ?? "未命名用户",
+          avatar: user.image ?? defaultUserAvatarUrl,
+        });
+        if (user.accounts) {
+          setStore("session", "user", "account", {
+            id: user.accounts[0].id,
+            type: user.accounts[0].type,
+          });
+        }
       }
 
       props.setState(false);

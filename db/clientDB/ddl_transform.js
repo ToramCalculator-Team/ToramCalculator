@@ -192,12 +192,14 @@ BEGIN
     );
 
     INSERT INTO changes (
+    table_name,
     operation,
     value,
     write_id,
     transaction_id
     )
     VALUES (
+    '${tableName}',
     'insert',
     jsonb_build_object(
         ${jsonFields}
@@ -259,12 +261,14 @@ BEGIN
     END IF;
 
     INSERT INTO changes (
+    table_name,
     operation,
     value,
     write_id,
     transaction_id
     )
     VALUES (
+    '${tableName}',
     'update',
     jsonb_strip_nulls(jsonb_build_object(
         ${updateJsonFields}
@@ -302,12 +306,14 @@ BEGIN
     END IF;
 
     INSERT INTO changes (
+    table_name,
     operation,
     value,
     write_id,
     transaction_id
     )
     VALUES (
+    '${tableName}',
     'delete',
     jsonb_build_object(${pkCols.map((pk) => `'${pk}', OLD."${pk}"`).join(", ")}),
     local_write_id,
@@ -414,6 +420,7 @@ for (const block of blocks) {
 
 const changesTable = `CREATE TABLE IF NOT EXISTS changes (
   id BIGSERIAL PRIMARY KEY,
+  table_name TEXT NOT NULL,
   operation TEXT NOT NULL,
   value JSONB NOT NULL,
   write_id UUID NOT NULL,

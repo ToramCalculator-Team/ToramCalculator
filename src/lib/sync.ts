@@ -44,7 +44,7 @@ async function resilientFetch(url: string, options: RequestOptions, retryCount: 
       console.warn(`服务器错误（${res.status}），准备重试`);
       return await retryFetch(url, options, retryCount + 1);
     }
-
+    console.log("上传成功", res);
     return res;
   } catch (_err) {
     console.log("发生错误，正在重试", _err);
