@@ -12,6 +12,7 @@ interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   type?: InputComponentType;
   size?: Size;
   state?: string | null;
+  inputWidth?: number;
 }
 
 const Input = (props: InputProps) => {
@@ -37,13 +38,21 @@ const Input = (props: InputProps) => {
   });
 
   return (
-    <label class={props.class ? ` flex flex-1 flex-col items-start gap-3 p-2 ` + " " + props.class : ` flex flex-1 flex-col items-start gap-3 p-2 `}>
-      <span class="leading-none">
-        <span>{props.title}</span>
-        &nbsp;&nbsp;
-        <span class="text-brand-color-3rd">{props.state}</span>
-      </span>
-      {config().description && <span class="text-main-text-color text-sm">{config().description}</span>}
+    <label
+      class={
+        props.class
+          ? `flex flex-1 flex-col items-start gap-2 p-2 ` + " " + props.class
+          : `flex flex-1 flex-col items-start gap-2 p-2`
+      }
+    >
+      <div class="flex flex-col">
+        <span class="p-1">
+          <span>{props.title}</span>
+          &nbsp;&nbsp;
+          <span class="text-brand-color-3rd">{props.state}</span>
+        </span>
+        {config().description && <span class="text-main-text-color p-1 text-xs">{config().description}</span>}
+      </div>
       <Show
         when={props.children}
         fallback={
@@ -51,19 +60,28 @@ const Input = (props: InputProps) => {
             <Match when={props.type === "text"}>
               <input
                 {...props}
-                class={`w-full text-accent-color bg-area-color rounded p-3`}
+                class={`text-accent-color bg-area-color w-full rounded p-3`}
+                style={{
+                  width: props.inputWidth + "px",
+                }}
               />
             </Match>
             <Match when={props.type === "password"}>
               <input
                 {...props}
-                class={`w-full text-accent-color bg-area-color rounded p-3`}
+                class={`text-accent-color bg-area-color w-full rounded p-3`}
+                style={{
+                  width: props.inputWidth + "px",
+                }}
               />
             </Match>
             <Match when={props.type === "number"}>
               <input
                 {...props}
-                class={`w-full text-accent-color bg-area-color rounded p-3`}
+                class={`text-accent-color bg-area-color w-full rounded p-3`}
+                style={{
+                  width: props.inputWidth + "px",
+                }}
               />
             </Match>
           </Switch>

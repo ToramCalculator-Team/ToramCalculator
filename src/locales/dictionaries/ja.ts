@@ -39,6 +39,10 @@ const dictionary: dictionary = {
   ui: {
     searchPlaceholder: "ここで検索~",
     columnsHidden: "列を隠す",
+    boolean: {
+      true: "はい",
+      false: "いいえ",
+    },
     actions: {
       add: "追加",
       create: "作成",

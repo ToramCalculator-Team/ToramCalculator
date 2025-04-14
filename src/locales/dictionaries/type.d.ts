@@ -4,6 +4,10 @@ export interface dictionary {
   ui: {
     searchPlaceholder: string;
     columnsHidden: string;
+    boolean: {
+      true: string;
+      false: string;
+    }
     actions: {
       add: string;
       create: string;

@@ -40,6 +40,10 @@ const dictionary: dictionary = {
   ui: {
     columnsHidden: "Columns Hidden",
     searchPlaceholder: "Search something ~",
+    boolean: {
+      true: "True",
+      false: "False",
+    },
     actions: {
       add: "Add",
       create: "Create",

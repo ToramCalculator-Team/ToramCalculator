@@ -15,11 +15,12 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
-import { mobSchema } from "~/../db/zod";
+import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
 import { DataEnums } from "~/../db/dataEnums";
 import Input from "~/components/controls/input";
 import Toggle from "~/components/controls/toggle";
 import { getDB } from "~/repositories/database";
+import NodeEditor from "~/components/module/nodeEditor";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -53,6 +54,12 @@ export default function MobIndexPage() {
       size: 160,
     },
     {
+      accessorKey: "initialElement",
+      header: () => MobDic(store.settings.language).initialElement,
+      cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
+      size: 200,
+    },
+    {
       accessorKey: "captureable",
       header: () => MobDic(store.settings.language).captureable,
       cell: (info) => info.getValue<Boolean>().toString(),
@@ -68,12 +75,6 @@ export default function MobIndexPage() {
       accessorKey: "experience",
       header: () => MobDic(store.settings.language).experience,
       size: 180,
-    },
-    {
-      accessorKey: "initialElement",
-      header: () => MobDic(store.settings.language).initialElement,
-      cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
-      size: 200,
     },
     {
       accessorKey: "physicalDefense",
@@ -129,9 +130,13 @@ export default function MobIndexPage() {
     // },
   ];
   const [mobList, { refetch: refetchMobList }] = createSyncResource("mob", findMobs);
-  const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
 
-  const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = ["id", "updatedByAccountId"];
+  const mobTableHiddenColumns: Array<keyof Mob["MainTable"]> = [
+    "id",
+    "actions",
+    "createdByAccountId",
+    "updatedByAccountId",
+  ];
 
   function mobTdGenerator(props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) {
     const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
@@ -229,10 +234,8 @@ export default function MobIndexPage() {
     }
     if ("_def" in schema) {
       if ("innerType" in schema._def) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return getZodType(schema._def.innerType);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return schema._def.typeName as ZodFirstPartyTypeKind;
       }
     }
@@ -246,7 +249,7 @@ export default function MobIndexPage() {
         const currentAccount = store.session.user.account;
         if (!currentAccount) {
           alert("请先登录");
-          return
+          return;
         }
         const db = await getDB();
         const mob = await db.transaction().execute(async (trx) => {
@@ -264,7 +267,7 @@ export default function MobIndexPage() {
     }));
 
     return (
-      <div class="FormBox w-full lg:p-6">
+      <div class="FormBox flex w-full flex-col gap-2 lg:p-6">
         <div class="Title flex p-2">
           <h1 class="FormTitle text-2xl font-black">{dictionary().ui.mob.pageTitle}</h1>
         </div>
@@ -274,7 +277,7 @@ export default function MobIndexPage() {
             e.stopPropagation();
             form.handleSubmit();
           }}
-          class="Form bg-area-color flex flex-col gap-2 p-2"
+          class="Form bg-area-color flex flex-col gap-3 rounded p-3"
         >
           <For each={Object.entries(formMob())}>
             {(_field, index) => {
@@ -322,10 +325,12 @@ export default function MobIndexPage() {
                                         case "Mob":
                                         case "MiniBoss":
                                         case "Boss":
+                                          icon = <Icon.Filled.Basketball />;
+                                          break;
                                       }
                                       return (
                                         <label
-                                          class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st opacity-100" : "border-transparent opacity-20"}`}
+                                          class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
                                         >
                                           {icon}
                                           {dictionary().enums.mob[key][option]}
@@ -420,7 +425,7 @@ export default function MobIndexPage() {
                                       }
                                       return (
                                         <label
-                                          class={`flex gap-1 rounded border-2 px-3 py-2 ${field().state.value === option ? "border-brand-color-1st" : "border-transparent opacity-20"}`}
+                                          class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color" : "border-dividing-color bg-area-color opacity-50"}`}
                                         >
                                           {icon}
                                           {dictionary().enums.mob[key][option]}
@@ -501,6 +506,48 @@ export default function MobIndexPage() {
                   return fieldKey;
                 }
 
+                case ZodFirstPartyTypeKind.ZodLazy: {
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: mobSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => {
+                        // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
+                        return (
+                          <Input
+                            title={MobDic(store.settings.language)[fieldKey].key}
+                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            autocomplete="off"
+                            type="text"
+                            id={field().name}
+                            name={field().name}
+                            value={field().state.value as string}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => {
+                              const target = e.target;
+                              field().handleChange(target.value);
+                            }}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <NodeEditor
+                              data={field().state.value}
+                              setData={(data) => field().setValue(data)}
+                              state={store.wiki.mob?.dialogIsOpen}
+                              id={field().name}
+                              class="h-[80vh] w-full"
+                            />
+                          </Input>
+                        );
+                      }}
+                    </form.Field>
+                  );
+                }
+
                 case ZodFirstPartyTypeKind.ZodBoolean: {
                   return (
                     <form.Field
@@ -574,12 +621,12 @@ export default function MobIndexPage() {
                               fieldsetClass = "flex basis-full flex-col gap-1 p-2 lg:basis-1/4";
                             }
                             break;
-                          case "details":
-                            {
-                              inputBox = <></>;
-                              fieldsetClass = "flex basis-full flex-col gap-1 p-2";
-                            }
-                            break;
+                          // case "details":
+                          //   {
+                          //     inputBox = <TextEditor />;
+                          //     fieldsetClass = "flex basis-full flex-col gap-1 p-2";
+                          //   }
+                          //   break;
 
                           default:
                             break;
@@ -614,11 +661,162 @@ export default function MobIndexPage() {
   };
 
   // card
-  const card = () => {
+  const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
+  const mobCardHiddenFields: Array<keyof Mob["Card"]> = [
+    "id",
+    "statisticId",
+    "createdByAccountId",
+    "updatedByAccountId",
+  ];
+  const card = (data: Mob["Select"]) => {
+    // console.log(data);
+    const mobCardSchema = mobSchema.extend({
+      belongToZones: z.array(zoneSchema),
+      dropItems: z.array(drop_itemSchema), // 你需要一个 itemSchema
+      statistic: statisticSchema, // 你也需要一个 statisticSchema
+    });
+
     return (
-      <OverlayScrollbarsComponent element="div" class="w-full" options={{ scrollbars: { autoHide: "scroll" } }} defer>
-        <pre class="p-3">{JSON.stringify(displayedMob.latest, null, 2)}</pre>
-      </OverlayScrollbarsComponent>
+      <div class="Card flex h-full w-full flex-col gap-3">
+        <div class="CardTitle flex p-2">
+          <h1 class="FormTitle text-2xl font-black">{data.name}</h1>
+        </div>
+        <div class="CardContent flex flex-col gap-3 rounded p-3">
+          <For each={Object.entries(data)}>
+            {(_field, index) => {
+              // 遍历怪物模型
+              const fieldKey = _field[0] as keyof Mob["Card"];
+              const fieldValue = _field[1];
+              console.log(fieldKey, fieldValue);
+              // 过滤掉隐藏的数据
+              if (mobCardHiddenFields.includes(fieldKey)) return;
+              // 输入框的类型计算
+              const zodValue = mobCardSchema.shape[fieldKey];
+              // 判断字段类型
+              const valueType = getZodType(zodValue);
+              // 由于数组类型的值与常规变量值存在结构差异，因此在此进行区分
+
+              if (
+                [
+                  ZodFirstPartyTypeKind.ZodArray,
+                  ZodFirstPartyTypeKind.ZodObject,
+                  ZodFirstPartyTypeKind.ZodLazy,
+                ].includes(valueType)
+              ) {
+                switch (valueType) {
+                  case ZodFirstPartyTypeKind.ZodArray: {
+                    switch (fieldKey) {
+                      case "belongToZones":
+                      case "dropItems": {
+                        return (
+                          <div class="Field flex gap-1">
+                            <span class="text-main-text-color">{fieldKey}</span>:
+                            <span class="text-accent-color font-bold">{JSON.stringify(fieldValue, null, 2)}</span>
+                            <span class="text-dividing-color">{`[${valueType}]`}</span>
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                  case ZodFirstPartyTypeKind.ZodLazy:
+                  case ZodFirstPartyTypeKind.ZodObject: {
+                    switch (fieldKey) {
+                      case "statistic": {
+                        return (
+                          <div class="Field flex gap-1">
+                            <span class="text-main-text-color">{fieldKey}</span>:
+                            <pre class="text-accent-color">{JSON.stringify(fieldValue, null, 2)}</pre>
+                            <span class="text-dividing-color">{`[${valueType}]`}</span>
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                }
+              } else {
+                const key = fieldKey as keyof Mob["Select"];
+                switch (valueType) {
+                  case ZodFirstPartyTypeKind.ZodNumber: {
+                    switch (key) {
+                      case "baseLv":
+                      case "experience":
+                      case "partsExperience":
+                      case "initialElement":
+                      case "radius":
+                      case "maxhp":
+                      case "physicalDefense":
+                      case "physicalResistance":
+                      case "magicalDefense":
+                      case "magicalResistance":
+                      case "criticalResistance":
+                      case "avoidance":
+                      case "dodge":
+                      case "block":
+                      case "normalAttackResistanceModifier":
+                      case "physicalAttackResistanceModifier":
+                      case "magicalAttackResistanceModifier":
+                    }
+                    return (
+                      <div class="Field flex gap-1">
+                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-accent-color font-bold">{fieldValue as number}</span>
+                        <span class="text-dividing-color">{`[${valueType}]`}</span>
+                      </div>
+                    );
+                  }
+
+                  case ZodFirstPartyTypeKind.ZodBoolean: {
+                    return (
+                      <div class="Field flex gap-1">
+                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-accent-color font-bold">{fieldValue as boolean}</span>
+                        <span class="text-dividing-color">{`[${valueType}]`}</span>
+                      </div>
+                    );
+                  }
+
+                  case ZodFirstPartyTypeKind.ZodDate: {
+                    return (
+                      <div class="Field flex gap-1">
+                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-accent-color font-bold">{(fieldValue as Date).toLocaleDateString()}</span>
+                        <span class="text-dividing-color">{`[${valueType}]`}</span>
+                      </div>
+                    );
+                  }
+
+                  case ZodFirstPartyTypeKind.ZodEnum:
+                  // 字符串输入
+                  default: {
+                    if (fieldKey in defaultMob) {
+                      return (
+                        <div class="Field flex gap-1">
+                          <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                          <span class="text-accent-color font-bold">{fieldValue as string}</span>
+                          <span class="text-dividing-color">{`[${valueType}]`}</span>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div class="Field flex gap-1">
+                          <span class="text-main-text-color">{JSON.stringify(fieldKey, null, 2)}</span>:
+                          <span class="text-accent-color font-bold">{JSON.stringify(fieldValue, null, 2)}</span>
+                          <span class="text-dividing-color">{`[${valueType}]`}</span>
+                        </div>
+                      );
+                    }
+                  }
+                }
+              }
+            }}
+          </For>
+          <div class="flex items-center gap-1">
+            <Button class="ModifyBtn" disabled>
+              {dictionary().ui.actions.modify}
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -627,7 +825,7 @@ export default function MobIndexPage() {
       case "form":
         return form();
       case "card":
-        return card();
+        return card(displayedMob.latest ?? defaultMob);
     }
   });
 

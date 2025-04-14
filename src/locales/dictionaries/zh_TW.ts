@@ -39,6 +39,10 @@ const dictionary: dictionary = {
   ui: {
     searchPlaceholder: "這裡是搜尋框~",
     columnsHidden: "隱藏列",
+    boolean: {
+      true: "是",
+      false: "否",
+    },
     actions: {
       add: "新增",
       create: "建立",

@@ -10,6 +10,7 @@ import { createId } from "@paralleldrive/cuid2";
 export interface Mob extends DataType<mob> {
   MainTable: Awaited<ReturnType<typeof findMobs>>[number];
   MainForm: mob;
+  Card: Awaited<ReturnType<typeof findMobById>>
 }
 
 export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
@@ -101,6 +102,7 @@ export const defaultMob: Mob["Select"] = {
   id: "",
   name: "",
   type: "Boss",
+  initialElement: "Normal",
   captureable: false,
   actions: [],
   baseLv: 0,
@@ -119,7 +121,6 @@ export const defaultMob: Mob["Select"] = {
   physicalAttackResistanceModifier: 0,
   magicalAttackResistanceModifier: 0,
   partsExperience: 0,
-  initialElement: "Normal",
   details: "",
   dataSources: "",
   statisticId: "",
