@@ -10,9 +10,11 @@ const getDB = async (): Promise<Kysely<DB>> => {
 
   if (isServer) {
     const pg = await import("pg");
+    const dotenv = await import("dotenv");
+    const expand = await import("dotenv-expand");
+    expand.expand(dotenv.config()); // Fixed: Using expand.expand() instead of expand.default()
     const Pool = pg.default?.Pool ?? pg.Pool;
     const { PostgresDialect } = await import("kysely");
-
     const pool = new Pool({
       host: process.env.PG_HOST,
       user: process.env.PG_USERNAME,
