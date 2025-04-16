@@ -220,7 +220,7 @@ export default function SkillIndexPage() {
           <VirtualTable
             tableName="skill"
             itemList={skillList}
-            itemDic={SkillDic}
+            itemDic={dictionary().db.skill}
             tableColumns={skillColumns}
             tableHiddenColumns={skillTableHiddenColumns}
             tableTdGenerator={skillTdGenerator}
@@ -244,8 +244,8 @@ export default function SkillIndexPage() {
 
       <Portal>
         <Dialog state={dialogState()} setState={setDialogState}>
-          {/* <pre>{JSON.stringify(skill(), null, 2)}</pre> */}
-          <NodeEditor
+          null
+          {/* <NodeEditor
             data={async () => {
               await refetchSkill();
               return skill()!.effects[0].logic as Record<string, any>;
@@ -256,7 +256,7 @@ export default function SkillIndexPage() {
               // console.log("/////");
               await updateSkillEffect(curSkillEffect.id, { ...curSkillEffect, logic: data });
             }}
-          />
+          /> */}
         </Dialog>
       </Portal>
     </>

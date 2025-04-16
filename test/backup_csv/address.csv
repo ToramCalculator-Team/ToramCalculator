@@ -1,1 +1,2 @@
 id,name,type,posX,posY,worldId
+defaultAddressId,defaultAddress,Normal,0,0,defaultWorldId
