@@ -1,5 +1,5 @@
 import { type Mob } from "~/repositories/client/mob";
-import { dictionary } from "~/locales/dictionaries/type";
+import { dictionary } from "~/locales/type";
 import { getDictionary } from "~/locales/i18n";
 import { MobDifficultyFlag } from "../../db/kysely/enums";
 

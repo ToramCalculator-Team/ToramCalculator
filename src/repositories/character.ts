@@ -14,6 +14,7 @@ import { Locale } from "~/locales/i18n";
 export interface Character extends DataType<character> {
   MainTable: Awaited<ReturnType<typeof findCharacters>>[number];
   MainForm: character;
+  Card: Awaited<ReturnType<typeof findCharacterById>>;
 }
 
 export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {

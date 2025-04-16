@@ -1,7 +1,7 @@
 import { createMemo, createResource, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Cell, ColumnDef, flexRender } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
-import { type Mob, MobDic, createMob, defaultMob, findMobById, findMobs } from "~/repositories/mob";
+import { type Mob, createMob, defaultMob, findMobById, findMobs } from "~/repositories/mob";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -11,7 +11,6 @@ import VirtualTable from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
 import { Portal } from "solid-js/web";
 import Dialog from "~/components/controls/dialog";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
@@ -37,94 +36,94 @@ export default function MobIndexPage() {
   const mobColumns: ColumnDef<Mob["MainTable"]>[] = [
     {
       accessorKey: "id",
-      header: () => MobDic(store.settings.language).id,
+      header: () => dictionary().db.mob.fields.id,
       cell: (info) => info.getValue(),
       size: 200,
     },
     {
       accessorKey: "name",
-      header: () => MobDic(store.settings.language).name,
+      header: () => dictionary().db.mob.fields.name,
       cell: (info) => info.getValue(),
       size: 220,
     },
     {
       accessorKey: "type",
-      header: () => MobDic(store.settings.language).type,
+      header: () => dictionary().db.mob.fields.type,
       cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
       size: 160,
     },
     {
       accessorKey: "initialElement",
-      header: () => MobDic(store.settings.language).initialElement,
+      header: () => dictionary().db.mob.fields.initialElement,
       cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
       size: 200,
     },
     {
       accessorKey: "captureable",
-      header: () => MobDic(store.settings.language).captureable,
+      header: () => dictionary().db.mob.fields.captureable,
       cell: (info) => info.getValue<Boolean>().toString(),
       size: 160,
     },
     {
       accessorKey: "baseLv",
-      header: () => MobDic(store.settings.language).baseLv,
+      header: () => dictionary().db.mob.fields.baseLv,
       cell: (info) => info.getValue(),
       size: 160,
     },
     {
       accessorKey: "experience",
-      header: () => MobDic(store.settings.language).experience,
+      header: () => dictionary().db.mob.fields.experience,
       size: 180,
     },
     {
       accessorKey: "physicalDefense",
-      header: () => MobDic(store.settings.language).physicalDefense,
+      header: () => dictionary().db.mob.fields.physicalDefense,
       size: 200,
     },
     {
       accessorKey: "physicalResistance",
-      header: () => MobDic(store.settings.language).physicalResistance,
+      header: () => dictionary().db.mob.fields.physicalResistance,
       size: 200,
     },
     {
       accessorKey: "magicalDefense",
-      header: () => MobDic(store.settings.language).magicalDefense,
+      header: () => dictionary().db.mob.fields.magicalDefense,
       size: 200,
     },
     {
       accessorKey: "magicalResistance",
-      header: () => MobDic(store.settings.language).magicalResistance,
+      header: () => dictionary().db.mob.fields.magicalResistance,
       size: 200,
     },
     {
       accessorKey: "criticalResistance",
-      header: () => MobDic(store.settings.language).criticalResistance,
+      header: () => dictionary().db.mob.fields.criticalResistance,
       size: 200,
     },
     {
       accessorKey: "avoidance",
-      header: () => MobDic(store.settings.language).avoidance,
+      header: () => dictionary().db.mob.fields.avoidance,
       size: 160,
     },
     {
       accessorKey: "dodge",
-      header: () => MobDic(store.settings.language).dodge,
+      header: () => dictionary().db.mob.fields.dodge,
       size: 160,
     },
     {
       accessorKey: "block",
-      header: () => MobDic(store.settings.language).block,
+      header: () => dictionary().db.mob.fields.block,
       size: 160,
     },
     {
       accessorKey: "actions",
-      header: () => MobDic(store.settings.language).actions,
+      header: () => dictionary().db.mob.fields.actions,
       cell: (info) => JSON.stringify(info.getValue<Object>()),
       size: 160,
     },
     // {
     //   accessorKey: "belongToZones",
-    //   header: () => MobDic(store.settings.language).belongToZones,
+    //   header: () => dictionary().db.mob.fields.belongToZones,
     //   cell: (info) => info.getValue(),
     //   size: 150,
     // },
@@ -313,8 +312,8 @@ export default function MobIndexPage() {
                             const zodValue = mobSchema.shape[key];
                             return (
                               <Input
-                                title={MobDic(store.settings.language)[fieldKey].key}
-                                description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                                title={dictionary().db.mob.fields[fieldKey].key}
+                                description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                                 state={fieldInfo(field())}
                                 class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                               >
@@ -357,8 +356,8 @@ export default function MobIndexPage() {
                             const zodValue = mobSchema.shape[key];
                             return (
                               <Input
-                                title={MobDic(store.settings.language)[fieldKey].key}
-                                description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                                title={dictionary().db.mob.fields[fieldKey].key}
+                                description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                                 state={fieldInfo(field())}
                                 class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                               >
@@ -484,8 +483,8 @@ export default function MobIndexPage() {
                         }
                         return (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            title={dictionary().db.mob.fields[fieldKey].key}
+                            description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                             autocomplete="off"
                             type="number"
                             id={field().name}
@@ -519,8 +518,8 @@ export default function MobIndexPage() {
                         // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
                         return (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            title={dictionary().db.mob.fields[fieldKey].key}
+                            description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                             autocomplete="off"
                             type="text"
                             id={field().name}
@@ -560,8 +559,8 @@ export default function MobIndexPage() {
                       {(field) => {
                         return (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            title={dictionary().db.mob.fields[fieldKey].key}
+                            description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                             state={fieldInfo(field())}
                             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                           >
@@ -595,8 +594,8 @@ export default function MobIndexPage() {
                         const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
                         const defaultInputBox = (
                           <Input
-                            title={MobDic(store.settings.language)[fieldKey].key}
-                            description={MobDic(store.settings.language)[fieldKey].formFieldDescription}
+                            title={dictionary().db.mob.fields[fieldKey].key}
+                            description={dictionary().db.mob.fields[fieldKey].formFieldDescription}
                             autocomplete="off"
                             type="text"
                             id={field().name}
@@ -687,14 +686,12 @@ export default function MobIndexPage() {
               // 遍历怪物模型
               const fieldKey = _field[0] as keyof Mob["Card"];
               const fieldValue = _field[1];
-              console.log(fieldKey, fieldValue);
               // 过滤掉隐藏的数据
               if (mobCardHiddenFields.includes(fieldKey)) return;
               // 输入框的类型计算
               const zodValue = mobCardSchema.shape[fieldKey];
               // 判断字段类型
               const valueType = getZodType(zodValue);
-              // 由于数组类型的值与常规变量值存在结构差异，因此在此进行区分
 
               if (
                 [
@@ -758,7 +755,7 @@ export default function MobIndexPage() {
                     }
                     return (
                       <div class="Field flex gap-1">
-                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-main-text-color">{dictionary().db.mob.fields[key].key}</span>:
                         <span class="text-accent-color font-bold">{fieldValue as number}</span>
                         <span class="text-dividing-color">{`[${valueType}]`}</span>
                       </div>
@@ -768,7 +765,7 @@ export default function MobIndexPage() {
                   case ZodFirstPartyTypeKind.ZodBoolean: {
                     return (
                       <div class="Field flex gap-1">
-                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-main-text-color">{dictionary().db.mob.fields[key].key}</span>:
                         <span class="text-accent-color font-bold">{fieldValue as boolean}</span>
                         <span class="text-dividing-color">{`[${valueType}]`}</span>
                       </div>
@@ -778,7 +775,7 @@ export default function MobIndexPage() {
                   case ZodFirstPartyTypeKind.ZodDate: {
                     return (
                       <div class="Field flex gap-1">
-                        <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                        <span class="text-main-text-color">{dictionary().db.mob.fields[key].key}</span>:
                         <span class="text-accent-color font-bold">{(fieldValue as Date).toLocaleDateString()}</span>
                         <span class="text-dividing-color">{`[${valueType}]`}</span>
                       </div>
@@ -791,7 +788,7 @@ export default function MobIndexPage() {
                     if (fieldKey in defaultMob) {
                       return (
                         <div class="Field flex gap-1">
-                          <span class="text-main-text-color">{MobDic(store.settings.language)[key].key}</span>:
+                          <span class="text-main-text-color">{dictionary().db.mob.fields[key].key}</span>:
                           <span class="text-accent-color font-bold">{fieldValue as string}</span>
                           <span class="text-dividing-color">{`[${valueType}]`}</span>
                         </div>
@@ -965,7 +962,7 @@ export default function MobIndexPage() {
           <VirtualTable
             tableName="mob"
             itemList={mobList}
-            itemDic={MobDic}
+            itemDic={dictionary().db.mob}
             tableColumns={mobColumns}
             tableHiddenColumns={mobTableHiddenColumns}
             tableTdGenerator={mobTdGenerator}

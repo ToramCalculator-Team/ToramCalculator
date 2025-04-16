@@ -108,6 +108,10 @@ worker({
     const playerShape = await syncTable("player", ["id"]);
     const statisticShape = await syncTable("statistic", ["id"]);
     const imageShape = await syncTable("image", ["id"]);
+    const worldShape = await syncTable("world", ["id"]);
+    const addressShape = await syncTable("address", ["id"]);
+    const zoneShape = await syncTable("zone", ["id"])
+    const mobToZoneShape = await syncTable("_mobTozone", ["A", "B"], `"_mobTozone"`);
     const mobShape = await syncTable("mob", ["id"]);
     const itemShape = await syncTable("item", ["id"]);
     const weaponShape = await syncTable("weapon", ["itemId"]);
@@ -116,22 +120,22 @@ worker({
     const speEquipShape = await syncTable("special", ["itemId"]);
     const avatarShape = await syncTable("avatar", ["id"]);
     const crystalShape = await syncTable("crystal", ["itemId"]);
-    // const crystalToPlayerWeaponShape = await syncTable(
-    //   "_crystalToplayer_weapon",
-    //   ["A", "B"],
-    //   `"_crystalToplayer_weapon"`,
-    // );
-    // const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
-    // const crystalToPlayerOptEquipShape = await syncTable(
-    //   "_crystalToplayer_option",
-    //   ["A", "B"],
-    //   `"_crystalToplayer_option"`,
-    // );
-    // const crystalToPlayerSpeEquipShape = await syncTable(
-    //   "_crystalToplayer_special",
-    //   ["A", "B"],
-    //   `"_crystalToplayer_special"`,
-    // );
+    const crystalToPlayerWeaponShape = await syncTable(
+      "_crystalToplayer_weapon",
+      ["A", "B"],
+      `"_crystalToplayer_weapon"`,
+    );
+    const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
+    const crystalToPlayerOptEquipShape = await syncTable(
+      "_crystalToplayer_option",
+      ["A", "B"],
+      `"_crystalToplayer_option"`,
+    );
+    const crystalToPlayerSpeEquipShape = await syncTable(
+      "_crystalToplayer_special",
+      ["A", "B"],
+      `"_crystalToplayer_special"`,
+    );
     const skillShape = await syncTable("skill", ["id"]);
     const skillEffectShape = await syncTable("skill_effect", ["id"]);
     const playerWeponShape = await syncTable("player_weapon", ["id"]);

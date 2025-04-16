@@ -15,12 +15,12 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
-import { ConvertToAllDetail } from "~/repositories/client/untils";
 import { DB } from "~/../db/kysely/kyesely";
 import Button from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
 import { Locale } from "~/locales/i18n";
+import { ConvertToDic } from "~/locales/type";
 
 export default function VirtualTable<
   Item extends {
@@ -30,7 +30,7 @@ export default function VirtualTable<
 >(props: {
   tableName: keyof DB;
   itemList: Resource<Item[]>;
-  itemDic: (locale: Locale) => ConvertToAllDetail<Item>;
+  itemDic: ConvertToDic<Item>;
   tableColumns: ColumnDef<Item>[];
   tableHiddenColumns: Array<keyof Item>;
   tableTdGenerator: (props: { cell: Cell<Item, keyof Item> }) => JSX.Element;
@@ -241,8 +241,8 @@ export default function VirtualTable<
                             }`}
                           >
                             {
-                              props.itemDic(store.settings.language)[
-                                column.id as keyof ConvertToAllDetail<Item>
+                              props.itemDic.fields[
+                                column.id as keyof ConvertToDic<Item>
                               ].key
                             }
                             {{

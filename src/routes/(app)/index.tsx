@@ -27,7 +27,7 @@ import { type SkillEffect } from "~/repositories/skillEffect";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
-import { dictionary } from "~/locales/dictionaries/type";
+import { dictionary } from "~/locales/type";
 import Dialog from "~/components/controls/dialog";
 import { DB } from "~/../db/kysely/kyesely";
 import { findZoneById } from "~/repositories/zone";

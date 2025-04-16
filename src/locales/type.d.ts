@@ -1,4 +1,37 @@
-import { DataEnums } from "../../../db/dataEnums";
+import { DataEnums } from "../../db/dataEnums";
+import { DB } from "~/../db/kysely/kyesely";
+
+type FieldDescription = {
+  key: string;
+  tableFieldDescription: string;
+  formFieldDescription: string;
+};
+
+type EnumFieldDescription<Enum extends string> = FieldDescription & {
+  enumMap: Record<Enum, string>;
+};
+
+/**
+ * 判断 T 是否是 string literal union（不是 string 自身）
+ */
+type IsStringLiteralUnionOnly<T> = [T] extends [string] ? (string extends T ? false : true) : false;
+
+/**
+ * 字段字典结构：对 string literal union 字段加 enumMap
+ */
+type FieldDict<T> = {
+  [K in keyof T]: IsStringLiteralUnionOnly<T[K]> extends true
+    ? EnumFieldDescription<Extract<T[K], string>>
+    : FieldDescription;
+};
+
+/**
+ * 表描述结构
+ */
+export type ConvertToDic<T> = {
+  selfName: string;
+  fields: FieldDict<T>;
+};
 
 export interface dictionary {
   ui: {
@@ -7,7 +40,7 @@ export interface dictionary {
     boolean: {
       true: string;
       false: string;
-    }
+    };
     actions: {
       add: string;
       create: string;
@@ -187,6 +220,6 @@ export interface dictionary {
       description: string;
     };
   };
+  db: { [K in keyof DB]: ConvertToDic<DB[K]> };
   enums: DataEnums;
 }
-

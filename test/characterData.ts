@@ -1,6 +1,6 @@
 import { type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MainWeaponType } from "~/repositories/client/enums";
+import { MAIN_WEAPON_TYPE } from "../db/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,
@@ -233,10 +233,10 @@ export type SkillModifierType = keyof typeof SkillAttrEnum;
 export type AttrType = CharacterAttrType | mobAttrType | SkillModifierType;
 export type SourceName = AttrType | "SYSTEM";
 
-type MainHandWeaponType = MainWeaponType | "None";
+type MainHandHandType = (typeof MAIN_WEAPON_TYPE)[number] | "None";
 
 const weaponAbiT: Record<
-MainHandWeaponType,
+MainHandHandType,
   {
     baseHit: number;
     baseAspd: number;
@@ -731,7 +731,7 @@ const DefaultModifiersData: ModifiersData = {
   },
 };
 
-const characterData = (character: Character) => {
+const characterData = (character: Character["Card"]) => {
   const characterMap = new Map<CharacterAttrEnum, CharacterAttrData>();
   const d = (m: CharacterAttrType) => dynamicTotalValue(characterMap.get(CharacterAttrEnum[m]));
   const b = (m: CharacterAttrType) => baseValue(characterMap.get(CharacterAttrEnum[m]));

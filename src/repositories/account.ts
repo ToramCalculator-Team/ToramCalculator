@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Kysely, Transaction } from "kysely";
 import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType, withMaybeTransaction } from "./untils";
+import { ConvertToAllString, DataType } from "./untils";
 import { Locale } from "~/locales/i18n";
 import { account, DB } from "~/../db/kysely/kyesely";
 
