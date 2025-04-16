@@ -267,6 +267,11 @@ export const Setting = () => {
                       description: dictionary().ui.settings.about.description.description,
                       children: <></>,
                     },
+                    {
+                      title: "Repository",
+                      description: "Github Repository",
+                      children: <a target="_blank" href="https://github.com/ToramCalculator-Team/ToramCalculator" class="hover:underline">https://github.com/ToramCalculator-Team/ToramCalculator</a>
+                    }
                   ])}
                 </div>
               </OverlayScrollbarsComponent>
