@@ -6,12 +6,33 @@ import CheckBox from "~/components/controls/checkBox";
 import Toggle from "~/components/controls/toggle";
 import Radio from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { For, type JSX, Show, createMemo } from "solid-js";
+import { For, type JSX, Show, createMemo, createSignal } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
 
+// pwa的非标准类型定义
+type UserChoice = Promise<{
+  outcome: "accepted" | "dismissed";
+  platform: string;
+}>;
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: UserChoice;
+  prompt(): Promise<UserChoice>;
+}
+
 export const Setting = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [hasInstalled, setHasInstalled] = createSignal(true);
+  const [deferredPrompt, setDeferredPrompt] = createSignal<BeforeInstallPromptEvent | null>(null);
+
+  // pwa安装条件满足时
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    setDeferredPrompt(e as BeforeInstallPromptEvent);
+    setHasInstalled(false);
+  });
 
   const SettingPageContentModule = (
     moduleName: string,
@@ -270,8 +291,30 @@ export const Setting = () => {
                     {
                       title: "Repository",
                       description: "Github Repository",
-                      children: <a target="_blank" href="https://github.com/ToramCalculator-Team/ToramCalculator" class="hover:underline">https://github.com/ToramCalculator-Team/ToramCalculator</a>
-                    }
+                      children: (
+                        <a
+                          target="_blank"
+                          href="https://github.com/ToramCalculator-Team/ToramCalculator"
+                          class="hover:underline"
+                        >
+                          https://github.com/ToramCalculator-Team/ToramCalculator
+                        </a>
+                      ),
+                    },
+                    {
+                      title: "PWA",
+                      description: hasInstalled() ? "已安装" : "未安装",
+                      children: hasInstalled() ? null : (
+                        <Button
+                          onClick={async () => {
+                            deferredPrompt()?.prompt();
+                            setDeferredPrompt(null);
+                          }}
+                        >
+                          安装此应用
+                        </Button>
+                      ),
+                    },
                   ])}
                 </div>
               </OverlayScrollbarsComponent>

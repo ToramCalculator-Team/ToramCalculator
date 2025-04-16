@@ -1,15 +1,15 @@
 // import BabylonBg from "~/components/module/test2";
 import { Show, type ParentProps, createEffect, onMount, createSignal, on } from "solid-js";
-import { Motion } from "solid-motionone";
+import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { MediaProvider } from "~/contexts/Media-component";
 import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
 import BabylonBg from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
+import Button from "~/components/controls/button";
 
 export default function AppMainContet(props: ParentProps) {
-  const [hasInstalled, setHasInstalled] = createSignal(true);
   // 热键
   hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", function (event, handler) {
     switch (
@@ -90,12 +90,6 @@ export default function AppMainContet(props: ParentProps) {
     // console.log("本地存储更新");
   });
 
-  // pwa安装提示
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    setHasInstalled(false);
-  });
-
   onMount(() => {
     // 此组件挂载后移除全局加载动画
     const loader = document.getElementById("loader");
@@ -120,19 +114,6 @@ export default function AppMainContet(props: ParentProps) {
         class={`h-full w-full overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
       >
         {props.children}
-        {/* <Presence exitBeforeEnter>
-          <Show when={!hasInstalled() && !store.settings.hasDismissedPWAInstall}>
-            <Motion.div
-              onClick={() => setHasInstalled(true)}
-              animate={{ transform: "scale(1)", opacity: [0, 1] }}
-              exit={{ transform: "scale(1.05)", opacity: 0 }}
-              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`InstallPrompt fixed left-0 top-0 z-999 grid h-dvh w-dvw scale-[105%] place-items-center items-center bg-primary-color-90`}
-            >
-              <Button>检测到未安装</Button>
-            </Motion.div>
-          </Show>
-        </Presence> */}
       </Motion.div>
       <Setting />
     </MediaProvider>
