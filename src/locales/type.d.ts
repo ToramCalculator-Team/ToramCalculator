@@ -64,6 +64,8 @@ export interface dictionary {
       logOut: string;
       register: string;
       switchUser: string;
+      install: string;
+      unInstall: string;
     };
     nav: {
       home: string;
@@ -144,6 +146,20 @@ export interface dictionary {
         version: {
           title: string;
           description: string;
+        };
+      };
+      tool: {
+        title: string;
+        pwa: {
+          title: string;
+          description: string;
+          notSupported: string;
+        };
+        storageInfo: {
+          title: string;
+          description: string;
+          usage: string;
+          clearStorage: string;
         };
       };
     };

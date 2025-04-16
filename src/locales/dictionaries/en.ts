@@ -375,6 +375,8 @@ const dictionary: dictionary = {
       logOut: "Log Out",
       register: "Register",
       switchUser: "Switch User",
+      install: "Install",
+      unInstall: "UnInstall"
     },
     nav: {
       home: "Home",
@@ -456,7 +458,22 @@ const dictionary: dictionary = {
           title: "Version",
           description: "0.0.1-alpha",
         }
+      },
+      tool: {
+        title: "App Operations",
+        pwa: {
+          title: "PWA",
+          description: "This app is designed as a Progressive Web App (PWA), which can be installed on your device when supported to provide a better experience. It is not installed by default.",
+          notSupported: "PWA is not supported or already installed on this device"
+        },
+        storageInfo: {
+          title: "Storage Usage",
+          description: "Includes caches such as localStorage, IndexedDB, etc.",
+          usage: "Used",
+          clearStorage: "Clear all caches for this app"
+        }
       }
+      
     },
     index: {
       adventurer: "Adventurer",

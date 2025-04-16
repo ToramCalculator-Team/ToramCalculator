@@ -6,7 +6,7 @@ import CheckBox from "~/components/controls/checkBox";
 import Toggle from "~/components/controls/toggle";
 import Radio from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { For, type JSX, Show, createMemo, createSignal } from "solid-js";
+import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
 import { setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
 
@@ -22,10 +22,34 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<UserChoice>;
 }
 
+async function getStorageUsageInfo(): Promise<{
+  quota: number;
+  usage: number;
+  percent: string;
+}> {
+  if ("storage" in navigator && "estimate" in navigator.storage) {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    const percent = ((usage / quota) * 100).toFixed(2);
+    return {
+      usage,
+      quota,
+      percent: `${percent}%`,
+    };
+  } else {
+    return {
+      usage: 0,
+      quota: 0,
+      percent: "不支持",
+    };
+  }
+}
+
 export const Setting = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [hasInstalled, setHasInstalled] = createSignal(true);
   const [deferredPrompt, setDeferredPrompt] = createSignal<BeforeInstallPromptEvent | null>(null);
+  const [storageUsageInfo, { mutate: mutateStorageUsageInfo, refetch: refetchStorageUsageInfo }] =
+    createResource(getStorageUsageInfo);
 
   // pwa安装条件满足时
   window.addEventListener("beforeinstallprompt", (e) => {
@@ -301,18 +325,70 @@ export const Setting = () => {
                         </a>
                       ),
                     },
+                  ])}
+                  <Divider />
+                  {SettingPageContentModule("Tool", dictionary().ui.settings.tool.title, [
                     {
-                      title: "PWA",
-                      description: hasInstalled() ? "已安装或不支持PWA" : "可安装",
-                      children: hasInstalled() ? null : (
+                      title: dictionary().ui.settings.tool.pwa.title,
+                      description: dictionary().ui.settings.tool.pwa.description,
+                      children: hasInstalled() ? (
+                        dictionary().ui.settings.tool.pwa.notSupported
+                      ) : (
                         <Button
                           onClick={async () => {
                             deferredPrompt()?.prompt();
                             setDeferredPrompt(null);
                           }}
                         >
-                          安装此应用
+                          {dictionary().ui.actions.install}
                         </Button>
+                      ),
+                    },
+                    {
+                      title: dictionary().ui.settings.tool.storageInfo.title,
+                      description: dictionary().ui.settings.tool.storageInfo.description,
+                      children: (
+                        <>
+                          <p>
+                            {dictionary().ui.settings.tool.storageInfo.usage}:{" "}
+                            {((storageUsageInfo()?.usage ?? 0) / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <Button
+                            onClick={async () => {
+                              // 清除 localStorage 和 sessionStorage
+                              localStorage.clear();
+                              sessionStorage.clear();
+
+                              // 清除所有 IndexedDB 数据库
+                              const dbs = await indexedDB.databases?.();
+                              if (dbs && dbs.length > 0) {
+                                for (const db of dbs) {
+                                  if (db.name) {
+                                    indexedDB.deleteDatabase(db.name);
+                                  }
+                                }
+                              }
+
+                              // 清除 PWA Cache
+                              const cacheNames = await caches.keys();
+                              await Promise.all(cacheNames.map((name) => caches.delete(name)));
+
+                              // 注销所有 service workers
+                              if ("serviceWorker" in navigator) {
+                                const registrations = await navigator.serviceWorker.getRegistrations();
+                                await Promise.all(registrations.map((r) => r.unregister()));
+                              }
+
+                              mutateStorageUsageInfo({
+                                quota: 0,
+                                usage: 0,
+                                percent: "0",
+                              });
+                            }}
+                          >
+                            {dictionary().ui.settings.tool.storageInfo.clearStorage}
+                          </Button>
+                        </>
                       ),
                     },
                   ])}

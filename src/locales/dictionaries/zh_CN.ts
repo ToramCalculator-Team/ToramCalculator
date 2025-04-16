@@ -375,9 +375,11 @@ const dictionary: dictionary = {
       logOut: "登出",
       register: "注册",
       switchUser: "切换用户",
+      install: "安装",
+      unInstall: "卸载",
     },
     nav: {
-      home: "首页",
+      home: "首页", 
       mobs: "怪物",
       skills: "技能",
       equipments: "装备",
@@ -430,8 +432,7 @@ const dictionary: dictionary = {
         title: "隐私",
         postVisibility: {
           title: "作品可见性",
-          description:
-            "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
+          description: "作品可见性包括：角色、怪物、锻晶、主武器、副武器、身体装备、追加装备、特殊装备、宠物、技能、消耗品、连击、分析器。",
           everyone: "所有人可见",
           friends: "仅好友可见",
           onlyMe: "仅自己可见",
@@ -458,6 +459,20 @@ const dictionary: dictionary = {
           description: "0.0.1-alpha",
         },
       },
+      tool: {
+        title: "应用操作",
+        pwa: {
+          title: "PWA",
+          description: "此应用被设计完渐进式Web应用程序(PWA)，在条件允许的情况下可以安装到设备上以提供更优秀的体验，默认不安装。",
+          notSupported: "此设备不支持PWA或已安装"
+        },
+        storageInfo: {
+          title: "资源缓存占用情况",
+          description: "包含localstorage,indexedDB等多项缓存",
+          usage: "已使用",
+          clearStorage: "清除此应用的所有缓存"
+        }
+      }
     },
     index: {
       adventurer: "冒险者",

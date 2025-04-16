@@ -352,7 +352,7 @@ const dictionary: dictionary = {
       false: "否",
     },
     actions: {
-      add: "新增",
+      add: "新增", 
       create: "建立",
       remove: "刪除",
       update: "更新",
@@ -374,6 +374,8 @@ const dictionary: dictionary = {
       logOut: "登出",
       register: "註冊",
       switchUser: "切換用戶",
+      install: "安裝",
+      unInstall: "解除安裝",
     },
     nav: {
       home: "首頁",
@@ -429,8 +431,7 @@ const dictionary: dictionary = {
         title: "隱私",
         postVisibility: {
           title: "作品可見性",
-          description:
-            "作品可見性包括：角色、怪物、鍛晶、主武器、副武器、身體裝備、追加裝備、特殊裝備、寵物、技能、消耗品、連擊、分析器。",
+          description: "作品可見性包括：角色、怪物、鍛晶、主武器、副武器、身體裝備、追加裝備、特殊裝備、寵物、技能、消耗品、連擊、分析器。",
           everyone: "所有人可見",
           friends: "僅好友可見",
           onlyMe: "僅自己可見",
@@ -457,6 +458,21 @@ const dictionary: dictionary = {
           description: "0.0.1-alpha",
         },
       },
+      tool: {
+        title: "應用操作",
+        pwa: {
+          title: "PWA",
+          description: "此應用為漸進式網頁應用程式（PWA），若條件允許，可安裝至裝置以獲得更佳的體驗，預設為不安裝。",
+          notSupported: "此裝置不支援 PWA 或已安裝"
+        },
+        storageInfo: {
+          title: "資源快取使用情況",
+          description: "包含 localStorage、IndexedDB 等多項快取",
+          usage: "已使用",
+          clearStorage: "清除此應用的所有快取"
+        }
+      }
+      
     },
     index: {
       adventurer: "冒險者",

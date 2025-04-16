@@ -374,6 +374,8 @@ const dictionary: dictionary = {
       logOut: "ログアウト",
       register: "登録",
       switchUser: "ユーザー切り替え",
+      install: "インストール", 
+      unInstall: "アンインストール"
     },
     nav: {
       home: "ホーム",
@@ -459,6 +461,21 @@ const dictionary: dictionary = {
           description: "0.0.1-alpha",
         },
       },
+      tool: {
+        title: "アプリ操作",
+        pwa: {
+          title: "PWA",
+          description: "このアプリはプログレッシブウェブアプリ（PWA）として設計されており、条件が整えばデバイスにインストールしてより快適に利用できます（デフォルトではインストールされません）。",
+          notSupported: "このデバイスはPWAをサポートしていないか、すでにインストール済みです"
+        },
+        storageInfo: {
+          title: "ストレージ使用状況",
+          description: "localStorage、IndexedDB などのキャッシュを含みます",
+          usage: "使用済み",
+          clearStorage: "このアプリのすべてのキャッシュを削除する"
+        }
+      }
+      
     },
     index: {
       adventurer: "冒険者",
