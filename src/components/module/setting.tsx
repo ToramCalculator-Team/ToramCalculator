@@ -303,7 +303,7 @@ export const Setting = () => {
                     },
                     {
                       title: "PWA",
-                      description: hasInstalled() ? "已安装" : "未安装",
+                      description: hasInstalled() ? "已安装或不支持PWA" : "可安装",
                       children: hasInstalled() ? null : (
                         <Button
                           onClick={async () => {
