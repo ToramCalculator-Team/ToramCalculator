@@ -551,7 +551,6 @@ model player {
 
     name    String
     useIn   String
-    actions Json
 
     pets       player_pet[]
     weapons    player_weapon[]
@@ -825,6 +824,7 @@ model member {
     mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
     mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
+    actions Json
 
     belongToTeams team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
     teamId        String

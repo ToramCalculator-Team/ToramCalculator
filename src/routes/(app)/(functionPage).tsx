@@ -1,5 +1,5 @@
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, For, ParentProps, Show } from "solid-js";
+import { createMemo, For, onMount, ParentProps, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { useLocation } from "@solidjs/router";
@@ -312,7 +312,12 @@ const Nav = () => {
   );
 };
 
-export default function Home(props: ParentProps) {
+export default function FunctionPage(props: ParentProps) {
+  
+  onMount(() => {
+    console.log("--FunctionPage Render");
+  });
+
   return (
     <Motion.main class="flex h-full w-full flex-col-reverse lg:flex-row">
       <Nav />

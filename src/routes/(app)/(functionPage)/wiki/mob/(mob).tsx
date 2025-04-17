@@ -47,16 +47,16 @@ export default function MobIndexPage() {
       size: 220,
     },
     {
-      accessorKey: "type",
-      header: () => dictionary().db.mob.fields.type,
-      cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
-      size: 160,
-    },
-    {
       accessorKey: "initialElement",
       header: () => dictionary().db.mob.fields.initialElement,
       cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
       size: 200,
+    },
+    {
+      accessorKey: "type",
+      header: () => dictionary().db.mob.fields.type,
+      cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
+      size: 160,
     },
     {
       accessorKey: "captureable",
