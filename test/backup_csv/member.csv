@@ -1,3 +1,3 @@
-id,name,sequence,playerId,partnerId,mercenaryId,mobId,mobDifficultyFlag,teamId
-defaultMember1Id,defaultMember1,0,defaultPlayerId,,,,Easy,defaultTeamAId
-defaultMember2Id,defaultMember2,0,,,,clui55nha000111myotjx9ia0,Easy,defaultTeamBId
+id,name,sequence,playerId,partnerId,mercenaryId,mobId,mobDifficultyFlag,actions,teamId
+defaultMember1Id,defaultMember1,0,defaultPlayerId,,,,Easy,{},defaultTeamAId
+defaultMember2Id,defaultMember2,0,,,,clui55nha000111myotjx9ia0,Easy,{},defaultTeamBId
