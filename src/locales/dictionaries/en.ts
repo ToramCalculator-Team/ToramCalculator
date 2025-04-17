@@ -1604,7 +1604,7 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
-          enumMap:{
+          enumMap: {
             Easy: "",
             Normal: "",
             Hard: "",
@@ -1613,6 +1613,11 @@ const dictionary: dictionary = {
           }
         },
         teamId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1895,11 +1900,6 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""

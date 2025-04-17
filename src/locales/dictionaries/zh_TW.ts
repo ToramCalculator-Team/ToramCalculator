@@ -1616,6 +1616,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        actions: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
     },
     mercenary: {
@@ -1883,11 +1888,6 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
