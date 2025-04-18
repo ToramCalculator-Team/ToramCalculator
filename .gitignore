@@ -6,6 +6,7 @@ generated
 .vercel
 .netlify
 .vinxi
+bundle.tar.gz
 
 # Environment
 .env

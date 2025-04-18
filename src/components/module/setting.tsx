@@ -7,7 +7,7 @@ import Toggle from "~/components/controls/toggle";
 import Radio from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
-import { setStore, store } from "~/store";
+import { getActStore, setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
 
 // pwa的非标准类型定义
@@ -380,6 +380,10 @@ export const Setting = () => {
                               // 清除 localStorage 和 sessionStorage
                               localStorage.clear();
                               sessionStorage.clear();
+                              // 重置内存中的store
+                              setStore(getActStore())
+                              // 刷新页面
+                              window.location.reload();
 
                               // 清除所有 IndexedDB 数据库
                               const dbs = await indexedDB.databases?.();

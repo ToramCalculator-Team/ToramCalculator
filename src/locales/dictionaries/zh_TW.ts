@@ -471,7 +471,7 @@ const dictionary: dictionary = {
         },
         storageInfo: {
           title: "資源快取使用情況",
-          description: "包含 localStorage、IndexedDB 等多項快取",
+          description: "包含 localStorage、IndexedDB 等多項快取（将刷新頁面）",
           usage: "已使用",
           clearStorage: "清除此應用的所有快取"
         }

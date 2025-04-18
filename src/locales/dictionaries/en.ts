@@ -474,7 +474,7 @@ const dictionary: dictionary = {
           title: "Storage Usage",
           description: "Includes caches such as localStorage, IndexedDB, etc.",
           usage: "Used",
-          clearStorage: "Clear all caches for this app"
+          clearStorage: "Clear all caches for this app (Will refresh the page)"
         }
       }
       

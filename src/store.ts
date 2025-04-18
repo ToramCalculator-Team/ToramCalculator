@@ -133,7 +133,7 @@ const safeParse = (data: string) => {
   }
 };
 
-const getActStore = () => {
+export const getActStore = () => {
   const isBrowser = typeof window !== "undefined";
   if (isBrowser) {
     const storage = localStorage.getItem("store");

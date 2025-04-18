@@ -474,7 +474,7 @@ const dictionary: dictionary = {
           title: "资源缓存占用情况",
           description: "包含localstorage,indexedDB等多项缓存",
           usage: "已使用",
-          clearStorage: "清除此应用的所有缓存"
+          clearStorage: "清除此应用的所有缓存（将刷新页面）"
         }
       }
     },

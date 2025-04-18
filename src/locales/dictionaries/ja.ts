@@ -475,7 +475,7 @@ const dictionary: dictionary = {
           title: "ストレージ使用状況",
           description: "localStorage、IndexedDB などのキャッシュを含みます",
           usage: "使用済み",
-          clearStorage: "このアプリのすべてのキャッシュを削除する"
+          clearStorage: "このアプリのすべてのキャッシュを削除する（ページをリフレッシュします）",
         }
       }
       
