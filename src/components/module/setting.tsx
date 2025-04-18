@@ -178,6 +178,28 @@ export const Setting = () => {
                   <Divider />
                   {SettingPageContentModule("UserInterface", dictionary().ui.settings.userInterface.title, [
                     {
+                      title: dictionary().ui.settings.userInterface.colorTheme.title,
+                      description: dictionary().ui.settings.userInterface.colorTheme.description,
+                      children: (
+                        <div class="Selector flex flex-col">
+                          <Radio
+                            name={"Light"}
+                            checked={store.theme === "light"}
+                            onClick={() => setStore("theme", "light")}
+                          >
+                            Light
+                          </Radio>
+                          <Radio
+                            name="Dark"
+                            checked={store.theme === "dark"}
+                            onClick={() => setStore("theme", "dark")}
+                          >
+                            Dark
+                          </Radio>
+                        </div>
+                      ),
+                    },
+                    {
                       title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
                       description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
                       children: (

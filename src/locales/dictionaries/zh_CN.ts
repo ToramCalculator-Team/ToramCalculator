@@ -405,6 +405,10 @@ const dictionary: dictionary = {
           title: "开启3D效果",
           description: "可能会产生大量性能损耗，不推荐开启。",
         },
+        colorTheme: {
+          title: "颜色模式",
+          description: "只有普普通通的白天模式和黑暗模式"
+        }
       },
       language: {
         title: "语言偏好",
@@ -1615,6 +1619,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        actions: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
     },
     mercenary: {
@@ -1882,11 +1891,6 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",

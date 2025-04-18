@@ -44,11 +44,13 @@ export default function AppMainContet(props: ParentProps) {
       () => {
         console.log("主题切换");
         document.documentElement.classList.add("transitionColorNone");
+        setStore("settings", "userInterface", "isAnimationEnabled", false);
         document.documentElement.classList.remove("light", "dark");
         document.documentElement.classList.add(store.theme);
         setTimeout(() => {
           document.documentElement.classList.remove("transitionColorNone");
-        }, 500);
+          setStore("settings", "userInterface", "isAnimationEnabled", true);
+        }, 1);
       },
       {
         defer: true,

@@ -398,13 +398,16 @@ const dictionary: dictionary = {
         title: "外観",
         isAnimationEnabled: {
           title: "アニメーションを有効にする",
-          description:
-            "すべてのページの遷移とアニメーション効果の持続時間に影響します。このコンフィグで制御されていないアニメーションがある場合は、ご報告ください。",
+          description: "すべてのページの遷移とアニメーション効果の持続時間に影響します。このコンフィグで制御されていないアニメーションがある場合は、ご報告ください。",
         },
         is3DbackgroundDisabled: {
           title: "3D背景を無効にする",
           description: "3D背景を無効にすると、大量の性能損失が発生しますが、推奨されません。",
         },
+        colorTheme: {
+          title: "色のテーマ",
+          description: "普通の白天と黒夜しかありません。",
+        }
       },
       language: {
         title: "言語",
@@ -1606,7 +1609,7 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
-          enumMap:{
+          enumMap: {
             Easy: "",
             Normal: "",
             Hard: "",
@@ -1615,6 +1618,11 @@ const dictionary: dictionary = {
           }
         },
         teamId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1896,11 +1904,6 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""

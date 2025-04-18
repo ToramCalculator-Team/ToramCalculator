@@ -396,6 +396,10 @@ const dictionary: dictionary = {
       title: "設定",
       userInterface: {
         title: "外觀",
+        colorTheme: {
+          title: "主題色",
+          description: "只有普普通通的白天模式和黑暗模式",
+        },
         isAnimationEnabled: {
           title: "是否開啟動畫",
           description: "將影響所有頁面的過渡和動畫效果持續時間。",
@@ -1616,6 +1620,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        actions: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
     },
     mercenary: {
@@ -1883,11 +1892,6 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",

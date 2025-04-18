@@ -404,6 +404,10 @@ const dictionary: dictionary = {
         is3DbackgroundDisabled: {
           title: "Disable 3D Background",
           description: "May cause a lot of performance loss, not recommended.",
+        },
+        colorTheme: {
+          title: "Color Theme",
+          description: "...",
         }
       },
       language: {
@@ -1604,7 +1608,7 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
-          enumMap:{
+          enumMap: {
             Easy: "",
             Normal: "",
             Hard: "",
@@ -1613,6 +1617,11 @@ const dictionary: dictionary = {
           }
         },
         teamId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1895,11 +1904,6 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         },
         useIn: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        },
-        actions: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
