@@ -1,13 +1,14 @@
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, For, onMount, ParentProps, Show } from "solid-js";
+import { createMemo, For, onMount, ParentProps, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
-import { useLocation } from "@solidjs/router";
+import { useLocation, useNavigate } from "@solidjs/router";
 import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import Button from "~/components/controls/button";
 import { DataEnums } from "../../../db/dataEnums";
+import { MediaContext } from "~/contexts/Media";
 
 const NavBtn = (props: {
   config: {
@@ -23,7 +24,7 @@ const NavBtn = (props: {
       href={props.config.url}
       tabIndex={0}
       class={
-        `NavBtn w-[20dvw] landscape:w-auto btn-${props.config.btnName} group flex shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:gap-1` +
+        `NavBtn w-[20dvw] landscape:w-auto btn-${props.config.btnName} group flex shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden landscape:gap-1` +
         " " +
         props.class
       }
@@ -33,7 +34,7 @@ const NavBtn = (props: {
       >
         {props.config.icon}
       </div>
-      <div class="hidden text-xs lg:block">{props.config.btnName}</div>
+      <div class="hidden text-xs landscape:block">{props.config.btnName}</div>
     </a>
   );
 };
@@ -47,13 +48,17 @@ const Divider = () => (
 const Nav = () => {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
-  const [isWikiOpen, setIsWikiOpen] = createSignal(false);
-  const [isNavDialogOpen, setIsNavDialogOpen] = createSignal(false);
-  const [wikiClass, setWikiClass] = createSignal<keyof DataEnums>("mob");
-  const [wikiTableFilterRef, setWikiTableFilterRef] = createSignal<HTMLInputElement>();
+  const navigate = useNavigate();
+  const media = useContext(MediaContext);
   const location = useLocation();
-  const active = (path: string) => (location.pathname.includes(path) ? "bg-area-color lg:bg-brand-color-1st" : "");
-  const [isPc] = createSignal(window.innerWidth > 1024);
+  const active = (path: string) => {
+    let condition = false;
+    if (path === "/") {
+    } else if (location.pathname.includes(path)) {
+      condition = true;
+    }
+    return condition ? "bg-area-color lg:bg-brand-color-1st" : "";
+  };
   const navHiddenTables: (keyof DataEnums)[] = [
     "verification_token",
     "account",
@@ -87,25 +92,23 @@ const Nav = () => {
 
   return (
     <Motion.div
-      animate={{ transform: [isPc() ? "translateX(-30%)" : "translateY(100%)", "translateY(0)"], opacity: [0, 1] }}
+      animate={{
+        transform: [media.orientation === "landscape" ? "translateX(-30%)" : "translateY(100%)", "translateY(0)"],
+        opacity: [0, 1],
+      }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav ${isNavDialogOpen() ? "z-50" : "z-10"} bg-primary-color lg:bg-area-color flex w-dvw items-center landscape:gap-8 py-2 lg:h-dvh lg:w-24 lg:flex-col lg:py-5`}
+      class={`Nav bg-primary-color lg:landscape:bg-area-color flex w-dvw items-center py-2 landscape:h-dvh landscape:w-24 landscape:flex-col landscape:gap-2 landscape:py-5 lg:landscape:gap-8`}
     >
-
-      <a
-        href={"/"}
-        class="Home group hidden landscape:block"
-        tabIndex={1}
-      >
+      <a href={"/"} class="Home group hidden landscape:block" tabIndex={1}>
         <Icon.Line.Logo />
       </a>
       <OverlayScrollbarsComponent
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
-        class="w-full! h-full"
+        class="h-full w-full!"
       >
-        <div class="NavBtnGroup item-center flex landscape:flex-col shrink">
+        <div class="NavBtnGroup item-center flex shrink landscape:flex-col">
           <NavBtn
             config={{
               btnName: dictionary().ui.nav.home,
@@ -124,7 +127,7 @@ const Nav = () => {
             active={active}
             class="Home landscape:hidden"
           />
-          <div class="WikiGroup hidden landscape:flex items-center landscape:flex-col">
+          <div class="WikiGroup hidden items-center landscape:flex landscape:flex-col">
             <NavBtn
               config={{
                 btnName: dictionary().ui.nav.mobs,
@@ -132,7 +135,7 @@ const Nav = () => {
                 url: "/wiki/mob",
               }}
               active={active}
-              class="hidden lg:flex lg:w-auto"
+              class="hidden landscape:flex landscape:w-auto"
             />
             <NavBtn
               config={{
@@ -176,9 +179,9 @@ const Nav = () => {
             />
           </div>
           <Divider />
-          <div class="CalculatorGroup flex items-center lg:flex-col lg:gap-0">
+          <div class="CalculatorGroup flex items-center landscape:flex-col landscape:gap-0">
             <div
-              class={`ModuleSwitcher  flex w-[20dvw] items-center justify-center lg:hidden`}
+              class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}
               onClick={() => console.log("/simulator/defaultSimulatorId")}
             >
               <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
@@ -194,7 +197,7 @@ const Nav = () => {
                 url: "/character/defaultCharacterId",
               }}
               active={active}
-              class={`w-[20dvw] lg:w-auto `}
+              class={`w-[20dvw] landscape:w-auto`}
             />
             <NavBtn
               config={{
@@ -203,26 +206,19 @@ const Nav = () => {
                 url: "/character/defaultSimulatorId",
               }}
               active={active}
-              class={`w-[20dvw] lg:w-auto hidden landscape:flex`}
+              class={`hidden w-[20dvw] landscape:flex landscape:w-auto`}
             />
           </div>
         </div>
       </OverlayScrollbarsComponent>
-      <div class={`FunBtnGroup items-center justify-center gap-3 lanscape:flex lanscape:flex-col`}>
-        <Button
+      <div class={`FunBtnGroup lanscape:flex lanscape:flex-col items-center justify-center gap-3`}>
+        {/* <Button
           level="quaternary"
-          class="hidden rounded-full bg-transparent px-2 py-2 lg:flex"
+          class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
           onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
         >
           <Icon.Line.Light />
-        </Button>
-        <Button
-          level="quaternary"
-          class="hidden rounded-full bg-transparent px-2 py-2 lg:flex"
-          onClick={() => setStore("settingsDialogState", true)}
-        >
-          <Icon.Line.Settings />
-        </Button>
+        </Button> */}
         <NavBtn
           config={{
             btnName: dictionary().ui.nav.profile,
@@ -230,28 +226,34 @@ const Nav = () => {
             url: "/profile",
           }}
           active={active}
-          class="w-[20dvw] lg:hidden"
+          class="w-[20dvw] landscape:hidden"
         />
+        <Button
+          level="quaternary"
+          class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
+          onClick={() => setStore("settingsDialogState", true)}
+        >
+          <Icon.Line.Settings />
+        </Button>
       </div>
     </Motion.div>
   );
 };
 
 export default function FunctionPage(props: ParentProps) {
-
   onMount(() => {
     console.log("--FunctionPage Render");
   });
 
   return (
-    <Motion.main class="flex h-full w-full flex-col-reverse lg:flex-row">
+    <Motion.main class="flex h-full w-full flex-col-reverse landscape:flex-row">
       <Nav />
       {/* <OverlayScrollbarsComponent
         element="div"
         options={{ scrollbars: { autoHide: "scroll" } }}
         defer
         id="mainContent"
-        class="z-40 h-full w-full lg:landscape:px-12 bg-primary-color-90"
+        class="z-40 h-full w-full landscape:landscape:px-12 bg-primary-color-90"
         style={{
           "transition-duration": "all 0s !important"
         }}
