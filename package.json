@@ -9,6 +9,7 @@
     "generate:client-ddl": "prisma migrate diff --from-empty --to-schema-datasource db/clientDB/schema.prisma --script > db/clientDB/ddl.sql",
     "generate:type": "prisma generate --schema=db/clientDB/schema.prisma",
     "clear-build":"rm -rf .vinxi/ .output bundle.tar.gz",
+    "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
