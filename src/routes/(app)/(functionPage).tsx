@@ -23,7 +23,7 @@ const NavBtn = (props: {
       href={props.config.url}
       tabIndex={0}
       class={
-        `NavBtn btn-${props.config.btnName} group flex shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:gap-1` +
+        `NavBtn w-[20dvw] landscape:w-auto btn-${props.config.btnName} group flex shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:gap-1` +
         " " +
         props.class
       }
@@ -89,71 +89,32 @@ const Nav = () => {
     <Motion.div
       animate={{ transform: [isPc() ? "translateX(-30%)" : "translateY(100%)", "translateY(0)"], opacity: [0, 1] }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav ${isNavDialogOpen() ? "z-50" : "z-10"} bg-primary-color lg:bg-area-color flex w-dvw items-center justify-between py-2 lg:h-dvh lg:w-24 lg:flex-col lg:py-5`}
+      class={`Nav ${isNavDialogOpen() ? "z-50" : "z-10"} bg-primary-color lg:bg-area-color flex w-dvw items-center landscape:gap-8 py-2 lg:h-dvh lg:w-24 lg:flex-col lg:py-5`}
     >
-      <div class="NavBtnGroup flex items-center overflow-y-hidden lg:flex-col lg:gap-0">
-        <a
-          href={"/"}
-          class="Home group hidden w-[20dvw] shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:flex lg:w-auto lg:p-0 lg:pb-6"
-          tabIndex={1}
-        >
-          <div class="iconArea group-hover:bg-brand-color-1st group-focus:bg-brand-color-1st rounded-full px-4 py-1 lg:hidden">
-            <Icon.Line.Home />
-          </div>
-          <Icon.Line.Logo class="hidden lg:block" />
-          <div class="text-xs lg:hidden">{dictionary().ui.nav.home}</div>
-        </a>
-        <div class="WikiGroup flex items-center overflow-y-hidden lg:flex-col">
-          {/* 移动端wiki切换按钮 */}
-          <a
-            href={`/wiki/${wikiClass()}`}
-            onclick={() => {
-              if (active(`/wiki/`)) setIsWikiOpen(!isWikiOpen());
+
+      <a
+        href={"/"}
+        class="Home group hidden landscape:block"
+        tabIndex={1}
+      >
+        <Icon.Line.Logo />
+      </a>
+      <OverlayScrollbarsComponent
+        element="div"
+        options={{ scrollbars: { autoHide: "scroll" } }}
+        defer
+        class="w-full! h-full"
+      >
+        <div class="NavBtnGroup item-center flex landscape:flex-col shrink">
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.home,
+              icon: <Icon.Line.Home />,
+              url: "/",
             }}
-            tabIndex={0}
-            class={`NavBtn btn-Wiki group flex w-[20dvw] shrink-0 flex-col items-center gap-0.5 px-1 py-2 outline-hidden focus-within:outline-hidden lg:hidden lg:gap-1`}
-          >
-            <div
-              class={`iconArea rounded-full p-3 lg:px-4 lg:py-1 ${active(`/wiki/${wikiClass()}`)} group-hover:bg-area-color group-focus:bg-area-color lg:group-hover:bg-brand-color-1st lg:group-focus:bg-brand-color-1st`}
-            >
-              <Show
-                when={isWikiOpen()}
-                fallback={
-                  <Motion.div
-                    animate={{ transform: ["rotate(90deg)", "none"] }}
-                    transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                    class="h-6 w-6"
-                  >
-                    <Icon.Line.Calendar />
-                  </Motion.div>
-                }
-              >
-                <Motion.div
-                  animate={{ transform: ["rotate(90deg)", "none"] }}
-                  transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  class="h-6 w-6"
-                >
-                  <Icon.Line.Category2 />
-                </Motion.div>
-              </Show>
-            </div>
-            <div class="hidden text-xs lg:block">Wiki</div>
-          </a>
-          <Show when={isWikiOpen()}>
-            <div class={`${isWikiOpen() ? "" : ""} WikiPageMeun flex h-full w-full items-center gap-1 pr-3`}>
-              <Button class="bg-primary-color!" onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}>
-                <Icon.Line.Receipt />
-              </Button>
-              <input
-                // onInput={() => setStore("wiki", "filterStr", wikiTableFilterRef()?.value ?? "")}
-                ref={setWikiTableFilterRef}
-                class="bg-area-color w-full rounded p-3"
-              />
-              <Button class="bg-primary-color!">
-                <Icon.Line.Settings />
-              </Button>
-            </div>
-          </Show>
+            active={active}
+            class="Home landscape:hidden"
+          />
           <NavBtn
             config={{
               btnName: dictionary().ui.nav.mobs,
@@ -161,15 +122,18 @@ const Nav = () => {
               url: "/wiki/mob",
             }}
             active={active}
-            class="hidden lg:flex lg:w-auto"
+            class="Home landscape:hidden"
           />
-          <Divider />
-          <OverlayScrollbarsComponent
-            element="div"
-            options={{ scrollbars: { autoHide: "scroll" } }}
-            defer
-            class="SubGroup hidden! shrink flex-col overflow-y-auto lg:flex!"
-          >
+          <div class="WikiGroup hidden landscape:flex items-center landscape:flex-col">
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.mobs,
+                icon: <Icon.Line.Calendar />,
+                url: "/wiki/mob",
+              }}
+              active={active}
+              class="hidden lg:flex lg:w-auto"
+            />
             <NavBtn
               config={{
                 btnName: dictionary().ui.nav.skills,
@@ -210,38 +174,41 @@ const Nav = () => {
               }}
               active={active}
             />
-          </OverlayScrollbarsComponent>
-        </div>
-        <Divider />
-        <NavBtn
-          config={{
-            btnName: dictionary().ui.nav.character,
-            icon: <Icon.Line.Gamepad />,
-            url: "/character/defaultCharacterId",
-          }}
-          active={active}
-          class={`w-[20dvw] lg:w-auto ${isWikiOpen() ? "hidden" : ""}`}
-        />
-        <div
-          class={`ModuleSwitcher ${isWikiOpen() ? "hidden" : ""} flex w-[20dvw] items-center justify-center lg:hidden`}
-        >
-          <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
-            <div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
-              53
+          </div>
+          <Divider />
+          <div class="CalculatorGroup flex items-center lg:flex-col lg:gap-0">
+            <div
+              class={`ModuleSwitcher  flex w-[20dvw] items-center justify-center lg:hidden`}
+              onClick={() => console.log("/simulator/defaultSimulatorId")}
+            >
+              <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
+                <div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
+                  53
+                </div>
+              </div>
             </div>
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.character,
+                icon: <Icon.Line.Gamepad />,
+                url: "/character/defaultCharacterId",
+              }}
+              active={active}
+              class={`w-[20dvw] lg:w-auto `}
+            />
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.simulator,
+                icon: <Icon.Line.Filter />,
+                url: "/character/defaultSimulatorId",
+              }}
+              active={active}
+              class={`w-[20dvw] lg:w-auto hidden landscape:flex`}
+            />
           </div>
         </div>
-        <NavBtn
-          config={{
-            btnName: dictionary().ui.nav.simulator,
-            icon: <Icon.Line.Filter />,
-            url: "/simulator/defaultSimulatorId",
-          }}
-          active={active}
-          class={`w-[20dvw] lg:w-auto ${isWikiOpen() ? "hidden" : ""}`}
-        />
-      </div>
-      <div class={`FunBtnGroup ${isWikiOpen() ? "hidden" : ""} items-center justify-center gap-3 lg:flex lg:flex-col`}>
+      </OverlayScrollbarsComponent>
+      <div class={`FunBtnGroup items-center justify-center gap-3 lanscape:flex lanscape:flex-col`}>
         <Button
           level="quaternary"
           class="hidden rounded-full bg-transparent px-2 py-2 lg:flex"
@@ -266,54 +233,12 @@ const Nav = () => {
           class="w-[20dvw] lg:hidden"
         />
       </div>
-
-      <Presence exitBeforeEnter>
-        <Show when={isNavDialogOpen()}>
-          <Motion.div
-            animate={{ opacity: [0, 1] }}
-            exit={{ opacity: [1, 0] }}
-            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-            class={`NavDialogBox bg-area-color fixed bottom-0 left-0 z-50 flex h-dvh w-dvw flex-col items-center`}
-          >
-            <div
-              class={`DialogCloseBtn block flex-1 cursor-pointer self-stretch`}
-              onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}
-            ></div>
-            <Motion.div
-              animate={{ transform: ["scale(1.05)", "scale(1)"] }}
-              exit={{ transform: ["scale(1)", "scale(1.05)"] }}
-              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`DialogContent bg-primary-color shadow-dividing-color flex min-h-12 w-[calc(100%-48px)] flex-wrap items-center overflow-y-auto rounded shadow-2xl`}
-            >
-              <For each={Object.keys(dictionary().enums)}>
-                {(_schemaKey, index) => {
-                  const schemaKey = _schemaKey as keyof DataEnums;
-                  if (navHiddenTables.includes(schemaKey)) return null;
-                  return (
-                    <a
-                      class={`${schemaKey} w-1/3 overflow-hidden p-3 text-ellipsis`}
-                      onClick={() => setWikiClass(schemaKey)}
-                      href={`/wiki/${wikiClass()}`}
-                    >
-                      {schemaKey}
-                    </a>
-                  );
-                }}
-              </For>
-            </Motion.div>
-            <div
-              class="DialogCloseBtn h-20 cursor-pointer self-stretch"
-              onClick={() => setIsNavDialogOpen(!isNavDialogOpen())}
-            ></div>
-          </Motion.div>
-        </Show>
-      </Presence>
     </Motion.div>
   );
 };
 
 export default function FunctionPage(props: ParentProps) {
-  
+
   onMount(() => {
     console.log("--FunctionPage Render");
   });

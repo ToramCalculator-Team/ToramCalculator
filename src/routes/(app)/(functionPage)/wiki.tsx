@@ -4,10 +4,12 @@ import { setStore, store } from "~/store";
 import * as Icon from "~/components/icon";
 import Button from "~/components/controls/button";
 import { Motion, Presence } from "solid-motionone";
+import { DB } from "~/../db/kysely/kyesely";
 
 export default function WikiPage(props: ParentProps) {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [tableType, setTableType] = createSignal<keyof DB>("mob");
 
   onMount(() => {
     console.log("--WikiPage Render");
