@@ -8,7 +8,7 @@ import serviceWorkerUrl from "~/worker/service.worker?worker&url";
 
 // console.log("entry-client");
 
-// 资源加载进度
+// 资源加载进度显示
 const resourceList = document.getElementById("resource-list")!;
 if (resourceList) {
   let totalResources = 32;

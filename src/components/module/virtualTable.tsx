@@ -11,7 +11,7 @@ import {
   Show,
   useContext,
 } from "solid-js";
-import { Cell, Column, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
+import { Cell, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
@@ -21,8 +21,8 @@ import { DB } from "~/../db/kysely/kyesely";
 import Button from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { Locale } from "~/locales/i18n";
 import { ConvertToDic } from "~/locales/type";
+import { getCommonPinningStyles } from "~/lib/table";
 
 export default function VirtualTable<
   Item extends {
@@ -40,24 +40,6 @@ export default function VirtualTable<
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
   const media = useContext(MediaContext);
-  // 列固定
-  const getCommonPinningStyles = (column: Column<Item>): JSX.CSSProperties => {
-    const isPinned = column.getIsPinned();
-    const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-    const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
-    const styles: JSX.CSSProperties = {
-      position: isPinned ? "sticky" : "relative",
-      width: column.getSize().toString(),
-      "z-index": isPinned ? 1 : 0,
-    };
-    if (isPinned) {
-      styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-      styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-      styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
-    }
-    return styles;
-  };
-
   const handleMouseDown = (id: string, e: MouseEvent) => {
     if (e.button !== 0) return;
     const startX = e.pageX;

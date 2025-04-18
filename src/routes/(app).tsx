@@ -7,7 +7,6 @@ import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
 import BabylonBg from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
-import Button from "~/components/controls/button";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键

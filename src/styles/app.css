@@ -7,6 +7,8 @@
 @import url(blockly.css);
 @import url(overlayscrollbars.css);
 
+@source inline("text-brand-color-1st text-brand-color-2nd text-brand-color-3rd");
+
 @plugin '@tailwindcss/typography';
 
 @custom-variant dark (&:is(.dark *));

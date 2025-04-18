@@ -998,10 +998,10 @@ export default function MobIndexPage() {
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.mob.news.title}</div>
-              <div class="Content flex flex-1 flex-col">
+              <div class="Content flex flex-1 flex-col gap-3">
                 <For each={[0, 1, 2]}>
                   {() => {
-                    return <div></div>;
+                    return <div class="Item w-full h-full flex-1 bg-area-color rounded"></div>;
                   }}
                 </For>
               </div>

@@ -1,3 +1,4 @@
+# 后端服务镜像配置文件，将会运行一个 PostgreSQL 数据库和一个 Electric 服务
 name: "toram-calculator"
 
 services:

@@ -28,6 +28,8 @@ import { GIRSM } from "@babylonjs/core/Rendering/GlobalIllumination/giRSM";
 import { ReflectiveShadowMap } from "@babylonjs/core/Rendering/reflectiveShadowMap";
 import { GIRSMManager } from "@babylonjs/core/Rendering/GlobalIllumination/giRSMManager";
 
+// 随机球背景
+
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
 const cssColors = {

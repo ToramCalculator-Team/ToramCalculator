@@ -20,6 +20,8 @@ import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
 
+// 模拟无限宽平面
+
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
 const cssColors = {

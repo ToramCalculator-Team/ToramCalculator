@@ -1,3 +1,4 @@
+// 用于向本地数据库添加 FTS，在nodejs环境下运行后，将会对ddl.sql文件进行修改
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

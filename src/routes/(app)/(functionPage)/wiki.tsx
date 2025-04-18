@@ -15,5 +15,14 @@ export default function WikiPage(props: ParentProps) {
     console.log("--WikiPage Render");
   });
 
-  return <>{props.children}</>;
+  return (
+      <Motion.div
+        animate={{ opacity: [0, 1] }}
+        transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+        id="WikiContainer"
+        class="WikiContainer flex h-full w-full flex-col"
+      >
+        {props.children}
+      </Motion.div>
+  );
 }

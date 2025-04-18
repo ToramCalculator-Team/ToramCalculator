@@ -634,7 +634,7 @@ export default function Index() {
                           <Motion.a
                             tabIndex={2}
                             href={menuItem.href}
-                            class={`text-brand-color-1st text-brand-color-2nd text-brand-color-3rd flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
+                            class={`flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
                             animate={{
                               opacity: [0, 1],
                               transform: ["scale(0.1)", "scale(1)"],
