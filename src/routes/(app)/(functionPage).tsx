@@ -259,7 +259,7 @@ export default function FunctionPage(props: ParentProps) {
         }}
       > */}
       <Motion.div
-        animate={{ opacity: 1 }}
+        animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         id="mainContent"
         class="Content bg-primary-color-90 z-40 flex h-full w-full flex-col overflow-hidden lg:landscape:px-12"

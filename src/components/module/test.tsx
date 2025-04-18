@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import LoadingBox from "~/components/loadingBar";
+import { LoadingBar} from "~/components/loadingBar";
 import { store } from "~/store";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
@@ -467,7 +467,7 @@ export default function BabylonBg(): JSX.Element {
           <h1 ref={progress!} class="animate-pulse">
             加载中...
           </h1>
-          <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />
+          <LoadingBar class="w-[92dvw] lg:w-[80dvw]" />
         </div>
       </div>
     </>

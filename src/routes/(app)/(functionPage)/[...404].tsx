@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import LoadingBox from "~/components/loadingBar";
+import { LoadingBar } from "~/components/loadingBar";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
@@ -61,7 +61,7 @@ export default function Loading() {
       <div class="LoadingMask1 fixed left-0 top-0 h-full w-full bg-linear-to-b from-primary-color from-5% to-primary-color-0 to-20% lg:from-5% lg:to-25%"></div>
       <div class="LoadingState fixed h-fit bottom-[calc(2%+67px)] left-[4dvw] flex flex-col gap-3 lg:left-[10dvw] lg:top-[97%] lg:-translate-y-full">
         <h1 class="animate-pulse">{dictionary().ui.errorPage.tips}</h1>
-        <LoadingBox class="w-[92dvw] lg:w-[80dvw]" />
+        <LoadingBar class="w-[92dvw] lg:w-[80dvw]" />
       </div>
     </div>
   );
