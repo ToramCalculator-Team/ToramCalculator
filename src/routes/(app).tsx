@@ -7,7 +7,6 @@ import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
 import BabylonBg from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
-import Button from "~/components/controls/button";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -44,11 +43,13 @@ export default function AppMainContet(props: ParentProps) {
       () => {
         console.log("主题切换");
         document.documentElement.classList.add("transitionColorNone");
+        setStore("settings", "userInterface", "isAnimationEnabled", false);
         document.documentElement.classList.remove("light", "dark");
         document.documentElement.classList.add(store.theme);
         setTimeout(() => {
           document.documentElement.classList.remove("transitionColorNone");
-        }, 500);
+          setStore("settings", "userInterface", "isAnimationEnabled", true);
+        }, 1);
       },
       {
         defer: true,

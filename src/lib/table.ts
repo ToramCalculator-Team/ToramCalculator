@@ -1,7 +1,7 @@
 import { Column } from "@tanstack/solid-table";
 import { JSX } from "solid-js";
 
-// 表头固定
+// 获取表头样式
 export const getCommonPinningStyles = <T>(column: Column<T>): JSX.CSSProperties => {
   const isPinned = column.getIsPinned();
   const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");

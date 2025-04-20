@@ -1,6 +1,9 @@
 import { type PGliteWithLive } from "@electric-sql/pglite/live";
 
-const API_URL = "http://localhost:3001/api";
+const API_URL =
+  import.meta.env.VITE_SERVER_HOST == "localhost"
+    ? "http://localhost:3001/api"
+    : "https://app.kiaclouth.com/api";
 
 type RequestOptions = {
   method: string;

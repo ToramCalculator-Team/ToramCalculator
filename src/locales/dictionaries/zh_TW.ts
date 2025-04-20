@@ -396,6 +396,10 @@ const dictionary: dictionary = {
       title: "設定",
       userInterface: {
         title: "外觀",
+        colorTheme: {
+          title: "主題色",
+          description: "只有普普通通的白天模式和黑暗模式",
+        },
         isAnimationEnabled: {
           title: "是否開啟動畫",
           description: "將影響所有頁面的過渡和動畫效果持續時間。",
@@ -467,7 +471,7 @@ const dictionary: dictionary = {
         },
         storageInfo: {
           title: "資源快取使用情況",
-          description: "包含 localStorage、IndexedDB 等多項快取",
+          description: "包含 localStorage、IndexedDB 等多項快取（将刷新頁面）",
           usage: "已使用",
           clearStorage: "清除此應用的所有快取"
         }

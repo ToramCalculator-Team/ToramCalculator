@@ -20,6 +20,7 @@ import Input from "~/components/controls/input";
 import Toggle from "~/components/controls/toggle";
 import { getDB } from "~/repositories/database";
 import NodeEditor from "~/components/module/nodeEditor";
+import { LoadingBar } from "~/components/loadingBar";
 
 export default function MobIndexPage() {
   // UI文本字典
@@ -660,20 +661,31 @@ export default function MobIndexPage() {
   };
 
   // card
-  const [displayedMob, { refetch: refetchMob }] = createResource(() => store.wiki.mob?.id, findMobById);
+  // 1. 等待 store.database.tableSyncState.mob 为 true
+  const readyMobId = createMemo(() => {
+    if (store.database.tableSyncState.mob && store.wiki.mob?.id) {
+      return store.wiki.mob.id;
+    }
+    return undefined; // 未就绪返回 undefined，createResource 将忽略
+  });
+
+  // 2. 异步加载 mob 数据，仅当 readyMobId 有值时才触发 fetch
+  const [displayedMob, { refetch: refetchMob }] = createResource(readyMobId, findMobById);
   const mobCardHiddenFields: Array<keyof Mob["Card"]> = [
     "id",
     "statisticId",
     "createdByAccountId",
     "updatedByAccountId",
   ];
-  const card = (data: Mob["Select"]) => {
+  const card = (data: Mob["Card"] | undefined) => {
     // console.log(data);
     const mobCardSchema = mobSchema.extend({
       belongToZones: z.array(zoneSchema),
       dropItems: z.array(drop_itemSchema), // 你需要一个 itemSchema
       statistic: statisticSchema, // 你也需要一个 statisticSchema
     });
+
+    if (!data) return <LoadingBar class="w-full" />;
 
     return (
       <div class="Card flex h-full w-full flex-col gap-3">
@@ -822,7 +834,7 @@ export default function MobIndexPage() {
       case "form":
         return form();
       case "card":
-        return card(displayedMob.latest ?? defaultMob);
+        return card(displayedMob.latest);
     }
   });
 
@@ -835,7 +847,15 @@ export default function MobIndexPage() {
   });
 
   return (
-    <>
+    <Show
+      when={store.database.tableSyncState.mob}
+      fallback={
+        <div class="LoadingState w-full h-full flex flex-col items-center justify-center">
+          <h1 class="animate-pulse">awaiting DB sync...</h1>
+          <LoadingBar class="w-1/2 min-w-[320px]" />
+        </div>
+      }
+    >
       <Presence exitBeforeEnter>
         <Show when={!isTableFullscreen()}>
           <Motion.div
@@ -978,10 +998,10 @@ export default function MobIndexPage() {
               class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
             >
               <div class="Title flex h-12 text-xl">{dictionary().ui.mob.news.title}</div>
-              <div class="Content flex flex-1 flex-col">
+              <div class="Content flex flex-1 flex-col gap-3">
                 <For each={[0, 1, 2]}>
                   {() => {
-                    return <div></div>;
+                    return <div class="Item w-full h-full flex-1 bg-area-color rounded"></div>;
                   }}
                 </For>
               </div>
@@ -998,6 +1018,6 @@ export default function MobIndexPage() {
           {dialogContet()}
         </Dialog>
       </Portal>
-    </>
+    </Show>
   );
 }

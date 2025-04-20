@@ -1,12 +1,15 @@
-import { type Mob } from "~/repositories/client/mob";
-import { dictionary } from "~/locales/type";
-import { getDictionary } from "~/locales/i18n";
+import { type Mob } from "~/repositories/mob";
 import { MobDifficultyFlag } from "../../db/kysely/enums";
-
-export const generateMobByStar = (
-  baseMob: Mob,
+/**
+ * 
+ * @param baseMob 零星状态下的数据
+ * @param flag 怪物难度标识
+ * @returns 
+ */
+export const generateBossDataByFlag = (
+  baseMob: Mob["Select"],
   flag: MobDifficultyFlag,
-): Mob => {
+): Mob["Select"] => {
   const rate: {
     lv: number;
     experience: number;
@@ -65,7 +68,7 @@ export const generateMobByStar = (
     physicalDefense: baseMob.physicalDefense * rate.physicalDefense,
     magicalDefense: baseMob.magicalDefense * rate.magicalDefense,
     avoidance: baseMob.avoidance * rate.avoidance,
-  } satisfies Mob;
+  };
   return resultMob;
 };
 
@@ -75,19 +78,19 @@ export const generateMobByStar = (
  * @param dictionary UI字典
  * @returns 新的列表
  */
-export const generateAugmentedMobList = (baseMobList: Mob[]) => {
-  const result: Mob[] = [];
+export const generateAugmentedMobList = (baseMobList: Mob["Select"][]) => {
+  const result: Mob["Select"][] = [];
   baseMobList.forEach((mob) => {
     // 表中记录的是1星状态下的定点王数据， 2 / 3 / 4 星的经验和HP为1星的 2 / 5 / 10 倍；物防、魔防、回避值为1星的 2 / 4 / 6 倍。
     if (mob.type !== "Boss") {
       result.push(mob);
     } else {
       result.push(
-        generateMobByStar(mob, "Easy"),
-        generateMobByStar(mob, "Normal"),
-        generateMobByStar(mob, "Hard"),
-        generateMobByStar(mob, "Lunatic"),
-        generateMobByStar(mob, "Ultimate"),
+        generateBossDataByFlag(mob, "Easy"),
+        generateBossDataByFlag(mob, "Normal"),
+        generateBossDataByFlag(mob, "Hard"),
+        generateBossDataByFlag(mob, "Lunatic"),
+        generateBossDataByFlag(mob, "Ultimate"),
       );
     }
   });

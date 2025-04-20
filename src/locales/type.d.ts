@@ -86,6 +86,10 @@ export interface dictionary {
       title: string;
       userInterface: {
         title: string;
+        colorTheme: {
+          title: string;
+          description: string;
+        }
         isAnimationEnabled: {
           title: string;
           description: string;

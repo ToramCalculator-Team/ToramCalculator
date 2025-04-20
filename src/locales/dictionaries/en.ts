@@ -404,6 +404,10 @@ const dictionary: dictionary = {
         is3DbackgroundDisabled: {
           title: "Disable 3D Background",
           description: "May cause a lot of performance loss, not recommended.",
+        },
+        colorTheme: {
+          title: "Color Theme",
+          description: "...",
         }
       },
       language: {
@@ -470,7 +474,7 @@ const dictionary: dictionary = {
           title: "Storage Usage",
           description: "Includes caches such as localStorage, IndexedDB, etc.",
           usage: "Used",
-          clearStorage: "Clear all caches for this app"
+          clearStorage: "Clear all caches for this app (Will refresh the page)"
         }
       }
       

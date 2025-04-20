@@ -1,3 +1,9 @@
+// 为了实现数据同步架构的写入方法，此脚本会对原始的 ddl.sql 文件进行修改
+// 主要过程为：
+// 1. 删除所有非必要sql语句，包括外键约束、索引
+// 2. 将每个表拆分为synced表和local表，synced用于储存从服务器下载的数据，local用于储存本地修改的数据。这样就可以很容易区分某个本地数据是否已经同步到服务器
+// 3. 生成视图，用于合并读取synced表和local表的数据，以供前端调用
+// 4. 为synced表和local表添加触发器，当数据更新时，向changes表写入更新记录，并通知主线程处理更新事件
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

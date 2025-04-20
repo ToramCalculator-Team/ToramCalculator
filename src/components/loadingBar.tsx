@@ -1,7 +1,7 @@
 import { JSX } from "solid-js";
 import { Motion } from "solid-motionone";
 
-export default function LoadingBar(props: JSX.HTMLAttributes<HTMLDivElement>) {
+export function LoadingBar(props: JSX.HTMLAttributes<HTMLDivElement>) {
   return (
     <div {...props} class={`Loading relative overflow-x-hidden ${{ ...props }.class}`}>
       <div class="line bg-accent-color z-0 h-0.5 w-full rounded-full"></div>

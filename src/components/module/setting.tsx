@@ -7,7 +7,7 @@ import Toggle from "~/components/controls/toggle";
 import Radio from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
-import { setStore, store } from "~/store";
+import { getActStore, setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
 
 // pwa的非标准类型定义
@@ -177,6 +177,28 @@ export const Setting = () => {
                   ])}
                   <Divider />
                   {SettingPageContentModule("UserInterface", dictionary().ui.settings.userInterface.title, [
+                    {
+                      title: dictionary().ui.settings.userInterface.colorTheme.title,
+                      description: dictionary().ui.settings.userInterface.colorTheme.description,
+                      children: (
+                        <div class="Selector flex flex-col">
+                          <Radio
+                            name={"Light"}
+                            checked={store.theme === "light"}
+                            onClick={() => setStore("theme", "light")}
+                          >
+                            Light
+                          </Radio>
+                          <Radio
+                            name="Dark"
+                            checked={store.theme === "dark"}
+                            onClick={() => setStore("theme", "dark")}
+                          >
+                            Dark
+                          </Radio>
+                        </div>
+                      ),
+                    },
                     {
                       title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
                       description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
@@ -358,6 +380,10 @@ export const Setting = () => {
                               // 清除 localStorage 和 sessionStorage
                               localStorage.clear();
                               sessionStorage.clear();
+                              // 重置内存中的store
+                              setStore(getActStore())
+                              // 刷新页面
+                              window.location.reload();
 
                               // 清除所有 IndexedDB 数据库
                               const dbs = await indexedDB.databases?.();
