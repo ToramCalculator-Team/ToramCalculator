@@ -1,7 +1,7 @@
 import { DataEnums } from "../../db/dataEnums";
 import { DB } from "~/../db/kysely/kyesely";
 
-type FieldDescription = {
+export type FieldDescription = {
   key: string;
   tableFieldDescription: string;
   formFieldDescription: string;

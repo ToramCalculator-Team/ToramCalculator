@@ -1,13 +1,15 @@
-@import "tailwindcss";
-@import url(flowEditor.css) layer(utilities);
-@import url(wikiBanner.css) layer(utilities);
-@import url(babylonjs.css) layer(utilities);
-@import url(resourseLoadedAnimation.css) layer(utilities);
-
 @import url(blockly.css);
 @import url(overlayscrollbars.css);
 
-@source inline("text-brand-color-1st text-brand-color-2nd text-brand-color-3rd");
+@import url(flowEditor.css);
+@import url(wikiBanner.css);
+@import url(babylonjs.css);
+@import url(resourseLoadedAnimation.css);
+
+@import "tailwindcss";
+
+@source "../../src";
+@source inline("text-brand-color-1st text-brand-color-2nd text-brand-color-3rd bg-brand-color-1st bg-brand-color-2nd bg-brand-color-3rd");
 
 @plugin '@tailwindcss/typography';
 

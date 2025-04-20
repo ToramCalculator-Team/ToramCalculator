@@ -21,8 +21,9 @@ import { DB } from "~/../db/kysely/kyesely";
 import Button from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { ConvertToDic } from "~/locales/type";
+import { ConvertToDic, dictionary, FieldDescription } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
+import { getDictionary } from "~/locales/i18n";
 
 export default function VirtualTable<
   Item extends {
@@ -40,6 +41,8 @@ export default function VirtualTable<
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
   const media = useContext(MediaContext);
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   const handleMouseDown = (id: string, e: MouseEvent) => {
     if (e.button !== 0) return;
     const startX = e.pageX;
@@ -113,23 +116,21 @@ export default function VirtualTable<
       overscan: 5,
     });
   });
-  
-  onMount(
-    () => {
-      setTimeout(() => {
-        virtualizer()._willUpdate();
-        console.log(
-          "TableRows:",
-          JSON.stringify(table.getRowCount()),
-          "VirtualCount:",
-          JSON.stringify(virtualizer().getVirtualIndexes().length),
-          "VirtualItems:",
-          JSON.stringify(virtualizer().getVirtualItems().length),
-          Math.floor(performance.now()),
-        );
-      }, 1);
-    }
-  )
+
+  onMount(() => {
+    setTimeout(() => {
+      virtualizer()._willUpdate();
+      console.log(
+        "TableRows:",
+        JSON.stringify(table.getRowCount()),
+        "VirtualCount:",
+        JSON.stringify(virtualizer().getVirtualIndexes().length),
+        "VirtualItems:",
+        JSON.stringify(virtualizer().getVirtualItems().length),
+        Math.floor(performance.now()),
+      );
+    }, 1);
+  });
 
   return (
     <>
@@ -162,21 +163,29 @@ export default function VirtualTable<
                 >
                   ALL
                 </Button>
-                {table.getAllLeafColumns().map((column) => {
-                  if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
-                    // 默认隐藏的数据
-                    return;
-                  }
-                  return (
-                    <Button
-                      size="sm"
-                      level={column.getIsVisible() ? "default" : "primary"}
-                      onClick={column.getToggleVisibilityHandler()}
-                    >
-                      {column.id}
-                    </Button>
-                  );
-                })}
+                <For each={table.getAllLeafColumns()}>
+                  {(column) => {
+                    if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
+                      // 默认隐藏的数据
+                      return;
+                    }
+                    if (!(column.id in dictionary().db[props.tableName].fields)) return;
+                    type Fields = dictionary["db"][typeof props.tableName]["fields"];
+                    type Field = Fields[keyof Fields]; // 暂时不知道怎么解决，它被推断为never
+
+                    return (
+                      <Button
+                        size="sm"
+                        level={column.getIsVisible() ? "default" : "primary"}
+                        onClick={column.getToggleVisibilityHandler()}
+                      >
+                        {
+                          (dictionary().db[props.tableName].fields[column.id as keyof Fields] as FieldDescription).key // 暂时不知道怎么解决，它被推断为never
+                        }
+                      </Button>
+                    );
+                  }}
+                </For>
               </div>
               {/* <div class="module flex flex-col gap-3">
                 <div class="title">{dictionary.ui.monster.augmented}</div>
@@ -224,14 +233,10 @@ export default function VirtualTable<
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {
-                              props.itemDic.fields[
-                                column.id as keyof ConvertToDic<Item>
-                              ].key
-                            }
+                            {props.itemDic.fields[column.id as keyof ConvertToDic<Item>].key}
                             {{
-                              asc: " ↓",
-                              desc: " ↑",
+                              asc: "▲",
+                              desc: "▼",
                             }[header.column.getIsSorted() as string] ?? null}
                           </div>
                         </th>
@@ -258,7 +263,7 @@ export default function VirtualTable<
                     }}
                     onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                     onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
-                    class={`group border-dividing-color hover:bg-area-color flex cursor-pointer landscape:border-b transition-none hover:rounded hover:border-transparent`}
+                    class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                   >
                     <For
                       each={row

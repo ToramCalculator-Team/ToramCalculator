@@ -1,6 +1,7 @@
 import { defineConfig } from "@solidjs/start/config";
 import { fileURLToPath } from "url";
 import topLevelAwait from "vite-plugin-top-level-await";
+import tailwindcss from '@tailwindcss/vite'
 
 // prisma枚举修复
 function getModulePath(moduleName: string) {
@@ -60,6 +61,7 @@ export default defineConfig({
         // The function to generate import names of top-level await promise in each chunk module
         promiseImportName: (i) => `__tla_${i}`,
       }),
+      tailwindcss(),
     ],
   },
 });
