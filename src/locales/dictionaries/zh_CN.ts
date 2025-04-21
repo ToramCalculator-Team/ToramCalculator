@@ -1782,7 +1782,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mob: {
-      selfName: "",
+      selfName: "怪物",
       fields: {
         name: {
           key: "名称",

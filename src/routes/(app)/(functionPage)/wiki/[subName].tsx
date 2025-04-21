@@ -10,6 +10,10 @@ import { Dialog } from "~/components/controls/dialog";
 import { LoadingBar } from "~/components/loadingBar";
 import { defaultData } from "~/../db/defaultData";
 import { DB } from "~/../db/kysely/kyesely";
+import { WikiPageConfig } from "./utils";
+import { mobPageConfig } from "./mob/config";
+import { Form } from "~/components/module/form";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 export default function WikiPage() {
   // UI文本字典
@@ -21,6 +25,7 @@ export default function WikiPage() {
   const [isTableFullscreen, setIsTableFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
   const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
+  const [pageConfig, setPageConfig] = createSignal<WikiPageConfig<keyof DB>>(mobPageConfig(dictionary));
 
   // 地址有效性判断
   if (subName in defaultData) {
@@ -36,7 +41,25 @@ export default function WikiPage() {
     });
 
     // 2. 异步加载wiki表 数据，仅当 readyDataId 有值时才触发 fetch
-    // const [displayedData, { refetch: refetchData }] = createResource(readyDataId, findMobById);
+    const [cardData, { refetch: refetchCardData }] = createResource(readyDataId, pageConfig().card.dataFetcher);
+
+    const dialogContet = createMemo(() => {
+      switch (store.wiki[wikiType]?.dialogType) {
+        case "form":
+          return Form({
+            tableName: pageConfig().tableName,
+            defaultItem: pageConfig().form.defaultData,
+            item: pageConfig().form.data,
+            itemSchema: pageConfig().form.dataSchema,
+            formHiddenFields: pageConfig().form.hiddenFields,
+            fieldGenerator: pageConfig().form.fieldGenerator,
+            createItem: pageConfig().form.createData,
+            refetchItemList: pageConfig().form.refetchItemList,
+          });
+        case "card":
+          return <></>;
+      }
+    });
 
     switch (wikiType) {
       case "_armorTocrystal":
@@ -207,7 +230,7 @@ export default function WikiPage() {
                           <span
                             class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
                           >
-                            {`dataList()?.[index()]?.name`}
+                            {"name" in defaultData[wikiType] ? pageConfig().table.dataList?.latest?.[index()].name : ""}
                           </span>
                         </div>
                       </div>
@@ -246,6 +269,16 @@ export default function WikiPage() {
                 {isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
               </Button>
             </div>
+            <VirtualTable
+              tableName={pageConfig().tableName}
+              dataList={pageConfig().table.dataList}
+              dataDic={dictionary().db[wikiType]}
+              tableColumns={pageConfig().table.columnDef}
+              tableHiddenColumns={pageConfig().table.hiddenColumnDef}
+              tableTdGenerator={pageConfig().table.tdGenerator}
+              filterIsOpen={tableFilterIsOpen}
+              setFilterIsOpen={setTableFilterIsOpen}
+            />
           </div>
           <Presence exitBeforeEnter>
             <Show when={!isTableFullscreen()}>
@@ -272,7 +305,7 @@ export default function WikiPage() {
             state={store.wiki.mob?.dialogIsOpen ?? false}
             setState={(state: boolean) => setStore("wiki", "mob", "dialogIsOpen", state)}
           >
-            {""}
+            {dialogContet()}
           </Dialog>
         </Portal>
       </Show>

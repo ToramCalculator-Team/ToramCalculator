@@ -721,8 +721,8 @@ export default function MobIndexPage() {
           </div>
           <VirtualTable
             tableName="mob"
-            itemList={mobList}
-            itemDic={dictionary().db.mob}
+            dataList={mobList}
+            dataDic={dictionary().db.mob}
             tableColumns={mobColumns}
             tableHiddenColumns={mobTableHiddenColumns}
             tableTdGenerator={mobTdGenerator}

@@ -4,6 +4,7 @@ import { Transaction } from "kysely";
 import { Accessor, JSX, Resource } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
+import { ConvertToDic } from "~/locales/type";
 
 export function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -36,10 +37,11 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
 export type WikiPageConfig<T extends keyof DB> = {
   tableName: T;
   table: {
-    columns: Array<ColumnDef<DB[T]>>;
     dataList: Resource<DB[T][]>;
+    columnDef: Array<ColumnDef<DB[T]>>;
+    hiddenColumnDef: Array<keyof DB[T]>;
+    // dataDic: ConvertToDic<DB[T]>;
     dataListRefetcher: () => void;
-    hiddenColumns: Array<keyof DB[T]>;
     tdGenerator: (props: { cell: Cell<DB[T], keyof DB[T]> }) => JSX.Element;
   };
   form: {
@@ -53,6 +55,7 @@ export type WikiPageConfig<T extends keyof DB> = {
   };
   card: {
     hiddenFields: Array<keyof DB[T]>;
+    dataFetcher: (id: string) => Promise<DB[T]>;
     fieldGenerator?: (key: keyof DB[T], field: AnyFieldApi) => JSX.Element;
   };
 };

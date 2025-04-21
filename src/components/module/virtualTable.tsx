@@ -21,22 +21,19 @@ import { DB } from "~/../db/kysely/kyesely";
 import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { ConvertToDic, dictionary, FieldDescription } from "~/locales/type";
+import { ConvertToDic, dictionary, FieldDescription, FieldDict } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDictionary } from "~/locales/i18n";
 
 export function VirtualTable<
-  Item extends {
-    [key: string]: unknown;
-    id: string;
-  },
+  Data extends DB[keyof DB],
 >(props: {
   tableName: keyof DB;
-  itemList: Resource<Item[]>;
-  itemDic: ConvertToDic<Item>;
-  tableColumns: ColumnDef<Item>[];
-  tableHiddenColumns: Array<keyof Item>;
-  tableTdGenerator: (props: { cell: Cell<Item, keyof Item> }) => JSX.Element;
+  dataList: Resource<Data[]>;
+  dataDic: ConvertToDic<Data>;
+  tableColumns: ColumnDef<Data>[];
+  tableHiddenColumns: Array<keyof Data>;
+  tableTdGenerator: (props: { cell: Cell<Data, keyof Data> }) => JSX.Element;
   filterIsOpen: Accessor<boolean>;
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
@@ -92,7 +89,7 @@ export function VirtualTable<
   // 只在初始化时创建 `table`
   const table = createSolidTable({
     get data() {
-      return props.itemList() ?? [];
+      return props.dataList() ?? [];
     },
     columns: props.tableColumns,
     getCoreRowModel: getCoreRowModel(),
@@ -125,7 +122,7 @@ export function VirtualTable<
         JSON.stringify(table.getRowCount()),
         "VirtualCount:",
         JSON.stringify(virtualizer().getVirtualIndexes().length),
-        "VirtualItems:",
+        "VirtualDatas:",
         JSON.stringify(virtualizer().getVirtualItems().length),
         Math.floor(performance.now()),
       );
@@ -165,14 +162,14 @@ export function VirtualTable<
                 </Button>
                 <For each={table.getAllLeafColumns()}>
                   {(column) => {
-                    if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
+                    if (props.tableHiddenColumns.includes(column.id as keyof Data)) {
                       // 默认隐藏的数据
                       return;
                     }
                     if (!(column.id in dictionary().db[props.tableName].fields)) return;
                     type Fields = dictionary["db"][typeof props.tableName]["fields"];
                     type Field = Fields[keyof Fields]; // 暂时不知道怎么解决，它被推断为never
-                    console.log("Field", column.id, dictionary().db[props.tableName].fields[column.id as keyof Fields]);
+                    // console.log("Field", column.id, dictionary().db[props.tableName].fields[column.id as keyof Fields]);
 
                     return (
                       <Button
@@ -214,7 +211,7 @@ export function VirtualTable<
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;
-                      if (props.tableHiddenColumns.includes(column.id as keyof Item)) {
+                      if (props.tableHiddenColumns.includes(column.id as keyof Data)) {
                         // 默认隐藏的数据
                         return;
                       }
@@ -234,7 +231,7 @@ export function VirtualTable<
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {props.itemDic.fields[column.id as keyof ConvertToDic<Item>].key}
+                            {props.dataDic.fields[column.id as keyof FieldDict<Data>].key}
                             {{
                               asc: "▲",
                               desc: "▼",
@@ -269,7 +266,7 @@ export function VirtualTable<
                     <For
                       each={row
                         .getVisibleCells()
-                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Item))}
+                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Data))}
                     >
                       {(cell) => props.tableTdGenerator({ cell })}
                     </For>

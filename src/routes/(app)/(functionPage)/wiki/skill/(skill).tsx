@@ -124,9 +124,8 @@ export default function SkillIndexPage() {
     defaultItem: defaultSkill,
     item: () => formSkill(),
     itemSchema: skillSchema,
-    itemDic: dictionary().db.skill,
     formHiddenFields: skillFormHiddenFields,
-    formFieldsGenerator: (key) => {
+    fieldGenerator: (key, field) => {
       switch (key) {
         default: return <></>
        }
@@ -428,8 +427,8 @@ export default function SkillIndexPage() {
           </div>
           <VirtualTable
             tableName="skill"
-            itemList={skillList}
-            itemDic={dictionary().db.skill}
+            dataList={skillList}
+            dataDic={dictionary().db.skill}
             tableColumns={skillColumns}
             tableHiddenColumns={skillTableHiddenColumns}
             tableTdGenerator={skillTdGenerator}

@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { Accessor, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { createMob, defaultMob, findMobs, Mob } from "~/repositories/mob";
+import { createMob, defaultMob, findMobById, findMobs, Mob } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, WikiPageConfig } from "../utils";
 import * as Icon from "~/components/icon";
@@ -16,7 +16,7 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
   return {
     tableName: "mob",
     table: {
-      columns: [
+      columnDef: [
         {
           accessorKey: "id",
           header: () => dictionary().db.mob.fields.id,
@@ -104,17 +104,11 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
           cell: (info) => JSON.stringify(info.getValue<Object>()),
           size: 160,
         },
-        // {
-        //   accessorKey: "belongToZones",
-        //   header: () => dictionary().db.mob.fields.belongToZones,
-        //   cell: (info) => info.getValue(),
-        //   size: 150,
-        // },
       ],
       dataList: mobList,
       dataListRefetcher: refetchMobList,
-      hiddenColumns: ["id", "actions", "createdByAccountId", "updatedByAccountId"],
-      tdGenerator: (props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) => {
+      hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
+      tdGenerator: (props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]>; }) => {
         const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
         type MobKeys = keyof DataEnums["mob"];
         type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
@@ -130,15 +124,15 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
                 Light: <Icon.Element.Light class="h-12 w-12" />,
                 Dark: <Icon.Element.Dark class="h-12 w-12" />,
                 Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-              }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined,
+              }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined
             );
 
             break;
           case "experience":
             setTdContent(
               flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) +
-                "+" +
-                props.cell.row.original.partsExperience,
+              "+" +
+              props.cell.row.original.partsExperience
             );
             break;
 
@@ -154,7 +148,13 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
             break;
 
           case "name":
-            defaultTdClass = "text-accent-color flex flex-col justify-center p-6 ";
+            setTdContent(<div class="text-main-text-color flex flex-col gap-1">
+              <span>{props.cell.getValue()}</span>
+              <Show when={props.cell.row.original.type === "Mob"}>
+                <span class="text-xs text-main-text-color">({props.cell.row.original.captureable})</span>
+              </Show>
+            </div>);
+            break;
 
           default:
             setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
@@ -169,8 +169,7 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
             class={defaultTdClass}
           >
             <Show
-              when={
-                props.cell.column.id in dictionary().enums.mob && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
+              when={props.cell.column.id in dictionary().enums.mob && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
               }
               fallback={tdContent()}
             >
@@ -336,6 +335,7 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
       refetchItemList: refetchMobList,
     },
     card: {
+      dataFetcher: findMobById,
       hiddenFields: [
         "id",
         "statisticId",
