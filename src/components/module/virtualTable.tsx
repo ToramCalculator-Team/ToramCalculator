@@ -18,14 +18,14 @@ import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
 import { DB } from "~/../db/kysely/kyesely";
-import Button from "../controls/button";
+import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
 import { ConvertToDic, dictionary, FieldDescription } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDictionary } from "~/locales/i18n";
 
-export default function VirtualTable<
+export function VirtualTable<
   Item extends {
     [key: string]: unknown;
     id: string;
@@ -172,6 +172,7 @@ export default function VirtualTable<
                     if (!(column.id in dictionary().db[props.tableName].fields)) return;
                     type Fields = dictionary["db"][typeof props.tableName]["fields"];
                     type Field = Fields[keyof Fields]; // 暂时不知道怎么解决，它被推断为never
+                    console.log("Field", column.id, dictionary().db[props.tableName].fields[column.id as keyof Fields]);
 
                     return (
                       <Button

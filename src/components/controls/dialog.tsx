@@ -2,7 +2,7 @@ import { createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 
-export default function Dialog(props: { children: JSX.Element; state: boolean; setState: (state: boolean) => void }) {
+export function Dialog(props: { children: JSX.Element; state: boolean; setState: (state: boolean) => void }) {
   const handleClose = (): void => {
     props.setState(false);
   };

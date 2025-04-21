@@ -43,7 +43,7 @@ const cssColors = {
 };
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
-export default function BabylonBg(): JSX.Element {
+export function BabylonBg(): JSX.Element {
   const themeColors = createMemo(
     () =>
       ({

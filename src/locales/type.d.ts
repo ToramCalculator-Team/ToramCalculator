@@ -30,6 +30,7 @@ type FieldDict<T> = {
  */
 export type ConvertToDic<T> = {
   selfName: string;
+  description: string;
   fields: FieldDict<T>;
 };
 

@@ -14,29 +14,29 @@ const elementType={
 }
 
 const mobType: Record<MobType, string> = {
-  Boss: "定点王",
-  MiniBoss: "野王",
-  Mob: "小怪",
+  Boss: "Boss",
+  MiniBoss: "Mini Boss",
+  Mob: "Mob",
 };
 
 const MainWeaponType= {
-  OneHandSword: "单手剑",
-  TwoHandSword: "双手剑",
-  Bow: "弓",
-  Rod: "法杖",
-  Magictool: "魔导具",
-  Knuckle: "拳套",
-  Halberd: "旋风枪",
-  Katana: "拔刀剑",
-  Bowgun: "弩",
-  selfName: "主武器类型",
+  OneHandSword: "One-handed Sword",
+  TwoHandSword: "Two-handed Sword",
+  Bow: "Bow",
+  Rod: "Staff",
+  Magictool: "Magic Tool",
+  Knuckle: "Knuckle",
+  Halberd: "Halberd",
+  Katana: "Katana",
+  Bowgun: "Bowgun",
+  selfName: "Main Weapon Type",
 }
 const SubWeaponType = {
-  Arrow: "箭矢",
-  ShortSword: "小刀",
-  NinjutsuScroll: "忍术卷轴",
-  Shield: "盾牌",
-  selfName: "副武器类型",
+  Arrow: "Arrow",
+  ShortSword: "Short Sword",
+  NinjutsuScroll: "Ninjutsu Scroll",
+  Shield: "Shield",
+  selfName: "Sub Weapon Type",
 }
 
 const WeaponType = {
@@ -47,14 +47,14 @@ const WeaponType = {
 const enums:DataEnums = {
   account: {
     type: {
-      Admin: "管理员",
-      User: "用户"
+      Admin: "Admin",
+      User: "User"
     }
   },
   address: {
     type: {
-      Normal: "一般地点",
-      Limited: "限时地点"
+      Normal: "Normal Location",
+      Limited: "Limited Time Location"
     }
   },
   weapon: {
@@ -62,190 +62,182 @@ const enums:DataEnums = {
     elementType: elementType
   },
   mob: {
-    type: {
-      Boss: "BOSS",
-      MiniBoss: "MiniBoss",
-      Mob: "Mob",
-    },
+    type: mobType,
     initialElement: elementType
   },
   item: {
     type: {
-      Weapon: "",
-      Armor: "",
-      Option: "",
-      Special: "",
-      Crystal: "",
-      Consumable: "",
-      Material: ""
+      Weapon: "Weapon",
+      Armor: "Armor",
+      Option: "Option",
+      Special: "Special",
+      Crystal: "Crystal",
+      Consumable: "Consumable",
+      Material: "Material"
     }
   },
   material: {
     type: {
-      Metal: "",
-      Cloth: "",
-      Beast: "",
-      Wood: "",
-      Drug: "",
-      Magic: ""
+      Metal: "Metal",
+      Cloth: "Cloth",
+      Beast: "Beast",
+      Wood: "Wood",
+      Drug: "Drug",
+      Magic: "Magic"
     }
   },
   consumable: {
     type: {
-      MaxHp: "",
-      MaxMp: "",
-      pAtk: "",
-      mAtk: "",
-      Aspd: "",
-      Cspd: "",
-      Hit: "",
-      Flee: "",
-      EleStro: "",
-      EleRes: "",
-      pRes: "",
-      mRes: ""
+      MaxHp: "Max HP",
+      MaxMp: "Max MP",
+      pAtk: "Physical Attack",
+      mAtk: "Magic Attack",
+      Aspd: "Attack Speed",
+      Cspd: "Cast Speed",
+      Hit: "Hit",
+      Flee: "Flee",
+      EleStro: "Elemental Strength",
+      EleRes: "Elemental Resistance",
+      pRes: "Physical Resistance",
+      mRes: "Magic Resistance"
     }
   },
   crystal: {
     type: {
-      NormalCrystal: "通用锻晶",
-      WeaponCrystal: "武器锻晶",
-      ArmorCrystal: "防具锻晶",
-      OptEquipCrystal: "追加锻晶",
-      SpecialCrystal: "特殊锻晶",
+      NormalCrystal: "Normal Crystal",
+      WeaponCrystal: "Weapon Crystal",
+      ArmorCrystal: "Armor Crystal",
+      OptEquipCrystal: "Additional Crystal",
+      SpecialCrystal: "Special Crystal"
     }
   },
   recipe_ingredient: {
     type: {
-      Gold: "",
-      Item: "",
-      Metal: "",
-      Cloth: "",
-      Beast: "",
-      Wood: "",
-      Drug: "",
-      Magic: ""
+      Gold: "Gold",
+      Item: "Item",
+      Metal: "Metal",
+      Cloth: "Cloth",
+      Beast: "Beast",
+      Wood: "Wood",
+      Drug: "Drug",
+      Magic: "Magic"
     }
   },
   drop_item: {
     relatedPartType: {
-      A: "",
-      B: "",
-      C: ""
+      A: "Part A",
+      B: "Part B",
+      C: "Part C"
     },
     breakRewardType: {
-      None: "",
-      CanDrop: "",
-      DropUp: ""
+      None: "None",
+      CanDrop: "Can Drop",
+      DropUp: "Drop Rate Up"
     }
   },
   task: {
     type: {
-      Collect: "",
-      Defeat: "",
-      Both: "",
-      Other: ""
+      Collect: "Collect",
+      Defeat: "Defeat",
+      Both: "Both",
+      Other: "Other"
     }
   },
   task_reward: {
     type: {
-      Exp: "",
-      Money: "",
-      Item: ""
+      Exp: "Experience",
+      Money: "Money",
+      Item: "Item"
     }
   },
   skill: {
     treeType: {
-      BladeSkill: "剑术技能",
-      ShootSkill: "射击技能",
-      MagicSkill: "魔法技能",
-      MarshallSkill: "格斗技能",
-      DualSwordSkill: "双剑技能",
-      HalberdSkill: "斧枪技能",
-      MononofuSkill: "武士技能",
-      CrusherSkill: "粉碎者技能",
-      FeatheringSkill: "灵魂技能",
-      GuardSkill: "格挡技能",
-      ShieldSkill: "护盾技能",
-      KnifeSkill: "小刀技能",
-      KnightSkill: "骑士技能",
-      HunterSkill: "狩猎技能",
-      PriestSkill: "祭司技能",
-      AssassinSkill: "暗杀技能",
-      WizardSkill: "巫师技能",
-      //
-      SupportSkill: "辅助技能",
-      BattleSkill: "好战分子",
-      SurvivalSkill: "生存本能",
-      //
-      SmithSkill: "锻冶大师",
-      AlchemySkill: "炼金术士",
-      TamerSkill: "驯兽天分",
-      //
-      DarkPowerSkill: "暗黑之力",
-      MagicBladeSkill: "魔剑技能",
-      DancerSkill: "舞者技能",
-      MinstrelSkill: "诗人技能",
-      BareHandSkill: "空手技能",
-      NinjaSkill: "忍者技能",
-      PartisanSkill: "游击队技能",
-      //
-      LuckSkill: "",
-      MerchantSkill: "商人技能",
-      PetSkill: "宠物技能",
+      BladeSkill: "Blade Skill",
+      ShootSkill: "Shoot Skill",
+      MagicSkill: "Magic Skill",
+      MarshallSkill: "Martial Skill",
+      DualSwordSkill: "Dual Sword Skill",
+      HalberdSkill: "Halberd Skill",
+      MononofuSkill: "Samurai Skill",
+      CrusherSkill: "Crusher Skill",
+      FeatheringSkill: "Feathering Skill",
+      GuardSkill: "Guard Skill",
+      ShieldSkill: "Shield Skill",
+      KnifeSkill: "Knife Skill",
+      KnightSkill: "Knight Skill",
+      HunterSkill: "Hunter Skill",
+      PriestSkill: "Priest Skill",
+      AssassinSkill: "Assassin Skill",
+      WizardSkill: "Wizard Skill",
+      SupportSkill: "Support Skill",
+      BattleSkill: "Battle Skill",
+      SurvivalSkill: "Survival Skill",
+      SmithSkill: "Smith Skill",
+      AlchemySkill: "Alchemy Skill",
+      TamerSkill: "Tamer Skill",
+      DarkPowerSkill: "Dark Power Skill",
+      MagicBladeSkill: "Magic Blade Skill",
+      DancerSkill: "Dancer Skill",
+      MinstrelSkill: "Minstrel Skill",
+      BareHandSkill: "Bare Hand Skill",
+      NinjaSkill: "Ninja Skill",
+      PartisanSkill: "Partisan Skill",
+      LuckSkill: "Luck Skill",
+      MerchantSkill: "Merchant Skill",
+      PetSkill: "Pet Skill"
     },
     chargingType: {
-      Chanting: "咏唱",
-      Reservoir: "蓄力",
+      Chanting: "Chanting",
+      Reservoir: "Reservoir"
     },
     distanceType: {
-      None: "",
-      Long: "",
-      Short: "",
-      Both: ""
+      None: "Not Affected",
+      Long: "Long Range Only",
+      Short: "Short Range Only",
+      Both: "Both Ranges"
     },
     targetType: {
-      None: "",
-      Self: "",
-      Player: "",
-      Enemy: ""
+      None: "No Target",
+      Self: "Self",
+      Player: "Ally",
+      Enemy: "Enemy"
     }
   },
   player_armor: {
     ability: {
-      Normal: "一般",
-      Light: "轻化",
-      Heavy: "重化",
+      Normal: "Normal",
+      Light: "Light",
+      Heavy: "Heavy"
     }
   },
   player_pet: {
     personaType: {
-      Fervent: "",
-      Intelligent: "",
-      Mild: "",
-      Swift: "",
-      Justice: "",
-      Devoted: "",
-      Impulsive: "",
-      Calm: "",
-      Sly: "",
-      Timid: "",
-      Brave: "",
-      Active: "",
-      Sturdy: "",
-      Steady: "",
-      Max: ""
+      Fervent: "Fervent",
+      Intelligent: "Intelligent",
+      Mild: "Mild",
+      Swift: "Swift",
+      Justice: "Justice",
+      Devoted: "Devoted",
+      Impulsive: "Impulsive",
+      Calm: "Calm",
+      Sly: "Sly",
+      Timid: "Timid",
+      Brave: "Brave",
+      Active: "Active",
+      Sturdy: "Sturdy",
+      Steady: "Steady",
+      Max: "Max"
     },
     type: {
-      AllTrades: "",
-      PhysicalAttack: "",
-      MagicAttack: "",
-      PhysicalDefense: "",
-      MagicDefensem: "",
-      Avoidance: "",
-      Hit: "",
-      SkillsEnhancement: "",
-      Genius: ""
+      AllTrades: "All Trades",
+      PhysicalAttack: "Physical Attack",
+      MagicAttack: "Magic Attack",
+      PhysicalDefense: "Physical Defense",
+      MagicDefensem: "Magic Defense",
+      Avoidance: "Avoidance",
+      Hit: "Hit",
+      SkillsEnhancement: "Skills Enhancement",
+      Genius: "Genius"
     },
     weaponType: MainWeaponType
   },
@@ -341,7 +333,22 @@ const enums:DataEnums = {
   character_skill: {},
   combo: {},
   simulator: {},
-  team: {}
+  team: {},
+  _armorTocrystal: undefined,
+  _avatarTocharacter: undefined,
+  _BackRelation: undefined,
+  _campA: undefined,
+  _campB: undefined,
+  _characterToconsumable: undefined,
+  _crystalTooption: undefined,
+  _crystalToplayer_armor: undefined,
+  _crystalToplayer_option: undefined,
+  _crystalToplayer_special: undefined,
+  _crystalToplayer_weapon: undefined,
+  _crystalTospecial: undefined,
+  _crystalToweapon: undefined,
+  _FrontRelation: undefined,
+  _mobTozone: undefined
 }
 
 const dictionary: dictionary = {
@@ -535,100 +542,6 @@ const dictionary: dictionary = {
       pageTitle: "Simulator",
       description: "Emmm..............",
       modifiers: "Modifiers",
-      // dialogData: {
-      //   selfName: "Attribute",
-      //   lv: "Lv",
-      //   mainWeapon: {
-      //     selfName: "Main Weapon",
-      //     type: "Type",
-      //     baseAtk: "BaseAtk",
-      //     refinement: "Refinement",
-      //     stability: "Stability",
-      //   },
-      //   subWeapon: {
-      //     selfName: "Sub Weapon",
-      //     type: "Type",
-      //     baseAtk: "BaseAtk",
-      //     refinement: "Refinement",
-      //     stability: "Stability",
-      //   },
-      //   bodyArmor: {
-      //     selfName: "Body Armor",
-      //     type: "Type",
-      //     baseDef: "BaseDef",
-      //     refinement: "Refinement",
-      //   },
-      //   str: "Str",
-      //   int: "Int",
-      //   vit: "Vit",
-      //   agi: "Agi",
-      //   dex: "Dex",
-      //   luk: "Luk",
-      //   cri: "Cri",
-      //   tec: "Tec",
-      //   men: "Men",
-      //   pPie: "p-Pie",
-      //   mPie: "m-Pie",
-      //   pStab: "p-Stab",
-      //   sDis: "n-Dis",
-      //   lDis: "f-Dis",
-      //   crC: "Cr-T",
-      //   cdC: "Cd-T",
-      //   weaponPatkT: "Wea-pAtk-T",
-      //   weaponMatkT: "Wea-mAtk-T",
-      //   uAtk: "Unsheathe-Atk",
-      //   stro: {
-      //     selfName: "Stro",
-      //     Light: "Strong against Light",
-      //     Normal: "Strong against No Element",
-      //     Dark: "Strong against Dark",
-      //     Water: "Strong against Water",
-      //     Fire: "Strong against Fire",
-      //     Earth: "Strong against Earth",
-      //     Wind: "Strong against Wind",
-      //   },
-      //   total: "Total",
-      //   final: "Final",
-      //   am: "Am",
-      //   cm: "Cm",
-      //   aggro: "Aggro",
-      //   maxHp: "MaxHP",
-      //   maxMp: "MaxMp",
-      //   pCr: "p-Cr",
-      //   pCd: "p-Cd",
-      //   mainWeaponAtk: "MainWeaponAtk",
-      //   subWeaponAtk: "SubWeaponAtk",
-      //   weaponAtk: "WeaponAtk",
-      //   pAtk: "p-Atk",
-      //   mAtk: "m-Atk",
-      //   aspd: "Aspd",
-      //   cspd: "Cspd",
-      //   ampr: "Ampr",
-      //   hp: "Hp",
-      //   mp: "Mp",
-      //   name: "Name",
-      //   pDef: "p-Def",
-      //   pRes: "p-Res",
-      //   mDef: "m-Def",
-      //   mRes: "m-Res",
-      //   cRes: "c-Res",
-      //   index: "Index",
-      //   skillEffectType: "",
-      //   actionFixedDuration: "action-FixedDuration",
-      //   actionModifiableDuration: "action-ModifiableDuration",
-      //   chantingFixedDuration: "chanting-FixedDuration",
-      //   chantingModifiableDuration: "chanting-ModifiableDuration",
-      //   chargingFixedDuration: "charging-FixedDuration",
-      //   chargingModifiableDuration: "charging-ModifiableDuration",
-      //   skillChargingFrames: "ChargingFrames",
-      //   skillActionFrames: "ActionFrames",
-      //   skillChantingFrames: "ChantingFrames",
-      //   skillDuration: "Duration",
-      //   skillStartupFrames: "StartupFrames",
-      //   anticipate: "",
-      //   vMatk: "v-mAtk",
-      //   vPatk: "v-pAtk",
-      // },
       actualValue: "Actual",
       baseValue: "Base",
       staticModifiers: "StaticModifiers",
@@ -661,7 +574,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _avatarTocharacter: {
       selfName: "",
@@ -676,7 +590,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _BackRelation: {
       selfName: "",
@@ -691,7 +606,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _campA: {
       selfName: "",
@@ -706,7 +622,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _campB: {
       selfName: "",
@@ -721,7 +638,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _characterToconsumable: {
       selfName: "",
@@ -736,7 +654,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalTooption: {
       selfName: "",
@@ -751,7 +670,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -766,7 +686,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalToplayer_option: {
       selfName: "",
@@ -781,7 +702,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalToplayer_special: {
       selfName: "",
@@ -796,7 +718,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalToplayer_weapon: {
       selfName: "",
@@ -811,7 +734,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalTospecial: {
       selfName: "",
@@ -826,7 +750,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _crystalToweapon: {
       selfName: "",
@@ -841,7 +766,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _FrontRelation: {
       selfName: "",
@@ -856,7 +782,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     _mobTozone: {
       selfName: "",
@@ -871,7 +798,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     account: {
       selfName: "",
@@ -940,7 +868,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     account_create_data: {
       selfName: "",
@@ -950,7 +879,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     account_update_data: {
       selfName: "",
@@ -960,7 +890,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     activity: {
       selfName: "",
@@ -975,7 +906,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     address: {
       selfName: "",
@@ -1014,7 +946,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     armor: {
       selfName: "",
@@ -1049,7 +982,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     avatar: {
       selfName: "",
@@ -1084,7 +1018,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     character: {
       selfName: "",
@@ -1224,7 +1159,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     character_skill: {
       selfName: "",
@@ -1254,7 +1190,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     combo: {
       selfName: "",
@@ -1279,7 +1216,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     combo_step: {
       selfName: "",
@@ -1321,7 +1259,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     consumable: {
       selfName: "",
@@ -1360,7 +1299,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     crystal: {
       selfName: "",
@@ -1387,7 +1327,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     drop_item: {
       selfName: "",
@@ -1437,7 +1378,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     image: {
       selfName: "",
@@ -1477,7 +1419,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     item: {
       selfName: "",
@@ -1531,7 +1474,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     material: {
       selfName: "",
@@ -1564,7 +1508,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     member: {
       selfName: "",
@@ -1626,7 +1571,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     mercenary: {
       selfName: "",
@@ -1673,7 +1619,8 @@ const dictionary: dictionary = {
             Passive: ""
           }
         }
-      }
+      },
+      description: ""
     },
     mob: {
       selfName: "",
@@ -1681,21 +1628,17 @@ const dictionary: dictionary = {
         name: {
           key: "Name",
           tableFieldDescription: "The monster's name, usually consistent with the in-game name.",
-          formFieldDescription:
-            "Please enter the monster's name as it appears in the game. You don't want others to be confused by your entry, right?",
+          formFieldDescription: "Please enter the monster's name as it appears in the game. You don't want others to be confused by your entry, right?",
         },
         id: {
           key: "ID",
           tableFieldDescription: "This is the monster's database ID. Generally, you shouldn't see this.",
-          formFieldDescription:
-            "This is the monster's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription: "This is the monster's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         type: {
           key: "Monster Type",
-          tableFieldDescription:
-            "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
-          formFieldDescription:
-            "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
+          tableFieldDescription: "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
+          formFieldDescription: "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
           enumMap: mobType
         },
         captureable: {
@@ -1705,10 +1648,8 @@ const dictionary: dictionary = {
         },
         actions: {
           key: "Actions",
-          tableFieldDescription:
-            "Monster behavior description. The simulator will simulate actions based on this logic.",
-          formFieldDescription:
-            "Monster behavior description. The simulator will simulate actions based on this logic.",
+          tableFieldDescription: "Monster behavior description. The simulator will simulate actions based on this logic.",
+          formFieldDescription: "Monster behavior description. The simulator will simulate actions based on this logic.",
         },
         baseLv: {
           key: "Base Level",
@@ -1722,17 +1663,14 @@ const dictionary: dictionary = {
         },
         initialElement: {
           key: "Element Attribute",
-          tableFieldDescription:
-            "This is the initial element. Monsters may change their attributes during battle. Refer to the behavior description for details.",
-          formFieldDescription:
-            "Enter the monster's initial element here. Attribute changes should be described in the behavior section.",
+          tableFieldDescription: "This is the initial element. Monsters may change their attributes during battle. Refer to the behavior description for details.",
+          formFieldDescription: "Enter the monster's initial element here. Attribute changes should be described in the behavior section.",
           enumMap: elementType
         },
         radius: {
           key: "Radius",
           tableFieldDescription: "The monster's model size, mainly used to calculate whether skills hit.",
-          formFieldDescription:
-            "The monster's model size, mainly used to calculate whether skills hit. Subtract 1 from the distance displayed on the screen after casting Holy Fist.",
+          formFieldDescription: "The monster's model size, mainly used to calculate whether skills hit. Subtract 1 from the distance displayed on the screen after casting Holy Fist.",
         },
         maxhp: {
           key: "Max HP",
@@ -1746,10 +1684,8 @@ const dictionary: dictionary = {
         },
         physicalResistance: {
           key: "Physical Resistance",
-          tableFieldDescription:
-            "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
-          formFieldDescription:
-            "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          tableFieldDescription: "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          formFieldDescription: "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
         },
         magicalDefense: {
           key: "Magical Defense",
@@ -1758,17 +1694,13 @@ const dictionary: dictionary = {
         },
         magicalResistance: {
           key: "Magical Resistance",
-          tableFieldDescription:
-            "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
-          formFieldDescription:
-            "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          tableFieldDescription: "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          formFieldDescription: "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
         },
         criticalResistance: {
           key: "Critical Resistance",
-          tableFieldDescription:
-            "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
-          formFieldDescription:
-            "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
+          tableFieldDescription: "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
+          formFieldDescription: "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
         },
         avoidance: {
           key: "Avoidance",
@@ -1818,22 +1750,20 @@ const dictionary: dictionary = {
         statisticId: {
           key: "Statistic ID",
           tableFieldDescription: "This is the monster's statistics database ID. Generally, you shouldn't see this.",
-          formFieldDescription:
-            "This is the monster's statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription: "This is the monster's statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         updatedByAccountId: {
           key: "Updated By Account ID",
           tableFieldDescription: "This is the monster's updater database ID. Generally, you shouldn't see this.",
-          formFieldDescription:
-            "This is the monster's updater database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription: "This is the monster's updater database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         createdByAccountId: {
           key: "Created By Account ID",
           tableFieldDescription: "This is the monster's creator database ID. Generally, you shouldn't see this.",
-          formFieldDescription:
-            "This is the monster's creator database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription: "This is the monster's creator database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
-      }
+      },
+      description: ""
     },
     npc: {
       selfName: "",
@@ -1853,7 +1783,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     option: {
       selfName: "",
@@ -1888,7 +1819,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player: {
       selfName: "",
@@ -1913,7 +1845,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player_armor: {
       selfName: "",
@@ -1963,7 +1896,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player_option: {
       selfName: "",
@@ -1998,7 +1932,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player_pet: {
       selfName: "",
@@ -2142,7 +2077,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player_special: {
       selfName: "",
@@ -2172,7 +2108,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     player_weapon: {
       selfName: "",
@@ -2222,7 +2159,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     post: {
       selfName: "",
@@ -2252,7 +2190,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     recipe: {
       selfName: "",
@@ -2272,7 +2211,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     recipe_ingredient: {
       selfName: "",
@@ -2312,7 +2252,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     session: {
       selfName: "",
@@ -2337,7 +2278,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     simulator: {
       selfName: "",
@@ -2372,138 +2314,140 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     skill: {
-      selfName: "",
+      selfName: "Skill",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "ID",
+          tableFieldDescription: "This is the skill's database ID. Generally, you shouldn't see this.",
+          formFieldDescription: "This is the skill's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+        },
+        name: {
+          key: "Name",
+          tableFieldDescription: "The skill's name, usually consistent with the in-game name.",
+          formFieldDescription: "Please enter the skill name as it appears in the game. You don't want others to be confused by your entry, right?",
         },
         treeType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "Skill Tree",
+          tableFieldDescription: "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
+          formFieldDescription: "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
           enumMap: {
-            BladeSkill: "",
-            ShootSkill: "",
-            MagicSkill: "",
-            MarshallSkill: "",
-            DualSwordSkill: "",
-            HalberdSkill: "",
-            MononofuSkill: "",
-            CrusherSkill: "",
-            FeatheringSkill: "",
-            GuardSkill: "",
-            ShieldSkill: "",
-            KnifeSkill: "",
-            KnightSkill: "",
-            HunterSkill: "",
-            PriestSkill: "",
-            AssassinSkill: "",
-            WizardSkill: "",
-            SupportSkill: "",
-            BattleSkill: "",
-            SurvivalSkill: "",
-            SmithSkill: "",
-            AlchemySkill: "",
-            TamerSkill: "",
-            DarkPowerSkill: "",
-            MagicBladeSkill: "",
-            DancerSkill: "",
-            MinstrelSkill: "",
-            BareHandSkill: "",
-            NinjaSkill: "",
-            PartisanSkill: "",
-            LuckSkill: "",
-            MerchantSkill: "",
-            PetSkill: ""
+            "BladeSkill": "Blade Skill",
+            "ShootSkill": "Shoot Skill",
+            "MagicSkill": "Magic Skill",
+            "MarshallSkill": "Marshall Skill",
+            "DualSwordSkill": "Dual Sword Skill",
+            "HalberdSkill": "Halberd Skill",
+            "MononofuSkill": "Mononofu Skill",
+            "CrusherSkill": "Crusher Skill",
+            "FeatheringSkill": "Feathering Skill",
+            "GuardSkill": "Guard Skill",
+            "ShieldSkill": "Shield Skill",
+            "KnifeSkill": "Knife Skill",
+            "KnightSkill": "Knight Skill",
+            "HunterSkill": "Hunter Skill",
+            "PriestSkill": "Priest Skill",
+            "AssassinSkill": "Assassin Skill",
+            "WizardSkill": "Wizard Skill",
+            "SupportSkill": "Support Skill",
+            "BattleSkill": "Battle Skill",
+            "SurvivalSkill": "Survival Skill",
+            "SmithSkill": "Smith Skill",
+            "AlchemySkill": "Alchemy Skill",
+            "TamerSkill": "Tamer Skill",
+            "DarkPowerSkill": "Dark Power Skill",
+            "MagicBladeSkill": "Magic Blade Skill",
+            "DancerSkill": "Dancer Skill",
+            "MinstrelSkill": "Minstrel Skill",
+            "BareHandSkill": "Bare Hand Skill",
+            "NinjaSkill": "Ninja Skill",
+            "PartisanSkill": "Partisan Skill",
+            "LuckSkill": "Luck Skill",
+            "MerchantSkill": "Merchant Skill",
+            "PetSkill": "Pet Skill"
           }
         },
         posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Horizontal Position",
+          tableFieldDescription: "Position in the skill tree, with the leftmost column defined as column 0",
+          formFieldDescription: "Position in the skill tree, with the leftmost column defined as column 0",
         },
         posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Vertical Position",
+          tableFieldDescription: "Position in the skill tree, with the topmost skill in column 0 defined as row 0",
+          formFieldDescription: "Position in the skill tree, with the topmost skill in column 0 defined as row 0",
         },
         tier: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Tier",
+          tableFieldDescription: "Mainly used to calculate mercenary skill cooldown intervals",
+          formFieldDescription: "Mainly used to calculate mercenary skill cooldown intervals",
         },
-        name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        },
-        isPassive: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+        targetType: {
+          key: "Target Type",
+          tableFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
+          formFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
+          enumMap: {
+            "None": "No target",
+            "Self": "Self",
+            "Player": "Ally",
+            "Enemy": "Enemy"
+          }
         },
         chargingType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "Casting Type",
+          tableFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
+          formFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
           enumMap: {
-            Chanting: "",
-            Reservoir: ""
+            "Chanting": "Chanting",
+            "Reservoir": "Reservoir"
           }
         },
         distanceType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "Distance Power Type",
+          tableFieldDescription: "Indicates which types of distance power affect this skill",
+          formFieldDescription: "Indicates which types of distance power affect this skill",
           enumMap: {
-            None: "",
-            Long: "",
-            Short: "",
-            Both: ""
+            "None": "No effect",
+            "Long": "Long range only",
+            "Short": "Short range only",
+            "Both": "Both"
           }
         },
-        targetType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            None: "",
-            Self: "",
-            Player: "",
-            Enemy: ""
-          }
+        isPassive: {
+          key: "Is Passive",
+          tableFieldDescription: "Skills that take effect immediately upon learning are passive skills",
+          formFieldDescription: "Skills that take effect immediately upon learning are passive skills",
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Additional Notes",
+          tableFieldDescription: "Anything the editor wants to add",
+          formFieldDescription: "Other things you want to tell readers",
         },
         dataSources: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Data Sources",
+          tableFieldDescription: "The person or organization that measured this data",
+          formFieldDescription: "The person or organization that measured this data",
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Statistic ID",
+          tableFieldDescription: "This is the statistics database ID. Generally, you shouldn't see this.",
+          formFieldDescription: "This is the statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         updatedByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Updated By",
+          tableFieldDescription: "This is the updater's database ID. Generally, you shouldn't see this.",
+          formFieldDescription: "This is the updater's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         createdByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Created By",
+          tableFieldDescription: "This is the creator's database ID. Generally, you shouldn't see this.",
+          formFieldDescription: "This is the creator's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         }
-      }
+      },
+      description: ""
     },
     skill_effect: {
       selfName: "",
@@ -2593,7 +2537,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     special: {
       selfName: "",
@@ -2613,7 +2558,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     statistic: {
       selfName: "",
@@ -2643,7 +2589,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     task: {
       selfName: "",
@@ -2684,7 +2631,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     task_collect_require: {
       selfName: "",
@@ -2709,7 +2657,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     task_kill_requirement: {
       selfName: "",
@@ -2734,7 +2683,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     task_reward: {
       selfName: "",
@@ -2774,7 +2724,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     team: {
       selfName: "",
@@ -2794,7 +2745,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     user: {
       selfName: "",
@@ -2829,7 +2781,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     verification_token: {
       selfName: "",
@@ -2849,7 +2802,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     weapon: {
       selfName: "",
@@ -2923,7 +2877,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     world: {
       selfName: "",
@@ -2938,7 +2893,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     },
     zone: {
       selfName: "",
@@ -2973,7 +2929,8 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         }
-      }
+      },
+      description: ""
     }
   },
   enums: enums,

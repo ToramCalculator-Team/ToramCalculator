@@ -25,7 +25,7 @@ interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   state: unknown;
 }
 
-export default function NodeEditor(props: NodeEditorProps) {
+export function NodeEditor(props: NodeEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
   const [code, setCode] = createSignal("");

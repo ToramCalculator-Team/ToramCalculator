@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, JSX, Match, Show, Switch } from "solid-js";
 import * as _ from "lodash-es";
-import Toggle from "./toggle";
+import { Toggle } from "./toggle";
 
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
@@ -15,7 +15,7 @@ interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   inputWidth?: number;
 }
 
-const Input = (props: InputProps) => {
+export const Input = (props: InputProps) => {
   const config = createMemo(() => {
     return {
       description: props.description,
@@ -92,5 +92,3 @@ const Input = (props: InputProps) => {
     </label>
   );
 };
-
-export default Input;

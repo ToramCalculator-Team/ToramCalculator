@@ -4,7 +4,7 @@ import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { useNavigate } from "@solidjs/router";
 import * as Icon from "~/components/icon";
-import Button from "~/components/controls/button";
+import { Button  } from "~/components/controls/button";
 
 export default function ProfilePage() {
   const navigate = useNavigate();

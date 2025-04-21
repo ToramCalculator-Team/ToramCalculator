@@ -1,11 +1,10 @@
-// import BabylonBg from "~/components/module/test2";
 import { Show, type ParentProps, createEffect, onMount, createSignal, on } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { MediaProvider } from "~/contexts/Media-component";
 import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
-import BabylonBg from "~/components/module/babylonBg";
+import { BabylonBg } from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
 
 export default function AppMainContet(props: ParentProps) {

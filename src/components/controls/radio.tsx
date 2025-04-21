@@ -10,7 +10,7 @@ interface RadioProps extends JSX.HTMLAttributes<HTMLInputElement> {
   disabled?: boolean;
 }
 
-const Radio = (props: RadioProps) => {
+export const Radio = (props: RadioProps) => {
   const config = createMemo(() => {
     return {
       sizeClass: {
@@ -66,5 +66,3 @@ const Radio = (props: RadioProps) => {
     </label>
   );
 };
-
-export default Radio;

@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from "@solidjs/router";
 import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
-import Button from "~/components/controls/button";
+import { Button  } from "~/components/controls/button";
 import { DataEnums } from "../../../db/dataEnums";
 import { MediaContext } from "~/contexts/Media";
 

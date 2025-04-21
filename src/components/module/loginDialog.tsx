@@ -1,4 +1,4 @@
-import Button from "~/components/controls/button";
+import { Button  } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { emailExists, getUserByCookie } from "~/lib/session";
@@ -8,7 +8,7 @@ import { Accessor, createEffect, createMemo, createSignal, on, onMount, Show } f
 import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
 import * as Icon from "~/components/icon";
-import Input from "../controls/input";
+import { Input } from "../controls/input";
 import { z } from "zod";
 import { findAccountById } from "~/repositories/account";
 

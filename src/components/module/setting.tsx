@@ -1,10 +1,10 @@
-import Input, { type InputComponentType } from "~/components/controls/input";
+import { Input, type InputComponentType } from "~/components/controls/input";
 import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
-import Button from "~/components/controls/button";
-import CheckBox from "~/components/controls/checkBox";
-import Toggle from "~/components/controls/toggle";
-import Radio from "~/components/controls/radio";
+import { Button } from "~/components/controls/button";
+import { CheckBox } from "~/components/controls/checkBox";
+import { Toggle } from "~/components/controls/toggle";
+import { Radio } from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
 import { getActStore, setStore, store } from "~/store";
@@ -189,11 +189,7 @@ export const Setting = () => {
                           >
                             Light
                           </Radio>
-                          <Radio
-                            name="Dark"
-                            checked={store.theme === "dark"}
-                            onClick={() => setStore("theme", "dark")}
-                          >
+                          <Radio name="Dark" checked={store.theme === "dark"} onClick={() => setStore("theme", "dark")}>
                             Dark
                           </Radio>
                         </div>
@@ -381,7 +377,7 @@ export const Setting = () => {
                               localStorage.clear();
                               sessionStorage.clear();
                               // 重置内存中的store
-                              setStore(getActStore())
+                              setStore(getActStore());
                               // 刷新页面
                               window.location.reload();
 

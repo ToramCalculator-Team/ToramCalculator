@@ -3,39 +3,39 @@ import { MobType } from "../../../db/kysely/enums";
 import { type dictionary } from "../type";
 
 const elementType = {
-  Normal: "无属性",
-  Dark: "暗属性",
-  Earth: "地属性",
-  Fire: "火属性",
-  Light: "光属性",
-  Water: "水属性",
-  Wind: "风属性",
+  Normal: "無屬性",
+  Dark: "暗屬性",
+  Earth: "地屬性",
+  Fire: "火屬性",
+  Light: "光屬性",
+  Water: "水屬性",
+  Wind: "風屬性",
 };
 
 const mobType: Record<MobType, string> = {
-  Boss: "定点王",
+  Boss: "定點王",
   MiniBoss: "野王",
   Mob: "小怪",
 };
 
 const MainWeaponType = {
-  OneHandSword: "单手剑",
-  TwoHandSword: "双手剑",
+  OneHandSword: "單手劍",
+  TwoHandSword: "雙手劍",
   Bow: "弓",
   Rod: "法杖",
-  Magictool: "魔导具",
+  Magictool: "魔導具",
   Knuckle: "拳套",
-  Halberd: "旋风枪",
-  Katana: "拔刀剑",
+  Halberd: "旋風槍",
+  Katana: "拔刀劍",
   Bowgun: "弩",
-  selfName: "主武器类型",
+  selfName: "主武器類型",
 };
 const SubWeaponType = {
   Arrow: "箭矢",
   ShortSword: "小刀",
-  NinjutsuScroll: "忍术卷轴",
+  NinjutsuScroll: "忍術卷軸",
   Shield: "盾牌",
-  selfName: "副武器类型",
+  selfName: "副武器類型",
 };
 
 const WeaponType = {
@@ -43,17 +43,76 @@ const WeaponType = {
   ...SubWeaponType,
 };
 
+const SkillTreeType = {
+  BladeSkill: "劍術技能",
+  ShootSkill: "射擊技能",
+  MagicSkill: "魔法技能",
+  MarshallSkill: "格鬥技能",
+  DualSwordSkill: "雙劍技能",
+  HalberdSkill: "斧槍技能",
+  MononofuSkill: "武士技能",
+  CrusherSkill: "粉碎者技能",
+  FeatheringSkill: "靈魂技能",
+  GuardSkill: "格擋技能",
+  ShieldSkill: "護盾技能",
+  KnifeSkill: "小刀技能",
+  KnightSkill: "騎士技能",
+  HunterSkill: "狩獵技能",
+  PriestSkill: "祭司技能",
+  AssassinSkill: "暗殺技能",
+  WizardSkill: "巫師技能",
+  //
+  SupportSkill: "輔助技能",
+  BattleSkill: "好戰分子",
+  SurvivalSkill: "生存本能",
+  //
+  SmithSkill: "鍛冶大師",
+  AlchemySkill: "煉金術士",
+  TamerSkill: "馴獸天分",
+  //
+  DarkPowerSkill: "暗黑之力",
+  MagicBladeSkill: "魔劍技能",
+  DancerSkill: "舞者技能",
+  MinstrelSkill: "詩人技能",
+  BareHandSkill: "空手技能",
+  NinjaSkill: "忍者技能",
+  PartisanSkill: "游擊隊技能",
+  //
+  LuckSkill: "",
+  MerchantSkill: "商人技能",
+  PetSkill: "寵物技能",
+}
+
+const SkillTargetType = {
+  None: "無目標",
+  Self: "自己",
+  Player: "同伴",
+  Enemy: "敵人",
+}
+
+const SkillChargingType = {
+  Chanting: "詠唱",
+  Reservoir: "蓄力",
+}
+
+const SkillDistanceType = {
+  None: "不受影響",
+  Long: "僅受遠距離威力影響",
+  Short: "僅受近距離威力影響",
+  Both: "同時受遠距離和近距離威力影響",
+}
+
 const enums: DataEnums = {
   account: {
     type: {
-      Admin: "管理员",
-      User: "用户",
+      Admin: "管理員",
+      User: "用戶",
     },
   },
   address: {
     type: {
-      Normal: "一般地点",
-      Limited: "限时地点",
+      Normal: "一般地點",
+      Limited: "限時地點",
     },
   },
   weapon: {
@@ -62,7 +121,7 @@ const enums: DataEnums = {
   },
   mob: {
     type: {
-      Boss: "定点王",
+      Boss: "定點王",
       MiniBoss: "野王",
       Mob: "小怪",
     },
@@ -107,11 +166,11 @@ const enums: DataEnums = {
   },
   crystal: {
     type: {
-      NormalCrystal: "通用锻晶",
-      WeaponCrystal: "武器锻晶",
-      ArmorCrystal: "防具锻晶",
-      OptEquipCrystal: "追加锻晶",
-      SpecialCrystal: "特殊锻晶",
+      NormalCrystal: "通用鍛晶",
+      WeaponCrystal: "武器鍛晶",
+      ArmorCrystal: "防具鍛晶",
+      OptEquipCrystal: "追加鍛晶",
+      SpecialCrystal: "特殊鍛晶",
     },
   },
   recipe_ingredient: {
@@ -155,46 +214,46 @@ const enums: DataEnums = {
   },
   skill: {
     treeType: {
-      BladeSkill: "剑术技能",
-      ShootSkill: "射击技能",
+      BladeSkill: "劍術技能",
+      ShootSkill: "射擊技能",
       MagicSkill: "魔法技能",
-      MarshallSkill: "格斗技能",
-      DualSwordSkill: "双剑技能",
-      HalberdSkill: "斧枪技能",
+      MarshallSkill: "格鬥技能",
+      DualSwordSkill: "雙劍技能",
+      HalberdSkill: "斧槍技能",
       MononofuSkill: "武士技能",
       CrusherSkill: "粉碎者技能",
-      FeatheringSkill: "灵魂技能",
-      GuardSkill: "格挡技能",
-      ShieldSkill: "护盾技能",
+      FeatheringSkill: "靈魂技能",
+      GuardSkill: "格擋技能",
+      ShieldSkill: "護盾技能",
       KnifeSkill: "小刀技能",
-      KnightSkill: "骑士技能",
-      HunterSkill: "狩猎技能",
+      KnightSkill: "騎士技能",
+      HunterSkill: "狩獵技能",
       PriestSkill: "祭司技能",
-      AssassinSkill: "暗杀技能",
-      WizardSkill: "巫师技能",
+      AssassinSkill: "暗殺技能",
+      WizardSkill: "巫師技能",
       //
-      SupportSkill: "辅助技能",
-      BattleSkill: "好战分子",
+      SupportSkill: "輔助技能",
+      BattleSkill: "好戰分子",
       SurvivalSkill: "生存本能",
       //
-      SmithSkill: "锻冶大师",
-      AlchemySkill: "炼金术士",
-      TamerSkill: "驯兽天分",
+      SmithSkill: "鍛冶大師",
+      AlchemySkill: "煉金術士",
+      TamerSkill: "馴獸天分",
       //
       DarkPowerSkill: "暗黑之力",
-      MagicBladeSkill: "魔剑技能",
+      MagicBladeSkill: "魔劍技能",
       DancerSkill: "舞者技能",
-      MinstrelSkill: "诗人技能",
+      MinstrelSkill: "詩人技能",
       BareHandSkill: "空手技能",
       NinjaSkill: "忍者技能",
-      PartisanSkill: "游击队技能",
+      PartisanSkill: "游擊隊技能",
       //
       LuckSkill: "",
       MerchantSkill: "商人技能",
-      PetSkill: "宠物技能",
+      PetSkill: "寵物技能",
     },
     chargingType: {
-      Chanting: "咏唱",
+      Chanting: "詠唱",
       Reservoir: "蓄力",
     },
     distanceType: {
@@ -213,7 +272,7 @@ const enums: DataEnums = {
   player_armor: {
     ability: {
       Normal: "一般",
-      Light: "轻化",
+      Light: "輕化",
       Heavy: "重化",
     },
   },
@@ -257,11 +316,11 @@ const enums: DataEnums = {
   },
   character: {
     personalityType: {
-      None: "无",
-      Luk: "幸运",
-      Cri: "暴击",
+      None: "無",
+      Luk: "幸運",
+      Cri: "暴擊",
       Tec: "技巧",
-      Men: "异抗",
+      Men: "異抗",
     },
     partnerSkillAType: {
       Passive: "",
@@ -341,6 +400,21 @@ const enums: DataEnums = {
   combo: {},
   simulator: {},
   team: {},
+  _armorTocrystal: undefined,
+  _avatarTocharacter: undefined,
+  _BackRelation: undefined,
+  _campA: undefined,
+  _campB: undefined,
+  _characterToconsumable: undefined,
+  _crystalTooption: undefined,
+  _crystalToplayer_armor: undefined,
+  _crystalToplayer_option: undefined,
+  _crystalToplayer_special: undefined,
+  _crystalToplayer_weapon: undefined,
+  _crystalTospecial: undefined,
+  _crystalToweapon: undefined,
+  _FrontRelation: undefined,
+  _mobTozone: undefined
 };
 
 const dictionary: dictionary = {
@@ -480,7 +554,7 @@ const dictionary: dictionary = {
     },
     index: {
       adventurer: "冒險者",
-      goodMorning: "哦哈喵~ (=´ω｀=)",
+      goodMorning: "哦哈喵~ (=´ω｀=)",
       goodAfternoon: "下午好ヾ(=･ω･=)o",
       goodEvening: "晚上好(.-ω-)zzz",
       nullSearchResultWarring: "沒有找到相關內容!!!∑(ﾟДﾟノ)ノ",
@@ -661,6 +735,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _avatarTocharacter: {
       selfName: "",
@@ -676,6 +751,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _BackRelation: {
       selfName: "",
@@ -691,6 +767,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _campA: {
       selfName: "",
@@ -706,6 +783,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _campB: {
       selfName: "",
@@ -721,6 +799,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _characterToconsumable: {
       selfName: "",
@@ -736,6 +815,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalTooption: {
       selfName: "",
@@ -751,6 +831,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -766,6 +847,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_option: {
       selfName: "",
@@ -781,6 +863,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_special: {
       selfName: "",
@@ -796,6 +879,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_weapon: {
       selfName: "",
@@ -811,6 +895,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalTospecial: {
       selfName: "",
@@ -826,6 +911,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToweapon: {
       selfName: "",
@@ -841,6 +927,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _FrontRelation: {
       selfName: "",
@@ -856,6 +943,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _mobTozone: {
       selfName: "",
@@ -871,6 +959,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account: {
       selfName: "",
@@ -940,6 +1029,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account_create_data: {
       selfName: "",
@@ -950,6 +1040,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account_update_data: {
       selfName: "",
@@ -960,6 +1051,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     activity: {
       selfName: "",
@@ -975,6 +1067,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     address: {
       selfName: "",
@@ -1014,6 +1107,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     armor: {
       selfName: "",
@@ -1049,6 +1143,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     avatar: {
       selfName: "",
@@ -1084,6 +1179,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     character: {
       selfName: "",
@@ -1224,6 +1320,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     character_skill: {
       selfName: "",
@@ -1254,6 +1351,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     combo: {
       selfName: "",
@@ -1279,6 +1377,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     combo_step: {
       selfName: "",
@@ -1321,6 +1420,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     consumable: {
       selfName: "",
@@ -1360,6 +1460,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     crystal: {
       selfName: "",
@@ -1387,6 +1488,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     drop_item: {
       selfName: "",
@@ -1437,6 +1539,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     image: {
       selfName: "",
@@ -1477,6 +1580,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     item: {
       selfName: "",
@@ -1531,6 +1635,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     material: {
       selfName: "",
@@ -1564,6 +1669,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     member: {
       selfName: "",
@@ -1626,6 +1732,7 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         }
       },
+      description: ""
     },
     mercenary: {
       selfName: "",
@@ -1673,6 +1780,7 @@ const dictionary: dictionary = {
           },
         },
       },
+      description: ""
     },
     mob: {
       selfName: "",
@@ -1689,10 +1797,8 @@ const dictionary: dictionary = {
         },
         type: {
           key: "怪物類型",
-          tableFieldDescription:
-            "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
-          formFieldDescription:
-            "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+          tableFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+          formFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
           enumMap: mobType,
         },
         captureable: {
@@ -1717,16 +1823,14 @@ const dictionary: dictionary = {
         },
         initialElement: {
           key: "元素屬性",
-          tableFieldDescription:
-            "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
+          tableFieldDescription: "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
           formFieldDescription: "這裡填寫怪物的初始屬性即可，有關屬性變化的描述請在怪物行為中編輯",
           enumMap: elementType,
         },
         radius: {
           key: "半徑",
           tableFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中",
-          formFieldDescription:
-            "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
+          formFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
         },
         maxhp: {
           key: "最大生命值",
@@ -1806,22 +1910,20 @@ const dictionary: dictionary = {
         statisticId: {
           key: "統計信息ID",
           tableFieldDescription: "這是怪物的統計信息欄位資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription:
-            "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription: "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
         updatedByAccountId: {
           key: "更新者ID",
           tableFieldDescription: "這是怪物的更新者資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription:
-            "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription: "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
         createdByAccountId: {
           key: "創建者ID",
           tableFieldDescription: "這是怪物的創建者資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription:
-            "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription: "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
       },
+      description: ""
     },
     npc: {
       selfName: "",
@@ -1842,6 +1944,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     option: {
       selfName: "",
@@ -1877,6 +1980,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player: {
       selfName: "",
@@ -1902,6 +2006,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_armor: {
       selfName: "",
@@ -1952,6 +2057,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_option: {
       selfName: "",
@@ -1987,6 +2093,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_pet: {
       selfName: "",
@@ -2131,6 +2238,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_special: {
       selfName: "",
@@ -2161,6 +2269,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_weapon: {
       selfName: "",
@@ -2211,6 +2320,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     post: {
       selfName: "",
@@ -2241,6 +2351,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     recipe: {
       selfName: "",
@@ -2261,6 +2372,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     recipe_ingredient: {
       selfName: "",
@@ -2301,6 +2413,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     session: {
       selfName: "",
@@ -2326,6 +2439,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     simulator: {
       selfName: "",
@@ -2361,137 +2475,139 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     skill: {
-      selfName: "",
+      selfName: "技能",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        treeType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            BladeSkill: "",
-            ShootSkill: "",
-            MagicSkill: "",
-            MarshallSkill: "",
-            DualSwordSkill: "",
-            HalberdSkill: "",
-            MononofuSkill: "",
-            CrusherSkill: "",
-            FeatheringSkill: "",
-            GuardSkill: "",
-            ShieldSkill: "",
-            KnifeSkill: "",
-            KnightSkill: "",
-            HunterSkill: "",
-            PriestSkill: "",
-            AssassinSkill: "",
-            WizardSkill: "",
-            SupportSkill: "",
-            BattleSkill: "",
-            SurvivalSkill: "",
-            SmithSkill: "",
-            AlchemySkill: "",
-            TamerSkill: "",
-            DarkPowerSkill: "",
-            MagicBladeSkill: "",
-            DancerSkill: "",
-            MinstrelSkill: "",
-            BareHandSkill: "",
-            NinjaSkill: "",
-            PartisanSkill: "",
-            LuckSkill: "",
-            MerchantSkill: "",
-            PetSkill: "",
-          },
-        },
-        posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        tier: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "這是技能的資料庫ID。通常，這不會顯示。",
+          formFieldDescription: "這是技能的資料庫ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名稱",
+          tableFieldDescription: "技能的名稱，通常與遊戲中的名稱一致。",
+          formFieldDescription: "請輸入遊戲中顯示的技能名稱。請確保與遊戲內名稱一致，避免造成他人混淆。",
         },
-        isPassive: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        chargingType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+        treeType: {
+          key: "技能樹",
+          tableFieldDescription: "技能的最上層分類，包括魔法技能、黑暗之力、輔助技能、戰士等。",
+          formFieldDescription: "技能的最上層分類，包括魔法技能、黑暗之力、輔助技能、戰士等。",
           enumMap: {
-            Chanting: "",
-            Reservoir: "",
-          },
+            "BladeSkill": "劍術技能",
+            "ShootSkill": "射擊技能",
+            "MagicSkill": "魔法技能",
+            "MarshallSkill": "格鬥技能",
+            "DualSwordSkill": "雙劍技能",
+            "HalberdSkill": "斧槍技能",
+            "MononofuSkill": "武士技能",
+            "CrusherSkill": "粉碎者技能",
+            "FeatheringSkill": "羽毛技能",
+            "GuardSkill": "守護技能",
+            "ShieldSkill": "盾牌技能",
+            "KnifeSkill": "短刀技能",
+            "KnightSkill": "騎士技能",
+            "HunterSkill": "獵人技能",
+            "PriestSkill": "祭司技能",
+            "AssassinSkill": "刺客技能",
+            "WizardSkill": "巫師技能",
+            "SupportSkill": "輔助技能",
+            "BattleSkill": "戰鬥技能",
+            "SurvivalSkill": "生存技能",
+            "SmithSkill": "鍛造技能",
+            "AlchemySkill": "鍊金技能",
+            "TamerSkill": "馴獸師技能",
+            "DarkPowerSkill": "黑暗之力技能",
+            "MagicBladeSkill": "魔劍技能",
+            "DancerSkill": "舞者技能",
+            "MinstrelSkill": "吟遊詩人技能",
+            "BareHandSkill": "空手技能",
+            "NinjaSkill": "忍者技能",
+            "PartisanSkill": "游擊兵技能",
+            "LuckSkill": "幸運技能",
+            "MerchantSkill": "商人技能",
+            "PetSkill": "寵物技能"
+          }
         },
-        distanceType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            None: "",
-            Long: "",
-            Short: "",
-            Both: "",
-          },
+        posX: {
+          key: "橫向位置",
+          tableFieldDescription: "技能樹中的位置，最左側的列定義為第0列",
+          formFieldDescription: "技能樹中的位置，最左側的列定義為第0列",
+        },
+        posY: {
+          key: "縱向位置",
+          tableFieldDescription: "技能樹中的位置，第0列最上方的技能定義為第0行",
+          formFieldDescription: "技能樹中的位置，第0列最上方的技能定義為第0行",
+        },
+        tier: {
+          key: "階級",
+          tableFieldDescription: "主要用於傭兵技能冷卻時間的計算",
+          formFieldDescription: "主要用於傭兵技能冷卻時間的計算",
         },
         targetType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "目標類型",
+          tableFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
+          formFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
           enumMap: {
-            None: "",
-            Self: "",
-            Player: "",
-            Enemy: "",
-          },
+            "None": "無目標",
+            "Self": "自身",
+            "Player": "隊友",
+            "Enemy": "敵人"
+          }
+        },
+        chargingType: {
+          key: "詠唱類型",
+          tableFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
+          formFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
+          enumMap: {
+            "Chanting": "詠唱",
+            "Reservoir": "儲存"
+          }
+        },
+        distanceType: {
+          key: "距離威力類型",
+          tableFieldDescription: "表示哪種類型的距離威力會影響這個技能",
+          formFieldDescription: "表示哪種類型的距離威力會影響這個技能",
+          enumMap: {
+            "None": "無影響",
+            "Long": "僅遠距離",
+            "Short": "僅近距離",
+            "Both": "兩者皆有"
+          }
+        },
+        isPassive: {
+          key: "被動",
+          tableFieldDescription: "習得後立即生效的技能是被動技能",
+          formFieldDescription: "習得後立即生效的技能是被動技能",
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "補充說明",
+          tableFieldDescription: "編輯者想要補充的內容",
+          formFieldDescription: "想要告訴讀者的其他內容",
         },
         dataSources: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "資料來源",
+          tableFieldDescription: "測量這些數據的人員或組織",
+          formFieldDescription: "測量這些數據的人員或組織",
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "統計ID",
+          tableFieldDescription: "這是統計資料庫的ID。通常，這不會顯示。",
+          formFieldDescription: "這是統計資料庫的ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
         },
         updatedByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "更新者",
+          tableFieldDescription: "這是更新者的資料庫ID。通常，這不會顯示。",
+          formFieldDescription: "這是更新者的資料庫ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
         },
         createdByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "建立者",
+          tableFieldDescription: "這是建立者的資料庫ID。通常，這不會顯示。",
+          formFieldDescription: "這是建立者的資料庫ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
+        }
       },
+      description: ""
     },
     skill_effect: {
       selfName: "",
@@ -2582,6 +2698,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     special: {
       selfName: "",
@@ -2602,6 +2719,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     statistic: {
       selfName: "",
@@ -2632,6 +2750,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task: {
       selfName: "",
@@ -2673,6 +2792,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_collect_require: {
       selfName: "",
@@ -2698,6 +2818,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_kill_requirement: {
       selfName: "",
@@ -2723,6 +2844,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_reward: {
       selfName: "",
@@ -2763,6 +2885,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     team: {
       selfName: "",
@@ -2783,6 +2906,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     user: {
       selfName: "",
@@ -2818,6 +2942,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     verification_token: {
       selfName: "",
@@ -2838,6 +2963,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     weapon: {
       selfName: "",
@@ -2912,6 +3038,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     world: {
       selfName: "",
@@ -2927,6 +3054,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     zone: {
       selfName: "",
@@ -2962,6 +3090,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
   },
   enums: enums,

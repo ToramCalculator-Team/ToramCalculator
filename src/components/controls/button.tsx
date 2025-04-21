@@ -11,7 +11,7 @@ interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;
 }
 
-const Button = (props: MyButtonProps) => {
+export const Button = (props: MyButtonProps) => {
   const config = createMemo(() => {
     return {
       icon: props.icon,
@@ -56,5 +56,3 @@ const Button = (props: MyButtonProps) => {
     </button>
   );
 };
-
-export default Button;

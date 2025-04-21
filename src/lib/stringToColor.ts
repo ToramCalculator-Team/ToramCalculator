@@ -1,4 +1,4 @@
-export default function stringToColor(str: string): string {
+export function stringToColor(str: string): string {
   // 预定义的颜色数组
   const colors: string[] = [];
   // 生成 14 个颜色值

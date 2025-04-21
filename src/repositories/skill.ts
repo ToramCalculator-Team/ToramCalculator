@@ -6,10 +6,12 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createSkillEffect, SkillEffect, skillEffectSubRelations } from "./skillEffect";
 import { ConvertToAllDetail, ConvertToAllString, DataType } from "./untils";
 import { getDictionary, Locale } from "~/locales/i18n";
+import { createId } from "@paralleldrive/cuid2";
 
 export interface Skill extends DataType<skill> {
   MainTable: Awaited<ReturnType<typeof findSkills>>[number];
   MainForm: skill;
+  Card: Awaited<ReturnType<typeof findSkillById>>;
 }
 
 export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {
@@ -67,15 +69,28 @@ export async function insertSkill(trx: Transaction<DB>, newSkill: Skill["Insert"
   return skill;
 }
 
-export async function createSkill(newSkill: { skill: Skill["Insert"]; skillEffects: SkillEffect["Insert"][] }) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const skill = await insertSkill(trx, newSkill.skill);
-    const skillEffects = await Promise.all(
-      newSkill.skillEffects.map((skillEffect) => createSkillEffect({ ...skillEffect, belongToskillId: skill.id })),
-    );
-    return skill;
-  });
+export async function createSkill(trx: Transaction<DB>, newSkill: Skill["Insert"]) {
+  const statistic = await trx
+    .insertInto("statistic")
+    .values({
+      id: createId(),
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      usageTimestamps: [],
+      viewTimestamps: [],
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  const skill = await trx
+    .insertInto("skill")
+    .values({
+      ...newSkill,
+      id: createId(),
+      statisticId: statistic.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return skill;
 }
 
 export async function deleteSkill(id: string) {

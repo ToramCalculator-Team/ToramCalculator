@@ -44,6 +44,65 @@ const WeaponType = {
   ...SubWeaponType,
 };
 
+const SkillTreeType = {
+  BladeSkill: "剑术技能",
+  ShootSkill: "射击技能",
+  MagicSkill: "魔法技能",
+  MarshallSkill: "格斗技能",
+  DualSwordSkill: "双剑技能",
+  HalberdSkill: "斧枪技能",
+  MononofuSkill: "武士技能",
+  CrusherSkill: "粉碎者技能",
+  FeatheringSkill: "灵魂技能",
+  GuardSkill: "格挡技能",
+  ShieldSkill: "护盾技能",
+  KnifeSkill: "小刀技能",
+  KnightSkill: "骑士技能",
+  HunterSkill: "狩猎技能",
+  PriestSkill: "祭司技能",
+  AssassinSkill: "暗杀技能",
+  WizardSkill: "巫师技能",
+  //
+  SupportSkill: "辅助技能",
+  BattleSkill: "好战分子",
+  SurvivalSkill: "生存本能",
+  //
+  SmithSkill: "锻冶大师",
+  AlchemySkill: "炼金术士",
+  TamerSkill: "驯兽天分",
+  //
+  DarkPowerSkill: "暗黑之力",
+  MagicBladeSkill: "魔剑技能",
+  DancerSkill: "舞者技能",
+  MinstrelSkill: "诗人技能",
+  BareHandSkill: "空手技能",
+  NinjaSkill: "忍者技能",
+  PartisanSkill: "游击队技能",
+  //
+  LuckSkill: "",
+  MerchantSkill: "商人技能",
+  PetSkill: "宠物技能",
+}
+
+const SkillTargetType = {
+  None: "无目标",
+  Self: "自己",
+  Player: "同伴",
+  Enemy: "敌人",
+}
+
+const SkillChargingType = {
+  Chanting: "咏唱",
+  Reservoir: "蓄力",
+}
+
+const SkillDistanceType = {
+  None: "不受影响",
+  Long: "仅受远距离威力影响",
+  Short: "仅受近距离威力影响",
+  Both: "同时受远距离和近距离威力影响",
+}
+
 const enums: DataEnums = {
   account: {
     type: {
@@ -342,6 +401,21 @@ const enums: DataEnums = {
   combo: {},
   simulator: {},
   team: {},
+  _armorTocrystal: undefined,
+  _avatarTocharacter: undefined,
+  _BackRelation: undefined,
+  _campA: undefined,
+  _campB: undefined,
+  _characterToconsumable: undefined,
+  _crystalTooption: undefined,
+  _crystalToplayer_armor: undefined,
+  _crystalToplayer_option: undefined,
+  _crystalToplayer_special: undefined,
+  _crystalToplayer_weapon: undefined,
+  _crystalTospecial: undefined,
+  _crystalToweapon: undefined,
+  _FrontRelation: undefined,
+  _mobTozone: undefined
 };
 
 const dictionary: dictionary = {
@@ -660,6 +734,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _avatarTocharacter: {
       selfName: "",
@@ -675,6 +750,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _BackRelation: {
       selfName: "",
@@ -690,6 +766,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _campA: {
       selfName: "",
@@ -705,6 +782,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _campB: {
       selfName: "",
@@ -720,6 +798,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _characterToconsumable: {
       selfName: "",
@@ -735,6 +814,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalTooption: {
       selfName: "",
@@ -750,6 +830,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -765,6 +846,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_option: {
       selfName: "",
@@ -780,6 +862,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_special: {
       selfName: "",
@@ -795,6 +878,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToplayer_weapon: {
       selfName: "",
@@ -810,6 +894,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalTospecial: {
       selfName: "",
@@ -825,6 +910,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _crystalToweapon: {
       selfName: "",
@@ -840,6 +926,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _FrontRelation: {
       selfName: "",
@@ -855,6 +942,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     _mobTozone: {
       selfName: "",
@@ -870,6 +958,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account: {
       selfName: "",
@@ -939,6 +1028,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account_create_data: {
       selfName: "",
@@ -949,6 +1039,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     account_update_data: {
       selfName: "",
@@ -959,6 +1050,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     activity: {
       selfName: "",
@@ -974,6 +1066,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     address: {
       selfName: "",
@@ -1013,6 +1106,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     armor: {
       selfName: "",
@@ -1048,6 +1142,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     avatar: {
       selfName: "",
@@ -1083,6 +1178,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     character: {
       selfName: "",
@@ -1223,6 +1319,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     character_skill: {
       selfName: "",
@@ -1253,6 +1350,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     combo: {
       selfName: "",
@@ -1278,6 +1376,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     combo_step: {
       selfName: "",
@@ -1320,6 +1419,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     consumable: {
       selfName: "",
@@ -1359,6 +1459,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     crystal: {
       selfName: "",
@@ -1386,6 +1487,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     drop_item: {
       selfName: "",
@@ -1436,6 +1538,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     image: {
       selfName: "",
@@ -1476,6 +1579,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     item: {
       selfName: "",
@@ -1530,6 +1634,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     material: {
       selfName: "",
@@ -1563,6 +1668,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     member: {
       selfName: "",
@@ -1625,6 +1731,7 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         }
       },
+      description: ""
     },
     mercenary: {
       selfName: "",
@@ -1672,6 +1779,7 @@ const dictionary: dictionary = {
           },
         },
       },
+      description: ""
     },
     mob: {
       selfName: "",
@@ -1688,10 +1796,8 @@ const dictionary: dictionary = {
         },
         type: {
           key: "怪物类型",
-          tableFieldDescription:
-            "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
-          formFieldDescription:
-            "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
+          tableFieldDescription: "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
+          formFieldDescription: "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
           enumMap: mobType,
         },
         captureable: {
@@ -1716,16 +1822,14 @@ const dictionary: dictionary = {
         },
         initialElement: {
           key: "元素属性",
-          tableFieldDescription:
-            "这是初始属性，怪物在战斗时可能会改变其属性，详细情况将取决于怪物行为中的描述，要查看怪物行为，请点击具体怪物",
+          tableFieldDescription: "这是初始属性，怪物在战斗时可能会改变其属性，详细情况将取决于怪物行为中的描述，要查看怪物行为，请点击具体怪物",
           formFieldDescription: "这里填写怪物的初始属性即可，有关属性变化的描述请在怪物行为中编辑",
           enumMap: elementType,
         },
         radius: {
           key: "半径",
           tableFieldDescription: "怪物的模型尺寸，主要是用来计算技能是否命中",
-          formFieldDescription:
-            "怪物的模型尺寸，主要是用来计算技能是否命中,从远处按下圣拳之裁后，技能发动瞬间屏幕上显示的距离-1就可以测出这个值。",
+          formFieldDescription: "怪物的模型尺寸，主要是用来计算技能是否命中,从远处按下圣拳之裁后，技能发动瞬间屏幕上显示的距离-1就可以测出这个值。",
         },
         maxhp: {
           key: "最大生命值",
@@ -1805,22 +1909,20 @@ const dictionary: dictionary = {
         statisticId: {
           key: "统计信息ID",
           tableFieldDescription: "这是怪物的统计信息字段数据库id，一般来说，你应该不可能看到这个",
-          formFieldDescription:
-            "这是怪物的统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+          formFieldDescription: "这是怪物的统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         updatedByAccountId: {
           key: "更新者ID",
           tableFieldDescription: "这是怪物的更新者数据库id，一般来说，你应该不可能看到这个",
-          formFieldDescription:
-            "这是怪物的更新者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+          formFieldDescription: "这是怪物的更新者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         createdByAccountId: {
           key: "创建者ID",
           tableFieldDescription: "这是怪物的创建者数据库id，一般来说，你应该不可能看到这个",
-          formFieldDescription:
-            "这是怪物的创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+          formFieldDescription: "这是怪物的创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
       },
+      description: "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。"
     },
     npc: {
       selfName: "",
@@ -1841,6 +1943,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     option: {
       selfName: "",
@@ -1876,6 +1979,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player: {
       selfName: "",
@@ -1901,6 +2005,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_armor: {
       selfName: "",
@@ -1951,6 +2056,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_option: {
       selfName: "",
@@ -1986,6 +2092,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_pet: {
       selfName: "",
@@ -2130,6 +2237,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_special: {
       selfName: "",
@@ -2160,6 +2268,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     player_weapon: {
       selfName: "",
@@ -2210,6 +2319,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     post: {
       selfName: "",
@@ -2240,6 +2350,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     recipe: {
       selfName: "",
@@ -2260,6 +2371,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     recipe_ingredient: {
       selfName: "",
@@ -2300,6 +2412,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     session: {
       selfName: "",
@@ -2325,6 +2438,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     simulator: {
       selfName: "",
@@ -2360,137 +2474,92 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     skill: {
       selfName: "",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        treeType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            BladeSkill: "",
-            ShootSkill: "",
-            MagicSkill: "",
-            MarshallSkill: "",
-            DualSwordSkill: "",
-            HalberdSkill: "",
-            MononofuSkill: "",
-            CrusherSkill: "",
-            FeatheringSkill: "",
-            GuardSkill: "",
-            ShieldSkill: "",
-            KnifeSkill: "",
-            KnightSkill: "",
-            HunterSkill: "",
-            PriestSkill: "",
-            AssassinSkill: "",
-            WizardSkill: "",
-            SupportSkill: "",
-            BattleSkill: "",
-            SurvivalSkill: "",
-            SmithSkill: "",
-            AlchemySkill: "",
-            TamerSkill: "",
-            DarkPowerSkill: "",
-            MagicBladeSkill: "",
-            DancerSkill: "",
-            MinstrelSkill: "",
-            BareHandSkill: "",
-            NinjaSkill: "",
-            PartisanSkill: "",
-            LuckSkill: "",
-            MerchantSkill: "",
-            PetSkill: "",
-          },
-        },
-        posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        tier: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "这是技能的数据库id，一般来说，你应该不可能看到这个",
+          formFieldDescription: "这是技能的数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "技能名称，通常和游戏内一致，通常...",
+          formFieldDescription: "技能名称，请填写和游戏内一致的翻译。你也不想大伙看到你写的东西之后一脸懵逼是吧。",
         },
-        isPassive: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+        treeType: {
+          key: "所属技能树",
+          tableFieldDescription: "技能的最顶层分类，比如魔法技能、黑暗之力、辅助技能、好战分子等",
+          formFieldDescription: "技能的最顶层分类，比如魔法技能、黑暗之力、辅助技能、好战分子等",
+          enumMap: SkillTreeType
         },
-        chargingType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            Chanting: "",
-            Reservoir: "",
-          },
+        posX: {
+          key: "水平坐标",
+          tableFieldDescription: "在技能树中的位置，最左侧的一列定义为第0列",
+          formFieldDescription: "在技能树中的位置，最左侧的一列定义为第0列",
         },
-        distanceType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            None: "",
-            Long: "",
-            Short: "",
-            Both: "",
-          },
+        posY: {
+          key: "垂直坐标",
+          tableFieldDescription: "在技能树中的位置，第0列中最上面的那个技能位置定义为第0行",
+          formFieldDescription: "在技能树中的位置，第0列中最上面的那个技能位置定义为第0行",
+        },
+        tier: {
+          key: "位阶",
+          tableFieldDescription: "主要用于计算佣兵技能释放间隔",
+          formFieldDescription: "主要用于计算佣兵技能释放间隔",
         },
         targetType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            None: "",
-            Self: "",
-            Player: "",
-            Enemy: "",
-          },
+          key: "目标类型",
+          tableFieldDescription: `不需要选择目标即可释放的为${enums.skill.targetType.Self}，能以${enums.skill.targetType.Player}为目标的技能即为${enums.skill.targetType.Player}。`,
+          formFieldDescription: `不需要选择目标即可释放的为${enums.skill.targetType.Self}，能以${enums.skill.targetType.Player}为目标的技能即为${enums.skill.targetType.Player}。`,
+          enumMap: SkillTargetType
+        },
+        chargingType: {
+          key: "施法动作类型",
+          tableFieldDescription: `不受咏唱影响的都为${enums.skill.chargingType.Reservoir}。`,
+          formFieldDescription: `不受咏唱影响的都为${enums.skill.chargingType.Reservoir}。`,
+          enumMap: SkillChargingType
+        },
+        distanceType: {
+          key: "距离威力类型",
+          tableFieldDescription: "表示此技能受这些类型的距离威力影响",
+          formFieldDescription: "表示此技能受这些类型的距离威力影响",
+          enumMap: SkillDistanceType
+        },
+        isPassive: {
+          key: "是被动技能吗",
+          tableFieldDescription: "学习后就一直生效的技能即为被动技能",
+          formFieldDescription: "学习后就一直生效的技能即为被动技能",
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "额外说明",
+          tableFieldDescription: "编辑者想额外描述的东西",
+          formFieldDescription: "其他的你想告诉阅读者的东西",
         },
         dataSources: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数据来源",
+          tableFieldDescription: "此数据的实际测量者或者组织",
+          formFieldDescription: "此数据的实际测量者或者组织",
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "统计信息ID",
+          tableFieldDescription: "这是统计信息字段数据库id，一般来说，你应该不可能看到这个",
+          formFieldDescription: "这是统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         updatedByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "更新者ID",
+          tableFieldDescription: "这是更新者数据库id，一般来说，你应该不可能看到这个",
+          formFieldDescription: "这是更新者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         createdByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "创建者ID",
+          tableFieldDescription: "这是创建者数据库id，一般来说，你应该不可能看到这个",
+          formFieldDescription: "这是创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
       },
+      description: ""
     },
     skill_effect: {
       selfName: "",
@@ -2581,6 +2650,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     special: {
       selfName: "",
@@ -2601,6 +2671,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     statistic: {
       selfName: "",
@@ -2631,6 +2702,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task: {
       selfName: "",
@@ -2672,6 +2744,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_collect_require: {
       selfName: "",
@@ -2697,6 +2770,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_kill_requirement: {
       selfName: "",
@@ -2722,6 +2796,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     task_reward: {
       selfName: "",
@@ -2762,6 +2837,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     team: {
       selfName: "",
@@ -2782,6 +2858,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     user: {
       selfName: "",
@@ -2817,6 +2894,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     verification_token: {
       selfName: "",
@@ -2837,6 +2915,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     weapon: {
       selfName: "",
@@ -2911,6 +2990,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     world: {
       selfName: "",
@@ -2926,6 +3006,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
     zone: {
       selfName: "",
@@ -2961,6 +3042,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
+      description: ""
     },
   },
   enums: enums,

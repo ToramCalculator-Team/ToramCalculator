@@ -8,7 +8,7 @@ interface SwitchProps extends JSX.HTMLAttributes<HTMLInputElement> {
   checked?: boolean;
 }
 
-const Toggle = (props: SwitchProps) => {
+export const Toggle = (props: SwitchProps) => {
   const config = createMemo(() => {
     return {
       sizeClass: {
@@ -49,4 +49,3 @@ const Toggle = (props: SwitchProps) => {
   );
 };
 
-export default Toggle;

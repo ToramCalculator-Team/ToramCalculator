@@ -287,7 +287,7 @@ yRot.setKeys([
   },
 ]);
 
-export default function BabylonBg(): JSX.Element {
+export function BabylonBg(): JSX.Element {
   const themeColors = createMemo(
     () =>
       ({

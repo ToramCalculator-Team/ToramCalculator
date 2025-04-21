@@ -11,7 +11,7 @@ interface TextEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   setData: (data: OutputData) => void;
 }
 
-function TextEditor(props: TextEditorProps) {
+export function TextEditor(props: TextEditorProps) {
   const [editorIsReady, setReady] = createSignal(false);
 
   const randomHolderId = "myHolder";
@@ -43,4 +43,3 @@ function TextEditor(props: TextEditorProps) {
   );
 }
 
-export default TextEditor;

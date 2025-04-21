@@ -10,7 +10,7 @@ interface CheckBoxProps extends JSX.HTMLAttributes<HTMLInputElement> {
   disabled?: boolean;
 }
 
-const CheckBox = (props: CheckBoxProps) => {
+export const CheckBox = (props: CheckBoxProps) => {
   const config = createMemo(() => {
     return {
       sizeClass: {
@@ -74,5 +74,3 @@ const CheckBox = (props: CheckBoxProps) => {
     </label>
   );
 };
-
-export default CheckBox;

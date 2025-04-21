@@ -1,1 +1,2 @@
 id,treeType,posX,posY,tier,name,isPassive,chargingType,distanceType,targetType,details,dataSources,statisticId,updatedByAccountId,createdByAccountId
+defaultSkillId,BladeSkill,0,0,0,"",f,Chanting,None,None,"","",defaultSkillStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
