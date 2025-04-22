@@ -57,7 +57,7 @@ export function skillPageConfig(): WikiPageConfig<"skill"> {
         const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
         type SkillKeys = keyof DataEnums["skill"];
         type SkillValueKeys<T extends SkillKeys> = keyof DataEnums["skill"][T];
-        let defaultTdClass = "text-main-text-color flex flex-col justify-center p-6";
+        let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
         switch (props.cell.column.id as keyof Skill["MainTable"]) {
           case "name":
             defaultTdClass = "text-accent-color flex flex-col justify-center p-6 ";

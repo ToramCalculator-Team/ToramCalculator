@@ -12,6 +12,7 @@ import { ConvertToDic } from "~/locales/type";
 import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import { Transaction } from "kysely";
+import * as Icon from "~/components/icon";
 
 const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
   if (schema === undefined || schema == null) {
@@ -79,9 +80,20 @@ export const Form = <T extends keyof DB>(props: {
   }));
 
   return (
-    <div class="FormBox flex w-full flex-col gap-2 lg:p-6">
-      <div class="Title flex p-2">
+    <div class="FormBox flex w-full flex-col gap-2">
+      <div class="Title flex items-center justify-between lg:p-2">
         <h1 class="FormTitle text-2xl font-black">{dictionary().db[props.tableName].selfName}</h1>
+        <Button
+          icon={<Icon.Line.Close />}
+          class="lg:hidden"
+          onClick={() => {
+            const tableName = props.tableName;
+            setStore("wiki", tableName, {
+              ...store.wiki[tableName],
+              dialogIsOpen: false,
+            });
+          }}
+        ></Button>
       </div>
       <form
         onSubmit={(e) => {
@@ -89,7 +101,7 @@ export const Form = <T extends keyof DB>(props: {
           e.stopPropagation();
           form.handleSubmit();
         }}
-        class="Form bg-area-color flex flex-col gap-3 rounded p-3"
+        class="Form lg:bg-area-color flex flex-col gap-3 lg:rounded lg:p-3"
       >
         <For each={Object.entries(props.item())}>
           {(_field, index) => {
@@ -177,7 +189,7 @@ export const Form = <T extends keyof DB>(props: {
                           onBlur={field().handleBlur}
                           onChange={(e) => field().handleChange(parseFloat(e.target.value))}
                           state={fieldInfo(field())}
-                          class="bg-primary-color w-full rounded-md"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         />
                       );
                     }}

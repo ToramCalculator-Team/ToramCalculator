@@ -94,7 +94,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
     return createVirtualizer({
       count: table()?.getRowCount() ?? 0,
       getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-      estimateSize: () => 96,
+      estimateSize: () => 73,
       overscan: 5,
     });
   });
@@ -221,7 +221,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
           <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
             <For each={table()?.getHeaderGroups()}>
               {(headerGroup) => (
-                <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
+                <tr class="border-dividing-color flex min-w-full gap-0 border-b-1 lg:border-b-2">
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;

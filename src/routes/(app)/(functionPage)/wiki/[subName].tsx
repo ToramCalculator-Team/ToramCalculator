@@ -10,6 +10,7 @@ import {
   onCleanup,
   onMount,
   Show,
+  useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
@@ -26,10 +27,12 @@ import { mobPageConfig } from "./subPageConfig/mobPageConfig";
 import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { skillPageConfig } from "./subPageConfig/skilPageConfig";
+import { MediaContext } from "~/contexts/Media";
 
 export default function WikiSubPage() {
   // const start = performance.now();
   // console.log("WikiSubPage start", start);
+  const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // url 参数
@@ -46,6 +49,8 @@ export default function WikiSubPage() {
   const [form, setForm] = createSignal<JSX.Element>();
   const [pageConfig, setPageConfig] = createSignal<WikiPageConfig<any>>(mobPageConfig());
   const [cardData, { refetch: refetchCardData }] = createResource(cardId, pageConfig().card.dataFetcher);
+  const [filterInput, setFilterInput] = createSignal<HTMLInputElement>();
+  const [filterInputValue, setFilterInputValue] = createSignal<string>("");
 
   createEffect(
     on(
@@ -372,33 +377,68 @@ export default function WikiSubPage() {
       }
     >
       <Presence exitBeforeEnter>
+        <Show when={isTableFullscreen() || media.width < 1024}>
+          <Motion.div
+            class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex w-1/2 min-w-80 gap-1 rounded p-1 landscape:bottom-6 lg:min-w-2xl"
+            animate={{
+              opacity: [0, 1],
+              transform: ["translateX(-50%)", "translateX(-50%)"],
+            }}
+            exit={{ opacity: 0, transform: "translateX(-50%)" }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+          >
+            <Button
+              size="sm"
+              class="bg-transparent"
+              icon={<Icon.Line.CloudUpload />}
+              onClick={() => {
+                setStore("wiki", tableName(), {
+                  dialogType: "form",
+                  dialogIsOpen: true,
+                });
+              }}
+            ></Button>
+            <input
+              id="filterInput"
+              ref={setFilterInput}
+              type="text"
+              placeholder={dictionary().ui.actions.filter}
+              value={filterInputValue()}
+              tabIndex={1}
+              onInput={(e) => {
+                setFilterInputValue(e.target.value);
+              }}
+              class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
+            />
+            <Button size="sm" class="bg-transparent" icon={<Icon.Line.Settings />} onClick={() => {}}></Button>
+          </Motion.div>
+        </Show>
+      </Presence>
+
+      <Presence exitBeforeEnter>
         <Show when={!isTableFullscreen()}>
           <Motion.div
-            class="Title hidden flex-col p-3 lg:flex lg:pt-12"
+            class="Title flex flex-col landscape:p-3 lg:pt-12"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           >
-            <div class="Content flex flex-row items-center justify-between gap-4 py-3">
-              <h1 class="Text lg: text-left text-[2.5rem] leading-[50px] lg:bg-transparent lg:leading-[48px]">
+            <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
+              <h1 class="Text flex items-center gap-3 text-left text-2xl font-bold lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
                 {dictionary().db[tableName()].selfName}
+                <Icon.Line.Swap />
               </h1>
               <input
                 id="DataSearchBox"
                 type="search"
                 placeholder={dictionary().ui.searchPlaceholder}
-                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
               />
               <Button // 仅移动端显示
                 size="sm"
-                icon={<Icon.Line.CloudUpload />}
-                class="flex lg:hidden"
-                onClick={() => {
-                  setStore("wiki", tableName(), {
-                    dialogType: "form",
-                    dialogIsOpen: true,
-                  });
-                }}
+                icon={<Icon.Line.InfoCircle />}
+                class="flex bg-transparent lg:hidden"
+                onClick={() => {}}
               ></Button>
               <Button // 仅PC端显示
                 icon={<Icon.Line.CloudUpload />}

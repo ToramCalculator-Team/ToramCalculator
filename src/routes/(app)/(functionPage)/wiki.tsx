@@ -20,7 +20,7 @@ export default function WikiPage(props: ParentProps) {
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         id="WikiContainer"
-        class="WikiContainer flex h-full w-full flex-col"
+        class="WikiContainer relative flex h-full w-full flex-col"
       >
         {props.children}
       </Motion.div>

@@ -58,6 +58,7 @@
   --box-shadow-color: rgb(var(--transition));
 
   --shadow-card: 0 4px 4px 0, 0 4px 16px 0;
+  --shadow-dialog: 0 4px 32px 0
 }
 
 /* 颜色署名 */

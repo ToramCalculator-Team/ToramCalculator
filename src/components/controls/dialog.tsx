@@ -35,7 +35,10 @@ export function Dialog(props: { children: JSX.Element; state: boolean; setState:
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`DialogBox bg-primary-color-90 fixed top-0 left-0 z-50 flex h-dvh w-dvw flex-col justify-center opacity-0 landscape:flex-row`}
         >
-          <div class={`DialogCloseBtn bg-area-color backdrop-blur-xl block flex-1 cursor-pointer portrait:hidden`} onClick={handleClose}></div>
+          <div
+            class={`DialogCloseBtn bg-area-color block flex-1 cursor-pointer backdrop-blur-xl`}
+            onClick={handleClose}
+          ></div>
           <Motion.div
             animate={{
               transform: [isLandscape() ? "translateX(10%)" : "translateY(5%)", "translateY(0)"],
@@ -46,11 +49,14 @@ export function Dialog(props: { children: JSX.Element; state: boolean; setState:
               filter: ["blur(0px)", "blur(12px)"],
             }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-            class={`DialogContent bg-primary-color shadow-dividing-color flex basis-[90%] flex-col items-center overflow-y-auto shadow-2xl landscape:h-dvh landscape:basis-4/5`}
+            class={`DialogContent p-6 rounded-t bg-primary-color shadow-dividing-color shadow-dialog flex basis-[90%] flex-col items-center overflow-y-auto landscape:h-dvh landscape:basis-4/5`}
           >
             {props.children}
           </Motion.div>
-          <div class={`DialogCloseBtn bg-area-color backdrop-blur-xl block flex-1 cursor-pointer landscape:hidden`} onClick={handleClose}></div>
+          <div
+            class={`DialogCloseBtn bg-area-color flex-1 cursor-pointer backdrop-blur-xl hidden`}
+            onClick={handleClose}
+          ></div>
         </Motion.div>
       </Show>
     </Presence>
