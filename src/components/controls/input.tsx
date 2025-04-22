@@ -51,7 +51,7 @@ export const Input = (props: InputProps) => {
           &nbsp;&nbsp;
           <span class="text-brand-color-3rd">{props.state}</span>
         </span>
-        {config().description && <span class="text-main-text-color p-1 text-xs">{config().description}</span>}
+        {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
       </div>
       <Show
         when={props.children}

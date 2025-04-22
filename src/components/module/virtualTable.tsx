@@ -247,8 +247,8 @@ export function VirtualTable<Table extends keyof DB>(props: {
                           >
                             {dictionary().db[props.tableName].fields[column.id as keyof FieldDict<Table>].key}
                             {{
-                              asc: "▲",
-                              desc: "▼",
+                              asc: " ▲",
+                              desc: " ▼",
                             }[header.column.getIsSorted() as string] ?? null}
                           </div>
                         </th>

@@ -137,10 +137,10 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
 
           case "name":
             setTdContent(
-              <div class="text-main-text-color flex flex-col gap-1">
+              <div class="text-accent-color flex flex-col gap-1">
                 <span>{props.cell.getValue()}</span>
                 <Show when={props.cell.row.original.type === "Mob"}>
-                  <span class="text-main-text-color text-xs">({props.cell.row.original.captureable})</span>
+                  <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
                 </Show>
               </div>,
             );

@@ -424,7 +424,7 @@ export default function WikiSubPage() {
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           >
             <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-              <h1 class="Text flex items-center gap-3 text-left text-2xl font-bold lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
+              <h1 class="Text flex items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
                 {dictionary().db[tableName()].selfName}
                 <Icon.Line.Swap />
               </h1>
