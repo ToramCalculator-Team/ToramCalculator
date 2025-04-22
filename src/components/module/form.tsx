@@ -279,7 +279,7 @@ export const Form = <T extends keyof DB>(props: {
                     }}
                   >
                     {(field) => {
-                      console.log("FieldKey:", fieldKey, dictionary().db[props.tableName].fields[fieldKey].key);
+                      // console.log("FieldKey:", fieldKey, dictionary().db[props.tableName].fields[fieldKey].key);
                       return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
                         props.fieldGenerator(fieldKey, field())
                       ) : (

@@ -1,16 +1,4 @@
-import {
-  Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  JSX,
-  on,
-  onMount,
-  Resource,
-  Show,
-  useContext,
-} from "solid-js";
+import { Accessor, createMemo, createSignal, For, JSX, onMount, Resource, Show, useContext } from "solid-js";
 import { Cell, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -21,19 +9,17 @@ import { DB } from "~/../db/kysely/kyesely";
 import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { ConvertToDic, dictionary, FieldDescription, FieldDict } from "~/locales/type";
+import { dictionary, FieldDescription, FieldDict } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDictionary } from "~/locales/i18n";
 
-export function VirtualTable<
-  Data extends DB[keyof DB],
->(props: {
-  tableName: keyof DB;
-  dataList: Resource<Data[]>;
-  dataDic: ConvertToDic<Data>;
-  tableColumns: ColumnDef<Data>[];
-  tableHiddenColumns: Array<keyof Data>;
-  tableTdGenerator: (props: { cell: Cell<Data, keyof Data> }) => JSX.Element;
+export function VirtualTable<Table extends keyof DB>(props: {
+  tableName: Table;
+  dataList: Resource<Table[]>;
+  tableColumns: ColumnDef<Table>[];
+  tableHiddenColumns: Array<keyof Table>;
+  tableTdGenerator: (props: { cell: Cell<Table, unknown> }) => JSX.Element;
+  defaultSort: { id: keyof Table; desc: boolean };
   filterIsOpen: Accessor<boolean>;
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
@@ -72,10 +58,11 @@ export function VirtualTable<
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
-        setStore("wiki", props.tableName, {
-          dialogType: "card",
+        setStore("wiki", props.tableName, (prev) => ({
+          ...prev,
+          dialogType: "card" as const,
           dialogIsOpen: true,
-        });
+        }));
       }
     };
 
@@ -98,8 +85,8 @@ export function VirtualTable<
     initialState: {
       sorting: [
         {
-          id: "experience",
-          desc: true, // 默认按经验值降序排列
+          id: props.defaultSort.id as string,
+          desc: props.defaultSort.desc,
         },
       ],
     },
@@ -162,7 +149,7 @@ export function VirtualTable<
                 </Button>
                 <For each={table.getAllLeafColumns()}>
                   {(column) => {
-                    if (props.tableHiddenColumns.includes(column.id as keyof Data)) {
+                    if (props.tableHiddenColumns.includes(column.id as keyof Table)) {
                       // 默认隐藏的数据
                       return;
                     }
@@ -211,7 +198,7 @@ export function VirtualTable<
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;
-                      if (props.tableHiddenColumns.includes(column.id as keyof Data)) {
+                      if (props.tableHiddenColumns.includes(column.id as keyof Table)) {
                         // 默认隐藏的数据
                         return;
                       }
@@ -231,7 +218,7 @@ export function VirtualTable<
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {props.dataDic.fields[column.id as keyof FieldDict<Data>].key}
+                            {dictionary().db[props.tableName].fields[column.id as keyof FieldDict<Table>].key}
                             {{
                               asc: "▲",
                               desc: "▼",
@@ -260,13 +247,22 @@ export function VirtualTable<
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                     onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                    onMouseEnter={(e) => setStore("wiki", props.tableName, "id", row.getValue("id"))} // 悬停时直接触发新数据获取，优化pc端表现
+                    onMouseEnter={(e) => {
+                      try {
+                        setStore("wiki", props.tableName, (prev) => ({
+                          ...prev,
+                          id: row.getValue("id"),
+                        }));
+                      } catch (error) {
+                        console.error(error);
+                      }
+                    }} // 悬停时直接触发新数据获取，优化pc端表现
                     class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                   >
                     <For
                       each={row
                         .getVisibleCells()
-                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Data))}
+                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Table))}
                     >
                       {(cell) => props.tableTdGenerator({ cell })}
                     </For>

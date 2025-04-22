@@ -494,49 +494,13 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "Can not find anything!",
       nullSearchResultTips: "Emmm..."
     },
-    mob: {
-      pageTitle: "Mob",
+    wiki:{
       table: {
-        title: "Mobs Table",
-        description: "Emmm..............",
+        title: ""
       },
       news: {
-        title: "Recently Updated",
+        title: "News",
       },
-      augmented: "Show All Stars",
-      canNotModify: "System Generated",
-      difficultyflag: {
-        "Easy": "☆☆☆☆",
-        "Normal": "★☆☆☆",
-        "Hard": "★★☆☆",
-        Lunatic: "★★★☆",
-        Ultimate: "★★★★",
-      },
-      form: {
-        description:
-          "When uploading fixed-point boss data, please use one-star data, and the system will automatically calculate the data for other star levels according to the rules.",
-      },
-    },
-    crystal: {
-      pageTitle: "Crystal",
-      description: "Emmm..............",
-      canNotModify: "System Generated",
-      crystalForm: {
-        description: "Emmm..............",
-      }
-    },
-    skill: {
-      pageTitle: "Skill",
-      table: {
-        title: "Skill Table",
-        description: "Emmm..............",
-      },
-      news: {
-        title: "Recently Updated",
-      },
-      form: {
-        description: "Emmm..............",
-      }
     },
     simulator: {
       pageTitle: "Simulator",

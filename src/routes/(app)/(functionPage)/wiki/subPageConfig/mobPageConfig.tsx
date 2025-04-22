@@ -1,16 +1,19 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { Accessor, createSignal, For, JSX, Show } from "solid-js";
+import { Accessor, createMemo, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, defaultMob, findMobById, findMobs, Mob } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, WikiPageConfig } from "../utils";
 import * as Icon from "~/components/icon";
-import { dictionary } from "~/locales/type";
 import { createSyncResource } from "~/hooks/resource";
 import { mobSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
+import { getDictionary } from "~/locales/i18n";
+import { store } from "~/store";
 
-export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<"mob"> {
+export function mobPageConfig(): WikiPageConfig<"mob"> {
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [mobList, { refetch: refetchMobList }] = createSyncResource("mob", findMobs);
   const [formMob] = createSignal<Mob["MainForm"]>(defaultMob);
   return {
@@ -19,96 +22,81 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
       columnDef: [
         {
           accessorKey: "id",
-          header: () => dictionary().db.mob.fields.id,
           cell: (info) => info.getValue(),
           size: 200,
         },
         {
           accessorKey: "name",
-          header: () => dictionary().db.mob.fields.name,
           cell: (info) => info.getValue(),
           size: 220,
         },
         {
           accessorKey: "initialElement",
-          header: () => dictionary().db.mob.fields.initialElement,
           cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
           size: 200,
         },
         {
           accessorKey: "type",
-          header: () => dictionary().db.mob.fields.type,
-          cell: (info) => dictionary().enums.mob.type[info.getValue<keyof DataEnums["mob"]["type"]>()],
+          cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
           size: 160,
         },
         {
           accessorKey: "captureable",
-          header: () => dictionary().db.mob.fields.captureable,
           cell: (info) => info.getValue<Boolean>().toString(),
           size: 160,
         },
         {
           accessorKey: "baseLv",
-          header: () => dictionary().db.mob.fields.baseLv,
           cell: (info) => info.getValue(),
           size: 160,
         },
         {
           accessorKey: "experience",
-          header: () => dictionary().db.mob.fields.experience,
           size: 180,
         },
         {
           accessorKey: "physicalDefense",
-          header: () => dictionary().db.mob.fields.physicalDefense,
           size: 200,
         },
         {
           accessorKey: "physicalResistance",
-          header: () => dictionary().db.mob.fields.physicalResistance,
           size: 200,
         },
         {
           accessorKey: "magicalDefense",
-          header: () => dictionary().db.mob.fields.magicalDefense,
           size: 200,
         },
         {
           accessorKey: "magicalResistance",
-          header: () => dictionary().db.mob.fields.magicalResistance,
           size: 200,
         },
         {
           accessorKey: "criticalResistance",
-          header: () => dictionary().db.mob.fields.criticalResistance,
           size: 200,
         },
         {
           accessorKey: "avoidance",
-          header: () => dictionary().db.mob.fields.avoidance,
           size: 160,
         },
         {
           accessorKey: "dodge",
-          header: () => dictionary().db.mob.fields.dodge,
           size: 160,
         },
         {
           accessorKey: "block",
-          header: () => dictionary().db.mob.fields.block,
           size: 160,
         },
         {
           accessorKey: "actions",
-          header: () => dictionary().db.mob.fields.actions,
           cell: (info) => JSON.stringify(info.getValue<Object>()),
           size: 160,
         },
       ],
       dataList: mobList,
+      defaultSort: { id: "experience", desc: true },
       dataListRefetcher: refetchMobList,
       hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-      tdGenerator: (props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]>; }) => {
+      tdGenerator: (props: { cell: Cell<Mob["MainTable"], keyof Mob["MainTable"]> }) => {
         const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
         type MobKeys = keyof DataEnums["mob"];
         type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
@@ -124,15 +112,15 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
                 Light: <Icon.Element.Light class="h-12 w-12" />,
                 Dark: <Icon.Element.Dark class="h-12 w-12" />,
                 Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-              }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined
+              }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined,
             );
 
             break;
           case "experience":
             setTdContent(
               flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) +
-              "+" +
-              props.cell.row.original.partsExperience
+                "+" +
+                props.cell.row.original.partsExperience,
             );
             break;
 
@@ -148,12 +136,14 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
             break;
 
           case "name":
-            setTdContent(<div class="text-main-text-color flex flex-col gap-1">
-              <span>{props.cell.getValue()}</span>
-              <Show when={props.cell.row.original.type === "Mob"}>
-                <span class="text-xs text-main-text-color">({props.cell.row.original.captureable})</span>
-              </Show>
-            </div>);
+            setTdContent(
+              <div class="text-main-text-color flex flex-col gap-1">
+                <span>{props.cell.getValue()}</span>
+                <Show when={props.cell.row.original.type === "Mob"}>
+                  <span class="text-main-text-color text-xs">({props.cell.row.original.captureable})</span>
+                </Show>
+              </div>,
+            );
             break;
 
           default:
@@ -169,7 +159,8 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
             class={defaultTdClass}
           >
             <Show
-              when={props.cell.column.id in dictionary().enums.mob && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
+              when={
+                props.cell.column.id in dictionary().enums.mob && props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
               }
               fallback={tdContent()}
             >
@@ -336,12 +327,7 @@ export function mobPageConfig(dictionary: Accessor<dictionary>): WikiPageConfig<
     },
     card: {
       dataFetcher: findMobById,
-      hiddenFields: [
-        "id",
-        "statisticId",
-        "createdByAccountId",
-        "updatedByAccountId",
-      ],
+      hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
       fieldGenerator: undefined,
     },
   };

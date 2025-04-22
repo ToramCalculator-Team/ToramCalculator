@@ -496,48 +496,13 @@ const dictionary: dictionary = {
       nullSearchResultTips:
         "強くなる旅には困難が待ち受け、知識を求める道には障害物が散らばっています\nしかし、ここにはありません\n検索結果にないということは、存在しないということです",
     },
-    mob: {
-      pageTitle: "モンスター",
+    wiki:{
       table: {
-        title: "モンスター",
-        description: "ログイン後、自身でデータをアップロードできます。",
-      },
-      news: {
-        title: "最新のアップデート",
-      },
-      augmented: "すべての星級データを表示",
-      canNotModify: "システムによって生成され、修正不可",
-      form: {
-        description: "固定ボスデータをアップロードする際は一星データを使用してください。システムが規則に従って他の星級データを自動的に計算します。",
-      },
-      difficultyflag: {
-        Easy: "0星",
-        Normal: "1星",
-        Hard: "2星",
-        Lunatic: "3星",
-        Ultimate: "4星"
-      }
-    },
-    crystal: {
-      pageTitle: "クリスタルテーブル",
-      description: "開発中です。使用しないでください。",
-      canNotModify: "システムによって生成され、修正不可",
-      crystalForm: {
-        description: "アララ",
-      },
-    },
-    skill: {
-      pageTitle: "技能",
-      table: {
-        title: "技能表",
-        description: "小心無限循環。",
+        title: ""
       },
       news: {
         title: "最近更新",
       },
-      form: {
-        description: "開発中です。使用しないでください。",
-      }
     },
     simulator: {
       pageTitle: "プロセス計算機",

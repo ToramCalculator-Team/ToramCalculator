@@ -560,47 +560,12 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "沒有找到相關內容!!!∑(ﾟДﾟノ)ノ",
       nullSearchResultTips: "變強之旅總有艱險阻道，求知路上不免遍佈荊棘\n但是這裡沒有\n搜尋結果裡沒有就是沒有",
     },
-    mob: {
-      pageTitle: "怪物",
+    wiki:{
       table: {
-        title: "怪物資訊表",
-        description: "不是所有怪物一開始就是怪物，也不是所有怪物看起來都像怪物。",
+        title: ""
       },
       news: {
         title: "最近更新",
-      },
-      augmented: "是否展示全部星級資料",
-      canNotModify: "系統生成，不可修改",
-      form: {
-        description: "上傳定點boss資料時請使用一星數據，系統將以規則自動計算其餘星級資料。",
-      },
-      difficultyflag: {
-        Easy: "0星",
-        Normal: "1星",
-        Hard: "2星",
-        Lunatic: "3星",
-        Ultimate: "4星",
-      },
-    },
-    crystal: {
-      pageTitle: "鍛晶表",
-      description: "正在開發中，請勿使用。",
-      canNotModify: "系統生成，不可修改",
-      crystalForm: {
-        description: "阿拉啦",
-      },
-    },
-    skill: {
-      pageTitle: "技能",
-      table: {
-        title: "技能表",
-        description: "小心無限循環。",
-      },
-      news: {
-        title: "最近更新",
-      },
-      form: {
-        description: "正在開發中，请勿使用。",
       },
     },
     simulator: {

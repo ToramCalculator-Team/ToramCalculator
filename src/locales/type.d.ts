@@ -176,49 +176,14 @@ export interface dictionary {
       nullSearchResultWarring: string;
       nullSearchResultTips: string;
     };
-    mob: {
-      pageTitle: string;
+    wiki: {
       table: {
         title: string;
-        description: string;
-      };
+      }
       news: {
         title: string;
       };
-      augmented: string;
-      canNotModify: string;
-      difficultyflag: {
-        Easy: string;
-        Normal: string;
-        Hard: string;
-        Lunatic: string;
-        Ultimate: string;
-      };
-      form: {
-        description: string;
-      };
-    };
-    crystal: {
-      pageTitle: string;
-      description: string;
-      canNotModify: string;
-      crystalForm: {
-        description: string;
-      };
-    };
-    skill: {
-      pageTitle: string;
-      table: {
-        title: string;
-        description: string;
-      };
-      news: {
-        title: string;
-      };
-      form: {
-        description: string;
-      };
-    };
+    }
     simulator: {
       pageTitle: string;
       description: string;
