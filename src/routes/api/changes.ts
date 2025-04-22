@@ -26,7 +26,7 @@ export async function POST(event: APIEvent) {
 
   const body = await event.request.json();
 
-  const user = await findUserById(jwtUser.id);
+  const user = await findUserById(jwtUser.sub);
 
   console.log("用户:" + user.name + " 变更数据,body:", body);
   

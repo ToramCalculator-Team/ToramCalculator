@@ -60,6 +60,7 @@ export async function POST(event: APIEvent) {
         id: "",
       });
     });
+    console.log(userName + "注册成功", "id为:", user.id);
     // 生成 JWT
     const jwtPayload = {
       sub: user.id,
