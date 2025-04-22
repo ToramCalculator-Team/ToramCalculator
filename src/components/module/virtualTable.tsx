@@ -1,4 +1,18 @@
-import { Accessor, createMemo, createSignal, For, JSX, onMount, Resource, Show, useContext } from "solid-js";
+import {
+  Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Resource,
+  Show,
+  Suspense,
+  useContext,
+} from "solid-js";
 import { Cell, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -12,6 +26,8 @@ import { MediaContext } from "~/contexts/Media";
 import { dictionary, FieldDescription, FieldDict } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDictionary } from "~/locales/i18n";
+import { LoadingBar } from "../loadingBar";
+import type { Table as TanStackTable } from "@tanstack/solid-table";
 
 export function VirtualTable<Table extends keyof DB>(props: {
   tableName: Table;
@@ -23,6 +39,8 @@ export function VirtualTable<Table extends keyof DB>(props: {
   filterIsOpen: Accessor<boolean>;
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
+  const start = performance.now();
+  console.log("virtualTable start", start);
   const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
@@ -70,50 +88,58 @@ export function VirtualTable<Table extends keyof DB>(props: {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  // 列表虚拟化区域----------------------------------------------------------
   const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
-
-  // 只在初始化时创建 `table`
-  const table = createSolidTable({
-    get data() {
-      return props.dataList() ?? [];
-    },
-    columns: props.tableColumns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-    initialState: {
-      sorting: [
-        {
-          id: props.defaultSort.id as string,
-          desc: props.defaultSort.desc,
-        },
-      ],
-    },
-  });
-
-  const virtualizer = createMemo(() => {
+  const [table, setTable] = createSignal<TanStackTable<Table>>();
+  const tableContainer = createMemo(() => {
     return createVirtualizer({
-      count: table.getRowCount() ?? 0,
+      count: table()?.getRowCount() ?? 0,
       getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
       estimateSize: () => 96,
       overscan: 5,
     });
   });
 
-  onMount(() => {
-    setTimeout(() => {
-      virtualizer()._willUpdate();
-      console.log(
-        "TableRows:",
-        JSON.stringify(table.getRowCount()),
-        "VirtualCount:",
-        JSON.stringify(virtualizer().getVirtualIndexes().length),
-        "VirtualDatas:",
-        JSON.stringify(virtualizer().getVirtualItems().length),
-        Math.floor(performance.now()),
+  createEffect(
+    on(props.dataList, () => {
+      setTable(
+        createSolidTable({
+          data: props.dataList.latest ?? [],
+          columns: props.tableColumns,
+          getCoreRowModel: getCoreRowModel(),
+          getSortedRowModel: getSortedRowModel(),
+          debugTable: true,
+          initialState: {
+            sorting: [
+              {
+                id: props.defaultSort.id as string,
+                desc: props.defaultSort.desc,
+              },
+            ],
+          },
+        }),
       );
-    }, 1);
+    }),
+  );
+
+  // onMount(() => {
+  //   console.log("VirtualTable onMount");
+  //   console.log("virtualTable end", performance.now() - start);
+  //   setTimeout(() => {
+  //     virtualizer()._willUpdate();
+  //     console.log(
+  //       "TableRows:",
+  //       JSON.stringify(table.getRowCount()),
+  //       "VirtualCount:",
+  //       JSON.stringify(virtualizer().getVirtualIndexes().length),
+  //       "VirtualDatas:",
+  //       JSON.stringify(virtualizer().getVirtualItems().length),
+  //       Math.floor(performance.now()),
+  //     );
+  //   }, 1);
+  // });
+
+  onCleanup(() => {
+    console.log("VirtualTable onCleanup");
   });
 
   return (
@@ -142,12 +168,12 @@ export function VirtualTable<Table extends keyof DB>(props: {
               <div class="content flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  level={table.getIsAllColumnsVisible() ? "default" : "primary"}
-                  onClick={table.getToggleAllColumnsVisibilityHandler()}
+                  level={table()?.getIsAllColumnsVisible() ? "default" : "primary"}
+                  onClick={table()?.getToggleAllColumnsVisibilityHandler()}
                 >
                   ALL
                 </Button>
-                <For each={table.getAllLeafColumns()}>
+                <For each={table()?.getAllLeafColumns()}>
                   {(column) => {
                     if (props.tableHiddenColumns.includes(column.id as keyof Table)) {
                       // 默认隐藏的数据
@@ -190,9 +216,9 @@ export function VirtualTable<Table extends keyof DB>(props: {
         ref={setVirtualScrollRef}
         class="h-full flex-1"
       >
-        <table class="Table relative w-full">
+        <table class="Table relative w-full h-full">
           <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
-            <For each={table.getHeaderGroups()}>
+            <For each={table()?.getHeaderGroups()}>
               {(headerGroup) => (
                 <tr class="border-dividing-color flex min-w-full gap-0 border-b-2">
                   <For each={headerGroup.headers}>
@@ -232,45 +258,55 @@ export function VirtualTable<Table extends keyof DB>(props: {
               )}
             </For>
           </thead>
-          <tbody style={{ height: `${virtualizer().getTotalSize()}px` }} class={`TableBodyrelative`}>
-            <For each={virtualizer().getVirtualItems()}>
-              {(virtualRow) => {
-                const row = table.getRowModel().rows[virtualRow.index];
-                if (!row) {
-                  return null;
-                }
-                return (
-                  <tr
-                    data-index={virtualRow.index}
-                    style={{
-                      position: "absolute",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                    onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                    onMouseEnter={(e) => {
-                      try {
-                        setStore("wiki", props.tableName, (prev) => ({
-                          ...prev,
-                          id: row.getValue("id"),
-                        }));
-                      } catch (error) {
-                        console.error(error);
-                      }
-                    }} // 悬停时直接触发新数据获取，优化pc端表现
-                    class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
-                  >
-                    <For
-                      each={row
-                        .getVisibleCells()
-                        .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Table))}
+          <Show
+            when={props.dataList.state === "ready"}
+            fallback={
+              <h1 class="animate-pulse p-3">......</h1>
+            }
+          >
+            <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBodyrelative`}>
+              <For each={tableContainer().getVirtualItems()}>
+                {(virtualRow) => {
+                  const row = table()?.getRowModel().rows[virtualRow.index];
+                  if (!row) {
+                    return null;
+                  }
+                  return (
+                    <tr
+                      data-index={virtualRow.index}
+                      style={{
+                        position: "absolute",
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                      onMouseEnter={(e) => {
+                        try {
+                          setStore("wiki", props.tableName, (prev) => ({
+                            ...prev,
+                            id: row.getValue("id"),
+                          }));
+                        } catch (error) {
+                          console.error(error);
+                        }
+                      }} // 悬停时直接触发新数据获取，优化pc端表现
+                      class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                     >
-                      {(cell) => props.tableTdGenerator({ cell })}
-                    </For>
-                  </tr>
-                );
-              }}
-            </For>
-          </tbody>
+                      <For
+                        each={row
+                          .getVisibleCells()
+                          .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Table))}
+                      >
+                        {(cell) => {
+                          const tdContent = props.tableTdGenerator({ cell });
+                          return tdContent;
+                        }}
+                      </For>
+                    </tr>
+                  );
+                }}
+              </For>
+            </tbody>
+          </Show>
         </table>
       </OverlayScrollbarsComponent>
     </>

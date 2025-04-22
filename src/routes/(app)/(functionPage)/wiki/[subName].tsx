@@ -27,7 +27,9 @@ import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { skillPageConfig } from "./subPageConfig/skilPageConfig";
 
-export default function WikiPage() {
+export default function WikiSubPage() {
+  // const start = performance.now();
+  // console.log("WikiSubPage start", start);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   // url 参数
@@ -40,7 +42,8 @@ export default function WikiPage() {
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
   const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
   const [cardId, setCardId] = createSignal<string | undefined>(undefined);
-  const [pageContent, setPageContent] = createSignal<JSX.Element>();
+  const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
+  const [form, setForm] = createSignal<JSX.Element>();
   const [pageConfig, setPageConfig] = createSignal<WikiPageConfig<any>>(mobPageConfig());
   const [cardData, { refetch: refetchCardData }] = createResource(cardId, pageConfig().card.dataFetcher);
 
@@ -48,7 +51,9 @@ export default function WikiPage() {
     on(
       () => params.subName,
       () => {
-        console.log("Url参数：", params.subName);
+        // const start = performance.now();
+        // console.log("Effect start", start);
+        // console.log("Url参数：", params.subName);
         if (params.subName in defaultData) {
           const wikiType = params.subName as keyof DB;
           // 初始化页面状态
@@ -316,9 +321,34 @@ export default function WikiPage() {
             default:
               break;
           }
+          setVirtualTable(
+            VirtualTable({
+              tableName: pageConfig().tableName,
+              dataList: pageConfig().table.dataList,
+              defaultSort: pageConfig().table.defaultSort,
+              tableColumns: pageConfig().table.columnDef,
+              tableHiddenColumns: pageConfig().table.hiddenColumnDef,
+              tableTdGenerator: pageConfig().table.tdGenerator,
+              filterIsOpen: tableFilterIsOpen,
+              setFilterIsOpen: setTableFilterIsOpen,
+            }),
+          );
+          setForm(
+            Form({
+              tableName: pageConfig().tableName,
+              defaultItem: pageConfig().form.defaultData,
+              item: pageConfig().form.data,
+              itemSchema: pageConfig().form.dataSchema,
+              formHiddenFields: pageConfig().form.hiddenFields,
+              fieldGenerator: pageConfig().form.fieldGenerator,
+              createItem: pageConfig().form.createData,
+              refetchItemList: pageConfig().form.refetchItemList,
+            }),
+          );
         } else {
           navigate(`/404`);
         }
+        // console.log("Effect end", performance.now() - start);
       },
     ),
   );
@@ -465,16 +495,7 @@ export default function WikiPage() {
               {isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
             </Button>
           </div>
-          {VirtualTable({
-            tableName: pageConfig().tableName,
-            dataList: pageConfig().table.dataList,
-            defaultSort: pageConfig().table.defaultSort,
-            tableColumns: pageConfig().table.columnDef,
-            tableHiddenColumns: pageConfig().table.hiddenColumnDef,
-            tableTdGenerator: pageConfig().table.tdGenerator,
-            filterIsOpen: tableFilterIsOpen,
-            setFilterIsOpen: setTableFilterIsOpen,
-          })}
+          {virtualTable()}
         </div>
         <Presence exitBeforeEnter>
           <Show when={!isTableFullscreen()}>
@@ -502,16 +523,7 @@ export default function WikiPage() {
           setState={(state: boolean) => setStore("wiki", tableName(), "dialogIsOpen", state)}
         >
           <Show when={store.wiki[tableName()]?.dialogType === "form"} fallback={<></>}>
-            {Form({
-              tableName: pageConfig().tableName,
-              defaultItem: pageConfig().form.defaultData,
-              item: pageConfig().form.data,
-              itemSchema: pageConfig().form.dataSchema,
-              formHiddenFields: pageConfig().form.hiddenFields,
-              fieldGenerator: pageConfig().form.fieldGenerator,
-              createItem: pageConfig().form.createData,
-              refetchItemList: pageConfig().form.refetchItemList,
-            })}
+            {form()}
           </Show>
         </Dialog>
       </Portal>
