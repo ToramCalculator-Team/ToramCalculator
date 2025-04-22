@@ -49,7 +49,7 @@ export type WikiPageConfig<T extends keyof DB> = {
     defaultData: DB[T];
     data: Accessor<DB[T]>;
     hiddenFields: Array<keyof DB[T]>;
-    fieldGenerator?: (key: keyof DB[T], field: AnyFieldApi) => JSX.Element;
+    fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
     createData: (trx: Transaction<DB>, item: DB[T]) => Promise<DB[T] | null>;
     dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
     refetchItemList: () => void;

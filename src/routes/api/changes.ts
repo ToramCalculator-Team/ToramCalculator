@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { getCookie } from "vinxi/http";
 import { jwtVerify } from "jose";
 import { getDB } from "~/repositories/database";
+import { findUserById } from "~/repositories/user";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
@@ -10,14 +11,14 @@ export async function POST(event: APIEvent) {
     return new Response("未发现jwt", { status: 401 });
   }
 
-  let user: any;
+  let jwtUser: any;
   try {
     const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
     const { payload } = await jwtVerify(token, secret, {
       algorithms: ["HS256"],
     });
 
-    user = payload;
+    jwtUser = payload;
   } catch (err) {
     console.error("❌ 用户 JWT 验证失败:", err);
     return new Response("JWT 无效", { status: 401 });
@@ -25,18 +26,19 @@ export async function POST(event: APIEvent) {
 
   const body = await event.request.json();
 
-  console.log("用户:" + user.name + " 变更数据,body:", body);
+  const user = await findUserById(jwtUser.id);
 
+  console.log("用户:" + user.name + " 变更数据,body:", body);
+  
+  // 权限判断
   if (!user) {
     return new Response("未认证用户", { status: 401 });
   }
 
-  console.log(user)
-
   // 示例权限判断（可选）
-  if (user.role !== "admin") {
-    return new Response("当前用户无权限", { status: 403 });
-  }
+  // if (user.role !== "admin") {
+  //   return new Response("当前用户无权限", { status: 403 });
+  // }
 
   try {
     // 🛠️ 实际的同步逻辑在这里，比如保存 changes 到数据库

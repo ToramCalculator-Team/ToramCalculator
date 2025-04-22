@@ -47,7 +47,7 @@ export const Form = <T extends keyof DB>(props: {
   defaultItem: DB[T];
   item: () => DB[T];
   itemSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
-  fieldGenerator?: (key: keyof DB[T], field: AnyFieldApi) => JSX.Element;
+  fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
   formHiddenFields: Array<keyof DB[T]>;
   createItem: (trx: Transaction<DB>, item: DB[T]) => Promise<DB[T] | null>;
   refetchItemList: () => void;
@@ -126,8 +126,8 @@ export const Form = <T extends keyof DB>(props: {
                   >
                     {(field) => {
                       const enumValue = zodValue as ZodEnum<any>;
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
-                        props.fieldGenerator(fieldKey, field())
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
+                        props.fieldGenerator(fieldKey, field)
                       ) : (
                         <Input
                           title={dictionary().db[props.tableName].fields[fieldKey].key}
@@ -175,8 +175,8 @@ export const Form = <T extends keyof DB>(props: {
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
-                        props.fieldGenerator(fieldKey, field())
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
+                        props.fieldGenerator(fieldKey, field)
                       ) : (
                         <Input
                           title={dictionary().db[props.tableName].fields[fieldKey].key}
@@ -212,8 +212,8 @@ export const Form = <T extends keyof DB>(props: {
                   >
                     {(field) => {
                       // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
-                        props.fieldGenerator(fieldKey, field())
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
+                        props.fieldGenerator(fieldKey, field)
                       ) : (
                         <Input
                           title={dictionary().db[props.tableName].fields[fieldKey].key}
@@ -255,8 +255,8 @@ export const Form = <T extends keyof DB>(props: {
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
-                        props.fieldGenerator(fieldKey, field())
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
+                        props.fieldGenerator(fieldKey, field)
                       ) : (
                         <Input
                           title={dictionary().db[props.tableName].fields[fieldKey].key}
@@ -292,8 +292,8 @@ export const Form = <T extends keyof DB>(props: {
                   >
                     {(field) => {
                       // console.log("FieldKey:", fieldKey, dictionary().db[props.tableName].fields[fieldKey].key);
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field()) ? (
-                        props.fieldGenerator(fieldKey, field())
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
+                        props.fieldGenerator(fieldKey, field)
                       ) : (
                         <Input
                           title={dictionary().db[props.tableName].fields[fieldKey].key}

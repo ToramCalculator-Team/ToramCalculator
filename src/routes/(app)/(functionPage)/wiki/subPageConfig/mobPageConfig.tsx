@@ -189,7 +189,7 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
               <Input
                 title={dictionary().db.mob.fields[key].key}
                 description={dictionary().db.mob.fields[key].formFieldDescription}
-                state={fieldInfo(field)}
+                state={fieldInfo(field())}
                 class="border-dividing-color bg-primary-color w-full rounded-md border-1"
               >
                 <div class="EnumsBox flex flex-wrap gap-1">
@@ -204,18 +204,18 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
                       }
                       return (
                         <label
-                          class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field.state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
+                          class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
                         >
                           {icon}
                           {dictionary().enums.mob[key][option]}
                           <input
-                            id={field.name + option}
-                            name={field.name}
+                            id={field().name + option}
+                            name={field().name}
                             value={option}
-                            checked={field.state.value === option}
+                            checked={field().state.value === option}
                             type="radio"
-                            onBlur={field.handleBlur}
-                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => field().handleChange(e.target.value)}
                             class={inputClass}
                           />
                         </label>
@@ -232,7 +232,7 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
               <Input
                 title={dictionary().db.mob.fields[key].key}
                 description={dictionary().db.mob.fields[key].formFieldDescription}
-                state={fieldInfo(field)}
+                state={fieldInfo(field())}
                 class="border-dividing-color bg-primary-color w-full rounded-md border-1"
               >
                 <div class="EnumsBox flex flex-wrap gap-1">
@@ -298,18 +298,18 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
                       }
                       return (
                         <label
-                          class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field.state.value === option ? "border-accent-color" : "border-dividing-color bg-area-color opacity-50"}`}
+                          class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color" : "border-dividing-color bg-area-color opacity-50"}`}
                         >
                           {icon}
                           {dictionary().enums.mob[key][option]}
                           <input
-                            id={field.name + option}
-                            name={field.name}
+                            id={field().name + option}
+                            name={field().name}
                             value={option}
-                            checked={field.state.value === option}
+                            checked={field().state.value === option}
                             type="radio"
-                            onBlur={field.handleBlur}
-                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field().handleBlur}
+                            onChange={(e) => field().handleChange(e.target.value)}
                             class={inputClass}
                           />
                         </label>
