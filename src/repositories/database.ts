@@ -36,6 +36,20 @@ const getDB = async (): Promise<Kysely<DB>> => {
 
     cachedDB = new Kysely<DB>({
       dialect: new PGliteDialect(pgWorker),
+      log(event) {
+        if (event.level === "error") {
+            console.error("Query failed : ", {
+              durationMs: event.queryDurationMillis,
+              error: event.error,
+              sql: event.query.sql,
+            });
+        } else { // `'query'`
+          console.log("Query executed : ", {
+            durationMs: event.queryDurationMillis,
+            sql: event.query.sql,
+          });
+        }
+      }
     });
 
     return cachedDB;

@@ -101,6 +101,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
 
   createEffect(
     on(props.dataList, () => {
+      console.log("dataList change", performance.now() - start);
       setTable(
         createSolidTable({
           data: props.dataList.latest ?? [],
