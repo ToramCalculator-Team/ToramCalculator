@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { createMob, defaultMob, findMobById, findMobs, Mob } from "~/repositories/mob";
+import { createMob, defaultMob, findMobById, findMobs, Mob, mobCardSchema } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, WikiPageConfig } from "../utils";
 import * as Icon from "~/components/icon";
@@ -10,9 +10,10 @@ import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db
 import { Input } from "~/components/controls/input";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
-import { z } from "zod";
+import { z, ZodObject, ZodSchema } from "zod";
+import { DB } from "~/../db/kysely/kyesely";
 
-export function mobPageConfig(): WikiPageConfig<"mob"> {
+export function mobPageConfig(): WikiPageConfig<"mob", Mob["Card"]> {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [mobList, { refetch: refetchMobList }] = createSyncResource("mob", findMobs);
@@ -174,7 +175,7 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
     form: {
       defaultData: defaultMob,
       data: formMob,
-      hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+      hiddenFields: ["id", "statisticId", "actions", "createdByAccountId", "updatedByAccountId"],
       createData: createMob,
       dataSchema: mobSchema,
       fieldGenerator: (key, field) => {
@@ -330,15 +331,29 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
       dataFetcher: findMobById,
       hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
       fieldGenerator: undefined,
-      dataSchema: mobSchema.extend({
-        belongToZones: z.array(zoneSchema),
-        dropItems: z.array(drop_itemSchema), // 你需要一个 itemSchema
-        statistic: statisticSchema, // 你也需要一个 statisticSchema
-      }),
+      dataSchema: mobCardSchema as ZodObject<{ [K in keyof DB["mob"]]: ZodSchema }>,
       fieldGroupMap: {
-        "常规属性": ["experience", "partsExperience", "maxhp"],
-        "战斗属性": ["avoidance","block","dodge","initialElement","magicalDefense"]
-      }
+        常规属性: ["experience", "partsExperience", "maxhp"],
+        战斗属性: [
+          "initialElement",
+          "physicalDefense",
+          "physicalResistance",
+          "magicalDefense",
+          "magicalResistance",
+          "criticalResistance",
+          "avoidance",
+          "block",
+          "dodge",
+          "normalAttackResistanceModifier",
+          "physicalAttackResistanceModifier",
+          "magicalAttackResistanceModifier",
+        ],
+        出现的区域: ["belongToZones"],
+        掉落道具: ["dropItems"],
+        额外说明: ["details"],
+        怪物行为: ["actions"],
+        词条信息: ["dataSources", "statistic"],
+      },
     },
   };
 }

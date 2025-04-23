@@ -2,7 +2,7 @@ import { AnyFieldApi } from "@tanstack/solid-form";
 import { ColumnDef, Cell } from "@tanstack/solid-table";
 import { Transaction } from "kysely";
 import { Accessor, JSX, Resource } from "solid-js";
-import { z, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
+import { z, ZodFirstPartyTypeKind, ZodObject, ZodRawShape, ZodSchema, ZodType } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
 import { ConvertToDic } from "~/locales/type";
 
@@ -34,7 +34,7 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
   return ZodFirstPartyTypeKind.ZodUndefined;
 };
 
-export type WikiPageConfig<T extends keyof DB> = {
+export type WikiPageConfig<T extends keyof DB, Card> = {
   tableName: T;
   table: {
     dataList: Resource<DB[T][]>;
@@ -54,9 +54,9 @@ export type WikiPageConfig<T extends keyof DB> = {
     refetchItemList: () => void;
   };
   card: {
-    dataFetcher: (id:string) => Promise<DB[T]>;
+    dataFetcher: (id: string) => Promise<DB[T]>;
     dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
-    fieldGroupMap: Record<string, Array<keyof DB[T]>>;
+    fieldGroupMap: Record<string, Array<keyof Card>>;
     fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
     hiddenFields: Array<keyof DB[T]>;
   };
