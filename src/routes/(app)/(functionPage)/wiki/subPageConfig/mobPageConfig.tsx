@@ -1,15 +1,16 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { Accessor, createMemo, createSignal, For, JSX, Show } from "solid-js";
+import { Accessor, createMemo, createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, defaultMob, findMobById, findMobs, Mob } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, WikiPageConfig } from "../utils";
 import * as Icon from "~/components/icon";
 import { createSyncResource } from "~/hooks/resource";
-import { mobSchema } from "~/../db/zod";
+import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
+import { z } from "zod";
 
 export function mobPageConfig(): WikiPageConfig<"mob"> {
   // UI文本字典
@@ -329,6 +330,15 @@ export function mobPageConfig(): WikiPageConfig<"mob"> {
       dataFetcher: findMobById,
       hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
       fieldGenerator: undefined,
+      dataSchema: mobSchema.extend({
+        belongToZones: z.array(zoneSchema),
+        dropItems: z.array(drop_itemSchema), // 你需要一个 itemSchema
+        statistic: statisticSchema, // 你也需要一个 statisticSchema
+      }),
+      fieldGroupMap: {
+        "常规属性": ["experience", "partsExperience", "maxhp"],
+        "战斗属性": ["avoidance","block","dodge","initialElement","magicalDefense"]
+      }
     },
   };
 }

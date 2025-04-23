@@ -40,10 +40,9 @@ export type WikiPageConfig<T extends keyof DB> = {
     dataList: Resource<DB[T][]>;
     columnDef: Array<ColumnDef<DB[T]>>;
     hiddenColumnDef: Array<keyof DB[T]>;
-    // dataDic: ConvertToDic<DB[T]>;
     defaultSort: { id: keyof DB[T]; desc: boolean };
     dataListRefetcher: () => void;
-    tdGenerator: (props: { cell: Cell<DB[T], unknown> }) => JSX.Element;
+    tdGenerator: (props: { cell: Cell<DB[T], keyof DB[T]> }) => JSX.Element;
   };
   form: {
     defaultData: DB[T];
@@ -55,8 +54,10 @@ export type WikiPageConfig<T extends keyof DB> = {
     refetchItemList: () => void;
   };
   card: {
+    dataFetcher: (id:string) => Promise<DB[T]>;
+    dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
+    fieldGroupMap: Record<string, Array<keyof DB[T]>>;
+    fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
     hiddenFields: Array<keyof DB[T]>;
-    dataFetcher: (id: string) => Promise<DB[T]>;
-    fieldGenerator?: (key: keyof DB[T], field: AnyFieldApi) => JSX.Element;
   };
 };

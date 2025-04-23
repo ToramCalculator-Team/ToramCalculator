@@ -28,6 +28,7 @@ import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { skillPageConfig } from "./subPageConfig/skilPageConfig";
 import { MediaContext } from "~/contexts/Media";
+import { ObjDisplayer } from "~/components/module/objectDisplayer";
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -44,13 +45,11 @@ export default function WikiSubPage() {
   const [isTableFullscreen, setIsTableFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
   const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
-  const [cardId, setCardId] = createSignal<string | undefined>(undefined);
   const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
   const [form, setForm] = createSignal<JSX.Element>();
   const [pageConfig, setPageConfig] = createSignal<WikiPageConfig<any>>(mobPageConfig());
-  const [cardData, { refetch: refetchCardData }] = createResource(cardId, pageConfig().card.dataFetcher);
-  const [filterInput, setFilterInput] = createSignal<HTMLInputElement>();
-  const [filterInputValue, setFilterInputValue] = createSignal<string>("");
+  const [tableFilterInputRef, setTableFilterInputRef] = createSignal<HTMLInputElement>();
+  const [tableGlobalFilterStr, setTableGlobalFilterStr] = createSignal<string>("");
 
   createEffect(
     on(
@@ -65,11 +64,6 @@ export default function WikiSubPage() {
           setIsTableFullscreen(false);
           setActiveBannerIndex(0);
           setTableFilterIsOpen(false);
-          if (store.database.tableSyncState[wikiType] && store.wiki[wikiType]?.id) {
-            setCardId(store.wiki[wikiType].id);
-          } else {
-            setCardId(undefined);
-          }
           switch (wikiType) {
             case "_armorTocrystal":
               {
@@ -334,6 +328,7 @@ export default function WikiSubPage() {
               tableColumns: pageConfig().table.columnDef,
               tableHiddenColumns: pageConfig().table.hiddenColumnDef,
               tableTdGenerator: pageConfig().table.tdGenerator,
+              globalFilterStr: tableGlobalFilterStr,
               filterIsOpen: tableFilterIsOpen,
               setFilterIsOpen: setTableFilterIsOpen,
             }),
@@ -377,48 +372,9 @@ export default function WikiSubPage() {
       }
     >
       <Presence exitBeforeEnter>
-        <Show when={isTableFullscreen() || media.width < 1024}>
-          <Motion.div
-            class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex w-1/2 min-w-80 gap-1 rounded p-1 landscape:bottom-6 lg:min-w-2xl"
-            animate={{
-              opacity: [0, 1],
-              transform: ["translateX(-50%)", "translateX(-50%)"],
-            }}
-            exit={{ opacity: 0, transform: "translateX(-50%)" }}
-            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          >
-            <Button
-              size="sm"
-              class="bg-transparent"
-              icon={<Icon.Line.CloudUpload />}
-              onClick={() => {
-                setStore("wiki", tableName(), {
-                  dialogType: "form",
-                  dialogIsOpen: true,
-                });
-              }}
-            ></Button>
-            <input
-              id="filterInput"
-              ref={setFilterInput}
-              type="text"
-              placeholder={dictionary().ui.actions.filter}
-              value={filterInputValue()}
-              tabIndex={1}
-              onInput={(e) => {
-                setFilterInputValue(e.target.value);
-              }}
-              class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
-            />
-            <Button size="sm" class="bg-transparent" icon={<Icon.Line.Settings />} onClick={() => {}}></Button>
-          </Motion.div>
-        </Show>
-      </Presence>
-
-      <Presence exitBeforeEnter>
         <Show when={!isTableFullscreen()}>
           <Motion.div
-            class="Title flex flex-col landscape:p-3 lg:pt-12"
+            class="Title flex flex-col lg:pt-12 landscape:p-3"
             animate={{ opacity: [0, 1] }}
             exit={{ opacity: 0 }}
             transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
@@ -557,12 +513,59 @@ export default function WikiSubPage() {
         </Presence>
       </div>
 
+      <Presence exitBeforeEnter>
+        <Show when={isTableFullscreen() || media.width < 1024}>
+          <Motion.div
+            class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex w-1/2 min-w-80 gap-1 rounded p-1 lg:min-w-2xl landscape:bottom-6"
+            animate={{
+              opacity: [0, 1],
+              transform: ["translateX(-50%)", "translateX(-50%)"],
+            }}
+            exit={{ opacity: 0, transform: "translateX(-50%)" }}
+            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+          >
+            <Button
+              size="sm"
+              class="bg-transparent"
+              icon={<Icon.Line.CloudUpload />}
+              onClick={() => {
+                setStore("wiki", tableName(), {
+                  dialogType: "form",
+                  dialogIsOpen: true,
+                });
+              }}
+            ></Button>
+            <input
+              id="filterInput"
+              ref={setTableFilterInputRef}
+              type="text"
+              placeholder={dictionary().ui.actions.filter}
+              value={tableGlobalFilterStr()}
+              tabIndex={1}
+              onInput={(e) => {
+                setTableGlobalFilterStr(e.target.value);
+              }}
+              class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
+            />
+            <Button size="sm" class="bg-transparent" icon={<Icon.Line.Settings />} onClick={() => {}}></Button>
+          </Motion.div>
+        </Show>
+      </Presence>
       <Portal>
         <Dialog
           state={store.wiki[tableName()]?.dialogIsOpen ?? false}
           setState={(state: boolean) => setStore("wiki", tableName(), "dialogIsOpen", state)}
         >
-          <Show when={store.wiki[tableName()]?.dialogType === "form"} fallback={<></>}>
+          <Show
+            when={store.wiki[tableName()]?.dialogType === "form"}
+            fallback={ObjDisplayer({
+              tableName: pageConfig().tableName,
+              dataFetcher: pageConfig().card.dataFetcher,
+              dataSchema: pageConfig().card.dataSchema,
+              fieldGroupMap: pageConfig().card.fieldGroupMap,
+              hiddenFields: pageConfig().card.hiddenFields,
+            })}
+          >
             {form()}
           </Show>
         </Dialog>

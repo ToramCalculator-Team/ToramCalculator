@@ -13,7 +13,18 @@ import {
   Suspense,
   useContext,
 } from "solid-js";
-import { Cell, ColumnDef, createSolidTable, getCoreRowModel, getSortedRowModel } from "@tanstack/solid-table";
+import {
+  Cell,
+  ColumnDef,
+  createSolidTable,
+  getCoreRowModel,
+  getFacetedMinMaxValues,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type ColumnFiltersState
+} from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
@@ -27,6 +38,7 @@ import { dictionary, FieldDescription, FieldDict } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDictionary } from "~/locales/i18n";
 import { LoadingBar } from "../loadingBar";
+import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
 
 export function VirtualTable<Table extends keyof DB>(props: {
@@ -36,11 +48,12 @@ export function VirtualTable<Table extends keyof DB>(props: {
   tableHiddenColumns: Array<keyof Table>;
   tableTdGenerator: (props: { cell: Cell<Table, unknown> }) => JSX.Element;
   defaultSort: { id: keyof Table; desc: boolean };
+  globalFilterStr: Accessor<string>;
   filterIsOpen: Accessor<boolean>;
   setFilterIsOpen: (isOpen: boolean) => void;
 }) {
-  const start = performance.now();
-  console.log("virtualTable start", start);
+  // const start = performance.now();
+  // console.log("virtualTable start", start);
   const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
@@ -88,6 +101,13 @@ export function VirtualTable<Table extends keyof DB>(props: {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = createSignal("");
+  const debounceSetGlobalFilter = debounce((value: string) => setGlobalFilter(value), 500);
+
+  // 过滤字符串
+  createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
+
   const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
   const [table, setTable] = createSignal<TanStackTable<Table>>();
   const tableContainer = createMemo(() => {
@@ -101,7 +121,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
 
   createEffect(
     on(props.dataList, () => {
-      console.log("dataList change", performance.now() - start);
+      // console.log("dataList change", performance.now() - start);
       setTable(
         createSolidTable({
           data: props.dataList.latest ?? [],
@@ -109,6 +129,20 @@ export function VirtualTable<Table extends keyof DB>(props: {
           getCoreRowModel: getCoreRowModel(),
           getSortedRowModel: getSortedRowModel(),
           debugTable: true,
+          state: {
+            get globalFilter() {
+              return globalFilter();
+            },
+          },
+          onGlobalFilterChange: setGlobalFilter,
+          globalFilterFn: "includesString",
+          onColumnFiltersChange: setColumnFilters,
+          getFilteredRowModel: getFilteredRowModel(),
+          getFacetedRowModel: getFacetedRowModel(),
+          getFacetedUniqueValues: getFacetedUniqueValues(),
+          getFacetedMinMaxValues: getFacetedMinMaxValues(),
+          debugHeaders: true,
+          debugColumns: false,
           initialState: {
             sorting: [
               {
@@ -121,23 +155,6 @@ export function VirtualTable<Table extends keyof DB>(props: {
       );
     }),
   );
-
-  // onMount(() => {
-  //   console.log("VirtualTable onMount");
-  //   console.log("virtualTable end", performance.now() - start);
-  //   setTimeout(() => {
-  //     virtualizer()._willUpdate();
-  //     console.log(
-  //       "TableRows:",
-  //       JSON.stringify(table.getRowCount()),
-  //       "VirtualCount:",
-  //       JSON.stringify(virtualizer().getVirtualIndexes().length),
-  //       "VirtualDatas:",
-  //       JSON.stringify(virtualizer().getVirtualItems().length),
-  //       Math.floor(performance.now()),
-  //     );
-  //   }, 1);
-  // });
 
   onCleanup(() => {
     console.log("VirtualTable onCleanup");
@@ -217,7 +234,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
         ref={setVirtualScrollRef}
         class="h-full flex-1"
       >
-        <table class="Table relative w-full h-full">
+        <table class="Table relative max-h-full max-w-full">
           <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
             <For each={table()?.getHeaderGroups()}>
               {(headerGroup) => (
@@ -259,12 +276,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
               )}
             </For>
           </thead>
-          <Show
-            when={props.dataList.state === "ready"}
-            fallback={
-              <h1 class="animate-pulse p-3">......</h1>
-            }
-          >
+          <Show when={props.dataList.state === "ready"} fallback={<h1 class="animate-pulse p-3">......</h1>}>
             <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBodyrelative`}>
               <For each={tableContainer().getVirtualItems()}>
                 {(virtualRow) => {
