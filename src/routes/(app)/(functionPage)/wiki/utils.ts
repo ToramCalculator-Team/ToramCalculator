@@ -5,7 +5,6 @@ import { Accessor, JSX, Resource } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodRawShape, ZodSchema, ZodType } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
 import { DeepHiddenFields } from "~/components/module/objRender";
-import { ConvertToDic } from "~/locales/type";
 
 export function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -35,6 +34,7 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
   return ZodFirstPartyTypeKind.ZodUndefined;
 };
 
+// DB表的数据配置，包括表格配置，表单配置，卡片配置
 export type DBdataDisplayConfig<T extends keyof DB, Card> = {
   tableName: T;
   table: {
