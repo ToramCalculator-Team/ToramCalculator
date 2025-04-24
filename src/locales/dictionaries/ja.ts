@@ -386,15 +386,9 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "ホーム",
-      mobs: "モンスター",
-      skills: "スキル",
-      equipments: "装備",
-      crystals: "クリスタル",
-      pets: "ペット",
-      items: "消耗品",
       character: "キャラクター",
       simulator: "コンボ分析",
-      profile: "",
+      profile: "プロフィール",
     },
     errorPage: {
       tips: "あなたは知識の荒野にいるが、クリックして戻ります",

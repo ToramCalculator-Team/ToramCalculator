@@ -45,6 +45,11 @@ export async function findSkillById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findSkillsLike(searchString: string) {
+  const db = await getDB();
+  return await db.selectFrom("skill").where("name", "like", `%${searchString}%`).selectAll("skill").execute();
+}
+
 export async function findSkills() {
   const db = await getDB();
   return await db.selectFrom("skill").selectAll("skill").execute();

@@ -22,13 +22,14 @@ import { Dialog } from "~/components/controls/dialog";
 import { LoadingBar } from "~/components/loadingBar";
 import { defaultData } from "~/../db/defaultData";
 import { DB } from "~/../db/kysely/kyesely";
-import { WikiPageConfig } from "./utils";
-import { mobPageConfig } from "./subPageConfig/mobPageConfig";
+import { DBdataDisplayConfig } from "./utils";
+import { mobDataConfig } from "./dataConfig/mobDataConfig";
 import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
-import { skillPageConfig } from "./subPageConfig/skilPageConfig";
+import { skillDataConfig } from "./dataConfig/skillDataConfig";
 import { MediaContext } from "~/contexts/Media";
 import { ObjDisplayer } from "~/components/module/objectDisplayer";
+import { ObjRender } from "~/components/module/objRender";
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -47,9 +48,13 @@ export default function WikiSubPage() {
   const [tableFilterIsOpen, setTableFilterIsOpen] = createSignal(false);
   const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
   const [form, setForm] = createSignal<JSX.Element>();
-  const [pageConfig, setPageConfig] = createSignal<WikiPageConfig<any>>(mobPageConfig());
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>(mobDataConfig());
   const [tableFilterInputRef, setTableFilterInputRef] = createSignal<HTMLInputElement>();
   const [tableGlobalFilterStr, setTableGlobalFilterStr] = createSignal<string>("");
+  const [cardData, { refetch: refetchCardData }] = createResource(
+    () => store.wiki[tableName()]?.id,
+    dataConfig().card.dataFetcher,
+  );
 
   createEffect(
     on(
@@ -204,7 +209,7 @@ export default function WikiSubPage() {
             case "mob":
               {
                 setTableName("mob");
-                setPageConfig(mobPageConfig());
+                setDataConfig(mobDataConfig());
               }
               break;
             case "npc":
@@ -262,7 +267,7 @@ export default function WikiSubPage() {
             case "skill":
               {
                 setTableName("skill");
-                setPageConfig(skillPageConfig());
+                setDataConfig(skillDataConfig());
               }
               break;
             case "skill_effect":
@@ -322,12 +327,12 @@ export default function WikiSubPage() {
           }
           setVirtualTable(
             VirtualTable({
-              tableName: pageConfig().tableName,
-              dataList: pageConfig().table.dataList,
-              defaultSort: pageConfig().table.defaultSort,
-              tableColumns: pageConfig().table.columnDef,
-              tableHiddenColumns: pageConfig().table.hiddenColumnDef,
-              tableTdGenerator: pageConfig().table.tdGenerator,
+              tableName: dataConfig().tableName,
+              dataList: dataConfig().table.dataList,
+              defaultSort: dataConfig().table.defaultSort,
+              tableColumns: dataConfig().table.columnDef,
+              tableHiddenColumns: dataConfig().table.hiddenColumnDef,
+              tableTdGenerator: dataConfig().table.tdGenerator,
               globalFilterStr: tableGlobalFilterStr,
               filterIsOpen: tableFilterIsOpen,
               setFilterIsOpen: setTableFilterIsOpen,
@@ -335,14 +340,14 @@ export default function WikiSubPage() {
           );
           setForm(
             Form({
-              tableName: pageConfig().tableName,
-              defaultItem: pageConfig().form.defaultData,
-              item: pageConfig().form.data,
-              itemSchema: pageConfig().form.dataSchema,
-              formHiddenFields: pageConfig().form.hiddenFields,
-              fieldGenerator: pageConfig().form.fieldGenerator,
-              createItem: pageConfig().form.createData,
-              refetchItemList: pageConfig().form.refetchItemList,
+              tableName: dataConfig().tableName,
+              defaultItem: dataConfig().form.defaultData,
+              item: dataConfig().form.data,
+              itemSchema: dataConfig().form.dataSchema,
+              formHiddenFields: dataConfig().form.hiddenFields,
+              fieldGenerator: dataConfig().form.fieldGenerator,
+              createItem: dataConfig().form.createData,
+              refetchItemList: dataConfig().form.refetchItemList,
             }),
           );
         } else {
@@ -451,7 +456,7 @@ export default function WikiSubPage() {
                         <span
                           class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
                         >
-                          {/* {"name" in defaultData[tableName()] ? pageConfig().table.dataList?.latest?.[index()].name : ""} */}
+                          {/* {"name" in defaultData[tableName()] ? dataConfig().table.dataList?.latest?.[index()].name : ""} */}
                         </span>
                       </div>
                     </div>
@@ -558,13 +563,26 @@ export default function WikiSubPage() {
         >
           <Show
             when={store.wiki[tableName()]?.dialogType === "form"}
-            fallback={ObjDisplayer({
-              tableName: pageConfig().tableName,
-              dataFetcher: pageConfig().card.dataFetcher,
-              dataSchema: pageConfig().card.dataSchema,
-              fieldGroupMap: pageConfig().card.fieldGroupMap,
-              hiddenFields: pageConfig().card.hiddenFields,
-            })}
+            fallback={
+              <Show when={cardData()} fallback={<LoadingBar />}>
+                <ObjRender
+                  data={cardData.latest!}
+                  dataSchema={dataConfig().card.dataSchema}
+                  hiddenFields={dataConfig().card.hiddenFields}
+                  fieldGroupMap={dataConfig().card.fieldGroupMap}
+                  fieldGenerator={(key, value) => {
+                    return (
+                      <div class="Field flex gap-2">
+                        <span class="text-main-text-color">
+                          {key in dictionary().db[tableName()].fields ? dictionary().db[tableName()].fields[key].key : JSON.stringify(key)} 
+                        </span>
+                        :<span class="font-bold">{value}</span>
+                      </div>
+                    );
+                  }}
+                />
+              </Show>
+            }
           >
             {form()}
           </Show>

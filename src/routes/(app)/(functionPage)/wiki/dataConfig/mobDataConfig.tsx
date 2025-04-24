@@ -3,7 +3,7 @@ import { Accessor, createMemo, createResource, createSignal, For, JSX, Show } fr
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, defaultMob, findMobById, findMobs, Mob, mobCardSchema } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
-import { fieldInfo, WikiPageConfig } from "../utils";
+import { fieldInfo, DBdataDisplayConfig } from "../utils";
 import * as Icon from "~/components/icon";
 import { createSyncResource } from "~/hooks/resource";
 import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
@@ -13,7 +13,7 @@ import { store } from "~/store";
 import { z, ZodObject, ZodSchema } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
 
-export function mobPageConfig(): WikiPageConfig<"mob", Mob["Card"]> {
+export function mobDataConfig(): DBdataDisplayConfig<"mob", Mob["Card"]> {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [mobList, { refetch: refetchMobList }] = createSyncResource("mob", findMobs);

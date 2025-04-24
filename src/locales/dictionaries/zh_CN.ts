@@ -454,15 +454,9 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "首页", 
-      mobs: "怪物",
-      skills: "技能",
-      equipments: "装备",
-      crystals: "锻晶",
-      pets: "宠物",
-      items: "消耗品",
       character: "角色配置",
       simulator: "流程模拟",
-      profile: "",
+      profile: "个人设置",
     },
     errorPage: {
       tips: "你来到了没有知识的荒原~，点击屏幕返回",
@@ -2442,7 +2436,7 @@ const dictionary: dictionary = {
       description: ""
     },
     skill: {
-      selfName: "",
+      selfName: "技能",
       fields: {
         id: {
           key: "ID",
@@ -2883,7 +2877,7 @@ const dictionary: dictionary = {
       description: ""
     },
     weapon: {
-      selfName: "",
+      selfName: "武器",
       fields: {
         type: {
           key: "",

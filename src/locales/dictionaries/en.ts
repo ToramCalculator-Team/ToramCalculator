@@ -387,15 +387,9 @@ const dictionary: dictionary = {
     },
     nav: {
       home: "Home",
-      mobs: "Mobs",
-      skills: "Skills",
-      equipments: "Equipments",
-      crystals: "Crystas",
-      pets: "Pets",
-      items: "Items",
       character: "Character",
       simulator: "Simulator",
-      profile: "",
+      profile: "Profile",
     },
     errorPage: {
       tips: "You have no knowledge of the desert. Click the screen to return",
@@ -1587,7 +1581,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mob: {
-      selfName: "",
+      selfName: "Mob",
       fields: {
         name: {
           key: "Name",
@@ -2770,7 +2764,7 @@ const dictionary: dictionary = {
       description: ""
     },
     weapon: {
-      selfName: "",
+      selfName: "Weapon",
       fields: {
         type: {
           key: "",

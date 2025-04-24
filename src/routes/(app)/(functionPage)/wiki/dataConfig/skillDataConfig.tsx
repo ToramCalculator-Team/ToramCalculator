@@ -3,13 +3,13 @@ import { Accessor, createMemo, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createSkill, defaultSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
 import { DataEnums } from "~/../db/dataEnums";
-import { fieldInfo, WikiPageConfig } from "../utils";
+import { fieldInfo, DBdataDisplayConfig } from "../utils";
 import { createSyncResource } from "~/hooks/resource";
 import { skillSchema } from "~/../db/zod";
 import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
-export function skillPageConfig(): WikiPageConfig<"skill"> {
+export function skillDataConfig(): DBdataDisplayConfig<"skill", Skill["Card"]> {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [skillList, { refetch: refetchSkillList }] = createSyncResource("skill", findSkills);

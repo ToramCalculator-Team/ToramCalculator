@@ -47,6 +47,7 @@ const getDB = async (): Promise<Kysely<DB>> => {
           console.log("Query executed : ", {
             durationMs: event.queryDurationMillis,
             sql: event.query.sql,
+            parameters: event.query.parameters
           });
         }
       }

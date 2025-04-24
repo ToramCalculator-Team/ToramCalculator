@@ -4,6 +4,7 @@ import { Transaction } from "kysely";
 import { Accessor, JSX, Resource } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodRawShape, ZodSchema, ZodType } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
+import { DeepHiddenFields } from "~/components/module/objRender";
 import { ConvertToDic } from "~/locales/type";
 
 export function fieldInfo(field: AnyFieldApi): string {
@@ -34,7 +35,7 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
   return ZodFirstPartyTypeKind.ZodUndefined;
 };
 
-export type WikiPageConfig<T extends keyof DB, Card> = {
+export type DBdataDisplayConfig<T extends keyof DB, Card> = {
   tableName: T;
   table: {
     dataList: Resource<DB[T][]>;
@@ -57,7 +58,7 @@ export type WikiPageConfig<T extends keyof DB, Card> = {
     dataFetcher: (id: string) => Promise<DB[T]>;
     dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
     fieldGroupMap: Record<string, Array<keyof Card>>;
-    fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
-    hiddenFields: Array<keyof DB[T]>;
+    fieldGenerator?: (key: keyof DB[T], value: DB[T][keyof DB[T]]) => JSX.Element;
+    hiddenFields: DeepHiddenFields<DB[T]>;
   };
 };

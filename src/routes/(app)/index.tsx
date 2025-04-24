@@ -17,9 +17,9 @@ import * as _ from "lodash-es";
 
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
-import { Button  } from "~/components/controls/button";
+import { Button } from "~/components/controls/button";
 import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/mob";
-import { findSkillById, type Skill } from "~/repositories/skill";
+import { findSkillById, findSkillsLike, type Skill } from "~/repositories/skill";
 import { findCrystalByItemId, type Crystal } from "~/repositories/crystal";
 import { Filing } from "~/components/module/filing";
 
@@ -36,8 +36,14 @@ import { setStore, store } from "~/store";
 import { pgWorker } from "~/initialWorker";
 import { User } from "~/repositories/user";
 import { LoginDialog } from "~/components/module/loginDialog";
+import { ObjDisplayer } from "~/components/module/objectDisplayer";
+import { ObjRender } from "~/components/module/objRender";
+import { LoadingBar } from "~/components/loadingBar";
+import { mobDataConfig } from "./(functionPage)/wiki/dataConfig/mobDataConfig";
+import { DBdataDisplayConfig } from "./(functionPage)/wiki/utils";
+import { skillDataConfig } from "./(functionPage)/wiki/dataConfig/skillDataConfig";
 
-type Result = Mob["Select"];
+type Result = Mob["Select"] | Skill["Select"];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
 
@@ -57,8 +63,10 @@ export default function Index() {
   const [searchResultOpened, setSearchResultOpened] = createSignal(false);
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
-  const [currentCardId, setCurrentCardId] = createSignal<string>(defaultMob.id);
-  const [currentCardType, setCurrentCardType] = createSignal<keyof DB>("mob");
+
+  
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>(mobDataConfig());
+  const [tableName, setTableName] = createSignal<keyof DB>("mob");
   const media = useContext(MediaContext);
 
   // UI文本字典
@@ -90,96 +98,323 @@ export default function Index() {
   // 自定义首页导航配置
   const [customMenuConfig] = createSignal<
     {
-      href: string;
-      title: keyof dictionary["ui"]["nav"];
+      groupType: "wiki" | "appPages";
+      title: keyof dictionary["db"] | string;
       icon: keyof typeof Icon.Filled;
     }[]
   >([
     {
-      href: "/wiki/mob",
-      title: "mobs",
+      groupType: "wiki",
+      title: "mob",
       icon: "Browser",
     },
     {
-      href: "/wiki/skill",
-      title: "skills",
+      groupType: "wiki",
+      title: "skill",
       icon: "Basketball",
     },
     {
-      href: "/wiki/equipment",
-      title: "equipments",
+      groupType: "wiki",
+      title: "weapon",
       icon: "Category2",
     },
+    // {
+    //   groupType: "/wiki/crystal",
+    //   title: "crystal",
+    //   icon: "Box2",
+    // },
+    // {
+    //   groupType: "/wiki/pet",
+    //   title: "pets",
+    //   icon: "Heart",
+    // },
+    // {
+    //   groupType: "/wiki/building",
+    //   title: "items",
+    //   icon: "Layers",
+    // },
     {
-      href: "/wiki/crystal",
-      title: "crystals",
-      icon: "Box2",
-    },
-    {
-      href: "/wiki/pet",
-      title: "pets",
-      icon: "Heart",
-    },
-    {
-      href: "/wiki/building",
-      title: "items",
-      icon: "Layers",
-    },
-    {
-      href: "/character/defaultCharacterId",
+      groupType: "appPages",
       title: "character",
       icon: "User",
     },
     {
-      href: "simulator/defaultSimulatorId",
+      groupType: "appPages",
       title: "simulator",
       icon: "Gamepad",
     },
   ]);
-  const [UserList, { refetch: refetchUserList }] = createResource(
-    async () =>
-      await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-        console.log(res);
-      }),
-  );
+  // const [UserList, { refetch: refetchUserList }] = createResource(
+  //   async () =>
+  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
+  //       console.log(res);
+  //     }),
+  // );
 
-  const [data, { refetch: refetchData }] = createResource(currentCardId(), async () => {
-    switch (currentCardType()) {
+  const getDBdataConfig = (type: keyof DB)=> {
+    console.log("type", type);
+    switch (tableName()) {
+      case "_armorTocrystal":
+        {
+        }
+        break;
+      case "_avatarTocharacter":
+        {
+        }
+        break;
+      case "_BackRelation":
+        {
+        }
+        break;
+      case "_campA":
+        {
+        }
+        break;
+      case "_campB":
+        {
+        }
+        break;
+      case "_characterToconsumable":
+        {
+        }
+        break;
+      case "_crystalTooption":
+        {
+        }
+        break;
+      case "_crystalToplayer_armor":
+        {
+        }
+        break;
+      case "_crystalToplayer_option":
+        {
+        }
+        break;
+      case "_crystalToplayer_special":
+        {
+        }
+        break;
+      case "_crystalToplayer_weapon":
+        {
+        }
+        break;
+      case "_crystalTospecial":
+        {
+        }
+        break;
+      case "_crystalToweapon":
+        {
+        }
+        break;
+      case "_FrontRelation":
+        {
+        }
+        break;
+      case "_mobTozone":
+        {
+        }
+        break;
+      case "account":
+        {
+        }
+        break;
+      case "account_create_data":
+        {
+        }
+        break;
+      case "account_update_data":
+        {
+        }
+        break;
+      case "activity":
+        {
+        }
+        break;
+      case "address":
+        {
+        }
+        break;
+      case "armor":
+        {
+        }
+        break;
+      case "avatar":
+        {
+        }
+        break;
+      case "character":
+        {
+        }
+        break;
+      case "character_skill":
+        {
+        }
+        break;
+      case "combo":
+        {
+        }
+        break;
+      case "combo_step":
+        {
+        }
+        break;
+      case "consumable":
+        {
+        }
+        break;
       case "crystal":
-        return findCrystalByItemId(currentCardId());
-      case "player_pet":
-      case "player_weapon":
+        {
+        }
+        break;
       case "drop_item":
+        {
+        }
+        break;
       case "image":
+        {
+        }
+        break;
       case "item":
+        {
+        }
+        break;
       case "material":
+        {
+        }
+        break;
       case "member":
+        {
+        }
+        break;
       case "mercenary":
+        {
+        }
+        break;
       case "mob":
-        return findMobById(currentCardId());
+        {
+          setTableName("mob");
+          setDataConfig(mobDataConfig());
+        }
+        break;
       case "npc":
+        {
+        }
+        break;
+      case "option":
+        {
+        }
+        break;
       case "player":
+        {
+        }
+        break;
+      case "player_armor":
+        {
+        }
+        break;
+      case "player_option":
+        {
+        }
+        break;
+      case "player_pet":
+        {
+        }
+        break;
+      case "player_special":
+        {
+        }
+        break;
+      case "player_weapon":
+        {
+        }
+        break;
       case "post":
+        {
+        }
+        break;
       case "recipe":
+        {
+        }
+        break;
       case "recipe_ingredient":
-      case "task_reward":
+        {
+        }
+        break;
       case "session":
+        {
+        }
+        break;
       case "simulator":
+        {
+        }
+        break;
       case "skill":
-        return findSkillById(currentCardId());
+        {
+          setTableName("skill");
+          setDataConfig(skillDataConfig());
+        }
+        break;
       case "skill_effect":
+        {
+        }
+        break;
+      case "special":
+        {
+        }
+        break;
       case "statistic":
+        {
+        }
+        break;
       case "task":
+        {
+        }
+        break;
       case "task_collect_require":
+        {
+        }
+        break;
       case "task_kill_requirement":
+        {
+        }
+        break;
+      case "task_reward":
+        {
+        }
+        break;
       case "team":
+        {
+        }
+        break;
       case "user":
+        {
+        }
+        break;
+      case "verification_token":
+        {
+        }
+        break;
       case "weapon":
+        {
+        }
+        break;
       case "world":
+        {
+        }
+        break;
       case "zone":
-        return findZoneById(currentCardId());
+        {
+        }
+        break;
+      default:
+        break;
     }
-  });
+  };
+
+  const [cardData, { refetch: refetchCardData }] = createResource(
+    () => store.wiki[tableName()]?.id,
+    dataConfig().card.dataFetcher,
+  );
 
   // 搜索时需要放弃检查的列
   const mobHiddenData: Array<keyof Mob["Select"]> = ["id", "updatedByAccountId", "createdByAccountId"];
@@ -211,6 +446,7 @@ export default function Index() {
 
     const finalResult: FinalResult = {
       mob: await findMobsLike(searchInputValue()),
+      skill: await findSkillsLike(searchInputValue()),
     };
     setSearchResult(finalResult);
 
@@ -495,15 +731,15 @@ export default function Index() {
                           switch (groupType) {
                             case "skill":
                               icon = <Icon.Line.Basketball />;
-                              groupName = dictionary().ui.nav.skills;
+                              groupName = dictionary().db.skill.selfName;
                               break;
                             case "crystal":
                               icon = <Icon.Line.Box2 />;
-                              groupName = dictionary().ui.nav.crystals;
+                              groupName = dictionary().db.crystal.selfName;
                               break;
                             case "mob":
                               icon = <Icon.Line.Calendar />;
-                              groupName = dictionary().ui.nav.mobs;
+                              groupName = dictionary().db.mob.selfName;
                               break;
                             default:
                               break;
@@ -551,9 +787,9 @@ export default function Index() {
                                               : 0,
                                           }}
                                           onClick={async () => {
-                                            setCurrentCardId(resultItem.id ?? defaultMob.id);
-                                            setCurrentCardType(groupType);
-                                            await refetchData();
+                                            setStore("wiki", groupType, "id", resultItem.id);
+                                            // setTableName(groupType);
+                                            // await refetchCardData();
                                             setDialogState(true);
                                           }}
                                         >
@@ -595,7 +831,11 @@ export default function Index() {
               animate={{
                 opacity: [0, 1],
                 gridTemplateRows: ["0fr", "1fr"],
-                paddingBlock: [
+                paddingBlockStart: [
+                  "0rem",
+                  media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "2.75rem",
+                ],
+                paddingBlockEnd: [
                   "0rem",
                   media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "1.5rem",
                 ],
@@ -608,8 +848,9 @@ export default function Index() {
                 filter: ["blur(0px)", "blur(20px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-              class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 self-center px-6 landscape:grid landscape:w-fit landscape:bg-transparent`}
+              class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 self-center px-6 portrait:rounded-t-[24px] landscape:grid landscape:w-fit landscape:bg-transparent`}
             >
+              <div class="Btn bg-primary-color absolute top-3 left-1/2 h-2 w-24 -translate-x-1/2 rounded-full"></div>
               <Motion.div
                 class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:px-3 landscape:backdrop-blur-sm`}
                 animate={{
@@ -628,12 +869,13 @@ export default function Index() {
                       2: "2nd",
                       3: "3rd",
                     }[1 + (index() % 3)];
+
                     return (
                       <Presence exitBeforeEnter>
                         <Show when={!searchResultOpened()}>
                           <Motion.a
                             tabIndex={2}
-                            href={menuItem.href}
+                            href={menuItem.groupType === "wiki" ? `/wiki/${menuItem.title}` : menuItem.title}
                             class={`flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
                             animate={{
                               opacity: [0, 1],
@@ -657,7 +899,9 @@ export default function Index() {
                                 class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
                               />
                               <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
-                                {dictionary().ui.nav[menuItem.title]}
+                                {menuItem.groupType === "wiki"
+                                  ? dictionary().db[menuItem.title as keyof DB].selfName
+                                  : dictionary().ui.nav[menuItem.title as keyof dictionary["ui"]["nav"]]}
                               </span>
                             </Button>
                           </Motion.a>
@@ -673,9 +917,24 @@ export default function Index() {
       </Motion.div>
 
       <Dialog state={dialogState()} setState={setDialogState}>
-        <OverlayScrollbarsComponent element="div" class="w-full" options={{ scrollbars: { autoHide: "scroll" } }} defer>
-          <pre class="p-3">{JSON.stringify(data(), null, 2)}</pre>
-        </OverlayScrollbarsComponent>
+        <Show when={cardData()} fallback={<LoadingBar />}>
+          <ObjRender
+            data={cardData.latest!}
+            dataSchema={dataConfig().card.dataSchema}
+            hiddenFields={dataConfig().card.hiddenFields}
+            fieldGroupMap={dataConfig().card.fieldGroupMap}
+            fieldGenerator={(key, value) => {
+              return (
+                <div class="Field flex gap-2">
+                  <span class="text-main-text-color">
+                    {key in dictionary().db[tableName()].fields ? dictionary().db[tableName()].fields[key].key : JSON.stringify(key)} 
+                  </span>
+                  :<span class="font-bold">{value}</span>
+                </div>
+              );
+            }}
+          />
+        </Show>
       </Dialog>
       <Filing />
       <LoginDialog state={loginDialogIsOpen} setState={setLoginDialogIsOpen} />

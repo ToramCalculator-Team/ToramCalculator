@@ -70,12 +70,6 @@ export interface dictionary {
     };
     nav: {
       home: string;
-      mobs: string;
-      skills: string;
-      equipments: string;
-      crystals: string;
-      pets: string;
-      items: string;
       character: string;
       simulator: string;
       profile: string;
@@ -90,7 +84,7 @@ export interface dictionary {
         colorTheme: {
           title: string;
           description: string;
-        }
+        };
         isAnimationEnabled: {
           title: string;
           description: string;
@@ -179,11 +173,11 @@ export interface dictionary {
     wiki: {
       table: {
         title: string;
-      }
+      };
       news: {
         title: string;
       };
-    }
+    };
     simulator: {
       pageTitle: string;
       description: string;
