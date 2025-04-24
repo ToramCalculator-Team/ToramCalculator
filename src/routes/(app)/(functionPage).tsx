@@ -120,7 +120,7 @@ const Nav = () => {
           />
           <NavBtn
             config={{
-              btnName: dictionary().ui.nav.mobs,
+              btnName: dictionary().db.mob.selfName,
               icon: <Icon.Line.Calendar />,
               url: "/wiki/mob",
             }}
@@ -130,7 +130,7 @@ const Nav = () => {
           <div class="WikiGroup hidden items-center landscape:flex landscape:flex-col">
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.mobs,
+                btnName: dictionary().db.mob.selfName,
                 icon: <Icon.Line.Calendar />,
                 url: "/wiki/mob",
               }}
@@ -139,7 +139,7 @@ const Nav = () => {
             />
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.skills,
+                btnName: dictionary().db.skill.selfName,
                 icon: <Icon.Line.Basketball />,
                 url: "/wiki/skill",
               }}
@@ -147,15 +147,15 @@ const Nav = () => {
             />
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.equipments,
+                btnName: dictionary().db.weapon.selfName,
                 icon: <Icon.Line.Category2 />,
-                url: "/wiki/equipment",
+                url: "/wiki/weapon",
               }}
               active={active}
             />
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.crystals,
+                btnName: dictionary().db.crystal.selfName,
                 icon: <Icon.Line.Box2 />,
                 url: "/wiki/crystal",
               }}
@@ -163,17 +163,9 @@ const Nav = () => {
             />
             <NavBtn
               config={{
-                btnName: dictionary().ui.nav.pets,
+                btnName: dictionary().db.player_pet.selfName,
                 icon: <Icon.Line.Money />,
-                url: "/wiki/pet",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.items,
-                icon: <Icon.Line.Coins />,
-                url: "/wiki/building",
+                url: "/wiki/player_pet",
               }}
               active={active}
             />

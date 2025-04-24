@@ -50,7 +50,7 @@ type FinalResult = Partial<Record<keyof DB, Result[]>>;
 export default function Index() {
   let searchButtonRef!: HTMLButtonElement;
   let searchInputRef!: HTMLInputElement;
-
+  
   const navigate = useNavigate();
   const [dialogState, setDialogState] = createSignal(false);
   const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
@@ -64,8 +64,8 @@ export default function Index() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
 
-  
   const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>(mobDataConfig());
+  const [cardDataId, setCardDataId] = createSignal("");
   const [tableName, setTableName] = createSignal<keyof DB>("mob");
   const media = useContext(MediaContext);
 
@@ -151,7 +151,7 @@ export default function Index() {
   //     }),
   // );
 
-  const getDBdataConfig = (type: keyof DB)=> {
+  const getDBdataConfig = (type: keyof DB) => {
     console.log("type", type);
     switch (tableName()) {
       case "_armorTocrystal":
@@ -918,22 +918,24 @@ export default function Index() {
 
       <Dialog state={dialogState()} setState={setDialogState}>
         <Show when={cardData()} fallback={<LoadingBar />}>
-          <ObjRender
-            data={cardData.latest!}
-            dataSchema={dataConfig().card.dataSchema}
-            hiddenFields={dataConfig().card.hiddenFields}
-            fieldGroupMap={dataConfig().card.fieldGroupMap}
-            fieldGenerator={(key, value) => {
+          {ObjRender({
+            data: cardData.latest!,
+            dataSchema: dataConfig().card.dataSchema,
+            hiddenFields: dataConfig().card.hiddenFields,
+            fieldGroupMap: dataConfig().card.fieldGroupMap,
+            fieldGenerator: (key, value) => {
               return (
                 <div class="Field flex gap-2">
                   <span class="text-main-text-color">
-                    {key in dictionary().db[tableName()].fields ? dictionary().db[tableName()].fields[key].key : JSON.stringify(key)} 
+                    {key in dictionary().db[tableName()].fields
+                      ? dictionary().db[tableName()].fields[key].key
+                      : JSON.stringify(key)}
                   </span>
                   :<span class="font-bold">{value}</span>
                 </div>
               );
-            }}
-          />
+            },
+          })}
         </Show>
       </Dialog>
       <Filing />

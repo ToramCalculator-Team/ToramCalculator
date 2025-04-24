@@ -565,22 +565,24 @@ export default function WikiSubPage() {
             when={store.wiki[tableName()]?.dialogType === "form"}
             fallback={
               <Show when={cardData()} fallback={<LoadingBar />}>
-                <ObjRender
-                  data={cardData.latest!}
-                  dataSchema={dataConfig().card.dataSchema}
-                  hiddenFields={dataConfig().card.hiddenFields}
-                  fieldGroupMap={dataConfig().card.fieldGroupMap}
-                  fieldGenerator={(key, value) => {
+                {ObjRender({
+                  data: cardData.latest!,
+                  dataSchema: dataConfig().card.dataSchema,
+                  hiddenFields: dataConfig().card.hiddenFields,
+                  fieldGroupMap: dataConfig().card.fieldGroupMap,
+                  fieldGenerator: (key, value) => {
                     return (
                       <div class="Field flex gap-2">
                         <span class="text-main-text-color">
-                          {key in dictionary().db[tableName()].fields ? dictionary().db[tableName()].fields[key].key : JSON.stringify(key)} 
+                          {key in dictionary().db[tableName()].fields
+                            ? dictionary().db[tableName()].fields[key].key
+                            : JSON.stringify(key)}
                         </span>
                         :<span class="font-bold">{value}</span>
                       </div>
                     );
-                  }}
-                />
+                  },
+                })}
               </Show>
             }
           >

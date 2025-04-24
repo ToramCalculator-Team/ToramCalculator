@@ -333,7 +333,7 @@ export function mobDataConfig(): DBdataDisplayConfig<"mob", Mob["Card"]> {
       fieldGenerator: undefined,
       dataSchema: mobCardSchema as ZodObject<{ [K in keyof DB["mob"]]: ZodSchema }>,
       fieldGroupMap: {
-        常规属性: ["experience", "partsExperience", "maxhp"],
+        常规属性: ["name","baseLv","experience", "partsExperience", "maxhp"],
         战斗属性: [
           "initialElement",
           "physicalDefense",
