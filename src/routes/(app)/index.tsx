@@ -918,21 +918,11 @@ export default function Index() {
         <Show when={cardData()} fallback={<LoadingBar />}>
           {ObjRender({
             data: cardData.latest!,
+            dictionary: dictionary().db[tableName()],
             dataSchema: dataConfig().card.dataSchema,
             deepHiddenFields: dataConfig().card.deepHiddenFields,
             fieldGroupMap: dataConfig().card.fieldGroupMap,
-            fieldGenerator: (key, value) => {
-              return (
-                <div class="Field flex gap-2">
-                  <span class="text-main-text-color">
-                    {key in dictionary().db[tableName()].fields
-                      ? (dictionary().db[tableName()].fields[key] as FieldDetail).key
-                      : JSON.stringify(key)}
-                  </span>
-                  :<span class="font-bold">{value}</span>
-                </div>
-              );
-            },
+            fieldGenerator: dataConfig().card.fieldGenerator,
           })}
         </Show>
       </Dialog>
