@@ -58,6 +58,6 @@ export type DBdataDisplayConfig<T extends Record<string, unknown>, Card extends 
     dataSchema: ZodObject<Record<keyof Card, ZodTypeAny>>;
     deepHiddenFields: DeepHiddenFields<Card>;
     fieldGroupMap: Record<string, Array<keyof Card>>;
-    fieldGenerator?: (key: keyof Card, value: Card[keyof Card]) => JSX.Element;
+    fieldGenerator?: (key: keyof Card, value: Card[keyof Card], dictionary: Dic<Card>) => JSX.Element;
   };
 };

@@ -356,7 +356,7 @@ export default function WikiSubPage() {
                 tdGenerator: validDataConfig.table.tdGenerator,
                 defaultSort: validDataConfig.table.defaultSort,
                 globalFilterStr: tableGlobalFilterStr,
-                dictionary: dictionary().db.mob,
+                dictionary: dictionary().db[wikiType],
                 columnHandleClick: (id) => {
                   setCardDataIds((pre) => [...pre, id]);
                   setCardGroupIsOpen(true);
@@ -561,44 +561,36 @@ export default function WikiSubPage() {
                   <Show when={cardDatas.state === "ready"} fallback={"..."}>
                     <For each={cardDatas()}>
                       {(cardData, index) => {
-                        return cardData ? (
-                          <ObjRender
-                            data={cardData}
-                            dataSchema={validDataConfig().card.dataSchema}
-                            deepHiddenFields={validDataConfig().card.deepHiddenFields}
-                            fieldGroupMap={validDataConfig().card.fieldGroupMap}
-                            // fieldGenerator={(key, value) => {
-                            //   return (
-                            //     <div class="Field flex gap-2">
-                            //       <span class="text-main-text-color">
-                            //         {key in dictionary().db[validTableName()].fields
-                            //           ? (dictionary().db[validTableName()].fields[key] as FieldDetail).key
-                            //           : JSON.stringify(key)}
-                            //       </span>
-                            //       :<span class="font-bold">{value}</span>
-                            //     </div>
-                            //   );
-                            // }}
-                          />
-                        ) : // ? ObjRender({
-                        //     data: cardData,
-                        //     dataSchema: validDataConfig().card.dataSchema,
-                        //     deepHiddenFields: validDataConfig().card.deepHiddenFields,
-                        //     fieldGroupMap: validDataConfig().card.fieldGroupMap,
-                        //     fieldGenerator: (key, value) => {
-                        //       return (
-                        //         <div class="Field flex gap-2">
-                        //           <span class="text-main-text-color">
-                        //             {key in dictionary().db[validTableName()].fields
-                        //               ? (dictionary().db[validTableName()].fields[key] as FieldDetail).key
-                        //               : JSON.stringify(key)}
-                        //           </span>
-                        //           :<span class="font-bold">{value}</span>
-                        //         </div>
-                        //       );
-                        //     },
-                        //   })
-                        null;
+                        return cardData
+                          ? // (
+                            //   <ObjRender
+                            //     data={cardData}
+                            //     dataSchema={validDataConfig().card.dataSchema}
+                            //     deepHiddenFields={validDataConfig().card.deepHiddenFields}
+                            //     fieldGroupMap={validDataConfig().card.fieldGroupMap}
+                            //     fieldGenerator={(key, value) => {
+                            //       return (
+                            //         <div class="Field flex gap-2">
+                            //           <span class="text-main-text-color">
+                            //             {key in dictionary().db[validTableName()].fields
+                            //               ? (dictionary().db[validTableName()].fields[key] as FieldDetail).key
+                            //               : JSON.stringify(key)}
+                            //           </span>
+                            //           :<span class="font-bold">{value}</span>
+                            //         </div>
+                            //       );
+                            //     }}
+                            //   />
+                            // ) :
+                            ObjRender({
+                              data: cardData,
+                              dictionary: dictionary().db[validTableName()],
+                              dataSchema: validDataConfig().card.dataSchema,
+                              deepHiddenFields: validDataConfig().card.deepHiddenFields,
+                              fieldGroupMap: validDataConfig().card.fieldGroupMap,
+                              fieldGenerator: validDataConfig().card.fieldGenerator,
+                            })
+                          : null;
                       }}
                     </For>
                   </Show>

@@ -9,9 +9,9 @@ import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db
 import { Input } from "~/components/controls/input";
 import { z, ZodObject, ZodSchema } from "zod";
 import { DB, mob } from "~/../db/kysely/kyesely";
-import { Dic } from "~/locales/type";
+import { Dic, EnumFieldDetail } from "~/locales/type";
 
-const columnHelper = createColumnHelper<Mob["MainForm"]>()
+const columnHelper = createColumnHelper<Mob["MainForm"]>();
 
 // const defaultColumns = [
 //   // Display Column
@@ -68,88 +68,88 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
     columnDef: [
       {
         id: "id",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
         cell: (info) => info.getValue(),
         size: 200,
       },
       {
         id: "name",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
         cell: (info) => info.getValue(),
         size: 220,
       },
       {
         id: "initialElement",
-        accessorFn: row => row.initialElement,
+        accessorFn: (row) => row.initialElement,
         cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
         size: 200,
       },
       {
         id: "type",
-        accessorFn: row => row.type,
+        accessorFn: (row) => row.type,
         cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
         size: 160,
       },
       {
         id: "captureable",
-        accessorFn: row => row.captureable,
+        accessorFn: (row) => row.captureable,
         cell: (info) => info.getValue<Boolean>().toString(),
         size: 160,
       },
       {
         id: "baseLv",
-        accessorFn: row => row.baseLv,
+        accessorFn: (row) => row.baseLv,
         cell: (info) => info.getValue(),
         size: 160,
       },
       {
         id: "experience",
-        accessorFn: row => row.experience,
+        accessorFn: (row) => row.experience,
         size: 180,
       },
       {
         id: "physicalDefense",
-        accessorFn: row => row.physicalDefense,
+        accessorFn: (row) => row.physicalDefense,
         size: 200,
       },
       {
         id: "physicalResistance",
-        accessorFn: row => row.physicalResistance,
+        accessorFn: (row) => row.physicalResistance,
         size: 200,
       },
       {
         id: "magicalDefense",
-        accessorFn: row => row.magicalDefense,
+        accessorFn: (row) => row.magicalDefense,
         size: 200,
       },
       {
         id: "magicalResistance",
-        accessorFn: row => row.magicalResistance,
+        accessorFn: (row) => row.magicalResistance,
         size: 200,
       },
       {
         id: "criticalResistance",
-        accessorFn: row => row.criticalResistance,
+        accessorFn: (row) => row.criticalResistance,
         size: 200,
       },
       {
         id: "avoidance",
-        accessorFn: row => row.avoidance,
+        accessorFn: (row) => row.avoidance,
         size: 160,
       },
       {
         id: "dodge",
-        accessorFn: row => row.dodge,
+        accessorFn: (row) => row.dodge,
         size: 160,
       },
       {
         id: "block",
-        accessorFn: row => row.block,
+        accessorFn: (row) => row.block,
         size: 160,
       },
       {
         id: "actions",
-        accessorFn: row => row.actions,
+        accessorFn: (row) => row.actions,
         // cell: (info) => JSON.stringify(info.getValue<Object>()),
         size: 160,
       },
@@ -157,15 +157,11 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
     dataFetcher: findMobs,
     defaultSort: { id: "experience", desc: true },
     hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-    tdGenerator: (props: {
-      cell: Cell<mob, keyof mob>;
-      dictionary: Dic<mob>;
-    }) => {
+    tdGenerator: (props: { cell: Cell<mob, keyof mob>; dictionary: Dic<mob> }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-      type MobKeys = keyof DataEnums["mob"];
-      type MobValueKeys<T extends MobKeys> = keyof DataEnums["mob"][T];
+      const columnId = props.cell.column.id as keyof mob;
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      switch (props.cell.column.id as keyof Mob["MainTable"]) {
+      switch (columnId as keyof Mob["MainTable"]) {
         case "initialElement":
           setTdContent(
             {
@@ -224,15 +220,13 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
         >
           <Show
             when={
-              props.cell.column.id !== "initialElement" // elementType已特殊处理，再以文本显示
+              columnId !== "initialElement" // elementType已特殊处理，再以文本显示
             }
             fallback={tdContent()}
           >
-            {"enumMap" in props.dictionary.fields[props.cell.column.id as MobKeys]
-              ? props.dictionary.fields[props.cell.column.id as MobKeys].enumMap[
-                  props.cell.getValue() as MobValueKeys<MobKeys>
-                ]
-              : JSON.stringify(props.cell.getValue())}
+            {"enumMap" in props.dictionary.fields[columnId]
+              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof mob>).enumMap[props.cell.getValue()]
+              : props.cell.getValue()}
           </Show>
         </td>
       );
@@ -282,10 +276,11 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
                           type="radio"
                           onBlur={field().handleBlur}
                           onChange={(e) => field().handleChange(e.target.value)}
-                          class={inputClass} />
+                          class={inputClass}
+                        />
                       </label>
                     );
-                  } }
+                  }}
                 </For>
               </div>
             </Input>
@@ -375,10 +370,11 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
                           type="radio"
                           onBlur={field().handleBlur}
                           onChange={(e) => field().handleChange(e.target.value)}
-                          class={inputClass} />
+                          class={inputClass}
+                        />
                       </label>
                     );
-                  } }
+                  }}
                 </For>
               </div>
             </Input>
@@ -391,7 +387,14 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
   card: {
     dataFetcher: findMobById,
     deepHiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
-    fieldGenerator: undefined,
+    fieldGenerator: (key, value, dictionary) => {
+      return (
+        <div class="Field flex gap-2">
+          <span class="text-main-text-color">{dictionary.fields[key].key}</span>:
+          <span class="font-bold">{value?.toString()}</span>
+        </div>
+      );
+    },
     dataSchema: mobCardSchema as ZodObject<{ [K in keyof Awaited<ReturnType<typeof findMobById>>]: ZodSchema }>,
     fieldGroupMap: {
       常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],

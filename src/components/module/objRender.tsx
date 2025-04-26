@@ -1,5 +1,6 @@
 import { createMemo, For, JSX } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod";
+import { Dic } from "~/locales/type";
 
 // 增强类型：支持层级化隐藏字段处理
 export type DeepHiddenFields<T> = Array<
@@ -65,9 +66,10 @@ function getZodType(schema?: ZodTypeAny): ZodFirstPartyTypeKind {
 export function ObjRender<T extends object>(props: {
   data: T;
   dataSchema: ZodObject<Record<keyof T, ZodTypeAny>>;
+  dictionary: Dic<T>;
   deepHiddenFields: DeepHiddenFields<T>;
   fieldGroupMap: Record<string, Array<keyof T>>;
-  fieldGenerator?: (key: keyof T, value: T[keyof T]) => JSX.Element;
+  fieldGenerator?: (key: keyof T, value: T[keyof T], dictionary: Dic<T>) => JSX.Element;
   tier?: number;
 }) {
   const tier = props.tier || 0;
@@ -105,6 +107,7 @@ export function ObjRender<T extends object>(props: {
                       <ObjRender
                         data={childData}
                         dataSchema={childSchema}
+                        dictionary={props.dictionary}
                         deepHiddenFields={props.deepHiddenFields
                           .filter(
                             (f): f is { [K in keyof T]?: DeepHiddenFields<NonNullable<T[K]>> } =>
@@ -118,7 +121,7 @@ export function ObjRender<T extends object>(props: {
                   }
 
                   return (
-                    props.fieldGenerator?.(key, val) ?? (
+                    props.fieldGenerator?.(key, val, props.dictionary) ?? (
                       <div class="Field flex gap-2">
                         <span class="text-main-text-color">{String(key)}</span>:
                         <span class="font-bold">{String(val)}</span>

@@ -273,7 +273,9 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {column.id}
+                          {props.dictionary
+                            ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
+                            : column.id}
                             {{
                               asc: " ▲",
                               desc: " ▼",
@@ -295,10 +297,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                   if (!row) {
                     return null;
                   }
-                  if (props.hiddenCloumnDef.includes(row.id as keyof T)) {
-                    // 默认隐藏的数据
-                    return;
-                  }
                   return (
                     <tr
                       data-index={virtualRow.index}
@@ -309,7 +307,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                       onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                       class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                     >
-                      <For each={row.getVisibleCells()}>
+                      <For each={row.getVisibleCells().filter((cell) => !props.hiddenCloumnDef.includes(cell.column.id as keyof T))}>
                         {(cell) => {
                           const tdContent = props.dictionary
                             ? props.tdGenerator({ cell, dictionary: props.dictionary })
