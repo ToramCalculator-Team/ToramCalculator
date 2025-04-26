@@ -1,13 +1,13 @@
 import { DataEnums } from "../../db/dataEnums";
 import { DB } from "~/../db/kysely/kyesely";
 
-export type FieldDescription = {
+export type FieldDetail = {
   key: string;
   tableFieldDescription: string;
   formFieldDescription: string;
 };
 
-type EnumFieldDescription<Enum extends string> = FieldDescription & {
+type EnumFieldDetail<Enum extends string> = FieldDetail & {
   enumMap: Record<Enum, string>;
 };
 
@@ -21,14 +21,14 @@ type IsStringLiteralUnionOnly<T> = [T] extends [string] ? (string extends T ? fa
  */
 type FieldDict<T> = {
   [K in keyof T]: IsStringLiteralUnionOnly<T[K]> extends true
-    ? EnumFieldDescription<Extract<T[K], string>>
-    : FieldDescription;
+    ? EnumFieldDetail<Extract<T[K], string>>
+    : FieldDetail;
 };
 
 /**
  * 表描述结构
  */
-export type ConvertToDic<T> = {
+export type Dic<T> = {
   selfName: string;
   description: string;
   fields: FieldDict<T>;
@@ -200,6 +200,6 @@ export interface dictionary {
       description: string;
     };
   };
-  db: { [K in keyof DB]: ConvertToDic<DB[K]> };
+  db: { [K in keyof DB]: Dic<DB[K]> };
   enums: DataEnums;
 }

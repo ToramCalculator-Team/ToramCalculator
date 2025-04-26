@@ -1,18 +1,14 @@
-import { AnyFieldApi, createForm } from "@tanstack/solid-form";
+import { AnyFieldApi, createForm, DeepKeys } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
 import { createMemo, For, JSX, useContext } from "solid-js";
 import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
-import { getDB } from "~/repositories/database";
 import { store, setStore } from "~/store";
 import { Button } from "../controls/button";
 import { Toggle } from "../controls/toggle";
 import { NodeEditor } from "./nodeEditor";
-import { DB } from "~/../db/kysely/kyesely";
-import { ConvertToDic } from "~/locales/type";
+import { Dic } from "~/locales/type";
 import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
-import { Transaction } from "kysely";
-import * as Icon from "~/components/icon";
 
 const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
   if (schema === undefined || schema == null) {
@@ -42,58 +38,34 @@ function fieldInfo(field: AnyFieldApi): string {
   return "";
 }
 
-export const Form = <T extends keyof DB>(props: {
-  tableName: T;
-  defaultItem: DB[T];
-  item: () => DB[T];
-  itemSchema: ZodObject<{ [K in keyof DB[T]]: ZodSchema }>;
-  fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi) => JSX.Element;
-  formHiddenFields: Array<keyof DB[T]>;
-  createItem: (trx: Transaction<DB>, item: DB[T]) => Promise<DB[T] | null>;
-  refetchItemList: () => void;
+export const Form = <T extends Record<string, unknown>>(props: {
+  title: string;
+  data: T;
+  dictionary: Dic<T>;
+  dataSchema: ZodObject<{ [K in keyof T]: ZodSchema }>;
+  hiddenFields: Array<keyof T>;
+  fieldGenerator?: (key: keyof T, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element;
+  onChange?: (data: T) => void;
+  onSubmit?: (data: T) => void;
 }) => {
   const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   const form = createForm(() => ({
-    defaultValues: props.defaultItem,
+    defaultValues: props.data,
     onSubmit: async ({ value }) => {
-      const currentAccount = store.session.user.account;
-      if (!currentAccount) {
-        alert("请先登录");
-        return;
+      if (props.onSubmit) {
+        props.onSubmit(value);
       }
-      const db = await getDB();
-      const item = await db.transaction().execute(async (trx) => {
-        return await props.createItem(trx, {
-          ...value,
-          createdByAccountId: currentAccount.id,
-          updatedByAccountId: currentAccount.id,
-        });
-      });
-
-      props.refetchItemList();
-      setStore("wiki", "mob", "dialogIsOpen", false);
     },
     // validatorAdapter: zodValidator,
   }));
 
   return (
     <div class="FormBox flex w-full flex-col gap-2">
-      <div class="Title flex items-center justify-between lg:p-2">
-        <h1 class="FormTitle text-2xl font-black">{dictionary().db[props.tableName].selfName}</h1>
-        <Button
-          icon={<Icon.Line.Close />}
-          class="lg:hidden"
-          onClick={() => {
-            const tableName = props.tableName;
-            setStore("wiki", tableName, {
-              ...store.wiki[tableName],
-              dialogIsOpen: false,
-            });
-          }}
-        ></Button>
+      <div class="Title flex items-center lg:p-2">
+        <h1 class="FormTitle text-2xl font-black">{props.title}</h1>
       </div>
       <form
         onSubmit={(e) => {
@@ -103,14 +75,14 @@ export const Form = <T extends keyof DB>(props: {
         }}
         class="Form lg:bg-area-color flex flex-col gap-3 lg:rounded lg:p-3"
       >
-        <For each={Object.entries(props.item())}>
+        <For each={Object.entries(props.data)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof DB[T];
+            const fieldKey = _field[0] as DeepKeys<T>;
             const fieldValue = _field[1];
             // 过滤掉隐藏的数据
-            if (props.formHiddenFields.includes(fieldKey)) return;
+            if (props.hiddenFields.includes(fieldKey)) return;
             // 输入框的类型计算
-            const zodValue = props.itemSchema.shape[fieldKey];
+            const zodValue = props.dataSchema.shape[fieldKey];
             // 判断字段类型，便于确定默认输入框
             const valueType = getZodType(zodValue);
 
@@ -121,17 +93,17 @@ export const Form = <T extends keyof DB>(props: {
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: props.itemSchema.shape[fieldKey],
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
                       const enumValue = zodValue as ZodEnum<any>;
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
-                        props.fieldGenerator(fieldKey, field)
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
-                          title={dictionary().db[props.tableName].fields[fieldKey].key}
-                          description={dictionary().db[props.tableName].fields[fieldKey].formFieldDescription}
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
@@ -171,16 +143,16 @@ export const Form = <T extends keyof DB>(props: {
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: props.itemSchema.shape[fieldKey],
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
-                        props.fieldGenerator(fieldKey, field)
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
-                          title={dictionary().db[props.tableName].fields[fieldKey].key}
-                          description={dictionary().db[props.tableName].fields[fieldKey].formFieldDescription}
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
                           autocomplete="off"
                           type="number"
                           id={field().name}
@@ -207,17 +179,17 @@ export const Form = <T extends keyof DB>(props: {
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: props.itemSchema.shape[fieldKey],
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
                       // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
-                        props.fieldGenerator(fieldKey, field)
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
-                          title={dictionary().db[props.tableName].fields[fieldKey].key}
-                          description={dictionary().db[props.tableName].fields[fieldKey].formFieldDescription}
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
                           autocomplete="off"
                           type="text"
                           id={field().name}
@@ -234,7 +206,7 @@ export const Form = <T extends keyof DB>(props: {
                           <NodeEditor
                             data={field().state.value}
                             setData={(data) => field().setValue(data)}
-                            state={store.wiki[props.tableName]?.dialogIsOpen}
+                            state={true}
                             id={field().name}
                             class="h-[80vh] w-full"
                           />
@@ -251,16 +223,16 @@ export const Form = <T extends keyof DB>(props: {
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: props.itemSchema.shape[fieldKey],
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
-                        props.fieldGenerator(fieldKey, field)
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
-                          title={dictionary().db[props.tableName].fields[fieldKey].key}
-                          description={dictionary().db[props.tableName].fields[fieldKey].formFieldDescription}
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
@@ -287,17 +259,17 @@ export const Form = <T extends keyof DB>(props: {
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: props.itemSchema.shape[fieldKey],
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
-                      // console.log("FieldKey:", fieldKey, dictionary().db[props.tableName].fields[fieldKey].key);
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field) ? (
-                        props.fieldGenerator(fieldKey, field)
+                      // console.log("FieldKey:", fieldKey, props.dictionary.fields[fieldKey].key);
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
-                          title={dictionary().db[props.tableName].fields[fieldKey].key}
-                          description={dictionary().db[props.tableName].fields[fieldKey].formFieldDescription}
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
                           autocomplete="off"
                           type="text"
                           id={field().name}

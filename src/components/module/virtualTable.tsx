@@ -2,15 +2,13 @@ import {
   Accessor,
   createEffect,
   createMemo,
+  createResource,
   createSignal,
   For,
   JSX,
   on,
   onCleanup,
-  onMount,
-  Resource,
   Show,
-  Suspense,
   useContext,
 } from "solid-js";
 import {
@@ -23,40 +21,102 @@ import {
   getFacetedUniqueValues,
   getFilteredRowModel,
   getSortedRowModel,
-  type ColumnFiltersState
+  type ColumnFiltersState,
 } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
-import { DB } from "~/../db/kysely/kyesely";
 import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { dictionary, FieldDescription, FieldDict } from "~/locales/type";
+import { Dic } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
-import { getDictionary } from "~/locales/i18n";
-import { LoadingBar } from "../loadingBar";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
+import * as Icon from "~/components/icon";
 
-export function VirtualTable<Table extends keyof DB>(props: {
-  tableName: Table;
-  dataList: Resource<Table[]>;
-  tableColumns: ColumnDef<Table>[];
-  tableHiddenColumns: Array<keyof Table>;
-  tableTdGenerator: (props: { cell: Cell<Table, unknown> }) => JSX.Element;
-  defaultSort: { id: keyof Table; desc: boolean };
+export function VirtualTable<T extends Record<string, unknown>>(props: {
+  dataFetcher: () => Promise<T[]>;
+  columnsDef: ColumnDef<T>[];
+  hiddenCloumnDef: Array<keyof T>;
+  tdGenerator: (props: { cell: Cell<T, unknown>; dictionary: Dic<T> }) => JSX.Element;
+  defaultSort: { id: keyof T; desc: boolean };
   globalFilterStr: Accessor<string>;
-  filterIsOpen: Accessor<boolean>;
-  setFilterIsOpen: (isOpen: boolean) => void;
+  dictionary?: Dic<T>;
+  columnHandleClick: (id: string) => void;
 }) {
-  // const start = performance.now();
-  // console.log("virtualTable start", start);
+//   const start = performance.now();
+//   console.log("virtualTable start", start);
   const media = useContext(MediaContext);
-  // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const [data, { refetch: refetchData }] = createResource(props.dataFetcher);
+
+  // [列可见性控制组件]的可见状态
+  const [columnVisibleIsOpen, setColumnVisibleIsOpen] = createSignal(false);
+
+  const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = createSignal("");
+  const debounceSetGlobalFilter = debounce((value: string) => setGlobalFilter(value), 500);
+
+  // 过滤字符串
+  createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
+
+  const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
+  const [table, setTable] = createSignal<TanStackTable<T>>();
+  const tableContainer = createMemo(() => {
+    return createVirtualizer({
+      count: table()?.getRowCount() ?? 0,
+      getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
+      estimateSize: () => 73,
+      overscan: 5,
+    });
+  });
+
+  createEffect(
+    on(
+      () => data.state,
+      () => {
+        // console.log("tableData change", performance.now() - start);
+        // console.log("tableData", data());
+        setTable(
+          createSolidTable({
+            data: data.latest ?? [],
+            columns: props.columnsDef,
+            getCoreRowModel: getCoreRowModel(),
+            getSortedRowModel: getSortedRowModel(),
+            state: {
+              get globalFilter() {
+                return globalFilter();
+              },
+            },
+            onGlobalFilterChange: setGlobalFilter,
+            globalFilterFn: "includesString",
+            onColumnFiltersChange: setColumnFilters,
+            getFilteredRowModel: getFilteredRowModel(),
+            getFacetedRowModel: getFacetedRowModel(),
+            getFacetedUniqueValues: getFacetedUniqueValues(),
+            getFacetedMinMaxValues: getFacetedMinMaxValues(),
+            debugTable: true,
+            debugHeaders: false,
+            debugColumns: false,
+            initialState: {
+              sorting: [
+                {
+                  id: props.defaultSort.id as string,
+                  desc: props.defaultSort.desc,
+                },
+              ],
+            },
+          }),
+        );
+      },
+      {
+        defer: true,
+      },
+    ),
+  );
+
   const handleMouseDown = (id: string, e: MouseEvent) => {
     if (e.button !== 0) return;
     const startX = e.pageX;
@@ -89,11 +149,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
-        setStore("wiki", props.tableName, (prev) => ({
-          ...prev,
-          dialogType: "card" as const,
-          dialogIsOpen: true,
-        }));
+        props.columnHandleClick(id);
       }
     };
 
@@ -101,69 +157,28 @@ export function VirtualTable<Table extends keyof DB>(props: {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = createSignal("");
-  const debounceSetGlobalFilter = debounce((value: string) => setGlobalFilter(value), 500);
-
-  // 过滤字符串
-  createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
-
-  const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
-  const [table, setTable] = createSignal<TanStackTable<Table>>();
-  const tableContainer = createMemo(() => {
-    return createVirtualizer({
-      count: table()?.getRowCount() ?? 0,
-      getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-      estimateSize: () => 73,
-      overscan: 5,
-    });
-  });
-
-  createEffect(
-    on(props.dataList, () => {
-      // console.log("dataList change", performance.now() - start);
-      setTable(
-        createSolidTable({
-          data: props.dataList.latest ?? [],
-          columns: props.tableColumns,
-          getCoreRowModel: getCoreRowModel(),
-          getSortedRowModel: getSortedRowModel(),
-          debugTable: true,
-          state: {
-            get globalFilter() {
-              return globalFilter();
-            },
-          },
-          onGlobalFilterChange: setGlobalFilter,
-          globalFilterFn: "includesString",
-          onColumnFiltersChange: setColumnFilters,
-          getFilteredRowModel: getFilteredRowModel(),
-          getFacetedRowModel: getFacetedRowModel(),
-          getFacetedUniqueValues: getFacetedUniqueValues(),
-          getFacetedMinMaxValues: getFacetedMinMaxValues(),
-          debugHeaders: true,
-          debugColumns: false,
-          initialState: {
-            sorting: [
-              {
-                id: props.defaultSort.id as string,
-                desc: props.defaultSort.desc,
-              },
-            ],
-          },
-        }),
-      );
-    }),
-  );
-
   onCleanup(() => {
     console.log("VirtualTable onCleanup");
   });
 
   return (
-    <>
+    <div class="TableModule flex flex-1 flex-col overflow-hidden">
+      <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
+        <div class={`Text px-6 text-xl`}>{props.dictionary?.selfName ?? "Table"}</div>
+        <div class={`Description bg-area-color flex-1 rounded p-3`}>
+          {props.dictionary?.description ?? "Description"}
+        </div>
+        <Button
+          level="quaternary"
+          onClick={() => {
+            setColumnVisibleIsOpen((pre) => !pre);
+          }}
+        >
+          <Icon.Line.Filter />
+        </Button>
+      </div>
       <Presence exitBeforeEnter>
-        <Show when={props.filterIsOpen()}>
+        <Show when={columnVisibleIsOpen()}>
           <Motion.div
             animate={{
               opacity: [0, 1],
@@ -181,9 +196,9 @@ export function VirtualTable<Table extends keyof DB>(props: {
             class={`FilterBox grid portrait:px-6`}
           >
             <div
-              class={`Content flex flex-col gap-2 overflow-hidden ${props.filterIsOpen() ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"} `}
+              class={`Content flex flex-col gap-2 overflow-hidden ${columnVisibleIsOpen() ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"} `}
             >
-              <div class="content flex flex-wrap gap-2">
+              <div class="content flex flex-wrap gap-2 px-6">
                 <Button
                   size="sm"
                   level={table()?.getIsAllColumnsVisible() ? "default" : "primary"}
@@ -193,14 +208,10 @@ export function VirtualTable<Table extends keyof DB>(props: {
                 </Button>
                 <For each={table()?.getAllLeafColumns()}>
                   {(column) => {
-                    if (props.tableHiddenColumns.includes(column.id as keyof Table)) {
-                      // 默认隐藏的数据
+                    // 默认隐藏的数据
+                    if (props.hiddenCloumnDef.includes(column.id as keyof T)) {
                       return;
                     }
-                    if (!(column.id in dictionary().db[props.tableName].fields)) return;
-                    type Fields = dictionary["db"][typeof props.tableName]["fields"];
-                    type Field = Fields[keyof Fields]; // 暂时不知道怎么解决，它被推断为never
-                    // console.log("Field", column.id, dictionary().db[props.tableName].fields[column.id as keyof Fields]);
 
                     return (
                       <Button
@@ -208,22 +219,22 @@ export function VirtualTable<Table extends keyof DB>(props: {
                         level={column.getIsVisible() ? "default" : "primary"}
                         onClick={column.getToggleVisibilityHandler()}
                       >
-                        {
-                          (dictionary().db[props.tableName].fields[column.id as keyof Fields] as FieldDescription).key // 暂时不知道怎么解决，它被推断为never
-                        }
+                        {props.dictionary
+                          ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
+                          : column.id}
                       </Button>
                     );
                   }}
                 </For>
               </div>
               {/* <div class="module flex flex-col gap-3">
-                <div class="title">{dictionary.ui.monster.augmented}</div>
-                <div class="content flex flex-wrap gap-2">
-                  <Button level="tertiary" onClick={() => setAugmented(!augmented)}>
-                    {augmented ? "Yes" : "No"}
-                  </Button>
-                </div>
-              </div> */}
+                  <div class="title">{dictionary.ui.monster.augmented}</div>
+                  <div class="content flex flex-wrap gap-2">
+                    <Button level="tertiary" onClick={() => setAugmented(!augmented)}>
+                      {augmented ? "Yes" : "No"}
+                    </Button>
+                  </div>
+                </div> */}
             </div>
           </Motion.div>
         </Show>
@@ -242,7 +253,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;
-                      if (props.tableHiddenColumns.includes(column.id as keyof Table)) {
+                      if (props.hiddenCloumnDef.includes(column.id as keyof T)) {
                         // 默认隐藏的数据
                         return;
                       }
@@ -262,7 +273,7 @@ export function VirtualTable<Table extends keyof DB>(props: {
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {dictionary().db[props.tableName].fields[column.id as keyof FieldDict<Table>].key}
+                            {column.id}
                             {{
                               asc: " ▲",
                               desc: " ▼",
@@ -276,13 +287,17 @@ export function VirtualTable<Table extends keyof DB>(props: {
               )}
             </For>
           </thead>
-          <Show when={props.dataList.state === "ready"} fallback={<h1 class="animate-pulse p-3">......</h1>}>
+          <Show when={data.state === "ready"} fallback={<h1 class="animate-pulse p-3">......</h1>}>
             <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBodyrelative`}>
               <For each={tableContainer().getVirtualItems()}>
                 {(virtualRow) => {
                   const row = table()?.getRowModel().rows[virtualRow.index];
                   if (!row) {
                     return null;
+                  }
+                  if (props.hiddenCloumnDef.includes(row.id as keyof T)) {
+                    // 默认隐藏的数据
+                    return;
                   }
                   return (
                     <tr
@@ -292,25 +307,13 @@ export function VirtualTable<Table extends keyof DB>(props: {
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
                       onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                      onMouseEnter={(e) => {
-                        try {
-                          setStore("wiki", props.tableName, (prev) => ({
-                            ...prev,
-                            id: row.getValue("id"),
-                          }));
-                        } catch (error) {
-                          console.error(error);
-                        }
-                      }} // 悬停时直接触发新数据获取，优化pc端表现
                       class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                     >
-                      <For
-                        each={row
-                          .getVisibleCells()
-                          .filter((cell) => !props.tableHiddenColumns.includes(cell.column.id as keyof Table))}
-                      >
+                      <For each={row.getVisibleCells()}>
                         {(cell) => {
-                          const tdContent = props.tableTdGenerator({ cell });
+                          const tdContent = props.dictionary
+                            ? props.tdGenerator({ cell, dictionary: props.dictionary })
+                            : JSON.stringify(cell.getValue());
                           return tdContent;
                         }}
                       </For>
@@ -322,6 +325,6 @@ export function VirtualTable<Table extends keyof DB>(props: {
           </Show>
         </table>
       </OverlayScrollbarsComponent>
-    </>
+    </div>
   );
 }

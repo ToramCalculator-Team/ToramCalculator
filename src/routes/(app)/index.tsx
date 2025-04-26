@@ -27,7 +27,7 @@ import { type SkillEffect } from "~/repositories/skillEffect";
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
-import { dictionary } from "~/locales/type";
+import { dictionary, FieldDetail } from "~/locales/type";
 import { Dialog } from "~/components/controls/dialog";
 import { DB } from "~/../db/kysely/kyesely";
 import { findZoneById } from "~/repositories/zone";
@@ -64,8 +64,8 @@ export default function Index() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
 
-  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>(mobDataConfig());
-  const [cardDataId, setCardDataId] = createSignal("");
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<Record<string, unknown>, object>>(mobDataConfig);
+  const [cardDataId, setCardDataId] = createSignal<string | undefined>(undefined);
   const [tableName, setTableName] = createSignal<keyof DB>("mob");
   const media = useContext(MediaContext);
 
@@ -293,7 +293,7 @@ export default function Index() {
       case "mob":
         {
           setTableName("mob");
-          setDataConfig(mobDataConfig());
+          setDataConfig(mobDataConfig);
         }
         break;
       case "npc":
@@ -351,7 +351,7 @@ export default function Index() {
       case "skill":
         {
           setTableName("skill");
-          setDataConfig(skillDataConfig());
+          setDataConfig(skillDataConfig);
         }
         break;
       case "skill_effect":
@@ -412,7 +412,7 @@ export default function Index() {
   };
 
   const [cardData, { refetch: refetchCardData }] = createResource(
-    () => store.wiki[tableName()]?.id,
+    cardDataId,
     dataConfig().card.dataFetcher,
   );
 
@@ -787,9 +787,7 @@ export default function Index() {
                                               : 0,
                                           }}
                                           onClick={async () => {
-                                            setStore("wiki", groupType, "id", resultItem.id);
-                                            // setTableName(groupType);
-                                            // await refetchCardData();
+                                            setCardDataId(resultItem?.id);
                                             setDialogState(true);
                                           }}
                                         >
@@ -921,14 +919,14 @@ export default function Index() {
           {ObjRender({
             data: cardData.latest!,
             dataSchema: dataConfig().card.dataSchema,
-            hiddenFields: dataConfig().card.hiddenFields,
+            deepHiddenFields: dataConfig().card.deepHiddenFields,
             fieldGroupMap: dataConfig().card.fieldGroupMap,
             fieldGenerator: (key, value) => {
               return (
                 <div class="Field flex gap-2">
                   <span class="text-main-text-color">
                     {key in dictionary().db[tableName()].fields
-                      ? dictionary().db[tableName()].fields[key].key
+                      ? (dictionary().db[tableName()].fields[key] as FieldDetail).key
                       : JSON.stringify(key)}
                   </span>
                   :<span class="font-bold">{value}</span>

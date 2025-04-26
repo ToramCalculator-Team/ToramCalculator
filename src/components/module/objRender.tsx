@@ -65,7 +65,7 @@ function getZodType(schema?: ZodTypeAny): ZodFirstPartyTypeKind {
 export function ObjRender<T extends object>(props: {
   data: T;
   dataSchema: ZodObject<Record<keyof T, ZodTypeAny>>;
-  hiddenFields: DeepHiddenFields<T>;
+  deepHiddenFields: DeepHiddenFields<T>;
   fieldGroupMap: Record<string, Array<keyof T>>;
   fieldGenerator?: (key: keyof T, value: T[keyof T]) => JSX.Element;
   tier?: number;
@@ -73,7 +73,7 @@ export function ObjRender<T extends object>(props: {
   const tier = props.tier || 0;
 
   // 按层级处理数据（单次遍历）
-  const processedData = createMemo(() => processLayer(props.data, props.hiddenFields, tier));
+  const processedData = createMemo(() => processLayer(props.data, props.deepHiddenFields, tier));
 
   return (
     <div class="FieldGroupContainer flex w-full flex-col gap-3" style={{ "margin-left": tier * 4 + "px" }}>
@@ -105,7 +105,7 @@ export function ObjRender<T extends object>(props: {
                       <ObjRender
                         data={childData}
                         dataSchema={childSchema}
-                        hiddenFields={props.hiddenFields
+                        deepHiddenFields={props.deepHiddenFields
                           .filter(
                             (f): f is { [K in keyof T]?: DeepHiddenFields<NonNullable<T[K]>> } =>
                               typeof f === "object" && key in f,

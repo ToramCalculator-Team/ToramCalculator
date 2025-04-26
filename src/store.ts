@@ -51,10 +51,16 @@ export type Store = {
   indexPage: {};
   wiki: Partial<{
     [T in keyof DB]: {
-      id: string;
-      dialogType: DialogType;
-      dialogIsOpen: boolean;
-      filter: Partial<Record<keyof DB[T], boolean>>;
+      table: {
+        sort: { id: keyof DB[T]; desc: boolean };
+        hiddenColumns: Partial<Record<keyof DB[T], boolean>>;
+      }
+      form: {
+        
+      }
+      card: {
+        hiddenFields: Array<keyof DB[T]>
+      }
     };
   }>;
   character: {
@@ -106,18 +112,6 @@ const initialStore: Store = {
   settingsDialogState: false,
   indexPage: {},
   wiki: {
-    mob: {
-      id: "defaultMobId",
-      dialogType: "card",
-      dialogIsOpen: false,
-      filter: {},
-    },
-    skill: {
-      id: "defaultSkillId",
-      dialogType: "card",
-      dialogIsOpen: false,
-      filter: {},
-    },
   },
   character: {
     id: "defaultCharacterId"
