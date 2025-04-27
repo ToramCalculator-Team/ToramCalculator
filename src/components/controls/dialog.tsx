@@ -117,7 +117,7 @@ export function Dialog(props: {
           onClick={handleClose}
         >
           <div 
-            class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[80vh] max-w-[80vw] flex-col items-center gap-3 rounded p-2"
+            class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[80vh] w-full max-w-[80vw] flex-col items-center gap-3 rounded p-2"
             onClick={(e) => e.stopPropagation()}
           >
             <div class="DialogTitle z-10 drop-shadow-dividing-color absolute -top-3 flex items-center drop-shadow-xl">
