@@ -10,7 +10,7 @@ import { createSyncResource } from "~/hooks/resource";
 import { VirtualTable  } from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
 import { Portal } from "solid-js/web";
-import { Dialog } from "~/components/controls/dialog";
+import { Sheet } from "~/components/controls/sheet";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { z, ZodFirstPartyTypeKind } from "zod";
@@ -751,12 +751,12 @@ export default function MobIndexPage() {
       </div>
 
       <Portal>
-        <Dialog
+        <Sheet
           state={store.wiki.mob?.dialogIsOpen ?? false}
           setState={(state: boolean) => setStore("wiki", "mob", "dialogIsOpen", state)}
         >
           {dialogContet()}
-        </Dialog>
+        </Sheet>
       </Portal>
     </Show>
   );

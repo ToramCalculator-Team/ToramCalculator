@@ -78,7 +78,7 @@ export function ObjRender<T extends object>(props: {
   const processedData = createMemo(() => processLayer(props.data, props.deepHiddenFields, tier));
 
   return (
-    <div class="FieldGroupContainer flex w-full flex-col gap-3" style={{ "margin-left": tier * 4 + "px" }}>
+    <div class="FieldGroupContainer flex flex-1 w-full flex-col gap-3" style={{ "margin-left": tier * 4 + "px" }}>
       <For each={Object.entries(props.fieldGroupMap)}>
         {([groupName, keys]) => (
           <section class="FieldGroup w-full">

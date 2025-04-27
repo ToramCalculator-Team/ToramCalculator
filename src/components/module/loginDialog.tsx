@@ -203,7 +203,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
           animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
           exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`DialogBox bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
+          class={`SheetBox bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
         >
           <div class="Box bg-primary-color shadow-dividing-color flex max-h-[90vh] w-[80vw] flex-col items-center gap-6 overflow-y-auto rounded-lg p-3 shadow-2xl lg:w-[560px] lg:p-12">
             <Show

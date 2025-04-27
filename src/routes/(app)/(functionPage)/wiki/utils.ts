@@ -40,14 +40,14 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
 export type DBdataDisplayConfig<T extends Record<string, unknown>, Card extends object> = {
   table: {
     dataFetcher: () => Promise<T[]>;
-    columnDef: Array<ColumnDef<T>>;
+    columnDef: Array<ColumnDef<T, unknown>>;
     hiddenColumnDef: Array<keyof T>;
     defaultSort: { id: keyof T; desc: boolean };
     tdGenerator: (props: { cell: Cell<T, keyof T>; dictionary: Dic<T> }) => JSX.Element;
   };
   form: {
     data: T;
-    dataSchema: ZodObject<{ [K in keyof T]: ZodSchema }>;
+    dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
     hiddenFields: Array<keyof T>;
     fieldGenerator?: (key: keyof T, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element;
     onChange?: (data: T) => void;

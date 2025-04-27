@@ -6,6 +6,9 @@ import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
 import { BabylonBg } from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
+import { findMobs } from "~/repositories/mob";
+import { findSkills } from "~/repositories/skill";
+import { findCrystals } from "~/repositories/crystal";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -101,6 +104,11 @@ export default function AppMainContet(props: ParentProps) {
       }, 1000);
     }
     setStore("resourcesLoaded", true);
+
+    // 数据库查询测试
+    findMobs();
+    findSkills();
+    findCrystals();
   });
 
   return (

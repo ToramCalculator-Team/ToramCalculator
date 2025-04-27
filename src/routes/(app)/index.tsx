@@ -28,7 +28,7 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
 import { dictionary, FieldDetail } from "~/locales/type";
-import { Dialog } from "~/components/controls/dialog";
+import { Sheet } from "~/components/controls/sheet";
 import { DB } from "~/../db/kysely/kyesely";
 import { findZoneById } from "~/repositories/zone";
 import { MediaContext } from "~/contexts/Media";
@@ -42,6 +42,7 @@ import { LoadingBar } from "~/components/loadingBar";
 import { mobDataConfig } from "./(functionPage)/wiki/dataConfig/mobDataConfig";
 import { DBdataDisplayConfig } from "./(functionPage)/wiki/utils";
 import { skillDataConfig } from "./(functionPage)/wiki/dataConfig/skillDataConfig";
+import { Dialog } from "~/components/controls/dialog";
 
 type Result = Mob["Select"] | Skill["Select"];
 
@@ -50,9 +51,9 @@ type FinalResult = Partial<Record<keyof DB, Result[]>>;
 export default function Index() {
   let searchButtonRef!: HTMLButtonElement;
   let searchInputRef!: HTMLInputElement;
-  
+
   const navigate = useNavigate();
-  const [dialogState, setDialogState] = createSignal(false);
+  const [dialogState, setSheetState] = createSignal(false);
   const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
@@ -64,7 +65,7 @@ export default function Index() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
 
-  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<Record<string, unknown>, object>>(mobDataConfig);
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>(mobDataConfig);
   const [cardDataId, setCardDataId] = createSignal<string | undefined>(undefined);
   const [tableName, setTableName] = createSignal<keyof DB>("mob");
   const media = useContext(MediaContext);
@@ -411,10 +412,7 @@ export default function Index() {
     }
   };
 
-  const [cardData, { refetch: refetchCardData }] = createResource(
-    cardDataId,
-    dataConfig().card.dataFetcher,
-  );
+  const [cardData, { refetch: refetchCardData }] = createResource(cardDataId, dataConfig().card.dataFetcher);
 
   // 搜索时需要放弃检查的列
   const mobHiddenData: Array<keyof Mob["Select"]> = ["id", "updatedByAccountId", "createdByAccountId"];
@@ -788,7 +786,7 @@ export default function Index() {
                                           }}
                                           onClick={async () => {
                                             setCardDataId(resultItem?.id);
-                                            setDialogState(true);
+                                            setSheetState(true);
                                           }}
                                         >
                                           <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
@@ -914,18 +912,26 @@ export default function Index() {
         </Presence>
       </Motion.div>
 
-      <Dialog state={dialogState()} setState={setDialogState}>
-        <Show when={cardData()} fallback={<LoadingBar />}>
-          {ObjRender({
-            data: cardData.latest!,
-            dictionary: dictionary().db[tableName()],
-            dataSchema: dataConfig().card.dataSchema,
-            deepHiddenFields: dataConfig().card.deepHiddenFields,
-            fieldGroupMap: dataConfig().card.fieldGroupMap,
-            fieldGenerator: dataConfig().card.fieldGenerator,
-          })}
-        </Show>
-      </Dialog>
+      <Show when={cardData()} fallback={<LoadingBar />}>
+        {(validCardData) => {
+          return (
+            <Dialog
+              state={dialogState()}
+              setState={setSheetState}
+              title={"name" in validCardData() ? validCardData()["name"] : dictionary().db[tableName()].selfName}
+            >
+              {ObjRender({
+                data: validCardData(),
+                dictionary: dictionary().db[tableName()],
+                dataSchema: dataConfig().card.dataSchema,
+                deepHiddenFields: dataConfig().card.deepHiddenFields,
+                fieldGroupMap: dataConfig().card.fieldGroupMap,
+                fieldGenerator: dataConfig().card.fieldGenerator,
+              })}
+            </Dialog>
+          );
+        }}
+      </Show>
       <Filing />
       <LoginDialog state={loginDialogIsOpen} setState={setLoginDialogIsOpen} />
     </MetaProvider>

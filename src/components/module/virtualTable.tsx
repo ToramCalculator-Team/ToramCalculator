@@ -22,6 +22,8 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   type ColumnFiltersState,
+  type VisibilityState,
+  type OnChangeFn,
 } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -35,20 +37,21 @@ import { Dic } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
-import * as Icon from "~/components/icon";
 
 export function VirtualTable<T extends Record<string, unknown>>(props: {
   dataFetcher: () => Promise<T[]>;
   columnsDef: ColumnDef<T>[];
-  hiddenCloumnDef: Array<keyof T>;
+  hiddenColumnDef: Array<keyof T>;
   tdGenerator: (props: { cell: Cell<T, unknown>; dictionary: Dic<T> }) => JSX.Element;
   defaultSort: { id: keyof T; desc: boolean };
   globalFilterStr: Accessor<string>;
   dictionary?: Dic<T>;
   columnHandleClick: (id: string) => void;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 }) {
-//   const start = performance.now();
-//   console.log("virtualTable start", start);
+  //   const start = performance.now();
+  //   console.log("virtualTable start", start);
   const media = useContext(MediaContext);
   const [data, { refetch: refetchData }] = createResource(props.dataFetcher);
 
@@ -89,7 +92,11 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
               get globalFilter() {
                 return globalFilter();
               },
+              get columnVisibility() {
+                return props.columnVisibility;
+              },
             },
+            onColumnVisibilityChange: props.onColumnVisibilityChange,
             onGlobalFilterChange: setGlobalFilter,
             globalFilterFn: "includesString",
             onColumnFiltersChange: setColumnFilters,
@@ -162,21 +169,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   });
 
   return (
-    <div class="TableModule flex flex-1 flex-col overflow-hidden">
-      <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
-        <div class={`Text px-6 text-xl`}>{props.dictionary?.selfName ?? "Table"}</div>
-        <div class={`Description bg-area-color flex-1 rounded p-3`}>
-          {props.dictionary?.description ?? "Description"}
-        </div>
-        <Button
-          level="quaternary"
-          onClick={() => {
-            setColumnVisibleIsOpen((pre) => !pre);
-          }}
-        >
-          <Icon.Line.Filter />
-        </Button>
-      </div>
+    <>
       <Presence exitBeforeEnter>
         <Show when={columnVisibleIsOpen()}>
           <Motion.div
@@ -202,22 +195,36 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                 <Button
                   size="sm"
                   level={table()?.getIsAllColumnsVisible() ? "default" : "primary"}
-                  onClick={table()?.getToggleAllColumnsVisibilityHandler()}
+                  onClick={() => {
+                    const allVisible = table()?.getIsAllColumnsVisible() ?? false;
+                    props.onColumnVisibilityChange?.((old) => {
+                      const newVisibility = { ...old };
+                      table()?.getAllLeafColumns().forEach((col) => {
+                        if (!props.hiddenColumnDef.includes(col.id as keyof T)) {
+                          newVisibility[col.id] = !allVisible;
+                        }
+                      });
+                      return newVisibility;
+                    });
+                  }}
                 >
                   ALL
                 </Button>
                 <For each={table()?.getAllLeafColumns()}>
                   {(column) => {
-                    // 默认隐藏的数据
-                    if (props.hiddenCloumnDef.includes(column.id as keyof T)) {
+                    if (props.hiddenColumnDef.includes(column.id as keyof T)) {
                       return;
                     }
-
                     return (
                       <Button
                         size="sm"
                         level={column.getIsVisible() ? "default" : "primary"}
-                        onClick={column.getToggleVisibilityHandler()}
+                        onClick={() => {
+                          props.onColumnVisibilityChange?.((old) => ({
+                            ...old,
+                            [column.id]: !column.getIsVisible(),
+                          }));
+                        }}
                       >
                         {props.dictionary
                           ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
@@ -253,7 +260,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;
-                      if (props.hiddenCloumnDef.includes(column.id as keyof T)) {
+                      if (props.hiddenColumnDef.includes(column.id as keyof T)) {
                         // 默认隐藏的数据
                         return;
                       }
@@ -273,9 +280,9 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                          {props.dictionary
-                            ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
-                            : column.id}
+                            {props.dictionary
+                              ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
+                              : column.id}
                             {{
                               asc: " ▲",
                               desc: " ▼",
@@ -307,7 +314,11 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                       onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
                       class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                     >
-                      <For each={row.getVisibleCells().filter((cell) => !props.hiddenCloumnDef.includes(cell.column.id as keyof T))}>
+                      <For
+                        each={row
+                          .getVisibleCells()
+                          .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
+                      >
                         {(cell) => {
                           const tdContent = props.dictionary
                             ? props.tdGenerator({ cell, dictionary: props.dictionary })
@@ -323,6 +334,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
           </Show>
         </table>
       </OverlayScrollbarsComponent>
-    </div>
+    </>
   );
 }

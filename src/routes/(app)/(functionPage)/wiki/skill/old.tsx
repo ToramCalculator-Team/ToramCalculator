@@ -10,7 +10,7 @@ import { createSyncResource } from "~/hooks/resource";
 import { VirtualTable  } from "~/components/module/virtualTable";
 import { getCommonPinningStyles } from "~/lib/table";
 import { Portal } from "solid-js/web";
-import { Dialog } from "~/components/controls/dialog";
+import { Sheet } from "~/components/controls/sheet";
 import { z, ZodFirstPartyTypeKind } from "zod";
 import { skill_effectSchema, skillSchema, statisticSchema } from "~/../db/zod";
 import { DataEnums } from "~/../db/dataEnums";
@@ -457,12 +457,12 @@ export default function SkillIndexPage() {
       </div>
 
       <Portal>
-        <Dialog
+        <Sheet
           state={store.wiki.skill?.dialogIsOpen ?? false}
           setState={(state: boolean) => setStore("wiki", "skill", "dialogIsOpen", state)}
         >
           {dialogContet()}
-        </Dialog>
+        </Sheet>
       </Portal>
     </Show>
   );

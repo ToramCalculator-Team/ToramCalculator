@@ -150,7 +150,6 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
       {
         id: "actions",
         accessorFn: (row) => row.actions,
-        // cell: (info) => JSON.stringify(info.getValue<Object>()),
         size: 160,
       },
     ],

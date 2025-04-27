@@ -18,7 +18,7 @@ import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import { Button } from "~/components/controls/button";
 import { Portal } from "solid-js/web";
-import { Dialog } from "~/components/controls/dialog";
+import { Sheet } from "~/components/controls/sheet";
 import { LoadingBar } from "~/components/loadingBar";
 import { defaultData } from "~/../db/defaultData";
 import { DB } from "~/../db/kysely/kyesely";
@@ -31,6 +31,8 @@ import { MediaContext } from "~/contexts/Media";
 import { ObjDisplayer } from "~/components/module/objectDisplayer";
 import { ObjRender } from "~/components/module/objRender";
 import { FieldDetail } from "~/locales/type";
+import { VisibilityState } from "@tanstack/solid-table";
+import { Dialog } from "~/components/controls/dialog";
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -47,17 +49,19 @@ export default function WikiSubPage() {
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
   const [tableName, setTableName] = createSignal<keyof DB>();
-  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<Record<string, unknown>, object>>();
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>();
 
   const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
 
   // form
   const [form, setForm] = createSignal<JSX.Element>();
-  const [formDialogIsOpen, setFormDialogIsOpen] = createSignal(false);
+  const [formSheetIsOpen, setFormSheetIsOpen] = createSignal(false);
 
   // table
   const [tableFilterInputRef, setTableFilterInputRef] = createSignal<HTMLInputElement>();
   const [tableGlobalFilterStr, setTableGlobalFilterStr] = createSignal<string>("");
+  const [tableColumnVisibility, setTableColumnVisibility] = createSignal<VisibilityState>({});
+  const [tableConfigSheetIsOpen, setTableConfigSheetIsOpen] = createSignal(false);
 
   // card
   const [cardGroupIsOpen, setCardGroupIsOpen] = createSignal(false);
@@ -352,11 +356,19 @@ export default function WikiSubPage() {
               VirtualTable({
                 dataFetcher: validDataConfig.table.dataFetcher,
                 columnsDef: validDataConfig.table.columnDef,
-                hiddenCloumnDef: validDataConfig.table.hiddenColumnDef,
+                hiddenColumnDef: validDataConfig.table.hiddenColumnDef,
                 tdGenerator: validDataConfig.table.tdGenerator,
                 defaultSort: validDataConfig.table.defaultSort,
                 globalFilterStr: tableGlobalFilterStr,
                 dictionary: dictionary().db[wikiType],
+                columnVisibility: tableColumnVisibility(),
+                onColumnVisibilityChange: (updater) => {
+                  if (typeof updater === "function") {
+                    setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
+                  } else {
+                    setTableColumnVisibility(() => updater);
+                  }
+                },
                 columnHandleClick: (id) => {
                   setCardDataIds((pre) => [...pre, id]);
                   setCardGroupIsOpen(true);
@@ -433,7 +445,7 @@ export default function WikiSubPage() {
                         icon={<Icon.Line.CloudUpload />}
                         class="hidden lg:flex"
                         onClick={() => {
-                          setFormDialogIsOpen(true);
+                          setFormSheetIsOpen(true);
                         }}
                       >
                         {dictionary().ui.actions.add}
@@ -459,32 +471,48 @@ export default function WikiSubPage() {
                             3: "3rd",
                           }[1 + (index() % 3)];
                           return (
-                            <div
-                              class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
-                              onMouseEnter={() => setActiveBannerIndex(index())}
-                              style={{
-                                // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                                "background-position": "center center",
-                              }}
-                            >
-                              <div
-                                class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
-                              >
-                                <span
-                                  class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                            <Presence exitBeforeEnter>
+                              <Show when={!isTableFullscreen()}>
+                                <Motion.div
+                                  class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
+                                  onMouseEnter={() => setActiveBannerIndex(index())}
+                                  style={{
+                                    // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                                    "background-position": "center center",
+                                  }}
+                                  animate={{
+                                    opacity: [0, 1],
+                                    transform: ["scale(0.9)", "scale(1)"],
+                                  }}
+                                  exit={{
+                                    opacity: [1, 0],
+                                    transform: ["scale(1)", "scale(0.9)"],
+                                  }}
+                                  transition={{
+                                    duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                    delay: index() * 0.05,
+                                  }}
                                 >
-                                  TOP.{index() + 1}
-                                </span>
-                                <div
-                                  class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
-                                ></div>
-                                <span
-                                  class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
-                                >
-                                  {/* {"name" in defaultData[tableName()] ? dataConfig().table.dataList?.latest?.[index()].name : ""} */}
-                                </span>
-                              </div>
-                            </div>
+                                  <div
+                                    class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
+                                  >
+                                    <span
+                                      class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                                    >
+                                      TOP.{index() + 1}
+                                    </span>
+                                    <div
+                                      class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
+                                    ></div>
+                                    <span
+                                      class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                                    >
+                                      {/* {"name" in defaultData[tableName()] ? dataConfig().table.dataList?.latest?.[index()].name : ""} */}
+                                    </span>
+                                  </div>
+                                </Motion.div>
+                              </Show>
+                            </Presence>
                           );
                         }}
                       </For>
@@ -494,7 +522,22 @@ export default function WikiSubPage() {
               </Presence>
 
               <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
-                {virtualTable()}
+                <div class="TableModule flex flex-1 flex-col overflow-hidden">
+                  <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
+                    <div class={`Text px-6 text-xl`}>{dictionary().db[validTableName()].selfName}</div>
+                    <div class={`Description bg-area-color flex-1 rounded p-3`}>
+                      {dictionary().db[validTableName()].description}
+                    </div>
+                    <Button
+                      level="quaternary"
+                      icon={isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
+                      onClick={() => {
+                        setIsTableFullscreen((pre) => !pre);
+                      }}
+                    />
+                  </div>
+                  {virtualTable()}
+                </div>
                 <Presence exitBeforeEnter>
                   <Show when={!isTableFullscreen()}>
                     <Motion.div
@@ -505,8 +548,24 @@ export default function WikiSubPage() {
                       <div class="Title flex h-12 text-xl">{dictionary().ui.wiki.news.title}</div>
                       <div class="Content flex flex-1 flex-col gap-3">
                         <For each={[0, 1, 2]}>
-                          {() => {
-                            return <div class="Item bg-area-color h-full w-full flex-1 rounded"></div>;
+                          {(_, index) => {
+                            return (
+                              <Motion.div
+                                class="Item bg-area-color h-full w-full flex-1 rounded"
+                                animate={{
+                                  opacity: [0, 1],
+                                  transform: ["scale(0.9)", "scale(1)"],
+                                }}
+                                exit={{
+                                  opacity: [1, 0],
+                                  transform: ["scale(1)", "scale(0.9)"],
+                                }}
+                                transition={{
+                                  duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                  delay: index() * 0.05,
+                                }}
+                              ></Motion.div>
+                            );
                           }}
                         </For>
                       </div>
@@ -531,7 +590,7 @@ export default function WikiSubPage() {
                       class="bg-transparent"
                       icon={<Icon.Line.CloudUpload />}
                       onClick={() => {
-                        setFormDialogIsOpen(true);
+                        setFormSheetIsOpen(true);
                       }}
                     ></Button>
                     <input
@@ -546,54 +605,60 @@ export default function WikiSubPage() {
                       }}
                       class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
                     />
-                    <Button size="sm" class="bg-transparent" icon={<Icon.Line.Settings />} onClick={() => {}}></Button>
+                    <Button
+                      size="sm"
+                      class="bg-transparent"
+                      onclick={() => {
+                        setTableConfigSheetIsOpen((pre) => !pre);
+                      }}
+                      icon={<Icon.Line.Settings />}
+                    />
                   </Motion.div>
                 </Show>
               </Presence>
               <Portal>
-                <Dialog state={formDialogIsOpen()} setState={setFormDialogIsOpen}>
+                <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
                   {form()}
-                </Dialog>
+                </Sheet>
               </Portal>
 
               <Portal>
-                <Dialog state={cardGroupIsOpen()} setState={setCardGroupIsOpen}>
-                  <Show when={cardDatas.state === "ready"} fallback={"..."}>
-                    <For each={cardDatas()}>
-                      {(cardData, index) => {
-                        return cardData
-                          ? // (
-                            //   <ObjRender
-                            //     data={cardData}
-                            //     dataSchema={validDataConfig().card.dataSchema}
-                            //     deepHiddenFields={validDataConfig().card.deepHiddenFields}
-                            //     fieldGroupMap={validDataConfig().card.fieldGroupMap}
-                            //     fieldGenerator={(key, value) => {
-                            //       return (
-                            //         <div class="Field flex gap-2">
-                            //           <span class="text-main-text-color">
-                            //             {key in dictionary().db[validTableName()].fields
-                            //               ? (dictionary().db[validTableName()].fields[key] as FieldDetail).key
-                            //               : JSON.stringify(key)}
-                            //           </span>
-                            //           :<span class="font-bold">{value}</span>
-                            //         </div>
-                            //       );
-                            //     }}
-                            //   />
-                            // ) :
-                            ObjRender({
-                              data: cardData,
-                              dictionary: dictionary().db[validTableName()],
-                              dataSchema: validDataConfig().card.dataSchema,
-                              deepHiddenFields: validDataConfig().card.deepHiddenFields,
-                              fieldGroupMap: validDataConfig().card.fieldGroupMap,
-                              fieldGenerator: validDataConfig().card.fieldGenerator,
-                            })
-                          : null;
-                      }}
-                    </For>
-                  </Show>
+                <Show when={cardDatas.state === "ready"} fallback={"..."}>
+                  <For each={cardDatas()}>
+                    {(cardData, index) => {
+                      // 这里的退出动画存在缺失
+                      return cardData ? (
+                        <Dialog
+                          state={cardGroupIsOpen()}
+                          setState={setCardGroupIsOpen}
+                          title={
+                            "name" in cardData
+                              ? (cardData["name"] as string)
+                              : dictionary().db[validTableName()].selfName
+                          }
+                        >
+                          {ObjRender({
+                            data: cardData,
+                            dictionary: dictionary().db[validTableName()],
+                            dataSchema: validDataConfig().card.dataSchema,
+                            deepHiddenFields: validDataConfig().card.deepHiddenFields,
+                            fieldGroupMap: validDataConfig().card.fieldGroupMap,
+                            fieldGenerator: validDataConfig().card.fieldGenerator,
+                          })}
+                        </Dialog>
+                      ) : null;
+                    }}
+                  </For>
+                </Show>
+              </Portal>
+
+              <Portal>
+                <Dialog
+                  state={tableConfigSheetIsOpen()}
+                  setState={setTableConfigSheetIsOpen}
+                  title={dictionary().ui.actions.filter}
+                >
+                  <div class="flex h-52 w-2xs flex-col gap-3"></div>
                 </Dialog>
               </Portal>
             </Show>
