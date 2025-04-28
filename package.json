@@ -2,17 +2,27 @@
   "name": "toram-calculator",
   "type": "module",
   "scripts": {
-    "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
+    "dev": "vinxi dev",
+    "dev:setup": "pnpm backend:down && pnpm backend:up && sleep 5 && pnpm db:init && pnpm db:restore",
+    "dev:init": "pnpm generate:schema && pnpm db:init && pnpm generate:client-ddl && node db/clientDB/ddl_transform.js && pnpm generate:type",
+
+    "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up -d && sleep 5",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
-    "backend:db-studio": "prisma studio --schema=db/serverDB/schema.prisma",
+    "db:studio": "prisma studio --schema=db/serverDB/schema.prisma",
+    "db:init": "pnpm prisma db push --schema db/serverDB/schema.prisma",
+    "db:backup": "bash db/backup.sh",
+    "db:restore": "bash db/restore.sh",
+
+    "generate:schema": "tsx db/generator.js",
     "generate:client-ddl": "prisma migrate diff --from-empty --to-schema-datasource db/clientDB/schema.prisma --script > db/clientDB/ddl.sql",
     "generate:type": "prisma generate --schema=db/clientDB/schema.prisma",
-    "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz",
-    "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
-    "dev": "vinxi dev",
+
     "build": "vinxi build",
     "start": "vinxi start",
+    "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz",
+    "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
+
     "prepare": "husky"
   },
   "devDependencies": {
@@ -62,7 +72,6 @@
     "bcrypt": "^5.1.1",
     "blockly": "^11.2.1",
     "comlink": "^4.4.1",
-    "d3": "^7.9.0",
     "dotenv": "^16.4.7",
     "dotenv-expand": "^12.0.1",
     "hotkeys-js": "^3.13.7",
@@ -78,7 +87,6 @@
     "sequential-workflow-designer": "^0.27.0",
     "solid-js": "^1.9.3",
     "solid-motionone": "^1.0.1",
-    "solid-rete-plugin": "^0.1.18",
     "tailwindcss": "latest",
     "vinxi": "^0.5.3",
     "xstate": "^5.19.2",

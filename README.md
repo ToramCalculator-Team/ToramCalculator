@@ -1,108 +1,129 @@
 # ToramCalculator
 
-## 项目信息
+## 📖 项目简介
 
-- 概述：出于兴趣为Toram Online开发的小工具￣ω￣=
-- 核心功能：帮助玩家找到最合适的配置。配置队伍组成后，系统模拟战斗过程，并生成逐帧数据再可视化为图表。玩家可分享自己的机体配置和战斗模拟配置。为了方便配置，附带了wiki库。
-- 项目地址：https://app.kiaclouth.com
+ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过模拟战斗过程，帮助玩家找到最优的配置方案。
 
-## 依赖说明
+### ✨ 核心功能
 
-- UI 层 (Presentation Layer):
-- - 负责用户界面展示和用户交互。
-- - 使用 SolidJS、Tailwind CSS、Babylon.js、Editor.js、TanStack 等技术。
-- - 处理用户输入、UI 渲染、动画效果等。
-- 应用逻辑层 (Application Layer/Business Logic Layer):
-- - 负责处理应用程序的核心业务逻辑，例如模拟器计算、数据分析、状态管理等。
-- - 使用 XState 管理应用状态。
-- - 协调 UI 层和数据层之间的交互。
-- 数据层 (Data Layer):
-- - 负责数据的访问、存储和管理。
-- - 使用 pgLite、kysely、ElectricSQL、PostgreSQL 等技术。
-- - 处理本地数据库操作、数据同步、数据验证（zod）、数据搜索等。
-- 基础设施层 (Infrastructure Layer):
-- - 负责提供底层支持，例如 ID 生成、JWT 处理、Cookie 管理等。
-- - 包含 cuid2、jose、js-cookie 等工具。
-- - 也包含与 Web Workers 和 WASM 相关的代码。
+- 队伍配置优化
+- 战斗过程模拟
+- 逐帧数据分析
+- 数据可视化展示
+- 配置分享功能
+- 内置游戏 Wiki 库
 
-### 目录说明
+### 🌐 项目地址
 
-- .husky: git hooks
-- backend: 后端服务配置
-- db: 数据库文件
-- - clientDB: 客户端数据库文件
-- - serverDB: 服务端数据库文件
-- public: 公共静态资源
-- src: 前端项目文件夹
-- - components: 页面组件
-- - lib：工具函数库
-- - locales: 国际化相关
-- - repositories：数据库交互方法
-- - routes: 应用程序路由
-- - styles: 项目公用样式、动画、主题、变量等
-- - worker: 工作线程文件
-- test：测试文件
+https://app.kiaclouth.com
 
-### Commit 规范
+## 🏗️ 技术架构
 
-type: 类型
+### 1. UI 层 (Presentation Layer)
+- **技术栈**: SolidJS, Tailwind CSS, Babylon.js, Editor.js, TanStack
+- **职责**: 用户界面展示、交互处理、动画效果
+
+### 2. 应用逻辑层 (Application Layer)
+- **技术栈**: XState
+- **职责**: 核心业务逻辑、状态管理、模拟器计算
+
+### 3. 数据层 (Data Layer)
+- **技术栈**: pgLite, kysely, ElectricSQL, PostgreSQL, zod
+- **职责**: 数据访问、存储管理、数据同步、数据验证
+
+### 4. 基础设施层 (Infrastructure Layer)
+- **技术栈**: cuid2, jose, js-cookie
+- **职责**: ID 生成、JWT 处理、Cookie 管理、Web Workers、WASM
+
+## 📁 项目结构
 
 ```
- * feat：新增功能
- * fix：bug 修复
- * docs：文档更新
- * style：不影响程序逻辑的代码修改(修改空白字符，格式缩进，补全缺失的分号等，没有改变代码逻辑)
- * refactor：重构代码(既没有新增功能，也没有修复 bug)
- * perf：性能, 体验优化
- * test：新增测试用例或是更新现有测试
- * build：主要目的是修改项目构建系统(例如 glup，webpack，rollup 的配置等)的提交
- * ci：主要目的是修改项目继续集成流程(例如 Travis，Jenkins，GitLab CI，Circle等)的提交
- * chore：不属于以上类型的其他类型，比如构建流程, 依赖管理
- * revert：回滚某个更早之前的提交
+.
+├── .husky/              # Git hooks 配置
+├── backend/             # 后端服务配置
+├── db/                  # 数据库相关
+│   ├── clientDB/        # 客户端数据库文件
+│   └── serverDB/        # 服务端数据库文件
+├── public/              # 静态资源
+├── src/                 # 应用逻辑源代码
+│   ├── components/      # 页面组件
+│   ├── lib/            # 工具函数库
+│   ├── locales/        # 国际化文件
+│   ├── repositories/   # 数据库交互方法
+│   ├── routes/         # 应用路由
+│   ├── styles/         # 样式文件
+│   └── worker/         # 工作线程
+└── test/               # 测试文件
 ```
 
-scope: 可选,影响范围
-subject: 对 commit 的简短描述
+## 📝 Commit 规范
 
-### 项目构建流程
+提交信息格式：`type(scope): subject`
 
-首先确保具备docker和node环境
+### 类型说明
 
-#### 启动后端服务
+| 类型 | 说明 |
+|------|------|
+| feat | 新增功能 |
+| fix | bug 修复 |
+| docs | 文档更新 |
+| style | 代码格式修改（不影响逻辑） |
+| refactor | 代码重构 |
+| perf | 性能优化 |
+| test | 测试相关 |
+| build | 构建系统修改 |
+| ci | CI 配置修改 |
+| chore | 其他修改 |
+| revert | 回滚提交 |
+
+## 🚀 开发指南
+
+### 环境要求
+- Docker
+- Node.js
+- tsx
+
+### 首次开发/架构变更流程
+
+当首次开发项目或数据架构发生变化时，需要执行以下完整流程：
+
+1. 安装依赖
 ```bash
-# 1.安装依赖
 pnpm install
+```
 
-# 2.启动postgreSQL和Electric服务
-pnpm backend:up
+2. 执行完整初始化
+```bash
+pnpm dev:init
+```
 
-# 3.打开新的终端，生成服务端数据库架构（同时会生成客户端数据库架构）
-tsx db/generator.js
-
-# 4.根据生成的schema.prisma初始化数据库,并生成服务端数据模型ts类型
-pnpm prisma db push --schema db/serverDB/schema.prisma
-
-# 5.将测试数据导入数据库(在windows上可以使用gitbash来执行)
-bash db/restore.sh
-
-# 6.后端数据库web界面
+3. 访问数据库管理界面（可选）
+```bash
 pnpm backend:db-studio
 ```
 
-#### 启动前端应用
+### 日常开发流程
+
+日常开发时，只需执行以下步骤：
+
+1. 设置开发环境（重置并启动数据库，初始化数据库架构，然后还原数据）
 ```bash
-# 1.生成PGlite的DDL(由于目前无法保证同步顺序因此需要删除DDL中的外键关联)
-pnpm generate:client-ddl && node db/clientDB/ddl_transform.js
+pnpm dev:setup
+```
 
-# 3.生成数据模型ts类型
-pnpm generate:type
-
-# 4.以开发模式试运行
+2. 启动开发服务器
+```bash
 pnpm dev
+```
 
-# 5.构建生产模式代码
+### 生产环境部署
+
+1. 构建生产版本
+```bash
 pnpm build
+```
 
-# 6.以生成模式运行
+2. 启动生产服务
+```bash
 pnpm start
 ```
