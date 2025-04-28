@@ -7,9 +7,9 @@ import { MobDifficultyFlag } from "../../db/kysely/enums";
  * @returns 
  */
 export const generateBossDataByFlag = (
-  baseMob: Mob["Select"],
+  baseMob: Mob["Card"],
   flag: MobDifficultyFlag,
-): Mob["Select"] => {
+): Mob["Card"] => {
   const rate: {
     lv: number;
     experience: number;
@@ -78,8 +78,8 @@ export const generateBossDataByFlag = (
  * @param dictionary UI字典
  * @returns 新的列表
  */
-export const generateAugmentedMobList = (baseMobList: Mob["Select"][]) => {
-  const result: Mob["Select"][] = [];
+export const generateAugmentedMobList = (baseMobList: Mob["Card"][]) => {
+  const result: Mob["Card"][] = [];
   baseMobList.forEach((mob) => {
     // 表中记录的是1星状态下的定点王数据， 2 / 3 / 4 星的经验和HP为1星的 2 / 5 / 10 倍；物防、魔防、回避值为1星的 2 / 4 / 6 倍。
     if (mob.type !== "Boss") {

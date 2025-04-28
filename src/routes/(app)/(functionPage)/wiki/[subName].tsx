@@ -33,6 +33,8 @@ import { ObjRender } from "~/components/module/objRender";
 import { FieldDetail } from "~/locales/type";
 import { VisibilityState } from "@tanstack/solid-table";
 import { Dialog } from "~/components/controls/dialog";
+import { MobDifficultyFlag } from "../../../../../db/kysely/enums";
+import { generateBossDataByFlag } from "~/lib/mob";
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -704,8 +706,10 @@ export default function WikiSubPage() {
                 <Show when={cardDatas.state === "ready"} fallback={"..."}>
                   <For each={cardDatas()}>
                     {(cardData, index) => {
+                      if(!cardData) return null;
+                      const [mobDifficultyFlag, setMobDifficultyFlag] = createSignal<MobDifficultyFlag>(MobDifficultyFlag.Easy);
                       // 这里的退出动画存在缺失
-                      return cardData ? (
+                      return (
                         <Dialog
                           state={cardGroupIsOpen()}
                           setState={setCardGroupIsOpen}
@@ -724,7 +728,7 @@ export default function WikiSubPage() {
                             fieldGenerator: validDataConfig().card.fieldGenerator,
                           })}
                         </Dialog>
-                      ) : null;
+                      );
                     }}
                   </For>
                 </Show>
