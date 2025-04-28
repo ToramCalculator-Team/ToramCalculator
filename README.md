@@ -99,7 +99,7 @@ pnpm dev:init
 
 3. 访问数据库管理界面（可选）
 ```bash
-pnpm backend:db-studio
+pnpm db:studio
 ```
 
 ### 日常开发流程
