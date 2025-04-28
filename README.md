@@ -87,6 +87,8 @@ https://app.kiaclouth.com
 
 当首次开发项目或数据架构发生变化时，需要执行以下完整流程：
 
+0. 根据.env.example项目根目录下创建.env文件
+
 1. 安装依赖
 ```bash
 pnpm install
