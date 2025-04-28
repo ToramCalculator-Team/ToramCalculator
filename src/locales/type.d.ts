@@ -171,7 +171,14 @@ export interface dictionary {
       nullSearchResultTips: string;
     };
     wiki: {
-      table: {
+      selector: {
+        title: string;
+        groupName: {
+          combat: string;
+          daily: string;
+        };
+      };
+      tableConfig: {
         title: string;
       };
       news: {

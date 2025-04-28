@@ -52,6 +52,7 @@ export default function WikiSubPage() {
   const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>();
 
   const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
+  const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
   // form
   const [form, setForm] = createSignal<JSX.Element>();
@@ -394,6 +395,78 @@ export default function WikiSubPage() {
     ),
   );
 
+  const wikiSelectorConfig: {
+    groupName: string;
+    groupFields: {
+      name: keyof DB;
+      icon: JSX.Element;
+    }[];
+  }[] = [
+    {
+      groupName: dictionary().ui.wiki.selector.groupName.combat,
+      groupFields: [
+        {
+          name: "mob",
+          icon: <Icon.Filled.Browser />,
+        },
+        {
+          name: "skill",
+          icon: <Icon.Filled.Basketball />,
+        },
+        {
+          name: "weapon",
+          icon: <Icon.Filled.Box2 />,
+        },
+        {
+          name: "armor",
+          icon: <Icon.Filled.Category2 />,
+        },
+        {
+          name: "option",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "special",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "crystal",
+          icon: <Icon.Filled.Layers />,
+        },
+      ],
+    },
+    {
+      groupName: dictionary().ui.wiki.selector.groupName.daily,
+      groupFields: [
+        {
+          name: "address",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "npc",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "consumable",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "material",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "task",
+          icon: <Icon.Filled.Layers />,
+        },
+        {
+          name: "activity",
+          icon: <Icon.Filled.Layers />,
+        },
+        
+      ],
+    },
+  ];
+
   onMount(() => {
     console.log(`--Wiki Page Mount`);
   });
@@ -425,7 +498,10 @@ export default function WikiSubPage() {
                     transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
                   >
                     <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-                      <h1 class="Text flex items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
+                      <h1
+                        onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
+                        class="Text cursor-pointer flex items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
+                      >
                         {dictionary().db[validTableName()].selfName}
                         <Icon.Line.Swap />
                       </h1>
@@ -525,7 +601,9 @@ export default function WikiSubPage() {
                 <div class="TableModule flex flex-1 flex-col overflow-hidden">
                   <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
                     <div class={`Text px-6 text-xl`}>{dictionary().db[validTableName()].selfName}</div>
-                    <div class={`Description bg-area-color flex-1 rounded p-3`}>
+                    <div
+                      class={`Description ${!isTableFullscreen() ? "opacity-0" : "opacity-100"} bg-area-color flex-1 rounded p-3`}
+                    >
                       {dictionary().db[validTableName()].description}
                     </div>
                     <Button
@@ -656,9 +734,49 @@ export default function WikiSubPage() {
                 <Dialog
                   state={tableConfigSheetIsOpen()}
                   setState={setTableConfigSheetIsOpen}
-                  title={dictionary().ui.actions.filter}
+                  title={dictionary().ui.wiki.tableConfig.title}
                 >
                   <div class="flex h-52 w-2xs flex-col gap-3"></div>
+                </Dialog>
+              </Portal>
+
+              <Portal>
+                <Dialog
+                  state={wikiSelectorIsOpen()}
+                  setState={setWikiSelectorIsOpen}
+                  title={dictionary().ui.wiki.selector.title}
+                >
+                  <div class="flex flex-col gap-3">
+                    <For each={wikiSelectorConfig}>
+                      {(group, index) => {
+                        return (
+                          <div class="Group flex flex-col gap-2">
+                            <div class="GroupTitle flex flex-col gap-3">
+                              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                                {group.groupName}
+                                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                              </h3>
+                            </div>
+                            <div class="GroupContent flex flex-wrap gap-2">
+                              <For each={group.groupFields}>
+                                {(field, index) => {
+                                  return (
+                                    <a
+                                      href={`/wiki/${field.name}`}
+                                      class="border-dividing-color flex w-[calc(33.333333%-8px)] items-center flex-col gap-2 rounded border px-2 py-3"
+                                    >
+                                      {field.icon}
+                                      <span class="text-nowrap overflow-ellipsis">{dictionary().db[field.name].selfName}</span>
+                                    </a>
+                                  );
+                                }}
+                              </For>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
                 </Dialog>
               </Portal>
             </Show>

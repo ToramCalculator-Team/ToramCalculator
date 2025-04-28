@@ -555,8 +555,15 @@ const dictionary: dictionary = {
       nullSearchResultTips: "變強之旅總有艱險阻道，求知路上不免遍佈荊棘\n但是這裡沒有\n搜尋結果裡沒有就是沒有",
     },
     wiki:{
-      table: {
-        title: ""
+      selector: {
+        title: "Wiki選擇器",
+        groupName: {
+          combat: "戰鬥資料庫",
+          daily: "日常資料庫",
+        },
+      },
+      tableConfig: {
+        title: "表格配置"
       },
       news: {
         title: "最近更新",
@@ -921,7 +928,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account: {
-      selfName: "",
+      selfName: "帳號",
       fields: {
         id: {
           key: "",
@@ -991,7 +998,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account_create_data: {
-      selfName: "",
+      selfName: "帳號創建資料",
       fields: {
         accountId: {
           key: "",
@@ -1002,7 +1009,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account_update_data: {
-      selfName: "",
+      selfName: "帳號更新資料",
       fields: {
         accountId: {
           key: "",
@@ -1013,7 +1020,7 @@ const dictionary: dictionary = {
       description: ""
     },
     activity: {
-      selfName: "",
+      selfName: "活動",
       fields: {
         id: {
           key: "",
@@ -1029,7 +1036,7 @@ const dictionary: dictionary = {
       description: ""
     },
     address: {
-      selfName: "",
+      selfName: "地点",
       fields: {
         id: {
           key: "",
@@ -1069,7 +1076,7 @@ const dictionary: dictionary = {
       description: ""
     },
     armor: {
-      selfName: "",
+      selfName: "防具",
       fields: {
         baseDef: {
           key: "",
@@ -1105,7 +1112,7 @@ const dictionary: dictionary = {
       description: ""
     },
     avatar: {
-      selfName: "",
+      selfName: "時裝",
       fields: {
         id: {
           key: "",
@@ -1141,7 +1148,7 @@ const dictionary: dictionary = {
       description: ""
     },
     character: {
-      selfName: "",
+      selfName: "機體",
       fields: {
         id: {
           key: "",
@@ -1282,7 +1289,7 @@ const dictionary: dictionary = {
       description: ""
     },
     character_skill: {
-      selfName: "",
+      selfName: "機體技能",
       fields: {
         id: {
           key: "",
@@ -1313,7 +1320,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo: {
-      selfName: "",
+      selfName: "連擊",
       fields: {
         id: {
           key: "",
@@ -1339,7 +1346,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo_step: {
-      selfName: "",
+      selfName: "連擊步驟",
       fields: {
         id: {
           key: "",
@@ -1382,7 +1389,7 @@ const dictionary: dictionary = {
       description: ""
     },
     consumable: {
-      selfName: "",
+      selfName: "消耗品",
       fields: {
         type: {
           key: "",
@@ -1422,7 +1429,7 @@ const dictionary: dictionary = {
       description: ""
     },
     crystal: {
-      selfName: "",
+      selfName: "锻晶",
       fields: {
         type: {
           key: "",
@@ -1450,7 +1457,7 @@ const dictionary: dictionary = {
       description: ""
     },
     drop_item: {
-      selfName: "",
+      selfName: "掉落物品",
       fields: {
         id: {
           key: "",
@@ -1501,7 +1508,7 @@ const dictionary: dictionary = {
       description: ""
     },
     image: {
-      selfName: "",
+      selfName: "圖片",
       fields: {
         id: {
           key: "",
@@ -1542,7 +1549,7 @@ const dictionary: dictionary = {
       description: ""
     },
     item: {
-      selfName: "",
+      selfName: "道具",
       fields: {
         id: {
           key: "",
@@ -1597,7 +1604,7 @@ const dictionary: dictionary = {
       description: ""
     },
     material: {
-      selfName: "",
+      selfName: "素材",
       fields: {
         type: {
           key: "",
@@ -1631,7 +1638,7 @@ const dictionary: dictionary = {
       description: ""
     },
     member: {
-      selfName: "",
+      selfName: "成員",
       fields: {
         id: {
           key: "",
@@ -1694,7 +1701,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mercenary: {
-      selfName: "",
+      selfName: "傭兵",
       fields: {
         type: {
           key: "",
@@ -1742,7 +1749,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mob: {
-      selfName: "",
+      selfName: "怪物",
       fields: {
         name: {
           key: "名稱",
@@ -1885,7 +1892,7 @@ const dictionary: dictionary = {
       description: ""
     },
     npc: {
-      selfName: "",
+      selfName: "NPC",
       fields: {
         id: {
           key: "",
@@ -1906,7 +1913,7 @@ const dictionary: dictionary = {
       description: ""
     },
     option: {
-      selfName: "",
+      selfName: "追加裝備",
       fields: {
         baseDef: {
           key: "",
@@ -1942,7 +1949,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player: {
-      selfName: "",
+      selfName: "玩家",
       fields: {
         id: {
           key: "",
@@ -1968,7 +1975,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_armor: {
-      selfName: "",
+      selfName: "玩家防具",
       fields: {
         id: {
           key: "",
@@ -2019,7 +2026,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_option: {
-      selfName: "",
+      selfName: "玩家追加裝備",
       fields: {
         id: {
           key: "",
@@ -2055,7 +2062,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_pet: {
-      selfName: "",
+      selfName: "玩家寵物",
       fields: {
         id: {
           key: "",
@@ -2200,7 +2207,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_special: {
-      selfName: "",
+      selfName: "玩家特殊裝備",
       fields: {
         id: {
           key: "",
@@ -2231,7 +2238,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_weapon: {
-      selfName: "",
+      selfName: "玩家武器",
       fields: {
         id: {
           key: "",
@@ -2282,7 +2289,7 @@ const dictionary: dictionary = {
       description: ""
     },
     post: {
-      selfName: "",
+      selfName: "帖子",
       fields: {
         id: {
           key: "",
@@ -2313,7 +2320,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe: {
-      selfName: "",
+      selfName: "配方",
       fields: {
         id: {
           key: "",
@@ -2334,7 +2341,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe_ingredient: {
-      selfName: "",
+      selfName: "配方材料",
       fields: {
         id: {
           key: "",
@@ -2569,7 +2576,7 @@ const dictionary: dictionary = {
       description: ""
     },
     skill_effect: {
-      selfName: "",
+      selfName: "技能效果",
       fields: {
         id: {
           key: "",
@@ -2660,7 +2667,7 @@ const dictionary: dictionary = {
       description: ""
     },
     special: {
-      selfName: "",
+      selfName: "特殊裝備",
       fields: {
         baseDef: {
           key: "",
@@ -2681,7 +2688,7 @@ const dictionary: dictionary = {
       description: ""
     },
     statistic: {
-      selfName: "",
+      selfName: "統計資訊",
       fields: {
         id: {
           key: "",
@@ -2712,7 +2719,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task: {
-      selfName: "",
+      selfName: "任務",
       fields: {
         id: {
           key: "",
@@ -2754,7 +2761,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_collect_require: {
-      selfName: "",
+      selfName: "任務收集要求",
       fields: {
         id: {
           key: "",
@@ -2780,7 +2787,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_kill_requirement: {
-      selfName: "",
+      selfName: "任務擊殺要求",
       fields: {
         id: {
           key: "",
@@ -2806,7 +2813,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_reward: {
-      selfName: "",
+      selfName: "任務獎勵",
       fields: {
         id: {
           key: "",
@@ -2847,7 +2854,7 @@ const dictionary: dictionary = {
       description: ""
     },
     team: {
-      selfName: "",
+      selfName: "隊伍",
       fields: {
         id: {
           key: "",
@@ -2868,7 +2875,7 @@ const dictionary: dictionary = {
       description: ""
     },
     user: {
-      selfName: "",
+      selfName: "用戶",
       fields: {
         id: {
           key: "",
@@ -2904,7 +2911,7 @@ const dictionary: dictionary = {
       description: ""
     },
     verification_token: {
-      selfName: "",
+      selfName: "驗證令牌",
       fields: {
         identifier: {
           key: "",
@@ -3000,7 +3007,7 @@ const dictionary: dictionary = {
       description: ""
     },
     world: {
-      selfName: "",
+      selfName: "世界",
       fields: {
         id: {
           key: "",
@@ -3016,7 +3023,7 @@ const dictionary: dictionary = {
       description: ""
     },
     zone: {
-      selfName: "",
+      selfName: "區域",
       fields: {
         id: {
           key: "",

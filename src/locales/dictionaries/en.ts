@@ -488,13 +488,20 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "Can not find anything!",
       nullSearchResultTips: "Emmm..."
     },
-    wiki:{
-      table: {
-        title: ""
+    wiki: {
+      selector: {
+        title: "Wiki Selector",
+        groupName: {
+          combat: "Combat Database",
+          daily: "Daily Database",
+        },
+      },
+      tableConfig: {
+        title: "Table Config"
       },
       news: {
-        title: "News",
-      },
+        title: "News"
+      }
     },
     simulator: {
       pageTitle: "Simulator",
@@ -760,7 +767,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account: {
-      selfName: "",
+      selfName: "Account",
       fields: {
         id: {
           key: "",
@@ -830,7 +837,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account_create_data: {
-      selfName: "",
+      selfName: "Account Create Data",
       fields: {
         accountId: {
           key: "",
@@ -841,7 +848,7 @@ const dictionary: dictionary = {
       description: ""
     },
     account_update_data: {
-      selfName: "",
+      selfName: "Account Update Data",
       fields: {
         accountId: {
           key: "",
@@ -852,7 +859,7 @@ const dictionary: dictionary = {
       description: ""
     },
     activity: {
-      selfName: "",
+      selfName: "Activity",
       fields: {
         id: {
           key: "",
@@ -868,7 +875,7 @@ const dictionary: dictionary = {
       description: ""
     },
     address: {
-      selfName: "",
+      selfName: "Address",
       fields: {
         id: {
           key: "",
@@ -908,7 +915,7 @@ const dictionary: dictionary = {
       description: ""
     },
     armor: {
-      selfName: "",
+      selfName: "Armor",
       fields: {
         baseDef: {
           key: "",
@@ -944,7 +951,7 @@ const dictionary: dictionary = {
       description: ""
     },
     avatar: {
-      selfName: "",
+      selfName: "Avatar",
       fields: {
         id: {
           key: "",
@@ -980,7 +987,7 @@ const dictionary: dictionary = {
       description: ""
     },
     character: {
-      selfName: "",
+      selfName: "Character",
       fields: {
         id: {
           key: "",
@@ -1121,7 +1128,7 @@ const dictionary: dictionary = {
       description: ""
     },
     character_skill: {
-      selfName: "",
+      selfName: "Character Skill",
       fields: {
         id: {
           key: "",
@@ -1152,7 +1159,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo: {
-      selfName: "",
+      selfName: "Combo",
       fields: {
         id: {
           key: "",
@@ -1178,7 +1185,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo_step: {
-      selfName: "",
+      selfName: "Combo Step",
       fields: {
         id: {
           key: "",
@@ -1221,7 +1228,7 @@ const dictionary: dictionary = {
       description: ""
     },
     consumable: {
-      selfName: "",
+      selfName: "Consumable",
       fields: {
         type: {
           key: "",
@@ -1261,7 +1268,7 @@ const dictionary: dictionary = {
       description: ""
     },
     crystal: {
-      selfName: "",
+      selfName: "Crystal",
       fields: {
         type: {
           key: "",
@@ -1289,7 +1296,7 @@ const dictionary: dictionary = {
       description: ""
     },
     drop_item: {
-      selfName: "",
+      selfName: "Drop Item",
       fields: {
         id: {
           key: "",
@@ -1340,7 +1347,7 @@ const dictionary: dictionary = {
       description: ""
     },
     image: {
-      selfName: "",
+      selfName: "Image",
       fields: {
         id: {
           key: "",
@@ -1381,7 +1388,7 @@ const dictionary: dictionary = {
       description: ""
     },
     item: {
-      selfName: "",
+      selfName: "Item",
       fields: {
         id: {
           key: "",
@@ -1436,7 +1443,7 @@ const dictionary: dictionary = {
       description: ""
     },
     material: {
-      selfName: "",
+      selfName: "Material",
       fields: {
         type: {
           key: "",
@@ -1470,7 +1477,7 @@ const dictionary: dictionary = {
       description: ""
     },
     member: {
-      selfName: "",
+      selfName: "Member",
       fields: {
         id: {
           key: "",
@@ -1533,7 +1540,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mercenary: {
-      selfName: "",
+      selfName: "Mercenary",
       fields: {
         type: {
           key: "",
@@ -1724,7 +1731,7 @@ const dictionary: dictionary = {
       description: ""
     },
     npc: {
-      selfName: "",
+      selfName: "NPC",
       fields: {
         id: {
           key: "",
@@ -1745,7 +1752,7 @@ const dictionary: dictionary = {
       description: ""
     },
     option: {
-      selfName: "",
+      selfName: "Option",
       fields: {
         baseDef: {
           key: "",
@@ -1781,7 +1788,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player: {
-      selfName: "",
+      selfName: "Player",
       fields: {
         id: {
           key: "",
@@ -1807,7 +1814,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_armor: {
-      selfName: "",
+      selfName: "Player Armor",
       fields: {
         id: {
           key: "",
@@ -1858,7 +1865,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_option: {
-      selfName: "",
+      selfName: "Player Option",
       fields: {
         id: {
           key: "",
@@ -1894,7 +1901,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_pet: {
-      selfName: "",
+      selfName: "Player Pet",
       fields: {
         id: {
           key: "",
@@ -2039,7 +2046,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_special: {
-      selfName: "",
+      selfName: "Player Special",
       fields: {
         id: {
           key: "",
@@ -2070,7 +2077,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_weapon: {
-      selfName: "",
+      selfName: "Player Weapon",
       fields: {
         id: {
           key: "",
@@ -2121,7 +2128,7 @@ const dictionary: dictionary = {
       description: ""
     },
     post: {
-      selfName: "",
+      selfName: "Post",
       fields: {
         id: {
           key: "",
@@ -2152,7 +2159,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe: {
-      selfName: "",
+      selfName: "Recipe",
       fields: {
         id: {
           key: "",
@@ -2173,7 +2180,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe_ingredient: {
-      selfName: "",
+      selfName: "Recipe Ingredient",
       fields: {
         id: {
           key: "",
@@ -2214,7 +2221,7 @@ const dictionary: dictionary = {
       description: ""
     },
     session: {
-      selfName: "",
+      selfName: "Session",
       fields: {
         id: {
           key: "",
@@ -2240,7 +2247,7 @@ const dictionary: dictionary = {
       description: ""
     },
     simulator: {
-      selfName: "",
+      selfName: "Simulator",
       fields: {
         id: {
           key: "",
@@ -2408,7 +2415,7 @@ const dictionary: dictionary = {
       description: ""
     },
     skill_effect: {
-      selfName: "",
+      selfName: "Skill Effect",
       fields: {
         id: {
           key: "",
@@ -2499,7 +2506,7 @@ const dictionary: dictionary = {
       description: ""
     },
     special: {
-      selfName: "",
+      selfName: "Special",
       fields: {
         baseDef: {
           key: "",
@@ -2520,7 +2527,7 @@ const dictionary: dictionary = {
       description: ""
     },
     statistic: {
-      selfName: "",
+      selfName: "Statistic",
       fields: {
         id: {
           key: "",
@@ -2551,7 +2558,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task: {
-      selfName: "",
+      selfName: "Task",
       fields: {
         id: {
           key: "",
@@ -2593,7 +2600,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_collect_require: {
-      selfName: "",
+      selfName: "Task Collect Require",
       fields: {
         id: {
           key: "",
@@ -2619,7 +2626,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_kill_requirement: {
-      selfName: "",
+      selfName: "Task Kill Require",
       fields: {
         id: {
           key: "",
@@ -2645,7 +2652,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_reward: {
-      selfName: "",
+      selfName: "Task Reward",
       fields: {
         id: {
           key: "",
@@ -2686,7 +2693,7 @@ const dictionary: dictionary = {
       description: ""
     },
     team: {
-      selfName: "",
+      selfName: "Team",
       fields: {
         id: {
           key: "",
@@ -2707,7 +2714,7 @@ const dictionary: dictionary = {
       description: ""
     },
     user: {
-      selfName: "",
+      selfName: "User",
       fields: {
         id: {
           key: "",
@@ -2743,7 +2750,7 @@ const dictionary: dictionary = {
       description: ""
     },
     verification_token: {
-      selfName: "",
+      selfName: "Verification Token",
       fields: {
         identifier: {
           key: "",
@@ -2839,7 +2846,7 @@ const dictionary: dictionary = {
       description: ""
     },
     world: {
-      selfName: "",
+      selfName: "World",
       fields: {
         id: {
           key: "",
@@ -2855,7 +2862,7 @@ const dictionary: dictionary = {
       description: ""
     },
     zone: {
-      selfName: "",
+      selfName: "Zone",
       fields: {
         id: {
           key: "",

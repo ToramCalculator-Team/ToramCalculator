@@ -117,7 +117,7 @@ export function Dialog(props: {
           onClick={handleClose}
         >
           <div 
-            class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[80vh] w-full max-w-[80vw] flex-col items-center gap-3 rounded p-2"
+            class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] w-full max-w-[90vw] flex-col items-center gap-3 rounded p-2"
             onClick={(e) => e.stopPropagation()}
           >
             <div class="DialogTitle z-10 drop-shadow-dividing-color absolute -top-3 flex items-center drop-shadow-xl">
@@ -153,7 +153,7 @@ export function Dialog(props: {
               </svg>
             </div>
             <div class="Content flex h-full w-full justify-center overflow-hidden">
-              <div class="Left flex flex-none flex-col">
+              <div class="Left z-10 flex flex-none flex-col">
                 <Decorate class="" />
                 <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
                 <Decorate class="-scale-y-100" />
@@ -169,9 +169,9 @@ export function Dialog(props: {
                 <OverlayScrollbarsComponent
                   element="div"
                   options={{ scrollbars: { autoHide: "scroll" } }}
-                  class="w-full h-full flex-1"
+                  class="w-full h-full flex-1 rounded border-8 border-primary-color"
                 >
-                  <div class="Childern flex flex-col gap-3 m-6">{props.children}</div>
+                  <div class="Childern flex flex-col gap-3 mx-3 my-6">{props.children}</div>
                 </OverlayScrollbarsComponent>
                 <div
                   class="Divider bg-boundary-color mb-1 h-[1px] w-full rounded-full"
@@ -180,7 +180,7 @@ export function Dialog(props: {
                   }}
                 ></div>
               </div>
-              <div class="Right flex flex-none -scale-x-100 flex-col">
+              <div class="Right z-10 flex flex-none -scale-x-100 flex-col">
                 <Decorate />
                 <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
                 <Decorate class="-scale-y-100" />

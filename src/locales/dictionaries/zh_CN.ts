@@ -415,7 +415,22 @@ const enums: DataEnums = {
   _crystalTospecial: undefined,
   _crystalToweapon: undefined,
   _FrontRelation: undefined,
-  _mobTozone: undefined
+  _mobTozone: {
+    selfName: "怪物-区域关联",
+    fields: {
+      A: {
+        key: "怪物ID",
+        tableFieldDescription: "",
+        formFieldDescription: ""
+      },
+      B: {
+        key: "区域ID",
+        tableFieldDescription: "",
+        formFieldDescription: ""
+      }
+    },
+    description: "记录怪物和区域之间的关联关系"
+  },
 };
 
 const dictionary: dictionary = {
@@ -555,8 +570,15 @@ const dictionary: dictionary = {
       nullSearchResultTips: "变强之旅总有艰险阻道，求知路上不免遍布荆棘\n但是这里没有\n搜索结果里没有就是没有",
     },
     wiki:{
-      table: {
-        title: ""
+      selector: {
+        title: "Wiki选择器",
+        groupName: {
+          combat: "战斗数据库",
+          daily: "日常数据",
+        },
+      },
+      tableConfig: {
+        title: "表格配置"
       },
       news: {
         title: "最近更新",
@@ -680,116 +702,116 @@ const dictionary: dictionary = {
   },
   db: {
     _armorTocrystal: {
-      selfName: "",
+      selfName: "防具-水晶关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "防具ID",
+          tableFieldDescription: "关联的防具ID",
+          formFieldDescription: "选择要关联的防具"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "水晶ID",
+          tableFieldDescription: "关联的水晶ID",
+          formFieldDescription: "选择要关联的水晶"
+        }
       },
-      description: ""
+      description: "记录防具和水晶之间的关联关系"
     },
     _avatarTocharacter: {
-      selfName: "",
+      selfName: "头像-角色关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "头像ID",
+          tableFieldDescription: "关联的头像ID",
+          formFieldDescription: "选择要关联的头像"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "角色ID",
+          tableFieldDescription: "关联的角色ID",
+          formFieldDescription: "选择要关联的角色"
+        }
       },
-      description: ""
+      description: "记录头像和角色之间的关联关系"
     },
     _BackRelation: {
-      selfName: "",
+      selfName: "反向关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "源ID",
+          tableFieldDescription: "关联的源ID",
+          formFieldDescription: "选择源对象"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "目标ID",
+          tableFieldDescription: "关联的目标ID",
+          formFieldDescription: "选择目标对象"
+        }
       },
-      description: ""
+      description: "记录对象之间的反向关联关系"
     },
     _campA: {
-      selfName: "",
+      selfName: "阵营A关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "源ID",
+          tableFieldDescription: "关联的源ID",
+          formFieldDescription: "选择源对象"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "目标ID",
+          tableFieldDescription: "关联的目标ID",
+          formFieldDescription: "选择目标对象"
+        }
       },
-      description: ""
+      description: "记录阵营A的关联关系"
     },
     _campB: {
-      selfName: "",
+      selfName: "阵营B关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "源ID",
+          tableFieldDescription: "关联的源ID",
+          formFieldDescription: "选择源对象"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "目标ID",
+          tableFieldDescription: "关联的目标ID",
+          formFieldDescription: "选择目标对象"
+        }
       },
-      description: ""
+      description: "记录阵营B的关联关系"
     },
     _characterToconsumable: {
-      selfName: "",
+      selfName: "角色-消耗品关联",
       fields: {
         A: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "角色ID",
+          tableFieldDescription: "关联的角色ID",
+          formFieldDescription: "选择要关联的角色"
         },
         B: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "消耗品ID",
+          tableFieldDescription: "关联的消耗品ID",
+          formFieldDescription: "选择要关联的消耗品"
+        }
       },
-      description: ""
+      description: "记录角色和消耗品之间的关联关系"
     },
     _crystalTooption: {
-      selfName: "",
+      selfName: "水晶-选项关联",
       fields: {
         A: {
-          key: "",
+          key: "水晶ID",
           tableFieldDescription: "",
-          formFieldDescription: "",
+          formFieldDescription: ""
         },
         B: {
-          key: "",
+          key: "选项ID",
           tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          formFieldDescription: ""
+        }
       },
-      description: ""
+      description: "记录水晶和选项之间的关联关系"
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -904,93 +926,93 @@ const dictionary: dictionary = {
       description: ""
     },
     _mobTozone: {
-      selfName: "",
+      selfName: "怪物-区域关联",
       fields: {
         A: {
-          key: "",
+          key: "怪物ID",
           tableFieldDescription: "",
-          formFieldDescription: "",
+          formFieldDescription: ""
         },
         B: {
-          key: "",
+          key: "区域ID",
           tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          formFieldDescription: ""
+        }
       },
-      description: ""
+      description: "记录怪物和区域之间的关联关系"
     },
     account: {
-      selfName: "",
+      selfName: "账号",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "账号的唯一标识符",
+          formFieldDescription: "账号的唯一标识符"
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "账号的类型",
+          formFieldDescription: "选择账号类型",
           enumMap: {
-            User: "",
-            Admin: "",
-          },
+            User: "用户",
+            Admin: "管理员"
+          }
         },
         provider: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "提供商",
+          tableFieldDescription: "账号的提供商",
+          formFieldDescription: "选择账号提供商"
         },
         providerAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "提供商账号ID",
+          tableFieldDescription: "提供商账号的唯一标识符",
+          formFieldDescription: "提供商账号的唯一标识符"
         },
         refresh_token: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "刷新令牌",
+          tableFieldDescription: "账号的刷新令牌",
+          formFieldDescription: "账号的刷新令牌"
         },
         access_token: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "访问令牌",
+          tableFieldDescription: "账号的访问令牌",
+          formFieldDescription: "账号的访问令牌"
         },
         expires_at: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "过期时间",
+          tableFieldDescription: "令牌的过期时间",
+          formFieldDescription: "令牌的过期时间"
         },
         token_type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "令牌类型",
+          tableFieldDescription: "令牌的类型",
+          formFieldDescription: "令牌的类型"
         },
         scope: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "范围",
+          tableFieldDescription: "令牌的权限范围",
+          formFieldDescription: "令牌的权限范围"
         },
         id_token: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID令牌",
+          tableFieldDescription: "账号的ID令牌",
+          formFieldDescription: "账号的ID令牌"
         },
         session_state: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "会话状态",
+          tableFieldDescription: "账号的会话状态",
+          formFieldDescription: "账号的会话状态"
         },
         userId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "用户ID",
+          tableFieldDescription: "关联的用户ID",
+          formFieldDescription: "选择关联的用户"
+        }
       },
-      description: ""
+      description: "用户账号信息"
     },
     account_create_data: {
-      selfName: "",
+      selfName: "账号创建的数据",
       fields: {
         accountId: {
           key: "",
@@ -1001,287 +1023,287 @@ const dictionary: dictionary = {
       description: ""
     },
     account_update_data: {
-      selfName: "",
+      selfName: "账号更新数据",
       fields: {
         accountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "账号ID",
+          tableFieldDescription: "关联的账号ID",
+          formFieldDescription: "选择要更新的账号"
+        }
       },
-      description: ""
+      description: "账号更新记录"
     },
     activity: {
-      selfName: "",
+      selfName: "活动",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "活动的唯一标识符",
+          formFieldDescription: "活动的唯一标识符"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "名称",
+          tableFieldDescription: "活动的名称",
+          formFieldDescription: "请输入活动名称"
+        }
       },
-      description: ""
+      description: "游戏活动信息"
     },
     address: {
-      selfName: "",
+      selfName: "地点",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "地址的唯一标识符",
+          formFieldDescription: "地址的唯一标识符"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "地址的名称",
+          formFieldDescription: "请输入地址名称"
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "地址的类型",
+          formFieldDescription: "选择地址类型",
           enumMap: {
-            Normal: "",
-            Limited: "",
-          },
+            Normal: "普通",
+            Limited: "限时"
+          }
         },
         posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "X坐标",
+          tableFieldDescription: "地址的X坐标",
+          formFieldDescription: "请输入X坐标"
         },
         posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "Y坐标",
+          tableFieldDescription: "地址的Y坐标",
+          formFieldDescription: "请输入Y坐标"
         },
         worldId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "世界ID",
+          tableFieldDescription: "所属世界的ID",
+          formFieldDescription: "选择所属世界"
+        }
       },
-      description: ""
+      description: "游戏中的地址信息"
     },
     armor: {
-      selfName: "",
+      selfName: "防具",
       fields: {
         baseDef: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基础防御",
+          tableFieldDescription: "防具的基础防御值",
+          formFieldDescription: "请输入基础防御值"
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "防具的属性修正值",
+          formFieldDescription: "请输入属性修正值"
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色A",
+          tableFieldDescription: "防具的主要颜色",
+          formFieldDescription: "选择主要颜色"
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色B",
+          tableFieldDescription: "防具的次要颜色",
+          formFieldDescription: "选择次要颜色"
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色C",
+          tableFieldDescription: "防具的第三颜色",
+          formFieldDescription: "选择第三颜色"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "关联的物品ID",
+          formFieldDescription: "选择关联的物品"
+        }
       },
-      description: ""
+      description: "防具装备信息"
     },
     avatar: {
-      selfName: "",
+      selfName: "时装",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "头像的唯一标识符",
+          formFieldDescription: "头像的唯一标识符"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "头像的名称",
+          formFieldDescription: "请输入头像名称"
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "头像的类型",
+          formFieldDescription: "选择头像类型",
           enumMap: {
-            Decoration: "",
-            Top: "",
-            Bottom: "",
-          },
+            Decoration: "装饰",
+            Top: "顶部",
+            Bottom: "底部"
+          }
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "头像的属性修正值",
+          formFieldDescription: "请输入属性修正值"
         },
         playerId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "玩家ID",
+          tableFieldDescription: "关联的玩家ID",
+          formFieldDescription: "选择关联的玩家"
+        }
       },
-      description: ""
+      description: "时装信息"
     },
     character: {
-      selfName: "",
+      selfName: "机体",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "角色的唯一标识符",
+          formFieldDescription: "角色的唯一标识符"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "角色的名称",
+          formFieldDescription: "请输入角色名称"
         },
         lv: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "等级",
+          tableFieldDescription: "角色的等级",
+          formFieldDescription: "请输入角色等级"
         },
         str: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "力量",
+          tableFieldDescription: "角色的力量值",
+          formFieldDescription: "请输入力量值"
         },
         int: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "智力",
+          tableFieldDescription: "角色的智力值",
+          formFieldDescription: "请输入智力值"
         },
         vit: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "体质",
+          tableFieldDescription: "角色的体质值",
+          formFieldDescription: "请输入体质值"
         },
         agi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "敏捷",
+          tableFieldDescription: "角色的敏捷值",
+          formFieldDescription: "请输入敏捷值"
         },
         dex: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "灵巧",
+          tableFieldDescription: "角色的灵巧值",
+          formFieldDescription: "请输入灵巧值"
         },
         personalityType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "性格类型",
+          tableFieldDescription: "角色的性格类型",
+          formFieldDescription: "选择性格类型",
           enumMap: {
-            None: "",
-            Luk: "",
-            Cri: "",
-            Tec: "",
-            Men: "",
-          },
+            None: "无",
+            Luk: "幸运",
+            Cri: "暴击",
+            Tec: "技巧",
+            Men: "精神"
+          }
         },
         personalityValue: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "性格值",
+          tableFieldDescription: "角色的性格值",
+          formFieldDescription: "请输入性格值"
         },
         weaponId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "武器ID",
+          tableFieldDescription: "装备的武器ID",
+          formFieldDescription: "选择装备的武器"
         },
         subWeaponId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "副武器ID",
+          tableFieldDescription: "装备的副武器ID",
+          formFieldDescription: "选择装备的副武器"
         },
         armorId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "防具ID",
+          tableFieldDescription: "装备的防具ID",
+          formFieldDescription: "选择装备的防具"
         },
         optEquipId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "可选装备ID",
+          tableFieldDescription: "装备的可选装备ID",
+          formFieldDescription: "选择可选装备"
         },
         speEquipId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "特殊装备ID",
+          tableFieldDescription: "装备的特殊装备ID",
+          formFieldDescription: "选择特殊装备"
         },
         cooking: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "烹饪",
+          tableFieldDescription: "角色的烹饪技能",
+          formFieldDescription: "请输入烹饪技能等级"
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "角色的属性修正值",
+          formFieldDescription: "请输入属性修正值"
         },
         partnerSkillAId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伙伴技能A ID",
+          tableFieldDescription: "伙伴技能A的ID",
+          formFieldDescription: "选择伙伴技能A"
         },
         partnerSkillAType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伙伴技能A类型",
+          tableFieldDescription: "伙伴技能A的类型",
+          formFieldDescription: "选择伙伴技能A类型",
           enumMap: {
-            Passive: "",
-            Active: "",
-          },
+            Passive: "被动",
+            Active: "主动"
+          }
         },
         partnerSkillBId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伙伴技能B ID",
+          tableFieldDescription: "伙伴技能B的ID",
+          formFieldDescription: "选择伙伴技能B"
         },
         partnerSkillBType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伙伴技能B类型",
+          tableFieldDescription: "伙伴技能B的类型",
+          formFieldDescription: "选择伙伴技能B类型",
           enumMap: {
-            Passive: "",
-            Active: "",
-          },
+            Passive: "被动",
+            Active: "主动"
+          }
         },
         masterId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "主人ID",
+          tableFieldDescription: "角色的主人ID",
+          formFieldDescription: "选择角色主人"
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "详情",
+          tableFieldDescription: "角色的详细信息",
+          formFieldDescription: "请输入角色详情"
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "统计ID",
+          tableFieldDescription: "关联的统计ID",
+          formFieldDescription: "选择关联的统计"
+        }
       },
-      description: ""
+      description: "机体配置"
     },
     character_skill: {
-      selfName: "",
+      selfName: "机体习得的技能",
       fields: {
         id: {
           key: "",
@@ -1312,7 +1334,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo: {
-      selfName: "",
+      selfName: "连击",
       fields: {
         id: {
           key: "",
@@ -1338,7 +1360,7 @@ const dictionary: dictionary = {
       description: ""
     },
     combo_step: {
-      selfName: "",
+      selfName: "连击步骤",
       fields: {
         id: {
           key: "",
@@ -1381,7 +1403,7 @@ const dictionary: dictionary = {
       description: ""
     },
     consumable: {
-      selfName: "",
+      selfName: "消耗品",
       fields: {
         type: {
           key: "",
@@ -1421,7 +1443,7 @@ const dictionary: dictionary = {
       description: ""
     },
     crystal: {
-      selfName: "",
+      selfName: "锻晶",
       fields: {
         type: {
           key: "",
@@ -1449,7 +1471,7 @@ const dictionary: dictionary = {
       description: ""
     },
     drop_item: {
-      selfName: "",
+      selfName: "掉落物品",
       fields: {
         id: {
           key: "",
@@ -1541,7 +1563,7 @@ const dictionary: dictionary = {
       description: ""
     },
     item: {
-      selfName: "",
+      selfName: "道具",
       fields: {
         id: {
           key: "",
@@ -1596,7 +1618,7 @@ const dictionary: dictionary = {
       description: ""
     },
     material: {
-      selfName: "",
+      selfName: "素材",
       fields: {
         type: {
           key: "",
@@ -1630,7 +1652,7 @@ const dictionary: dictionary = {
       description: ""
     },
     member: {
-      selfName: "",
+      selfName: "成员",
       fields: {
         id: {
           key: "",
@@ -1693,7 +1715,7 @@ const dictionary: dictionary = {
       description: ""
     },
     mercenary: {
-      selfName: "",
+      selfName: "佣兵",
       fields: {
         type: {
           key: "",
@@ -1884,7 +1906,7 @@ const dictionary: dictionary = {
       description: "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。"
     },
     npc: {
-      selfName: "",
+      selfName: "NPC",
       fields: {
         id: {
           key: "",
@@ -1905,7 +1927,7 @@ const dictionary: dictionary = {
       description: ""
     },
     option: {
-      selfName: "",
+      selfName: "追加装备",
       fields: {
         baseDef: {
           key: "",
@@ -1941,7 +1963,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player: {
-      selfName: "",
+      selfName: "玩家",
       fields: {
         id: {
           key: "",
@@ -1967,7 +1989,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_armor: {
-      selfName: "",
+      selfName: "玩家防具",
       fields: {
         id: {
           key: "",
@@ -2018,7 +2040,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_option: {
-      selfName: "",
+      selfName: "玩家追加装备",
       fields: {
         id: {
           key: "",
@@ -2054,7 +2076,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_pet: {
-      selfName: "",
+      selfName: "玩家宠物",
       fields: {
         id: {
           key: "",
@@ -2199,7 +2221,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_special: {
-      selfName: "",
+      selfName: "玩家特殊装备",
       fields: {
         id: {
           key: "",
@@ -2230,7 +2252,7 @@ const dictionary: dictionary = {
       description: ""
     },
     player_weapon: {
-      selfName: "",
+      selfName: "玩家武器",
       fields: {
         id: {
           key: "",
@@ -2281,7 +2303,7 @@ const dictionary: dictionary = {
       description: ""
     },
     post: {
-      selfName: "",
+      selfName: "帖子",
       fields: {
         id: {
           key: "",
@@ -2312,7 +2334,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe: {
-      selfName: "",
+      selfName: "配方",
       fields: {
         id: {
           key: "",
@@ -2333,7 +2355,7 @@ const dictionary: dictionary = {
       description: ""
     },
     recipe_ingredient: {
-      selfName: "",
+      selfName: "配方材料",
       fields: {
         id: {
           key: "",
@@ -2374,7 +2396,7 @@ const dictionary: dictionary = {
       description: ""
     },
     session: {
-      selfName: "",
+      selfName: "会话",
       fields: {
         id: {
           key: "",
@@ -2400,7 +2422,7 @@ const dictionary: dictionary = {
       description: ""
     },
     simulator: {
-      selfName: "",
+      selfName: "模拟器",
       fields: {
         id: {
           key: "",
@@ -2521,7 +2543,7 @@ const dictionary: dictionary = {
       description: ""
     },
     skill_effect: {
-      selfName: "",
+      selfName: "技能效果",
       fields: {
         id: {
           key: "",
@@ -2612,7 +2634,7 @@ const dictionary: dictionary = {
       description: ""
     },
     special: {
-      selfName: "",
+      selfName: "特殊装备",
       fields: {
         baseDef: {
           key: "",
@@ -2633,7 +2655,7 @@ const dictionary: dictionary = {
       description: ""
     },
     statistic: {
-      selfName: "",
+      selfName: "统计信息",
       fields: {
         id: {
           key: "",
@@ -2664,7 +2686,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task: {
-      selfName: "",
+      selfName: "任务",
       fields: {
         id: {
           key: "",
@@ -2706,7 +2728,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_collect_require: {
-      selfName: "",
+      selfName: "任务收集要求",
       fields: {
         id: {
           key: "",
@@ -2732,7 +2754,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_kill_requirement: {
-      selfName: "",
+      selfName: "任务击杀要求",
       fields: {
         id: {
           key: "",
@@ -2758,7 +2780,7 @@ const dictionary: dictionary = {
       description: ""
     },
     task_reward: {
-      selfName: "",
+      selfName: "任务奖励",
       fields: {
         id: {
           key: "",
@@ -2799,7 +2821,7 @@ const dictionary: dictionary = {
       description: ""
     },
     team: {
-      selfName: "",
+      selfName: "队伍",
       fields: {
         id: {
           key: "",
@@ -2820,7 +2842,7 @@ const dictionary: dictionary = {
       description: ""
     },
     user: {
-      selfName: "",
+      selfName: "用户",
       fields: {
         id: {
           key: "",
@@ -2856,7 +2878,7 @@ const dictionary: dictionary = {
       description: ""
     },
     verification_token: {
-      selfName: "",
+      selfName: "验证令牌",
       fields: {
         identifier: {
           key: "",
@@ -2952,7 +2974,7 @@ const dictionary: dictionary = {
       description: ""
     },
     world: {
-      selfName: "",
+      selfName: "世界",
       fields: {
         id: {
           key: "",
@@ -2968,7 +2990,7 @@ const dictionary: dictionary = {
       description: ""
     },
     zone: {
-      selfName: "",
+      selfName: "区域",
       fields: {
         id: {
           key: "",
