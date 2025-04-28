@@ -2,22 +2,37 @@
 
 # 加载 .env 文件中的变量
 if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+  set -a
+  source .env
+  set +a
 else
   echo ".env 文件不存在！请创建并配置数据库连接信息。"
   exit 1
 fi
 
+# 检查必要的环境变量
+required_vars=("PG_USERNAME" "PG_PASSWORD" "PG_HOST" "PG_PORT" "PG_DBNAME")
+for var in "${required_vars[@]}"; do
+  if [ -z "${!var}" ]; then
+    echo "错误: 环境变量 $var 未设置！"
+    exit 1
+  fi
+done
+
+# 打印环境变量信息（用于调试）
+echo "数据库连接信息："
+echo "主机: $PG_HOST"
+echo "端口: $PG_PORT"
+echo "用户名: $PG_USERNAME"
+echo "数据库名: $PG_DBNAME"
+
 # 备份目录
 OUTPUT_DIR="./test/backup_csv"
 mkdir -p "$OUTPUT_DIR"
 
-# PostgreSQL 运行在 Docker 容器中，确保连接的是 Docker 网络
-PG_CONTAINER_NAME="toram-calculator-postgres-1"
-PG_URL="postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_CONTAINER_NAME}:${PG_PORT}/${PG_DBNAME}"
-
+# 使用 Docker 容器连接到远程数据库
 # 获取数据库中的所有表
-tables=$(docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -t -c "
+tables=$(docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -t -c "
     SELECT tablename FROM pg_tables
     WHERE schemaname = 'public';
 ")
@@ -25,7 +40,7 @@ tables=$(docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -t -c "
 # 遍历每个表并导出为 CSV
 for table in $tables; do
     echo "正在导出表: $table..."
-    docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "
+    docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -c "
         COPY (SELECT * FROM \"$table\") 
         TO STDOUT WITH CSV HEADER
     " > "$OUTPUT_DIR/$table.csv"
