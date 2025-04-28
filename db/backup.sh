@@ -30,20 +30,39 @@ echo "数据库名: $PG_DBNAME"
 OUTPUT_DIR="./test/backup_csv"
 mkdir -p "$OUTPUT_DIR"
 
-# 使用 Docker 容器连接到远程数据库
-# 获取数据库中的所有表
-tables=$(docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -t -c "
-    SELECT tablename FROM pg_tables
-    WHERE schemaname = 'public';
-")
+# 检查是否使用本地数据库
+if [ "$PG_HOST" = "localhost" ] || [ "$PG_HOST" = "127.0.0.1" ]; then
+  echo "检测到本地数据库，使用 Docker Compose 执行备份..."
+  # 使用 Docker Compose 执行备份
+  tables=$(docker compose -f ./backend/docker-compose.yaml exec -T postgres psql -U $PG_USERNAME -d $PG_DBNAME -t -c "
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public';
+  ")
 
-# 遍历每个表并导出为 CSV
-for table in $tables; do
-    echo "正在导出表: $table..."
-    docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -c "
-        COPY (SELECT * FROM \"$table\") 
-        TO STDOUT WITH CSV HEADER
-    " > "$OUTPUT_DIR/$table.csv"
-done
+  # 遍历每个表并导出为 CSV
+  for table in $tables; do
+      echo "正在导出表: $table..."
+      docker compose -f ./backend/docker-compose.yaml exec -T postgres psql -U $PG_USERNAME -d $PG_DBNAME -c "
+          COPY (SELECT * FROM \"$table\") 
+          TO STDOUT WITH CSV HEADER
+      " > "$OUTPUT_DIR/$table.csv"
+  done
+else
+  echo "检测到远程数据库，使用直接连接执行备份..."
+  # 使用 Docker 容器连接到远程数据库
+  tables=$(docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -t -c "
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public';
+  ")
+
+  # 遍历每个表并导出为 CSV
+  for table in $tables; do
+      echo "正在导出表: $table..."
+      docker run --rm postgres:16-alpine psql "postgresql://${PG_USERNAME}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DBNAME}" -c "
+          COPY (SELECT * FROM \"$table\") 
+          TO STDOUT WITH CSV HEADER
+      " > "$OUTPUT_DIR/$table.csv"
+  done
+fi
 
 echo "所有表已成功备份到 $OUTPUT_DIR 目录！"
