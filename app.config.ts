@@ -26,6 +26,7 @@ export default defineConfig({
       sourcemap: true,
       rollupOptions: {
         external: [
+          "cloudflare:sockets",
           "@babylonjs/core",
           "@babylonjs/inspector",
           "@babylonjs/loaders",
