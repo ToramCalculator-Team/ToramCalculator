@@ -66,10 +66,8 @@ function getZodType(schema?: ZodTypeAny): ZodFirstPartyTypeKind {
 export function ObjRender<T extends object>(props: {
   data: T;
   dataSchema: ZodObject<Record<keyof T, ZodTypeAny>>;
-  dictionary: Dic<T>;
   deepHiddenFields: DeepHiddenFields<T>;
   fieldGroupMap: Record<string, Array<keyof T>>;
-  fieldGenerator?: (key: keyof T, value: T[keyof T], dictionary: Dic<T>) => JSX.Element;
   tier?: number;
 }) {
   const tier = props.tier || 0;
@@ -78,7 +76,7 @@ export function ObjRender<T extends object>(props: {
   const processedData = createMemo(() => processLayer(props.data, props.deepHiddenFields, tier));
 
   return (
-    <div class="FieldGroupContainer flex flex-1 w-full flex-col gap-3" style={{ "margin-left": tier * 4 + "px" }}>
+    <div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3" style={{ "margin-left": tier * 4 + "px" }}>
       <For each={Object.entries(props.fieldGroupMap)}>
         {([groupName, keys]) => (
           <section class="FieldGroup w-full">
@@ -107,7 +105,6 @@ export function ObjRender<T extends object>(props: {
                       <ObjRender
                         data={childData}
                         dataSchema={childSchema}
-                        dictionary={props.dictionary}
                         deepHiddenFields={props.deepHiddenFields
                           .filter(
                             (f): f is { [K in keyof T]?: DeepHiddenFields<NonNullable<T[K]>> } =>
@@ -121,13 +118,11 @@ export function ObjRender<T extends object>(props: {
                   }
 
                   return (
-                    props.fieldGenerator?.(key, val, props.dictionary) ?? (
-                      <div class="Field flex gap-2">
-                        <span class="text-main-text-color">{String(key)}</span>:
-                        <span class="font-bold">{String(val)}</span>
-                        <span class="text-dividing-color w-full text-right">{`[${kind}]`}</span>
-                      </div>
-                    )
+                    <div class="Field flex gap-2">
+                      <span class="text-main-text-color">{String(key)}</span>:
+                      <span class="font-bold">{String(val)}</span>
+                      <span class="text-dividing-color w-full text-right">{`[${kind}]`}</span>
+                    </div>
                   );
                 }}
               </For>

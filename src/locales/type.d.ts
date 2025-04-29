@@ -32,6 +32,7 @@ export type Dic<T> = {
   selfName: string;
   description: string;
   fields: FieldDict<T>;
+  cardFields?: Record<string,string>;
 };
 
 export interface dictionary {

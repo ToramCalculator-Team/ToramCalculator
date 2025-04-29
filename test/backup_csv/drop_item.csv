@@ -1,1 +1,3 @@
 id,itemId,probability,relatedPartType,relatedPartInfo,breakRewardType,dropById
+defaultDropItemCrystalId,defaultItemWeaponCrystalAId,0,A,"",None,defaultMobId
+defaultDropItemWeaponId,defaultItemWeaponId,0,A,"",None,defaultMobId

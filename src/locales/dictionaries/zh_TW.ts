@@ -400,21 +400,6 @@ const enums: DataEnums = {
   combo: {},
   simulator: {},
   team: {},
-  _armorTocrystal: undefined,
-  _avatarTocharacter: undefined,
-  _BackRelation: undefined,
-  _campA: undefined,
-  _campB: undefined,
-  _characterToconsumable: undefined,
-  _crystalTooption: undefined,
-  _crystalToplayer_armor: undefined,
-  _crystalToplayer_option: undefined,
-  _crystalToplayer_special: undefined,
-  _crystalToplayer_weapon: undefined,
-  _crystalTospecial: undefined,
-  _crystalToweapon: undefined,
-  _FrontRelation: undefined,
-  _mobTozone: undefined
 };
 
 const dictionary: dictionary = {
@@ -1039,40 +1024,40 @@ const dictionary: dictionary = {
       selfName: "地点",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "地址的資料庫ID。通常不會顯示。",
+          formFieldDescription: "地址的資料庫ID。如果需要輸入，請向開發者報告。",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名稱",
+          tableFieldDescription: "地址的名稱，通常與遊戲內一致。",
+          formFieldDescription: "請按照遊戲內顯示的名稱填寫。",
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "類型",
+          tableFieldDescription: "地址的類型。分為普通地址和限時地址。",
+          formFieldDescription: "請選擇地址的類型。",
           enumMap: {
-            Normal: "",
-            Limited: "",
+            Normal: "普通地址",
+            Limited: "限時地址",
           },
         },
         posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "X座標",
+          tableFieldDescription: "地址的X座標。",
+          formFieldDescription: "請輸入地址的X座標。",
         },
         posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "Y座標",
+          tableFieldDescription: "地址的Y座標。",
+          formFieldDescription: "請輸入地址的Y座標。",
         },
         worldId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所屬世界",
+          tableFieldDescription: "地址所屬世界的ID。",
+          formFieldDescription: "請選擇地址所屬的世界。",
         },
-      },
+      } ,
       description: ""
     },
     armor: {
@@ -3026,37 +3011,41 @@ const dictionary: dictionary = {
       selfName: "區域",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "區域的唯一識別符",
+          formFieldDescription: "區域的唯一識別符，由系統自動生成"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名稱",
+          tableFieldDescription: "區域的名稱",
+          formFieldDescription: "請輸入區域的名稱"
         },
         linkZone: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "連結區域",
+          tableFieldDescription: "與此區域相連的其他區域",
+          formFieldDescription: "選擇與此區域相連的其他區域"
         },
         rewardNodes: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "獎勵節點數",
+          tableFieldDescription: "區域內的獎勵節點數量",
+          formFieldDescription: "請輸入區域內的獎勵節點數量"
         },
         activityId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "活動ID",
+          tableFieldDescription: "此區域所屬的活動ID",
+          formFieldDescription: "選擇此區域所屬的活動"
         },
         addressId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "地圖ID",
+          tableFieldDescription: "此區域所屬的地圖ID",
+          formFieldDescription: "選擇此區域所屬的地圖"
+        }
       },
-      description: ""
+      cardFields: {
+        mobs: "出現的怪物",
+        npcs: "出現的NPC"
+      },
+      description: "遊戲中的區域資訊，包含名稱、連結區域、獎勵節點等"
     },
   },
   enums: enums,

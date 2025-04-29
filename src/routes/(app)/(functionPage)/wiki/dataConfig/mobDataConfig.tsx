@@ -10,6 +10,9 @@ import { Input } from "~/components/controls/input";
 import { z, ZodObject, ZodSchema } from "zod";
 import { DB, mob } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
+import { DBDataRender } from "~/components/module/dbDataRender";
+import { Button } from "~/components/controls/button";
+import { getDB } from "~/repositories/database";
 
 const columnHelper = createColumnHelper<Mob["MainForm"]>();
 
@@ -385,37 +388,89 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
   },
   card: {
     dataFetcher: findMobById,
-    deepHiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
-    fieldGenerator: (key, value, dictionary) => {
+    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+      const [zoneData] = createResource(data.id, async (mobId) => {
+        const db = await getDB();
+        return await db
+          .selectFrom("zone")
+          .innerJoin("_mobTozone", "zone.id", "_mobTozone.B")
+          .where("_mobTozone.A", "=", mobId)
+          .selectAll("zone")
+          .execute();
+      });
+
+      const [dropItemData] = createResource(data.id, async (mobId) => {
+        const db = await getDB();
+        return await db
+          .selectFrom("drop_item")
+          .innerJoin("item", "item.id", "drop_item.itemId")
+          .where("drop_item.dropById", "=", mobId)
+          .selectAll("item")
+          .execute();
+      });
+
       return (
-        <div class="Field flex gap-2">
-          <span class="text-main-text-color">{dictionary.fields[key].key}</span>:
-          <span class="font-bold">{value?.toString()}</span>
-        </div>
+        <>
+          <div class="MobImage bg-area-color h-[18vh] w-full rounded"></div>
+          {DBDataRender<"mob">({
+            data,
+            dictionary: dictionary,
+            dataSchema: mobCardSchema as ZodObject<{ [K in keyof Awaited<ReturnType<typeof findMobById>>]: ZodSchema }>,
+            hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+            fieldGroupMap: {
+              常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
+              战斗属性: [
+                "initialElement",
+                "physicalDefense",
+                "physicalResistance",
+                "magicalDefense",
+                "magicalResistance",
+                "criticalResistance",
+                "avoidance",
+                "block",
+                "dodge",
+                "normalAttackResistanceModifier",
+                "physicalAttackResistanceModifier",
+                "magicalAttackResistanceModifier",
+              ],
+              额外说明: ["details"],
+              怪物行为: ["actions"],
+              词条信息: ["dataSources"],
+            },
+          })}
+
+          <section class="FieldGroup gap-2 w-full">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.belongToZones ?? "出现的区域"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={zoneData.latest}>
+                <For each={zoneData.latest}>
+                  {(zone) => {
+                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+          <section class="FieldGroup gap-2 w-full">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.dropItems ?? "掉落物品"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={dropItemData.latest}>
+                <For each={dropItemData.latest}>
+                  {(item) => {
+                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }])}>{item.name}</Button>;
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+        </>
       );
-    },
-    dataSchema: mobCardSchema as ZodObject<{ [K in keyof Awaited<ReturnType<typeof findMobById>>]: ZodSchema }>,
-    fieldGroupMap: {
-      常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
-      战斗属性: [
-        "initialElement",
-        "physicalDefense",
-        "physicalResistance",
-        "magicalDefense",
-        "magicalResistance",
-        "criticalResistance",
-        "avoidance",
-        "block",
-        "dodge",
-        "normalAttackResistanceModifier",
-        "physicalAttackResistanceModifier",
-        "magicalAttackResistanceModifier",
-      ],
-      出现的区域: ["belongToZones"],
-      掉落道具: ["dropItems"],
-      额外说明: ["details"],
-      怪物行为: ["actions"],
-      词条信息: ["dataSources", "statistic"],
     },
   },
 };

@@ -1,1 +1,2 @@
 id,lv,name,type,description,npcId
+defaultTaskId,0,defaultTask,Collect,默认任务（缺省值）,defaultNpcId

@@ -333,21 +333,6 @@ const enums:DataEnums = {
   combo: {},
   simulator: {},
   team: {},
-  _armorTocrystal: undefined,
-  _avatarTocharacter: undefined,
-  _BackRelation: undefined,
-  _campA: undefined,
-  _campB: undefined,
-  _characterToconsumable: undefined,
-  _crystalTooption: undefined,
-  _crystalToplayer_armor: undefined,
-  _crystalToplayer_option: undefined,
-  _crystalToplayer_special: undefined,
-  _crystalToplayer_weapon: undefined,
-  _crystalTospecial: undefined,
-  _crystalToweapon: undefined,
-  _FrontRelation: undefined,
-  _mobTozone: undefined
 }
 
 const dictionary: dictionary = {
@@ -972,43 +957,46 @@ const dictionary: dictionary = {
     },
     address: {
       selfName: "アドレス",
+      description: "ゲーム内の特定の場所",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "ID",
+          tableFieldDescription: "アドレスのデータベースIDです。通常は表示されません。",
+          formFieldDescription: "アドレスのデータベースIDです。入力が必要な場合は開発者に報告してください。",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "名前",
+          tableFieldDescription: "アドレスの名前は、通常ゲーム内と一致します。",
+          formFieldDescription: "アドレスの名前をゲーム内と同じように記載してください。",
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "タイプ",
+          tableFieldDescription: "アドレスのタイプを表します。通常アドレスと期間限定アドレスがあります。",
+          formFieldDescription: "アドレスのタイプを選択してください。",
           enumMap: {
-            Normal: "",
-            Limited: ""
+            Normal: "通常アドレス",
+            Limited: "期間限定アドレス"
           }
         },
         posX: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "X座標",
+          tableFieldDescription: "アドレスのX座標です。",
+          formFieldDescription: "アドレスのX座標を入力してください。",
         },
         posY: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "Y座標",
+          tableFieldDescription: "アドレスのY座標です。",
+          formFieldDescription: "アドレスのY座標を入力してください。",
         },
         worldId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          key: "所属ワールド",
+          tableFieldDescription: "アドレスが所属するワールドのIDです。",
+          formFieldDescription: "アドレスが所属するワールドを選択してください。",
+        },
       },
-      description: ""
+      cardFields: {
+        zones: "包含する区域",
+      },
     },
     armor: {
       selfName: "防具",
@@ -1828,24 +1816,27 @@ const dictionary: dictionary = {
     },
     npc: {
       selfName: "NPC",
+      description: "ゲーム内の非プレイヤーキャラクター",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "ID",
+          tableFieldDescription: "NPCのデータベースIDです。通常は表示されません。",
+          formFieldDescription: "NPCのデータベースIDです。入力が必要な場合は開発者に報告してください。",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "名前",
+          tableFieldDescription: "NPCの名前は、通常ゲーム内と一致します。",
+          formFieldDescription: "NPCの名前をゲーム内と同じように記載してください。",
         },
         zoneId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          key: "所属ゾーン",
+          tableFieldDescription: "NPCが所属するゾーンのIDです。",
+          formFieldDescription: "NPCが所属するゾーンを選択してください。",
+        },
       },
-      description: ""
+      cardFields: {
+        tasks: "提供するクエスト",
+      },
     },
     option: {
       selfName: "追加装備",
@@ -2961,39 +2952,43 @@ const dictionary: dictionary = {
       selfName: "ゾーン",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "ID",
+          tableFieldDescription: "ゾーンの一意の識別子",
+          formFieldDescription: "ゾーンの一意の識別子、システムによって自動生成されます"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "名前",
+          tableFieldDescription: "ゾーンの名前",
+          formFieldDescription: "ゾーンの名前を入力してください"
         },
         linkZone: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "リンクゾーン",
+          tableFieldDescription: "このゾーンに接続されている他のゾーン",
+          formFieldDescription: "このゾーンに接続されている他のゾーンを選択してください"
         },
         rewardNodes: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "報酬ノード数",
+          tableFieldDescription: "ゾーン内の報酬ノードの数",
+          formFieldDescription: "ゾーン内の報酬ノードの数を入力してください"
         },
         activityId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "アクティビティID",
+          tableFieldDescription: "このゾーンが属するアクティビティのID",
+          formFieldDescription: "このゾーンが属するアクティビティを選択してください"
         },
         addressId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "マップID",
+          tableFieldDescription: "このゾーンが属するマップのID",
+          formFieldDescription: "このゾーンが属するマップを選択してください"
         }
       },
-      description: ""
+      cardFields: {
+        mobs: "出現するモンスター",
+        npcs: "出現するNPC"
+      },
+      description: "ゲーム内のゾーン情報、名前、リンクゾーン、報酬ノードなどを含みます"
     }
-  },
+    },
   enums: enums,
 };
 

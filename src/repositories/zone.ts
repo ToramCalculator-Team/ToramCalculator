@@ -35,6 +35,16 @@ export async function findZoneById(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+export async function findZonesByMobId(mobId: string) {
+  const db = await getDB();
+  return await db
+    .selectFrom("zone")
+    .innerJoin("_mobTozone", "zone.id", "_mobTozone.B")
+    .where("_mobTozone.A", "=", mobId)
+    .selectAll("zone")
+    .execute();
+}
+
 export async function findZones() {
   const db = await getDB();
   return await db.selectFrom("zone").selectAll("zone").execute();

@@ -1,5 +1,5 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { createSignal, JSX, Show } from "solid-js";
+import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { defaultSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
 import { DataEnums } from "~/../db/dataEnums";
@@ -8,6 +8,9 @@ import { skill_effectSchema, skillSchema, statisticSchema } from "~/../db/zod";
 import { skill } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { z, ZodObject, ZodSchema } from "zod";
+import { getDB } from "~/repositories/database";
+import { DBDataRender } from "~/components/module/dbDataRender";
+import { Button } from "~/components/controls/button";
 
 export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"]> = {
   table: {
@@ -70,9 +73,7 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"]> = {
             fallback={tdContent()}
           >
             {"enumMap" in props.dictionary.fields[columnId]
-              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof skill>).enumMap[
-                  props.cell.getValue()
-                ]
+              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof skill>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -96,24 +97,61 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"]> = {
   },
   card: {
     dataFetcher: findSkillById,
-    deepHiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
-    fieldGenerator: (key, value, dictionary) => {
+    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+      const [skillEffectData] = createResource(data.id, async (skillId) => {
+        const db = await getDB();
+        return await db
+          .selectFrom("skill_effect")
+          .innerJoin("skill", "skill.id", "skill_effect.belongToskillId")
+          .where("skill.id", "=", skillId)
+          .selectAll("skill_effect")
+          .execute();
+      });
+
       return (
-        <div class="Field flex gap-2">
-          <span class="text-main-text-color">{dictionary.fields[key].key}</span>:
-          <span class="font-bold">{value?.toString()}</span>
-        </div>
+        <>
+          <div class="MobImage bg-area-color h-[18vh] w-full rounded"></div>
+          {DBDataRender<"skill">({
+            data,
+            dictionary: dictionary,
+            dataSchema: skillSchema.extend({
+              statistic: statisticSchema,
+              effects: z.array(skill_effectSchema),
+            }),
+            hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+            fieldGroupMap: {
+              基本信息: ["name", "treeType", "tier", "posX", "posY"],
+              技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
+              数据来源: ["dataSources"],
+              技能效果: ["details"],
+            },
+          })}
+
+          <section class="FieldGroup gap-2 w-full">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.effects ?? "技能效果"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={skillEffectData.latest}>
+                <For each={skillEffectData.latest}>
+                  {(effect) => {
+                    return (
+                      <Button
+                        onClick={() =>
+                          appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }])
+                        }
+                      >
+                        {effect.condition}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+        </>
       );
-    },
-    dataSchema: skillSchema.extend({
-      statistic: statisticSchema,
-      effects: z.array(skill_effectSchema),
-    }),
-    fieldGroupMap: {
-      基本信息: ["name", "treeType", "tier", "posX", "posY"],
-      技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
-      数据来源: ["dataSources"],
-      技能效果: ["details"],
     },
   },
 };

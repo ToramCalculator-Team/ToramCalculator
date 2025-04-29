@@ -401,36 +401,6 @@ const enums: DataEnums = {
   combo: {},
   simulator: {},
   team: {},
-  _armorTocrystal: undefined,
-  _avatarTocharacter: undefined,
-  _BackRelation: undefined,
-  _campA: undefined,
-  _campB: undefined,
-  _characterToconsumable: undefined,
-  _crystalTooption: undefined,
-  _crystalToplayer_armor: undefined,
-  _crystalToplayer_option: undefined,
-  _crystalToplayer_special: undefined,
-  _crystalToplayer_weapon: undefined,
-  _crystalTospecial: undefined,
-  _crystalToweapon: undefined,
-  _FrontRelation: undefined,
-  _mobTozone: {
-    selfName: "怪物-区域关联",
-    fields: {
-      A: {
-        key: "怪物ID",
-        tableFieldDescription: "",
-        formFieldDescription: ""
-      },
-      B: {
-        key: "区域ID",
-        tableFieldDescription: "",
-        formFieldDescription: ""
-      }
-    },
-    description: "记录怪物和区域之间的关联关系"
-  },
 };
 
 const dictionary: dictionary = {
@@ -1914,7 +1884,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         name: {
-          key: "",
+          key: "名称",
           tableFieldDescription: "",
           formFieldDescription: "",
         },
@@ -2993,37 +2963,41 @@ const dictionary: dictionary = {
       selfName: "区域",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "区域的唯一标识符",
+          formFieldDescription: "区域的唯一标识符，由系统自动生成"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "区域的名称",
+          formFieldDescription: "请输入区域的名称"
         },
         linkZone: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "链接区域",
+          tableFieldDescription: "与该区域相连的其他区域",
+          formFieldDescription: "选择与该区域相连的其他区域"
         },
         rewardNodes: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "道具点数量",
+          tableFieldDescription: "区域内的道具点数量",
+          formFieldDescription: "请输入区域内的道具点数量"
         },
         activityId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属活动ID",
+          tableFieldDescription: "该区域所属的活动ID",
+          formFieldDescription: "选择该区域所属的活动"
         },
         addressId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "所属地图ID",
+          tableFieldDescription: "该区域所属的地图ID",
+          formFieldDescription: "选择该区域所属的地图"
+        }
       },
-      description: ""
+      cardFields: {
+        mobs: "出现的怪物",
+        npcs: "出现的NPC"
+      },
+      description: "游戏中的区域信息，包括名称、链接区域、道具点等信息"
     },
   },
   enums: enums,

@@ -111,8 +111,14 @@ worker({
     const worldShape = await syncTable("world", ["id"]);
     const addressShape = await syncTable("address", ["id"]);
     const zoneShape = await syncTable("zone", ["id"])
+    const npcShape = await syncTable("npc", ["id"]);
+    const taskShape = await syncTable("task", ["id"]);
+    const taskKillRequirementShape = await syncTable("task_kill_requirement", ["id"]);
+    const taskCollectRequireShape = await syncTable("task_collect_require", ["id"]);
+    const taskRewardShape = await syncTable("task_reward", ["id"]);
     const mobToZoneShape = await syncTable("_mobTozone", ["A", "B"], `"_mobTozone"`);
     const mobShape = await syncTable("mob", ["id"]);
+    const dropItemShape = await syncTable("drop_item", ["id"]);
     const itemShape = await syncTable("item", ["id"]);
     const weaponShape = await syncTable("weapon", ["itemId"]);
     const armorShape = await syncTable("armor", ["itemId"]);
