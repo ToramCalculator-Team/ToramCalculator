@@ -6,16 +6,16 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 
 ### ✨ 核心功能
 
-- 队伍配置优化
-- 战斗过程模拟
-- 逐帧数据分析
-- 数据可视化展示
-- 配置分享功能
-- 内置游戏 Wiki 库
+- 🎮 队伍配置优化
+- ⚔️ 战斗过程模拟
+- 📊 逐帧数据分析
+- 📈 数据可视化展示
+- 🔗 配置分享功能
+- 📚 内置游戏 Wiki 库
 
 ### 🌐 项目地址
 
-https://app.kiaclouth.com
+🔗 [https://app.kiaclouth.com](https://app.kiaclouth.com)
 
 ## 🏗️ 技术架构
 
@@ -64,68 +64,112 @@ https://app.kiaclouth.com
 
 | 类型 | 说明 |
 |------|------|
-| feat | 新增功能 |
-| fix | bug 修复 |
-| docs | 文档更新 |
-| style | 代码格式修改（不影响逻辑） |
-| refactor | 代码重构 |
-| perf | 性能优化 |
-| test | 测试相关 |
-| build | 构建系统修改 |
-| ci | CI 配置修改 |
-| chore | 其他修改 |
-| revert | 回滚提交 |
+| ✨ feat | 新增功能 |
+| 🐛 fix | bug 修复 |
+| 📝 docs | 文档更新 |
+| 💄 style | 代码格式修改（不影响逻辑） |
+| 🔨 refactor | 代码重构 |
+| ⚡️ perf | 性能优化 |
+| ✅ test | 测试相关 |
+| 📦 build | 构建系统修改 |
+| 🔧 ci | CI 配置修改 |
+| 🎫 chore | 其他修改 |
+| ⏪ revert | 回滚提交 |
 
 ## 🚀 开发指南
 
 ### 环境要求
-- Docker
-- Node.js
-- tsx
+- 🐳 Docker
+- 📦 Node.js
+- 🔧 tsx
 
 ### 首次开发/架构变更流程
 
 当首次开发项目或数据架构发生变化时，需要执行以下完整流程：
 
-0. 根据.env.example项目根目录下创建.env文件
+1. **环境准备**
+   ```bash
+   # 复制环境变量文件
+   cp .env.example .env
+   ```
 
-1. 安装依赖
-```bash
-pnpm install
-```
+2. **安装依赖**
+   ```bash
+   pnpm install
+   ```
 
-2. 执行完整初始化
-```bash
-pnpm dev:init
-```
+3. **执行完整初始化**
+   ```bash
+   pnpm dev:init
+   ```
+   这个命令会执行以下步骤：
+   1. 生成客户端和服务端数据模型
+   2. 启动 docker，使用 prisma 初始化 docker 中 postgresql 的数据架构
+   3. 根据 docker 中 postgresql 的数据架构生成 sql
+   4. 解析 sql 并加工成客户端数据库架构
+   5. 生成开发所需的 ts 类型
 
-3. 访问数据库管理界面（可选）
-```bash
-pnpm db:studio
-```
+4. **访问数据库管理界面**（可选）
+   ```bash
+   pnpm db:studio
+   ```
 
 ### 日常开发流程
 
 日常开发时，只需执行以下步骤：
 
-1. 设置开发环境（重置并启动数据库，初始化数据库架构，然后还原数据）
-```bash
-pnpm dev:setup
-```
+1. **设置开发环境**
+   ```bash
+   pnpm dev:setup
+   ```
+   这个命令会：
+   - 清除 docker 的缓存数据，重新启动 docker
+   - 使用 prisma 初始化 docker 中 postgresql 的数据架构
+   - 将 test/db-csv 文件夹下的内容填充进 docker 的 postgresql 中
 
-2. 启动开发服务器
-```bash
-pnpm dev
-```
+2. **启动开发服务器**
+   ```bash
+   pnpm dev
+   ```
 
 ### 生产环境部署
 
-1. 构建生产版本
-```bash
-pnpm build
-```
+1. **构建生产版本**
+   ```bash
+   pnpm build
+   ```
 
-2. 启动生产服务
-```bash
-pnpm start
-```
+2. **启动生产服务**
+   ```bash
+   pnpm start
+   ```
+
+## 数据库架构生成流程
+
+1. **生成数据模型**
+   ```bash
+   tsx db/generator.js
+   ```
+   生成的文件：
+   - `db/clientDB/schema.prisma`：客户端数据模型
+   - `db/serverDB/schema.prisma`：服务端数据模型
+   - `db/dataEnums.ts`：枚举类型定义
+
+2. **初始化服务端数据库**
+   ```bash
+   cd db/serverDB
+   npx prisma generate
+   npx prisma db push
+   ```
+
+3. **生成 SQL 文件**
+   ```bash
+   npx prisma db pull --print > schema.sql
+   ```
+
+4. **生成客户端数据库架构**
+   - 解析生成的 SQL 文件
+   - 转换为客户端可用的数据库架构
+   - 生成客户端数据库初始化代码
+
+> ⚠️ 注意：每次修改 `db/baseSchema.prisma` 或 `db/enums.ts` 后，都需要重新执行上述流程。

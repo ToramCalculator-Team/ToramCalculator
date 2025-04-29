@@ -3,8 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "dev:setup": "pnpm backend:down && docker compose --env-file .env -f ./backend/docker-compose.yaml up -d && sleep 5 && pnpm db:init && pnpm db:restore",
-    "dev:init": "pnpm generate:schema && pnpm db:init && pnpm generate:client-ddl && node db/clientDB/ddl_transform.js && pnpm generate:type",
+    "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:init && pnpm db:restore",
+    "dev:init": "pnpm generate:schema && pnpm backend:up -d && pnpm db:init && pnpm generate:client-ddl && node db/clientDB/ddl_transform.js && pnpm generate:type",
 
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",

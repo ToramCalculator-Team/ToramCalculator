@@ -83,10 +83,11 @@ worker({
         console.log(`已应用迁移: ${migration.name}`);
       }
     }
+    
 
     const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
       const tableParams = urlParams ?? tableName;
-      // console.log(tableParams)
+      console.log("tableParams:",tableParams)
       pg.electric.syncShapeToTable({
         shape: {
           url: ELECTRIC_HOST,
@@ -98,6 +99,9 @@ worker({
         shapeKey: `${tableName}s`,
         primaryKey: primaryKey,
         onInitialSync: () => notifySyncProgress(tableName),
+        onMustRefetch: async (tx) => {
+          await tx.exec(`DELETE FROM "${tableName}_synced";`);
+        }
       });
     };
 
