@@ -32,6 +32,7 @@ import { getDB } from "~/repositories/database";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { DBDataConfig } from "./dataConfig/dataConfig";
 
+// 弹出层装饰花纹
 const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
   return (
     <svg width="44" height="47" viewBox="0 0 44 47" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
