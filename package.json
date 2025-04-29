@@ -3,10 +3,10 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "dev:setup": "pnpm backend:down && pnpm backend:up && sleep 5 && pnpm db:init && pnpm db:restore",
+    "dev:setup": "pnpm backend:down && docker compose --env-file .env -f ./backend/docker-compose.yaml up -d && sleep 5 && pnpm db:init && pnpm db:restore",
     "dev:init": "pnpm generate:schema && pnpm db:init && pnpm generate:client-ddl && node db/clientDB/ddl_transform.js && pnpm generate:type",
 
-    "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up -d && sleep 5",
+    "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
     "db:studio": "prisma studio --schema=db/serverDB/schema.prisma",
