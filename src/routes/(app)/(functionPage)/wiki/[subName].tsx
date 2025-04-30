@@ -134,11 +134,9 @@ export default function WikiSubPage() {
   const [tableName, setTableName] = createSignal<keyof DB>();
   const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>();
 
-  const [virtualTable, setVirtualTable] = createSignal<JSX.Element>();
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
   // form
-  const [form, setForm] = createSignal<JSX.Element>();
   const [formSheetIsOpen, setFormSheetIsOpen] = createSignal(false);
 
   // table
@@ -152,27 +150,21 @@ export default function WikiSubPage() {
   const [cardGroupIsOpen, setCardGroupIsOpen] = createSignal(false);
   const [cachedCardDatas, setCachedCardDatas] = createSignal<object[]>([]);
 
-  const [cardDatas, { refetch: refetchCardDatas }] = createResource<object[], { type: keyof DB; id: string }[]>(
-    cardTypeAndIds,
-    async (typeAndIds) => {
+  // 获取新数据并更新缓存
+  createResource(
+    () => cardTypeAndIds().slice(cachedCardDatas().length),
+    async (newItems) => {
+      if (newItems.length === 0) return;
       const db = await getDB();
       const results: object[] = [];
-      // 只获取新增的数据
-      const newItems = typeAndIds.slice(cachedCardDatas().length);
       for (const { type, id } of newItems) {
         const result = await db.selectFrom(type).where("id", "=", id).selectAll(type).executeTakeFirstOrThrow();
         results.push(result);
       }
-      // 更新缓存
       setCachedCardDatas((prev) => [...prev, ...results]);
-      return cachedCardDatas();
     },
   );
 
-  // 使用 createMemo 缓存计算结果
-  const memoizedCardDatas = createMemo<object[]>(() => cachedCardDatas());
-
-  // 添加一个 effect 来同步 cardTypeAndIds 和 cachedCardDatas
   createEffect(
     on(cardTypeAndIds, (newIds) => {
       // 如果 cardTypeAndIds 长度小于 cachedCardDatas，说明有数据被删除
@@ -201,39 +193,6 @@ export default function WikiSubPage() {
           setDataConfig(DBDataConfig[wikiType]);
           const validDataConfig = dataConfig();
           if (validDataConfig) {
-            setVirtualTable(
-              VirtualTable({
-                dataFetcher: validDataConfig.table.dataFetcher,
-                columnsDef: validDataConfig.table.columnDef,
-                hiddenColumnDef: validDataConfig.table.hiddenColumnDef,
-                tdGenerator: validDataConfig.table.tdGenerator,
-                defaultSort: validDataConfig.table.defaultSort,
-                globalFilterStr: tableGlobalFilterStr,
-                dictionary: dictionary().db[wikiType],
-                columnVisibility: tableColumnVisibility(),
-                onColumnVisibilityChange: (updater) => {
-                  if (typeof updater === "function") {
-                    setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
-                  } else {
-                    setTableColumnVisibility(() => updater);
-                  }
-                },
-                columnHandleClick: (id) => {
-                  setCardTypeAndIds((pre) => [...pre, { type: wikiType, id }]);
-                  setCardGroupIsOpen(true);
-                },
-              }),
-            );
-            setForm(
-              Form({
-                data: validDataConfig.form.data,
-                dataSchema: validDataConfig.form.dataSchema,
-                hiddenFields: validDataConfig.form.hiddenFields,
-                fieldGenerator: validDataConfig.form.fieldGenerator,
-                title: dictionary().db[wikiType].selfName,
-                dictionary: dictionary().db[wikiType],
-              }),
-            );
           }
         } else {
           navigate(`/404`);
@@ -318,6 +277,8 @@ export default function WikiSubPage() {
       ],
     },
   ];
+
+  const [tableRefetch, setTableRefetch] = createSignal<() => void>();
 
   onMount(() => {
     console.log(`--Wiki Page Mount`);
@@ -466,7 +427,28 @@ export default function WikiSubPage() {
                       }}
                     />
                   </div>
-                  {virtualTable()}
+                  {VirtualTable({
+                    dataFetcher: validDataConfig().table.dataFetcher,
+                    columnsDef: validDataConfig().table.columnDef,
+                    hiddenColumnDef: validDataConfig().table.hiddenColumnDef,
+                    tdGenerator: validDataConfig().table.tdGenerator,
+                    defaultSort: validDataConfig().table.defaultSort,
+                    globalFilterStr: tableGlobalFilterStr,
+                    dictionary: dictionary().db[validTableName()],
+                    columnVisibility: tableColumnVisibility(),
+                    onColumnVisibilityChange: (updater) => {
+                      if (typeof updater === "function") {
+                        setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
+                      } else {
+                        setTableColumnVisibility(() => updater);
+                      }
+                    },
+                    columnHandleClick: (id) => {
+                      setCardTypeAndIds((pre) => [...pre, { type: validTableName(), id }]);
+                      setCardGroupIsOpen(true);
+                    },
+                    onRefetch: (refetch) => setTableRefetch(() => refetch),
+                  })}
                 </div>
                 <Presence exitBeforeEnter>
                   <Show when={!isTableFullscreen()}>
@@ -548,7 +530,20 @@ export default function WikiSubPage() {
               </Presence>
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
-                  {form()}
+                  {Form({
+                    data: validDataConfig().form.data,
+                    dataSchema: validDataConfig().form.dataSchema,
+                    hiddenFields: validDataConfig().form.hiddenFields,
+                    fieldGenerator: validDataConfig().form.fieldGenerator,
+                    title: dictionary().db[validTableName()].selfName,
+                    dictionary: dictionary().db[validTableName()],
+                    onSubmit: async (data) => {
+                      await validDataConfig().form.onSubmit?.(data);
+                      const refetch = tableRefetch();
+                      if (refetch) refetch();
+                      setFormSheetIsOpen(false);
+                    },
+                  })}
                 </Sheet>
               </Portal>
 
@@ -562,7 +557,7 @@ export default function WikiSubPage() {
                       class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
                       onClick={() => setCardTypeAndIds((pre) => pre.slice(0, -1))}
                     >
-                      <For each={memoizedCardDatas()}>
+                      <For each={cachedCardDatas()}>
                         {(cardData, index) => {
                           if (!cardData) return null;
                           return (
@@ -570,13 +565,13 @@ export default function WikiSubPage() {
                               animate={{
                                 transform: [
                                   `rotate(0deg)`,
-                                  `rotate(${(memoizedCardDatas().length - 1 - index()) * 2}deg)`,
+                                  `rotate(${(cachedCardDatas().length - 1 - index()) * 2}deg)`,
                                 ],
                                 opacity: [0, 1],
                               }}
                               exit={{
                                 transform: [
-                                  `rotate(${(memoizedCardDatas().length - 1 - index()) * 2}deg)`,
+                                  `rotate(${(cachedCardDatas().length - 1 - index()) * 2}deg)`,
                                   `rotate(0deg)`,
                                 ],
                                 opacity: [1, 0],

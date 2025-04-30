@@ -1,8 +1,8 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultZone, findZoneById, findZones, Zone } from "~/repositories/zone";
-import { DBdataDisplayConfig } from "../utils";
+import { createZone, defaultZone, findZoneById, findZones, Zone } from "~/repositories/zone";
+import { DBdataDisplayConfig, fieldInfo } from "../utils";
 import { zoneSchema } from "~/../db/zod";
 import { DB, zone } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -10,6 +10,9 @@ import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { findAddresses } from "~/repositories/address";
 
 export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
   table: {
@@ -90,8 +93,42 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
       let inputClass = defaultInputClass;
       let labelSizeClass = defaultLabelSizeClass;
       switch (key) {
+        case "addressId":
+          const [addresses] = createResource(async () => {
+            const addresses = await findAddresses();
+            return addresses.map(addr => ({
+              label: addr.name,
+              value: addr.id
+            }));
+          });
+
+          return (
+            <Autocomplete
+              title={dictionary.fields[key].key}
+              description={dictionary.fields[key].formFieldDescription}
+              state={{
+                value: field().state.value as string,
+                setValue: (value: string) => field().setValue(value),
+                error: fieldInfo(field())
+              }}
+              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+              optionsFetcher={async (search) => {
+                const cachedAddresses = addresses();
+                if (!cachedAddresses) return [];
+                return cachedAddresses.filter(addr => 
+                  addr.label.toLowerCase().includes(search.toLowerCase())
+                );
+              }}
+            />
+          )
       }
       return false;
+    },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const zone = await db.transaction().execute(async (trx) => {
+        return await createZone(trx, data);
+      });
     },
   },
   card: {

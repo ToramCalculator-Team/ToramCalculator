@@ -49,6 +49,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   columnHandleClick: (id: string) => void;
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  onRefetch?: (refetch: () => void) => void;
 }) {
   //   const start = performance.now();
   //   console.log("virtualTable start", start);
@@ -61,6 +62,11 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = createSignal("");
   const debounceSetGlobalFilter = debounce((value: string) => setGlobalFilter(value), 500);
+
+  // 暴露 refetch 方法
+  createEffect(() => {
+    props.onRefetch?.(refetchData);
+  });
 
   // 过滤字符串
   createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));

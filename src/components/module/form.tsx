@@ -57,6 +57,9 @@ export const Form = <T extends Record<string, unknown>>(props: {
     onSubmit: async ({ value }) => {
       if (props.onSubmit) {
         props.onSubmit(value);
+      } else {
+        console.log("onSubmit is not defined");
+        console.log("value:", value);
       }
     },
     // validatorAdapter: zodValidator,

@@ -26,7 +26,6 @@ export interface syncMessage {
 }
 
 const notifySyncProgress = (tableName: keyof DB) => {
-  console.log(tableName + "已同步完成");
   self.postMessage({
     type: "sync",
     data: {
@@ -87,7 +86,6 @@ worker({
 
     const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
       const tableParams = urlParams ?? tableName;
-      console.log("tableParams:",tableParams)
       pg.electric.syncShapeToTable({
         shape: {
           url: ELECTRIC_HOST,
@@ -162,6 +160,7 @@ worker({
     const teamShape = await syncTable("team", ["id"]);
     const simulatorShape = await syncTable("simulator", ["id"]);
     // console.log("PGliteWorker初始化完成.....");
+    console.log("已同步完成");
 
     const writePathSync = new ChangeLogSynchronizer(pg)
     writePathSync.start()
