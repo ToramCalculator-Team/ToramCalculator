@@ -535,7 +535,7 @@ export default function WikiSubPage() {
                     dataSchema: validDataConfig().form.dataSchema,
                     hiddenFields: validDataConfig().form.hiddenFields,
                     fieldGenerator: validDataConfig().form.fieldGenerator,
-                    title: dictionary().db[validTableName()].selfName,
+                    title: dictionary().db[validTableName()].selfName + ":" + dictionary().ui.actions.upload,
                     dictionary: dictionary().db[validTableName()],
                     onSubmit: async (data) => {
                       await validDataConfig().form.onSubmit?.(data);

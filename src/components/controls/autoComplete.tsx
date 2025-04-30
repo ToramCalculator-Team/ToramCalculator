@@ -102,7 +102,7 @@ export function Autocomplete(props: AutocompleteProps) {
   };
 
   return (
-    <div class="relative">
+    <div class="">
       <Input
         title={props.title ?? ""}
         description={props.description}

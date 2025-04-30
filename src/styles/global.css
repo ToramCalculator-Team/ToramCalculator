@@ -1,8 +1,49 @@
-@keyframes scroll {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(-100%);
-  }
-} 
+* {
+  transition: all 150ms;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+.transitionColorNone * {
+  transition: all 0s !important;
+  transition-delay: 0s !important;
+}
+
+.transitionNone,
+.transitionNone * {
+  transition: none !important;
+  transition-delay: 0s !important;
+  animation: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+* {
+  outline-width: 2px;
+  outline-color: transparent;
+  outline-style: solid;
+  outline-offset: -2px;
+}
+
+*:focus-visible {
+  outline-color: rgb(var(--brand-1st));
+}
+
+/* 交互检测 */
+
+/* *:hover {
+  outline-color: rgb(var(--brand-3rd));
+}
+
+*:focus-visible {
+  background-color: red !important;
+  z-index: 9999;
+} */
+
