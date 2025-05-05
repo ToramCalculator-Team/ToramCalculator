@@ -7,16 +7,9 @@ interface AutocompleteOption {
   value: string;
 }
 
-interface AutocompleteProps {
-  title?: string;
-  description?: string;
-  state: {
-    value: string;
-    setValue: (value: string) => void;
-    error?: string;
-  };
-  class?: string;
+interface AutocompleteProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'onSelect'> {
   optionsFetcher: (search: string) => Promise<AutocompleteOption[]>;
+  onSelect?: (option: AutocompleteOption) => void;
 }
 
 export function Autocomplete(props: AutocompleteProps) {
@@ -26,7 +19,6 @@ export function Autocomplete(props: AutocompleteProps) {
   const [selectedIndex, setSelectedIndex] = createSignal(-1);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
   const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
-  const [displayText, setDisplayText] = createSignal("");
 
   // 处理点击外部关闭下拉框
   createEffect(() => {
@@ -82,7 +74,6 @@ export function Autocomplete(props: AutocompleteProps) {
   });
 
   const handleInput = async (value: string) => {
-    setDisplayText(value);
     setIsLoading(true);
     try {
       const fetchedOptions = await props.optionsFetcher(value);
@@ -96,28 +87,32 @@ export function Autocomplete(props: AutocompleteProps) {
   };
 
   const handleSelect = (option: AutocompleteOption) => {
-    setDisplayText(option.label);
-    props.state.setValue(option.value);
+    if (inputRef()) {
+      inputRef()!.value = option.label;
+      inputRef()!.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     setIsOpen(false);
+    inputRef()?.blur();
+    props.onSelect?.(option);
   };
 
   return (
-    <div class="">
-      <Input
-        title={props.title ?? ""}
-        description={props.description}
-        type="text"
-        state={props.state.error || null}
-        value={displayText()}
+    <div class="w-full relative">
+      <input
+        {...Object.fromEntries(Object.entries(props).filter(([key]) => key !== 'onSelect'))}
         onInput={(e) => handleInput(e.target.value)}
-        class={props.class}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          if (inputRef()?.value) {
+            setIsOpen(true);
+          }
+        }}
         ref={setInputRef}
+        class={`text-accent-color bg-area-color w-full rounded p-3`}
       />
-      <Show when={isOpen() && displayText().length > 0}>
+      <Show when={isOpen() && inputRef()?.value}>
         <div
           ref={setDropdownRef}
-          class="Options bg-primary-color border-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border py-1 shadow-lg"
+          class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 shadow-lg"
         >
           <Show when={!isLoading()} fallback={<div class="px-4 py-2 text-sm text-gray-500">加载中...</div>}>
             <Show
@@ -130,7 +125,11 @@ export function Autocomplete(props: AutocompleteProps) {
                     class={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
                       selectedIndex() === index() ? "bg-gray-100" : ""
                     }`}
-                    onClick={() => handleSelect(option)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelect(option);
+                    }}
                   >
                     {option.label}
                   </button>

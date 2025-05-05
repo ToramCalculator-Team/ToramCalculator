@@ -7,7 +7,7 @@ export type InputComponentType = "text" | "password" | "number" | "boolean" | "c
 
 // class属性将分配值label标签
 interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
-  title: string;
+  title?: string;
   description?: string;
   type?: InputComponentType;
   size?: Size;
@@ -45,14 +45,18 @@ export const Input = (props: InputProps) => {
           : `flex flex-1 flex-col items-start gap-2 p-2`
       }
     >
-      <div class="flex flex-col">
-        <span class="p-1">
-          <span>{props.title}</span>
-          &nbsp;&nbsp;
-          <span class="text-brand-color-3rd">{props.state}</span>
-        </span>
-        {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
-      </div>
+      <Show when={props.title}>
+        <div class="flex flex-col">
+          <span class="p-1">
+            <span>{props.title}</span>
+            &nbsp;&nbsp;
+            <span class="text-brand-color-3rd">{props.state}</span>
+          </span>
+          <Show when={props.description}>
+            {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
+          </Show>
+        </div>
+      </Show>
       <Show
         when={props.children}
         fallback={

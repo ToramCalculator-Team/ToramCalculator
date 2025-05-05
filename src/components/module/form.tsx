@@ -171,7 +171,70 @@ export const Form = <T extends Record<string, unknown>>(props: {
                   </form.Field>
                 );
               }
-              case ZodFirstPartyTypeKind.ZodArray:
+              case ZodFirstPartyTypeKind.ZodArray: {
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: props.dataSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => {
+                      // 非关系字段出现数组时，基本上只可能是字符串数组，因此断言
+                      const arrayValue = () => field().state.value as string[];
+                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
+                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      ) : (
+                        <Input
+                          title={props.dictionary.fields[fieldKey].key}
+                          description={props.dictionary.fields[fieldKey].formFieldDescription}
+                          state={fieldInfo(field())}
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        >
+                          <div class="ArrayBox w-full flex flex-col gap-2">
+                            <For each={arrayValue()}>
+                              {(item, index) => (
+                                <div class="flex items-center gap-2">
+                                  <div class="flex-1">
+                                    <Input
+                                      type="text"
+                                      value={item}
+                                      onChange={(e) => {
+                                        const newArray = [...arrayValue()];
+                                        newArray[index()] = e.target.value;
+                                        field().setValue(newArray as any);
+                                      }}
+                                      class="w-full p-0!"
+                                    />
+                                  </div>
+                                  <Button
+                                    onClick={() => {
+                                      const newArray = arrayValue().filter((_, i) => i !== index());
+                                      field().setValue(newArray as any);
+                                    }}
+                                  >
+                                    {dictionary().ui.actions.remove}
+                                  </Button>
+                                </div>
+                              )}
+                            </For>
+                            <Button
+                              onClick={() => {
+                                const newArray = [...arrayValue(), ""];
+                                field().setValue(newArray as any);
+                              }}
+                              class=" w-full"
+                            >
+                              {dictionary().ui.actions.add}
+                            </Button>
+                          </div>
+                        </Input>
+                      );
+                    }}
+                  </form.Field>
+                );
+              }
               case ZodFirstPartyTypeKind.ZodObject: {
                 return JSON.stringify(fieldValue, null, 2);
               }

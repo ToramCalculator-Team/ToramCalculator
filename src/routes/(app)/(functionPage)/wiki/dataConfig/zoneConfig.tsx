@@ -93,34 +93,101 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
       let inputClass = defaultInputClass;
       let labelSizeClass = defaultLabelSizeClass;
       switch (key) {
-        case "addressId":
+        case "linkZone": {
+          const arrayValue = () => field().state.value as string[];
+          const [zones] = createResource(async () => {
+            const addresses = await findZones();
+            return addresses.map((zone) => ({
+              label: zone.name,
+              value: zone.id,
+            }));
+          });
+          return (
+            <Input
+              title={dictionary.fields[key].key}
+              description={dictionary.fields[key].formFieldDescription}
+              state={fieldInfo(field())}
+              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+
+            >
+              <div class="ArrayBox flex w-full flex-col gap-2">
+                <For each={arrayValue()}>
+                  {(item, index) => (
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          onSelect={(option) => {
+                            const newArray = [...arrayValue()];
+                            newArray[index()] = option.value;
+                            field().setValue(newArray as any);
+                          }}
+                          value={(() => {
+                            const currentId = arrayValue()[index()];
+                            const cachedZones = zones();
+                            if (!cachedZones) return "";
+                            const zone = cachedZones.find(z => z.value === currentId);
+                            return zone?.label ?? "";
+                          })()}
+                          optionsFetcher={async (search) => {
+                            const cachedZones = zones();
+                            if (!cachedZones) return [];
+                            return cachedZones.filter((zone) =>
+                              zone.label.toLowerCase().includes(search.toLowerCase()),
+                            );
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newArray = arrayValue().filter((_, i) => i !== index());
+                          field().setValue(newArray as any);
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  )}
+                </For>
+                <Button
+                  onClick={() => {
+                    const newArray = [...arrayValue(), ""];
+                    field().setValue(newArray as any);
+                  }}
+                  class="w-full"
+                >
+                  +
+                </Button>
+              </div>
+            </Input>
+          );
+        }
+
+        case "addressId": {
           const [addresses] = createResource(async () => {
             const addresses = await findAddresses();
-            return addresses.map(addr => ({
+            return addresses.map((addr) => ({
               label: addr.name,
-              value: addr.id
+              value: addr.id,
             }));
           });
 
           return (
-            <Autocomplete
+            <Input
               title={dictionary.fields[key].key}
               description={dictionary.fields[key].formFieldDescription}
-              state={{
-                value: field().state.value as string,
-                setValue: (value: string) => field().setValue(value),
-                error: fieldInfo(field())
-              }}
+              state={fieldInfo(field())}
               class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-              optionsFetcher={async (search) => {
-                const cachedAddresses = addresses();
-                if (!cachedAddresses) return [];
-                return cachedAddresses.filter(addr => 
-                  addr.label.toLowerCase().includes(search.toLowerCase())
-                );
-              }}
-            />
-          )
+            >
+              <Autocomplete
+                optionsFetcher={async (search) => {
+                  const cachedAddresses = addresses();
+                  if (!cachedAddresses) return [];
+                  return cachedAddresses.filter((addr) => addr.label.toLowerCase().includes(search.toLowerCase()));
+                }}
+              />
+            </Input>
+          );
+        }
       }
       return false;
     },
@@ -146,11 +213,15 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
 
       const [npcData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
-        return await db
-          .selectFrom("npc")
-          .where("npc.zoneId", "=", zoneId)
-          .selectAll("npc")
-          .execute();
+        return await db.selectFrom("npc").where("npc.zoneId", "=", zoneId).selectAll("npc").execute();
+      });
+
+      const [linkZoneData] = createResource(data.linkZone, async (linkZone) => {
+        const db = await getDB();
+        if (!linkZone || linkZone.length === 0) return [];
+        const res = await db.selectFrom("zone").where("zone.id", "in", linkZone).selectAll("zone").execute();
+        console.log("linkZoneData", res);
+        return res
       });
 
       return (
@@ -162,11 +233,11 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
             dataSchema: zoneSchema,
             hiddenFields: ["id", "activityId", "addressId"],
             fieldGroupMap: {
-              基本信息: ["name", "linkZone", "rewardNodes"]
+              基本信息: ["name", "rewardNodes"],
             },
           })}
 
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.mobs ?? "出现的怪物"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -175,14 +246,18 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
               <Show when={mobData.latest}>
                 <For each={mobData.latest}>
                   {(mob) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }])}>{mob.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }])}>
+                        {mob.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>
             </div>
           </section>
 
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.npcs ?? "出现的NPC"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -191,7 +266,31 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
               <Show when={npcData.latest}>
                 <For each={npcData.latest}>
                   {(npc) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }])}>{npc.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }])}>
+                        {npc.name}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.linkZone ?? "连接的区域"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={linkZoneData.latest}>
+                <For each={linkZoneData.latest}>
+                  {(zone) => {
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
+                        {zone.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>
