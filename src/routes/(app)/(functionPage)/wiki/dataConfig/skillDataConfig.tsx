@@ -3,7 +3,7 @@ import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { defaultSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
 import { DataEnums } from "~/../db/dataEnums";
-import { DBdataDisplayConfig } from "../utils";
+import { DBdataDisplayConfig } from "./dataConfig";
 import { skill_effectSchema, skillSchema, statisticSchema } from "~/../db/zod";
 import { skill } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -12,7 +12,7 @@ import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
 
-export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"]> = {
+export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"]> = {
   table: {
     columnDef: [
       {
@@ -84,16 +84,7 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"]> = {
     data: defaultSkill,
     hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
     dataSchema: skillSchema,
-    fieldGenerator: (key, field, dictionary) => {
-      const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-      const defaultLabelSizeClass = "";
-      let icon: JSX.Element = null;
-      let inputClass = defaultInputClass;
-      let labelSizeClass = defaultLabelSizeClass;
-      switch (key) {
-      }
-      return false;
-    },
+    fieldGenerators: {},
   },
   card: {
     dataFetcher: findSkillById,

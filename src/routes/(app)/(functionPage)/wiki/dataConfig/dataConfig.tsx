@@ -23,7 +23,7 @@ export type DBdataDisplayConfig<T extends keyof DB, Card extends object> = {
     data: DB[T];
     dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodTypeAny }>;
     hiddenFields: Array<keyof DB[T]>;
-    fieldGenerator?: (key: keyof DB[T], field: () => AnyFieldApi, dictionary: Dic<DB[T]>) => JSX.Element;
+    fieldGenerators: Partial<{ [K in keyof DB[T]]: (key: K, field: () => AnyFieldApi, dictionary: Dic<DB[T]>) => JSX.Element }>;
     onChange?: (data: DB[T]) => void;
     onSubmit?: (data: DB[T]) => void;
   };

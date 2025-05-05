@@ -1,6 +1,6 @@
 import { AnyFieldApi, createForm, DeepKeys } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
-import { createMemo, For, JSX, useContext } from "solid-js";
+import { createMemo, For, JSX, onCleanup, onMount, useContext } from "solid-js";
 import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
 import { store, setStore } from "~/store";
 import { Button } from "../controls/button";
@@ -44,7 +44,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
   dictionary: Dic<T>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodSchema }>;
   hiddenFields: Array<keyof T>;
-  fieldGenerator?: (key: keyof T, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element;
+  fieldGenerators: Partial<{ [K in keyof T]: (key: K, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element }>;
   onChange?: (data: T) => void;
   onSubmit?: (data: T) => void;
 }) => {
@@ -65,6 +65,14 @@ export const Form = <T extends Record<string, unknown>>(props: {
     // validatorAdapter: zodValidator,
   }));
 
+  onMount(() => {
+    console.log("form mounted");
+  });
+
+  onCleanup(() => {
+    console.log("form unmounted");
+  });
+
   return (
     <div class="FormBox flex w-full flex-col gap-2">
       <div class="Title flex items-center lg:p-2">
@@ -81,6 +89,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
         <For each={Object.entries(props.data)}>
           {(_field, index) => {
             const fieldKey = _field[0] as DeepKeys<T>;
+            console.log("fieldKey", fieldKey);
             const fieldValue = _field[1];
             // 过滤掉隐藏的数据
             if (props.hiddenFields.includes(fieldKey)) return;
@@ -88,6 +97,9 @@ export const Form = <T extends Record<string, unknown>>(props: {
             const zodValue = props.dataSchema.shape[fieldKey];
             // 判断字段类型，便于确定默认输入框
             const valueType = getZodType(zodValue);
+            // 判断是否有自定义fieldGenerator
+            const hasFieldGenerator = fieldKey in props.fieldGenerators;
+            const fieldGenerator = hasFieldGenerator ? props.fieldGenerators[fieldKey] : null;
 
             switch (valueType) {
               case ZodFirstPartyTypeKind.ZodEnum: {
@@ -101,8 +113,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                   >
                     {(field) => {
                       const enumValue = zodValue as ZodEnum<any>;
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -150,8 +162,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -183,8 +195,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                     {(field) => {
                       // 非关系字段出现数组时，基本上只可能是字符串数组，因此断言
                       const arrayValue = () => field().state.value as string[];
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -192,7 +204,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
-                          <div class="ArrayBox w-full flex flex-col gap-2">
+                          <div class="ArrayBox flex w-full flex-col gap-2">
                             <For each={arrayValue()}>
                               {(item, index) => (
                                 <div class="flex items-center gap-2">
@@ -224,7 +236,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
                                 const newArray = [...arrayValue(), ""];
                                 field().setValue(newArray as any);
                               }}
-                              class=" w-full"
+                              class="w-full"
                             >
                               {dictionary().ui.actions.add}
                             </Button>
@@ -250,8 +262,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                   >
                     {(field) => {
                       // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -293,8 +305,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                     }}
                   >
                     {(field) => {
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -330,8 +342,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
                   >
                     {(field) => {
                       // console.log("FieldKey:", fieldKey, props.dictionary.fields[fieldKey].key);
-                      return props.fieldGenerator && props.fieldGenerator(fieldKey, field, props.dictionary) ? (
-                        props.fieldGenerator(fieldKey, field, props.dictionary)
+                      return fieldGenerator ? (
+                        fieldGenerator(fieldKey, field, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}

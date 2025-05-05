@@ -37,30 +37,30 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
 };
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-export type DBdataDisplayConfig<T extends Record<string, unknown>, Card extends object> = {
-  table: {
-    dataFetcher: () => Promise<T[]>;
-    columnDef: Array<ColumnDef<T, unknown>>;
-    hiddenColumnDef: Array<keyof T>;
-    defaultSort: { id: keyof T; desc: boolean };
-    tdGenerator: (props: { cell: Cell<T, keyof T>; dictionary: Dic<T> }) => JSX.Element;
-  };
-  form: {
-    data: T;
-    dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
-    hiddenFields: Array<keyof T>;
-    fieldGenerator?: (key: keyof T, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element;
-    onChange?: (data: T) => void;
-    onSubmit?: (data: T) => void;
-  };
-  card: {
-    dataFetcher: (id: string) => Promise<Card>;
-    cardRender: (
-      data: Card,
-      dictionary: Dic<Card>,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => JSX.Element;
-  };
-};
+// export type DBdataDisplayConfig<T extends Record<string, unknown>, Card extends object> = {
+//   table: {
+//     dataFetcher: () => Promise<T[]>;
+//     columnDef: Array<ColumnDef<T, unknown>>;
+//     hiddenColumnDef: Array<keyof T>;
+//     defaultSort: { id: keyof T; desc: boolean };
+//     tdGenerator: (props: { cell: Cell<T, keyof T>; dictionary: Dic<T> }) => JSX.Element;
+//   };
+//   form: {
+//     data: T;
+//     dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
+//     hiddenFields: Array<keyof T>;
+//     fieldGenerators: Partial<{ [K in keyof T]: (key: K, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element }>;
+//     onChange?: (data: T) => void;
+//     onSubmit?: (data: T) => void;
+//   };
+//   card: {
+//     dataFetcher: (id: string) => Promise<Card>;
+//     cardRender: (
+//       data: Card,
+//       dictionary: Dic<Card>,
+//       appendCardTypeAndIds: (
+//         updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
+//       ) => void,
+//     ) => JSX.Element;
+//   };
+// };

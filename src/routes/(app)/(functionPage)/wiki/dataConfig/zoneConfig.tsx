@@ -2,7 +2,8 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createZone, defaultZone, findZoneById, findZones, Zone } from "~/repositories/zone";
-import { DBdataDisplayConfig, fieldInfo } from "../utils";
+import { fieldInfo } from "../utils";
+import { DBdataDisplayConfig } from "./dataConfig";
 import { zoneSchema } from "~/../db/zod";
 import { DB, zone } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -14,7 +15,7 @@ import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { findAddresses } from "~/repositories/address";
 
-export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
+export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
   table: {
     columnDef: [
       {
@@ -86,48 +87,38 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
     data: defaultZone,
     hiddenFields: ["id"],
     dataSchema: zoneSchema,
-    fieldGenerator: (key, field, dictionary) => {
-      const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-      const defaultLabelSizeClass = "";
-      let icon: JSX.Element = null;
-      let inputClass = defaultInputClass;
-      let labelSizeClass = defaultLabelSizeClass;
-      switch (key) {
-        case "linkZone": {
-          const arrayValue = () => field().state.value as string[];
-          const [zones] = createResource(async () => {
-            const addresses = await findZones();
-            return addresses.map((zone) => ({
-              label: zone.name,
-              value: zone.id,
-            }));
-          });
-          return (
-            <Input
-              title={dictionary.fields[key].key}
-              description={dictionary.fields[key].formFieldDescription}
-              state={fieldInfo(field())}
-              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+    fieldGenerators: {
+      linkZone: (key, field, dictionary) => {
+        console.log("linkZone start");
+        const arrayValue = () => field().state.value as string[];
+        const [zones] = createResource(async () => {
+          const zones = await findZones();
+          return zones.map((zone) => ({
+            label: zone.name,
+            value: zone.id,
+          }));
+        });
 
-            >
-              <div class="ArrayBox flex w-full flex-col gap-2">
-                <For each={arrayValue()}>
-                  {(item, index) => (
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={arrayValue()}>
+                {(item, index) => {
+                  return (
                     <div class="flex items-center gap-2">
                       <div class="flex-1">
                         <Autocomplete
-                          onSelect={(option) => {
+                          value={item}
+                          setValue={(id) => {
                             const newArray = [...arrayValue()];
-                            newArray[index()] = option.value;
-                            field().setValue(newArray as any);
+                            newArray[index()] = id;
+                            field().setValue(newArray);
                           }}
-                          value={(() => {
-                            const currentId = arrayValue()[index()];
-                            const cachedZones = zones();
-                            if (!cachedZones) return "";
-                            const zone = cachedZones.find(z => z.value === currentId);
-                            return zone?.label ?? "";
-                          })()}
                           optionsFetcher={async (search) => {
                             const cachedZones = zones();
                             if (!cachedZones) return [];
@@ -146,50 +137,53 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
                         -
                       </Button>
                     </div>
-                  )}
-                </For>
-                <Button
-                  onClick={() => {
-                    const newArray = [...arrayValue(), ""];
-                    field().setValue(newArray as any);
-                  }}
-                  class="w-full"
-                >
-                  +
-                </Button>
-              </div>
-            </Input>
-          );
-        }
-
-        case "addressId": {
-          const [addresses] = createResource(async () => {
-            const addresses = await findAddresses();
-            return addresses.map((addr) => ({
-              label: addr.name,
-              value: addr.id,
-            }));
-          });
-
-          return (
-            <Input
-              title={dictionary.fields[key].key}
-              description={dictionary.fields[key].formFieldDescription}
-              state={fieldInfo(field())}
-              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-            >
-              <Autocomplete
-                optionsFetcher={async (search) => {
-                  const cachedAddresses = addresses();
-                  if (!cachedAddresses) return [];
-                  return cachedAddresses.filter((addr) => addr.label.toLowerCase().includes(search.toLowerCase()));
+                  );
                 }}
-              />
-            </Input>
-          );
-        }
-      }
-      return false;
+              </For>
+              <Button
+                onClick={() => {
+                  const newArray = [...arrayValue(), ""];
+                  field().setValue(newArray as any);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
+      },
+      addressId: (key, field, dictionary) => {
+        const [addresses] = createResource(async () => {
+          const addresses = await findAddresses();
+          return addresses.map((addr) => ({
+            label: addr.name,
+            value: addr.id,
+          }));
+        });
+
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Autocomplete
+              value={field().state.value}
+              setValue={(id) => {
+                console.log(id);
+                field().setValue(id);
+              }}
+              optionsFetcher={async (search) => {
+                const cachedAddresses = addresses();
+                if (!cachedAddresses) return [];
+                return cachedAddresses.filter((addr) => addr.label.toLowerCase().includes(search.toLowerCase()));
+              }}
+            />
+          </Input>
+        );
+      },
     },
     onSubmit: async (data) => {
       const db = await getDB();
@@ -221,7 +215,7 @@ export const zoneDataConfig: DBdataDisplayConfig<zone, Zone["MainTable"]> = {
         if (!linkZone || linkZone.length === 0) return [];
         const res = await db.selectFrom("zone").where("zone.id", "in", linkZone).selectAll("zone").execute();
         console.log("linkZoneData", res);
-        return res
+        return res;
       });
 
       return (

@@ -3,7 +3,8 @@ import { Accessor, createMemo, createResource, createSignal, For, JSX, Show } fr
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, defaultMob, findMobById, findMobs, Mob, mobCardSchema } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
-import { fieldInfo, DBdataDisplayConfig } from "../utils";
+import { fieldInfo } from "../utils";
+import { DBdataDisplayConfig } from "./dataConfig";
 import * as Icon from "~/components/icon";
 import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
@@ -66,7 +67,7 @@ const columnHelper = createColumnHelper<Mob["MainForm"]>();
 //   }),
 // ]
 
-export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
+export const mobDataConfig: DBdataDisplayConfig<"mob", Mob["Card"]> = {
   table: {
     columnDef: [
       {
@@ -238,57 +239,54 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
     data: defaultMob,
     hiddenFields: ["id", "statisticId", "actions", "createdByAccountId", "updatedByAccountId"],
     dataSchema: mobSchema,
-    fieldGenerator: (key, field, dictionary) => {
-      const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-      const defaultLabelSizeClass = "";
-      let icon: JSX.Element = null;
-      let inputClass = defaultInputClass;
-      let labelSizeClass = defaultLabelSizeClass;
-      switch (key) {
-        case "type": {
-          const zodValue = mobSchema.shape[key];
-          return (
-            <Input
-              title={dictionary.fields[key].key}
-              description={dictionary.fields[key].formFieldDescription}
-              state={fieldInfo(field())}
-              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-            >
-              <div class="EnumsBox flex flex-wrap gap-1">
-                <For each={zodValue.options}>
-                  {(option) => {
-                    switch (option) {
-                      case "Mob":
-                      case "MiniBoss":
-                      case "Boss":
-                        icon = <Icon.Filled.Basketball />;
-                        break;
-                    }
-                    return (
-                      <label
-                        class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
-                      >
-                        {icon}
-                        {dictionary.fields[key].enumMap[option]}
-                        <input
-                          id={field().name + option}
-                          name={field().name}
-                          value={option}
-                          checked={field().state.value === option}
-                          type="radio"
-                          onBlur={field().handleBlur}
-                          onChange={(e) => field().handleChange(e.target.value)}
-                          class={inputClass}
-                        />
-                      </label>
-                    );
-                  }}
-                </For>
-              </div>
-            </Input>
-          );
-        }
-        case "initialElement": {
+    fieldGenerators: {
+      type: (key, field, dictionary) => {
+        let icon: JSX.Element = null;
+        const zodValue = mobSchema.shape[key];
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="EnumsBox flex flex-wrap gap-1">
+              <For each={zodValue.options}>
+                {(option) => {
+                  switch (option) {
+                    case "Mob":
+                    case "MiniBoss":
+                    case "Boss":
+                      icon = <Icon.Filled.Basketball />;
+                      break;
+                  }
+                  return (
+                    <label
+                      class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
+                    >
+                      {icon}
+                      {dictionary.fields[key].enumMap[option]}
+                      <input
+                        id={field().name + option}
+                        name={field().name}
+                        value={option}
+                        checked={field().state.value === option}
+                        type="radio"
+                        onBlur={field().handleBlur}
+                        onChange={(e) => field().handleChange(e.target.value)}
+                        class="mt-0.5 hidden rounded px-4 py-2"
+                      />
+                    </label>
+                  );
+                }}
+              </For>
+            </div>
+          </Input>
+        );
+      },
+      initialElement: (key, field, dictionary) => {
+        {
+          let icon: JSX.Element = null;
           const zodValue = mobSchema.shape[key];
           return (
             <Input
@@ -304,57 +302,41 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
                       case "Normal":
                         {
                           icon = <Icon.Element.NoElement class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "no-element basis-1/3";
                         }
                         break;
                       case "Light":
                         {
                           icon = <Icon.Element.Light class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "light basis-1/3";
                         }
                         break;
                       case "Dark":
                         {
-                          (icon = <Icon.Element.Dark class="h-6 w-6" />),
-                            (inputClass = "mt-0.5 hidden rounded px-4 py-2");
-                          labelSizeClass = "dark basis-1/3";
+                          icon = <Icon.Element.Dark class="h-6 w-6" />;
                         }
                         break;
                       case "Water":
                         {
                           icon = <Icon.Element.Water class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "water basis-1/3";
                         }
                         break;
                       case "Fire":
                         {
                           icon = <Icon.Element.Fire class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "fire basis-1/3";
                         }
                         break;
                       case "Earth":
                         {
                           icon = <Icon.Element.Earth class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "earth basis-1/3";
                         }
                         break;
                       case "Wind":
                         {
                           icon = <Icon.Element.Wind class="h-6 w-6" />;
-                          inputClass = "mt-0.5 hidden rounded px-4 py-2";
-                          labelSizeClass = "wind basis-1/3";
                         }
                         break;
                       default:
                         {
                           icon = null;
-                          inputClass = defaultInputClass;
-                          labelSizeClass = defaultLabelSizeClass;
                         }
                         break;
                     }
@@ -372,7 +354,7 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
                           type="radio"
                           onBlur={field().handleBlur}
                           onChange={(e) => field().handleChange(e.target.value)}
-                          class={inputClass}
+                          class="mt-0.5 hidden rounded px-4 py-2"
                         />
                       </label>
                     );
@@ -382,8 +364,7 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
             </Input>
           );
         }
-      }
-      return false;
+      },
     },
   },
   card: {
@@ -439,7 +420,7 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
             },
           })}
 
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.belongToZones ?? "出现的区域"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -448,13 +429,17 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
               <Show when={zoneData.latest}>
                 <For each={zoneData.latest}>
                   {(zone) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
+                        {zone.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>
             </div>
           </section>
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.dropItems ?? "掉落物品"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -463,7 +448,11 @@ export const mobDataConfig: DBdataDisplayConfig<mob, Mob["Card"]> = {
               <Show when={dropItemData.latest}>
                 <For each={dropItemData.latest}>
                   {(item) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }])}>{item.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }])}>
+                        {item.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>

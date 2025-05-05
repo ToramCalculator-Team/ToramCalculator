@@ -4,6 +4,7 @@ import { AddressType } from "~/../db/kysely/enums";
 
 export interface Address {
   MainTable: address;
+  Card: Awaited<ReturnType<typeof findAddressById>>;
 }
 
 export const defaultAddress: address = {

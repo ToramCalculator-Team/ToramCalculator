@@ -2,7 +2,7 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { defaultNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
-import { DBdataDisplayConfig } from "../utils";
+import { DBdataDisplayConfig } from "./dataConfig";
 import { npcSchema } from "~/../db/zod";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -11,7 +11,7 @@ import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
 
-export const npcDataConfig: DBdataDisplayConfig<npc, Npc["MainTable"]> = {
+export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
   table: {
     columnDef: [
       {
@@ -56,16 +56,7 @@ export const npcDataConfig: DBdataDisplayConfig<npc, Npc["MainTable"]> = {
     data: defaultNpc,
     hiddenFields: ["id"],
     dataSchema: npcSchema,
-    fieldGenerator: (key, field, dictionary) => {
-      const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-      const defaultLabelSizeClass = "";
-      let icon: JSX.Element = null;
-      let inputClass = defaultInputClass;
-      let labelSizeClass = defaultLabelSizeClass;
-      switch (key) {
-      }
-      return false;
-    },
+    fieldGenerators: {},
   },
   card: {
     dataFetcher: findNpcById,

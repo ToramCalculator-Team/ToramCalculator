@@ -22,7 +22,7 @@ import { Sheet } from "~/components/controls/sheet";
 import { LoadingBar } from "~/components/loadingBar";
 import { defaultData } from "~/../db/defaultData";
 import { DB } from "~/../db/kysely/kyesely";
-import { DBdataDisplayConfig } from "./utils";
+import { DBdataDisplayConfig } from "./dataConfig/dataConfig";
 import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { MediaContext } from "~/contexts/Media";
@@ -534,7 +534,7 @@ export default function WikiSubPage() {
                     data: validDataConfig().form.data,
                     dataSchema: validDataConfig().form.dataSchema,
                     hiddenFields: validDataConfig().form.hiddenFields,
-                    fieldGenerator: validDataConfig().form.fieldGenerator,
+                    fieldGenerators: validDataConfig().form.fieldGenerators,
                     title: dictionary().db[validTableName()].selfName + ":" + dictionary().ui.actions.upload,
                     dictionary: dictionary().db[validTableName()],
                     onSubmit: async (data) => {

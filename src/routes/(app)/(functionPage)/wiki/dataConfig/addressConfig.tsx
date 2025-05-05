@@ -2,7 +2,7 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { defaultAddress, findAddressById, findAddresses, Address } from "~/repositories/address";
-import { DBdataDisplayConfig } from "../utils";
+import { DBdataDisplayConfig } from "./dataConfig";
 import { addressSchema } from "~/../db/zod";
 import { DB, address } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -11,7 +11,7 @@ import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
 
-export const addressDataConfig: DBdataDisplayConfig<address, Address["MainTable"]> = {
+export const addressDataConfig: DBdataDisplayConfig<"address", Address["Card"]> = {
   table: {
     columnDef: [
       {
@@ -71,16 +71,7 @@ export const addressDataConfig: DBdataDisplayConfig<address, Address["MainTable"
     data: defaultAddress,
     hiddenFields: ["id"],
     dataSchema: addressSchema,
-    fieldGenerator: (key, field, dictionary) => {
-      const defaultInputClass = "mt-0.5 rounded px-4 py-2";
-      const defaultLabelSizeClass = "";
-      let icon: JSX.Element = null;
-      let inputClass = defaultInputClass;
-      let labelSizeClass = defaultLabelSizeClass;
-      switch (key) {
-      }
-      return false;
-    },
+    fieldGenerators: {},
   },
   card: {
     dataFetcher: findAddressById,
