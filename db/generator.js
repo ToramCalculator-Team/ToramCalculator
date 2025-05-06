@@ -3,7 +3,7 @@
  * @description 数据库 Schema 生成器
  * 
  * 这个脚本的主要功能：
- * 1. 从 baseSchema.prisma 生成客户端和服务端使用的 schema.prisma 文件
+ * 1. 从 baseSchema.prisma 生成客户端和服务端使用的 SQL 文件
  * 2. 处理枚举类型的转换和注入
  * 3. 生成 DataEnums 类型定义
  * 
@@ -11,24 +11,25 @@
  * 1. 读取 enums.ts 中的枚举定义
  * 2. 解析 baseSchema.prisma 中的模型定义
  * 3. 将枚举类型注入到相应的模型字段中
- * 4. 生成客户端和服务端各自的 schema.prisma 文件
+ * 4. 生成客户端和服务端各自的 SQL 文件
  * 5. 生成 DataEnums 类型定义文件
  * 
  * 输出文件：
- * - clientDB/schema.prisma: 客户端使用的 Prisma Schema
- * - serverDB/schema.prisma: 服务端使用的 Prisma Schema
+ * - serverDB/init.sql: 服务端数据库初始化 SQL
+ * - clientDB/init.sql: 客户端数据库初始化 SQL
  * - dataEnums.ts: 包含所有模型枚举字段的类型定义
  * 
  * 使用方式：
  * 1. 确保 enums.ts 和 baseSchema.prisma 文件存在
  * 2. 运行 tsx generator.js
- * 3. 检查生成的 schema 文件是否符合预期
+ * 3. 检查生成的 SQL 文件是否符合预期
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { execSync } from "child_process";
 
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
@@ -37,9 +38,19 @@ const __dirname = path.dirname(__filename);
 // 定义文件路径
 const enumsFilePath = path.join(__dirname, "enums.ts");
 const baseSchemaPath = path.join(__dirname, "baseSchema.prisma");
-const serverDBSchemaPath = path.join(__dirname, "serverDB/schema.prisma");
-const clientDBSchemaPath = path.join(__dirname, "clientDB/schema.prisma");
+const serverDBSqlPath = path.join(__dirname, "serverDB/init.sql");
+const clientDBSqlPath = path.join(__dirname, "clientDB/init.sql");
 const dataEnumsPath = path.join(__dirname, "dataEnums.ts");
+
+// 确保必要的目录存在
+const serverDBDir = path.dirname(serverDBSqlPath);
+const clientDBDir = path.dirname(clientDBSqlPath);
+if (!fs.existsSync(serverDBDir)) {
+  fs.mkdirSync(serverDBDir, { recursive: true });
+}
+if (!fs.existsSync(clientDBDir)) {
+  fs.mkdirSync(clientDBDir, { recursive: true });
+}
 
 /**
  * 将下划线命名转换为 PascalCase
@@ -150,14 +161,38 @@ for (const line of lines) {
 
 // 生成最终的 schema 文件
 const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
-fs.mkdirSync(path.dirname(clientDBSchemaPath), { recursive: true });
-fs.mkdirSync(path.dirname(serverDBSchemaPath), { recursive: true });
 
-// 写入客户端和服务端 schema 文件
-fs.writeFileSync(clientDBSchemaPath, clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema, "utf-8");
-fs.writeFileSync(serverDBSchemaPath, finalSchema, "utf-8");
+// 创建临时 schema 文件用于生成 SQL
+const tempServerSchemaPath = path.join(__dirname, "temp_server_schema.prisma");
+const tempClientSchemaPath = path.join(__dirname, "temp_client_schema.prisma");
 
-console.log("✅ schema.prisma 生成完成！");
+fs.writeFileSync(tempServerSchemaPath, finalSchema, "utf-8");
+fs.writeFileSync(tempClientSchemaPath, clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema, "utf-8");
+
+// 使用 prisma migrate 生成 SQL
+try {
+  // 生成服务端 SQL
+  execSync(`npx prisma migrate diff --from-empty --to-schema-datamodel ${tempServerSchemaPath} --script > ${serverDBSqlPath}`);
+  
+  // 生成客户端 SQL
+  execSync(`npx prisma migrate diff --from-empty --to-schema-datamodel ${tempClientSchemaPath} --script > ${clientDBSqlPath}`);
+  
+  // 处理客户端 SQL
+  const initTransformPath = path.join(__dirname, "clientDB/init_transform.js");
+  require(initTransformPath);
+  
+  // 生成类型
+  execSync('prisma generate --schema=db/temp_client_schema.prisma', { stdio: 'inherit' });
+  
+  console.log("✅ SQL 文件生成完成！");
+  console.log("✅ 类型生成完成！");
+} catch (error) {
+  console.error("生成文件时出错:", error);
+  // 清理临时文件
+  if (fs.existsSync(tempServerSchemaPath)) fs.unlinkSync(tempServerSchemaPath);
+  if (fs.existsSync(tempClientSchemaPath)) fs.unlinkSync(tempClientSchemaPath);
+  process.exit(1);
+}
 
 // 生成 DataEnums 类型定义
 const importStatements = Array.from(new Set(
@@ -178,3 +213,8 @@ const dataEnumsType = `${importStatements}\n\nexport type DataEnums = {\n${dataE
 fs.writeFileSync(dataEnumsPath, dataEnumsType, "utf-8");
 
 console.log("✅ dataEnums.ts 生成完成！");
+
+// 清理临时文件
+if (fs.existsSync(tempServerSchemaPath)) fs.unlinkSync(tempServerSchemaPath);
+if (fs.existsSync(tempClientSchemaPath)) fs.unlinkSync(tempClientSchemaPath);
+console.log("✅ 临时文件清理完成！");

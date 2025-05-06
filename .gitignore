@@ -31,9 +31,10 @@ gitignore
 Thumbs.db
 
 #db
-db/serverDB/schema.prisma
-db/clientDB/schema.prisma
-db/clientDB/ddl.sql
+db/output/
 db/zod
 db/kysely
+db/serverDB/init.sql
+db/clientDB/init.sql
 db/dataEnums.ts
+db/defaultData.ts

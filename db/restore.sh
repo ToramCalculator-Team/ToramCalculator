@@ -21,7 +21,7 @@ echo "🔄 开始从 CSV 文件恢复数据库..."
 
 # 1️⃣ **禁用外键约束**
 echo "🚫 禁用外键约束..."
-docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "SET session_replication_role = 'replica';"
+docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "SET session_replication_role = 'replica';" 2>/dev/null
 
 # 2️⃣ **获取数据库中的所有表，按依赖关系排序**
 echo "📌 获取表的正确导入顺序..."
@@ -86,7 +86,7 @@ for table in $tables; do
     csv_file="$BACKUP_DIR/$table.csv"
     if [ -f "$csv_file" ]; then
         echo "⬆️ 正在导入表: $table..."
-        docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "\copy \"$table\" FROM STDIN CSV HEADER;" < "$csv_file"
+        docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "\copy \"$table\" FROM STDIN CSV HEADER;" < "$csv_file" 2>/dev/null
     else
         echo "⚠️ 跳过: $table (未找到 $csv_file)"
     fi
@@ -94,11 +94,12 @@ done
 
 # 4️⃣ **恢复外键约束**
 echo "🔄 恢复外键约束..."
-docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "SET session_replication_role = 'origin';"
+docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "SET session_replication_role = 'origin';" 2>/dev/null
 
 # 5️⃣ **修复自增主键（序列）**
 echo "🔧 修复自增序列..."
 for table in $tables; do
+    echo "  - 处理表: $table"
     docker exec -i $PG_CONTAINER_NAME psql "$PG_URL" -c "
         DO \$\$ 
         DECLARE 
@@ -136,7 +137,7 @@ for table in $tables; do
                 RAISE NOTICE '表 % 不存在，跳过序列修复', '$table';
             END IF;
         END
-        \$\$;"
+        \$\$;" 2>/dev/null
 done
 
 echo "✅ 数据库恢复完成！"

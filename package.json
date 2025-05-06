@@ -3,20 +3,15 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:init && pnpm db:restore",
-    "dev:init": "pnpm generate:schema && pnpm backend:up -d && pnpm db:init && pnpm generate:client-ddl && node db/clientDB/ddl_transform.js && pnpm generate:type",
+    "dev:init": "tsx db/generator.js",
+    "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:restore",
 
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
-    "db:studio": "prisma studio --schema=db/serverDB/schema.prisma",
-    "db:init": "pnpm prisma db push --schema db/serverDB/schema.prisma",
+    "db:studio": "prisma studio --schema=db/baseSchema.prisma",
     "db:backup": "bash db/backup.sh",
     "db:restore": "bash db/restore.sh",
-
-    "generate:schema": "tsx db/generator.js",
-    "generate:client-ddl": "prisma migrate diff --from-empty --to-schema-datasource db/clientDB/schema.prisma --script > db/clientDB/ddl.sql",
-    "generate:type": "prisma generate --schema=db/clientDB/schema.prisma",
 
     "build": "vinxi build",
     "start": "vinxi start",

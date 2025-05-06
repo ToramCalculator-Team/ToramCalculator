@@ -1,12 +1,11 @@
 generator client {
     provider        = "prisma-client-js"
     previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
-    output = "./output"
 }
 
 generator zod {
     provider                 = "zod-prisma-types"
-    output                   = "../zod"
+    output                   = "./zod"
     fileName                 = "zod.ts"
     writeNullishInModelTypes = false // 是否将可选字段类型转换为 null | undefined
     useMultipleFiles         = false // 是否生成拆分的ts
@@ -15,7 +14,7 @@ generator zod {
 
 generator kysely {
     provider     = "prisma-kysely"
-    output       = "../kysely"
+    output       = "./kysely"
     fileName     = "kyesely.ts"
     enumFileName = "enums.ts"
 }

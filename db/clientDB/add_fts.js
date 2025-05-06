@@ -92,7 +92,7 @@ for (const [table, columns] of ftsTables.entries()) {
 }
 
 // 追加到 ddl.sql 末尾
-const ddlContent = fs.readFileSync(ddlPath, 'utf-8');
-fs.writeFileSync(ddlPath, ddlContent + '\n' + ftsSql);
+const initContent = fs.readFileSync(ddlPath, 'utf-8');
+fs.writeFileSync(ddlPath, initContent + '\n' + ftsSql);
 
 console.log(`✅ 已生成包含 FTS 的 SQL 文件: ${ddlPath}`);

@@ -10,14 +10,19 @@ services:
       POSTGRES_PASSWORD: ${PG_PASSWORD}
     ports:
       - ${PG_PORT}:5432
-    tmpfs:
-      - /var/lib/postgresql/data
-      - /tmp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
     command:
       - -c
       - listen_addresses=*
       - -c
       - wal_level=logical
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USERNAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   electric:
     image: electricsql/electric
@@ -29,4 +34,8 @@ services:
     ports:
       - ${ELECTRIC_PORT}:3000
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -1,9 +1,32 @@
-// 为了实现数据同步架构的写入方法，此脚本会对原始的 ddl.sql 文件进行修改
-// 主要过程为：
-// 1. 删除所有非必要sql语句，包括外键约束、索引
-// 2. 将每个表拆分为synced表和local表，synced用于储存从服务器下载的数据，local用于储存本地修改的数据。这样就可以很容易区分某个本地数据是否已经同步到服务器
-// 3. 生成视图，用于合并读取synced表和local表的数据，以供前端调用
-// 4. 为synced表和local表添加触发器，当数据更新时，向changes表写入更新记录，并通知主线程处理更新事件
+/**
+ * @file init_transform.js
+ * @description 客户端数据库初始化转换器
+ * 
+ * 此脚本用于将服务端数据库结构转换为客户端离线同步架构。
+ * 转换过程包括：
+ * 
+ * 1. 数据表拆分
+ *    - 将每个表拆分为 synced 和 local 两个表
+ *    - synced 表存储从服务器同步的数据
+ *    - local 表存储本地修改的数据
+ * 
+ * 2. 约束优化
+ *    - 移除外键约束，避免同步冲突
+ *    - 移除索引，优化本地存储性能
+ * 
+ * 3. 视图生成
+ *    - 为每个表创建合并视图
+ *    - 视图自动合并 synced 和 local 表的数据
+ * 
+ * 4. 变更追踪
+ *    - 为 synced 和 local 表添加触发器
+ *    - 触发器自动记录数据变更到 changes 表
+ *    - 变更记录用于后续的数据同步
+ * 
+ * 使用方式：
+ * 此脚本由 generator.js 自动调用，用于生成客户端数据库初始化文件。
+ */
+
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -11,28 +34,28 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ddlFilePath = path.join(__dirname, "ddl.sql");
+const ddlFilePath = path.join(__dirname, "init.sql");
 
 // 读取文件内容
-let ddlContent = fs.readFileSync(ddlFilePath, "utf-8");
+let initContent = fs.readFileSync(ddlFilePath, "utf-8");
 
 // 删除所有 `ALTER TABLE` 语句中涉及 `FOREIGN KEY` 的行
-ddlContent = ddlContent.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
+initContent = initContent.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
 
 // **删除孤立的 `-- AddForeignKey` 行**
-ddlContent = ddlContent.replace(/-- AddForeignKey\s*\n?/g, "");
+initContent = initContent.replace(/-- AddForeignKey\s*\n?/g, "");
 
 // 删除所有的 `CREATE INDEX` 语句
-ddlContent = ddlContent.replace(/CREATE INDEX.*;\n?/g, "");
-ddlContent = ddlContent.replace(/CREATE UNIQUE INDEX.*;\n?/g, "");
+initContent = initContent.replace(/CREATE INDEX.*;\n?/g, "");
+initContent = initContent.replace(/CREATE UNIQUE INDEX.*;\n?/g, "");
 
 // **删除孤立的 `-- CreateIndex` 行**
-ddlContent = ddlContent.replace(/-- CreateIndex\s*\n?/g, "");
+initContent = initContent.replace(/-- CreateIndex\s*\n?/g, "");
 
 // **去除可能多余的空行**
-// ddlContent = ddlContent.replace(/\n{2,}/g, "\n");
+// initContent = initContent.replace(/\n{2,}/g, "\n");
 
-fs.writeFileSync(ddlFilePath, ddlContent, "utf-8");
+fs.writeFileSync(ddlFilePath, initContent, "utf-8");
 
 console.log("✅ 外键约束及索引已删除！");
 
@@ -391,7 +414,7 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
 }
 
 // 匹配完整的 SQL 块（包括注释）
-const blocks = ddlContent
+const blocks = initContent
   .split(/(?=^--|^CREATE\s|^ALTER\s|^DROP\s)/gim)
   .map((block) => block.trim())
   .filter(Boolean);
