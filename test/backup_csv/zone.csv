@@ -1,2 +1,2 @@
-id,name,linkZone,rewardNodes,activityId,addressId
-defaultZoneAId,defaultZoneA,{},3,,defaultAddressId
+id,name,rewardNodes,activityId,addressId
+defaultZoneAId,defaultZoneA,3,,defaultAddressId

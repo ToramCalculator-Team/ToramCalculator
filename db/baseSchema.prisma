@@ -1,6 +1,7 @@
 generator client {
     provider        = "prisma-client-js"
     previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
+    output = "./output"
 }
 
 generator zod {
@@ -144,7 +145,6 @@ model zone {
     id String @id
 
     name        String
-    linkZone    String[]
     rewardNodes Int?
     mobs        mob[]
     npcs        npc[]
@@ -153,6 +153,9 @@ model zone {
     activityId       String?
     belongToAddress  address   @relation(fields: [addressId], references: [id])
     addressId        String
+
+    link   zone[] @relation("linkZones")
+    linked zone[] @relation("linkZones")
 }
 
 model image {
@@ -298,8 +301,8 @@ model crystal {
     type      String // Enum CRYSTAL_TYPE
     modifiers String[]
 
-    front crystal[] @relation("FrontRelation")
-    back  crystal[] @relation("BackRelation")
+    front crystal[] @relation("frontRelation")
+    back  crystal[] @relation("backRelation")
 
     belongToItem item   @relation(fields: [itemId], references: [id])
     itemId       String @id
@@ -313,8 +316,8 @@ model crystal {
     usedBySpeEquip       special[]
     usedByPlayerSpeEquip player_special[]
 
-    frontRelated crystal[] @relation("FrontRelation")
-    backRelated  crystal[] @relation("BackRelation")
+    frontRelated crystal[] @relation("frontRelation")
+    backRelated  crystal[] @relation("backRelation")
 }
 
 // 武器

@@ -89,67 +89,67 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
     hiddenFields: ["id"],
     dataSchema: zoneSchema,
     fieldGenerators: {
-      linkZone: (key, field, dictionary) => {
-        const arrayValue = () => field().state.value as string[];
-        return (
-          <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
-            state={fieldInfo(field())}
-            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-          >
-            <div class="ArrayBox flex w-full flex-col gap-2">
-              <For each={arrayValue()}>
-                {(item, index) => {
-                  return (
-                    <div class="flex items-center gap-2">
-                      <div class="flex-1">
-                        <Autocomplete
-                          value={item}
-                          setValue={(id) => {
-                            const newArray = [...arrayValue()];
-                            newArray[index()] = id;
-                            field().setValue(newArray);
-                          }}
-                          optionsFetcher={async (name) => {
-                            const db = await getDB();
-                            const zones = await db
-                              .selectFrom("zone")
-                              .select(["id", "name"])
-                              .where("name", "ilike", `%${name}%`)
-                              .execute();
-                            return zones.map((zone) => ({
-                              label: zone.name,
-                              value: zone.id,
-                            }));
-                          }}
-                        />
-                      </div>
-                      <Button
-                        onClick={() => {
-                          const newArray = arrayValue().filter((_, i) => i !== index());
-                          field().setValue(newArray as any);
-                        }}
-                      >
-                        -
-                      </Button>
-                    </div>
-                  );
-                }}
-              </For>
-              <Button
-                onClick={() => {
-                  const newArray = [...arrayValue(), ""];
-                  field().setValue(newArray as any);
-                }}
-                class="w-full"
-              >
-                +
-              </Button>
-            </div>
-          </Input>
-        );
-      },
+      // linkZone: (key, field, dictionary) => {
+      //   const arrayValue = () => field().state.value as string[];
+      //   return (
+      //     <Input
+      //       title={dictionary.fields[key].key}
+      //       description={dictionary.fields[key].formFieldDescription}
+      //       state={fieldInfo(field())}
+      //       class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+      //     >
+      //       <div class="ArrayBox flex w-full flex-col gap-2">
+      //         <For each={arrayValue()}>
+      //           {(item, index) => {
+      //             return (
+      //               <div class="flex items-center gap-2">
+      //                 <div class="flex-1">
+      //                   <Autocomplete
+      //                     value={item}
+      //                     setValue={(id) => {
+      //                       const newArray = [...arrayValue()];
+      //                       newArray[index()] = id;
+      //                       field().setValue(newArray);
+      //                     }}
+      //                     optionsFetcher={async (name) => {
+      //                       const db = await getDB();
+      //                       const zones = await db
+      //                         .selectFrom("zone")
+      //                         .select(["id", "name"])
+      //                         .where("name", "ilike", `%${name}%`)
+      //                         .execute();
+      //                       return zones.map((zone) => ({
+      //                         label: zone.name,
+      //                         value: zone.id,
+      //                       }));
+      //                     }}
+      //                   />
+      //                 </div>
+      //                 <Button
+      //                   onClick={() => {
+      //                     const newArray = arrayValue().filter((_, i) => i !== index());
+      //                     field().setValue(newArray as any);
+      //                   }}
+      //                 >
+      //                   -
+      //                 </Button>
+      //               </div>
+      //             );
+      //           }}
+      //         </For>
+      //         <Button
+      //           onClick={() => {
+      //             const newArray = [...arrayValue(), ""];
+      //             field().setValue(newArray as any);
+      //           }}
+      //           class="w-full"
+      //         >
+      //           +
+      //         </Button>
+      //       </div>
+      //     </Input>
+      //   );
+      // },
       addressId: (key, field, dictionary) => {
         return (
           <Input
