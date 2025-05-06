@@ -195,7 +195,7 @@ const Nav = () => {
               config={{
                 btnName: dictionary().ui.nav.simulator,
                 icon: <Icon.Line.Filter />,
-                url: "/character/defaultSimulatorId",
+                url: "/simulator/defaultSimulatorId",
               }}
               active={active}
               class={`hidden w-[20dvw] landscape:flex landscape:w-auto`}
