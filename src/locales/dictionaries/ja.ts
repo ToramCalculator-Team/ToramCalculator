@@ -639,7 +639,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _BackRelation: {
+    _backRelation: {
       selfName: "",
       fields: {
         A: {
@@ -815,7 +815,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _FrontRelation: {
+    _frontRelation: {
       selfName: "",
       fields: {
         A: {
@@ -830,6 +830,23 @@ const dictionary: dictionary = {
         }
       },
       description: ""
+    },
+    _linkZones: {
+      selfName: "",
+      description: "",
+      fields: {
+        A: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        B: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
+      },
+      cardFields: undefined
     },
     _mobTozone: {
       selfName: "",
@@ -2960,11 +2977,6 @@ const dictionary: dictionary = {
           key: "名前",
           tableFieldDescription: "ゾーンの名前",
           formFieldDescription: "ゾーンの名前を入力してください"
-        },
-        linkZone: {
-          key: "リンクゾーン",
-          tableFieldDescription: "このゾーンに接続されている他のゾーン",
-          formFieldDescription: "このゾーンに接続されている他のゾーンを選択してください"
         },
         rewardNodes: {
           key: "報酬ノード数",

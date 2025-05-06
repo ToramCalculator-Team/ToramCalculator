@@ -703,7 +703,7 @@ const dictionary: dictionary = {
       },
       description: "记录头像和角色之间的关联关系"
     },
-    _BackRelation: {
+    _backRelation: {
       selfName: "反向关联",
       fields: {
         A: {
@@ -879,7 +879,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _FrontRelation: {
+    _frontRelation: {
       selfName: "",
       fields: {
         A: {
@@ -894,6 +894,23 @@ const dictionary: dictionary = {
         },
       },
       description: ""
+    },
+    _linkZones: {
+      selfName: "",
+      description: "",
+      fields: {
+        A: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        B: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
+      },
+      cardFields: undefined
     },
     _mobTozone: {
       selfName: "怪物-区域关联",
@@ -2971,11 +2988,6 @@ const dictionary: dictionary = {
           key: "名称",
           tableFieldDescription: "区域的名称",
           formFieldDescription: "请输入区域的名称"
-        },
-        linkZone: {
-          key: "链接区域",
-          tableFieldDescription: "与该区域相连的其他区域",
-          formFieldDescription: "选择与该区域相连的其他区域"
         },
         rewardNodes: {
           key: "道具点数量",

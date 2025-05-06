@@ -704,7 +704,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _BackRelation: {
+    _backRelation: {
       selfName: "",
       fields: {
         A: {
@@ -880,7 +880,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _FrontRelation: {
+    _frontRelation: {
       selfName: "",
       fields: {
         A: {
@@ -895,6 +895,23 @@ const dictionary: dictionary = {
         },
       },
       description: ""
+    },
+    _linkZones: {
+      selfName: "",
+      description: "",
+      fields: {
+        A: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        B: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
+      },
+      cardFields: undefined
     },
     _mobTozone: {
       selfName: "",
@@ -3019,11 +3036,6 @@ const dictionary: dictionary = {
           key: "名稱",
           tableFieldDescription: "區域的名稱",
           formFieldDescription: "請輸入區域的名稱"
-        },
-        linkZone: {
-          key: "連結區域",
-          tableFieldDescription: "與此區域相連的其他區域",
-          formFieldDescription: "選擇與此區域相連的其他區域"
         },
         rewardNodes: {
           key: "獎勵節點數",

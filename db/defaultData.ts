@@ -9,7 +9,7 @@ export const defaultData: DB = {
     A: "",
     B: "",
   },
-  _BackRelation: {
+  _backRelation: {
     A: "",
     B: "",
   },
@@ -53,9 +53,13 @@ export const defaultData: DB = {
     A: "",
     B: "",
   },
-  _FrontRelation: {
+  _frontRelation: {
     A: "",
     B: "",
+  },
+  _linkZones: {
+    A: "",
+    B: ""
   },
   _mobTozone: {
     A: "",
@@ -493,7 +497,6 @@ export const defaultData: DB = {
   zone: {
     id: "",
     name: "",
-    linkZone: [],
     rewardNodes: null,
     activityId: null,
     addressId: "",

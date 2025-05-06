@@ -543,7 +543,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _BackRelation: {
+    _backRelation: {
       selfName: "",
       fields: {
         A: {
@@ -719,7 +719,7 @@ const dictionary: dictionary = {
       },
       description: ""
     },
-    _FrontRelation: {
+    _frontRelation: {
       selfName: "",
       fields: {
         A: {
@@ -734,6 +734,23 @@ const dictionary: dictionary = {
         }
       },
       description: ""
+    },
+    _linkZones: {
+      selfName: "",
+      description: "",
+      fields: {
+        A: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        B: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
+      },
+      cardFields: undefined
     },
     _mobTozone: {
       selfName: "",
@@ -2858,11 +2875,6 @@ const dictionary: dictionary = {
           key: "Name",
           tableFieldDescription: "Name of the zone",
           formFieldDescription: "Please enter the name of the zone"
-        },
-        linkZone: {
-          key: "Linked Zones",
-          tableFieldDescription: "Other zones connected to this zone",
-          formFieldDescription: "Select other zones connected to this zone"
         },
         rewardNodes: {
           key: "Reward Nodes",

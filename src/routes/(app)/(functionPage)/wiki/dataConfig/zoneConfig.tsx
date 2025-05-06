@@ -30,11 +30,6 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
         size: 220,
       },
       {
-        accessorKey: "linkZone",
-        cell: (info) => info.getValue<string[]>().join(", "),
-        size: 200,
-      },
-      {
         accessorKey: "rewardNodes",
         cell: (info) => info.getValue<number | null>(),
         size: 120,
