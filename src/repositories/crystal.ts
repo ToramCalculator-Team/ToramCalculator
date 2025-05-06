@@ -15,12 +15,20 @@ export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expre
   return [
     jsonArrayFrom(
       eb
-        .selectFrom("_BackRelation")
-        .innerJoin("crystal", "_BackRelation.B", "crystal.itemId")
-        .innerJoin("item", "_BackRelation.A", "item.id")
+        .selectFrom("_backRelation")
+        .innerJoin("crystal", "_backRelation.B", "crystal.itemId")
+        .innerJoin("item", "_backRelation.A", "item.id")
         .whereRef("item.id", "=", "crystal.itemId")
         .selectAll("item"),
     ).as("backs"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_frontRelation")
+        .innerJoin("crystal", "_frontRelation.B", "crystal.itemId")
+        .innerJoin("item", "_frontRelation.A", "item.id")
+        .whereRef("item.id", "=", "crystal.itemId")
+        .selectAll("item"),
+    ).as("fronts"),
   ];
 }
 
