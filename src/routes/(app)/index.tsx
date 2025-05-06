@@ -40,7 +40,7 @@ import { ObjDisplayer } from "~/components/module/objectDisplayer";
 import { ObjRender } from "~/components/module/objRender";
 import { LoadingBar } from "~/components/loadingBar";
 import { mobDataConfig } from "./(functionPage)/wiki/dataConfig/mobDataConfig";
-import { DBdataDisplayConfig } from "./(functionPage)/wiki/utils";
+import { DBdataDisplayConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
 import { skillDataConfig } from "./(functionPage)/wiki/dataConfig/skillDataConfig";
 import { Dialog } from "~/components/controls/dialog";
 import { Portal } from "solid-js/web";

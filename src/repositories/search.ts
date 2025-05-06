@@ -45,7 +45,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
     zone: {
       table: "zone",
       fields: ["name"],
-      selectFields: ["id", "name", "linkZone"] as const
+      selectFields: ["id", "name"] as const
     },
     address: {
       table: "address",
