@@ -89,7 +89,6 @@ export const Form = <T extends Record<string, unknown>>(props: {
         <For each={Object.entries(props.data)}>
           {(_field, index) => {
             const fieldKey = _field[0] as DeepKeys<T>;
-            console.log("fieldKey", fieldKey);
             const fieldValue = _field[1];
             // 过滤掉隐藏的数据
             if (props.hiddenFields.includes(fieldKey)) return;

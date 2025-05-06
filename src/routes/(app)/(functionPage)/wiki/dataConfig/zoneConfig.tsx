@@ -14,6 +14,7 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { findAddresses } from "~/repositories/address";
+import { defaultData } from "../../../../../../db/defaultData";
 
 export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
   table: {
@@ -84,21 +85,12 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
     },
   },
   form: {
-    data: defaultZone,
+    data: defaultData.zone,
     hiddenFields: ["id"],
     dataSchema: zoneSchema,
     fieldGenerators: {
       linkZone: (key, field, dictionary) => {
-        console.log("linkZone start");
         const arrayValue = () => field().state.value as string[];
-        const [zones] = createResource(async () => {
-          const zones = await findZones();
-          return zones.map((zone) => ({
-            label: zone.name,
-            value: zone.id,
-          }));
-        });
-
         return (
           <Input
             title={dictionary.fields[key].key}
@@ -119,12 +111,17 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
                             newArray[index()] = id;
                             field().setValue(newArray);
                           }}
-                          optionsFetcher={async (search) => {
-                            const cachedZones = zones();
-                            if (!cachedZones) return [];
-                            return cachedZones.filter((zone) =>
-                              zone.label.toLowerCase().includes(search.toLowerCase()),
-                            );
+                          optionsFetcher={async (name) => {
+                            const db = await getDB();
+                            const zones = await db
+                              .selectFrom("zone")
+                              .select(["id", "name"])
+                              .where("name", "ilike", `%${name}%`)
+                              .execute();
+                            return zones.map((zone) => ({
+                              label: zone.name,
+                              value: zone.id,
+                            }));
                           }}
                         />
                       </div>
@@ -154,14 +151,6 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
         );
       },
       addressId: (key, field, dictionary) => {
-        const [addresses] = createResource(async () => {
-          const addresses = await findAddresses();
-          return addresses.map((addr) => ({
-            label: addr.name,
-            value: addr.id,
-          }));
-        });
-
         return (
           <Input
             title={dictionary.fields[key].key}
@@ -172,13 +161,20 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
             <Autocomplete
               value={field().state.value}
               setValue={(id) => {
-                console.log(id);
                 field().setValue(id);
               }}
               optionsFetcher={async (search) => {
-                const cachedAddresses = addresses();
-                if (!cachedAddresses) return [];
-                return cachedAddresses.filter((addr) => addr.label.toLowerCase().includes(search.toLowerCase()));
+                const db = await getDB();
+                const result = await db
+                  .selectFrom("address")
+                  .select(["id", "name"])
+                  .where("name", "ilike", `%${search}%`)
+                  .limit(50)
+                  .execute();
+                return result.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                }));
               }}
             />
           </Input>

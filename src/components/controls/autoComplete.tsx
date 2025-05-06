@@ -29,61 +29,80 @@
  * @param props.value - 当前选中的值（通常是 ID）
  * @param props.displayValue - 当前显示的值（通常是名称）
  * @param props.setValue - 更新值的方法
- * @param props.optionsFetcher - 异步加载选项的方法，返回 Promise<Array<{label: string, value: string}>>
+ * @param props.optionsFetcher - 异步加载选项的方法，根据输入框内的label返回对应的options
  */
 
-import { createEffect, createSignal, For, JSX, on, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 
+// label用于显示，value用于存储
 interface AutocompleteOption {
   label: string;
   value: string;
 }
 
 interface AutocompleteProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
-  optionsFetcher: (search: string) => Promise<AutocompleteOption[]>;
   displayValue?: string;
   value: string;
   setValue: (value: string) => void;
+  optionsFetcher: (search: string) => Promise<AutocompleteOption[]>;
 }
 
 export function Autocomplete(props: AutocompleteProps) {
-  const [isOpen, setIsOpen] = createSignal(false);
-  const [options, setOptions] = createSignal<AutocompleteOption[]>([]);
-  const [isLoading, setIsLoading] = createSignal(false);
+  const [optionsIsOpen, setOptionsIsOpen] = createSignal(false);
+  const [optionsIsLoading, setOptionsIsLoading] = createSignal(false);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
   const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
   const [isSelecting, setIsSelecting] = createSignal(false);
-  const [displayValue, setDisplayValue] = createSignal(props.displayValue ?? props.value);
+  const [displayValue, setDisplayValue] = createSignal("");
+  // 用于存储输入框值，输入框内容变化时，会重新获取options
+  const [searchValue, setSearchValue] = createSignal("");
+  const [options, { refetch }] = createResource(searchValue, props.optionsFetcher);
 
-  // 只在组件挂载时和value变化时更新显示值
-  createEffect(
-    on(
-      () => props.value,
-      () => console.log(props.value)
-      // async (value) => {
-      //   // 如果已经有displayValue，直接使用
-      //   if (props.displayValue) {
-      //     setDisplayValue(props.displayValue);
-      //     return;
-      //   }
-        
-      //   // 否则尝试获取对应的label
-      //   if (value) {
-      //     const options = await props.optionsFetcher(value);
-      //     const option = options.find((opt) => opt.value === value);
-      //     if (option) {
-      //       setDisplayValue(option.label);
-      //     }
-      //   } else {
-      //     setDisplayValue("");
-      //   }
-      // }
-      ,
-    )
-  );
+  // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
+  const handleInput = async (value: string) => {
+    if (isSelecting()) return;
+    setSearchValue(value);
+    setOptionsIsOpen(true);
+  };
 
-  // 处理点击外部关闭下拉框
-  createEffect(() => {
+  const handleSelect = (option: AutocompleteOption) => {
+    setIsSelecting(true);
+    props.setValue?.(option.value);
+    setDisplayValue(option.label);
+    setOptionsIsOpen(false);
+    setIsSelecting(false);
+  };
+
+  // 处理初始值显示
+  createEffect(async () => {
+    if (props.value) {
+      const currentOptions = options();
+      if (!currentOptions) {
+        // 如果没有缓存的选项，获取一次初始选项列表
+        const initialOptions = await props.optionsFetcher("");
+        const option = initialOptions.find((option) => option.value === props.value);
+        setDisplayValue(option?.label ?? "");
+      } else {
+        // 如果有缓存的选项，直接查找对应的label
+        const option = currentOptions.find((option) => option.value === props.value);
+        setDisplayValue(option?.label ?? "");
+      }
+    }
+  });
+
+  onMount(() => {
+    // 处理点击外部关闭下拉框
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef() &&
@@ -91,7 +110,7 @@ export function Autocomplete(props: AutocompleteProps) {
         inputRef() &&
         !inputRef()?.contains(event.target as Node)
       ) {
-        setIsOpen(false);
+        setOptionsIsOpen(false);
       }
     };
 
@@ -101,58 +120,22 @@ export function Autocomplete(props: AutocompleteProps) {
     });
   });
 
-  const handleInput = async (value: string) => {
-    if (isSelecting()) return;
-    setDisplayValue(value);
-    setIsLoading(true);
-    try {
-      const fetchedOptions = await props.optionsFetcher(value);
-      setOptions(fetchedOptions);
-      setIsOpen(true);
-    } catch (error) {
-      console.error("Error fetching options:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSelect = (option: AutocompleteOption) => {
-    setIsSelecting(true);
-    setDisplayValue(option.label);
-    props.setValue?.(option.value);
-    setIsOpen(false);
-    inputRef()?.blur();
-    setIsSelecting(false);
-  };
-
-  onMount(() => {
-    console.log(props.value)
-  })
-
   return (
     <div class="relative w-full">
       <input
         {...Object.fromEntries(Object.entries(props).filter(([key]) => !["onChange", "optionsFetcher"].includes(key)))}
         value={displayValue()}
         onInput={(e) => handleInput(e.target.value)}
-        onFocus={() => {
-          if (inputRef()?.value) {
-            setIsOpen(true);
-          }
-        }}
         ref={setInputRef}
         class={`text-accent-color bg-area-color w-full rounded p-3`}
       />
-      <Show when={isOpen() && inputRef()?.value}>
+      <Show when={optionsIsOpen() && inputRef()?.value}>
         <div
           ref={setDropdownRef}
           class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 shadow-lg"
         >
-          <Show when={!isLoading()} fallback={<div class="px-4 py-2 text-sm text-gray-500">加载中...</div>}>
-            <Show
-              when={options().length > 0}
-              fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}
-            >
+          <Show when={!optionsIsLoading()} fallback={<div class="px-4 py-2 text-sm text-gray-500">加载中...</div>}>
+            <Show when={options()} fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}>
               <For each={options()}>
                 {(option) => (
                   <button
