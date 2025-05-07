@@ -497,14 +497,16 @@ export default function WikiSubPage() {
                     exit={{ opacity: 0, transform: "translateX(-50%)" }}
                     transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
                   >
-                    <Button
-                      size="sm"
-                      class="bg-transparent"
-                      icon={<Icon.Line.CloudUpload />}
-                      onClick={() => {
-                        setFormSheetIsOpen(true);
-                      }}
-                    ></Button>
+                    <Show when={store.session.user.id}>
+                      <Button
+                        size="sm"
+                        class="bg-transparent"
+                        icon={<Icon.Line.CloudUpload />}
+                        onClick={() => {
+                          setFormSheetIsOpen(true);
+                        }}
+                      ></Button>
+                    </Show>
                     <input
                       id="filterInput"
                       ref={setTableFilterInputRef}

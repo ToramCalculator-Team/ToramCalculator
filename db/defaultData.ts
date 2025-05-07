@@ -497,7 +497,7 @@ export const defaultData: DB = {
   zone: {
     id: "",
     name: "",
-    rewardNodes: null,
+    rewardNodes: 0,
     activityId: null,
     addressId: "",
   },
