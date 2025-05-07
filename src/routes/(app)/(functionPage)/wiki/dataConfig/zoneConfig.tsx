@@ -17,6 +17,7 @@ import { findAddresses } from "~/repositories/address";
 import { defaultData } from "../../../../../../db/defaultData";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
+import { CardSection } from "~/components/module/cardSection";
 
 export const zoneDataConfig: DBdataDisplayConfig<
   "zone",
@@ -296,109 +297,62 @@ export const zoneDataConfig: DBdataDisplayConfig<
             },
           })}
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.mobs ?? "出现的怪物"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={mobData.latest}>
-                <For each={mobData.latest}>
-                  {(mob) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }])}>
-                        {mob.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.mobs ?? "出现的怪物"}
+            data={mobData.latest}
+            renderItem={(mob) => {
+              return {
+                label: mob.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }]),
+              };
+            }}
+          />
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.npcs ?? "出现的NPC"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={npcsData.latest}>
-                <For each={npcsData.latest}>
-                  {(npc) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }])}>
-                        {npc.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.npcs ?? "出现的NPC"}
+            data={npcsData.latest}
+            renderItem={(npc) => {
+              return {
+                label: npc.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }]),
+              };
+            }}
+          />
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.linkZone ?? "连接的区域"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={linkZonesData.latest}>
-                <For each={linkZonesData.latest}>
-                  {(zone) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
-                        {zone.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.linkZone ?? "连接的区域"}
+            data={linkZonesData.latest}
+            renderItem={(zone) => {
+              return {
+                label: zone.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              };
+            }}
+          />
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.address ?? "所属地点"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={addressData.latest}>
-                <For each={addressData.latest}>
-                  {(address) => {
-                    return (
-                      <Button
-                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }])}
-                      >
-                        {address.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.address ?? "所属地址"}
+            data={addressData.latest}
+            renderItem={(address) => {
+              return {
+                label: address.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }]),
+              };
+            }}
+          />
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.activity ?? "所属活动"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={activityData.latest}>
-                <For each={activityData.latest}>
-                  {(activity) => {
-                    return (
-                      <Button
-                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }])}
-                      >
-                        {activity.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <Show when={activityData.latest?.length}>
+            <CardSection
+              title={dictionary.cardFields?.activity ?? "所属活动"}
+              data={activityData.latest}
+              renderItem={(activity) => {
+                return {
+                  label: activity.name,
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }]),
+                };
+              }}
+            />
+          </Show>
         </>
       );
     },

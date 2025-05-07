@@ -97,9 +97,9 @@ worker({
         shapeKey: `${tableName}s`,
         primaryKey: primaryKey,
         onInitialSync: () => notifySyncProgress(tableName),
-        onMustRefetch: async (tx) => {
-          await tx.exec(`DELETE FROM "${tableName}_synced";`);
-        }
+        // onMustRefetch: async (tx) => {
+        //   await tx.exec(`DELETE FROM "${tableName}_synced";`);
+        // }
       });
     };
 

@@ -13,6 +13,7 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { fieldInfo } from "../utils";
+import { CardSection } from "~/components/module/cardSection";
 
 export const addressDataConfig: DBdataDisplayConfig<
   "address",
@@ -172,25 +173,16 @@ export const addressDataConfig: DBdataDisplayConfig<
             },
           })}
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.zones ?? "包含的区域"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={zoneData.latest}>
-                <For each={zoneData.latest}>
-                  {(zone) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
-                        {zone.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.zone ?? "包含的区域"}
+            data={zoneData.latest}
+            renderItem={(zone) => {
+              return {
+                label: zone.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              };
+            }}
+          />
         </>
       );
     },

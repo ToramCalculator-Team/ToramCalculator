@@ -97,9 +97,14 @@ export async function findItemById(id: string, type: ItemType) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findItems() {
+export async function findItems(params: { type: item["type"] }) {
   const db = await getDB();
-  return await db.selectFrom("item").selectAll("item").execute();
+  return await db
+    .selectFrom("item")
+    .where("type", "=", params.type)
+    .selectAll("item")
+    .select((eb) => itemSubRelations(eb, eb.ref("item.id"), params.type))
+    .execute();
 }
 
 export async function updateItem(id: string, updateWith: Item["Update"]) {

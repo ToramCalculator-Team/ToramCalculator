@@ -18,6 +18,7 @@ import { Select } from "~/components/controls/select";
 import { MOB_DIFFICULTY_FLAG } from "../../../../../../db/enums";
 import { MobDifficultyFlag } from "../../../../../../db/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/mob";
+import { CardSection } from "~/components/module/cardSection";
 
 const columnHelper = createColumnHelper<Mob["MainForm"]>();
 
@@ -500,44 +501,26 @@ export const mobDataConfig: DBdataDisplayConfig<
             },
           })}
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.belongToZones ?? "出现的区域"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={zonesData.latest}>
-                <For each={zonesData.latest}>
-                  {(zone) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
-                        {zone.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.dropItems ?? "掉落物品"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={dropItemsData.latest}>
-                <For each={dropItemsData.latest}>
-                  {(item) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }])}>
-                        {item.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.belongToZones ?? "出现的区域"}
+            data={zonesData.latest}
+            renderItem={(zone) => {
+              return {
+                label: zone.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              };
+            }}
+          />
+          <CardSection
+            title={dictionary.cardFields?.dropItems ?? "掉落物品"}
+            data={dropItemsData.latest}
+            renderItem={(item) => {
+              return {
+                label: item.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }]),
+              };
+            }}
+          />
         </>
       );
     },

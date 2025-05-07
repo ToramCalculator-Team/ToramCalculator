@@ -10,6 +10,7 @@ import { skillDataConfig } from "./skillDataConfig";
 import { addressDataConfig } from "./addressConfig";
 import { npcDataConfig } from "./npcConfig";
 import { activityDataConfig } from "./activityConfig";
+import { taskDataConfig } from "./taskConfig";
 
 export type ExtraData<E extends Record<string, string[]>> = {
   [K in keyof E]: {
@@ -70,7 +71,7 @@ export const DBDataConfig: Partial<Record<keyof DB, DBdataDisplayConfig<any, any
 
   // special: mobDataConfig,
 
-  // task: mobDataConfig,
+  task: taskDataConfig as DBdataDisplayConfig<"task", any, any>,
 
   // weapon: mobDataConfig,
   // world: mobDataConfig,

@@ -6,15 +6,14 @@ import { DBdataDisplayConfig } from "./dataConfig";
 import { npcSchema } from "~/../db/zod";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
-import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
 import { findTasks } from "~/repositories/task";
-import { findZones } from "~/repositories/zone";
 import { Input } from "~/components/controls/input";
 import { fieldInfo } from "../utils";
 import { Autocomplete } from "~/components/controls/autoComplete";
+import { CardSection } from "~/components/module/cardSection";
 
 export const npcDataConfig: DBdataDisplayConfig<
   "npc",
@@ -163,25 +162,27 @@ export const npcDataConfig: DBdataDisplayConfig<
             },
           })}
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.tasks ?? "提供的任务"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={taskData.latest}>
-                <For each={taskData.latest}>
-                  {(task) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }])}>
-                        {task.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.tasks ?? "提供的任务"}
+            data={taskData.latest}
+            renderItem={(task) => {
+              return {
+                label: task.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }]),
+              };
+            }}
+          />
+
+          <CardSection
+            title={dictionary.cardFields?.zone ?? "所属区域"}
+            data={zoneData.latest}
+            renderItem={(zone) => {
+              return {
+                label: zone.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              };
+            }}
+          />
         </>
       );
     },

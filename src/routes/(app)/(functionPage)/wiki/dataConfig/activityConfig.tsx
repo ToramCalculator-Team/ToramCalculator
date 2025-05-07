@@ -9,6 +9,7 @@ import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
+import { CardSection } from "~/components/module/cardSection";
 
 export const activityDataConfig: DBdataDisplayConfig<
   "activity",
@@ -158,47 +159,27 @@ export const activityDataConfig: DBdataDisplayConfig<
             },
           })}
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.zones ?? "活动区域"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={zoneData.latest}>
-                <For each={zoneData.latest}>
-                  {(zone) => {
-                    return (
-                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
-                        {zone.name}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.zone ?? "活动区域"}
+            data={zoneData.latest}
+            renderItem={(zone) => {
+              return {
+                label: zone.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              };
+            }}
+          />
 
-          <section class="FieldGroup w-full gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.recipes ?? "活动配方"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={recipeData.latest}>
-                <For each={recipeData.latest}>
-                  {(recipe) => {
-                    return (
-                      <Button
-                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "recipe", id: recipe.id }])}
-                      >
-                        {recipe.itemName}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.recipes ?? "活动配方"}
+            data={recipeData.latest}
+            renderItem={(recipe) => {
+              return {
+                label: recipe.itemName,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "recipe", id: recipe.id }]),
+              };
+            }}
+          />
         </>
       );
     },

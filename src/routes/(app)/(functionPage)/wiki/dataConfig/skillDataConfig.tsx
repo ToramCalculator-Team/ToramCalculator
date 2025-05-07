@@ -11,8 +11,9 @@ import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
+import { CardSection } from "~/components/module/cardSection";
 
-export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"]> = {
+export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"], {}> = {
   table: {
     columnDef: [
       {
@@ -118,29 +119,16 @@ export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"]> = {
             },
           })}
 
-          <section class="FieldGroup gap-2 w-full">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dictionary.cardFields?.effects ?? "技能效果"}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="Content flex flex-col gap-3 p-1">
-              <Show when={skillEffectData.latest}>
-                <For each={skillEffectData.latest}>
-                  {(effect) => {
-                    return (
-                      <Button
-                        onClick={() =>
-                          appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }])
-                        }
-                      >
-                        {effect.condition}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </Show>
-            </div>
-          </section>
+          <CardSection
+            title={dictionary.cardFields?.effects ?? "技能效果"}
+            data={skillEffectData.latest}
+            renderItem={(effect) => {
+              return {
+                label: effect.condition,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }]),
+              };
+            }}
+          />
         </>
       );
     },
