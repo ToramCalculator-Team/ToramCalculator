@@ -3,8 +3,7 @@ import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 import { special, crystal, DB, image, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
 import { insertRecipe } from "./recipe";
@@ -13,8 +12,8 @@ import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
 
 export interface SpeEquip extends DataType<special> {
-  MainTable: Awaited<ReturnType<typeof findSpeEquips>>[number]
- }
+  MainTable: Awaited<ReturnType<typeof findSpeEquips>>[number];
+}
 
 export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
@@ -86,7 +85,7 @@ export async function createSpeEquip(
     const item = await insertItem(trx, {
       ...itemInput,
       id: createId(),
-      statisticId: statistic.id
+      statisticId: statistic.id,
     });
     const speEquip = await insertSpeEquip(trx, {
       ...speEquipInput,
@@ -111,44 +110,3 @@ export async function deleteSpeEquip(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultSpeEquip: SpeEquip["Select"] = {
-  modifiers: [],
-  itemId: "",
-  baseDef: 0,
-};
-
-// Dictionary
-export const SpeEquipDic = (locale: Locale): ConvertToAllString<SpeEquip["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "特殊装备",
-        modifiers: "属性",
-        itemId: "所属道具ID",
-        baseDef: "防御力",
-      };
-    case "zh-TW":
-      return {
-        selfName: "特殊裝備",
-        modifiers: "屬性",
-        itemId: "所屬道具ID",
-        baseDef: "防禦力",
-      };
-    case "en":
-      return {
-        selfName: "Special Equipment",
-        modifiers: "Modifiers",
-        itemId: "ItemId",
-        baseDef: "Base Def",
-      };
-    case "ja":
-      return {
-        selfName: "特殊装備",
-        modifiers: "補正項目",
-        itemId: "所属アイテムID",
-        baseDef: "防御力",
-      };
-  }
-};

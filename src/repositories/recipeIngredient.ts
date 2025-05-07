@@ -2,8 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, recipe_ingredient } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 
 export interface RecipeIngredient extends DataType<recipe_ingredient> {}
 
@@ -57,52 +56,3 @@ export async function deleteRecipeIngredient(id: string) {
     .returningAll()
     .executeTakeFirst();
 }
-
-export const defaultRecipeIngredient: RecipeIngredient["Select"] = {
-  id: "",
-  count: 0,
-  type: "Gold",
-  itemId: "",
-  recipeId: "",
-};
-
-export const RecipeIngredientDic = (locale: Locale): ConvertToAllString<RecipeIngredient["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "配方项",
-        id: "ID",
-        itemId: "道具ID",
-        count: "数量",
-        type: "类型",
-        recipeId: "所属配方ID",
-      };
-    case "zh-TW":
-      return {
-        selfName: "配方項",
-        id: "ID",
-        itemId: "道具ID",
-        count: "數量",
-        type: "類型",
-        recipeId: "所屬配方ID",
-      };
-    case "en":
-      return {
-        selfName: "Recipe Item",
-        id: "ID",
-        itemId: "Item ID",
-        count: "Count",
-        type: "Type",
-        recipeId: "Recipe ID",
-      };
-    case "ja":
-      return {
-        selfName: "レシピアイテム",
-        id: "ID",
-        itemId: "アイテムID",
-        count: "数",
-        type: "タイプ",
-        recipeId: "レシピID",
-      };
-  }
-};

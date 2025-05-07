@@ -920,6 +920,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "Armor",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the armor",
+          formFieldDescription: "Unique identifier for the armor"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -1233,6 +1238,11 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "Consumable",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the consumable",
+          formFieldDescription: "Unique identifier for the consumable"
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1273,6 +1283,11 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "Crystal",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the crystal",
+          formFieldDescription: "Unique identifier for the crystal"
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1755,8 +1770,13 @@ const dictionary: dictionary = {
       description: ""
     },
     option: {
-      selfName: "Option",
+      selfName: "Option Equipment",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the option equipment",
+          formFieldDescription: "Unique identifier for the option equipment"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2509,8 +2529,13 @@ const dictionary: dictionary = {
       description: ""
     },
     special: {
-      selfName: "Special",
+      selfName: "Special Equipment",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the special equipment",
+          formFieldDescription: "Unique identifier for the special equipment"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2776,6 +2801,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "Weapon",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "Unique identifier for the weapon",
+          formFieldDescription: "Unique identifier for the weapon"
+        },
         type: {
           key: "",
           tableFieldDescription: "",

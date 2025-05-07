@@ -1,9 +1,9 @@
-type,modifiers,itemId
-OptEquipCrystal,"{""distanceDamageBouns.short + 10%"",""maxHp + 30%"",""cr + 50%"",""maxMp - 100"",""armor.type == \""Light\"" && pPie - 10%""}",defaultIteamOptEquipCrystalBId
-OptEquipCrystal,"{""distanceDamageBonus.short + 12%"",""distanceDamageBonus.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pPie + 10%""}",defaultItemOptEquipCrystalAId
-SpecialCrystal,"{""mAtk + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro - 9%"",""subWeapon.type == \""Shield\"" && aggro + 9%""}",defaultItemSpeEquipCrystalAId
-WeaponCrystal,"{""mAtk + 8%"",""mPie + 20%"",""cspd - 16%""}",defaultItemWeaponCrystalAId
-NormalCrystal,"{""dictanceDamageBouns.short + 9%"",""accuracy + 5%"",""maxMp + 200"",""maxHp - 300"",""cr - 7""}",defaultItemSpeEquipCrystalBId
-WeaponCrystal,"{""mAtk + 10%"",""mPie + 7%"",""aggro - 11%"",""mDef - 30%""}",defaultItemWeaponCrystalBId
-ArmorCrystal,"{""mAtk + 10%"",""int + 6%"",""cspd + 40%"",""ampr + 10%""}",defaultIteamArmorCrystalAId
-ArmorCrystal,"{""pStabilitiy + 11%"",""str + 6%"",""vit + 6%"",""armor.type == \""Light\"" && distanceDamageBouns.short + 11%"",""armor.type == \""Light\"" && pStability - 5%"",""armor.type == \""Heavy\"" && distanceDamageBouns.long + 11%"",""armor.type == \""Heavy\"" && pStability - 5%""}",defaultItemArmorCrystalBId
+id,type,modifiers,defaultItemOptEquipCrystalBId
+defaultOptEquipCrystalAId,OptEquipCrystal,"{""distanceDamageBouns.short + 10%"",""maxHp + 30%"",""cr + 50%"",""maxMp - 100"",""armor.type == \""Light\"" && pPie - 10%""}",defaultIteamOptEquipCrystalBId
+defaultOptEquipCrystalBId,OptEquipCrystal,"{""distanceDamageBonus.short + 12%"",""distanceDamageBonus.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pPie + 10%""}",defaultItemOptEquipCrystalAId
+defaultSpeEquipCrystalAId,SpecialCrystal,"{""mAtk + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro - 9%"",""subWeapon.type == \""Shield\"" && aggro + 9%""}",defaultItemSpeEquipCrystalAId
+defaultWeaponCrystalAId,WeaponCrystal,"{""mAtk + 8%"",""mPie + 20%"",""cspd - 16%""}",defaultItemWeaponCrystalAId
+defaultNormalCrystalId,NormalCrystal,"{""dictanceDamageBouns.short + 9%"",""accuracy + 5%"",""maxMp + 200"",""maxHp - 300"",""cr - 7""}",defaultItemSpeEquipCrystalBId
+defaultWeaponCrystalBId,WeaponCrystal,"{""mAtk + 10%"",""mPie + 7%"",""aggro - 11%"",""mDef - 30%""}",defaultItemWeaponCrystalBId
+defaultArmorCrystalAId,ArmorCrystal,"{""mAtk + 10%"",""int + 6%"",""cspd + 40%"",""ampr + 10%""}",defaultIteamArmorCrystalAId
+defaultArmorCrystalBId,ArmorCrystal,"{""pStabilitiy + 11%"",""str + 6%"",""vit + 6%"",""armor.type == \""Light\"" && distanceDamageBouns.short + 11%"",""armor.type == \""Light\"" && pStability - 5%"",""armor.type == \""Heavy\"" && distanceDamageBouns.long + 11%"",""armor.type == \""Heavy\"" && pStability - 5%""}",defaultItemArmorCrystalBId

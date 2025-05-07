@@ -63,10 +63,3 @@ export async function deletePlayer(id: string) {
   const db = await getDB();
   return await db.deleteFrom("player").where("id", "=", id).returningAll().executeTakeFirst();
 }
-// Default
-export const defaultPlayer: Player["Select"] = {
-  id: "defaultPlayer",
-  name: "默认玩家",
-  useIn: "",
-  accountId: "",
-};

@@ -98,6 +98,7 @@ export const defaultData: DB = {
     worldId: "",
   },
   armor: {
+    id: "",
     baseDef: 0,
     modifiers: [],
     colorA: 0,
@@ -158,12 +159,14 @@ export const defaultData: DB = {
     comboId: "",
   },
   consumable: {
+    id: "",
     type: "MaxHp",
     effectDuration: 0,
     effects: [],
     itemId: "",
   },
   crystal: {
+    id: "",
     type: "NormalCrystal",
     modifiers: [],
     itemId: "",
@@ -257,6 +260,7 @@ export const defaultData: DB = {
     zoneId: "",
   },
   option: {
+    id: "",
     baseDef: 0,
     modifiers: [],
     colorA: 0,
@@ -410,6 +414,7 @@ export const defaultData: DB = {
     belongToskillId: "",
   },
   special: {
+    id: "",
     baseDef: 0,
     modifiers: [],
     itemId: "",
@@ -480,6 +485,7 @@ export const defaultData: DB = {
     },
   },
   weapon: {
+    id: "",
     type: "OneHandSword",
     baseAbi: 0,
     stability: 0,

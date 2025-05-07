@@ -1,8 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, combo } from "~/../db/kysely/kyesely";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import {DataType } from "./untils";
 
 export interface Combo extends DataType<combo> {
   MainTable: Awaited<ReturnType<typeof findCombos>>[number];
@@ -49,48 +48,3 @@ export async function deleteCombo(id: string) {
   const db = await getDB();
   return await db.deleteFrom("combo").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-export const defaultCombo: Combo["Select"] = {
-  id: "",
-  name: "",
-  disable: true,
-  characterId: "",
-};
-
-// Dictionary
-export const ComborDic = (locale: Locale): ConvertToAllString<Combo["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "连击",
-        name: "名称",
-        id: "ID",
-        disable: "是否开启",
-        characterId: "角色ID",
-      };
-    case "zh-TW":
-      return {
-        selfName: "連擊",
-        name: "名称",
-        id: "ID",
-        disable: "是否開啟",
-        characterId: "角色ID",
-      };
-    case "en":
-      return {
-        selfName: "Combo",
-        name: "Name",
-        id: "ID",
-        disable: "Disable",
-        characterId: "Character ID",
-      };
-    case "ja":
-      return {
-        selfName: "コンボ",
-        name: "名前",
-        id: "ID",
-        disable: "無効",
-        characterId: "キャラクターID",
-      };
-  }
-};

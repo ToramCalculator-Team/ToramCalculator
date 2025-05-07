@@ -8,7 +8,6 @@ import { DB, npc } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { findTasks } from "~/repositories/task";
 import { Input } from "~/components/controls/input";
 import { fieldInfo } from "../utils";
@@ -16,7 +15,7 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/module/cardSection";
 
 export const npcDataConfig: DBdataDisplayConfig<
-  "npc",
+  npc,
   Npc["Card"],
   {
     tasksData: string[];

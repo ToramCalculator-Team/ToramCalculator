@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
+import { findSkillById, findSkills, Skill } from "~/repositories/skill";
 import { DataEnums } from "~/../db/dataEnums";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { skill_effectSchema, skillSchema, statisticSchema } from "~/../db/zod";
@@ -10,10 +10,9 @@ import { Dic, EnumFieldDetail } from "~/locales/type";
 import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { CardSection } from "~/components/module/cardSection";
-
-export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"], {}> = {
+import { defaultData } from "~/../db/defaultData";
+export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
   table: {
     columnDef: [
       {
@@ -82,7 +81,7 @@ export const skillDataConfig: DBdataDisplayConfig<"skill", Skill["Card"], {}> = 
     },
   },
   form: {
-    data: defaultSkill,
+    data: defaultData.skill,
     hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
     dataSchema: skillSchema,
     fieldGenerators: {},

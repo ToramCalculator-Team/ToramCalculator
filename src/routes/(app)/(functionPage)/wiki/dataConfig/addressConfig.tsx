@@ -1,22 +1,21 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultAddress, findAddressById, findAddresses, Address, createAddress } from "~/repositories/address";
+import { findAddressById, findAddresses, Address, createAddress } from "~/repositories/address";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { addressSchema } from "~/../db/zod";
-import { DB, address } from "~/../db/kysely/kyesely";
+import { address } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
-import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { fieldInfo } from "../utils";
 import { CardSection } from "~/components/module/cardSection";
+import { defaultData } from "~/../db/defaultData";
 
 export const addressDataConfig: DBdataDisplayConfig<
-  "address",
+  address,
   Address["Card"],
   {
     zones: string[];
@@ -78,7 +77,7 @@ export const addressDataConfig: DBdataDisplayConfig<
     },
   },
   form: {
-    data: defaultAddress,
+    data: defaultData.address,
     hiddenFields: ["id"],
     dataSchema: addressSchema,
     fieldGenerators: {

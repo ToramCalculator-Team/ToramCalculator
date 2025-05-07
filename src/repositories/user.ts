@@ -1,11 +1,11 @@
 import { getDB } from "./database";
 import { user, DB } from "../../db/kysely/kyesely";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { Expression, ExpressionBuilder, Kysely, Transaction } from "kysely";
-import { createAccount, defaultAccount } from "./account";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { createAccount } from "./account";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { defaultData } from "../../db/defaultData";
 
 export interface User extends DataType<user> {
   MainTable: Awaited<ReturnType<typeof findUsers>>[number];
@@ -58,7 +58,7 @@ export async function insertUser(trx: Transaction<DB>, newUser: User["Insert"]) 
 export async function createUser(trx: Transaction<DB>, newUser: User["Insert"]) {
   const user = await insertUser(trx, newUser);
   await createAccount(trx, {
-    ...defaultAccount,
+    ...defaultData.account,
     id: createId(),
     providerAccountId: createId(),
     userId: user.id,
@@ -70,58 +70,3 @@ export async function deleteUser(id: string) {
   const db = await getDB();
   return await db.deleteFrom("user").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultUser: User["Select"] = {
-  id: "",
-  name: "",
-  email: null,
-  password: null,
-  emailVerified: null,
-  image: null,
-};
-
-export const UserDic = (locale: Locale): ConvertToAllString<User["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        id: "ID",
-        name: "名称",
-        email: "邮箱",
-        emailVerified: "邮箱验证",
-        password: "密码",
-        image: "图像",
-        selfName: "用户",
-      };
-    case "zh-TW":
-      return {
-        id: "ID",
-        name: "名稱",
-        email: "郵箱",
-        emailVerified: "郵箱驗證",
-        password: "密碼",
-        image: "圖像",
-        selfName: "用戶",
-      };
-    case "en":
-      return {
-        id: "ID",
-        name: "Name",
-        email: "Email",
-        emailVerified: "Email Verified",
-        password: "Password",
-        image: "Image",
-        selfName: "User",
-      };
-    case "ja":
-      return {
-        id: "ID",
-        name: "名前",
-        email: "メールアドレス",
-        emailVerified: "メール確認",
-        password: "パスワード",
-        image: "画像",
-        selfName: "ユーザー",
-      };
-  }
-};

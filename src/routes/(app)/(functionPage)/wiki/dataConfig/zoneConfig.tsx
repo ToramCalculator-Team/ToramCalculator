@@ -1,26 +1,21 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { createZone, defaultZone, findZoneById, findZones, Zone } from "~/repositories/zone";
+import { createZone, findZoneById, findZones, Zone } from "~/repositories/zone";
 import { fieldInfo } from "../utils";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { zoneSchema } from "~/../db/zod";
 import { DB, zone } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
-import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
-import { findAddresses } from "~/repositories/address";
-import { defaultData } from "../../../../../../db/defaultData";
-import { AnyFieldApi } from "@tanstack/solid-form";
-import { createId } from "@paralleldrive/cuid2";
+import { defaultData } from "~/../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 
 export const zoneDataConfig: DBdataDisplayConfig<
-  "zone",
+  zone,
   Zone["Card"],
   {
     linkZones: string[];

@@ -1081,38 +1081,43 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "防具的唯一識別碼",
+          formFieldDescription: "防具的唯一識別碼"
+        },
         baseDef: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基礎防禦",
+          tableFieldDescription: "防具的基礎防禦值",
+          formFieldDescription: "請輸入防具的基礎防禦值"
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "防具的屬性修正值",
+          formFieldDescription: "請輸入防具的屬性修正值"
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色A",
+          tableFieldDescription: "防具的主要顏色",
+          formFieldDescription: "請選擇防具的主要顏色"
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色B",
+          tableFieldDescription: "防具的次要顏色",
+          formFieldDescription: "請選擇防具的次要顏色"
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色C",
+          tableFieldDescription: "防具的第三顏色",
+          formFieldDescription: "請選擇防具的第三顏色"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "關聯的物品ID",
+          formFieldDescription: "請選擇關聯的物品"
+        }
       },
-      description: ""
+      description: "防具裝備信息"
     },
     avatar: {
       selfName: "時裝",
@@ -1394,46 +1399,56 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "消耗品的唯一識別碼",
+          formFieldDescription: "消耗品的唯一識別碼"
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "類型",
+          tableFieldDescription: "消耗品的類型",
+          formFieldDescription: "請選擇消耗品的類型",
           enumMap: {
-            Hit: "",
-            MaxHp: "",
-            MaxMp: "",
-            pAtk: "",
-            mAtk: "",
-            Aspd: "",
-            Cspd: "",
-            Flee: "",
-            EleStro: "",
-            EleRes: "",
-            pRes: "",
-            mRes: "",
-          },
+            MaxHp: "最大生命值",
+            MaxMp: "最大魔力值",
+            pAtk: "物理攻擊",
+            mAtk: "魔法攻擊",
+            Aspd: "攻擊速度",
+            Cspd: "詠唱速度",
+            Hit: "命中",
+            Flee: "迴避",
+            EleStro: "屬性強化",
+            EleRes: "屬性抗性",
+            pRes: "物理抗性",
+            mRes: "魔法抗性"
+          }
         },
         effectDuration: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果持續時間",
+          tableFieldDescription: "效果持續時間（秒）",
+          formFieldDescription: "請輸入效果持續時間（秒）"
         },
         effects: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果",
+          tableFieldDescription: "消耗品的效果描述",
+          formFieldDescription: "請輸入消耗品的效果描述"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "關聯的物品ID",
+          formFieldDescription: "請選擇關聯的物品"
+        }
       },
-      description: ""
+      description: "消耗品信息"
     },
     crystal: {
-      selfName: "锻晶",
+      selfName: "晶石",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "晶石的唯一識別碼",
+          formFieldDescription: "晶石的唯一識別碼"
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1607,38 +1622,38 @@ const dictionary: dictionary = {
       description: ""
     },
     material: {
-      selfName: "素材",
+      selfName: "材料",
       fields: {
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "類型",
+          tableFieldDescription: "材料的類型",
+          formFieldDescription: "請選擇材料的類型",
           enumMap: {
-            Metal: "",
-            Cloth: "",
-            Beast: "",
-            Wood: "",
-            Drug: "",
-            Magic: "",
-          },
+            Metal: "金屬",
+            Cloth: "布料",
+            Beast: "獸皮",
+            Wood: "木材",
+            Drug: "藥材",
+            Magic: "魔法材料"
+          }
         },
         ptValue: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "點數值",
+          tableFieldDescription: "材料的點數值",
+          formFieldDescription: "請輸入材料的點數值"
         },
         price: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "價格",
+          tableFieldDescription: "材料的價格",
+          formFieldDescription: "請輸入材料的價格"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "關聯的物品ID",
+          formFieldDescription: "請選擇關聯的物品"
+        }
       },
-      description: ""
+      description: "材料信息"
     },
     member: {
       selfName: "成員",
@@ -1918,38 +1933,43 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加裝備",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "追加裝備的唯一識別碼",
+          formFieldDescription: "追加裝備的唯一識別碼"
+        },
         baseDef: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基礎防禦",
+          tableFieldDescription: "追加裝備的基礎防禦值",
+          formFieldDescription: "請輸入追加裝備的基礎防禦值"
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "追加裝備的屬性修正值",
+          formFieldDescription: "請輸入追加裝備的屬性修正值"
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色A",
+          tableFieldDescription: "追加裝備的主要顏色",
+          formFieldDescription: "請選擇追加裝備的主要顏色"
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色B",
+          tableFieldDescription: "追加裝備的次要顏色",
+          formFieldDescription: "請選擇追加裝備的次要顏色"
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色C",
+          tableFieldDescription: "追加裝備的第三顏色",
+          formFieldDescription: "請選擇追加裝備的第三顏色"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "關聯的物品ID",
+          formFieldDescription: "請選擇關聯的物品"
+        }
       },
-      description: ""
+      description: "追加裝備信息"
     },
     player: {
       selfName: "玩家",
@@ -2672,6 +2692,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊裝備",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "特殊裝備的唯一識別碼",
+          formFieldDescription: "特殊裝備的唯一識別碼"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2937,77 +2962,82 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "武器的唯一識別碼",
+          formFieldDescription: "武器的唯一識別碼"
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "類型",
+          tableFieldDescription: "武器的類型，包括主武器和副武器",
+          formFieldDescription: "請選擇武器的類型",
           enumMap: {
-            OneHandSword: "",
-            TwoHandSword: "",
-            Bow: "",
-            Bowgun: "",
-            Rod: "",
-            Magictool: "",
-            Knuckle: "",
-            Halberd: "",
-            Katana: "",
-            Arrow: "",
-            ShortSword: "",
-            NinjutsuScroll: "",
-            Shield: "",
-          },
+            OneHandSword: "單手劍",
+            TwoHandSword: "雙手劍",
+            Bow: "弓",
+            Bowgun: "弩",
+            Rod: "法杖",
+            Magictool: "魔導具",
+            Knuckle: "拳套",
+            Halberd: "旋風槍",
+            Katana: "拔刀劍",
+            Arrow: "箭矢",
+            ShortSword: "小刀",
+            NinjutsuScroll: "忍術卷軸",
+            Shield: "盾牌"
+          }
         },
         baseAbi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基礎攻擊力",
+          tableFieldDescription: "武器的基礎攻擊力",
+          formFieldDescription: "請輸入武器的基礎攻擊力"
         },
         stability: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "穩定率",
+          tableFieldDescription: "武器的穩定率，影響傷害波動",
+          formFieldDescription: "請輸入武器的穩定率"
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "修正值",
+          tableFieldDescription: "武器的屬性修正值",
+          formFieldDescription: "請輸入武器的屬性修正值"
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色A",
+          tableFieldDescription: "武器的主要顏色",
+          formFieldDescription: "請選擇武器的主要顏色"
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色B",
+          tableFieldDescription: "武器的次要顏色",
+          formFieldDescription: "請選擇武器的次要顏色"
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顏色C",
+          tableFieldDescription: "武器的第三顏色",
+          formFieldDescription: "請選擇武器的第三顏色"
         },
         elementType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "元素屬性",
+          tableFieldDescription: "武器的元素屬性",
+          formFieldDescription: "請選擇武器的元素屬性",
           enumMap: {
-            Normal: "",
-            Light: "",
-            Dark: "",
-            Water: "",
-            Fire: "",
-            Earth: "",
-            Wind: "",
-          },
+            Normal: "無屬性",
+            Light: "光屬性",
+            Dark: "暗屬性",
+            Water: "水屬性",
+            Fire: "火屬性",
+            Earth: "地屬性",
+            Wind: "風屬性"
+          }
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
+          key: "物品ID",
+          tableFieldDescription: "關聯的物品ID",
+          formFieldDescription: "請選擇關聯的物品"
+        }
       },
-      description: ""
+      description: "武器裝備信息"
     },
     world: {
       selfName: "世界",

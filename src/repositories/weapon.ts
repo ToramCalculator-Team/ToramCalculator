@@ -3,8 +3,7 @@ import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 import { weapon, crystal, DB, image, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
 import { insertRecipe } from "./recipe";
@@ -14,6 +13,7 @@ import { insertItem } from "./item";
 
 export interface Weapon extends DataType<weapon> {
   MainTable: Awaited<ReturnType<typeof findWeapons>>[number];
+  Card: Awaited<ReturnType<typeof findWeaponById>>;
 }
 
 export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
@@ -35,18 +35,19 @@ export async function findWeaponByItemId(id: string) {
     .selectFrom("weapon")
     .innerJoin("item", "item.id", "weapon.itemId")
     .where("item.id", "=", id)
-    .selectAll("weapon")
+    .selectAll(["weapon", "item"])
     .select((eb) => weaponSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
+export async function findWeaponById(id: string) {
+  const db = await getDB();
+  return await db.selectFrom("weapon").where("itemId", "=", id).selectAll("weapon").executeTakeFirstOrThrow();
+}
+
 export async function findWeapons() {
   const db = await getDB();
-  return await db
-    .selectFrom("weapon")
-    .innerJoin("item", "item.id", "weapon.itemId")
-    .selectAll(["item", "weapon"])
-    .execute();
+  return await db.selectFrom("weapon").selectAll("weapon").execute();
 }
 
 export async function updateWeapon(id: string, updateWith: Weapon["Update"]) {
@@ -111,74 +112,3 @@ export async function deleteWeapon(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultWeapon: Weapon["Select"] = {
-  modifiers: [],
-  itemId: "",
-  type: "Magictool",
-  stability: 0,
-  elementType: "Normal",
-  baseAbi: 0,
-  colorA: 0,
-  colorB: 0,
-  colorC: 0,
-};
-
-// Dictionary
-export const WeaponDic = (locale: Locale): ConvertToAllString<Weapon["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        modifiers: "属性",
-        itemId: "所属道具ID",
-        type: "武器类型",
-        stability: "稳定率",
-        elementType: "觉醒属性",
-        baseAbi: "攻击力",
-        colorA: "颜色A",
-        colorB: "颜色B",
-        colorC: "颜色C",
-        selfName: "武器",
-      };
-    case "zh-TW":
-      return {
-        selfName: "武器",
-        modifiers: "屬性",
-        type: "武器類型",
-        stability: "穩定率",
-        elementType: "觉醒屬性",
-        itemId: "所屬道具ID",
-        baseAbi: "攻擊力",
-        colorA: "顏色A",
-        colorB: "顏色B",
-        colorC: "顏色C",
-      };
-    case "en":
-      return {
-        selfName: "Weapon",
-        modifiers: "Modifiers",
-        type: "Type",
-        stability: "Stability",
-        elementType: "Element Type",
-        itemId: "ItemId",
-        baseAbi: "Base Abi",
-        colorA: "Color A",
-        colorB: "Color B",
-        colorC: "Color C",
-      };
-    case "ja":
-      return {
-        selfName: "武器",
-        modifiers: "補正項目",
-        type: "武器タイプ",
-        stability: "スタビリティ",
-        elementType: "觉醒属性",
-        itemId: "所属アイテムID",
-        baseAbi: "基本攻撃力",
-        colorA: "色A",
-        colorB: "色B",
-        colorC: "色C",
-      };
-  }
-};

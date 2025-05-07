@@ -1,2 +1,2 @@
-baseDef,modifiers,colorA,colorB,colorC,itemId
-0,"{""maxMp + 300"",""cspd + 400"",""mPie + 20%""}",0,0,0,defaultIteamOptEquipId
+id,baseDef,modifiers,colorA,colorB,colorC,itemId
+defaultOptEquipId,0,"{""maxMp + 300"",""cspd + 400"",""mPie + 20%""}",0,0,0,defaultIteamOptEquipId

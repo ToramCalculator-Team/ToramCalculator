@@ -1,8 +1,7 @@
 import { Expression, ExpressionBuilder, Kysely, Transaction } from "kysely";
 import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import {DataType } from "./untils";
 import { account, DB } from "~/../db/kysely/kyesely";
 
 export interface Account extends DataType<account> {
@@ -89,89 +88,3 @@ export async function deleteAccount(id: string) {
   const db = await getDB();
   return await db.deleteFrom("account").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultAccount: Account["Select"] = {
-  id: "",
-  type: "User",
-  provider: "",
-  providerAccountId: "",
-  refresh_token: null,
-  access_token: null,
-  expires_at: null,
-  token_type: null,
-  scope: null,
-  id_token: null,
-  session_state: null,
-  userId: "",
-};
-
-// 设计为Form字段字典，但是由于Table字段是此对象子集，因此通用
-export const AccountDic = (locale: Locale): ConvertToAllString<Account["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "账号",
-        id: "ID",
-        type: "类型",
-        provider: "",
-        providerAccountId: "",
-        refresh_token: "",
-        access_token: "",
-        expires_at: "",
-        token_type: "",
-        scope: "",
-        id_token: "",
-        session_state: "",
-        userId: "",
-      };
-    case "zh-TW":
-      return {
-        selfName: "帳號",
-        id: "ID",
-        type: "類型",
-        provider: "",
-        providerAccountId: "",
-        refresh_token: "",
-        access_token: "",
-        expires_at: "",
-        token_type: "",
-        scope: "",
-        id_token: "",
-        session_state: "",
-        userId: "",
-      };
-    case "en":
-      return {
-        selfName: "Account",
-        id: "ID",
-        type: "Type",
-        provider: "",
-        providerAccountId: "",
-        refresh_token: "",
-        access_token: "",
-        expires_at: "",
-        token_type: "",
-        scope: "",
-        id_token: "",
-        session_state: "",
-        userId: "",
-      };
-    case "ja":
-      return {
-        selfName: "アカウント",
-        id: "ID",
-        type: "タイプ",
-        provider: "",
-        providerAccountId: "",
-        refresh_token: "",
-        access_token: "",
-        expires_at: "",
-        token_type: "",
-        scope: "",
-        id_token: "",
-        session_state: "",
-        userId: "",
-      };
-  }
-};

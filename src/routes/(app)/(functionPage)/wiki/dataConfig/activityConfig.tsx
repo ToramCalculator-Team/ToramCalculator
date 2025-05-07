@@ -1,18 +1,18 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultActivity, findActivityById, findActivities, Activity, createActivity } from "~/repositories/activity";
+import { findActivityById, findActivities, Activity, createActivity } from "~/repositories/activity";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { activitySchema } from "~/../db/zod";
-import { DB, activity } from "~/../db/kysely/kyesely";
+import { activity } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { CardSection } from "~/components/module/cardSection";
+import { defaultData } from "~/../db/defaultData";
 
 export const activityDataConfig: DBdataDisplayConfig<
-  "activity",
+  activity,
   Activity["Card"],
   {
     zones: string[];
@@ -60,7 +60,7 @@ export const activityDataConfig: DBdataDisplayConfig<
     },
   },
   form: {
-    data: defaultActivity,
+    data: defaultData.activity,
     hiddenFields: ["id"],
     dataSchema: activitySchema,
     fieldGenerators: {},

@@ -1,5 +1,5 @@
 id,name,type,captureable,baseLv,experience,partsExperience,initialElement,radius,maxhp,physicalDefense,physicalResistance,magicalDefense,magicalResistance,criticalResistance,avoidance,dodge,block,normalAttackResistanceModifier,physicalAttackResistanceModifier,magicalAttackResistanceModifier,actions,details,dataSources,statisticId,updatedByAccountId,createdByAccountId
-clv6uxjlm000xwv1fb3g0tjv4,薇芮娜·超柯尔连生体,Boss,f,195,57000,0,Fire,1,0,819,7,585,7,5,438,6,0,0,1,5,{},经验值包括柱子。一阶段受到翻覆后获得高额减伤；三阶段受到翻覆后会在自身脚下释放漩涡。,fengli,24,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+clv6uxjlm000xwv1fb3g0tjv4,薇芮娜·超柯尔连生体,Boss,f,195,57000,0,Fire,1,0,819,7,585,7,5,438,6,0,1,1,5,{},经验值包括柱子。一阶段受到翻覆后获得高额减伤；三阶段受到翻覆后会在自身脚下释放漩涡。,fengli,24,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6ubaz1000pwv1fgzxpbjxd,魔人库维扎,Boss,f,185,40500,0,Dark,1,0,925,7,925,7,25,415,5,0,0,5,5,{},无,fengli,2,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6wmh4w001rwv1f8aa3u6vh,护卫魔像,Boss,f,232,38000,0,Normal,1,0,1160,25,1160,25,20,418,0,25,0,0,0,{},血量低于50%以后切换形态；红色形态的回血期间受到麻痹会被打断。,fengli,13,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6y70u50025wv1fqyhsjcz9,多米纳雷多尔,Boss,f,253,32500,0,Dark,1,0,1265,50,1265,50,30,450,5,20,0,1,15,{},每失去一个球，双抗降低10%，并降低闪躲率和格挡率,fengli,6,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
@@ -32,7 +32,7 @@ clv6vraf5001dwv1f0mm86k44,岩龙菲尔岑,Boss,f,211,15150,0,Earth,1,3171000,105
 clv6vgjhg0017wv1fkdtn4tb8,移儡原生质体,Boss,f,205,14460,0,Normal,1,0,922,8,307,8,100,307,0,25,0,1,1,{},受到冰冻后，暴击抗性降低为零；生命值降低至75%以下时，属性变为风属性,fengli,21,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 cluv8t0860009u048a24icquk,嗜人蝎狮,Boss,f,100,14400,0,Normal,1,0,220,4,242,4,0,248,3,9,0,20,40,{},无,fengli,65,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6vo2mo001bwv1f0vxczx5u,晶玛体,Boss,f,208,14080,0,Fire,1,0,728,16,728,16,20,468,3,3,0,5,10,{},每降低25%最大生命值，会进入一段时间的高抗性状态，受到：昏厥、麻痹、着火会解除该状态。,fengli,19,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
-clv6l4vfl0009wv1f55hypfwe,暗龙费因斯坦,Boss,f,166,14000,0,Dark,1,0,246,6,249,6,0,25,1,1,0,1,10,{},半血后获得高额暴击抗性，受到控制后可解除一段时间,fengli,36,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+clv6l4vfl0009wv1f55hypfwe,暗龙费因斯坦,Boss,f,166,14000,0,Dark,1,0,246,6,249,6,0,25,1,1,100,1,10,{},半血后获得高额暴击抗性，受到控制后可解除一段时间,fengli & 托一辈子吗,36,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6vcla70015wv1f003qb6ks,塔利结晶兽,Boss,f,202,13420,0,Wind,1,0,606,8,606,8,20,303,10,1,0,5,25,{},开局释放天火和风刃完毕前，暴击抗性为100,fengli,22,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6l98a5000bwv1fn2zs6knp,修斯古巨兽,Boss,f,169,13300,0,Earth,1,0,422,6,263,6,0,253,4,0,0,5,20,{},半血后增加对物理、魔法伤害的暴击抗性,fengli,37,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6v9cog0013wv1f6vymc7ea,黑影,Boss,f,199,12500,0,Dark,1,0,398,7,597,7,10,298,4,4,0,10,10,{},受到伤害累计超过一定值后属性变更为火属性。,fengli,23,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
@@ -99,7 +99,7 @@ clui5ckiy000711my8nvvvsoc,诡谲的结晶,Boss,f,24,255,0,Dark,1,0,0,0,0,0,0,0,0
 clui5a9ql000511my8n0qi7kh,幽灵兵甲,Boss,f,20,240,0,Dark,1,8544,26,0,50,0,0,30,0,0,0,30,10,{},无,fengli,85,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clui589ck000311my0p5bgm0o,出土魔像,Boss,f,16,90,0,Normal,1,3150,12,0,12,0,0,12,0,10,0,15,15,{},无,fengli,93,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clui55nha000111myotjx9ia0,科隆老大,Boss,f,10,30,0,Earth,1,1000,7,0,7,0,0,11,0,0,0,10,10,{},劳大,fengli,87,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
-clv6v144a000zwv1frhv71fxi,王座柯尔连生体,Boss,f,190,0,0,Normal,1,0,665,7,475,7,25,285,0,6,0,5,20,{},无,fengli,26,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+clv6v144a000zwv1frhv71fxi,王座柯尔连生体,Boss,f,190,0,0,Normal,1,0,665,7,475,7,25,285,0,6,10,5,10,{},无,fengli & 混子鱼,26,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 defaultMobId,defaultMob,Mob,f,0,0,0,Normal,0,0,0,0,0,0,0,0,0,0,0,0,0,{},测试数据,system,defaultMobStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 atfvqeomivdsv6hhkiv47798,卡波·普罗芬多,MiniBoss,f,287,60500,0,Water,0,0,1435,11,1435,11,20,516,1,10,999,20,20,{},无,fengli,hxw1rwyww2egat1k64amw7aj,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 iereb2agesqlwwnoresd3p89,梵缇卡,MiniBoss,f,284,55150,0,Water,0,0,852,11,1136,11,20,511,2,10,999,10,20,{},无,fengli,qv9ex7c7oieqplin7jmqu2hf,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83

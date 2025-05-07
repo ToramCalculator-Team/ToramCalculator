@@ -51,6 +51,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   onRefetch?: (refetch: () => void) => void;
 }) {
+  console.log("VirtualTable", props);
   //   const start = performance.now();
   //   console.log("virtualTable start", start);
   const media = useContext(MediaContext);

@@ -1,12 +1,10 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, mob } from "~/../db/kysely/kyesely";
-import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { getDictionary, Locale } from "~/locales/i18n";
-import { ConvertToAllDetail, DataType } from "./untils";
+import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { drop_itemSchema, itemSchema, mobSchema, statisticSchema, zoneSchema } from "../../db/zod";
+import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "../../db/zod";
 import { z, ZodRawShape } from "zod";
 
 export interface Mob extends DataType<mob> {
@@ -57,7 +55,7 @@ export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression
 
 // 3.1 从映射表中抽出所有子字段的 ZodRawShape，此方法生成的zodSchema将无法静态推断
 const subRelationZodShape: ZodRawShape = Object.fromEntries(
-  Object.entries(mobSubRelationDefs).map(([key, def]) => [key, def.schema])
+  Object.entries(mobSubRelationDefs).map(([key, def]) => [key, def.schema]),
 );
 
 // 3.2 手动构建zodSchema，此办法支持静态推断
@@ -125,62 +123,3 @@ export async function deleteMob(id: string) {
   const db = await getDB();
   return await db.deleteFrom("mob").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultMob: Mob["Select"] = {
-  id: "",
-  name: "",
-  type: "Boss",
-  initialElement: "Normal",
-  captureable: false,
-  actions: [],
-  baseLv: 0,
-  experience: 0,
-  radius: 0,
-  maxhp: 0,
-  physicalDefense: 0,
-  physicalResistance: 0,
-  magicalDefense: 0,
-  magicalResistance: 0,
-  criticalResistance: 0,
-  avoidance: 0,
-  dodge: 0,
-  block: 0,
-  normalAttackResistanceModifier: 0,
-  physicalAttackResistanceModifier: 0,
-  magicalAttackResistanceModifier: 0,
-  partsExperience: 0,
-  details: "",
-  dataSources: "",
-  statisticId: "",
-  updatedByAccountId: "",
-  createdByAccountId: "",
-};
-
-// export function mobSubRelations(eb: ExpressionBuilder<DB, "mob">, id: Expression<string>) {
-//   return [
-//     jsonArrayFrom(
-//       eb
-//         .selectFrom("_mobTozone")
-//         .innerJoin("zone", "_mobTozone.B", "zone.id")
-//         .where("_mobTozone.A", "=", id)
-//         .select("zone.name"),
-//     ).as("belongToZones"),
-//     jsonArrayFrom(
-//       eb
-//         .selectFrom("drop_item")
-//         .innerJoin("item", "item.id", "drop_item.itemId")
-//         .where("drop_item.dropById", "=", id)
-//         .selectAll("item"),
-//     ).as("dropItems"),
-//     jsonObjectFrom(
-//       eb
-//         .selectFrom("statistic")
-//         .whereRef("id", "=", "mob.statisticId")
-//         .selectAll("statistic")
-//         .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
-//     )
-//       .$notNull()
-//       .as("statistic"),
-//   ];
-// }

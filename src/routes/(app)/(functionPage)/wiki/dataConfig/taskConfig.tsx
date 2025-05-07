@@ -1,18 +1,18 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultTask, findTaskById, findTasks, Task } from "~/repositories/task";
+import { findTaskById, findTasks, Task } from "~/repositories/task";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { taskSchema } from "~/../db/zod";
 import { DB, task } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { Button } from "~/components/controls/button";
 import { CardSection } from "~/components/module/cardSection";
+import { defaultData } from "~/../db/defaultData";
 
 export const taskDataConfig: DBdataDisplayConfig<
-  "task",
+  task,
   Task["Card"],
   {
     npcs: string[];
@@ -75,7 +75,7 @@ export const taskDataConfig: DBdataDisplayConfig<
     },
   },
   form: {
-    data: defaultTask,
+    data: defaultData.task,
     hiddenFields: ["id"],
     dataSchema: taskSchema,
     fieldGenerators: {},

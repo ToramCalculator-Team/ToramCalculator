@@ -1,8 +1,7 @@
 import { Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, image } from "~/../db/kysely/kyesely";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 
 export interface Image extends DataType<image> {}
 
@@ -35,64 +34,3 @@ export async function deleteImage(id: string) {
   const db = await getDB();
   return await db.deleteFrom("image").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultImage: Image["Select"] = {
-  id: "",
-  dataUrl: "data:image/png;base64,",
-  npcId: null,
-  weaponId: null,
-  armorId: null,
-  optEquipId: null,
-  mobId: null,
-};
-
-// Dictionary
-export const ImageDic = (locale: Locale): ConvertToAllString<Image["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "防具装备",
-        id: "ID",
-        dataUrl: "图像数据",
-        npcId: "",
-        weaponId: "",
-        armorId: "",
-        optEquipId: "",
-        mobId: "",
-      };
-    case "zh-TW":
-      return {
-        selfName: "防具裝備",
-        id: "ID",
-        dataUrl: "圖像數據",
-        npcId: "",
-        weaponId: "",
-        armorId: "",
-        optEquipId: "",
-        mobId: "",
-      };
-    case "en":
-      return {
-        selfName: "Armor",
-        id: "ID",
-        dataUrl: "Image Data",
-        npcId: "",
-        weaponId: "",
-        armorId: "",
-        optEquipId: "",
-        mobId: "",
-      };
-    case "ja":
-      return {
-        selfName: "鎧",
-        id: "ID",
-        dataUrl: "イメージデータ",
-        npcId: "",
-        weaponId: "",
-        armorId: "",
-        optEquipId: "",
-        mobId: "",
-      };
-  }
-};

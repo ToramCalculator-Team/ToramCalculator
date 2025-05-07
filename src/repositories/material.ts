@@ -2,7 +2,6 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DataType } from "./untils";
 import { material, DB, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
-import { MaterialType } from "~/../db/kysely/enums";
 
 export interface Material extends DataType<material> { 
     MainTable: Awaited<ReturnType<typeof findMaterials>>[number]
@@ -62,43 +61,3 @@ export async function createMaterial(
 
   });
 }
-
-// default
-export const defaultMaterial: Record<MaterialType, Material["Select"]> = {
-  Magic: {
-    itemId: "",
-    type: "Magic",
-    ptValue: 0,
-    price: 0,
-  },
-  Cloth: {
-    itemId: "",
-    type: "Cloth",
-    ptValue: 0,
-    price: 0,
-  },
-  Beast: {
-    itemId: "",
-    type: "Beast",
-    ptValue: 0,
-    price: 0,
-  },
-  Wood: {
-    itemId: "",
-    type: "Wood",
-    ptValue: 0,
-    price: 0,
-  },
-  Drug: {
-    itemId: "",
-    type: "Drug",
-    ptValue: 0,
-    price: 0,
-  },
-  Metal: {
-    itemId: "",
-    type: "Metal",
-    ptValue: 0,
-    price: 0,
-  }
-};

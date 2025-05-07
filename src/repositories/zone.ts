@@ -2,8 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, zone } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import { DataType } from "./untils";
 import { mobSubRelations } from "./mob";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -71,11 +70,3 @@ export async function createZone(trx: Transaction<DB>, newZone: Zone["Insert"]) 
     .returningAll()
     .executeTakeFirstOrThrow();
 }
-
-export const defaultZone: Zone["Select"] = {
-  id: "",
-  name: "",
-  rewardNodes: 0,
-  activityId: null,
-  addressId: "",
-};

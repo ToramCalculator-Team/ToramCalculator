@@ -284,12 +284,14 @@ model material {
 
 // 消耗品
 model consumable {
+    id String @id
+
     type           String // Enum CONSUMABLE_TYPE
     effectDuration Int
     effects        String[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
     // recipe       recipe?
 
     usedBy character[]
@@ -297,6 +299,8 @@ model consumable {
 
 // 锻晶
 model crystal {
+    id String @id
+
     type      String // Enum CRYSTAL_TYPE
     modifiers String[]
 
@@ -304,7 +308,7 @@ model crystal {
     back  crystal[] @relation("backRelation")
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
 
     usedByWeapon         weapon[]
     usedByPlayerWeapon   player_weapon[]
@@ -321,6 +325,7 @@ model crystal {
 
 // 武器
 model weapon {
+    id              String    @id
     type            String // Enum WEAPON_TYPE
     baseAbi         Int
     stability       Int
@@ -335,11 +340,12 @@ model weapon {
     usedBy player_weapon[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
 }
 
 // 防具
 model armor {
+    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -351,11 +357,12 @@ model armor {
     usedBy player_armor[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
 }
 
 // 追加装备
 model option {
+    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -367,11 +374,12 @@ model option {
     usedBy player_option[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
 }
 
 // 特殊装备
 model special {
+    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -379,7 +387,7 @@ model special {
     usedBy player_special[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @id
+    itemId       String @unique
 }
 
 // 配方
@@ -551,8 +559,8 @@ model skill_effect {
 model player {
     id String @id
 
-    name    String
-    useIn   String
+    name  String
+    useIn String
 
     pets       player_pet[]
     weapons    player_weapon[]
@@ -826,7 +834,7 @@ model member {
     mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
     mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
-    actions Json
+    actions           Json
 
     belongToTeams team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
     teamId        String

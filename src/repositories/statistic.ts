@@ -1,10 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, statistic } from "~/../db/kysely/kyesely";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { CRYSTAL_TYPE, ITEM_TYPE, WEAPON_TYPE } from "~/../db/enums";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
 export type NewStatistic = Insertable<statistic>;
@@ -48,89 +45,6 @@ export async function deleteStatistic(id: string) {
   return await db.deleteFrom("statistic").where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-const statisticShared = {
-  viewTimestamps: [],
-  usageTimestamps: [],
-  updatedAt: new Date(),
-  createdAt: new Date(),
-};
-
-export const WIKISCHEMA_TYPE = [
-  "Mob",
-  "Character",
-  ...WEAPON_TYPE,
-  "WeaponEncAttrs",
-  "Armor",
-  "ArmorEncAttrs",
-  "OptEquip",
-  "SpeEquip",
-  ...CRYSTAL_TYPE,
-  ...ITEM_TYPE,
-] as const;
-export const WIKI_TYPE = [
-  "Mob",
-  "Character",
-  "Weapon",
-  "WeaponEncAttrs",
-  "Armor",
-  "ArmorEncAttrs",
-  "OptEquip",
-  "SpeEquip",
-  "Crystal",
-  "Item",
-  "Skill",
-  "Pet",
-] as const;
-export const STATISTIC_TYPE = [...WIKISCHEMA_TYPE, "Skill", "Simulator"] as const;
-type StatisticType = (typeof STATISTIC_TYPE)[number]
-
-const statistics: Partial<Record<StatisticType, Statistic>> = {};
-for (const key of STATISTIC_TYPE) {
-  statistics[key] = {
-    id: ``,
-    ...statisticShared,
-  };
+export async function createStatistic(trx: Transaction<DB>) {
+  return await insertStatistic(trx);
 }
-
-export const defaultStatistics = statistics as Record<StatisticType, Statistic>;
-
-export const StatisticDic = (locale: Locale): ConvertToAllString<Statistic> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "账号",
-        id: "defaultStatisticId",
-        updatedAt: "",
-        createdAt: "",
-        viewTimestamps: "",
-        usageTimestamps: "",
-      };
-    case "zh-TW":
-      return {
-        selfName: "账号",
-        id: "defaultStatisticId",
-        updatedAt: "",
-        createdAt: "",
-        viewTimestamps: "",
-        usageTimestamps: "",
-      };
-    case "en":
-      return {
-        selfName: "账号",
-        id: "defaultStatisticId",
-        updatedAt: "",
-        createdAt: "",
-        viewTimestamps: "",
-        usageTimestamps: "",
-      };
-    case "ja":
-      return {
-        selfName: "账号",
-        id: "defaultStatisticId",
-        updatedAt: "",
-        createdAt: "",
-        viewTimestamps: "",
-        usageTimestamps: "",
-      };
-  }
-};

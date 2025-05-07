@@ -1,12 +1,9 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { defaultAccount } from "./account";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 import { DB, item } from "~/../db/kysely/kyesely";
 import { ItemType } from "~/../db/kysely/enums";
 import { getDB } from "./database";
-import { ITEM_TYPE } from "~/../db/enums";
-import { Locale } from "~/locales/i18n";
 
 export interface Item extends DataType<item> {
   MainTable: Awaited<ReturnType<typeof findItems>>[number];
@@ -134,46 +131,3 @@ export async function deleteItem(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
-
-const itemsShared = {
-  dataSources: "",
-  details: "",
-  dropBy: [],
-  rewardBy: [],
-  updatedByAccountId: defaultAccount.id,
-  createdByAccountId: defaultAccount.id,
-};
-
-const items: Partial<Record<ItemType, Item["Select"]>> = {};
-for (const key of ITEM_TYPE) {
-  items[key] = {
-    id: ``,
-    name: ``,
-    type: key,
-    // statistic: defaultStatistics[key],
-    statisticId: "",
-    ...itemsShared,
-  };
-}
-
-export const defaultItems = items;
-
-export const ItemDic = (locale: Locale): ConvertToAllString<Item["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-    case "zh-TW":
-    case "en":
-    case "ja":
-      return {
-        id: "",
-        type: "",
-        name: "",
-        dataSources: "",
-        statisticId: "",
-        selfName: "",
-        details: "",
-        updatedByAccountId: "",
-        createdByAccountId: "",
-      };
-  }
-};

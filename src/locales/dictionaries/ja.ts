@@ -1019,6 +1019,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "防具の一意の識別子",
+          formFieldDescription: "防具の一意の識別子"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -1332,6 +1337,11 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "消耗品の一意の識別子",
+          formFieldDescription: "消耗品の一意の識別子"
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1370,8 +1380,13 @@ const dictionary: dictionary = {
       description: ""
     },
     crystal: {
-      selfName: "錬晶",
+      selfName: "クリスタル",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "クリスタルの一意の識別子",
+          formFieldDescription: "クリスタルの一意の識別子"
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1857,8 +1872,13 @@ const dictionary: dictionary = {
       },
     },
     option: {
-      selfName: "追加装備",
+      selfName: "オプション装備",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "オプション装備の一意の識別子",
+          formFieldDescription: "オプション装備の一意の識別子"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2185,9 +2205,9 @@ const dictionary: dictionary = {
       selfName: "プレイヤー武器",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "ID",
+          tableFieldDescription: "武器の一意の識別子",
+          formFieldDescription: "武器の一意の識別子"
         },
         name: {
           key: "",
@@ -2613,6 +2633,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装備",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "特殊装備の一意の識別子",
+          formFieldDescription: "特殊装備の一意の識別子"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2878,6 +2903,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "武器の一意の識別子",
+          formFieldDescription: "武器の一意の識別子"
+        },
         type: {
           key: "",
           tableFieldDescription: "",

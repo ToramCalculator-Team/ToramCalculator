@@ -1,6 +1,5 @@
 import { DB, address } from "~/../db/kysely/kyesely";
 import { getDB } from "./database";
-import { AddressType } from "~/../db/kysely/enums";
 import { createId } from "@paralleldrive/cuid2";
 import { DataType } from "./untils";
 import { Transaction } from "kysely";
@@ -10,19 +9,10 @@ export interface Address extends DataType<address> {
   Card: Awaited<ReturnType<typeof findAddressById>>;
 }
 
-export const defaultAddress: address = {
-  id: "",
-  name: "",
-  type: AddressType.Normal,
-  posX: 0,
-  posY: 0,
-  worldId: "",
-};
-
 export async function findAddressById(id: string): Promise<address> {
   const db = await getDB();
-  const result = await db.selectFrom("address").where("id", "=", id).selectAll().executeTakeFirst();
-  return result ?? defaultAddress;
+  const result = await db.selectFrom("address").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
+  return result;
 }
 
 export async function findAddresses(): Promise<address[]> {

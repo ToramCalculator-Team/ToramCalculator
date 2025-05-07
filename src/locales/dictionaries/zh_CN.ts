@@ -1080,6 +1080,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "防具的唯一标识符",
+          formFieldDescription: "防具的唯一标识符"
+        },
         baseDef: {
           key: "基础防御",
           tableFieldDescription: "防具的基础防御值",
@@ -1393,23 +1398,28 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "消耗品的唯一标识符",
+          formFieldDescription: "消耗品的唯一标识符"
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "消耗品类型",
+          formFieldDescription: "选择消耗品类型",
           enumMap: {
-            Hit: "",
-            MaxHp: "",
-            MaxMp: "",
-            pAtk: "",
-            mAtk: "",
-            Aspd: "",
-            Cspd: "",
-            Flee: "",
-            EleStro: "",
-            EleRes: "",
-            pRes: "",
-            mRes: "",
+            Hit: "命中",
+            MaxHp: "最大生命值",
+            MaxMp: "最大魔法值",
+            pAtk: "物理攻击力",
+            mAtk: "魔法攻击力",
+            Aspd: "攻击速度",
+            Cspd: "魔法速度",
+            Flee: "回避",
+            EleStro: "元素属性增强",
+            EleRes: "元素属性抵抗",
+            pRes: "物理属性抵抗",
+            mRes: "魔法属性抵抗",
           },
         },
         effectDuration: {
@@ -1433,27 +1443,32 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "锻晶",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "锻晶的唯一标识符",
+          formFieldDescription: "锻晶的唯一标识符"
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "锻晶的类型",
+          formFieldDescription: "选择锻晶的类型",
           enumMap: {
-            NormalCrystal: "",
-            WeaponCrystal: "",
-            ArmorCrystal: "",
-            OptEquipCrystal: "",
-            SpecialCrystal: "",
+            NormalCrystal: "普通锻晶",
+            WeaponCrystal: "武器锻晶",
+            ArmorCrystal: "防具锻晶",
+            OptEquipCrystal: "追加锻晶",
+            SpecialCrystal: "特殊锻晶",
           },
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "属性",
+          tableFieldDescription: "锻晶的属性",
+          formFieldDescription: "请输入锻晶的属性",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具ID",
+          tableFieldDescription: "锻晶所属的道具ID",
+          formFieldDescription: "选择锻晶所属的道具",
         },
       },
       description: ""
@@ -1462,49 +1477,49 @@ const dictionary: dictionary = {
       selfName: "掉落物品",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "掉落物品的唯一标识符",
+          formFieldDescription: "掉落物品的唯一标识符"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "物品ID",
+          tableFieldDescription: "掉落物品的物品ID",
+          formFieldDescription: "选择掉落物品的物品"
         },
         probability: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "概率",
+          tableFieldDescription: "掉落物品的概率",
+          formFieldDescription: "请输入掉落物品的概率"
         },
         relatedPartType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "掉落部位",
+          tableFieldDescription: "掉落物品的掉落部位",
+          formFieldDescription: "选择掉落物品的掉落部位",
           enumMap: {
-            A: "",
-            B: "",
-            C: "",
+            A: "A",
+            B: "B",
+            C: "C",
           },
         },
         relatedPartInfo: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "掉落部位信息",
+          tableFieldDescription: "掉落物品的掉落部位信息",
+          formFieldDescription: "请输入掉落物品的掉落部位信息"
         },
         breakRewardType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "部位破坏奖励",
+          tableFieldDescription: "掉落物品的部位破坏奖励",
+          formFieldDescription: "选择掉落物品的部位破坏奖励",
           enumMap: {
-            None: "",
-            CanDrop: "",
-            DropUp: "",
+            None: "无",
+            CanDrop: "可掉落",
+            DropUp: "掉落提升",
           },
         },
         dropById: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "掉落ID",
+          tableFieldDescription: "掉落物品的掉落ID",
+          formFieldDescription: "选择掉落物品的掉落ID"
         },
       },
       description: ""
@@ -1513,39 +1528,39 @@ const dictionary: dictionary = {
       selfName: "",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "图片的唯一标识符",
+          formFieldDescription: "图片的唯一标识符"
         },
         dataUrl: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "图片URL",
+          tableFieldDescription: "图片的URL",
+          formFieldDescription: "请输入图片的URL"
         },
         npcId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "NPC ID",
+          tableFieldDescription: "图片的NPC ID",
+          formFieldDescription: "选择图片的NPC"
         },
         weaponId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "武器ID",
+          tableFieldDescription: "图片的武器ID",
+          formFieldDescription: "选择图片的武器"
         },
         armorId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "防具ID",
+          tableFieldDescription: "图片的防具ID",
+          formFieldDescription: "选择图片的防具"
         },
         optEquipId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "追加装备ID",
+          tableFieldDescription: "图片的追加装备ID",
+          formFieldDescription: "选择图片的追加装备"
         },
         mobId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "怪物ID",
+          tableFieldDescription: "图片的怪物ID",
+          formFieldDescription: "选择图片的怪物"
         },
       },
       description: ""
@@ -1554,7 +1569,7 @@ const dictionary: dictionary = {
       selfName: "道具",
       fields: {
         id: {
-          key: "",
+          key: "ID",
           tableFieldDescription: "",
           formFieldDescription: "",
         },
@@ -1609,32 +1624,32 @@ const dictionary: dictionary = {
       selfName: "素材",
       fields: {
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "素材的类型",
+          formFieldDescription: "选择素材的类型",
           enumMap: {
-            Metal: "",
-            Cloth: "",
-            Beast: "",
-            Wood: "",
-            Drug: "",
-            Magic: "",
+            Metal: "金属",
+            Cloth: "布料",
+            Beast: "兽品",
+            Wood: "木材",
+            Drug: "药草",
+            Magic: "魔素",
           },
         },
         ptValue: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "PT值",
+          tableFieldDescription: "素材的PT值",
+          formFieldDescription: "请输入素材的PT值"
         },
         price: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "价格",
+          tableFieldDescription: "素材的价格",
+          formFieldDescription: "请输入素材的价格"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具ID",
+          tableFieldDescription: "素材所属的道具ID",
+          formFieldDescription: "选择素材所属的道具"
         },
       },
       description: ""
@@ -1643,61 +1658,61 @@ const dictionary: dictionary = {
       selfName: "成员",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "成员的唯一标识符",
+          formFieldDescription: "成员的唯一标识符"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "成员的名称",
+          formFieldDescription: "请输入成员的名称"
         },
         sequence: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "顺序",
+          tableFieldDescription: "成员的顺序",
+          formFieldDescription: "请输入成员的顺序"
         },
         playerId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "玩家ID",
+          tableFieldDescription: "成员的玩家ID",
+          formFieldDescription: "选择成员的玩家"
         },
         partnerId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伙伴ID",
+          tableFieldDescription: "成员的伙伴ID",
+          formFieldDescription: "选择成员的伙伴"
         },
         mercenaryId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "佣兵ID",
+          tableFieldDescription: "成员的佣兵ID",
+          formFieldDescription: "选择成员的佣兵"
         },
         mobId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "怪物ID",
+          tableFieldDescription: "成员的怪物ID",
+          formFieldDescription: "选择成员的怪物"
         },
         mobDifficultyFlag: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "怪物难度",
+          tableFieldDescription: "成员的怪物难度",
+          formFieldDescription: "选择成员的怪物难度",
           enumMap: {
-            Easy: "",
-            Normal: "",
-            Hard: "",
-            Lunatic: "",
-            Ultimate: "",
+            Easy: "零星",
+            Normal: "一星",
+            Hard: "二星",
+            Lunatic: "三星",
+            Ultimate: "四星",
           },
         },
         teamId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "队伍ID",
+          tableFieldDescription: "成员的队伍ID",
+          formFieldDescription: "选择成员的队伍"
         },
         actions: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "行为",
+          tableFieldDescription: "成员的行为",
+          formFieldDescription: "请输入成员的行为"
         }
       },
       description: ""
@@ -1706,9 +1721,9 @@ const dictionary: dictionary = {
       selfName: "佣兵",
       fields: {
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "佣兵的类型",
+          formFieldDescription: "选择佣兵的类型",
           enumMap: {
             Tank: "",
             Dps: "",
@@ -1917,6 +1932,11 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加装备",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "追加装备的唯一标识符",
+          formFieldDescription: "追加装备的唯一标识符"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2243,9 +2263,9 @@ const dictionary: dictionary = {
       selfName: "玩家武器",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "武器的唯一标识符",
+          formFieldDescription: "武器的唯一标识符"
         },
         name: {
           key: "",
@@ -2624,6 +2644,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装备",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "特殊装备的唯一标识符",
+          formFieldDescription: "特殊装备的唯一标识符"
+        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2889,6 +2914,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        id: {
+          key: "ID",
+          tableFieldDescription: "武器的唯一标识符",
+          formFieldDescription: "武器的唯一标识符"
+        },
         type: {
           key: "",
           tableFieldDescription: "",

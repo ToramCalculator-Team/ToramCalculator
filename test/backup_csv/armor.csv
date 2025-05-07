@@ -1,2 +1,2 @@
-baseDef,modifiers,colorA,colorB,colorC,itemId
-10,{},0,0,0,defaultItemArmorId
+id,baseDef,modifiers,colorA,colorB,colorC,itemId
+defaultArmorId,10,{},0,0,0,defaultItemArmorId

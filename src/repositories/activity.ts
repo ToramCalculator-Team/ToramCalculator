@@ -7,11 +7,6 @@ export interface Activity extends DataType<activity> {
   MainTable: Awaited<ReturnType<typeof findActivities>>[number];
 }
 
-export const defaultActivity: activity = {
-  id: "",
-  name: "",
-};
-
 export const findActivities = async () => {
   const db = await getDB();
   return await db.selectFrom("activity").selectAll().execute();

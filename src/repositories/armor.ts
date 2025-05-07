@@ -3,8 +3,7 @@ import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import {DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 import { armor, crystal, DB, image, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
 import { insertRecipe } from "./recipe";
@@ -44,8 +43,7 @@ export async function findArmors() {
   const db = await getDB();
   return await db
     .selectFrom("armor")
-    .innerJoin("item", "item.id", "armor.itemId")
-    .selectAll(["item", "armor"])
+    .selectAll("armor")
     .execute();
 }
 
@@ -111,59 +109,3 @@ export async function deleteArmor(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultArmor: Armor["Select"] = {
-  modifiers: [],
-  itemId: "",
-  baseDef: 0,
-  colorA: 0,
-  colorB: 0,
-  colorC: 0,
-};
-
-// Dictionary
-export const ArmorDic = (locale: Locale): ConvertToAllString<Armor["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        modifiers: "属性",
-        itemId: "所属道具ID",
-        baseDef: "防御力",
-        colorA: "颜色A",
-        colorB: "颜色B",
-        colorC: "颜色C",
-        selfName: "防具装备",
-      };
-    case "zh-TW":
-      return {
-        selfName: "防具裝備",
-        modifiers: "屬性",
-        itemId: "所屬道具ID",
-        baseDef: "防禦力",
-        colorA: "顏色A",
-        colorB: "顏色B",
-        colorC: "顏色C",
-      };
-    case "en":
-      return {
-        selfName: "Armor",
-        modifiers: "Modifiers",
-        itemId: "ItemId",
-        baseDef: "Base Def",
-        colorA: "Color A",
-        colorB: "Color B",
-        colorC: "Color C",
-      };
-    case "ja":
-      return {
-        selfName: "鎧",
-        modifiers: "補正項目",
-        itemId: "所属アイテムID",
-        baseDef: "防御力",
-        colorA: "色A",
-        colorB: "色B",
-        colorC: "色C",
-      };
-  }
-};

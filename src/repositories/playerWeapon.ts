@@ -4,8 +4,7 @@ import { DB, player_weapon } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { weaponSubRelations } from "./weapon";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import { DataType } from "./untils";
 
 export interface PlayerWeapon extends DataType<player_weapon> {
   MainTable: Awaited<ReturnType<typeof findPlayerWeapons>>[number];
@@ -76,87 +75,3 @@ export async function deletePlayerWeapon(id: string) {
   const db = await getDB();
   return await db.deleteFrom("player_weapon").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultPlayerWeapons: Record<"mainHand" | "subHand", PlayerWeapon["Select"]> = {
-  mainHand: {
-    id: "",
-    templateId: "",
-    name: "",
-    extraAbi: 0,
-    refinement: 0,
-    modifiers: [],
-    masterId: "",
-    baseAbi: 0,
-    stability: 0,
-  },
-  subHand: {
-    id: "",
-    templateId: "",
-    name: "",
-    extraAbi: 0,
-    refinement: 0,
-    modifiers: [],
-    masterId: "",
-    baseAbi: 0,
-    stability: 0,
-  },
-};
-
-// Dictionary
-export const PlayerWeaponDic = (locale: Locale): ConvertToAllString<PlayerWeapon["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        id: "ID",
-        templateId: "模板ID",
-        name: "名称",
-        extraAbi: "额外基础攻击力",
-        refinement: "精炼值",
-        modifiers: "加成属性",
-        masterId: "所有者ID",
-        baseAbi: "基础攻击力",
-        stability: "稳定率",
-        selfName: "自定义武器",
-      };
-    case "zh-TW":
-      return {
-        id: "ID",
-        templateId: "模板ID",
-        name: "名称",
-        extraAbi: "額外基礎攻擊力",
-        refinement: "精炼值",
-        modifiers: "加成屬性",
-        masterId: "所有者ID",
-        baseAbi: "基礎攻擊力",
-        stability: "穩定率",
-        selfName: "自定義武器",
-      };
-    case "en":
-      return {
-        id: "ID",
-        templateId: "Template ID",
-        name: "Name",
-        extraAbi: "Extra Base Attack",
-        refinement: "Refinement",
-        modifiers: "Modifiers",
-        masterId: "Master ID",
-        baseAbi: "Base Attack",
-        stability: "Stability",
-        selfName: "Player Weapon",
-      };
-    case "ja":
-      return {
-        id: "ID",
-        templateId: "テンプレートID",
-        name: "名前",
-        extraAbi: "追加基本攻撃力",
-        refinement: "精炼度",
-        modifiers: "加成属性",
-        masterId: "マスターID",
-        baseAbi: "基本攻撃力",
-        stability: "安定度",
-        selfName: "カスタム武器",
-      };
-  }
-};

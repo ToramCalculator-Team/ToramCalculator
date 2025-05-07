@@ -63,13 +63,3 @@ export async function deleteMercenary(id: string) {
   const db = await getDB();
   return await db.deleteFrom("mercenary").where("mercenary.templateId", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultMercenary: Mercenary["Select"] = {
-  type: "Tank",
-  templateId: "",
-  skillAId: "",
-  skillAType: "Active",
-  skillBId: "",
-  skillBType: "Active",
-};

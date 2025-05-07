@@ -2,8 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, character_skill } from "~/../db/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import {DataType } from "./untils";
 import { skillSubRelations } from "./skill";
 
 export interface CharacterSkill extends DataType<character_skill> {
@@ -51,53 +50,3 @@ export async function deleteCharacterSkill(id: string) {
 export async function insertCharacterSkill(trx: Transaction<DB>, insertWith: CharacterSkill["Insert"]) {
   return await trx.insertInto("character_skill").values(insertWith).returningAll().executeTakeFirst();
 }
-
-export const defaultCharacterSkill: CharacterSkill["Select"] = {
-  id: "",
-  lv: 0,
-  isStarGem: false,
-  templateId: "",
-  characterId: "",
-};
-
-// Dictionary
-export const CharacterSkillDic = (locale: Locale): ConvertToAllString<CharacterSkill["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "角色技能",
-        id: "ID",
-        lv: "技能等级",
-        isStarGem: "是否作为星石使用",
-        templateId: "模板技能ID",
-        characterId: "角色ID",
-      };
-    case "zh-TW":
-      return {
-        selfName: "角色技能",
-        id: "ID",
-        lv: "技能等级",
-        isStarGem: "是否作为星石使用",
-        templateId: "模板技能ID",
-        characterId: "角色ID",
-      };
-    case "en":
-      return {
-        selfName: "角色技能",
-        id: "ID",
-        lv: "技能等级",
-        isStarGem: "是否作为星石使用",
-        templateId: "模板技能ID",
-        characterId: "角色ID",
-      };
-    case "ja":
-      return {
-        selfName: "角色技能",
-        id: "ID",
-        lv: "技能等级",
-        isStarGem: "是否作为星石使用",
-        templateId: "模板技能ID",
-        characterId: "角色ID",
-      };
-  }
-};

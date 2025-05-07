@@ -83,14 +83,3 @@ export async function deleteSimulator(id: string) {
   const db = await getDB();
   return await db.deleteFrom("simulator").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-export const defaultSimulator: Simulator["templateId"] = {
-  id: "",
-
-  name: "",
-  details: "",
-
-  statisticId: "",
-  updatedByAccountId: "",
-  createdByAccountId: "",
-};

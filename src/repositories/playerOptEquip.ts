@@ -3,8 +3,7 @@ import { getDB } from "./database";
 import { DB, player_option } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { Locale } from "~/locales/i18n";
-import { ConvertToAllString, DataType } from "./untils";
+import { DataType } from "./untils";
 
 export interface PlayerOptEquip extends DataType<player_option> {
   MainTable: Awaited<ReturnType<typeof findPlayerOptEquips>>[number];
@@ -75,59 +74,3 @@ export async function deletePlayerOptEquip(id: string) {
   const db = await getDB();
   return await db.deleteFrom("player_option").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultPlayerOptEquip: PlayerOptEquip["Select"] = {
-  id: "",
-  name: "",
-  refinement: 0,
-  extraAbi: 0,
-  templateId: "",
-  masterId: "",
-};
-
-// Dictionary
-export const PlayerOptEquipDic = (locale: Locale): ConvertToAllString<PlayerOptEquip["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "自定义追加装备",
-        id: "ID",
-        name: "名称",
-        refinement: "精炼值",
-        extraAbi: "额外防御力",
-        templateId: "模板ID",
-        masterId: "所有者ID",
-      };
-    case "zh-TW":
-      return {
-        selfName: "自定义追加裝備",
-        id: "ID",
-        name: "名称",
-        refinement: "精炼值",
-        extraAbi: "額外防禦力",
-        templateId: "模板ID",
-        masterId: "所有者ID",
-      };
-    case "en":
-      return {
-        selfName: "Player Armor",
-        id: "ID",
-        name: "Name",
-        refinement: "Refinement",
-        extraAbi: "Extra Defense",
-        templateId: "Template ID",
-        masterId: "Master ID",
-      };
-    case "ja":
-      return {
-        selfName: "カスタム追加装備",
-        id: "ID",
-        name: "名前",
-        refinement: "精炼",
-        extraAbi: "追加防御力",
-        templateId: "テンプレートID",
-        masterId: "所有者ID",
-      };
-  }
-};

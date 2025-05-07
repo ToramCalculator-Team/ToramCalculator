@@ -64,10 +64,3 @@ export async function deleteTeam(id: string) {
   const db = await getDB();
   return await db.deleteFrom("team").where("id", "=", id).returningAll().executeTakeFirst();
 }
-
-// default
-export const defaultTeam: Team["Select"] = {
-  id: "",
-  name: null,
-  gems: [],
-};

@@ -2,8 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { ConvertToAllString, DataType } from "./untils";
-import { Locale } from "~/locales/i18n";
+import { DataType } from "./untils";
 
 export interface Npc extends DataType<npc> {
   MainTable: Awaited<ReturnType<typeof findNpcs>>[number];
@@ -47,38 +46,4 @@ export const defaultNpc: Npc["Select"] = {
   id: "",
   name: "",
   zoneId: "",
-};
-
-// Dictionary
-export const NpcDic = (locale: Locale): ConvertToAllString<Npc["Select"]> => {
-  switch (locale) {
-    case "zh-CN":
-      return {
-        selfName: "NPC",
-        name: "名称",
-        id: "ID",
-        zoneId: "所属区域ID",
-      };
-    case "zh-TW":
-      return {
-        selfName: "NPC",
-        name: "名称",
-        id: "ID",
-        zoneId: "所屬區域ID",
-      };
-    case "en":
-      return {
-        selfName: "NPC",
-        name: "Name",
-        id: "ID",
-        zoneId: "Zone ID",
-      };
-    case "ja":
-      return {
-        selfName: "NPC",
-        name: "名前",
-        id: "ID",
-        zoneId: "ゾーンID",
-      };
-  }
 };
