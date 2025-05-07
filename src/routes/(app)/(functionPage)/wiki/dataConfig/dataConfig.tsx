@@ -11,6 +11,14 @@ import { addressDataConfig } from "./addressConfig";
 import { npcDataConfig } from "./npcConfig";
 import { activityDataConfig } from "./activityConfig";
 import { taskDataConfig } from "./taskConfig";
+import { armorDataConfig } from "./armorConfig";
+import { consumableDataConfig } from "./consumableConfig";
+import { crystalDataConfig } from "./crystalConfig";
+import { materialDataConfig } from "./materialConfig";
+import { optionDataConfig } from "./optionConfig";
+import { specialDataConfig } from "./specialConfig";
+import { weaponDataConfig } from "./weaponConfig";
+import { createItemConfig } from "./itemConfig";
 
 export type ExtraData<E extends Record<string, string[]>> = {
   [K in keyof E]: {
@@ -55,25 +63,25 @@ export type DBdataDisplayConfig<T extends keyof DB, Card extends object, E exten
 export const DBDataConfig: Partial<Record<keyof DB, DBdataDisplayConfig<any, any, any>>> = {
   activity: activityDataConfig as DBdataDisplayConfig<"activity", any, any>,
   address: addressDataConfig as DBdataDisplayConfig<"address", any, any>,
-  // armor: mobDataConfig,
+  armor: armorDataConfig as DBdataDisplayConfig<"item", any, any>,
 
-  // consumable: mobDataConfig,
-  // crystal: mobDataConfig,
+  consumable: consumableDataConfig as DBdataDisplayConfig<"item", any, any>,
+  crystal: crystalDataConfig as DBdataDisplayConfig<"item", any, any>,
 
-  // item: mobDataConfig,
-  // material: mobDataConfig,
+  item: createItemConfig("Weapon") as DBdataDisplayConfig<"item", any, any>,
+  material: materialDataConfig as DBdataDisplayConfig<"item", any, any>,
 
   mob: mobDataConfig as DBdataDisplayConfig<"mob", any, any>,
   npc: npcDataConfig as DBdataDisplayConfig<"npc", any, any>,
-  // option: mobDataConfig,
+  option: optionDataConfig as DBdataDisplayConfig<"item", any, any>,
 
   skill: skillDataConfig as DBdataDisplayConfig<"skill", any, any>,
 
-  // special: mobDataConfig,
+  special: specialDataConfig as DBdataDisplayConfig<"item", any, any>,
 
   task: taskDataConfig as DBdataDisplayConfig<"task", any, any>,
 
-  // weapon: mobDataConfig,
+  weapon: weaponDataConfig as DBdataDisplayConfig<"item", any, any>,
   // world: mobDataConfig,
   zone: zoneDataConfig as DBdataDisplayConfig<"zone", any, any>,
 };

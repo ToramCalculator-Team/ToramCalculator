@@ -11,16 +11,7 @@ import { DBDataRender } from "~/components/module/dbDataRender";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "../../../../../../db/defaultData";
 
-interface ItemTableParams {
-  type?: item["type"];
-  search?: string;
-  sort?: { id: string; desc: boolean };
-}
-
-export const createItemConfig = <T extends item["type"]>(
-  type: T,
-  extraFields: (keyof item)[] = [],
-): DBdataDisplayConfig<"item", Item["Card"], any> => ({
+export const createItemConfig = <T extends item["type"]>(type: T): DBdataDisplayConfig<"item", Item["Card"], any> => ({
   table: {
     columnDef: [
       {
@@ -38,11 +29,11 @@ export const createItemConfig = <T extends item["type"]>(
         cell: (info) => info.getValue(),
         size: 150,
       },
-      ...extraFields.map((field) => ({
-        accessorKey: field,
-        cell: (info: { getValue: () => any }) => info.getValue(),
+      {
+        accessorKey: "details",
+        cell: (info) => info.getValue(),
         size: 150,
-      })),
+      },
     ],
     dataFetcher: () => findItems({ type }),
     defaultSort: { id: "name", desc: false },
@@ -147,11 +138,11 @@ export const createItemConfig = <T extends item["type"]>(
             dataSchema: itemSchema,
             hiddenFields: ["id"],
             fieldGroupMap: {
-              基本信息: ["name", "type", "details", ...extraFields],
+              基本信息: ["name", "type", "details", "dataSources"],
             },
           })}
 
-          <Show when={recipeData.latest}>
+          <Show when={recipeData.latest?.length}>
             <CardSection
               title={dictionary.cardFields?.recipes ?? "合成配方"}
               data={recipeData.latest}
@@ -189,7 +180,7 @@ export const createItemConfig = <T extends item["type"]>(
               }}
             />
           </Show>
-          <Show when={dropByData.latest}>
+          <Show when={dropByData.latest?.length}>
             <CardSection
               title={dictionary.cardFields?.dropBy ?? "掉落于"}
               data={dropByData.latest}
@@ -201,7 +192,7 @@ export const createItemConfig = <T extends item["type"]>(
               }}
             />
           </Show>
-          <Show when={rewardItemData.latest}>
+          <Show when={rewardItemData.latest?.length}>
             <CardSection
               title={dictionary.cardFields?.rewardItem ?? "可从这些任务获得"}
               data={rewardItemData.latest}
@@ -213,7 +204,7 @@ export const createItemConfig = <T extends item["type"]>(
               }}
             />
           </Show>
-          <Show when={usedInRecipeData.latest}>
+          <Show when={usedInRecipeData.latest?.length}>
             <CardSection
               title={dictionary.cardFields?.usedIn ?? "是这些道具的原料"}
               data={usedInRecipeData.latest}
@@ -225,7 +216,7 @@ export const createItemConfig = <T extends item["type"]>(
               }}
             />
           </Show>
-          <Show when={usedInTaskData.latest}>
+          <Show when={usedInTaskData.latest?.length}>
             <CardSection
               title={dictionary.cardFields?.usedInTask ?? "是这些任务的材料"}
               data={usedInTaskData.latest}

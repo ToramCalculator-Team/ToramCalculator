@@ -52,37 +52,41 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
     case "Weapon":
       return [
         ...baseSubRelations,
-        eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon").as("weapon"),
+        jsonObjectFrom(eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon")).as("weapon"),
       ];
     case "Armor":
       return [
         ...baseSubRelations,
-        eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor").as("armor"),
+        jsonObjectFrom(eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor")).as("armor"),
       ];
     case "Option":
       return [
         ...baseSubRelations,
-        eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option").as("option"),
+        jsonObjectFrom(eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option")).as("option"),
       ];
     case "Special":
       return [
         ...baseSubRelations,
-        eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special").as("special"),
+        jsonObjectFrom(eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special")).as("special"),
       ];
     case "Crystal":
       return [
         ...baseSubRelations,
-        eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal").as("crystal"),
+        jsonObjectFrom(eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal")).as("crystal"),
       ];
     case "Consumable":
       return [
         ...baseSubRelations,
-        eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable").as("consumable"),
+        jsonObjectFrom(eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable")).as(
+          "consumable",
+        ),
       ];
     case "Material":
       return [
         ...baseSubRelations,
-        eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material").as("material"),
+        jsonObjectFrom(eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material")).as(
+          "material",
+        ),
       ];
   }
 }
