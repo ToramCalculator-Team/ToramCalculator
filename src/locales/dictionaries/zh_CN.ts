@@ -2998,7 +2998,7 @@ const dictionary: dictionary = {
         activityId: {
           key: "所属活动ID",
           tableFieldDescription: "该区域所属的活动ID",
-          formFieldDescription: "选择该区域所属的活动"
+          formFieldDescription: "选择该区域所属的活动，常驻区域不属于任何活动，不填此项"
         },
         addressId: {
           key: "所属地图ID",

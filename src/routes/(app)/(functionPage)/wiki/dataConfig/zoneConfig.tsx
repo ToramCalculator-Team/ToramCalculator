@@ -178,11 +178,42 @@ export const zoneDataConfig: DBdataDisplayConfig<
           </Input>
         );
       },
+      activityId: (key, field, dictionary) => {
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Autocomplete
+              value={field().state.value}
+              setValue={(id) => {
+                field().setValue(id);
+              }}
+              optionsFetcher={async (search) => {
+                const db = await getDB();
+                const result = await db
+                  .selectFrom("activity")
+                  .select(["id", "name"])
+                  .where("name", "ilike", `%${search}%`)
+                  .limit(50)
+                  .execute();
+                return result.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                }));
+              }}
+            />
+          </Input>
+        );
+      },
     },
     onSubmit: async (data) => {
       const db = await getDB();
       const zone = await db.transaction().execute(async (trx) => {
-        const { linkZones, mobs, ...rest } = data;
+        const { linkZones, mobs, npcs, ...rest } = data;
+        console.log("linkZones", linkZones, "mobs", mobs, "npcs", npcs, "zone", rest);
         const zone = await createZone(trx, {
           ...rest,
         });
@@ -194,6 +225,11 @@ export const zoneDataConfig: DBdataDisplayConfig<
         if (mobs.length > 0) {
           for (const mobId of mobs) {
             await trx.insertInto("_mobTozone").values({ A: mobId, B: zone.id }).execute();
+          }
+        }
+        if (npcs.length > 0) {
+          for (const npcId of npcs) {
+            await trx.updateTable("npc").set({ zoneId: zone.id }).where("id", "=", npcId).execute();
           }
         }
         return zone;
@@ -213,12 +249,12 @@ export const zoneDataConfig: DBdataDisplayConfig<
           .execute();
       });
 
-      const [npcData] = createResource(data.id, async (zoneId) => {
+      const [npcsData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
         return await db.selectFrom("npc").where("npc.zoneId", "=", zoneId).selectAll("npc").execute();
       });
 
-      const [linkZoneData] = createResource(data.id, async (zoneId) => {
+      const [linkZonesData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
         const res = await db
           .selectFrom("zone")
@@ -235,6 +271,16 @@ export const zoneDataConfig: DBdataDisplayConfig<
           .execute();
         console.log("linkZoneData", res);
         return res;
+      });
+
+      const [activityData] = createResource(data.activityId, async (activityId) => {
+        const db = await getDB();
+        return await db.selectFrom("activity").where("id", "=", activityId).selectAll("activity").execute();
+      });
+
+      const [addressData] = createResource(data.addressId, async (addressId) => {
+        const db = await getDB();
+        return await db.selectFrom("address").where("id", "=", addressId).selectAll("address").execute();
       });
 
       return (
@@ -276,8 +322,8 @@ export const zoneDataConfig: DBdataDisplayConfig<
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
             <div class="Content flex flex-col gap-3 p-1">
-              <Show when={npcData.latest}>
-                <For each={npcData.latest}>
+              <Show when={npcsData.latest}>
+                <For each={npcsData.latest}>
                   {(npc) => {
                     return (
                       <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }])}>
@@ -296,12 +342,56 @@ export const zoneDataConfig: DBdataDisplayConfig<
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
             <div class="Content flex flex-col gap-3 p-1">
-              <Show when={linkZoneData.latest}>
-                <For each={linkZoneData.latest}>
+              <Show when={linkZonesData.latest}>
+                <For each={linkZonesData.latest}>
                   {(zone) => {
                     return (
                       <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
                         {zone.name}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.address ?? "所属地点"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={addressData.latest}>
+                <For each={addressData.latest}>
+                  {(address) => {
+                    return (
+                      <Button
+                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }])}
+                      >
+                        {address.name}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.activity ?? "所属活动"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={activityData.latest}>
+                <For each={activityData.latest}>
+                  {(activity) => {
+                    return (
+                      <Button
+                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }])}
+                      >
+                        {activity.name}
                       </Button>
                     );
                   }}
