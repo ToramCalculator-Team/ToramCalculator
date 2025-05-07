@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
+import { createNpc, defaultNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { npcSchema } from "~/../db/zod";
 import { DB, npc } from "~/../db/kysely/kyesely";
@@ -10,8 +10,19 @@ import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
+import { findTasks } from "~/repositories/task";
+import { findZones } from "~/repositories/zone";
+import { Input } from "~/components/controls/input";
+import { fieldInfo } from "../utils";
+import { Autocomplete } from "~/components/controls/autoComplete";
 
-export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
+export const npcDataConfig: DBdataDisplayConfig<
+  "npc",
+  Npc["Card"],
+  {
+    tasksData: string[];
+  }
+> = {
   table: {
     columnDef: [
       {
@@ -54,19 +65,88 @@ export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
   },
   form: {
     data: defaultNpc,
+    extraData: {
+      tasksData: {
+        defaultValue: [],
+        dictionary: {
+          key: "tasks",
+          tableFieldDescription: "持有的任务",
+          formFieldDescription: "持有的任务",
+        },
+        optionsFetcher: async (name: string) => {
+          const tasks = await findTasks();
+          return tasks.map((task) => ({
+            label: task.name,
+            value: task.id,
+          }));
+        },
+      },
+    },
     hiddenFields: ["id"],
     dataSchema: npcSchema,
-    fieldGenerators: {},
+    fieldGenerators: {
+      zoneId: (key, field, dictionary) => {
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Autocomplete
+              value={field().state.value}
+              setValue={(id) => {
+                field().setValue(id);
+              }}
+              optionsFetcher={async (search) => {
+                const db = await getDB();
+                const result = await db
+                  .selectFrom("zone")
+                  .select(["id", "name"])
+                  .where("name", "ilike", `%${search}%`)
+                  .limit(50)
+                  .execute();
+                return result.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                }));
+              }}
+            />
+          </Input>
+        );
+      },
+    },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const npc = await db.transaction().execute(async (trx) => {
+        const { tasksData, ...rest } = data;
+        const npc = await createNpc(trx, {
+          ...rest,
+        });
+        if (tasksData.length > 0) {
+          for (const taskId of tasksData) {
+            await trx.updateTable("task").set({ npcId: npc.id }).where("id", "=", taskId).execute();
+          }
+        }
+        return npc;
+      });
+    },
   },
   card: {
     dataFetcher: findNpcById,
     cardRender: (data, dictionary, appendCardTypeAndIds) => {
       const [taskData] = createResource(data.id, async (npcId) => {
         const db = await getDB();
+        return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
+      });
+
+      const [zoneData] = createResource(data.id, async (npcId) => {
+        const db = await getDB();
         return await db
-          .selectFrom("task")
-          .where("task.npcId", "=", npcId)
-          .selectAll("task")
+          .selectFrom("zone")
+          .innerJoin("npc", "zone.id", "npc.zoneId")
+          .where("npc.id", "=", npcId)
+          .selectAll("zone")
           .execute();
       });
 
@@ -83,7 +163,7 @@ export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
             },
           })}
 
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.tasks ?? "提供的任务"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -92,7 +172,11 @@ export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
               <Show when={taskData.latest}>
                 <For each={taskData.latest}>
                   {(task) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }])}>{task.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }])}>
+                        {task.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>
@@ -102,4 +186,4 @@ export const npcDataConfig: DBdataDisplayConfig<"npc", Npc["Card"]> = {
       );
     },
   },
-}; 
+};

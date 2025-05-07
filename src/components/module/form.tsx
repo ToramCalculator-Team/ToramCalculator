@@ -1,14 +1,16 @@
 import { AnyFieldApi, createForm, DeepKeys } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
-import { createMemo, For, JSX, onCleanup, onMount, useContext } from "solid-js";
+import { createMemo, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
 import { store, setStore } from "~/store";
 import { Button } from "../controls/button";
 import { Toggle } from "../controls/toggle";
 import { NodeEditor } from "./nodeEditor";
-import { Dic } from "~/locales/type";
+import { Dic, FieldDetail } from "~/locales/type";
 import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
+import { ExtraData } from "~/routes/(app)/(functionPage)/wiki/dataConfig/dataConfig";
+import { Autocomplete } from "../controls/autoComplete";
 
 const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
   if (schema === undefined || schema == null) {
@@ -38,25 +40,32 @@ function fieldInfo(field: AnyFieldApi): string {
   return "";
 }
 
-export const Form = <T extends Record<string, unknown>>(props: {
+export const Form = <T extends Record<string, unknown>, E extends Record<string, string[]>>(props: {
   title: string;
   data: T;
+  extraData?: ExtraData<E>;
   dictionary: Dic<T>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodSchema }>;
   hiddenFields: Array<keyof T>;
   fieldGenerators: Partial<{ [K in keyof T]: (key: K, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element }>;
-  onChange?: (data: T) => void;
-  onSubmit?: (data: T) => void;
+  onChange?: (data: T & E) => void;
+  onSubmit?: (data: T & E) => Promise<void>;
 }) => {
   const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   const form = createForm(() => ({
-    defaultValues: props.data,
+    defaultValues: {
+      ...props.data,
+      ...(props.extraData
+        ? Object.fromEntries(Object.entries(props.extraData).map(([key, config]) => [key, config.defaultValue]))
+        : {}),
+    } as T & E,
     onSubmit: async ({ value }) => {
+      const data = value as T & E;
       if (props.onSubmit) {
-        props.onSubmit(value);
+        props.onSubmit(data);
       } else {
         console.log("onSubmit is not defined");
         console.log("value:", value);
@@ -74,8 +83,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
   });
 
   return (
-    <div class="FormBox flex w-full flex-col gap-2">
-      <div class="Title flex items-center lg:p-2">
+    <div class="FormBox flex w-full flex-col">
+      <div class="Title flex items-center p-2 portrait:p-6">
         <h1 class="FormTitle text-2xl font-black">{props.title}</h1>
       </div>
       <form
@@ -84,7 +93,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
           e.stopPropagation();
           form.handleSubmit();
         }}
-        class="Form lg:bg-area-color flex flex-col gap-3 lg:rounded lg:p-3"
+        class="Form bg-area-color flex flex-col gap-3 portrait:rounded-b-none rounded p-3"
       >
         <For each={Object.entries(props.data)}>
           {(_field, index) => {
@@ -368,6 +377,73 @@ export const Form = <T extends Record<string, unknown>>(props: {
             }
           }}
         </For>
+        <Show when={props.extraData}>
+          {(extraData) => {
+            return (
+              <For each={Object.entries(extraData())}>
+                {(_field, index) => {
+                  const fieldKey = _field[0] as DeepKeys<E>;
+                  const fieldValue = _field[1] as ExtraData<E>[keyof E];
+                  const hasFieldGenerator = "fieldGenerator" in fieldValue;
+                  const fieldGenerator = hasFieldGenerator ? fieldValue.fieldGenerator : null;
+                  return (
+                    <form.Field name={fieldKey}>
+                      {(field) => {
+                        const arrayValue = () => field().state.value as string[];
+                        console.log("FieldKey:", fieldKey, arrayValue());
+                        return (
+                          <Input
+                            title={fieldValue.dictionary.key}
+                            description={fieldValue.dictionary.formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <div class="ArrayBox flex w-full flex-col gap-2">
+                              <For each={arrayValue()}>
+                                {(item, index) => (
+                                  <div class="flex items-center gap-2">
+                                    <div class="flex-1">
+                                      <Autocomplete
+                                        value={item}
+                                        setValue={(id) => {
+                                          const newArray = [...arrayValue()];
+                                          newArray[index()] = id;
+                                          field().setValue(newArray);
+                                        }}
+                                        optionsFetcher={fieldValue.optionsFetcher}
+                                      />
+                                    </div>
+                                    <Button
+                                      onClick={() => {
+                                        const newArray = arrayValue().filter((_, i) => i !== index());
+                                        field().setValue(newArray as any);
+                                      }}
+                                    >
+                                      {dictionary().ui.actions.remove}
+                                    </Button>
+                                  </div>
+                                )}
+                              </For>
+                              <Button
+                                onClick={() => {
+                                  const newArray = [...arrayValue(), ""];
+                                  field().setValue(newArray as any);
+                                }}
+                                class="w-full"
+                              >
+                                {dictionary().ui.actions.add}
+                              </Button>
+                            </div>
+                          </Input>
+                        );
+                      }}
+                    </form.Field>
+                  );
+                }}
+              </For>
+            );
+          }}
+        </Show>
         <form.Subscribe
           selector={(state) => ({
             canSubmit: state.canSubmit,

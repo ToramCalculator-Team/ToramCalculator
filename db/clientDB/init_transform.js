@@ -34,10 +34,10 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ddlFilePath = path.join(__dirname, "init.sql");
+const initSQLFilePath = path.join(__dirname, "init.sql");
 
 // 读取文件内容
-let initContent = fs.readFileSync(ddlFilePath, "utf-8");
+let initContent = fs.readFileSync(initSQLFilePath, "utf-8");
 
 // 删除所有 `ALTER TABLE` 语句中涉及 `FOREIGN KEY` 的行
 initContent = initContent.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
@@ -55,7 +55,7 @@ initContent = initContent.replace(/-- CreateIndex\s*\n?/g, "");
 // **去除可能多余的空行**
 // initContent = initContent.replace(/\n{2,}/g, "\n");
 
-fs.writeFileSync(ddlFilePath, initContent, "utf-8");
+fs.writeFileSync(initSQLFilePath, initContent, "utf-8");
 
 console.log("✅ 外键约束及索引已删除！");
 
@@ -142,9 +142,23 @@ function generateView({ tableName, columns, constraints }) {
         .map((s) => s.trim().replace(/"/g, ""))
     : [];
 
-  // 如果没有主键，跳过视图和触发器生成
+  // 对于关联表，如果没有主键，使用所有列作为主键
+  if (pkCols.length === 0 && tableName.startsWith("_")) {
+    pkCols.push(...colNames);
+  }
+
+  // 如果仍然没有主键，使用 UNION ALL 方式
   if (pkCols.length === 0) {
-    return `-- Skipped ${tableName} (no primary key)\n`;
+    return `
+CREATE OR REPLACE VIEW "${tableName}" AS
+  SELECT
+  ${colNames.map((name) => `   synced."${name}" AS "${name}"`).join(",\n")}
+  FROM "${tableName}_synced" AS synced
+  UNION ALL
+  SELECT
+  ${colNames.map((name) => `   local."${name}" AS "${name}"`).join(",\n")}
+  FROM "${tableName}_local" AS local
+  WHERE local."is_deleted" = FALSE;`;
   }
 
   const selectLines = colNames.map((name) =>
@@ -157,13 +171,10 @@ function generateView({ tableName, columns, constraints }) {
     END AS "${name}"`,
   );
 
-  let view = "";
+  const joinCondition = pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ");
+  const whereCondition = `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`;
 
-  if (pkCols.length > 0) {
-    const joinCondition = pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ");
-    const whereCondition = `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`;
-
-    view = `
+  const view = `
 CREATE OR REPLACE VIEW "${tableName}" AS
   SELECT
   ${selectLines.join(",\n")}
@@ -171,19 +182,6 @@ CREATE OR REPLACE VIEW "${tableName}" AS
   FULL OUTER JOIN "${tableName}_local" AS local
   ON ${joinCondition}
   WHERE ${whereCondition};`;
-  } else {
-    // 没有主键：使用 UNION ALL 合并 synced 和 local 表
-    view = `
-CREATE OR REPLACE VIEW "${tableName}" AS
-  SELECT
-  ${colNames.map((name) => `   synced."${name}" AS "${name}"`).join(",\n")}
-  FROM "${tableName}_synced" AS synced
-  UNION ALL
-  SELECT
-  ${colNames.map((name) => `   local."${name}" AS "${name}"`).join(",\n")}
-  FROM "${tableName}_local" AS local
-  WHERE local."is_deleted" = FALSE;`;
-  }
 
   const jsonFields = colNames.map((name) => `'${name}', NEW."${name}"`).join(",\n      ");
   const updateJsonFields = colNames
@@ -205,7 +203,14 @@ CREATE OR REPLACE FUNCTION ${tableName}_insert_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
     local_write_id UUID := gen_random_uuid();
+    changed_cols TEXT[] := ARRAY[]::TEXT[];
 BEGIN
+    -- Add all non-primary key columns to changed_columns
+    ${colNames
+      .filter(name => !pkCols.includes(name))
+      .map(name => `changed_cols := array_append(changed_cols, '${name}');`)
+      .join('\n    ')}
+
     INSERT INTO "${tableName}_local" (
     ${colNames.map((name) => `"${name}"`).join(", ")},
     changed_columns,
@@ -213,10 +218,7 @@ BEGIN
     )
     VALUES (
     ${colNames.map((name) => `NEW."${name}"`).join(", ")},
-    ARRAY[${colNames
-      .filter((c) => !pkCols.includes(c))
-      .map((c) => `'${c}'`)
-      .join(", ")}],
+    changed_cols,
     local_write_id
     );
 
@@ -257,7 +259,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     synced "${tableName}_synced"%ROWTYPE;
     local "${tableName}_local"%ROWTYPE;
-    changed_cols TEXT[] := '{}';
+    changed_cols TEXT[] := ARRAY[]::TEXT[];
     local_write_id UUID := gen_random_uuid();
 BEGIN
     SELECT * INTO synced FROM "${tableName}_synced" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
@@ -470,5 +472,5 @@ FOR EACH ROW
 EXECUTE FUNCTION changes_notify_trigger();
 `;
 
-fs.writeFileSync(ddlFilePath, output.join("\n") + changesTable, "utf-8");
-console.log(`✅ 已转换ddl ${ddlFilePath}`);
+fs.writeFileSync(initSQLFilePath, output.join("\n") + changesTable, "utf-8");
+console.log(`✅ 已转换initSQL ${initSQLFilePath}`);

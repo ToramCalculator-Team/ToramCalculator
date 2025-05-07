@@ -42,7 +42,7 @@ export function DBDataRender<T extends keyof DB>(props: {
         )}
       >
         {([groupName, keys]) => (
-          <section class="FieldGroup w-full">
+          <section class="FieldGroup w-full flex flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {groupName}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />

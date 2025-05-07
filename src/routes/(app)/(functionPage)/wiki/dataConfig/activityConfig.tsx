@@ -1,0 +1,206 @@
+import { Cell, flexRender } from "@tanstack/solid-table";
+import { createResource, createSignal, For, JSX, Show } from "solid-js";
+import { getCommonPinningStyles } from "~/lib/table";
+import { defaultActivity, findActivityById, findActivities, Activity, createActivity } from "~/repositories/activity";
+import { DBdataDisplayConfig } from "./dataConfig";
+import { activitySchema } from "~/../db/zod";
+import { DB, activity } from "~/../db/kysely/kyesely";
+import { Dic, EnumFieldDetail } from "~/locales/type";
+import { getDB } from "~/repositories/database";
+import { DBDataRender } from "~/components/module/dbDataRender";
+import { Button } from "~/components/controls/button";
+
+export const activityDataConfig: DBdataDisplayConfig<
+  "activity",
+  Activity["Card"],
+  {
+    zones: string[];
+    recipes: string[];
+  }
+> = {
+  table: {
+    columnDef: [
+      {
+        accessorKey: "id",
+        cell: (info) => info.getValue(),
+        size: 200,
+      },
+      {
+        accessorKey: "name",
+        cell: (info) => info.getValue(),
+        size: 220,
+      },
+    ],
+    dataFetcher: findActivities,
+    defaultSort: { id: "name", desc: false },
+    hiddenColumnDef: ["id"],
+    tdGenerator: (props: { cell: Cell<activity, keyof activity>; dictionary: Dic<activity> }) => {
+      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
+      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
+      const columnId = props.cell.column.id as keyof activity;
+      switch (columnId) {
+        default:
+          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
+          break;
+      }
+      return (
+        <td
+          style={{
+            ...getCommonPinningStyles(props.cell.column),
+            width: getCommonPinningStyles(props.cell.column).width + "px",
+          }}
+          class={defaultTdClass}
+        >
+          {"enumMap" in props.dictionary.fields[columnId]
+            ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof activity>).enumMap[props.cell.getValue()]
+            : props.cell.getValue()}
+        </td>
+      );
+    },
+  },
+  form: {
+    data: defaultActivity,
+    hiddenFields: ["id"],
+    dataSchema: activitySchema,
+    fieldGenerators: {},
+    extraData: {
+      zones: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const zones = await db
+            .selectFrom("zone")
+            .select(["id", "name"])
+            .where("name", "ilike", `%${name}%`)
+            .execute();
+          return zones.map((zone) => ({
+            label: zone.name,
+            value: zone.id,
+          }));
+        },
+        dictionary: {
+          key: "zones",
+          tableFieldDescription: "期间限定开放的区域",
+          formFieldDescription: "期间限定开放的区域",
+        },
+      },
+      recipes: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const recipes = await db
+            .selectFrom("recipe")
+            .innerJoin("item", "recipe.itemId", "item.id")
+            .where("item.name", "ilike", `%${name}%`)
+            .select(["item.name", "recipe.id"])
+            .execute();
+          return recipes.map((recipe) => ({
+            label: recipe.name,
+            value: recipe.id,
+          }));
+        },
+        dictionary: {
+          key: "recipes",
+          tableFieldDescription: "期间限定的配方  ",
+          formFieldDescription: "期间限定的配方",
+        },
+      },
+    },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const activity = await db.transaction().execute(async (trx) => {
+        const { zones, recipes, ...rest } = data;
+        const activity = await createActivity(trx, {
+          ...rest,
+        });
+        if (zones.length > 0) {
+          for (const zoneId of zones) {
+            await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zoneId).execute();
+          }
+        }
+        if (recipes.length > 0) {
+          for (const recipeId of recipes) {
+            await trx.updateTable("recipe").set({ activityId: activity.id }).where("id", "=", recipeId).execute();
+          }
+        }
+        return activity;
+      });
+    },
+  },
+  card: {
+    dataFetcher: findActivityById,
+    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+      const [zoneData] = createResource(data.id, async (activityId) => {
+        const db = await getDB();
+        return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
+      });
+      const [recipeData] = createResource(data.id, async (activityId) => {
+        const db = await getDB();
+        return await db
+          .selectFrom("recipe")
+          .innerJoin("item", "recipe.itemId", "item.id")
+          .where("recipe.activityId", "=", activityId)
+          .selectAll("recipe")
+          .select("item.name as itemName")
+          .execute();
+      });
+
+      return (
+        <>
+          <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
+          {DBDataRender<"activity">({
+            data,
+            dictionary: dictionary,
+            dataSchema: activitySchema,
+            hiddenFields: ["id"],
+            fieldGroupMap: {
+              基本信息: ["name"],
+            },
+          })}
+
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.zones ?? "活动区域"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={zoneData.latest}>
+                <For each={zoneData.latest}>
+                  {(zone) => {
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
+                        {zone.name}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dictionary.cardFields?.recipes ?? "活动配方"}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <Show when={recipeData.latest}>
+                <For each={recipeData.latest}>
+                  {(recipe) => {
+                    return (
+                      <Button
+                        onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "recipe", id: recipe.id }])}
+                      >
+                        {recipe.itemName}
+                      </Button>
+                    );
+                  }}
+                </For>
+              </Show>
+            </div>
+          </section>
+        </>
+      );
+    },
+  },
+};

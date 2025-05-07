@@ -132,7 +132,7 @@ export default function WikiSubPage() {
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
   const [tableName, setTableName] = createSignal<keyof DB>();
-  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any>>();
+  const [dataConfig, setDataConfig] = createSignal<DBdataDisplayConfig<any, any, any>>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
@@ -532,6 +532,7 @@ export default function WikiSubPage() {
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
                   {Form({
                     data: validDataConfig().form.data,
+                    extraData: validDataConfig().form.extraData,
                     dataSchema: validDataConfig().form.dataSchema,
                     hiddenFields: validDataConfig().form.hiddenFields,
                     fieldGenerators: validDataConfig().form.fieldGenerators,
@@ -665,6 +666,24 @@ export default function WikiSubPage() {
                                               dictionary().db[type()],
                                               setCardTypeAndIds,
                                             )}
+
+                                            <section class="FunFieldGroup flex w-full flex-col gap-2">
+                                              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                                                {dictionary().ui.actions.operation}
+                                                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                                              </h3>
+                                              <div class="FunGroup flex flex-col gap-3">
+                                                <Button
+                                                  class="w-fit"
+                                                  icon={<Icon.Line.Edit />}
+                                                  onclick={() => {
+                                                    const { type, id } = cardTypeAndIds()[index()];
+                                                    setCardTypeAndIds((pre) => pre.slice(0, -1));
+                                                    // setFormSheetIsOpen(true);
+                                                  }}
+                                                />
+                                              </div>
+                                            </section>
                                           </div>
                                         </OverlayScrollbarsComponent>
                                         <div

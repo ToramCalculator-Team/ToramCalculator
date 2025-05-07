@@ -435,6 +435,7 @@ const dictionary: dictionary = {
       switchUser: "切換用戶",
       install: "安裝",
       unInstall: "解除安裝",
+      operation: "操作",
     },
     nav: {
       home: "首頁",

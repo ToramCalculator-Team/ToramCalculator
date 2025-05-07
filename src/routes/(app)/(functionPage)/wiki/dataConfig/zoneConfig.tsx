@@ -15,8 +15,18 @@ import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { findAddresses } from "~/repositories/address";
 import { defaultData } from "../../../../../../db/defaultData";
+import { AnyFieldApi } from "@tanstack/solid-form";
+import { createId } from "@paralleldrive/cuid2";
 
-export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
+export const zoneDataConfig: DBdataDisplayConfig<
+  "zone",
+  Zone["Card"],
+  {
+    linkZones: string[];
+    mobs: string[];
+    npcs: string[];
+  }
+> = {
   table: {
     columnDef: [
       {
@@ -81,70 +91,63 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
   },
   form: {
     data: defaultData.zone,
+    extraData: {
+      linkZones: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const zones = await db
+            .selectFrom("zone")
+            .select(["id", "name"])
+            .where("name", "ilike", `%${name}%`)
+            .execute();
+          return zones.map((zone) => ({
+            label: zone.name,
+            value: zone.id,
+          }));
+        },
+        dictionary: {
+          key: "linkZone",
+          tableFieldDescription: "连接的区域",
+          formFieldDescription: "连接的区域",
+        },
+      },
+      mobs: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const mobs = await db.selectFrom("mob").select(["id", "name"]).where("name", "ilike", `%${name}%`).execute();
+          return mobs.map((mob) => ({
+            label: mob.name,
+            value: mob.id,
+          }));
+        },
+        dictionary: {
+          key: "mobs",
+          tableFieldDescription: "出现的怪物",
+          formFieldDescription: "出现的怪物",
+        },
+      },
+      npcs: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const npcs = await db.selectFrom("npc").select(["id", "name"]).where("name", "ilike", `%${name}%`).execute();
+          return npcs.map((npc) => ({
+            label: npc.name,
+            value: npc.id,
+          }));
+        },
+        dictionary: {
+          key: "npcs",
+          tableFieldDescription: "出现的NPC",
+          formFieldDescription: "出现的NPC",
+        },
+      },
+    },
     hiddenFields: ["id"],
     dataSchema: zoneSchema,
     fieldGenerators: {
-      // linkZone: (key, field, dictionary) => {
-      //   const arrayValue = () => field().state.value as string[];
-      //   return (
-      //     <Input
-      //       title={dictionary.fields[key].key}
-      //       description={dictionary.fields[key].formFieldDescription}
-      //       state={fieldInfo(field())}
-      //       class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-      //     >
-      //       <div class="ArrayBox flex w-full flex-col gap-2">
-      //         <For each={arrayValue()}>
-      //           {(item, index) => {
-      //             return (
-      //               <div class="flex items-center gap-2">
-      //                 <div class="flex-1">
-      //                   <Autocomplete
-      //                     value={item}
-      //                     setValue={(id) => {
-      //                       const newArray = [...arrayValue()];
-      //                       newArray[index()] = id;
-      //                       field().setValue(newArray);
-      //                     }}
-      //                     optionsFetcher={async (name) => {
-      //                       const db = await getDB();
-      //                       const zones = await db
-      //                         .selectFrom("zone")
-      //                         .select(["id", "name"])
-      //                         .where("name", "ilike", `%${name}%`)
-      //                         .execute();
-      //                       return zones.map((zone) => ({
-      //                         label: zone.name,
-      //                         value: zone.id,
-      //                       }));
-      //                     }}
-      //                   />
-      //                 </div>
-      //                 <Button
-      //                   onClick={() => {
-      //                     const newArray = arrayValue().filter((_, i) => i !== index());
-      //                     field().setValue(newArray as any);
-      //                   }}
-      //                 >
-      //                   -
-      //                 </Button>
-      //               </div>
-      //             );
-      //           }}
-      //         </For>
-      //         <Button
-      //           onClick={() => {
-      //             const newArray = [...arrayValue(), ""];
-      //             field().setValue(newArray as any);
-      //           }}
-      //           class="w-full"
-      //         >
-      //           +
-      //         </Button>
-      //       </div>
-      //     </Input>
-      //   );
-      // },
       addressId: (key, field, dictionary) => {
         return (
           <Input
@@ -179,7 +182,21 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
     onSubmit: async (data) => {
       const db = await getDB();
       const zone = await db.transaction().execute(async (trx) => {
-        return await createZone(trx, data);
+        const { linkZones, mobs, ...rest } = data;
+        const zone = await createZone(trx, {
+          ...rest,
+        });
+        if (linkZones.length > 0) {
+          for (const linkedZoneId of linkZones) {
+            await trx.insertInto("_linkZones").values({ A: zone.id, B: linkedZoneId }).execute();
+          }
+        }
+        if (mobs.length > 0) {
+          for (const mobId of mobs) {
+            await trx.insertInto("_mobTozone").values({ A: mobId, B: zone.id }).execute();
+          }
+        }
+        return zone;
       });
     },
   },
@@ -201,10 +218,21 @@ export const zoneDataConfig: DBdataDisplayConfig<"zone", Zone["Card"]> = {
         return await db.selectFrom("npc").where("npc.zoneId", "=", zoneId).selectAll("npc").execute();
       });
 
-      const [linkZoneData] = createResource(data.linkZone, async (linkZone) => {
+      const [linkZoneData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
-        if (!linkZone || linkZone.length === 0) return [];
-        const res = await db.selectFrom("zone").where("zone.id", "in", linkZone).selectAll("zone").execute();
+        const res = await db
+          .selectFrom("zone")
+          .innerJoin("_linkZones", "zone.id", "_linkZones.B")
+          .where("_linkZones.A", "=", zoneId)
+          .selectAll("zone")
+          .union(
+            db
+              .selectFrom("zone")
+              .innerJoin("_linkZones", "zone.id", "_linkZones.A")
+              .where("_linkZones.B", "=", zoneId)
+              .selectAll("zone"),
+          )
+          .execute();
         console.log("linkZoneData", res);
         return res;
       });

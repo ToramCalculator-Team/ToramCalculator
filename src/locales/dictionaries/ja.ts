@@ -367,7 +367,8 @@ const dictionary: dictionary = {
       register: "登録",
       switchUser: "ユーザー切り替え",
       install: "インストール", 
-      unInstall: "アンインストール"
+      unInstall: "アンインストール",
+      operation: "操作"
     },
     nav: {
       home: "ホーム",

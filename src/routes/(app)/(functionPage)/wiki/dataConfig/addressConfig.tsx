@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { defaultAddress, findAddressById, findAddresses, Address } from "~/repositories/address";
+import { defaultAddress, findAddressById, findAddresses, Address, createAddress } from "~/repositories/address";
 import { DBdataDisplayConfig } from "./dataConfig";
 import { addressSchema } from "~/../db/zod";
 import { DB, address } from "~/../db/kysely/kyesely";
@@ -10,8 +10,17 @@ import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Button } from "~/components/controls/button";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { fieldInfo } from "../utils";
 
-export const addressDataConfig: DBdataDisplayConfig<"address", Address["Card"]> = {
+export const addressDataConfig: DBdataDisplayConfig<
+  "address",
+  Address["Card"],
+  {
+    zones: string[];
+  }
+> = {
   table: {
     columnDef: [
       {
@@ -71,18 +80,82 @@ export const addressDataConfig: DBdataDisplayConfig<"address", Address["Card"]> 
     data: defaultAddress,
     hiddenFields: ["id"],
     dataSchema: addressSchema,
-    fieldGenerators: {},
+    fieldGenerators: {
+      worldId: (key, field, dictionary) => {
+        return (
+          <Input
+            title={dictionary.fields[key].key}
+            description={dictionary.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Autocomplete
+              value={field().state.value}
+              setValue={(id) => {
+                field().setValue(id);
+              }}
+              optionsFetcher={async (search) => {
+                const db = await getDB();
+                const result = await db
+                  .selectFrom("world")
+                  .select(["id", "name"])
+                  .where("name", "ilike", `%${search}%`)
+                  .limit(50)
+                  .execute();
+                return result.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                }));
+              }}
+            />
+          </Input>
+        );
+      },
+    },
+    extraData: {
+      zones: {
+        defaultValue: [],
+        optionsFetcher: async (name) => {
+          const db = await getDB();
+          const zones = await db
+            .selectFrom("zone")
+            .select(["id", "name"])
+            .where("name", "ilike", `%${name}%`)
+            .execute();
+          return zones.map((zone) => ({
+            label: zone.name,
+            value: zone.id,
+          }));
+        },
+        dictionary: {
+          key: "zones",
+          tableFieldDescription: "包含的区域",
+          formFieldDescription: "包含的区域",
+        },
+      },
+    },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const address = await db.transaction().execute(async (trx) => {
+        const { zones, ...rest } = data;
+        const address = await createAddress(trx, {
+          ...rest,
+        });
+        if (zones.length > 0) {
+          for (const zoneId of zones) {
+            await trx.updateTable("zone").set({ addressId: address.id }).where("id", "=", zoneId).execute();
+          }
+        }
+        return address;
+      });
+    },
   },
   card: {
     dataFetcher: findAddressById,
     cardRender: (data, dictionary, appendCardTypeAndIds) => {
       const [zoneData] = createResource(data.id, async (addressId) => {
         const db = await getDB();
-        return await db
-          .selectFrom("zone")
-          .where("zone.addressId", "=", addressId)
-          .selectAll("zone")
-          .execute();
+        return await db.selectFrom("zone").where("zone.addressId", "=", addressId).selectAll("zone").execute();
       });
 
       return (
@@ -99,7 +172,7 @@ export const addressDataConfig: DBdataDisplayConfig<"address", Address["Card"]> 
             },
           })}
 
-          <section class="FieldGroup gap-2 w-full">
+          <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dictionary.cardFields?.zones ?? "包含的区域"}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -108,7 +181,11 @@ export const addressDataConfig: DBdataDisplayConfig<"address", Address["Card"]> 
               <Show when={zoneData.latest}>
                 <For each={zoneData.latest}>
                   {(zone) => {
-                    return <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
+                    return (
+                      <Button onClick={() => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }])}>
+                        {zone.name}
+                      </Button>
+                    );
                   }}
                 </For>
               </Show>

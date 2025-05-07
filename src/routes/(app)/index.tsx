@@ -571,7 +571,7 @@ export default function Index() {
                       class="w-full"
                       options={{ scrollbars: { autoHide: "scroll" } }}
                       defer
-                    ><div class="ResultGroupContainer flex flex-col gap-3 w-full">
+                    ><div class="ResultGroupContainer flex flex-col gap-1 w-full">
                         
                       <For each={Object.entries(searchResult())}>
                         {([key, groupResultValue], groupIndex) => {
@@ -579,8 +579,8 @@ export default function Index() {
 
                           return (
                             <Show when={groupResultValue.length > 0}>
-                              <div class={`ResultGroup flex flex-col gap-1`}>
-                                <button
+                              <div class={`ResultGroup flex flex-col gap-[2px]`}>
+                                <Motion.button
                                   onClick={() =>
                                     setResultListState([
                                       ...resultListSate().slice(0, groupIndex()),
@@ -589,9 +589,17 @@ export default function Index() {
                                     ])
                                   }
                                   class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                  animate={{
+                                    opacity: [0, 1],
+                                    transform: ["translateY(30px)", "translateY(0)"],
+                                  }}
+                                  transition={{
+                                    duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                    delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+                                  }}
                                 >
                                   <Icon.Line.Basketball />
-                                  <span class="w-full text-left">
+                                  <span class="w-full text-left font-bold">
                                     {dictionary().db[groupType].selfName} [{groupResultValue.length}]
                                   </span>
                                   {resultListSate()[groupIndex()] ? (
@@ -599,13 +607,13 @@ export default function Index() {
                                   ) : (
                                     <Icon.Line.Left class="rotate-[270deg]" />
                                   )}
-                                </button>
+                                </Motion.button>
                                 <div class="Content flex flex-col gap-1">
                                   <For each={groupResultValue}>
                                     {(resultItem, index) => {
                                       return (
                                         <Motion.button
-                                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} border-dividing-color bg-primary-color focus-within:bg-area-color rounded border p-3 outline-hidden focus-within:outline-hidden`}
+                                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
                                           animate={{
                                             opacity: [0, 1],
                                             transform: ["translateY(30px)", "translateY(0)"],
@@ -630,7 +638,7 @@ export default function Index() {
                                             setCardGroupIsOpen(true);
                                           }}
                                         >
-                                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left font-bold">
+                                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
                                             {"name" in resultItem ? resultItem.name : "此条目没有名称"}
                                           </div>
                                           {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">

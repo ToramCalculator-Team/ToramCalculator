@@ -67,7 +67,9 @@ const columnHelper = createColumnHelper<Mob["MainForm"]>();
 //   }),
 // ]
 
-export const mobDataConfig: DBdataDisplayConfig<"mob", Mob["Card"]> = {
+export const mobDataConfig: DBdataDisplayConfig<"mob", Mob["Card"], {
+  
+}> = {
   table: {
     columnDef: [
       {

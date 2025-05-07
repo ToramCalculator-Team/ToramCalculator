@@ -1,4 +1,4 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
@@ -37,6 +37,10 @@ export async function updateNpc(id: string, updateWith: Npc["Update"]) {
 export async function deleteNpc(id: string) {
   const db = await getDB();
   return await db.deleteFrom("npc").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createNpc(trx: Transaction<DB>, data: Npc["Insert"]) {
+  return await trx.insertInto("npc").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export const defaultNpc: Npc["Select"] = {

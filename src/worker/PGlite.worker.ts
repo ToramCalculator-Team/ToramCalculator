@@ -111,8 +111,10 @@ worker({
     const statisticShape = await syncTable("statistic", ["id"]);
     const imageShape = await syncTable("image", ["id"]);
     const worldShape = await syncTable("world", ["id"]);
+    const activityShape = await syncTable("activity", ["id"]);
     const addressShape = await syncTable("address", ["id"]);
-    const zoneShape = await syncTable("zone", ["id"])
+    const zoneShape = await syncTable("zone", ["id"]);
+    const linkZoneShape = await syncTable("_linkZones", ["A", "B"], `"_linkZones"`);
     const npcShape = await syncTable("npc", ["id"]);
     const taskShape = await syncTable("task", ["id"]);
     const taskKillRequirementShape = await syncTable("task_kill_requirement", ["id"]);

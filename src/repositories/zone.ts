@@ -69,13 +69,12 @@ export async function createZone(trx: Transaction<DB>, newZone: Zone["Insert"]) 
       id: createId(),
     })
     .returningAll()
-    .executeTakeFirst();
+    .executeTakeFirstOrThrow();
 }
 
 export const defaultZone: Zone["Select"] = {
   id: "",
   name: "",
-  linkZone: [],
   rewardNodes: 0,
   activityId: null,
   addressId: "",

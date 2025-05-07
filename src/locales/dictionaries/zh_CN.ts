@@ -436,6 +436,7 @@ const dictionary: dictionary = {
       switchUser: "切换用户",
       install: "安装",
       unInstall: "卸载",
+      operation: "操作",
     },
     nav: {
       home: "首页", 
@@ -1902,13 +1903,13 @@ const dictionary: dictionary = {
         },
         name: {
           key: "名称",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          tableFieldDescription: "npc的名称，通常和游戏内一致，通常...",
+          formFieldDescription: "npc的名称，请填写和游戏内一致的翻译。你也不想大伙看到你写的东西之后一脸懵逼是吧。",
         },
         zoneId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "出现的区域",
+          tableFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
+          formFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
         },
       },
       description: ""

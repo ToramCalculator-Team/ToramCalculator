@@ -368,7 +368,8 @@ const dictionary: dictionary = {
       register: "Register",
       switchUser: "Switch User",
       install: "Install",
-      unInstall: "UnInstall"
+      unInstall: "UnInstall",
+      operation: "Operation"
     },
     nav: {
       home: "Home",

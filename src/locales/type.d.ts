@@ -68,6 +68,7 @@ export interface dictionary {
       switchUser: string;
       install: string;
       unInstall: string;
+      operation: string;
     };
     nav: {
       home: string;

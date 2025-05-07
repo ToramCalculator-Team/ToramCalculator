@@ -39,7 +39,7 @@ export function Sheet(props: { children: JSX.Element; state: boolean; setState: 
                 filter: ["blur(0px)", "blur(12px)"],
               }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`SheetContent bg-primary-color shadow-dividing-color shadow-dialog flex basis-[90%] flex-col items-center overflow-y-auto portrait:rounded-t-[24px] p-6 landscape:h-dvh landscape:basis-4/5`}
+              class={`SheetContent bg-primary-color shadow-dividing-color shadow-dialog flex flex-col items-center overflow-y-auto portrait:max-h-[90vh] portrait:rounded-t-[12px] landscape:basis-4/5`}
             >
               {props.children}
             </Motion.div>
