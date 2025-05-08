@@ -18,6 +18,7 @@ import { createTaskReward } from "~/repositories/taskReward";
 import { createId } from "@paralleldrive/cuid2";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Input } from "~/components/controls/input";
+import { itemTypeToTableType } from "./utils";
 
 export const createTaskDataConfig = (
   dic: Dic<task>,
@@ -343,7 +344,7 @@ export const createTaskDataConfig = (
               if (reward.type === "Item") {
                 return {
                   label: `${reward.itemName} * ${reward.value} : ${reward.probability}%`,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: reward.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(reward.itemType), id: reward.itemId }]),
                 };
               } else if (reward.type === "Money") {
                 return {

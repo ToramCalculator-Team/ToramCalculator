@@ -16,6 +16,7 @@ import { EnumSelect } from "~/components/controls/enumSelect";
 import { fieldInfo } from "../utils";
 import pick from "lodash-es/pick";
 import omit from "lodash-es/omit";
+import { itemTypeToTableType } from "./utils";
 
 export type weaponWithItem = weapon & item;
 export type WeaponCard = Item["Card"] & Weapon["Card"];
@@ -197,7 +198,7 @@ export const createWeaponDataConfig = (
           .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
           .innerJoin("item", "recipe_ingredient.itemId", "item.id")
           .where("recipe_ingredient.itemId", "=", itemId)
-          .select(["item.id as itemId", "item.name as itemName"])
+          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
           .execute();
       });
 
@@ -237,20 +238,9 @@ export const createWeaponDataConfig = (
                     };
 
                   case "Item":
-                    const itemType: keyof DB = (
-                      {
-                        Weapon: "weapon",
-                        Armor: "armor",
-                        Option: "option",
-                        Special: "special",
-                        Crystal: "crystal",
-                        Consumable: "consumable",
-                        Material: "material",
-                      } satisfies Record<item["itemType"], keyof DB>
-                    )[recipe.itemType];
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemType, id: recipe.itemId }]),
+                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId }]),
                     };
                   default:
                     return {
@@ -292,7 +282,7 @@ export const createWeaponDataConfig = (
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: usedIn.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId }]),
                 };
               }}
             />

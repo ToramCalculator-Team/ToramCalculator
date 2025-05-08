@@ -13,6 +13,7 @@ import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
 import { createItem, Item } from "~/repositories/item";
 import { omit, pick } from "lodash-es";
+import { itemTypeToTableType } from "./utils";
 
 export type optionWithItem = option & item
 export type OptionCard = Item["Card"] & OptEquip["Card"]
@@ -133,7 +134,7 @@ export const createOptionDataConfig = (dic: Dic<optionWithItem>): dataDisplayCon
   },
   card: {
     dataFetcher: findOptEquipByItemId,
-    cardRender: (data: optionWithItem, appendCardTypeAndIds: (updater: (prev: { type: keyof DB; id: string; }[]) => { type: keyof DB; id: string; }[]) => void) => {
+    cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
@@ -178,7 +179,7 @@ export const createOptionDataConfig = (dic: Dic<optionWithItem>): dataDisplayCon
           .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
           .innerJoin("item", "recipe_ingredient.itemId", "item.id")
           .where("recipe_ingredient.itemId", "=", itemId)
-          .select(["item.id as itemId", "item.name as itemName"])
+          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
           .execute();
       });
 
@@ -219,20 +220,9 @@ export const createOptionDataConfig = (dic: Dic<optionWithItem>): dataDisplayCon
                     };
 
                   case "Item":
-                    const itemType: keyof DB = (
-                      {
-                        Weapon: "weapon",
-                        Armor: "armor",
-                        Option: "option",
-                        Special: "special",
-                        Crystal: "crystal",
-                        Consumable: "consumable",
-                        Material: "material",
-                      } satisfies Record<item["itemType"], keyof DB>
-                    )[recipe.itemType];
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemType, id: recipe.itemId }]),
+                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId }]),
                     };
                   default:
                     return {
@@ -274,7 +264,7 @@ export const createOptionDataConfig = (dic: Dic<optionWithItem>): dataDisplayCon
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: usedIn.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId }]),
                 };
               }}
             />

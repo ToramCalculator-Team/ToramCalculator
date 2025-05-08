@@ -15,6 +15,7 @@ import { CardSection } from "~/components/module/cardSection";
 import { pick, omit } from "lodash-es";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { fieldInfo } from "../utils";
+import { itemTypeToTableType } from "./utils";
 
 export type materialWithItem = material & item;
 export type MaterialCard = Item["Card"] & Material["Card"];
@@ -166,7 +167,7 @@ export const createMaterialDataConfig = (
           .execute();
       });
 
-      const [rewardItemData] = createResource(data.id, async (itemId) => {
+      const [tasksData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
           .selectFrom("task_reward")
@@ -183,7 +184,7 @@ export const createMaterialDataConfig = (
           .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
           .innerJoin("item", "recipe_ingredient.itemId", "item.id")
           .where("recipe_ingredient.itemId", "=", itemId)
-          .select(["item.id as itemId", "item.name as itemName"])
+          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
           .execute();
       });
 
@@ -196,6 +197,7 @@ export const createMaterialDataConfig = (
           .select(["task.id as taskId", "task.name as taskName"])
           .execute();
       });
+
 
       return (
         <>
@@ -224,20 +226,9 @@ export const createMaterialDataConfig = (
                     };
 
                   case "Item":
-                    const itemType: keyof DB = (
-                      {
-                        Weapon: "weapon",
-                        Armor: "armor",
-                        Option: "option",
-                        Special: "special",
-                        Crystal: "crystal",
-                        Consumable: "consumable",
-                        Material: "material",
-                      } satisfies Record<item["itemType"], keyof DB>
-                    )[recipe.itemType];
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemType, id: recipe.itemId }]),
+                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId }]),
                     };
                   default:
                     return {
@@ -260,14 +251,14 @@ export const createMaterialDataConfig = (
               }}
             />
           </Show>
-          <Show when={rewardItemData.latest?.length}>
+          <Show when={tasksData.latest?.length}>
             <CardSection
               title={dic.cardFields?.rewarditem ?? "可从这些任务获得"}
-              data={rewardItemData.latest}
-              renderItem={(rewardItem) => {
+              data={tasksData.latest}
+              renderItem={(task) => {
                 return {
-                  label: rewardItem.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
+                  label: task.taskName,
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.taskId }]),
                 };
               }}
             />
@@ -279,7 +270,7 @@ export const createMaterialDataConfig = (
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: usedIn.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId }]),
                 };
               }}
             />
