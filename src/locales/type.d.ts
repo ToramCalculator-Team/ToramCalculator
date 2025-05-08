@@ -69,6 +69,7 @@ export interface dictionary {
       install: string;
       unInstall: string;
       operation: string;
+      searching: string;
     };
     nav: {
       home: string;

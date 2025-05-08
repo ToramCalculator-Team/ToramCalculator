@@ -56,7 +56,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
     },
     item: {
       table: "item",
-      fields: ["name"],
+      fields: ["name", "itemType"],
       selectFields: ["id", "name", "itemType"] as const,
       isArrayField: false,
       isEnumField: false
@@ -170,9 +170,13 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
         );
     } else {
       // 构建 OR 条件
-      const conditions = config.fields.map(field => 
-        sql<boolean>`COALESCE(${sql.ref(`${config.table}.${field}`)}, '')::text LIKE ${'%' + searchString + '%'}`
-      );
+      const conditions = config.fields.map(field => {
+        if (field === 'itemType') {
+          // 对于枚举类型，只搜索非空值
+          return sql<boolean>`${sql.ref(`${config.table}.${field}`)}::text LIKE ${'%' + searchString + '%'}`
+        }
+        return sql<boolean>`COALESCE(${sql.ref(`${config.table}.${field}`)}, '')::text LIKE ${'%' + searchString + '%'}`
+      });
       query = query.where((eb) => eb.or(conditions));
     }
     
@@ -204,6 +208,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
         // 对于 item 表，根据 itemType 将结果分配到对应的表中
         const itemResults = tableResults as { id: string; name: string; itemType: string }[];
         for (const item of itemResults) {
+          // 确保 itemType 匹配映射中的键
           const targetTable = itemTypeToTable[item.itemType] as keyof SearchResults;
           if (targetTable) {
             const config = DBDataConfig(dictionary)[targetTable];

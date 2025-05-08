@@ -34,7 +34,7 @@ export async function findSpeEquipByItemId(id: string) {
     .selectFrom("special")
     .innerJoin("item", "item.id", "special.itemId")
     .where("item.id", "=", id)
-    .selectAll("special")
+    .selectAll(["special", "item"])
     .select((eb) => speEquipSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }

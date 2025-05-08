@@ -151,6 +151,7 @@ export default function Index() {
   const [searchResultOpened, setSearchResultOpened] = createSignal(false);
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
+  const [isSearching, setIsSearching] = createSignal(false);
 
   // card
   const [cardTypeAndIds, setCardTypeAndIds] = createSignal<{ type: keyof DB; id: string }[]>([]);
@@ -277,37 +278,36 @@ export default function Index() {
   );
 
   const search = async () => {
-    setIsNullResult(true);
     if (searchInputValue() === "" || searchInputValue() === null) {
-      // console.log("输入值为空，不处理");
       setSearchResultOpened(false);
       return;
     }
-    if (!searchResultOpened()) {
-      // console.log("搜索结果列表未打开，打开列表，并添加前进历史记录");
+
+    setIsSearching(true);
+    setIsNullResult(true);
+    
+    try {
+      const finalResult: FinalResult = {
+        ...(await searchAllTables(searchInputValue())),
+      };
+      setSearchResult(finalResult);
+
+      // 所有部分结果都为空时，显示无结果提示
+      const resultListSate: boolean[] = [];
+      Object.entries(finalResult).forEach(([_key, value]) => {
+        if (value.length > 0) {
+          setIsNullResult(false);
+        }
+        resultListSate.push(true);
+      });
+      setResultListState(resultListSate);
+      
+      // 在搜索结果返回后再更新UI状态
       setSearchResultOpened(true);
       history.pushState({ popup: true }, "");
+    } finally {
+      setIsSearching(false);
     }
-
-    // 将数字字符串转换成数字
-    // const parsedInput = parseFloat(searchInputValue());
-    // const isNumber = !isNaN(parsedInput) && searchInputValue().trim() !== "";
-    // const searchValue = isNumber ? parsedInput : searchInputValue();
-
-    const finalResult: FinalResult = {
-      ...(await searchAllTables(searchInputValue())),
-    };
-    setSearchResult(finalResult);
-
-    // 所有部分结果都为空时，显示无结果提示
-    const resultListSate: boolean[] = [];
-    Object.entries(finalResult).forEach(([_key, value]) => {
-      if (value.length > 0) {
-        setIsNullResult(false);
-      }
-      resultListSate.push(true);
-    });
-    setResultListState(resultListSate);
   };
 
   // 问候语计算方法
@@ -496,10 +496,11 @@ export default function Index() {
                 }
                 value={searchInputValue()}
                 tabIndex={1}
+                disabled={isSearching()}
                 onInput={(e) => {
                   setSearchInputValue(e.target.value);
                 }}
-                class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal"
+                class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden landscape:flex landscape:bg-transparent dark:mix-blend-normal disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
@@ -536,135 +537,145 @@ export default function Index() {
                 class={`Result mt-1 flex h-full gap-1 overflow-y-hidden`}
               >
                 <Show
-                  when={!isNullResult()}
+                  when={!isSearching()}
                   fallback={
-                    <Motion.div
-                      class={`NullResult flex flex-1 flex-col gap-12 p-6 landscape:p-0`}
-                      animate={{
-                        opacity: [0, 1],
-                        marginTop: ["0", "calc(50vh - 54px)"],
-                        transform: ["translateY(0) scale(0.8)", "translateY(-50%) scale(1)"],
-                      }}
-                      transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-                    >
-                      <span class="NullResultWarring text-center text-xl leading-loose font-bold landscape:text-2xl">
-                        {dictionary().ui.index.nullSearchResultWarring}
-                      </span>
-                      <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
-                        {dictionary()
-                          .ui.index.nullSearchResultTips.split("\n")
-                          .map((line, index) => (
-                            <span>
-                              {line}
-                              <br />
-                            </span>
-                          ))}
-                      </p>
+                    <Motion.div class="flex flex-1 flex-col items-center justify-center gap-4">
+                      <LoadingBar class="w-1/2 min-w-[320px]" />
+                      <span class="text-lg font-bold">{dictionary().ui.actions.searching}</span>
                     </Motion.div>
                   }
                 >
-                  <div
-                    class={`ResultContent bg-area-color flex h-full flex-1 flex-col gap-2 rounded p-2 backdrop-blur-md`}
+                  <Show
+                    when={!isNullResult()}
+                    fallback={
+                      <Motion.div
+                        class={`NullResult flex flex-1 flex-col gap-12 p-6 landscape:p-0`}
+                        animate={{
+                          opacity: [0, 1],
+                          marginTop: ["0", "calc(50vh - 54px)"],
+                          transform: ["translateY(0) scale(0.8)", "translateY(-50%) scale(1)"],
+                        }}
+                        transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+                      >
+                        <span class="NullResultWarring text-center text-xl leading-loose font-bold landscape:text-2xl">
+                          {dictionary().ui.index.nullSearchResultWarring}
+                        </span>
+                        <p class={`NullResultTips text-main-text-color text-center leading-loose`}>
+                          {dictionary()
+                            .ui.index.nullSearchResultTips.split("\n")
+                            .map((line, index) => (
+                              <span>
+                                {line}
+                                <br />
+                              </span>
+                            ))}
+                        </p>
+                      </Motion.div>
+                    }
                   >
-                    <OverlayScrollbarsComponent
-                      element="div"
-                      class="w-full"
-                      options={{ scrollbars: { autoHide: "scroll" } }}
-                      defer
+                    <div
+                      class={`ResultContent bg-area-color flex h-full flex-1 flex-col gap-2 rounded p-2 backdrop-blur-md`}
                     >
-                      <div class="ResultGroupContainer flex w-full flex-col gap-1">
-                        <For each={Object.entries(searchResult())}>
-                          {([key, groupResultValue], groupIndex) => {
-                            const groupType = key as keyof DB;
+                      <OverlayScrollbarsComponent
+                        element="div"
+                        class="w-full"
+                        options={{ scrollbars: { autoHide: "scroll" } }}
+                        defer
+                      >
+                        <div class="ResultGroupContainer flex w-full flex-col gap-1">
+                          <For each={Object.entries(searchResult())}>
+                            {([key, groupResultValue], groupIndex) => {
+                              const groupType = key as keyof DB;
 
-                            return (
-                              <Show when={groupResultValue.length > 0}>
-                                <div class={`ResultGroup flex flex-col gap-[2px]`}>
-                                  <Motion.button
-                                    onClick={() =>
-                                      setResultListState([
-                                        ...resultListSate().slice(0, groupIndex()),
-                                        !resultListSate()[groupIndex()],
-                                        ...resultListSate().slice(groupIndex() + 1),
-                                      ])
-                                    }
-                                    class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
-                                    animate={{
-                                      opacity: [0, 1],
-                                      transform: ["translateY(30px)", "translateY(0)"],
-                                    }}
-                                    transition={{
-                                      duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                      delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
-                                    }}
-                                  >
-                                    <Icon.Line.Basketball />
-                                    <span class="w-full text-left font-bold">
-                                      {dictionary().db[groupType].selfName} [{groupResultValue.length}]
-                                    </span>
-                                    {resultListSate()[groupIndex()] ? (
-                                      <Icon.Line.Left class="rotate-[360deg]" />
-                                    ) : (
-                                      <Icon.Line.Left class="rotate-[270deg]" />
-                                    )}
-                                  </Motion.button>
-                                  <div class="Content flex flex-col gap-1">
-                                    <For each={groupResultValue}>
-                                      {(resultItem, index) => {
-                                        return (
-                                          <Motion.button
-                                            class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
-                                            animate={{
-                                              opacity: [0, 1],
-                                              transform: ["translateY(30px)", "translateY(0)"],
-                                            }}
-                                            transition={{
-                                              duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                              delay: store.settings.userInterface.isAnimationEnabled
-                                                ? index() < 15
-                                                  ? groupIndex() * 0.3 + index() * 0.07
-                                                  : 0
-                                                : 0,
-                                            }}
-                                            onClick={async () => {
-                                              // 设置卡片类型和ID
-                                              "id" in resultItem
-                                                ? setCardTypeAndIds((pre) => [
-                                                    ...pre,
-                                                    { type: groupType, id: resultItem.id },
-                                                  ])
-                                                : null;
-                                              // 设置卡片组是否打开
-                                              setCardGroupIsOpen(true);
-                                            }}
-                                          >
-                                            <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
-                                              {"name" in resultItem ? resultItem.name : "此条目没有名称"}
-                                            </div>
-                                            {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
-                                            {resultItem?.relateds.map((related, index) => {
-                                              return (
-                                                <div class="Related w-fit pr-2 text-left">
-                                                  <span>
-                                                    {related?.key}: {related?.value}
-                                                  </span>
-                                                </div>
-                                              );
-                                            })}
-                                          </div> */}
-                                          </Motion.button>
-                                        );
+                              return (
+                                <Show when={groupResultValue.length > 0}>
+                                  <div class={`ResultGroup flex flex-col gap-[2px]`}>
+                                    <Motion.button
+                                      onClick={() =>
+                                        setResultListState([
+                                          ...resultListSate().slice(0, groupIndex()),
+                                          !resultListSate()[groupIndex()],
+                                          ...resultListSate().slice(groupIndex() + 1),
+                                        ])
+                                      }
+                                      class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                      animate={{
+                                        opacity: [0, 1],
+                                        transform: ["translateY(30px)", "translateY(0)"],
                                       }}
-                                    </For>
+                                      transition={{
+                                        duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                        delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+                                      }}
+                                    >
+                                      <Icon.Line.Basketball />
+                                      <span class="w-full text-left font-bold">
+                                        {dictionary().db[groupType].selfName} [{groupResultValue.length}]
+                                      </span>
+                                      {resultListSate()[groupIndex()] ? (
+                                        <Icon.Line.Left class="rotate-[360deg]" />
+                                      ) : (
+                                        <Icon.Line.Left class="rotate-[270deg]" />
+                                      )}
+                                    </Motion.button>
+                                    <div class="Content flex flex-col gap-1">
+                                      <For each={groupResultValue}>
+                                        {(resultItem, index) => {
+                                          return (
+                                            <Motion.button
+                                              class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
+                                              animate={{
+                                                opacity: [0, 1],
+                                                transform: ["translateY(30px)", "translateY(0)"],
+                                              }}
+                                              transition={{
+                                                duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                                delay: store.settings.userInterface.isAnimationEnabled
+                                                  ? index() < 15
+                                                    ? groupIndex() * 0.3 + index() * 0.07
+                                                    : 0
+                                                  : 0,
+                                              }}
+                                              onClick={async () => {
+                                                // 设置卡片类型和ID
+                                                "id" in resultItem
+                                                  ? setCardTypeAndIds((pre) => [
+                                                      ...pre,
+                                                      { type: groupType, id: resultItem.id },
+                                                    ])
+                                                  : null;
+                                                // 设置卡片组是否打开
+                                                setCardGroupIsOpen(true);
+                                              }}
+                                            >
+                                              <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
+                                                {"name" in resultItem ? resultItem.name : "此条目没有名称"}
+                                              </div>
+                                              {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
+                                              {resultItem?.relateds.map((related, index) => {
+                                                return (
+                                                  <div class="Related w-fit pr-2 text-left">
+                                                    <span>
+                                                      {related?.key}: {related?.value}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div> */}
+                                            </Motion.button>
+                                          );
+                                        }}
+                                      </For>
+                                    </div>
                                   </div>
-                                </div>
-                              </Show>
-                            );
-                          }}
-                        </For>
-                      </div>
-                    </OverlayScrollbarsComponent>
-                  </div>
+                                </Show>
+                              );
+                            }}
+                          </For>
+                        </div>
+                      </OverlayScrollbarsComponent>
+                    </div>
+                  </Show>
                 </Show>
               </Motion.div>
             </Show>

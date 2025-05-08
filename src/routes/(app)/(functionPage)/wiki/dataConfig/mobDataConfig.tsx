@@ -15,7 +15,7 @@ import { DBDataRender } from "~/components/module/dbDataRender";
 import { getDB } from "~/repositories/database";
 import { Select } from "~/components/controls/select";
 import { MOB_DIFFICULTY_FLAG } from "../../../../../../db/enums";
-import { MobDifficultyFlag } from "../../../../../../db/kysely/enums";
+import { ItemType, MobDifficultyFlag } from "../../../../../../db/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
@@ -469,9 +469,18 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
             title={dic.cardFields?.dropItems ?? "掉落物品"}
             data={dropItemsData.latest}
             renderItem={(item) => {
+              const tableType: keyof DB = ({
+                Weapon: "weapon",
+                Armor: "armor",
+                Option: "option",
+                Special: "special",
+                Crystal: "crystal",
+                Consumable: "consumable",
+                Material: "material",
+              } satisfies Record<ItemType, keyof DB>)[item.itemType];
               return {
                 label: item.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: item.id }]),
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: tableType, id: item.id }]),
               };
             }}
           />

@@ -128,7 +128,7 @@ const enums: DataEnums = {
     initialElement: elementType,
   },
   item: {
-    type: {
+    itemType: {
       Weapon: "",
       Armor: "",
       Option: "",
@@ -411,7 +411,7 @@ const dictionary: dictionary = {
       false: "否",
     },
     actions: {
-      add: "新增", 
+      add: "新增",
       create: "建立",
       remove: "刪除",
       update: "更新",
@@ -436,6 +436,7 @@ const dictionary: dictionary = {
       install: "安裝",
       unInstall: "解除安裝",
       operation: "操作",
+      searching: "搜尋中...",
     },
     nav: {
       home: "首頁",
@@ -1081,11 +1082,6 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "防具的唯一識別碼",
-          formFieldDescription: "防具的唯一識別碼"
-        },
         baseDef: {
           key: "基礎防禦",
           tableFieldDescription: "防具的基礎防禦值",
@@ -1399,11 +1395,6 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "消耗品的唯一識別碼",
-          formFieldDescription: "消耗品的唯一識別碼"
-        },
         type: {
           key: "類型",
           tableFieldDescription: "消耗品的類型",
@@ -1444,11 +1435,6 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "晶石",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "晶石的唯一識別碼",
-          formFieldDescription: "晶石的唯一識別碼"
-        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1570,54 +1556,54 @@ const dictionary: dictionary = {
       selfName: "道具",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-        },
-        type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            Weapon: "",
-            Armor: "",
-            Option: "",
-            Special: "",
-            Crystal: "",
-            Consumable: "",
-            Material: "",
-          },
+          key: "道具ID",
+          tableFieldDescription: "道具的唯一識別碼",
+          formFieldDescription: "道具的唯一識別碼"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "道具名稱",
+          tableFieldDescription: "道具名稱",
+          formFieldDescription: "道具名稱"
         },
         dataSources: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "資料來源",
+          tableFieldDescription: "資料來源",
+          formFieldDescription: "資料來源"
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "詳細資料",
+          tableFieldDescription: "詳細資料",
+          formFieldDescription: "詳細資料"
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "統計ID",
+          tableFieldDescription: "統計ID",
+          formFieldDescription: "統計ID"
         },
         updatedByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "更新者ID",
+          tableFieldDescription: "更新者ID",
+          formFieldDescription: "更新者ID"
         },
         createdByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "建立者ID",
+          tableFieldDescription: "建立者ID",
+          formFieldDescription: "建立者ID"
         },
+        itemType: {
+          key: "道具類型",
+          tableFieldDescription: "道具類型",
+          formFieldDescription: "道具類型",
+          enumMap: {
+            Weapon: "武器",
+            Armor: "防具",
+            Option: "選擇",
+            Special: "特殊",
+            Crystal: "晶石",
+            Consumable: "消耗品",
+            Material: "材料"
+          }
+        }
       },
       description: ""
     },
@@ -1933,11 +1919,6 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加裝備",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "追加裝備的唯一識別碼",
-          formFieldDescription: "追加裝備的唯一識別碼"
-        },
         baseDef: {
           key: "基礎防禦",
           tableFieldDescription: "追加裝備的基礎防禦值",
@@ -2692,11 +2673,6 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊裝備",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "特殊裝備的唯一識別碼",
-          formFieldDescription: "特殊裝備的唯一識別碼"
-        },
         baseDef: {
           key: "",
           tableFieldDescription: "",
@@ -2962,11 +2938,6 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "武器的唯一識別碼",
-          formFieldDescription: "武器的唯一識別碼"
-        },
         type: {
           key: "類型",
           tableFieldDescription: "武器的類型，包括主武器和副武器",

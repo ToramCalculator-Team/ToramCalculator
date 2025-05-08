@@ -437,6 +437,7 @@ const dictionary: dictionary = {
       install: "安装",
       unInstall: "卸载",
       operation: "操作",
+      searching: "搜索中...",
     },
     nav: {
       home: "首页", 

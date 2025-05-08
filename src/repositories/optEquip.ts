@@ -25,8 +25,12 @@ export function optEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expr
 
 export async function findOptEquipByItemId(id: string) {
   const db = await getDB();
-  const optEquip = await db.selectFrom("option").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-  return optEquip;
+  return await db
+    .selectFrom("option")
+    .innerJoin("item", "item.id", "option.itemId")
+    .where("item.id", "=", id)
+    .selectAll(["option", "item"])
+    .executeTakeFirstOrThrow();
 }
 
 export async function findOptEquips() {
