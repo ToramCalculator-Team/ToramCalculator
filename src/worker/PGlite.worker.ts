@@ -97,9 +97,9 @@ worker({
         shapeKey: `${tableName}s`,
         primaryKey: primaryKey,
         onInitialSync: () => notifySyncProgress(tableName),
-        // onMustRefetch: async (tx) => {
-        //   await tx.exec(`DELETE FROM "${tableName}_synced";`);
-        // }
+        onMustRefetch: async (tx) => {
+          await tx.exec(`DELETE FROM "${tableName}_synced";`);
+        }
       });
     };
 
@@ -155,6 +155,7 @@ worker({
     const customPetShape = await syncTable("player_pet", ["id"]);
     const characterSkillShape = await syncTable("character_skill", ["id"]);
     const consumableShape = await syncTable("consumable", ["itemId"]);
+    const materialShape = await syncTable("material", ["itemId"]);
     const comboShape = await syncTable("combo", ["id"]);
     const characterShape = await syncTable("character", ["id"]);
     const mercenaryShape = await syncTable("mercenary", ["templateId"]);

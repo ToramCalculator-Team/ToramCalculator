@@ -4,7 +4,7 @@ import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, findMobById, findMobs, Mob, mobCardSchema } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo } from "../utils";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import * as Icon from "~/components/icon";
 import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
@@ -19,14 +19,15 @@ import { MobDifficultyFlag } from "../../../../../../db/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
+import { createZone } from "~/repositories/zone";
 
-export const mobDataConfig: DBdataDisplayConfig<
+export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
   mob,
   Mob["Card"],
   {
     zones: string[];
   }
-> = {
+> => ({
   table: {
     columnDef: [
       {
@@ -119,7 +120,8 @@ export const mobDataConfig: DBdataDisplayConfig<
     dataFetcher: findMobs,
     defaultSort: { id: "experience", desc: true },
     hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-    tdGenerator: (props: { cell: Cell<mob, keyof mob>; dictionary: Dic<mob> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<mob, keyof mob>; }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       const columnId = props.cell.column.id as keyof mob;
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
@@ -186,8 +188,8 @@ export const mobDataConfig: DBdataDisplayConfig<
             }
             fallback={tdContent()}
           >
-            {"enumMap" in props.dictionary.fields[columnId]
-              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof mob>).enumMap[props.cell.getValue()]
+            {"enumMap" in dic.fields[columnId]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof mob>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -220,14 +222,15 @@ export const mobDataConfig: DBdataDisplayConfig<
     },
     hiddenFields: ["id", "statisticId", "actions", "createdByAccountId", "updatedByAccountId"],
     dataSchema: mobSchema,
+    dictionary: dic,
     fieldGenerators: {
-      type: (key, field, dictionary) => {
+      type: (key, field) => {
         let icon: JSX.Element = null;
         const zodValue = mobSchema.shape[key];
         return (
           <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
@@ -246,7 +249,7 @@ export const mobDataConfig: DBdataDisplayConfig<
                       class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
                     >
                       {icon}
-                      {dictionary.fields[key].enumMap[option]}
+                      {dic.fields[key].enumMap[option]}
                       <input
                         id={field().name + option}
                         name={field().name}
@@ -265,14 +268,14 @@ export const mobDataConfig: DBdataDisplayConfig<
           </Input>
         );
       },
-      initialElement: (key, field, dictionary) => {
+      initialElement: (key, field) => {
         {
           let icon: JSX.Element = null;
           const zodValue = mobSchema.shape[key];
           return (
             <Input
-              title={dictionary.fields[key].key}
-              description={dictionary.fields[key].formFieldDescription}
+              title={dic.fields[key].key}
+              description={dic.fields[key].formFieldDescription}
               state={fieldInfo(field())}
               class="border-dividing-color bg-primary-color w-full rounded-md border-1"
             >
@@ -326,7 +329,7 @@ export const mobDataConfig: DBdataDisplayConfig<
                         class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color" : "border-dividing-color bg-area-color opacity-50"}`}
                       >
                         {icon}
-                        {dictionary.fields[key].enumMap[option]}
+                        {dic.fields[key].enumMap[option]}
                         <input
                           id={field().name + option}
                           name={field().name}
@@ -347,10 +350,26 @@ export const mobDataConfig: DBdataDisplayConfig<
         }
       },
     },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const mob = await db.transaction().execute(async (trx) => {
+        const { zones, ...rest } = data;
+        console.log("zones", zones, "zone", rest);
+        const mob = await createMob(trx, {
+          ...rest,
+        });
+        if (zones.length > 0) {
+          for (const zoneId of zones) {
+            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zoneId }).execute();
+          }
+        }
+        return mob;
+      });
+    },
   },
   card: {
     dataFetcher: findMobById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (data, appendCardTypeAndIds) => {
       const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
       const [zonesData] = createResource(data.id, async (mobId) => {
@@ -402,16 +421,16 @@ export const mobDataConfig: DBdataDisplayConfig<
                         <Icon.Filled.Star class={index > 2 ? "fill-brand-color-3rd!" : "fill-none!"} />
                         <Icon.Filled.Star class={index > 3 ? "fill-brand-color-4th!" : "fill-none!"} />
                       </div>
-                      <span class="text-accent-color">Lv:{data.baseLv + (index === 4 ? index + 1 : index) * 10}</span>
+                      <span class="text-accent-color">Lv:{data.baseLv + (index === 4 ? index : index - 1) * 10}</span>
                     </div>
                   </>
                 );
               }}
             />
           </Show>
-          {DBDataRender<"mob">({
+          {DBDataRender<mob>({
             data: generateBossDataByFlag(data, difficulty()),
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: mobCardSchema as ZodObject<{ [K in keyof Awaited<ReturnType<typeof findMobById>>]: ZodSchema }>,
             hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
             fieldGroupMap: {
@@ -437,7 +456,7 @@ export const mobDataConfig: DBdataDisplayConfig<
           })}
 
           <CardSection
-            title={dictionary.cardFields?.belongToZones ?? "出现的区域"}
+            title={dic.cardFields?.belongToZones ?? "出现的区域"}
             data={zonesData.latest}
             renderItem={(zone) => {
               return {
@@ -447,7 +466,7 @@ export const mobDataConfig: DBdataDisplayConfig<
             }}
           />
           <CardSection
-            title={dictionary.cardFields?.dropItems ?? "掉落物品"}
+            title={dic.cardFields?.dropItems ?? "掉落物品"}
             data={dropItemsData.latest}
             renderItem={(item) => {
               return {
@@ -460,4 +479,4 @@ export const mobDataConfig: DBdataDisplayConfig<
       );
     },
   },
-};
+});

@@ -1,18 +1,23 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { findSkillById, findSkills, Skill } from "~/repositories/skill";
+import { createSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
 import { DataEnums } from "~/../db/dataEnums";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import { skill_effectSchema, skillSchema, statisticSchema } from "~/../db/zod";
-import { skill } from "~/../db/kysely/kyesely";
+import { DB, skill } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { z, ZodObject, ZodSchema } from "zod";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
-export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
+import { Input } from "~/components/controls/input";
+import { fieldInfo } from "../utils";
+import * as Icon from "~/components/icon";
+import { Select } from "~/components/controls/select";
+import { EnumSelect } from "~/components/controls/enumSelect";
+export const createSkillDataConfig = (dic: Dic<skill>): dataDisplayConfig<skill, Skill["Card"], {}> => ({
   table: {
     columnDef: [
       {
@@ -49,7 +54,8 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
     dataFetcher: findSkills,
     defaultSort: { id: "posX", desc: true },
     hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId"],
-    tdGenerator: (props: { cell: Cell<skill, keyof skill>; dictionary: Dic<skill> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<skill, keyof skill> }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof skill;
@@ -72,8 +78,8 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
             }
             fallback={tdContent()}
           >
-            {"enumMap" in props.dictionary.fields[columnId]
-              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof skill>).enumMap[props.cell.getValue()]
+            {"enumMap" in dic.fields[columnId]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof skill>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -84,11 +90,85 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
     data: defaultData.skill,
     hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
     dataSchema: skillSchema,
-    fieldGenerators: {},
+    dictionary: dic,
+    fieldGenerators: {
+      treeType: (key, field) => {
+        const zodValue = skillSchema.shape[key];
+        return (
+          <Input
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Select
+              value={field().state.value}
+              setValue={field().setValue}
+              options={zodValue.options.map((type) => ({ label: dic.fields[key].enumMap[type], value: type }))}
+              class="w-full"
+            />
+          </Input>
+        );
+      },
+      chargingType: (key, field) => {
+        const zodValue = skillSchema.shape[key];
+        return (
+          <EnumSelect
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            options={zodValue.options}
+            field={field}
+            dic={dic.fields[key].enumMap}
+          />
+        );
+      },
+      targetType: (key, field) => {
+        const zodValue = skillSchema.shape[key];
+        return (
+          <EnumSelect
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            options={zodValue.options}
+            field={field}
+            dic={dic.fields[key].enumMap}
+          />
+        );
+      },
+      distanceType: (key, field) => {
+        const zodValue = skillSchema.shape[key];
+        return (
+          <EnumSelect
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            options={zodValue.options}
+            field={field}
+            dic={dic.fields[key].enumMap}
+          />
+        );
+      },
+    },
+    onSubmit: async (data) => {
+      const db = await getDB();
+      const skill = await db.transaction().execute(async (trx) => {
+        const { ...rest } = data;
+        const skill = await createSkill(trx, {
+          ...rest,
+        });
+        return skill;
+      });
+    },
   },
   card: {
     dataFetcher: findSkillById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (
+      data: skill,
+      appendCardTypeAndIds: (
+        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
+      ) => void,
+    ) => {
       const [skillEffectData] = createResource(data.id, async (skillId) => {
         const db = await getDB();
         return await db
@@ -102,9 +182,9 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
       return (
         <>
           <div class="MobImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<"skill">({
+          {DBDataRender<Skill["Card"]>({
             data,
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: skillSchema.extend({
               statistic: statisticSchema,
               effects: z.array(skill_effectSchema),
@@ -119,7 +199,7 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
           })}
 
           <CardSection
-            title={dictionary.cardFields?.effects ?? "技能效果"}
+            title={dic.cardFields?.effects ?? "技能效果"}
             data={skillEffectData.latest}
             renderItem={(effect) => {
               return {
@@ -132,4 +212,4 @@ export const skillDataConfig: DBdataDisplayConfig<skill, Skill["Card"], {}> = {
       );
     },
   },
-};
+});

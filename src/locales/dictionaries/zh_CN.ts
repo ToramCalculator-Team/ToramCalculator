@@ -129,7 +129,7 @@ const enums: DataEnums = {
     initialElement: elementType,
   },
   item: {
-    type: {
+    itemType: {
       Weapon: "",
       Armor: "",
       Option: "",
@@ -1080,20 +1080,15 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "防具的唯一标识符",
-          formFieldDescription: "防具的唯一标识符"
-        },
         baseDef: {
           key: "基础防御",
           tableFieldDescription: "防具的基础防御值",
           formFieldDescription: "请输入基础防御值"
         },
         modifiers: {
-          key: "修正值",
-          tableFieldDescription: "防具的属性修正值",
-          formFieldDescription: "请输入属性修正值"
+          key: "自带的附魔属性",
+          tableFieldDescription: "锻造或者掉落时自带的附魔属性",
+          formFieldDescription: "锻造或者掉落时自带的附魔属性"
         },
         colorA: {
           key: "颜色A",
@@ -1398,11 +1393,6 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "消耗品的唯一标识符",
-          formFieldDescription: "消耗品的唯一标识符"
-        },
         type: {
           key: "类型",
           tableFieldDescription: "消耗品类型",
@@ -1423,19 +1413,19 @@ const dictionary: dictionary = {
           },
         },
         effectDuration: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果持续时间",
+          tableFieldDescription: "消耗品效果持续时间",
+          formFieldDescription: "请输入消耗品效果持续时间",
         },
         effects: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果",
+          tableFieldDescription: "消耗品效果",
+          formFieldDescription: "请输入消耗品效果",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具ID",
+          tableFieldDescription: "消耗品所属的道具ID",
+          formFieldDescription: "选择消耗品所属的道具",
         },
       },
       description: ""
@@ -1443,11 +1433,6 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "锻晶",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "锻晶的唯一标识符",
-          formFieldDescription: "锻晶的唯一标识符"
-        },
         type: {
           key: "类型",
           tableFieldDescription: "锻晶的类型",
@@ -1573,49 +1558,49 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+        itemType: {
+          key: "道具类型",
+          tableFieldDescription: "道具的表类型，这个类型主要用于系统判断",
+          formFieldDescription: "一般不需要手动选择，如果看到这个，请给开发人员反馈",
           enumMap: {
-            Weapon: "",
-            Armor: "",
-            Option: "",
-            Special: "",
-            Crystal: "",
-            Consumable: "",
-            Material: "",
+            Weapon: "武器",
+            Armor: "防具",
+            Option: "追加装备",
+            Special: "特殊装备",
+            Crystal: "锻晶",
+            Consumable: "消耗品",
+            Material: "素材",
           },
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "道具的名称",
+          formFieldDescription: "道具的名称",
         },
         dataSources: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数据来源",
+          tableFieldDescription: "道具的数据来源",
+          formFieldDescription: "道具的数据来源",
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "详细描述",
+          tableFieldDescription: "道具的详细描述",
+          formFieldDescription: "道具的详细描述",
         },
         statisticId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "统计ID",
+          tableFieldDescription: "道具的统计ID",
+          formFieldDescription: "道具的统计ID",
         },
         updatedByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "最后更新者",
+          tableFieldDescription: "道具的最后更新者",
+          formFieldDescription: "道具的最后更新者",
         },
         createdByAccountId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "创建者",
+          tableFieldDescription: "道具的创建者",
+          formFieldDescription: "道具的创建者",
         },
       },
       description: ""
@@ -1912,9 +1897,9 @@ const dictionary: dictionary = {
       selfName: "NPC",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "NPC的ID",
+          formFieldDescription: "NPC的ID",
         },
         name: {
           key: "名称",
@@ -1932,40 +1917,35 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加装备",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "追加装备的唯一标识符",
-          formFieldDescription: "追加装备的唯一标识符"
-        },
         baseDef: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基础防御",
+          tableFieldDescription: "基础防御",
+          formFieldDescription: "基础防御",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "自带的附魔属性",
+          tableFieldDescription: "掉落时或者锻造时自带的附魔属性",
+          formFieldDescription: "掉落时或者锻造时自带的附魔属性",
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色A",
+          tableFieldDescription: "颜色A",
+          formFieldDescription: "颜色A",
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色B",
+          tableFieldDescription: "颜色B",
+          formFieldDescription: "颜色B",
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色C",
+          tableFieldDescription: "颜色C",
+          formFieldDescription: "颜色C",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具ID",
+          tableFieldDescription: "所属道具ID",
+          formFieldDescription: "所属道具ID",
         },
       },
       description: ""
@@ -1974,9 +1954,9 @@ const dictionary: dictionary = {
       selfName: "玩家",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "ID",
+          formFieldDescription: "ID",
         },
         name: {
           key: "",
@@ -2345,19 +2325,19 @@ const dictionary: dictionary = {
       selfName: "配方",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "配方的唯一标识符",
+          formFieldDescription: "配方的唯一标识符"
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具",
+          tableFieldDescription: "所属道具",
+          formFieldDescription: "所属道具"
         },
         activityId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属活动",
+          tableFieldDescription: "所属活动",
+          formFieldDescription: "所属活动"
         },
       },
       description: ""
@@ -2366,39 +2346,39 @@ const dictionary: dictionary = {
       selfName: "配方材料",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "配方的材料的唯一标识符",
+          formFieldDescription: "配方的材料的唯一标识符"
         },
         count: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数量",
+          tableFieldDescription: "数量",
+          formFieldDescription: "数量"
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "类型",
+          formFieldDescription: "类型",
           enumMap: {
-            Metal: "",
-            Cloth: "",
-            Beast: "",
-            Wood: "",
-            Drug: "",
-            Magic: "",
-            Gold: "",
-            Item: "",
+            Metal: "金属",
+            Cloth: "布料",
+            Beast: "兽品",
+            Wood: "木材",
+            Drug: "药品",
+            Magic: "魔素",
+            Gold: "金币",
+            Item: "其他",
           },
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "对应道具",
+          tableFieldDescription: "对应道具",
+          formFieldDescription: "对应道具"
         },
         recipeId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属配方",
+          tableFieldDescription: "所属配方",
+          formFieldDescription: "所属配方"
         },
       },
       description: ""
@@ -2554,89 +2534,89 @@ const dictionary: dictionary = {
       selfName: "技能效果",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "技能效果的唯一标识符",
+          formFieldDescription: "技能效果的唯一标识符"
         },
         condition: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "激活此效果的条件",
+          tableFieldDescription: "激活此效果的条件",
+          formFieldDescription: "激活此效果的条件"
         },
         elementLogic: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "伤害属性的判断逻辑",
+          tableFieldDescription: "伤害属性的判断逻辑",
+          formFieldDescription: "伤害属性的判断逻辑"
         },
         castingRange: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "施法范围",
+          tableFieldDescription: "施法范围",
+          formFieldDescription: "施法范围"
         },
         effectiveRange: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "技能作用范围",
+          tableFieldDescription: "技能作用范围",
+          formFieldDescription: "技能作用范围"
         },
         motionFixed: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "固定动画帧",
+          tableFieldDescription: "固定动画帧",
+          formFieldDescription: "固定动画帧"
         },
         motionModified: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "可加速动画帧",
+          tableFieldDescription: "可加速动画帧",
+          formFieldDescription: "可加速动画帧"
         },
         chantingFixed: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "固定咏唱时间",
+          tableFieldDescription: "固定咏唱时间",
+          formFieldDescription: "固定咏唱时间"
         },
         chantingModified: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "可加速咏唱时间",
+          tableFieldDescription: "可加速咏唱时间",
+          formFieldDescription: "可加速咏唱时间"
         },
         reservoirFixed: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "固定蓄力时间",
+          tableFieldDescription: "固定蓄力时间",
+          formFieldDescription: "固定蓄力时间"
         },
         reservoirModified: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "可加速蓄力时间",
+          tableFieldDescription: "可加速蓄力时间",
+          formFieldDescription: "可加速蓄力时间"
         },
         startupFrames: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "技能前摇",
+          tableFieldDescription: "技能前摇",
+          formFieldDescription: "技能前摇"
         },
         cost: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "技能消耗",
+          tableFieldDescription: "技能消耗",
+          formFieldDescription: "技能消耗"
         },
         description: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果描述",
+          tableFieldDescription: "效果描述",
+          formFieldDescription: "效果描述"
         },
         logic: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "效果逻辑",
+          tableFieldDescription: "效果逻辑",
+          formFieldDescription: "效果逻辑"
         },
         details: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "额外说明",
+          tableFieldDescription: "额外说明",
+          formFieldDescription: "额外说明"
         },
         belongToskillId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属技能",
+          tableFieldDescription: "所属技能",
+          formFieldDescription: "所属技能"
         },
       },
       description: ""
@@ -2644,25 +2624,20 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装备",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "特殊装备的唯一标识符",
-          formFieldDescription: "特殊装备的唯一标识符"
-        },
         baseDef: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基础防御",
+          tableFieldDescription: "基础防御",
+          formFieldDescription: "基础防御",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "自带的附魔属性",
+          tableFieldDescription: "锻造时或者掉落时自带的附魔属性",
+          formFieldDescription: "锻造时或者掉落时自带的附魔属性",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具ID",
+          tableFieldDescription: "所属道具ID",
+          formFieldDescription: "所属道具ID",
         },
       },
       description: ""
@@ -2702,40 +2677,40 @@ const dictionary: dictionary = {
       selfName: "任务",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "ID",
+          formFieldDescription: "ID",
         },
         lv: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "等级",
+          tableFieldDescription: "承接任务时，如果角色低于此等级，则无法承接任务",
+          formFieldDescription: "承接任务时，如果角色低于此等级，则无法承接任务",
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "任务名称",
+          formFieldDescription: "任务名称",
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "任务类型",
+          formFieldDescription: "任务类型",
           enumMap: {
-            Collect: "",
-            Defeat: "",
-            Both: "",
-            Other: "",
+            Collect: "收集",
+            Defeat: "击杀",
+            Both: "收集和击杀",
+            Other: "其他",
           },
         },
         description: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "描述",
+          tableFieldDescription: "任务描述",
+          formFieldDescription: "任务描述",
         },
         npcId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属NPC",
+          tableFieldDescription: "任务所属的NPC",
+          formFieldDescription: "任务所属的NPC",
         },
       },
       description: ""
@@ -2744,24 +2719,24 @@ const dictionary: dictionary = {
       selfName: "任务收集要求",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "ID",
+          formFieldDescription: "ID",
         },
         count: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数量",
+          tableFieldDescription: "需要收集的数量",
+          formFieldDescription: "需要收集的数量",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属道具",
+          tableFieldDescription: "所属道具",
+          formFieldDescription: "所属道具",
         },
         taskId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属任务",
+          tableFieldDescription: "所属任务",
+          formFieldDescription: "所属任务",
         },
       },
       description: ""
@@ -2770,24 +2745,24 @@ const dictionary: dictionary = {
       selfName: "任务击杀要求",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "ID",
+          formFieldDescription: "ID",
         },
         mobId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "需要击杀的怪物",
+          tableFieldDescription: "需要击杀的怪物",
+          formFieldDescription: "需要击杀的怪物",
         },
         count: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数量",
+          tableFieldDescription: "需要击杀的数量",
+          formFieldDescription: "需要击杀的数量",
         },
         taskId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属任务",
+          tableFieldDescription: "所属任务",
+          formFieldDescription: "所属任务",
         },
       },
       description: ""
@@ -2796,39 +2771,39 @@ const dictionary: dictionary = {
       selfName: "任务奖励",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "ID",
+          formFieldDescription: "ID",
         },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "奖励类型",
+          formFieldDescription: "奖励类型",
           enumMap: {
-            Item: "",
-            Exp: "",
-            Money: "",
+            Item: "道具",
+            Exp: "经验",
+            Money: "金币",
           },
         },
         value: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "数量",
+          tableFieldDescription: "奖励数量",
+          formFieldDescription: "奖励数量",
         },
         probability: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "概率",
+          tableFieldDescription: "奖励概率",
+          formFieldDescription: "奖励概率",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "奖励道具",
+          tableFieldDescription: "奖励道具",
+          formFieldDescription: "奖励道具",
         },
         taskId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属任务",
+          tableFieldDescription: "所属任务",
+          formFieldDescription: "所属任务",
         },
       },
       description: ""
@@ -2914,79 +2889,74 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
-        id: {
-          key: "ID",
-          tableFieldDescription: "武器的唯一标识符",
-          formFieldDescription: "武器的唯一标识符"
-        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "类型",
+          tableFieldDescription: "武器的类型",
+          formFieldDescription: "武器的类型",
           enumMap: {
-            OneHandSword: "",
-            TwoHandSword: "",
-            Bow: "",
-            Bowgun: "",
-            Rod: "",
-            Magictool: "",
-            Knuckle: "",
-            Halberd: "",
-            Katana: "",
-            Arrow: "",
-            ShortSword: "",
-            NinjutsuScroll: "",
-            Shield: "",
+            OneHandSword: "单手剑",
+            TwoHandSword: "双手剑",
+            Bow: "弓",
+            Bowgun: "弩",
+            Rod: "法杖",
+            Magictool: "魔导具",
+            Knuckle: "拳套",
+            Halberd: "旋风枪",
+            Katana: "拔刀剑",
+            Arrow: "箭矢",
+            ShortSword: "小刀",
+            NinjutsuScroll: "忍术卷轴",
+            Shield: "盾",
           },
         },
         baseAbi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "基础攻击力",
+          tableFieldDescription: "武器的基础攻击力",
+          formFieldDescription: "武器的基础攻击力",
         },
         stability: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "稳定率",
+          tableFieldDescription: "武器的稳定率",
+          formFieldDescription: "武器的稳定率",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "自带的附魔属性",
+          tableFieldDescription: "武器自带的附魔属性",
+          formFieldDescription: "武器自带的附魔属性",
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色A",
+          tableFieldDescription: "武器的颜色A",
+          formFieldDescription: "武器的颜色A",
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色B",
+          tableFieldDescription: "武器的颜色B",
+          formFieldDescription: "武器的颜色B",
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "颜色C",
+          tableFieldDescription: "武器的颜色C",
+          formFieldDescription: "武器的颜色C",
         },
         elementType: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "元素类型",
+          tableFieldDescription: "武器的固有元素属性，即附魔时属性觉醒时耗费魔素较少的那个属性",
+          formFieldDescription: "武器的固有元素属性，即附魔时属性觉醒时耗费魔素较少的那个属性",
           enumMap: {
-            Normal: "",
-            Light: "",
-            Dark: "",
-            Water: "",
-            Fire: "",
-            Earth: "",
-            Wind: "",
+            Normal: "无属性",
+            Light: "光属性",
+            Dark: "暗属性",
+            Water: "水属性",
+            Fire: "火属性",
+            Earth: "地属性",
+            Wind: "风属性",
           },
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "所属物品",
+          tableFieldDescription: "武器所属的物品",
+          formFieldDescription: "武器所属的物品",
         },
       },
       description: ""
@@ -2995,14 +2965,14 @@ const dictionary: dictionary = {
       selfName: "世界",
       fields: {
         id: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "ID",
+          tableFieldDescription: "世界的唯一标识符",
+          formFieldDescription: "世界的唯一标识符，由系统自动生成"
         },
         name: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "名称",
+          tableFieldDescription: "世界的名称",
+          formFieldDescription: "世界的名称",
         },
       },
       description: ""

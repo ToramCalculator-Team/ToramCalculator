@@ -1,4 +1,4 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
@@ -31,8 +31,11 @@ export async function findOptEquipByItemId(id: string) {
 
 export async function findOptEquips() {
   const db = await getDB();
-  const optEquips = await db.selectFrom("option").selectAll().execute();
-  return optEquips;
+  return await db
+    .selectFrom("option")
+    .innerJoin("item", "item.id", "option.itemId")
+    .selectAll(["option", "item"])
+    .execute();
 }
 
 export async function updateOptEquip(id: string, updateWith: OptEquip["Update"]) {
@@ -45,9 +48,9 @@ export async function updateOptEquip(id: string, updateWith: OptEquip["Update"])
     .executeTakeFirst();
 }
 
-export async function createOptEquip(newOptEquip: OptEquip["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {});
+export async function createOptEquip(trx: Transaction<DB>, newOptEquip: OptEquip["Insert"]) {
+  const optEquip = await trx.insertInto("option").values(newOptEquip).returningAll().executeTakeFirstOrThrow();
+  return optEquip;
 }
 
 export async function deleteOptEquip(id: string) {

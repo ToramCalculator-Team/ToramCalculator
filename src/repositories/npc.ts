@@ -3,6 +3,7 @@ import { getDB } from "./database";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
 export interface Npc extends DataType<npc> {
   MainTable: Awaited<ReturnType<typeof findNpcs>>[number];
@@ -39,7 +40,10 @@ export async function deleteNpc(id: string) {
 }
 
 export async function createNpc(trx: Transaction<DB>, data: Npc["Insert"]) {
-  return await trx.insertInto("npc").values(data).returningAll().executeTakeFirstOrThrow();
+  return await trx.insertInto("npc").values({
+    ...data,
+    id: createId(),
+  }).returningAll().executeTakeFirstOrThrow();
 }
 
 export const defaultNpc: Npc["Select"] = {

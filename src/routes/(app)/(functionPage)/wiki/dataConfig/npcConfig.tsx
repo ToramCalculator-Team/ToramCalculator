@@ -2,7 +2,7 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createNpc, defaultNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import { npcSchema } from "~/../db/zod";
 import { DB, npc } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -14,13 +14,9 @@ import { fieldInfo } from "../utils";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/module/cardSection";
 
-export const npcDataConfig: DBdataDisplayConfig<
-  npc,
-  Npc["Card"],
-  {
-    tasksData: string[];
-  }
-> = {
+export const createNpcDataConfig = (dic: Dic<npc>): dataDisplayConfig<npc, Npc["Card"], {
+  tasksData: string[];
+}> => ({
   table: {
     columnDef: [
       {
@@ -37,7 +33,8 @@ export const npcDataConfig: DBdataDisplayConfig<
     dataFetcher: findNpcs,
     defaultSort: { id: "name", desc: false },
     hiddenColumnDef: ["id"],
-    tdGenerator: (props: { cell: Cell<npc, keyof npc>; dictionary: Dic<npc> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<npc, keyof npc>; }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof npc;
@@ -54,8 +51,8 @@ export const npcDataConfig: DBdataDisplayConfig<
           }}
           class={defaultTdClass}
         >
-          {"enumMap" in props.dictionary.fields[columnId]
-            ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof npc>).enumMap[props.cell.getValue()]
+          {"enumMap" in dic.fields[columnId]
+            ? (dic.fields[columnId] as EnumFieldDetail<keyof npc>).enumMap[props.cell.getValue()]
             : props.cell.getValue()}
         </td>
       );
@@ -82,12 +79,13 @@ export const npcDataConfig: DBdataDisplayConfig<
     },
     hiddenFields: ["id"],
     dataSchema: npcSchema,
+    dictionary: dic,
     fieldGenerators: {
-      zoneId: (key, field, dictionary) => {
+      zoneId: (key, field) => {
         return (
           <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
@@ -132,7 +130,7 @@ export const npcDataConfig: DBdataDisplayConfig<
   },
   card: {
     dataFetcher: findNpcById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (data: npc, appendCardTypeAndIds: (updater: (prev: { type: keyof DB; id: string; }[]) => { type: keyof DB; id: string; }[]) => void) => {
       const [taskData] = createResource(data.id, async (npcId) => {
         const db = await getDB();
         return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
@@ -151,9 +149,9 @@ export const npcDataConfig: DBdataDisplayConfig<
       return (
         <>
           <div class="NpcImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<"npc">({
+          {DBDataRender<Npc["Card"]>({
             data,
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: npcSchema,
             hiddenFields: ["id", "zoneId"],
             fieldGroupMap: {
@@ -162,7 +160,7 @@ export const npcDataConfig: DBdataDisplayConfig<
           })}
 
           <CardSection
-            title={dictionary.cardFields?.tasks ?? "提供的任务"}
+            title={dic.cardFields?.tasks ?? "提供的任务"}
             data={taskData.latest}
             renderItem={(task) => {
               return {
@@ -173,7 +171,7 @@ export const npcDataConfig: DBdataDisplayConfig<
           />
 
           <CardSection
-            title={dictionary.cardFields?.zone ?? "所属区域"}
+            title={dic.cardFields?.zone ?? "所属区域"}
             data={zoneData.latest}
             renderItem={(zone) => {
               return {
@@ -186,4 +184,4 @@ export const npcDataConfig: DBdataDisplayConfig<
       );
     },
   },
-};
+});

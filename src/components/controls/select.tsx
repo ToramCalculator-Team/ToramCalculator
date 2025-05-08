@@ -1,4 +1,4 @@
-import { createSignal, For, JSX, Show } from "solid-js";
+import { createSignal, For, JSX, Show, onCleanup, onMount } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 
@@ -29,8 +29,23 @@ export function Select(props: SelectProps) {
     setIsOpen(false);
   };
 
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.closest(".select-container")) {
+      setIsOpen(false);
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("click", handleClickOutside);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("click", handleClickOutside);
+  });
+
   return (
-    <div class={`relative ${props.class ?? ""}`}>
+    <div class={`select-container relative ${props.class ?? ""}`}>
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
@@ -51,7 +66,7 @@ export function Select(props: SelectProps) {
 
       <Presence>
         <Show when={isOpen()}>
-          <div class="border-dividing-color bg-primary-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border-1 shadow-lg">
+          <div class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg">
             <For each={props.options}>
               {(option, index) => {
                 const selected = option.value === selectedOption()?.value;

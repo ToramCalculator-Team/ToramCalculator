@@ -1,7 +1,8 @@
-import { defaultCharacter, Character } from "~/repositories/character";
+import { Character } from "~/repositories/character";
 import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
+import { defaultData } from "~/../db/defaultData";
 
 export default function CharacterIndexPage() {
   // UI文本字典
@@ -12,7 +13,7 @@ export default function CharacterIndexPage() {
 
   onMount(() => {
     console.log("--CharacterIndexPage Render");
-    setCharacter(defaultCharacter);
+    setCharacter(defaultData.character);
 
     return () => {
       console.log("--CharacterIndexPage Unmount");

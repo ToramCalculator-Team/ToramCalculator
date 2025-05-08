@@ -2,7 +2,7 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { findAddressById, findAddresses, Address, createAddress } from "~/repositories/address";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import { addressSchema } from "~/../db/zod";
 import { address } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -13,14 +13,17 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { fieldInfo } from "../utils";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
+import { EnumSelect } from "~/components/controls/enumSelect";
 
-export const addressDataConfig: DBdataDisplayConfig<
+export const createAddressDataConfig = (
+  dic: Dic<address>,
+): dataDisplayConfig<
   address,
   Address["Card"],
   {
     zones: string[];
   }
-> = {
+> => ({
   table: {
     columnDef: [
       {
@@ -52,7 +55,8 @@ export const addressDataConfig: DBdataDisplayConfig<
     dataFetcher: findAddresses,
     defaultSort: { id: "name", desc: false },
     hiddenColumnDef: ["id"],
-    tdGenerator: (props: { cell: Cell<address, keyof address>; dictionary: Dic<address> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<address, keyof address> }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof address;
@@ -69,9 +73,11 @@ export const addressDataConfig: DBdataDisplayConfig<
           }}
           class={defaultTdClass}
         >
-          {"enumMap" in props.dictionary.fields[columnId]
-            ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof address>).enumMap[props.cell.getValue()]
-            : props.cell.getValue()}
+          <Show when={true} fallback={tdContent()}>
+            {"enumMap" in dic.fields[columnId]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof address>).enumMap[props.cell.getValue()]
+              : props.cell.getValue()}
+          </Show>
         </td>
       );
     },
@@ -80,12 +86,26 @@ export const addressDataConfig: DBdataDisplayConfig<
     data: defaultData.address,
     hiddenFields: ["id"],
     dataSchema: addressSchema,
+    dictionary: dic,
     fieldGenerators: {
-      worldId: (key, field, dictionary) => {
+      type: (key, field) => {
+        const zodValue = addressSchema.shape[key];
+        return (
+          <EnumSelect
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            options={zodValue.options}
+            field={field}
+            dic={dic.fields[key].enumMap}
+          />
+        );
+      },
+      worldId: (key: keyof address, field: () => any) => {
         return (
           <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
@@ -152,7 +172,7 @@ export const addressDataConfig: DBdataDisplayConfig<
   },
   card: {
     dataFetcher: findAddressById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (data, appendCardTypeAndIds) => {
       const [zoneData] = createResource(data.id, async (addressId) => {
         const db = await getDB();
         return await db.selectFrom("zone").where("zone.addressId", "=", addressId).selectAll("zone").execute();
@@ -161,9 +181,9 @@ export const addressDataConfig: DBdataDisplayConfig<
       return (
         <>
           <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<"address">({
+          {DBDataRender<Address["Card"]>({
             data,
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: addressSchema,
             hiddenFields: ["id"],
             fieldGroupMap: {
@@ -173,7 +193,7 @@ export const addressDataConfig: DBdataDisplayConfig<
           })}
 
           <CardSection
-            title={dictionary.cardFields?.zone ?? "包含的区域"}
+            title={dic.cardFields?.zone ?? "包含的区域"}
             data={zoneData.latest}
             renderItem={(zone) => {
               return {
@@ -186,4 +206,4 @@ export const addressDataConfig: DBdataDisplayConfig<
       );
     },
   },
-};
+});

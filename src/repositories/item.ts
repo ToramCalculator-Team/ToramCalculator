@@ -4,13 +4,16 @@ import { DataType } from "./untils";
 import { DB, item } from "~/../db/kysely/kyesely";
 import { ItemType } from "~/../db/kysely/enums";
 import { getDB } from "./database";
+import { createStatistic } from "./statistic";
+import { createId } from "@paralleldrive/cuid2";
 
 export interface Item extends DataType<item> {
   MainTable: Awaited<ReturnType<typeof findItems>>[number];
+  Card: Awaited<ReturnType<typeof findItemById>>;
 }
 
-export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>, type: ItemType) {
-  const baseSubRelations = [
+export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
+  return [
     jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
       .$notNull()
       .as("statistic"),
@@ -44,67 +47,20 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
         .select(["item.id"]),
     ).as("recipeEntries"),
   ];
-
-  switch (type) {
-    case "Weapon":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("weapon").where("weapon.itemId", "=", id).selectAll("weapon")).as("weapon"),
-      ];
-    case "Armor":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("armor").where("armor.itemId", "=", id).selectAll("armor")).as("armor"),
-      ];
-    case "Option":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("option").where("option.itemId", "=", id).selectAll("option")).as("option"),
-      ];
-    case "Special":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("special").where("special.itemId", "=", id).selectAll("special")).as("special"),
-      ];
-    case "Crystal":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("crystal").where("crystal.itemId", "=", id).selectAll("crystal")).as("crystal"),
-      ];
-    case "Consumable":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("consumable").where("consumable.itemId", "=", id).selectAll("consumable")).as(
-          "consumable",
-        ),
-      ];
-    case "Material":
-      return [
-        ...baseSubRelations,
-        jsonObjectFrom(eb.selectFrom("material").where("material.itemId", "=", id).selectAll("material")).as(
-          "material",
-        ),
-      ];
-  }
 }
 
 export async function findItemById(id: string, type: ItemType) {
   const db = await getDB();
-  return await db
-    .selectFrom("item")
-    .where("id", "=", id)
-    .selectAll("item")
-    .select((eb) => itemSubRelations(eb, eb.val(id), type))
-    .executeTakeFirstOrThrow();
+  return await db.selectFrom("item").where("id", "=", id).selectAll("item").executeTakeFirstOrThrow();
 }
 
-export async function findItems(params: { type: item["type"] }) {
+export async function findItems(params: { type: item["itemType"] }) {
   const db = await getDB();
   return await db
     .selectFrom("item")
-    .where("type", "=", params.type)
+    .where("itemType", "=", params.type)
     .selectAll("item")
-    .select((eb) => itemSubRelations(eb, eb.ref("item.id"), params.type))
+    .select((eb) => itemSubRelations(eb, eb.ref("item.id")))
     .execute();
 }
 
@@ -119,12 +75,18 @@ export async function insertItem(trx: Transaction<DB>, newItem: Item["Insert"]) 
   return item;
 }
 
-export async function createItem(newItem: Item["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const item = await trx.insertInto("item").values(newItem).returningAll().executeTakeFirstOrThrow();
-    return item;
-  });
+export async function createItem(trx: Transaction<DB>, newItem: Item["Insert"]) {
+  const statistic = await createStatistic(trx);
+  const item = await trx
+    .insertInto("item")
+    .values({
+      ...newItem,
+      id: createId(),
+      statisticId: statistic.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return item;
 }
 
 export async function deleteItem(id: string) {

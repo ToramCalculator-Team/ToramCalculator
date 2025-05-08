@@ -98,7 +98,6 @@ export const defaultData: DB = {
     worldId: "",
   },
   armor: {
-    id: "",
     baseDef: 0,
     modifiers: [],
     colorA: 0,
@@ -159,14 +158,12 @@ export const defaultData: DB = {
     comboId: "",
   },
   consumable: {
-    id: "",
     type: "MaxHp",
     effectDuration: 0,
     effects: [],
     itemId: "",
   },
   crystal: {
-    id: "",
     type: "NormalCrystal",
     modifiers: [],
     itemId: "",
@@ -191,7 +188,7 @@ export const defaultData: DB = {
   },
   item: {
     id: "",
-    type: "Weapon",
+    itemType: "Weapon",
     name: "",
     dataSources: "",
     details: null,
@@ -247,8 +244,8 @@ export const defaultData: DB = {
     normalAttackResistanceModifier: 0,
     physicalAttackResistanceModifier: 0,
     magicalAttackResistanceModifier: 0,
-    actions: undefined,
-    details: null,
+    actions: {},
+    details: "",
     dataSources: "",
     statisticId: "",
     updatedByAccountId: null,
@@ -260,7 +257,6 @@ export const defaultData: DB = {
     zoneId: "",
   },
   option: {
-    id: "",
     baseDef: 0,
     modifiers: [],
     colorA: 0,
@@ -379,11 +375,11 @@ export const defaultData: DB = {
   },
   skill: {
     id: "",
+    name: "",
     treeType: "BladeSkill",
     posX: 0,
     posY: 0,
     tier: 0,
-    name: "",
     isPassive: false,
     chargingType: "Chanting",
     distanceType: "None",
@@ -414,7 +410,6 @@ export const defaultData: DB = {
     belongToskillId: "",
   },
   special: {
-    id: "",
     baseDef: 0,
     modifiers: [],
     itemId: "",
@@ -436,8 +431,8 @@ export const defaultData: DB = {
   },
   task: {
     id: "",
-    lv: 0,
     name: "",
+    lv: 0,
     type: "Collect",
     description: "",
     npcId: "",
@@ -485,15 +480,14 @@ export const defaultData: DB = {
     },
   },
   weapon: {
-    id: "",
     type: "OneHandSword",
     baseAbi: 0,
+    elementType: "Normal",
     stability: 0,
     modifiers: [],
     colorA: 0,
     colorB: 0,
     colorC: 0,
-    elementType: "Normal",
     itemId: "",
   },
   world: {

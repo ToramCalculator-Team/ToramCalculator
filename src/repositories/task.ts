@@ -1,8 +1,9 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, task } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
 export interface Task extends DataType<task> {
   MainTable: Awaited<ReturnType<typeof findTasks>>[number];
@@ -40,4 +41,12 @@ export async function updateTask(id: string, updateWith: Task["Update"]) {
 export async function deleteTask(id: string) {
   const db = await getDB();
   return await db.deleteFrom("task").where("id", "=", id).returningAll().executeTakeFirst();
+}
+
+export async function createTask(trx: Transaction<DB>, newTask: Task["Insert"]) {
+  const task = await trx.insertInto("task").values({
+    ...newTask,
+    id: createId(),
+  }).returningAll().executeTakeFirstOrThrow();
+  return task;
 }

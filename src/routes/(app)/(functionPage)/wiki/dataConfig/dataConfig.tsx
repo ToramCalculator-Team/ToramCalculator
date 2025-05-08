@@ -1,25 +1,23 @@
 import { activity, address, armor, consumable, crystal, DB, item, material, mob, npc, option, skill, special, task, weapon, zone } from "~/../db/kysely/kyesely";
-import { mobDataConfig } from "./mobDataConfig";
+import { createMobDataConfig } from "./mobDataConfig";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { ColumnDef, Cell } from "@tanstack/solid-table";
 import { JSX } from "solid-js";
 import { ZodObject, ZodTypeAny } from "zod";
-import { Dic, FieldDetail, FieldDict } from "~/locales/type";
-import { zoneDataConfig } from "./zoneConfig";
-import { skillDataConfig } from "./skillDataConfig";
-import { addressDataConfig } from "./addressConfig";
-import { npcDataConfig } from "./npcConfig";
-import { activityDataConfig } from "./activityConfig";
-import { taskDataConfig } from "./taskConfig";
-import { armorDataConfig } from "./armorConfig";
-import { consumableDataConfig } from "./consumableConfig";
-import { crystalDataConfig } from "./crystalConfig";
-import { materialDataConfig } from "./materialConfig";
-import { optionDataConfig } from "./optionConfig";
-import { specialDataConfig } from "./specialConfig";
-import { weaponDataConfig } from "./weaponConfig";
-import { createItemConfig } from "./itemConfig";
-
+import { Dic, dictionary, FieldDetail, FieldDict } from "~/locales/type";
+import { createSkillDataConfig } from "./skillConfig";
+import { createAddressDataConfig } from "./addressConfig";
+import { createNpcDataConfig } from "./npcConfig";
+import { createActivityDataConfig } from "./activityConfig";
+import { createTaskDataConfig } from "./taskConfig";
+import { createArmorDataConfig } from "./armorConfig";
+import { createConsumableDataConfig } from "./consumableConfig";
+import { createCrystalDataConfig } from "./crystalConfig";
+import { createMaterialDataConfig } from "./materialConfig";
+import { createOptionDataConfig } from "./optionConfig";
+import { createSpecialDataConfig } from "./specialConfig";
+import { createWeaponDataConfig } from "./weaponConfig";
+import { createZoneDataConfig } from "./zoneConfig";
 export type ExtraData<E extends Record<string, string[]>> = {
   [K in keyof E]: {
     defaultValue: string[];
@@ -29,21 +27,23 @@ export type ExtraData<E extends Record<string, string[]>> = {
 };
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-export type DBdataDisplayConfig<T extends DB[keyof DB], Card extends object, E extends Record<string, string[]>> = {
+export type dataDisplayConfig<T extends Record<string, unknown>, Card extends object, E extends Record<string, string[]>> = {
   table: {
     dataFetcher: () => Promise<T[]>;
     columnDef: Array<ColumnDef<T, unknown>>;
     hiddenColumnDef: Array<keyof T>;
     defaultSort: { id: keyof T; desc: boolean };
-    tdGenerator: (props: { cell: Cell<T, keyof T>; dictionary: Dic<T> }) => JSX.Element;
+    tdGenerator: (props: { cell: Cell<T, keyof T>; }) => JSX.Element;
+    dictionary: Dic<T>;
   };
   form: {
     data: T;
     extraData?: ExtraData<E>;
     dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
+    dictionary: Dic<T>;
     hiddenFields: Array<keyof T>;
     fieldGenerators: Partial<{
-      [K in keyof T]: (key: K, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element;
+      [K in keyof T]: (key: K, field: () => AnyFieldApi) => JSX.Element;
     }>;
     onChange?: (data: T & E) => void;
     onSubmit?: (data: T & E) => void;
@@ -52,7 +52,6 @@ export type DBdataDisplayConfig<T extends DB[keyof DB], Card extends object, E e
     dataFetcher: (id: string) => Promise<Card>;
     cardRender: (
       data: Card,
-      dictionary: Dic<Card>,
       appendCardTypeAndIds: (
         updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
       ) => void,
@@ -60,28 +59,72 @@ export type DBdataDisplayConfig<T extends DB[keyof DB], Card extends object, E e
   };
 };
 
-export const DBDataConfig: Partial<Record<keyof DB, DBdataDisplayConfig<any, any, any>>> = {
-  activity: activityDataConfig as DBdataDisplayConfig<activity, any, any>,
-  address: addressDataConfig as DBdataDisplayConfig<address, any, any>,
-  armor: armorDataConfig as DBdataDisplayConfig<armor, any, any>,
+export const DBDataConfig = (dictionary: dictionary): Partial<Record<keyof DB, dataDisplayConfig<any, any, any>>> => ({
+  activity: createActivityDataConfig(dictionary.db.activity),
+  address: createAddressDataConfig(dictionary.db.address),
+  armor: createArmorDataConfig({
+    ...dictionary.db.armor,
+    fields: {
+      ...dictionary.db.armor.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
 
-  // consumable: consumableDataConfig as DBdataDisplayConfig<consumable, any, any>,
-  // crystal: crystalDataConfig as DBdataDisplayConfig<crystal, any, any>,
+  // consumable: consumableDataConfig,
+  // crystal: crystalDataConfig,
 
-  // item: createItemConfig("Weapon") as DBdataDisplayConfig<item, any, any>,
-  // material: materialDataConfig as DBdataDisplayConfig<material, any, any>,
+  // item: createItemConfig("Weapon"),
+  // material: materialDataConfig,
 
-  mob: mobDataConfig as DBdataDisplayConfig<mob, any, any>,
-  npc: npcDataConfig as DBdataDisplayConfig<npc, any, any>,
-  option: optionDataConfig as DBdataDisplayConfig<option, any, any>,
+  mob: createMobDataConfig(dictionary.db.mob),
+  npc: createNpcDataConfig(dictionary.db.npc),
+  skill: createSkillDataConfig(dictionary.db.skill),
+  consumable: createConsumableDataConfig({
+    ...dictionary.db.consumable,
+    fields: {
+      ...dictionary.db.consumable.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
+  crystal: createCrystalDataConfig({
+    ...dictionary.db.crystal,
+    fields: {
+      ...dictionary.db.crystal.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
+  material: createMaterialDataConfig({
+    ...dictionary.db.material,
+    fields: {
+      ...dictionary.db.material.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
+  option: createOptionDataConfig({
+    ...dictionary.db.option,
+    fields: {
+      ...dictionary.db.option.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
 
-  skill: skillDataConfig as DBdataDisplayConfig<skill, any, any>,
+  special: createSpecialDataConfig({
+    ...dictionary.db.special,
+    fields: {
+      ...dictionary.db.special.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
 
-  special: specialDataConfig as DBdataDisplayConfig<special, any, any>,
+  task: createTaskDataConfig(dictionary.db.task),
 
-  task: taskDataConfig as DBdataDisplayConfig<task, any, any>,
-
-  weapon: weaponDataConfig as DBdataDisplayConfig<weapon, any, any>,
+  weapon: createWeaponDataConfig({
+    ...dictionary.db.weapon,
+    fields: {
+      ...dictionary.db.weapon.fields,
+      ...dictionary.db.item.fields,
+    },
+  }),
   // world: mobDataConfig,
-  zone: zoneDataConfig as DBdataDisplayConfig<zone, any, any>,
-};
+  zone: createZoneDataConfig(dictionary.db.zone),
+});

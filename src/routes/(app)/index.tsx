@@ -18,7 +18,7 @@ import * as _ from "lodash-es";
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
 import { Button } from "~/components/controls/button";
-import { defaultMob, findMobById, findMobsLike, type Mob } from "~/repositories/mob";
+import { findMobById, findMobsLike, type Mob } from "~/repositories/mob";
 import { findSkillById, findSkillsLike, type Skill } from "~/repositories/skill";
 import { findCrystalByItemId, type Crystal } from "~/repositories/crystal";
 import { Filing } from "~/components/module/filing";
@@ -39,9 +39,7 @@ import { LoginDialog } from "~/components/module/loginDialog";
 import { ObjDisplayer } from "~/components/module/objectDisplayer";
 import { ObjRender } from "~/components/module/objRender";
 import { LoadingBar } from "~/components/loadingBar";
-import { mobDataConfig } from "./(functionPage)/wiki/dataConfig/mobDataConfig";
-import { DBdataDisplayConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
-import { skillDataConfig } from "./(functionPage)/wiki/dataConfig/skillDataConfig";
+import { dataDisplayConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
 import { Dialog } from "~/components/controls/dialog";
 import { Portal } from "solid-js/web";
 import { getDB } from "~/repositories/database";
@@ -246,13 +244,15 @@ export default function Index() {
   const [cardDatas, { refetch: refetchCardDatas }] = createResource<object[], { type: keyof DB; id: string }[]>(
     cardTypeAndIds,
     async (typeAndIds) => {
-      const db = await getDB();
       const results: object[] = [];
       // 只获取新增的数据
       const newItems = typeAndIds.slice(cachedCardDatas().length);
       for (const { type, id } of newItems) {
-        const result = await db.selectFrom(type).where("id", "=", id).selectAll(type).executeTakeFirstOrThrow();
-        results.push(result);
+        const config = DBDataConfig(dictionary())[type];
+        if (config?.card?.dataFetcher) {
+          const result = await config.card.dataFetcher(id);
+          results.push(result);
+        }
       }
       // 更新缓存
       setCachedCardDatas((prev) => [...prev, ...results]);
@@ -571,77 +571,77 @@ export default function Index() {
                       class="w-full"
                       options={{ scrollbars: { autoHide: "scroll" } }}
                       defer
-                    ><div class="ResultGroupContainer flex flex-col gap-1 w-full">
-                        
-                      <For each={Object.entries(searchResult())}>
-                        {([key, groupResultValue], groupIndex) => {
-                          const groupType = key as keyof DB;
+                    >
+                      <div class="ResultGroupContainer flex w-full flex-col gap-1">
+                        <For each={Object.entries(searchResult())}>
+                          {([key, groupResultValue], groupIndex) => {
+                            const groupType = key as keyof DB;
 
-                          return (
-                            <Show when={groupResultValue.length > 0}>
-                              <div class={`ResultGroup flex flex-col gap-[2px]`}>
-                                <Motion.button
-                                  onClick={() =>
-                                    setResultListState([
-                                      ...resultListSate().slice(0, groupIndex()),
-                                      !resultListSate()[groupIndex()],
-                                      ...resultListSate().slice(groupIndex() + 1),
-                                    ])
-                                  }
-                                  class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
-                                  animate={{
-                                    opacity: [0, 1],
-                                    transform: ["translateY(30px)", "translateY(0)"],
-                                  }}
-                                  transition={{
-                                    duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                    delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
-                                  }}
-                                >
-                                  <Icon.Line.Basketball />
-                                  <span class="w-full text-left font-bold">
-                                    {dictionary().db[groupType].selfName} [{groupResultValue.length}]
-                                  </span>
-                                  {resultListSate()[groupIndex()] ? (
-                                    <Icon.Line.Left class="rotate-[360deg]" />
-                                  ) : (
-                                    <Icon.Line.Left class="rotate-[270deg]" />
-                                  )}
-                                </Motion.button>
-                                <div class="Content flex flex-col gap-1">
-                                  <For each={groupResultValue}>
-                                    {(resultItem, index) => {
-                                      return (
-                                        <Motion.button
-                                          class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
-                                          animate={{
-                                            opacity: [0, 1],
-                                            transform: ["translateY(30px)", "translateY(0)"],
-                                          }}
-                                          transition={{
-                                            duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                            delay: store.settings.userInterface.isAnimationEnabled
-                                              ? index() < 15
-                                                ? groupIndex() * 0.3 + index() * 0.07
-                                                : 0
-                                              : 0,
-                                          }}
-                                          onClick={async () => {
-                                            // 设置卡片类型和ID
-                                            "id" in resultItem
-                                              ? setCardTypeAndIds((pre) => [
-                                                  ...pre,
-                                                  { type: groupType, id: resultItem.id },
-                                                ])
-                                              : null;
-                                            // 设置卡片组是否打开
-                                            setCardGroupIsOpen(true);
-                                          }}
-                                        >
-                                          <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
-                                            {"name" in resultItem ? resultItem.name : "此条目没有名称"}
-                                          </div>
-                                          {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
+                            return (
+                              <Show when={groupResultValue.length > 0}>
+                                <div class={`ResultGroup flex flex-col gap-[2px]`}>
+                                  <Motion.button
+                                    onClick={() =>
+                                      setResultListState([
+                                        ...resultListSate().slice(0, groupIndex()),
+                                        !resultListSate()[groupIndex()],
+                                        ...resultListSate().slice(groupIndex() + 1),
+                                      ])
+                                    }
+                                    class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                    animate={{
+                                      opacity: [0, 1],
+                                      transform: ["translateY(30px)", "translateY(0)"],
+                                    }}
+                                    transition={{
+                                      duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                      delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+                                    }}
+                                  >
+                                    <Icon.Line.Basketball />
+                                    <span class="w-full text-left font-bold">
+                                      {dictionary().db[groupType].selfName} [{groupResultValue.length}]
+                                    </span>
+                                    {resultListSate()[groupIndex()] ? (
+                                      <Icon.Line.Left class="rotate-[360deg]" />
+                                    ) : (
+                                      <Icon.Line.Left class="rotate-[270deg]" />
+                                    )}
+                                  </Motion.button>
+                                  <div class="Content flex flex-col gap-1">
+                                    <For each={groupResultValue}>
+                                      {(resultItem, index) => {
+                                        return (
+                                          <Motion.button
+                                            class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
+                                            animate={{
+                                              opacity: [0, 1],
+                                              transform: ["translateY(30px)", "translateY(0)"],
+                                            }}
+                                            transition={{
+                                              duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                              delay: store.settings.userInterface.isAnimationEnabled
+                                                ? index() < 15
+                                                  ? groupIndex() * 0.3 + index() * 0.07
+                                                  : 0
+                                                : 0,
+                                            }}
+                                            onClick={async () => {
+                                              // 设置卡片类型和ID
+                                              "id" in resultItem
+                                                ? setCardTypeAndIds((pre) => [
+                                                    ...pre,
+                                                    { type: groupType, id: resultItem.id },
+                                                  ])
+                                                : null;
+                                              // 设置卡片组是否打开
+                                              setCardGroupIsOpen(true);
+                                            }}
+                                          >
+                                            <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
+                                              {"name" in resultItem ? resultItem.name : "此条目没有名称"}
+                                            </div>
+                                            {/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
                                             {resultItem?.relateds.map((related, index) => {
                                               return (
                                                 <div class="Related w-fit pr-2 text-left">
@@ -652,17 +652,17 @@ export default function Index() {
                                               );
                                             })}
                                           </div> */}
-                                        </Motion.button>
-                                      );
-                                    }}
-                                  </For>
+                                          </Motion.button>
+                                        );
+                                      }}
+                                    </For>
+                                  </div>
                                 </div>
-                              </div>
-                            </Show>
-                          );
-                        }}
-                      </For>
-                    </div>
+                              </Show>
+                            );
+                          }}
+                        </For>
+                      </div>
                     </OverlayScrollbarsComponent>
                   </div>
                 </Show>
@@ -866,11 +866,7 @@ export default function Index() {
                                   class="border-primary-color h-full w-full flex-1 rounded border-8"
                                 >
                                   <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                    {DBDataConfig[type()]?.card.cardRender(
-                                      cardData,
-                                      dictionary().db[type()],
-                                      setCardTypeAndIds,
-                                    )}
+                                    {DBDataConfig(dictionary())[type()]?.card.cardRender(cardData, setCardTypeAndIds)}
                                   </div>
                                 </OverlayScrollbarsComponent>
                                 <div

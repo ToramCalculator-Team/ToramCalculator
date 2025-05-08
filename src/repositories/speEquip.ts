@@ -54,57 +54,61 @@ export async function updateSpeEquip(id: string, updateWith: SpeEquip["Update"])
 }
 
 export async function insertSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip["Insert"]) {
-  const db = await getDB();
-  const speEquip = await db.insertInto("special").values(newSpeEquip).returningAll().executeTakeFirstOrThrow();
+  const speEquip = await trx.insertInto("special").values(newSpeEquip).returningAll().executeTakeFirstOrThrow();
   return speEquip;
 }
 
-export async function createSpeEquip(
-  newSpeEquip: item & {
-    speEquip: special & {
-      defaultCrystals: crystal[];
-      image: image;
-    };
-    repice: recipe & {
-      ingredients: recipe_ingredient[];
-    };
-  },
-) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpeEquip;
-    const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;
-    const { ingredients: recipeIngredientsInput } = recipeInput;
-    const image = await insertImage(trx, imageInput);
-    const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
-    const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
-    const recipeIngredients = await Promise.all(
-      recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
-    );
-    const statistic = await insertStatistic(trx);
-    const item = await insertItem(trx, {
-      ...itemInput,
-      id: createId(),
-      statisticId: statistic.id,
-    });
-    const speEquip = await insertSpeEquip(trx, {
-      ...speEquipInput,
-      itemId: item.id,
-    });
-    return {
-      ...item,
-      speEquip: {
-        ...speEquip,
-        defaultCrystals,
-        image,
-      },
-      recipe: {
-        ...recipe,
-        ingredients: recipeIngredients,
-      },
-    };
-  });
+export async function createSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip["Insert"]) {
+  const speEquip = await insertSpeEquip(trx, newSpeEquip);
+  return speEquip;
 }
+
+// export async function createSpeEquip(
+//   newSpeEquip: item & {
+//     speEquip: special & {
+//       defaultCrystals: crystal[];
+//       image: image;
+//     };
+//     repice: recipe & {
+//       ingredients: recipe_ingredient[];
+//     };
+//   },
+// ) {
+//   const db = await getDB();
+//   return await db.transaction().execute(async (trx) => {
+//     const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpeEquip;
+//     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;
+//     const { ingredients: recipeIngredientsInput } = recipeInput;
+//     const image = await insertImage(trx, imageInput);
+//     const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
+//     const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
+//     const recipeIngredients = await Promise.all(
+//       recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
+//     );
+//     const statistic = await insertStatistic(trx);
+//     const item = await insertItem(trx, {
+//       ...itemInput,
+//       id: createId(),
+//       statisticId: statistic.id,
+//     });
+//     const speEquip = await insertSpeEquip(trx, {
+//       ...speEquipInput,
+//       itemId: item.id,
+//     });
+//     return {
+//       ...item,
+//       speEquip: {
+//         ...speEquip,
+//         defaultCrystals,
+//         image,
+//       },
+//       recipe: {
+//         ...recipe,
+//         ingredients: recipeIngredients,
+//       },
+//     };
+//   });
+// }
 
 export async function deleteSpeEquip(id: string) {
   const db = await getDB();

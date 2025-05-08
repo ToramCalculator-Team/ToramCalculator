@@ -9,7 +9,7 @@ import { weapon, crystal, DB, image, item, recipe, recipe_ingredient } from "~/.
 import { insertRecipe } from "./recipe";
 import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";
-import { insertItem } from "./item";
+import { findItemById, insertItem } from "./item";
 
 export interface Weapon extends DataType<weapon> {
   MainTable: Awaited<ReturnType<typeof findWeapons>>[number];
@@ -29,14 +29,13 @@ export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expres
   ];
 }
 
-export async function findWeaponByItemId(id: string) {
+export async function findItemWithWeaponById(itemId: string) {
   const db = await getDB();
   return await db
-    .selectFrom("weapon")
-    .innerJoin("item", "item.id", "weapon.itemId")
-    .where("item.id", "=", id)
-    .selectAll(["weapon", "item"])
-    .select((eb) => weaponSubRelations(eb, eb.val(id)))
+    .selectFrom("item")
+    .innerJoin("weapon", "weapon.itemId", "item.id")
+    .where("item.id", "=", itemId)
+    .selectAll(["item", "weapon"])
     .executeTakeFirstOrThrow();
 }
 
@@ -47,7 +46,11 @@ export async function findWeaponById(id: string) {
 
 export async function findWeapons() {
   const db = await getDB();
-  return await db.selectFrom("weapon").selectAll("weapon").execute();
+  return await db
+    .selectFrom("weapon")
+    .innerJoin("item", "item.id", "weapon.itemId")
+    .selectAll(["weapon", "item"])
+    .execute();
 }
 
 export async function updateWeapon(id: string, updateWith: Weapon["Update"]) {
@@ -56,57 +59,61 @@ export async function updateWeapon(id: string, updateWith: Weapon["Update"]) {
 }
 
 export async function insertWeapon(trx: Transaction<DB>, newWeapon: Weapon["Insert"]) {
-  const db = await getDB();
-  const weapon = await db.insertInto("weapon").values(newWeapon).returningAll().executeTakeFirstOrThrow();
+  const weapon = await trx.insertInto("weapon").values(newWeapon).returningAll().executeTakeFirstOrThrow();
   return weapon;
 }
 
-export async function createWeapon(
-  newWeapon: item & {
-    weapon: weapon & {
-      defaultCrystals: crystal[];
-      image: image;
-    };
-    repice: recipe & {
-      ingredients: recipe_ingredient[];
-    };
-  },
-) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const { weapon: _weaponInput, repice: recipeInput, ...itemInput } = newWeapon;
-    const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...weaponInput } = _weaponInput;
-    const { ingredients: recipeIngredientsInput } = recipeInput;
-    const image = await insertImage(trx, imageInput);
-    const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
-    const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
-    const recipeIngredients = await Promise.all(
-      recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
-    );
-    const statistic = await insertStatistic(trx);
-    const item = await insertItem(trx, {
-      ...itemInput,
-      id: createId(),
-      statisticId: statistic.id,
-    });
-    const weapon = await insertWeapon(trx, {
-      ...weaponInput,
-      itemId: item.id,
-    });
-    return {
-      ...item,
-      weapon: {
-        ...weapon,
-        defaultCrystals,
-        image,
-      },
-      recipe: {
-        ...recipe,
-        ingredients: recipeIngredients,
-      },
-    };
-  });
+export async function createWeapon(trx: Transaction<DB>, newWeapon: Weapon["Insert"]) {
+  const weapon = await insertWeapon(trx, newWeapon);
+  return weapon;
 }
+
+// export async function createWeapon(
+//   newWeapon: item & {
+//     weapon: weapon & {
+//       defaultCrystals: crystal[];
+//       image: image;
+//     };
+//     repice: recipe & {
+//       ingredients: recipe_ingredient[];
+//     };
+//   },
+// ) {
+//   const db = await getDB();
+//   return await db.transaction().execute(async (trx) => {
+//     const { weapon: _weaponInput, repice: recipeInput, ...itemInput } = newWeapon;
+//     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...weaponInput } = _weaponInput;
+//     const { ingredients: recipeIngredientsInput } = recipeInput;
+//     const image = await insertImage(trx, imageInput);
+//     const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
+//     const recipe = await insertRecipe(trx, { ...recipeInput, id: createId() });
+//     const recipeIngredients = await Promise.all(
+//       recipeIngredientsInput.map((ingredient) => insertRecipeIngredient(trx, { ...ingredient, recipeId: recipe.id })),
+//     );
+//     const statistic = await insertStatistic(trx);
+//     const item = await insertItem(trx, {
+//       ...itemInput,
+//       id: createId(),
+//       statisticId: statistic.id,
+//     });
+//     const weapon = await insertWeapon(trx, {
+//       ...weaponInput,
+//       itemId: item.id,
+//     });
+//     return {
+//       ...item,
+//       weapon: {
+//         ...weapon,
+//         defaultCrystals,
+//         image,
+//       },
+//       recipe: {
+//         ...recipe,
+//         ingredients: recipeIngredients,
+//       },
+//     };
+//   });
+// }
 
 export async function deleteWeapon(id: string) {
   const db = await getDB();

@@ -40,7 +40,7 @@ export async function findSkillById(id: string) {
     .selectFrom("skill")
     .where("id", "=", id)
     .selectAll("skill")
-    .select((eb) => skillSubRelations(eb, eb.val(id)))
+    // .select((eb) => skillSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

@@ -2,7 +2,7 @@ import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { findActivityById, findActivities, Activity, createActivity } from "~/repositories/activity";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema } from "~/../db/zod";
 import { activity } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -11,14 +11,14 @@ import { DBDataRender } from "~/components/module/dbDataRender";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
 
-export const activityDataConfig: DBdataDisplayConfig<
+export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
   activity,
   Activity["Card"],
   {
     zones: string[];
     recipes: string[];
   }
-> = {
+> => ({
   table: {
     columnDef: [
       {
@@ -35,7 +35,8 @@ export const activityDataConfig: DBdataDisplayConfig<
     dataFetcher: findActivities,
     defaultSort: { id: "name", desc: false },
     hiddenColumnDef: ["id"],
-    tdGenerator: (props: { cell: Cell<activity, keyof activity>; dictionary: Dic<activity> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<activity, keyof activity> }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof activity;
@@ -52,18 +53,20 @@ export const activityDataConfig: DBdataDisplayConfig<
           }}
           class={defaultTdClass}
         >
-          {"enumMap" in props.dictionary.fields[columnId]
-            ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof activity>).enumMap[props.cell.getValue()]
-            : props.cell.getValue()}
+          <Show
+            when={true}
+            fallback={tdContent()}
+          >
+            {"enumMap" in dic.fields[columnId]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof activity>).enumMap[props.cell.getValue()]
+              : props.cell.getValue()}
+          </Show>
         </td>
       );
     },
   },
   form: {
     data: defaultData.activity,
-    hiddenFields: ["id"],
-    dataSchema: activitySchema,
-    fieldGenerators: {},
     extraData: {
       zones: {
         defaultValue: [],
@@ -107,6 +110,10 @@ export const activityDataConfig: DBdataDisplayConfig<
         },
       },
     },
+    hiddenFields: ["id"],
+    dataSchema: activitySchema,
+    dictionary: dic,
+    fieldGenerators: {},
     onSubmit: async (data) => {
       const db = await getDB();
       const activity = await db.transaction().execute(async (trx) => {
@@ -130,7 +137,7 @@ export const activityDataConfig: DBdataDisplayConfig<
   },
   card: {
     dataFetcher: findActivityById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (data, appendCardTypeAndIds) => {
       const [zoneData] = createResource(data.id, async (activityId) => {
         const db = await getDB();
         return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
@@ -149,9 +156,9 @@ export const activityDataConfig: DBdataDisplayConfig<
       return (
         <>
           <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<"activity">({
+          {DBDataRender<Activity["Card"]>({
             data,
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: activitySchema,
             hiddenFields: ["id"],
             fieldGroupMap: {
@@ -160,7 +167,7 @@ export const activityDataConfig: DBdataDisplayConfig<
           })}
 
           <CardSection
-            title={dictionary.cardFields?.zone ?? "活动区域"}
+            title={dic.cardFields?.zone ?? "活动区域"}
             data={zoneData.latest}
             renderItem={(zone) => {
               return {
@@ -171,7 +178,7 @@ export const activityDataConfig: DBdataDisplayConfig<
           />
 
           <CardSection
-            title={dictionary.cardFields?.recipes ?? "活动配方"}
+            title={dic.cardFields?.recipes ?? "活动配方"}
             data={recipeData.latest}
             renderItem={(recipe) => {
               return {
@@ -184,4 +191,4 @@ export const activityDataConfig: DBdataDisplayConfig<
       );
     },
   },
-};
+});

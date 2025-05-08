@@ -1,4 +1,4 @@
-import { createMemo, For, JSX } from "solid-js";
+import { createMemo, For, JSX, Show } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
 import { Dic } from "~/locales/type";
@@ -26,13 +26,13 @@ function getZodType(schema?: ZodTypeAny): ZodFirstPartyTypeKind {
   return type;
 }
 
-export function DBDataRender<T extends keyof DB>(props: {
-  data: DB[T];
-  dataSchema: ZodObject<Record<keyof DB[T], ZodTypeAny>>;
-  dictionary: Dic<DB[T]>;
-  hiddenFields: Array<keyof DB[T]>;
-  fieldGroupMap: Record<string, Array<keyof DB[T]>>;
-  fieldGenerator?: (key: keyof DB[T], value: DB[T][keyof DB[T]], dictionary: Dic<DB[T]>) => JSX.Element;
+export function DBDataRender<T extends Record<string, unknown>>(props: {
+  data: T;
+  dataSchema: ZodObject<Record<keyof T, ZodTypeAny>>;
+  dictionary: Dic<T>;
+  hiddenFields: Array<keyof T>;
+  fieldGroupMap: Record<string, Array<keyof T>>;
+  fieldGenerator?: (key: keyof T, value: T[keyof T], dictionary: Dic<T>) => JSX.Element;
 }) {
   return (
     <div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3">
@@ -42,7 +42,7 @@ export function DBDataRender<T extends keyof DB>(props: {
         )}
       >
         {([groupName, keys]) => (
-          <section class="FieldGroup w-full flex flex-col gap-2">
+          <section class="FieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {groupName}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
@@ -56,7 +56,26 @@ export function DBDataRender<T extends keyof DB>(props: {
 
                   // 处理嵌套结构
                   if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
-                    return JSON.stringify(val);
+                    const content = Object.entries(val as Record<string, unknown>);
+                    return (
+                      props.fieldGenerator?.(key, val, props.dictionary) ?? (
+                        <div class="Fieldflex flex-col gap-2">
+                          <span class="Title text-main-text-color text-nowrap">{props.dictionary.fields[key].key}</span> :
+                          <Show when={content.length > 0}>
+                            <div class="List bg-area-color rounded-md p-2">
+                              <For each={content}>
+                                {([key, val]) => (
+                                  <div class="Field flex gap-1">
+                                    <span class="text-boundary-color text-nowrap">{key} : </span>
+                                    <span class="text-nowrap">{String(val)}</span>
+                                  </div>
+                                )}
+                              </For>
+                            </div>
+                          </Show>
+                        </div>
+                      )
+                    );
                   }
 
                   return (

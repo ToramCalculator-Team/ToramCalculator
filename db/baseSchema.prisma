@@ -239,9 +239,9 @@ model mob {
 
 // 道具
 model item {
-    id   String @id
-    type String // Enum ITEM_TYPE
-    name String
+    id       String @id
+    itemType String // Enum ITEM_TYPE
+    name     String
 
     dataSources String
     details     String?
@@ -284,14 +284,12 @@ model material {
 
 // 消耗品
 model consumable {
-    id String @id
-
     type           String // Enum CONSUMABLE_TYPE
     effectDuration Int
     effects        String[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
     // recipe       recipe?
 
     usedBy character[]
@@ -299,8 +297,6 @@ model consumable {
 
 // 锻晶
 model crystal {
-    id String @id
-
     type      String // Enum CRYSTAL_TYPE
     modifiers String[]
 
@@ -308,7 +304,7 @@ model crystal {
     back  crystal[] @relation("backRelation")
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
 
     usedByWeapon         weapon[]
     usedByPlayerWeapon   player_weapon[]
@@ -325,7 +321,6 @@ model crystal {
 
 // 武器
 model weapon {
-    id              String    @id
     type            String // Enum WEAPON_TYPE
     baseAbi         Int
     stability       Int
@@ -340,12 +335,11 @@ model weapon {
     usedBy player_weapon[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
 }
 
 // 防具
 model armor {
-    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -357,12 +351,11 @@ model armor {
     usedBy player_armor[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
 }
 
 // 追加装备
 model option {
-    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -374,12 +367,11 @@ model option {
     usedBy player_option[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
 }
 
 // 特殊装备
 model special {
-    id              String    @id
     baseDef         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -387,7 +379,7 @@ model special {
     usedBy player_special[]
 
     belongToItem item   @relation(fields: [itemId], references: [id])
-    itemId       String @unique
+    itemId       String @id
 }
 
 // 配方

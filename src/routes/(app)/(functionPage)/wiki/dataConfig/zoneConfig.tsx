@@ -3,7 +3,7 @@ import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createZone, findZoneById, findZones, Zone } from "~/repositories/zone";
 import { fieldInfo } from "../utils";
-import { DBdataDisplayConfig } from "./dataConfig";
+import { dataDisplayConfig } from "./dataConfig";
 import { zoneSchema } from "~/../db/zod";
 import { DB, zone } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
@@ -14,15 +14,11 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 
-export const zoneDataConfig: DBdataDisplayConfig<
-  zone,
-  Zone["Card"],
-  {
-    linkZones: string[];
-    mobs: string[];
-    npcs: string[];
-  }
-> = {
+export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zone["Card"], {
+  linkZones: string[];
+  mobs: string[];
+  npcs: string[];
+}> => ({
   table: {
     columnDef: [
       {
@@ -54,7 +50,8 @@ export const zoneDataConfig: DBdataDisplayConfig<
     dataFetcher: findZones,
     defaultSort: { id: "name", desc: false },
     hiddenColumnDef: ["id"],
-    tdGenerator: (props: { cell: Cell<zone, keyof zone>; dictionary: Dic<zone> }) => {
+    dictionary: dic,
+    tdGenerator: (props: { cell: Cell<zone, keyof zone>; }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof zone;
@@ -77,8 +74,8 @@ export const zoneDataConfig: DBdataDisplayConfig<
             }
             fallback={tdContent()}
           >
-            {"enumMap" in props.dictionary.fields[columnId]
-              ? (props.dictionary.fields[columnId] as EnumFieldDetail<keyof zone>).enumMap[props.cell.getValue()]
+            {"enumMap" in dic.fields[columnId]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof zone>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -143,12 +140,13 @@ export const zoneDataConfig: DBdataDisplayConfig<
     },
     hiddenFields: ["id"],
     dataSchema: zoneSchema,
+    dictionary: dic,
     fieldGenerators: {
-      addressId: (key, field, dictionary) => {
+      addressId: (key, field) => {
         return (
           <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
@@ -174,11 +172,11 @@ export const zoneDataConfig: DBdataDisplayConfig<
           </Input>
         );
       },
-      activityId: (key, field, dictionary) => {
+      activityId: (key, field) => {
         return (
           <Input
-            title={dictionary.fields[key].key}
-            description={dictionary.fields[key].formFieldDescription}
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
@@ -234,7 +232,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
   },
   card: {
     dataFetcher: findZoneById,
-    cardRender: (data, dictionary, appendCardTypeAndIds) => {
+    cardRender: (data: zone, appendCardTypeAndIds: (updater: (prev: { type: keyof DB; id: string; }[]) => { type: keyof DB; id: string; }[]) => void) => {
       const [mobData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
         return await db
@@ -282,9 +280,9 @@ export const zoneDataConfig: DBdataDisplayConfig<
       return (
         <>
           <div class="ZoneImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<"zone">({
+          {DBDataRender<Zone["Card"]>({
             data,
-            dictionary: dictionary,
+            dictionary: dic,
             dataSchema: zoneSchema,
             hiddenFields: ["id", "activityId", "addressId"],
             fieldGroupMap: {
@@ -293,7 +291,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
           })}
 
           <CardSection
-            title={dictionary.cardFields?.mobs ?? "出现的怪物"}
+            title={dic.cardFields?.mobs ?? "出现的怪物"}
             data={mobData.latest}
             renderItem={(mob) => {
               return {
@@ -304,7 +302,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
           />
 
           <CardSection
-            title={dictionary.cardFields?.npcs ?? "出现的NPC"}
+            title={dic.cardFields?.npcs ?? "出现的NPC"}
             data={npcsData.latest}
             renderItem={(npc) => {
               return {
@@ -315,7 +313,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
           />
 
           <CardSection
-            title={dictionary.cardFields?.linkZone ?? "连接的区域"}
+            title={dic.cardFields?.linkZone ?? "连接的区域"}
             data={linkZonesData.latest}
             renderItem={(zone) => {
               return {
@@ -326,7 +324,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
           />
 
           <CardSection
-            title={dictionary.cardFields?.address ?? "所属地址"}
+            title={dic.cardFields?.address ?? "所属地址"}
             data={addressData.latest}
             renderItem={(address) => {
               return {
@@ -338,7 +336,7 @@ export const zoneDataConfig: DBdataDisplayConfig<
 
           <Show when={activityData.latest?.length}>
             <CardSection
-              title={dictionary.cardFields?.activity ?? "所属活动"}
+              title={dic.cardFields?.activity ?? "所属活动"}
               data={activityData.latest}
               renderItem={(activity) => {
                 return {
@@ -352,4 +350,4 @@ export const zoneDataConfig: DBdataDisplayConfig<
       );
     },
   },
-};
+});

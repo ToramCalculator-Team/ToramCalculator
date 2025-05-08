@@ -37,7 +37,7 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
 };
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-// export type DBdataDisplayConfig<T extends Record<string, unknown>, Card extends object> = {
+// export type dataDisplayConfig<T extends Record<string, unknown>, Card extends object> = {
 //   table: {
 //     dataFetcher: () => Promise<T[]>;
 //     columnDef: Array<ColumnDef<T, unknown>>;
