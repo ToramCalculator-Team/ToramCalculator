@@ -1,4 +1,4 @@
-import { Cell, createColumnHelper, flexRender } from "@tanstack/solid-table";
+import { Cell, createColumnHelper, DeepKeys, flexRender } from "@tanstack/solid-table";
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob, findMobById, findMobs, Mob, mobCardSchema } from "~/repositories/mob";
@@ -9,7 +9,7 @@ import * as Icon from "~/components/icon";
 import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
 import { z, ZodObject, ZodSchema } from "zod";
-import { DB, mob } from "~/../db/kysely/kyesely";
+import { DB, drop_item, mob, zone } from "~/../db/kysely/kyesely";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { getDB } from "~/repositories/database";
@@ -19,15 +19,82 @@ import { ItemType, MobDifficultyFlag } from "../../../../../../db/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
-import { createZone } from "~/repositories/zone";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { DeepValue } from "@tanstack/solid-form";
+import { Button } from "~/components/controls/button";
+import { omit } from "lodash-es";
 
-export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
-  mob,
-  Mob["Card"],
-  {
-    zones: string[];
-  }
-> => ({
+type MobWithZones = mob & {
+  belongToZones: zone[];
+  dropItems: (drop_item & { name: string })[];
+};
+
+const MobWithZonesSchema = z.object({
+  ...mobSchema.shape,
+  belongToZones: z.array(zoneSchema),
+  dropItems: z.array(drop_itemSchema),
+});
+
+export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<MobWithZones> => ({
+  defaultData: {
+    ...defaultData.mob,
+    belongToZones: [],
+    dropItems: [],
+  },
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("mob")
+      .where("id", "=", id)
+      .selectAll("mob")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("_mobTozone")
+            .innerJoin("zone", "zone.id", "_mobTozone.B")
+            .whereRef("_mobTozone.A", "=", "mob.id")
+            .selectAll("zone"),
+        ).as("belongToZones"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("drop_item")
+            .innerJoin("item", "item.id", "drop_item.itemId")
+            .where("drop_item.dropById", "=", "mob.id")
+            .selectAll("drop_item")
+            .select("item.name"),
+        ).as("dropItems"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("mob")
+      .selectAll("mob")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("_mobTozone")
+            .innerJoin("zone", "zone.id", "_mobTozone.B")
+            .whereRef("_mobTozone.A", "=", "mob.id")
+            .selectAll("zone"),
+        ).as("belongToZones"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("drop_item")
+            .innerJoin("item", "item.id", "drop_item.itemId")
+            .where("drop_item.dropById", "=", "mob.id")
+            .selectAll("drop_item")
+            .select("item.name"),
+        ).as("dropItems"),
+      ])
+      .execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: MobWithZonesSchema,
   table: {
     columnDef: [
       {
@@ -117,11 +184,9 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
         size: 160,
       },
     ],
-    dataFetcher: findMobs,
     defaultSort: { id: "experience", desc: true },
-    hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<mob, keyof mob>; }) => {
+    hiddenColumns: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
+    tdGenerator: (props) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       const columnId = props.cell.column.id as keyof mob;
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
@@ -189,7 +254,7 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
             fallback={tdContent()}
           >
             {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof mob>).enumMap[props.cell.getValue()]
+              ? (dic.fields[columnId] as EnumFieldDetail<keyof MobWithZones>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -197,36 +262,11 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
     },
   },
   form: {
-    data: defaultData.mob,
-    extraData: {
-      zones: {
-        defaultValue: [],
-        dictionary: {
-          key: "zones",
-          tableFieldDescription: "出现的区域",
-          formFieldDescription: "出现的区域",
-        },
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const zones = await db
-            .selectFrom("zone")
-            .select(["id", "name"])
-            .where("name", "ilike", `%${name}%`)
-            .execute();
-          return zones.map((zone) => ({
-            label: zone.name,
-            value: zone.id,
-          }));
-        },
-      },
-    },
     hiddenFields: ["id", "statisticId", "actions", "createdByAccountId", "updatedByAccountId"],
-    dataSchema: mobSchema,
-    dictionary: dic,
     fieldGenerators: {
       type: (key, field) => {
         let icon: JSX.Element = null;
-        const zodValue = mobSchema.shape[key];
+        const zodValue = MobWithZonesSchema.shape[key];
         return (
           <Input
             title={dic.fields[key].key}
@@ -349,18 +389,137 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
           );
         }
       },
+      belongToZones: (key, field) => {
+        const value = field().state.value as zone[];
+        return (
+          <Input
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const item = _item as zone;
+                  return (
+                    <div class="Filed flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          initialValue={item}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = value;
+                            field().setValue(newArray);
+                            console.log("newArray", newArray);
+                          }}
+                          dataFetcher={async () => {
+                            const db = await getDB();
+                            const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                            return zones;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={() => {
+                  field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
+      },
+      dropItems: (key, field) => {
+        return (
+          <Input
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const item = _item as drop_item & { name: string };
+                  return (
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          initialValue={item}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = omit(value, "name");
+                            field().setValue(newArray);
+                            console.log("newArray", newArray);
+                          }}
+                          dataFetcher={async () => {
+                            const db = await getDB();
+                            const dropItems = await db
+                              .selectFrom("drop_item")
+                              .innerJoin("item", "item.id", "drop_item.itemId")
+                              .where("dropById", "=", item.id)
+                              .selectAll(["drop_item"])
+                              .select(["item.name"])
+                              .execute();
+                            return dropItems;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newArray = (field().state.value as string[]).filter((_, i) => i !== index());
+                          field().setValue(newArray);
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={() => {
+                  const newArray = [...(field().state.value as string[]), ""];
+                  field().setValue(newArray);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
+      },
     },
     onSubmit: async (data) => {
       const db = await getDB();
       const mob = await db.transaction().execute(async (trx) => {
-        const { zones, ...rest } = data;
-        console.log("zones", zones, "zone", rest);
+        const { belongToZones, ...rest } = data;
+        console.log("zones", belongToZones, "zone", rest);
         const mob = await createMob(trx, {
           ...rest,
         });
-        if (zones.length > 0) {
-          for (const zoneId of zones) {
-            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zoneId }).execute();
+        if (belongToZones.length > 0) {
+          for (const zone of belongToZones) {
+            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
           }
         }
         return mob;
@@ -368,7 +527,6 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
     },
   },
   card: {
-    dataFetcher: findMobById,
     cardRender: (data, appendCardTypeAndIds) => {
       const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
@@ -428,10 +586,10 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
               }}
             />
           </Show>
-          {DBDataRender<mob>({
+          {DBDataRender<MobWithZones>({
             data: generateBossDataByFlag(data, difficulty()),
             dictionary: dic,
-            dataSchema: mobCardSchema as ZodObject<{ [K in keyof Awaited<ReturnType<typeof findMobById>>]: ZodSchema }>,
+            dataSchema: MobWithZonesSchema,
             hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
             fieldGroupMap: {
               常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
@@ -469,15 +627,17 @@ export const createMobDataConfig = (dic: Dic<mob>): dataDisplayConfig<
             title={dic.cardFields?.dropItems ?? "掉落物品"}
             data={dropItemsData.latest}
             renderItem={(item) => {
-              const tableType: keyof DB = ({
-                Weapon: "weapon",
-                Armor: "armor",
-                Option: "option",
-                Special: "special",
-                Crystal: "crystal",
-                Consumable: "consumable",
-                Material: "material",
-              } satisfies Record<ItemType, keyof DB>)[item.itemType];
+              const tableType: keyof DB = (
+                {
+                  Weapon: "weapon",
+                  Armor: "armor",
+                  Option: "option",
+                  Special: "special",
+                  Crystal: "crystal",
+                  Consumable: "consumable",
+                  Material: "material",
+                } satisfies Record<ItemType, keyof DB>
+              )[item.itemType];
               return {
                 label: item.name,
                 onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: tableType, id: item.id }]),

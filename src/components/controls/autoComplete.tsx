@@ -45,20 +45,17 @@ import {
   Show,
 } from "solid-js";
 
-// label用于显示，value用于存储
-interface AutocompleteOption {
-  label: string;
-  value: string;
+
+interface AutocompleteProps<T extends Record<string, unknown>> extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  initialValue: T;
+  setValue: (value: T) => void;
+  dataFetcher: () => Promise<T[]>;
+  displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
+  valueField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
 }
 
-interface AutocompleteProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
-  displayValue?: string;
-  value: string;
-  setValue: (value: string) => void;
-  optionsFetcher: (search: string) => Promise<AutocompleteOption[]>;
-}
-
-export function Autocomplete(props: AutocompleteProps) {
+export function Autocomplete<T extends Record<string, unknown>>(props: AutocompleteProps<T>) {
+  console.log("props", props);
   const [optionsIsOpen, setOptionsIsOpen] = createSignal(false);
   const [optionsIsLoading, setOptionsIsLoading] = createSignal(false);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
@@ -67,7 +64,14 @@ export function Autocomplete(props: AutocompleteProps) {
   const [displayValue, setDisplayValue] = createSignal("");
   // 用于存储输入框值，输入框内容变化时，会重新获取options
   const [searchValue, setSearchValue] = createSignal("");
-  const [options, { refetch }] = createResource(searchValue, props.optionsFetcher);
+  const [options, setOptions] = createSignal<T[]>([]);
+  const filteredOptions = createMemo(() => {
+    const visibleOptions = options();
+    if (visibleOptions) {
+      return visibleOptions.filter((option) => option[props.displayField]);
+    }
+    return [];
+  });
 
   // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
   const handleInput = async (value: string) => {
@@ -76,29 +80,21 @@ export function Autocomplete(props: AutocompleteProps) {
     setOptionsIsOpen(true);
   };
 
-  const handleSelect = (option: AutocompleteOption) => {
-    setIsSelecting(true);
-    props.setValue?.(option.value);
-    setDisplayValue(option.label);
+  const handleSelect = (option: T) => {
+    setDisplayValue(String(option[props.displayField]));
+    props.setValue(option);
     setOptionsIsOpen(false);
-    setIsSelecting(false);
   };
 
   // 处理初始值显示
   createEffect(async () => {
-    if (props.value) {
-      const currentOptions = options();
-      if (!currentOptions) {
-        // 如果没有缓存的选项，获取一次初始选项列表
-        const initialOptions = await props.optionsFetcher("");
-        const option = initialOptions.find((option) => option.value === props.value);
-        setDisplayValue(option?.label ?? "");
-      } else {
-        // 如果有缓存的选项，直接查找对应的label
-        const option = currentOptions.find((option) => option.value === props.value);
-        setDisplayValue(option?.label ?? "");
-      }
+    const initialOptions = await props.dataFetcher();
+    setOptions(initialOptions);
+    const option = initialOptions.find((option) => String(option[props.valueField]) === props.initialValue[props.valueField]);
+    if (option) {
+      setDisplayValue(String(option[props.displayField]));
     }
+    console.log("initialOptions", initialOptions, option, option?.[props.valueField]);
   });
 
   onMount(() => {
@@ -136,17 +132,17 @@ export function Autocomplete(props: AutocompleteProps) {
         >
           <Show when={!optionsIsLoading()} fallback={<div class="px-4 py-2 text-sm text-gray-500">加载中...</div>}>
             <Show when={options()} fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}>
-              <For each={options()}>
+              <For each={filteredOptions()}>
                 {(option) => (
                   <button
-                    class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                    class="w-full px-4 py-2 text-left hover:bg-gray-100"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleSelect(option);
                     }}
                   >
-                    {option.label}
+                    {String(option[props.displayField])}
                   </button>
                 )}
               </For>

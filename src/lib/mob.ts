@@ -1,15 +1,16 @@
 import { type Mob } from "~/repositories/mob";
 import { MobDifficultyFlag } from "../../db/kysely/enums";
+import { mob } from "../../db/kysely/kyesely";
 /**
  * 
  * @param baseMob 零星状态下的数据
  * @param flag 怪物难度标识
  * @returns 
  */
-export const generateBossDataByFlag = (
-  baseMob: Mob["Card"],
+export const generateBossDataByFlag = <T extends mob & unknown>(
+  baseMob: T,
   flag: MobDifficultyFlag,
-): Mob["Card"] => {
+): T => {
   const rate: {
     lv: number;
     experience: number;

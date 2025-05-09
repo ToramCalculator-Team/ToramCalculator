@@ -19,6 +19,11 @@ import { createId } from "@paralleldrive/cuid2";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Input } from "~/components/controls/input";
 import { itemTypeToTableType } from "./utils";
+import { Button } from "~/components/controls/button";
+import { AnyFieldApi } from "@tanstack/solid-form";
+import { ZodEnum } from "zod";
+
+type TaskType = "Collect" | "Defeat" | "Both" | "Other";
 
 export const createTaskDataConfig = (
   dic: Dic<task>,
@@ -95,8 +100,8 @@ export const createTaskDataConfig = (
     dataSchema: taskSchema,
     dictionary: dic,
     fieldGenerators: {
-      type: (key, field) => {
-        const zodValue = taskSchema.shape[key];
+      type: (key, field, getFormValue, dic) => {
+        const zodValue = taskSchema.shape[key] as ZodEnum<[TaskType, TaskType, TaskType, TaskType]>;
         return (
           <EnumSelect
             title={dic.fields[key].key}
@@ -104,11 +109,11 @@ export const createTaskDataConfig = (
             state={fieldInfo(field())}
             options={zodValue.options}
             field={field}
-            dic={dic.fields[key].enumMap}
+            dic={(dic.fields[key] as EnumFieldDetail<keyof task>).enumMap}
           />
         );
       },
-      npcId: (key, field) => {
+      npcId: (key: keyof task, field: () => AnyFieldApi, getFormValue: (key: keyof (task & { rewardItems: string[]; collectItems: string[]; killMobs: string[] })) => unknown) => {
         return (
           <Input
             title={dic.fields[key].key}
@@ -159,6 +164,69 @@ export const createTaskDataConfig = (
           tableFieldDescription: "任务物品",
           formFieldDescription: "任务物品",
         },
+        fieldGenerator: (key, field, getFormValue) => {
+          const taskType = getFormValue('type') as task['type'];
+          const shouldShow = taskType === 'Collect' || taskType === 'Both';
+          
+          if (!shouldShow) return null;
+          
+          return (
+            <Input
+              title={dic.fields[key].key}
+              description={dic.fields[key].formFieldDescription}
+              state={fieldInfo(field())}
+              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+            >
+              <div class="ArrayBox flex w-full flex-col gap-2">
+                <For each={field().state.value}>
+                  {(item, index) => (
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          value={item}
+                          setValue={(id) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = id;
+                            field().setValue(newArray);
+                          }}
+                          optionsFetcher={async (search) => {
+                            const db = await getDB();
+                            const items = await db
+                              .selectFrom("item")
+                              .select(["id", "name"])
+                              .where("name", "ilike", `%${search}%`)
+                              .execute();
+                            return items.map((item) => ({
+                              label: item.name,
+                              value: item.id,
+                            }));
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newArray = field().state.value.filter((_: unknown, i: number) => i !== index());
+                          field().setValue(newArray);
+                        }}
+                      >
+                        {dictionary().ui.actions.remove}
+                      </Button>
+                    </div>
+                  )}
+                </For>
+                <Button
+                  onClick={() => {
+                    const newArray = [...field().state.value, ""];
+                    field().setValue(newArray);
+                  }}
+                  class="w-full"
+                >
+                  {dictionary().ui.actions.add}
+                </Button>
+              </div>
+            </Input>
+          );
+        }
       },
       killMobs: {
         defaultValue: [],
@@ -175,6 +243,69 @@ export const createTaskDataConfig = (
           tableFieldDescription: "任务击杀怪物",
           formFieldDescription: "任务击杀怪物",
         },
+        fieldGenerator: (key: keyof (task & { rewardItems: string[]; collectItems: string[]; killMobs: string[] }), field: () => AnyFieldApi, getFormValue: (key: keyof (task & { rewardItems: string[]; collectItems: string[]; killMobs: string[] })) => unknown) => {
+          const taskType = getFormValue('type') as task['type'];
+          const shouldShow = taskType === 'Defeat' || taskType === 'Both';
+          
+          if (!shouldShow) return null;
+          
+          return (
+            <Input
+              title={dic.fields[key].key}
+              description={dic.fields[key].formFieldDescription}
+              state={fieldInfo(field())}
+              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+            >
+              <div class="ArrayBox flex w-full flex-col gap-2">
+                <For each={field().state.value}>
+                  {(item, index) => (
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          value={item}
+                          setValue={(id) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = id;
+                            field().setValue(newArray);
+                          }}
+                          optionsFetcher={async (search) => {
+                            const db = await getDB();
+                            const mobs = await db
+                              .selectFrom("mob")
+                              .select(["id", "name"])
+                              .where("name", "ilike", `%${search}%`)
+                              .execute();
+                            return mobs.map((mob) => ({
+                              label: mob.name,
+                              value: mob.id,
+                            }));
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newArray = field().state.value.filter((_: unknown, i: number) => i !== index());
+                          field().setValue(newArray);
+                        }}
+                      >
+                        {dictionary().ui.actions.remove}
+                      </Button>
+                    </div>
+                  )}
+                </For>
+                <Button
+                  onClick={() => {
+                    const newArray = [...field().state.value, ""];
+                    field().setValue(newArray);
+                  }}
+                  class="w-full"
+                >
+                  {dictionary().ui.actions.add}
+                </Button>
+              </div>
+            </Input>
+          );
+        }
       },
       rewardItems: {
         defaultValue: [],
@@ -196,6 +327,65 @@ export const createTaskDataConfig = (
           tableFieldDescription: "任务奖励物品",
           formFieldDescription: "任务奖励物品",
         },
+        fieldGenerator: (key: keyof (task & { rewardItems: string[]; collectItems: string[]; killMobs: string[] }), field: () => AnyFieldApi, getFormValue: (key: keyof (task & { rewardItems: string[]; collectItems: string[]; killMobs: string[] })) => unknown) => {
+          return (
+            <Input
+              title={dic.fields[key].key}
+              description={dic.fields[key].formFieldDescription}
+              state={fieldInfo(field())}
+              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+            >
+              <div class="ArrayBox flex w-full flex-col gap-2">
+                <For each={field().state.value}>
+                  {(item, index) => (
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <Autocomplete
+                          value={item}
+                          setValue={(id) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = id;
+                            field().setValue(newArray);
+                          }}
+                          optionsFetcher={async (search) => {
+                            const db = await getDB();
+                            const items = await db
+                              .selectFrom("task_reward")
+                              .innerJoin("item", "task_reward.itemId", "item.id")
+                              .where("item.name", "ilike", `%${search}%`)
+                              .select(["item.name as itemName", "item.id as itemId"])
+                              .execute();
+                            return items.map((item) => ({
+                              label: item.itemName,
+                              value: item.itemId,
+                            }));
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const newArray = field().state.value.filter((_: unknown, i: number) => i !== index());
+                          field().setValue(newArray);
+                        }}
+                      >
+                        {dictionary().ui.actions.remove}
+                      </Button>
+                    </div>
+                  )}
+                </For>
+                <Button
+                  onClick={() => {
+                    const newArray = [...field().state.value, ""];
+                    field().setValue(newArray);
+                  }}
+                  class="w-full"
+                >
+                  {dictionary().ui.actions.add}
+                </Button>
+              </div>
+            </Input>
+          );
+        }
       },
     },
     onSubmit: async (data) => {

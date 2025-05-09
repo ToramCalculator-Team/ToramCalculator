@@ -19,7 +19,6 @@ export const Input = (props: InputProps) => {
   const config = createMemo(() => {
     return {
       description: props.description,
-      children: props.children,
       sizeClass: {
         sm: "gap-2 rounded px-4 py-3",
         md: "gap-2 rounded-md px-4 py-3",
@@ -91,7 +90,7 @@ export const Input = (props: InputProps) => {
           </Switch>
         }
       >
-        {config().children}
+        {props.children}
       </Show>
     </label>
   );

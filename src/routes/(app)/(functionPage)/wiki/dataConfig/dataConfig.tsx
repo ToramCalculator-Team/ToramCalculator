@@ -1,10 +1,10 @@
-import { activity, address, armor, consumable, crystal, DB, item, material, mob, npc, option, skill, special, task, weapon, zone } from "~/../db/kysely/kyesely";
+import { DB } from "~/../db/kysely/kyesely";
 import { createMobDataConfig } from "./mobDataConfig";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { ColumnDef, Cell } from "@tanstack/solid-table";
 import { JSX } from "solid-js";
 import { ZodObject, ZodTypeAny } from "zod";
-import { Dic, dictionary, FieldDetail, FieldDict } from "~/locales/type";
+import { Dic, dictionary } from "~/locales/type";
 import { createSkillDataConfig } from "./skillConfig";
 import { createAddressDataConfig } from "./addressConfig";
 import { createNpcDataConfig } from "./npcConfig";
@@ -18,48 +18,41 @@ import { createOptionDataConfig } from "./optionConfig";
 import { createSpecialDataConfig } from "./specialConfig";
 import { createWeaponDataConfig } from "./weaponConfig";
 import { createZoneDataConfig } from "./zoneConfig";
-export type ExtraData<E extends Record<string, string[]>> = {
-  [K in keyof E]: {
-    defaultValue: string[];
-    dictionary: FieldDetail;
-    optionsFetcher: (name: string) => Promise<{ label: string; value: string }[]>;
-  };
-};
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-export type dataDisplayConfig<T extends Record<string, unknown>, Card extends object, E extends Record<string, string[]>> = {
+export type dataDisplayConfig<T extends Record<string, unknown>> = {
+  defaultData: T;
+  dataFetcher: (id: string) => Promise<T>;
+  datasFetcher: () => Promise<T[]>;
+  dictionary: Dic<T>;
+  dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   table: {
-    dataFetcher: () => Promise<T[]>;
     columnDef: Array<ColumnDef<T, unknown>>;
-    hiddenColumnDef: Array<keyof T>;
+    hiddenColumns: Array<keyof T>;
     defaultSort: { id: keyof T; desc: boolean };
-    tdGenerator: (props: { cell: Cell<T, keyof T>; }) => JSX.Element;
-    dictionary: Dic<T>;
+    tdGenerator: (props: { cell: Cell<T, keyof T> }) => JSX.Element;
   };
   form: {
-    data: T;
-    extraData?: ExtraData<E>;
-    dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
-    dictionary: Dic<T>;
     hiddenFields: Array<keyof T>;
     fieldGenerators: Partial<{
-      [K in keyof T]: (key: K, field: () => AnyFieldApi) => JSX.Element;
+      [K in keyof T]: (key: K, field: () => AnyFieldApi, getFormValue: (key: keyof T) => unknown) => JSX.Element;
     }>;
-    onChange?: (data: T & E) => void;
-    onSubmit?: (data: T & E) => void;
+    onChange?: (data: T) => void;
+    onSubmit?: (data: T) => void;
   };
   card: {
-    dataFetcher: (id: string) => Promise<Card>;
     cardRender: (
-      data: Card,
-      appendCardTypeAndIds: (
+      data: T,
+      appendCTypeAndIds: (
         updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
       ) => void,
     ) => JSX.Element;
   };
 };
 
-export const DBDataConfig = (dictionary: dictionary): Partial<Record<keyof DB, dataDisplayConfig<any, any, any>>> => ({
+export const DBDataConfig = (
+  dictionary: dictionary,
+): Partial<Record<keyof DB, dataDisplayConfig<Record<string, unknown>>>> => ({
   activity: createActivityDataConfig(dictionary.db.activity),
   address: createAddressDataConfig(dictionary.db.address),
   armor: createArmorDataConfig({
@@ -70,13 +63,24 @@ export const DBDataConfig = (dictionary: dictionary): Partial<Record<keyof DB, d
     },
   }),
 
-  // consumable: consumableDataConfig,
-  // crystal: crystalDataConfig,
-
-  // item: createItemConfig("Weapon"),
-  // material: materialDataConfig,
-
-  mob: createMobDataConfig(dictionary.db.mob),
+  mob: createMobDataConfig({
+    ...dictionary.db.mob,
+    fields: {
+      ...dictionary.db.mob.fields,
+      belongToZones: {
+        key: "belongToZones",
+        ...dictionary.db.zone.fields,
+        tableFieldDescription: dictionary.db.zone.fields.name.tableFieldDescription,
+        formFieldDescription: dictionary.db.zone.fields.name.formFieldDescription,
+      },
+      dropItems: {
+        key: "dropItems",
+        ...dictionary.db.drop_item.fields,
+        tableFieldDescription: dictionary.db.drop_item.fields.itemId.tableFieldDescription,
+        formFieldDescription: dictionary.db.drop_item.fields.itemId.formFieldDescription,
+      },
+    },
+  }),
   npc: createNpcDataConfig(dictionary.db.npc),
   skill: createSkillDataConfig(dictionary.db.skill),
   consumable: createConsumableDataConfig({
@@ -125,6 +129,5 @@ export const DBDataConfig = (dictionary: dictionary): Partial<Record<keyof DB, d
       ...dictionary.db.item.fields,
     },
   }),
-  // world: mobDataConfig,
   zone: createZoneDataConfig(dictionary.db.zone),
 });
