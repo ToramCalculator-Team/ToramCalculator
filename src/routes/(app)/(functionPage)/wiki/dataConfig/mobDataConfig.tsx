@@ -24,6 +24,8 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { DeepValue } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import { omit } from "lodash-es";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { createId } from "@paralleldrive/cuid2";
 
 type MobWithZones = mob & {
   belongToZones: zone[];
@@ -309,88 +311,19 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
         );
       },
       initialElement: (key, field) => {
-        {
-          let icon: JSX.Element = null;
-          const zodValue = mobSchema.shape[key];
-          return (
-            <Input
-              title={dic.fields[key].key}
-              description={dic.fields[key].formFieldDescription}
-              state={fieldInfo(field())}
-              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-            >
-              <div class="EnumsBox flex flex-wrap gap-1">
-                <For each={zodValue.options}>
-                  {(option) => {
-                    switch (option) {
-                      case "Normal":
-                        {
-                          icon = <Icon.Element.NoElement class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Light":
-                        {
-                          icon = <Icon.Element.Light class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Dark":
-                        {
-                          icon = <Icon.Element.Dark class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Water":
-                        {
-                          icon = <Icon.Element.Water class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Fire":
-                        {
-                          icon = <Icon.Element.Fire class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Earth":
-                        {
-                          icon = <Icon.Element.Earth class="h-6 w-6" />;
-                        }
-                        break;
-                      case "Wind":
-                        {
-                          icon = <Icon.Element.Wind class="h-6 w-6" />;
-                        }
-                        break;
-                      default:
-                        {
-                          icon = null;
-                        }
-                        break;
-                    }
-                    return (
-                      <label
-                        class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color" : "border-dividing-color bg-area-color opacity-50"}`}
-                      >
-                        {icon}
-                        {dic.fields[key].enumMap[option]}
-                        <input
-                          id={field().name + option}
-                          name={field().name}
-                          value={option}
-                          checked={field().state.value === option}
-                          type="radio"
-                          onBlur={field().handleBlur}
-                          onChange={(e) => field().handleChange(e.target.value)}
-                          class="mt-0.5 hidden rounded px-4 py-2"
-                        />
-                      </label>
-                    );
-                  }}
-                </For>
-              </div>
-            </Input>
-          );
-        }
+        const zodValue = MobWithZonesSchema.shape[key];
+        return (
+          <EnumSelect
+            title={dic.fields[key].key}
+            description={dic.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            options={zodValue.options}
+            field={field}
+            dic={dic.fields[key].enumMap}
+          />
+        );
       },
       belongToZones: (key, field) => {
-        const value = field().state.value as zone[];
         return (
           <Input
             title={dic.fields[key].key}
@@ -404,14 +337,14 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
                   const item = _item as zone;
                   return (
                     <div class="Filed flex items-center gap-2">
-                      <div class="flex-1">
+                      <label for={field().name + index()} class="flex-1">
                         <Autocomplete
+                          id={field().name + index()}
                           initialValue={item}
                           setValue={(value) => {
                             const newArray = [...field().state.value];
                             newArray[index()] = value;
                             field().setValue(newArray);
-                            console.log("newArray", newArray);
                           }}
                           dataFetcher={async () => {
                             const db = await getDB();
@@ -421,10 +354,11 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
                           displayField="name"
                           valueField="id"
                         />
-                      </div>
+                      </label>
                       <Button
-                        onClick={() => {
+                        onClick={(e) => {
                           field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
+                          e.stopPropagation();
                         }}
                       >
                         -
@@ -434,7 +368,7 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
                 }}
               </For>
               <Button
-                onClick={() => {
+                onClick={(e) => {
                   field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
                 }}
                 class="w-full"
@@ -456,32 +390,86 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
             <div class="ArrayBox flex w-full flex-col gap-2">
               <For each={field().state.value}>
                 {(_item, index) => {
-                  const item = _item as drop_item & { name: string };
+                  let item = _item as drop_item & { name: string };
+                  const zodValue = drop_itemSchema.shape;
                   return (
-                    <div class="flex items-center gap-2">
-                      <div class="flex-1">
-                        <Autocomplete
-                          initialValue={item}
-                          setValue={(value) => {
-                            const newArray = [...field().state.value];
-                            newArray[index()] = omit(value, "name");
-                            field().setValue(newArray);
-                            console.log("newArray", newArray);
-                          }}
-                          dataFetcher={async () => {
-                            const db = await getDB();
-                            const dropItems = await db
-                              .selectFrom("drop_item")
-                              .innerJoin("item", "item.id", "drop_item.itemId")
-                              .where("dropById", "=", item.id)
-                              .selectAll(["drop_item"])
-                              .select(["item.name"])
-                              .execute();
-                            return dropItems;
-                          }}
-                          displayField="name"
-                          valueField="id"
-                        />
+                    <div class="flex items-start gap-2">
+                      <div class="SubForm-DropItem flex flex-col gap-2 w-full">
+                        <div id={field().name + "ItemName" + index()} class="flex-1">
+                          <Autocomplete
+                            id={field().name + index()}
+                            initialValue={{
+                              id: item.itemId,
+                              name: item.name,
+                            }}
+                            setValue={(value) => {
+                              const newArray = [...field().state.value];
+                              newArray[index()] = {
+                                ...item,
+                                itemId: value.id,
+                                name: value.name,
+                              };
+                              field().setValue(newArray);
+                              console.log("newArray", newArray);
+                            }}
+                            dataFetcher={async () => {
+                              const db = await getDB();
+                              const items = await db.selectFrom("item").select(["id", "name"]).execute();
+                              return items;
+                            }}
+                            displayField="name"
+                            valueField="id"
+                          />
+                        </div>
+                        <div id={field().name + "probability" + index()} class="flex-1">
+                          <Input
+                            title="概率"
+                            description="物品掉落的概率"
+                            state={fieldInfo(field())}
+                            type="number"
+                            value={item.probability}
+                            onChange={(e) => {
+                              const newArray = [...field().state.value];
+                              newArray[index()] = { ...item, probability: Number(e.target.value) };
+                              console.log("newArray", newArray);
+                              field().setValue(newArray);
+                            }}
+                          />
+                        </div>
+                        <div id={field().name + "relatedPartType" + index()} class="flex-1">
+                          <EnumSelect
+                            title="相关部位"
+                            description="与此掉落物品相关的怪物部位"
+                            state={fieldInfo(field())}
+                            options={zodValue.relatedPartType.options}
+                            dic={dic.fields[key]}
+                            field={field}
+                          />
+                        </div>
+                        {/* <div id={field().name + "breakRewardType" + index()} class="flex-1">
+                          <EnumSelect
+                            title="破损奖励类型"
+                            description="破损奖励类型"
+                            state={fieldInfo(field())}
+                            options={zodValue.breakRewardType.options}
+                            dic={dic.fields[key]}
+                            field={field}
+                          />
+                        </div> */}
+                        <div id={field().name + "relatedPartInfo" + index()} class="flex-1">
+                          <Input
+                            type="text"
+                            title="相关部位信息"
+                            description="相关部位信息"
+                            state={fieldInfo(field())}
+                            value={item.relatedPartInfo}
+                            onChange={(e) => {
+                              const newArray = [...field().state.value];
+                              newArray[index()] = { ...item, relatedPartInfo: e.target.value };
+                              field().setValue(newArray);
+                            }}
+                          />
+                        </div>
                       </div>
                       <Button
                         onClick={() => {
@@ -497,7 +485,7 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
               </For>
               <Button
                 onClick={() => {
-                  const newArray = [...(field().state.value as string[]), ""];
+                  const newArray = [...(field().state.value as string[]), defaultData.drop_item];
                   field().setValue(newArray);
                 }}
                 class="w-full"
@@ -512,7 +500,7 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
     onSubmit: async (data) => {
       const db = await getDB();
       const mob = await db.transaction().execute(async (trx) => {
-        const { belongToZones, ...rest } = data;
+        const { belongToZones, dropItems, ...rest } = data;
         console.log("zones", belongToZones, "zone", rest);
         const mob = await createMob(trx, {
           ...rest,
@@ -520,6 +508,22 @@ export const createMobDataConfig = (dic: Dic<MobWithZones>): dataDisplayConfig<M
         if (belongToZones.length > 0) {
           for (const zone of belongToZones) {
             await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
+          }
+        }
+        if (dropItems.length > 0) {
+          for (const item of dropItems) {
+            await trx
+              .insertInto("drop_item")
+              .values({
+                id: createId(),
+                dropById: mob.id,
+                itemId: item.itemId,
+                probability: item.probability,
+                relatedPartType: item.relatedPartType,
+                breakRewardType: item.breakRewardType,
+                relatedPartInfo: item.relatedPartInfo,
+              })
+              .execute();
           }
         }
         return mob;

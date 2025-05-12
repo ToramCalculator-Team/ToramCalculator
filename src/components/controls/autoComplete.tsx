@@ -47,6 +47,7 @@ import {
 
 
 interface AutocompleteProps<T extends Record<string, unknown>> extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  id: string;
   initialValue: T;
   setValue: (value: T) => void;
   dataFetcher: () => Promise<T[]>;
@@ -55,20 +56,22 @@ interface AutocompleteProps<T extends Record<string, unknown>> extends Omit<JSX.
 }
 
 export function Autocomplete<T extends Record<string, unknown>>(props: AutocompleteProps<T>) {
-  console.log("props", props);
   const [optionsIsOpen, setOptionsIsOpen] = createSignal(false);
   const [optionsIsLoading, setOptionsIsLoading] = createSignal(false);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
   const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
   const [isSelecting, setIsSelecting] = createSignal(false);
+  const [isSelected, setIsSelected] = createSignal(true);
   const [displayValue, setDisplayValue] = createSignal("");
   // 用于存储输入框值，输入框内容变化时，会重新获取options
   const [searchValue, setSearchValue] = createSignal("");
+  // 所有可选项
   const [options, setOptions] = createSignal<T[]>([]);
+  // 根据输入框内容过滤后的可选项
   const filteredOptions = createMemo(() => {
     const visibleOptions = options();
     if (visibleOptions) {
-      return visibleOptions.filter((option) => option[props.displayField]);
+      return visibleOptions.filter((option) => (option[props.displayField] as string).includes(searchValue()));
     }
     return [];
   });
@@ -76,14 +79,17 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
   // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
   const handleInput = async (value: string) => {
     if (isSelecting()) return;
+    setIsSelected(false);
     setSearchValue(value);
     setOptionsIsOpen(true);
   };
 
   const handleSelect = (option: T) => {
-    setDisplayValue(String(option[props.displayField]));
+    // 设置正在选择状态，防止在选择期间输入框内容变化引起搜索
+    setIsSelecting(true);
     props.setValue(option);
     setOptionsIsOpen(false);
+    setIsSelected(true);
   };
 
   // 处理初始值显示
@@ -94,7 +100,6 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
     if (option) {
       setDisplayValue(String(option[props.displayField]));
     }
-    console.log("initialOptions", initialOptions, option, option?.[props.valueField]);
   });
 
   onMount(() => {
@@ -120,10 +125,12 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
     <div class="relative w-full">
       <input
         {...Object.fromEntries(Object.entries(props).filter(([key]) => !["onChange", "optionsFetcher"].includes(key)))}
+        id={props.id}
         value={displayValue()}
         onInput={(e) => handleInput(e.target.value)}
         ref={setInputRef}
-        class={`text-accent-color bg-area-color w-full rounded p-3`}
+        autocomplete="off"
+        class={`text-accent-color bg-area-color w-full rounded p-3 ${isSelected() ? "" : "outline-brand-color-2nd!"}`}
       />
       <Show when={optionsIsOpen() && inputRef()?.value}>
         <div

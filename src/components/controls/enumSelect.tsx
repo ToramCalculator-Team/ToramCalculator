@@ -14,7 +14,7 @@ type EnumSelectProps = {
 };
 
 export function EnumSelect(props: EnumSelectProps) {
-  let icon: JSX.Element = null;
+  let icon: JSX.Element = <Icon.Filled.Basketball />;
   return (
     <Input
       title={props.title}
@@ -25,16 +25,9 @@ export function EnumSelect(props: EnumSelectProps) {
       <div class="EnumsBox flex flex-wrap gap-1">
         <For each={props.options}>
           {(option) => {
-            switch (option) {
-              case "None":
-              case "Self":
-              case "Player":
-              case "Enemy":
-                icon = <Icon.Filled.Basketball />;
-                break;
-            }
             return (
               <label
+                for={props.field().name + option}
                 class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${props.field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
               >
                 {icon}

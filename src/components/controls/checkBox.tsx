@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, JSX } from "solid-js";
 import * as _ from "lodash-es";
-
+import { createId } from "@paralleldrive/cuid2";
 type Size = "sm" | "md" | "default" | "lg";
 
 interface CheckBoxProps extends JSX.HTMLAttributes<HTMLInputElement> {
@@ -11,6 +11,7 @@ interface CheckBoxProps extends JSX.HTMLAttributes<HTMLInputElement> {
 }
 
 export const CheckBox = (props: CheckBoxProps) => {
+  const id = `checkBox-${createId()}`;
   const config = createMemo(() => {
     return {
       sizeClass: {
@@ -57,7 +58,7 @@ export const CheckBox = (props: CheckBoxProps) => {
   });
 
   return (
-    <label class={defaultCheckBoxClassNames().text}>
+    <label for={props.children ? undefined : id} class={defaultCheckBoxClassNames().text}>
       <div class={`IconContainer ${defaultCheckBoxClassNames().iconContainer}`}>
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="9" viewBox="0 0 12 9" fill="none">
           <path
@@ -70,7 +71,7 @@ export const CheckBox = (props: CheckBoxProps) => {
         </svg>
       </div>
       {props.children}
-      <input {...props} type="checkbox" class={"hidden"} />
+      <input {...props} id={id} type="checkbox" class={"hidden"} />
     </label>
   );
 };

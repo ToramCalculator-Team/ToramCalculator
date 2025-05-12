@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, JSX, Match, Show, Switch } from "solid-js";
 import * as _ from "lodash-es";
 import { Toggle } from "./toggle";
+import { createId } from "@paralleldrive/cuid2";
 
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
@@ -16,6 +17,7 @@ interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = (props: InputProps) => {
+  const id = `input-${createId()}`;
   const config = createMemo(() => {
     return {
       description: props.description,
@@ -37,7 +39,7 @@ export const Input = (props: InputProps) => {
   });
 
   return (
-    <label
+    <div
       class={
         props.class
           ? `flex flex-1 flex-col items-start gap-2 p-2 ` + " " + props.class
@@ -45,16 +47,32 @@ export const Input = (props: InputProps) => {
       }
     >
       <Show when={props.title}>
-        <div class="flex flex-col">
-          <span class="p-1">
-            <span>{props.title}</span>
-            &nbsp;&nbsp;
-            <span class="text-brand-color-3rd">{props.state}</span>
-          </span>
-          <Show when={props.description}>
-            {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
-          </Show>
-        </div>
+        <Show
+          when={props.children}
+          fallback={
+            <label for={id} class="flex flex-col">
+              <span class="p-1">
+                <span>{props.title}</span>
+                &nbsp;&nbsp;
+                <span class="text-brand-color-3rd">{props.state}</span>
+              </span>
+              <Show when={props.description}>
+                {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
+              </Show>
+            </label>
+          }
+        >
+          <div class="flex flex-col">
+            <span class="p-1">
+              <span>{props.title}</span>
+              &nbsp;&nbsp;
+              <span class="text-brand-color-3rd">{props.state}</span>
+            </span>
+            <Show when={props.description}>
+              {config().description && <span class="text-main-text-color p-1 text-sm">{config().description}</span>}
+            </Show>
+          </div>
+        </Show>
       </Show>
       <Show
         when={props.children}
@@ -63,6 +81,7 @@ export const Input = (props: InputProps) => {
             <Match when={props.type === "text"}>
               <input
                 {...props}
+                id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3`}
                 style={{
                   width: props.inputWidth + "px",
@@ -72,6 +91,7 @@ export const Input = (props: InputProps) => {
             <Match when={props.type === "password"}>
               <input
                 {...props}
+                id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3`}
                 style={{
                   width: props.inputWidth + "px",
@@ -81,6 +101,7 @@ export const Input = (props: InputProps) => {
             <Match when={props.type === "number"}>
               <input
                 {...props}
+                id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3`}
                 style={{
                   width: props.inputWidth + "px",
@@ -92,6 +113,6 @@ export const Input = (props: InputProps) => {
       >
         {props.children}
       </Show>
-    </label>
+    </div>
   );
 };
