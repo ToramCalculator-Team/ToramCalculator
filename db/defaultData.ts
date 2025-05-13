@@ -498,7 +498,7 @@ export const defaultData: DB = {
     id: "",
     name: "",
     rewardNodes: 0,
-    activityId: null,
+    activityId: "",
     addressId: "",
   },
 };

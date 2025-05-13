@@ -1,6 +1,5 @@
-import { createSignal, For, JSX, Show, onCleanup, onMount } from "solid-js";
-import { Motion, Presence } from "solid-motionone";
-import { store } from "~/store";
+import { createSignal, For, JSX, Show, onCleanup, onMount, createResource, createEffect, on } from "solid-js";
+import { Presence } from "solid-motionone";
 
 export type SelectOption = {
   label: string;
@@ -10,7 +9,8 @@ export type SelectOption = {
 type SelectProps = {
   value: string;
   setValue: (value: string) => void;
-  options: SelectOption[];
+  options?: SelectOption[];
+  optionsFetcher?: (name: string) => Promise<SelectOption[]>;
   optionGenerator?: (index: number, option: SelectOption, selected: boolean, onClick: () => void) => JSX.Element;
   placeholder?: string;
   class?: string;
@@ -19,8 +19,30 @@ type SelectProps = {
 
 export function Select(props: SelectProps) {
   const [isOpen, setIsOpen] = createSignal(false);
-  const [selectedOption, setSelectedOption] = createSignal<SelectOption | undefined>(
-    props.options.find((option) => option.value === props.value),
+  const [selectedOption, setSelectedOption] = createSignal<SelectOption | undefined>(undefined);
+
+  // 初始化时获取选项
+  const [initialOptions] = createResource(async () => {
+    let options: SelectOption[] = [];
+    if (props.optionsFetcher) {
+      options = await props.optionsFetcher("");
+    } else if (props.options) {
+      options = props.options;
+    }
+    return options;
+  });
+
+  // 当初始选项加载完成后，设置选中的选项
+  createEffect(
+    on(initialOptions, async (options) => {
+      console.log("options:====", options);
+      if (options) {
+        const option = options.find((opt) => opt.value === props.value);
+        if (option) {
+          setSelectedOption(option);
+        }
+      }
+    }),
   );
 
   const handleSelect = (option: SelectOption) => {
@@ -45,7 +67,7 @@ export function Select(props: SelectProps) {
   });
 
   return (
-    <div class={`select-container relative ${props.class ?? ""}`}>
+    <div class={`select-container relative w-full ${props.class ?? ""}`}>
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
@@ -63,11 +85,10 @@ export function Select(props: SelectProps) {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-
-      <Presence>
-        <Show when={isOpen()}>
-          <div class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg">
-            <For each={props.options}>
+      <Show when={isOpen()}>
+        <div class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg">
+          <Show when={initialOptions.latest?.length}>
+            <For each={initialOptions.latest}>
               {(option, index) => {
                 const selected = option.value === selectedOption()?.value;
                 const hasOptionGenerator = props.optionGenerator !== undefined;
@@ -84,9 +105,9 @@ export function Select(props: SelectProps) {
                 );
               }}
             </For>
-          </div>
-        </Show>
-      </Presence>
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 }

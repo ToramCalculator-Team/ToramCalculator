@@ -45,59 +45,74 @@ import {
   Show,
 } from "solid-js";
 
-// label用于显示，value用于存储
-interface AutocompleteOption {
-  label: string;
-  value: string;
+interface AutocompleteProps<T extends Record<string, unknown>>
+  extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  id: string;
+  initialValue: T;
+  setValue: (value: T) => void;
+  datasFetcher: () => Promise<T[]>;
+  displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
+  valueField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
 }
 
-interface AutocompleteProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
-  displayValue?: string;
-  value: string;
-  setValue: (value: string) => void;
-  optionsFetcher: (search: string) => Promise<AutocompleteOption[]>;
-}
-
-export function Autocomplete(props: AutocompleteProps) {
+export function Autocomplete<T extends Record<string, unknown>>(props: AutocompleteProps<T>) {
   const [optionsIsOpen, setOptionsIsOpen] = createSignal(false);
-  const [optionsIsLoading, setOptionsIsLoading] = createSignal(false);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
   const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
   const [isSelecting, setIsSelecting] = createSignal(false);
+  const [isSelected, setIsSelected] = createSignal(true);
   const [displayValue, setDisplayValue] = createSignal("");
   // 用于存储输入框值，输入框内容变化时，会重新获取options
   const [searchValue, setSearchValue] = createSignal("");
-  const [options, { refetch }] = createResource(searchValue, props.optionsFetcher);
+  // 所有可选项
+  const [options, setOptions] = createSignal<T[]>([]);
+  // 根据输入框内容过滤后的可选项
+  const filteredOptions = createMemo(() => {
+    const visibleOptions = options();
+    if (visibleOptions) {
+      return visibleOptions.filter((option) => (option[props.displayField] as string).includes(searchValue()));
+    }
+    return [];
+  });
 
   // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
   const handleInput = async (value: string) => {
+    // 如果正在选择，则不进行任何操作
     if (isSelecting()) return;
+    // 设置已选择状态
+    setIsSelected(false);
+    // 设置搜索值
     setSearchValue(value);
+    // 更新显示值
+    setDisplayValue(value);
+    // 打开下拉框
     setOptionsIsOpen(true);
   };
 
-  const handleSelect = (option: AutocompleteOption) => {
+  const handleSelect = (option: T) => {
+    // 设置正在选择状态，防止在选择期间输入框内容变化引起搜索
     setIsSelecting(true);
-    props.setValue?.(option.value);
-    setDisplayValue(option.label);
+    // 设置显示值
+    setDisplayValue(option[props.displayField] as string);
+    // 调用父组件的setValue方法，更新表单的值
+    props.setValue(option);
+    // 关闭下拉框
     setOptionsIsOpen(false);
+    // 设置已选择状态
+    setIsSelected(true);
+    // 设置正在选择状态结束
     setIsSelecting(false);
   };
 
   // 处理初始值显示
   createEffect(async () => {
-    if (props.value) {
-      const currentOptions = options();
-      if (!currentOptions) {
-        // 如果没有缓存的选项，获取一次初始选项列表
-        const initialOptions = await props.optionsFetcher("");
-        const option = initialOptions.find((option) => option.value === props.value);
-        setDisplayValue(option?.label ?? "");
-      } else {
-        // 如果有缓存的选项，直接查找对应的label
-        const option = currentOptions.find((option) => option.value === props.value);
-        setDisplayValue(option?.label ?? "");
-      }
+    const initialOptions = await props.datasFetcher();
+    setOptions(initialOptions);
+    const option = options().find(
+      (option) => String(option[props.valueField]) === props.initialValue[props.valueField],
+    );
+    if (option) {
+      setDisplayValue(String(option[props.displayField]));
     }
   });
 
@@ -123,34 +138,34 @@ export function Autocomplete(props: AutocompleteProps) {
   return (
     <div class="relative w-full">
       <input
-        {...Object.fromEntries(Object.entries(props).filter(([key]) => !["onChange", "optionsFetcher"].includes(key)))}
+        {...props}
+        id={props.id}
         value={displayValue()}
         onInput={(e) => handleInput(e.target.value)}
         ref={setInputRef}
-        class={`text-accent-color bg-area-color w-full rounded p-3`}
+        autocomplete="off"
+        class={`text-accent-color bg-area-color w-full rounded p-3 ${isSelected() ? "" : "outline-brand-color-2nd!"}`}
       />
-      <Show when={optionsIsOpen() && inputRef()?.value}>
+      <Show when={optionsIsOpen()}>
         <div
           ref={setDropdownRef}
           class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 shadow-lg"
         >
-          <Show when={!optionsIsLoading()} fallback={<div class="px-4 py-2 text-sm text-gray-500">加载中...</div>}>
-            <Show when={options()} fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}>
-              <For each={options()}>
-                {(option) => (
-                  <button
-                    class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSelect(option);
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                )}
-              </For>
-            </Show>
+          <Show when={options()} fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}>
+            <For each={filteredOptions()}>
+              {(option) => (
+                <button
+                  class="w-full px-4 py-2 text-left hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelect(option);
+                  }}
+                >
+                  {option[props.displayField] as string }
+                </button>
+              )}
+            </For>
           </Show>
         </div>
       </Show>

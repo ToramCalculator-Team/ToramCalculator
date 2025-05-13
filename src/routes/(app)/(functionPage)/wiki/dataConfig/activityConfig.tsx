@@ -1,24 +1,36 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { findActivityById, findActivities, Activity, createActivity } from "~/repositories/activity";
+import { createActivity, findActivityById, findActivities, Activity } from "~/repositories/activity";
+import { fieldInfo } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { activitySchema } from "~/../db/zod";
-import { activity } from "~/../db/kysely/kyesely";
-import { Dic, EnumFieldDetail } from "~/locales/type";
+import { activitySchema, zoneSchema } from "~/../db/zod";
+import { activity, DB, zone } from "~/../db/kysely/kyesely";
+import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
-import { CardSection } from "~/components/module/cardSection";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
+import { CardSection } from "~/components/module/cardSection";
+import { z } from "zod";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { Button } from "~/components/controls/button";
 
-export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
-  activity,
-  Activity["Card"],
-  {
-    zones: string[];
-    recipes: string[];
-  }
-> => ({
+type ActivityWithRelated = activity & {
+  zones: zone[];
+};
+
+const ActivityWithRelatedSchema = z.object({
+  ...activitySchema.shape,
+  zones: z.array(zoneSchema),
+});
+
+export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<ActivityWithRelated> => ({
+  defaultData: {
+    ...defaultData.activity,
+    zones: [],
+  },
   table: {
     columnDef: [
       {
@@ -32,14 +44,12 @@ export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
         size: 220,
       },
     ],
-    dataFetcher: findActivities,
+    hiddenColumns: ["id"],
     defaultSort: { id: "name", desc: false },
-    hiddenColumnDef: ["id"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<activity, keyof activity> }) => {
+    tdGenerator: (props: { cell: Cell<ActivityWithRelated, keyof ActivityWithRelated> }) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof activity;
+      const columnId = props.cell.column.id as keyof ActivityWithRelated;
       switch (columnId) {
         default:
           setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
@@ -57,78 +67,117 @@ export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
             when={true}
             fallback={tdContent()}
           >
-            {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof activity>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
+            {props.cell.getValue()}
           </Show>
         </td>
       );
     },
   },
-  form: {
-    data: defaultData.activity,
-    extraData: {
-      zones: {
-        defaultValue: [],
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const zones = await db
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("activity")
+      .where("id", "=", id)
+      .selectAll("activity")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
             .selectFrom("zone")
-            .select(["id", "name"])
-            .where("name", "ilike", `%${name}%`)
-            .execute();
-          return zones.map((zone) => ({
-            label: zone.name,
-            value: zone.id,
-          }));
-        },
-        dictionary: {
-          key: "zones",
-          tableFieldDescription: "期间限定开放的区域",
-          formFieldDescription: "期间限定开放的区域",
-        },
-      },
-      recipes: {
-        defaultValue: [],
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const recipes = await db
-            .selectFrom("recipe")
-            .innerJoin("item", "recipe.itemId", "item.id")
-            .where("item.name", "ilike", `%${name}%`)
-            .select(["item.name", "recipe.id"])
-            .execute();
-          return recipes.map((recipe) => ({
-            label: recipe.name,
-            value: recipe.id,
-          }));
-        },
-        dictionary: {
-          key: "recipes",
-          tableFieldDescription: "期间限定的配方  ",
-          formFieldDescription: "期间限定的配方",
-        },
+            .where("zone.activityId", "=", id)
+            .selectAll("zone"),
+        ).as("zones"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("activity")
+      .selectAll("activity")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("zone")
+            .whereRef("zone.activityId", "=", "activity.id")
+            .selectAll("zone"),
+        ).as("zones"),
+      ])
+      .execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: ActivityWithRelatedSchema,
+  form: {
+    hiddenFields: ["id"],
+    fieldGenerators: {
+      zones: (key, field) => {
+        return (
+          <Input
+            title={dic.db.zone.selfName}
+            description={dic.db.zone.description}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const initialValue = _item as zone;
+                  return (
+                    <div class="Filed flex items-center gap-2">
+                      <label for={field().name + index()} class="flex-1">
+                        <Autocomplete
+                          id={field().name + index()}
+                          initialValue={initialValue}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = value;
+                            field().setValue(newArray);
+                          }}
+                          datasFetcher={async () => {
+                            const db = await getDB();
+                            const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                            return zones;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </label>
+                      <Button
+                        onClick={(e) => {
+                          field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
+                          e.stopPropagation();
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={(e) => {
+                  field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
       },
     },
-    hiddenFields: ["id"],
-    dataSchema: activitySchema,
-    dictionary: dic,
-    fieldGenerators: {},
     onSubmit: async (data) => {
       const db = await getDB();
       const activity = await db.transaction().execute(async (trx) => {
-        const { zones, recipes, ...rest } = data;
+        const { zones, ...rest } = data;
         const activity = await createActivity(trx, {
           ...rest,
         });
         if (zones.length > 0) {
-          for (const zoneId of zones) {
-            await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zoneId).execute();
-          }
-        }
-        if (recipes.length > 0) {
-          for (const recipeId of recipes) {
-            await trx.updateTable("recipe").set({ activityId: activity.id }).where("id", "=", recipeId).execute();
+          for (const zone of zones) {
+            await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zone.id).execute();
           }
         }
         return activity;
@@ -136,30 +185,38 @@ export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
     },
   },
   card: {
-    dataFetcher: findActivityById,
-    cardRender: (data, appendCardTypeAndIds) => {
-      const [zoneData] = createResource(data.id, async (activityId) => {
-        const db = await getDB();
-        return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
-      });
-      const [recipeData] = createResource(data.id, async (activityId) => {
+    cardRender: (
+      data: ActivityWithRelated,
+      appendCardTypeAndIds: (
+        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
+      ) => void,
+    ) => {
+      const [zonesData] = createResource(data.id, async (activityId) => {
         const db = await getDB();
         return await db
-          .selectFrom("recipe")
-          .innerJoin("item", "recipe.itemId", "item.id")
-          .where("recipe.activityId", "=", activityId)
-          .selectAll("recipe")
-          .select("item.name as itemName")
+          .selectFrom("zone")
+          .where("zone.activityId", "=", activityId)
+          .selectAll("zone")
           .execute();
       });
 
       return (
         <>
-          <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<Activity["Card"]>({
+          {DBDataRender<ActivityWithRelated>({
             data,
-            dictionary: dic,
-            dataSchema: activitySchema,
+            dictionary: {
+              ...dic.db.activity,
+              fields: {
+                ...dic.db.activity.fields,
+                zones: {
+                  key: "zones",
+                  ...dic.db.zone.fields,
+                  tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
+                  formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
+                },
+              },
+            },
+            dataSchema: ActivityWithRelatedSchema,
             hiddenFields: ["id"],
             fieldGroupMap: {
               基本信息: ["name"],
@@ -167,23 +224,12 @@ export const createActivityDataConfig = (dic: Dic<activity>): dataDisplayConfig<
           })}
 
           <CardSection
-            title={dic.cardFields?.zone ?? "活动区域"}
-            data={zoneData.latest}
+            title={"包含的" + dic.db.zone.selfName}
+            data={zonesData.latest}
             renderItem={(zone) => {
               return {
                 label: zone.name,
                 onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
-              };
-            }}
-          />
-
-          <CardSection
-            title={dic.cardFields?.recipes ?? "活动配方"}
-            data={recipeData.latest}
-            renderItem={(recipe) => {
-              return {
-                label: recipe.itemName,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "recipe", id: recipe.id }]),
               };
             }}
           />

@@ -4,21 +4,104 @@ import { getCommonPinningStyles } from "~/lib/table";
 import { createZone, findZoneById, findZones, Zone } from "~/repositories/zone";
 import { fieldInfo } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { zoneSchema } from "~/../db/zod";
-import { DB, zone } from "~/../db/kysely/kyesely";
-import { Dic, EnumFieldDetail } from "~/locales/type";
+import { activitySchema, addressSchema, mobSchema, npcSchema, zoneSchema } from "~/../db/zod";
+import { activity, address, DB, mob, npc, zone } from "~/../db/kysely/kyesely";
+import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
+import { z } from "zod";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { Button } from "~/components/controls/button";
 
-export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zone["Card"], {
-  linkZones: string[];
-  mobs: string[];
-  npcs: string[];
-}> => ({
+type ZoneWithRelated = zone & {
+  mobs: mob[];
+  npcs: npc[];
+  linkZones: zone[];
+};
+
+const ZoneWithRelatedSchema = z.object({
+  ...zoneSchema.shape,
+  mobs: z.array(mobSchema),
+  npcs: z.array(npcSchema),
+  linkZones: z.array(zoneSchema),
+});
+
+export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWithRelated> => ({
+  defaultData: {
+    ...defaultData.zone,
+    mobs: [],
+    npcs: [],
+    linkZones: [],
+  },
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("zone")
+      .where("id", "=", id)
+      .selectAll("zone")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("_linkZones")
+            .innerJoin("zone", "zone.id", "_linkZones.B")
+            .whereRef("_linkZones.A", "=", "zone.id")
+            .selectAll("zone"),
+        ).as("linkZones"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("_mobTozone")
+            .innerJoin("mob", "mob.id", "_mobTozone.B")
+            .whereRef("_mobTozone.A", "=", "zone.id")
+            .selectAll("mob"),
+        ).as("mobs"),
+        jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
+        jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
+          .$notNull()
+          .as("belongToAddress"),
+        jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
+          .$notNull()
+          .as("belongToActivity"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("zone")
+      .selectAll("zone")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("_linkZones")
+            .innerJoin("zone", "zone.id", "_linkZones.B")
+            .whereRef("_linkZones.A", "=", "zone.id")
+            .selectAll("zone"),
+        ).as("linkZones"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("_mobTozone")
+            .innerJoin("mob", "mob.id", "_mobTozone.B")
+            .whereRef("_mobTozone.A", "=", "zone.id")
+            .selectAll("mob"),
+        ).as("mobs"),
+        jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
+        jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
+          .$notNull()
+          .as("belongToAddress"),
+        jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
+          .$notNull()
+          .as("belongToActivity"),
+      ])
+      .execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: ZoneWithRelatedSchema,
   table: {
     columnDef: [
       {
@@ -47,11 +130,9 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
         size: 160,
       },
     ],
-    dataFetcher: findZones,
     defaultSort: { id: "name", desc: false },
-    hiddenColumnDef: ["id"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<zone, keyof zone>; }) => {
+    hiddenColumns: ["id"],
+    tdGenerator: (props) => {
       const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
       let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
       const columnId = props.cell.column.id as keyof zone;
@@ -74,8 +155,8 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
             }
             fallback={tdContent()}
           >
-            {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof zone>).enumMap[props.cell.getValue()]
+            {"enumMap" in dic.db.zone.fields[columnId]
+              ? (dic.db.zone.fields[columnId] as EnumFieldDetail<keyof ZoneWithRelated>).enumMap[props.cell.getValue()]
               : props.cell.getValue()}
           </Show>
         </td>
@@ -83,121 +164,224 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
     },
   },
   form: {
-    data: defaultData.zone,
-    extraData: {
-      linkZones: {
-        defaultValue: [],
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const zones = await db
-            .selectFrom("zone")
-            .select(["id", "name"])
-            .where("name", "ilike", `%${name}%`)
-            .execute();
-          return zones.map((zone) => ({
-            label: zone.name,
-            value: zone.id,
-          }));
-        },
-        dictionary: {
-          key: "linkZone",
-          tableFieldDescription: "连接的区域",
-          formFieldDescription: "连接的区域",
-        },
-      },
-      mobs: {
-        defaultValue: [],
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const mobs = await db.selectFrom("mob").select(["id", "name"]).where("name", "ilike", `%${name}%`).execute();
-          return mobs.map((mob) => ({
-            label: mob.name,
-            value: mob.id,
-          }));
-        },
-        dictionary: {
-          key: "mobs",
-          tableFieldDescription: "出现的怪物",
-          formFieldDescription: "出现的怪物",
-        },
-      },
-      npcs: {
-        defaultValue: [],
-        optionsFetcher: async (name) => {
-          const db = await getDB();
-          const npcs = await db.selectFrom("npc").select(["id", "name"]).where("name", "ilike", `%${name}%`).execute();
-          return npcs.map((npc) => ({
-            label: npc.name,
-            value: npc.id,
-          }));
-        },
-        dictionary: {
-          key: "npcs",
-          tableFieldDescription: "出现的NPC",
-          formFieldDescription: "出现的NPC",
-        },
-      },
-    },
     hiddenFields: ["id"],
-    dataSchema: zoneSchema,
-    dictionary: dic,
     fieldGenerators: {
-      addressId: (key, field) => {
+      mobs: (key, field) => {
         return (
           <Input
-            title={dic.fields[key].key}
-            description={dic.fields[key].formFieldDescription}
+            title={dic.db.mob.selfName}
+            description={dic.db.mob.description}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
-            <Autocomplete
-              value={field().state.value}
-              setValue={(id) => {
-                field().setValue(id);
-              }}
-              optionsFetcher={async (search) => {
-                const db = await getDB();
-                const result = await db
-                  .selectFrom("address")
-                  .select(["id", "name"])
-                  .where("name", "ilike", `%${search}%`)
-                  .limit(50)
-                  .execute();
-                return result.map((item) => ({
-                  label: item.name,
-                  value: item.id,
-                }));
-              }}
-            />
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const initialValue = _item as mob;
+                  return (
+                    <div class="Filed flex items-center gap-2">
+                      <label for={field().name + index()} class="flex-1">
+                        <Autocomplete
+                          id={field().name + index()}
+                          initialValue={initialValue}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = value;
+                            field().setValue(newArray);
+                          }}
+                          datasFetcher={async () => {
+                            const db = await getDB();
+                            const mobs = await db.selectFrom("mob").selectAll("mob").execute();
+                            return mobs;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </label>
+                      <Button
+                        onClick={(e) => {
+                          field().setValue((prev: mob[]) => prev.filter((_, i) => i !== index()));
+                          e.stopPropagation();
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={(e) => {
+                  field().setValue((prev: mob[]) => [...prev, defaultData.mob]);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
+      },
+      npcs: (key, field) => {
+        return (
+          <Input
+            title={dic.db.npc.selfName}
+            description={dic.db.npc.description}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const initialValue = _item as npc;
+                  return (
+                    <div class="Filed flex items-center gap-2">
+                      <label for={field().name + index()} class="flex-1">
+                        <Autocomplete
+                          id={field().name + index()}
+                          initialValue={initialValue}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = value;
+                            field().setValue(newArray);
+                          }}
+                          datasFetcher={async () => {
+                            const db = await getDB();
+                            const npcs = await db.selectFrom("npc").selectAll("npc").execute();
+                            return npcs;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </label>
+                      <Button
+                        onClick={(e) => {
+                          field().setValue((prev: npc[]) => prev.filter((_, i) => i !== index()));
+                          e.stopPropagation();
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={(e) => {
+                  field().setValue((prev: npc[]) => [...prev, defaultData.npc]);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
+          </Input>
+        );
+      },
+      linkZones: (key, field) => {
+        return (
+          <Input
+            title={dic.db.zone.selfName}
+            description={dic.db.zone.description}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <div class="ArrayBox flex w-full flex-col gap-2">
+              <For each={field().state.value}>
+                {(_item, index) => {
+                  const initialValue = _item as zone;
+                  return (
+                    <div class="Filed flex items-center gap-2">
+                      <label for={field().name + index()} class="flex-1">
+                        <Autocomplete
+                          id={field().name + index()}
+                          initialValue={initialValue}
+                          setValue={(value) => {
+                            const newArray = [...field().state.value];
+                            newArray[index()] = value;
+                            field().setValue(newArray);
+                          }}
+                          datasFetcher={async () => {
+                            const db = await getDB();
+                            const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                            return zones;
+                          }}
+                          displayField="name"
+                          valueField="id"
+                        />
+                      </label>
+                      <Button
+                        onClick={(e) => {
+                          field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
+                          e.stopPropagation();
+                        }}
+                      >
+                        -
+                      </Button>
+                    </div>
+                  );
+                }}
+              </For>
+              <Button
+                onClick={(e) => {
+                  field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
+                }}
+                class="w-full"
+              >
+                +
+              </Button>
+            </div>
           </Input>
         );
       },
       activityId: (key, field) => {
+        const initialValue = field().state.value;
         return (
           <Input
-            title={dic.fields[key].key}
-            description={dic.fields[key].formFieldDescription}
+            title={dic.db.zone.fields[key].key}
+            description={dic.db.zone.fields[key].formFieldDescription}
             state={fieldInfo(field())}
             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
           >
             <Autocomplete
-              value={field().state.value}
-              setValue={(id) => {
-                field().setValue(id);
+              id={field().name}
+              initialValue={initialValue}
+              setValue={(value) => {
+                field().setValue(value.id);
               }}
-              optionsFetcher={async (search) => {
+              datasFetcher={async () => {
                 const db = await getDB();
-                const result = await db
-                  .selectFrom("activity")
-                  .select(["id", "name"])
-                  .where("name", "ilike", `%${search}%`)
-                  .limit(50)
-                  .execute();
-                return result.map((item) => ({
-                  label: item.name,
-                  value: item.id,
-                }));
+                const activities = await db.selectFrom("activity").selectAll("activity").execute();
+                return activities;
               }}
+              displayField="name"
+              valueField="id"
+            />
+          </Input>
+        );
+      },
+      addressId: (key, field) => {
+        const initialValue = field().state.value;
+        return (
+          <Input
+            title={dic.db.zone.fields[key].key}
+            description={dic.db.zone.fields[key].formFieldDescription}
+            state={fieldInfo(field())}
+            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+          >
+            <Autocomplete
+              id={key}
+              initialValue={initialValue}
+              setValue={(value) => {
+                field().setValue(value.id);
+              }}
+              datasFetcher={async () => {
+                const db = await getDB();
+                const addresses = await db.selectFrom("address").selectAll("address").execute();
+                return addresses;
+              }}
+              displayField="name"
+              valueField="id"
             />
           </Input>
         );
@@ -212,18 +396,18 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
           ...rest,
         });
         if (linkZones.length > 0) {
-          for (const linkedZoneId of linkZones) {
-            await trx.insertInto("_linkZones").values({ A: zone.id, B: linkedZoneId }).execute();
+          for (const linkedZone of linkZones) {
+            await trx.insertInto("_linkZones").values({ A: zone.id, B: linkedZone.id }).execute();
           }
         }
         if (mobs.length > 0) {
-          for (const mobId of mobs) {
-            await trx.insertInto("_mobTozone").values({ A: mobId, B: zone.id }).execute();
+          for (const mob of mobs) {
+            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
           }
         }
         if (npcs.length > 0) {
-          for (const npcId of npcs) {
-            await trx.updateTable("npc").set({ zoneId: zone.id }).where("id", "=", npcId).execute();
+          for (const npc of npcs) {
+            await trx.updateTable("npc").set({ zoneId: zone.id }).where("id", "=", npc.id).execute();
           }
         }
         return zone;
@@ -231,8 +415,12 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
     },
   },
   card: {
-    dataFetcher: findZoneById,
-    cardRender: (data: zone, appendCardTypeAndIds: (updater: (prev: { type: keyof DB; id: string; }[]) => { type: keyof DB; id: string; }[]) => void) => {
+    cardRender: (
+      data: ZoneWithRelated,
+      appendCardTypeAndIds: (
+        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
+      ) => void,
+    ) => {
       const [mobData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
         return await db
@@ -263,7 +451,6 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
               .selectAll("zone"),
           )
           .execute();
-        console.log("linkZoneData", res);
         return res;
       });
 
@@ -280,10 +467,33 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
       return (
         <>
           <div class="ZoneImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<Zone["Card"]>({
+          {DBDataRender<ZoneWithRelated>({
             data,
-            dictionary: dic,
-            dataSchema: zoneSchema,
+            dictionary: {
+              ...dic.db.zone,
+              fields: {
+                ...dic.db.zone.fields,
+                linkZones: {
+                  key: "linkZones",
+                  ...dic.db.zone.fields,
+                  tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
+                  formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
+                },
+                mobs: {
+                  key: "mobs",
+                  ...dic.db.mob.fields,
+                  tableFieldDescription: dic.db.mob.fields.name.tableFieldDescription,
+                  formFieldDescription: dic.db.mob.fields.name.formFieldDescription,
+                },
+                npcs: {
+                  key: "npcs",
+                  ...dic.db.npc.fields,
+                  tableFieldDescription: dic.db.npc.fields.name.tableFieldDescription,
+                  formFieldDescription: dic.db.npc.fields.name.formFieldDescription,
+                },
+              },
+            },
+            dataSchema: ZoneWithRelatedSchema,
             hiddenFields: ["id", "activityId", "addressId"],
             fieldGroupMap: {
               基本信息: ["name", "rewardNodes"],
@@ -291,7 +501,7 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
           })}
 
           <CardSection
-            title={dic.cardFields?.mobs ?? "出现的怪物"}
+            title={"包含的" + dic.db.mob.selfName}
             data={mobData.latest}
             renderItem={(mob) => {
               return {
@@ -302,7 +512,7 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
           />
 
           <CardSection
-            title={dic.cardFields?.npcs ?? "出现的NPC"}
+            title={"包含的" + dic.db.npc.selfName}
             data={npcsData.latest}
             renderItem={(npc) => {
               return {
@@ -313,7 +523,7 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
           />
 
           <CardSection
-            title={dic.cardFields?.linkZone ?? "连接的区域"}
+            title={"连接的" + dic.db.zone.selfName}
             data={linkZonesData.latest}
             renderItem={(zone) => {
               return {
@@ -324,7 +534,7 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
           />
 
           <CardSection
-            title={dic.cardFields?.address ?? "所属地址"}
+            title={"所属的" + dic.db.address.selfName}
             data={addressData.latest}
             renderItem={(address) => {
               return {
@@ -336,7 +546,7 @@ export const createZoneDataConfig = (dic: Dic<zone>): dataDisplayConfig<zone, Zo
 
           <Show when={activityData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.activity ?? "所属活动"}
+              title={"所属的" + dic.db.activity.selfName}
               data={activityData.latest}
               renderItem={(activity) => {
                 return {

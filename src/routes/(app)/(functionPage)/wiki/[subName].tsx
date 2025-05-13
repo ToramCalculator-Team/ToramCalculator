@@ -132,7 +132,7 @@ export default function WikiSubPage() {
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
   const [tableName, setTableName] = createSignal<keyof DB>();
-  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any, any>>();
+  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any>>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
@@ -148,18 +148,18 @@ export default function WikiSubPage() {
   // card
   const [cardTypeAndIds, setCardTypeAndIds] = createSignal<{ type: keyof DB; id: string }[]>([]);
   const [cardGroupIsOpen, setCardGroupIsOpen] = createSignal(false);
-  const [cachedCardDatas, setCachedCardDatas] = createSignal<object[]>([]);
+  const [cachedCardDatas, setCachedCardDatas] = createSignal<Record<string, unknown>[]>([]);
 
   // 获取新数据并更新缓存
   createResource(
     () => cardTypeAndIds().slice(cachedCardDatas().length),
     async (newItems) => {
       if (newItems.length === 0) return;
-      const results: object[] = [];
+      const results: Record<string, unknown>[] = [];
       for (const { type, id } of newItems) {
         const config = DBDataConfig(dictionary())[type];
-        if (config?.card?.dataFetcher) {
-          const result = await config.card.dataFetcher(id);
+        if (config?.dataFetcher) {
+          const result = await config.dataFetcher(id);
           results.push(result);
         }
       }
@@ -435,13 +435,13 @@ export default function WikiSubPage() {
                     />
                   </div>
                   {VirtualTable({
-                    dataFetcher: validDataConfig().table.dataFetcher,
+                    dataFetcher: validDataConfig().datasFetcher,
                     columnsDef: validDataConfig().table.columnDef,
-                    hiddenColumnDef: validDataConfig().table.hiddenColumnDef,
+                    hiddenColumnDef: validDataConfig().table.hiddenColumns,
                     tdGenerator: validDataConfig().table.tdGenerator,
                     defaultSort: validDataConfig().table.defaultSort,
                     globalFilterStr: tableGlobalFilterStr,
-                    dictionary: validDataConfig().table.dictionary,
+                    dictionary: dictionary().db[validTableName()],
                     columnVisibility: tableColumnVisibility(),
                     onColumnVisibilityChange: (updater) => {
                       if (typeof updater === "function") {
@@ -540,13 +540,12 @@ export default function WikiSubPage() {
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
                   {Form({
-                    data: validDataConfig().form.data,
-                    extraData: validDataConfig().form.extraData,
-                    dataSchema: validDataConfig().form.dataSchema,
+                    data: validDataConfig().defaultData,
+                    dataSchema: validDataConfig().dataSchema,
                     hiddenFields: validDataConfig().form.hiddenFields,
                     fieldGenerators: validDataConfig().form.fieldGenerators,
                     title: dictionary().db[validTableName()].selfName + ":" + dictionary().ui.actions.upload,
-                    dictionary: validDataConfig().form.dictionary,
+                    dictionary: dictionary().db[validTableName()],
                     onSubmit: async (data) => {
                       await validDataConfig().form.onSubmit?.(data);
                       const refetch = tableRefetch();

@@ -1,4 +1,4 @@
-import { AnyFieldApi, createForm, DeepKeys } from "@tanstack/solid-form";
+import { AnyFieldApi, createForm, DeepKeys, DeepValue, FormApi } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
 import { createMemo, For, JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodSchema } from "zod";
@@ -6,11 +6,10 @@ import { store, setStore } from "~/store";
 import { Button } from "../controls/button";
 import { Toggle } from "../controls/toggle";
 import { NodeEditor } from "./nodeEditor";
-import { Dic, FieldDetail } from "~/locales/type";
-import { MediaContext } from "~/contexts/Media";
+import { Dic, EnumFieldDetail, FieldDetail } from "~/locales/type";
 import { getDictionary } from "~/locales/i18n";
-import { ExtraData } from "~/routes/(app)/(functionPage)/wiki/dataConfig/dataConfig";
 import { Autocomplete } from "../controls/autoComplete";
+import { EnumSelect } from "../controls/enumSelect";
 
 const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
   if (schema === undefined || schema == null) {
@@ -40,30 +39,30 @@ function fieldInfo(field: AnyFieldApi): string {
   return "";
 }
 
-export const Form = <T extends Record<string, unknown>, E extends Record<string, string[]>>(props: {
+export const Form = <T extends Record<string, unknown>>(props: {
   title: string;
   data: T;
-  extraData?: ExtraData<E>;
   dictionary: Dic<T>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodSchema }>;
   hiddenFields: Array<keyof T>;
-  fieldGenerators: Partial<{ [K in keyof T]: (key: K, field: () => AnyFieldApi, dictionary: Dic<T>) => JSX.Element }>;
-  onChange?: (data: T & E) => void;
-  onSubmit?: (data: T & E) => Promise<void>;
+  fieldGenerators: Partial<{
+    [K in keyof T]: (
+      key: K,
+      field: () => AnyFieldApi,
+      getFormValue: (key: keyof T) => unknown,
+      dictionary: Dic<T>,
+    ) => JSX.Element;
+  }>;
+  onChange?: (data: T) => void;
+  onSubmit?: (data: T) => Promise<void>;
 }) => {
-  const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   const form = createForm(() => ({
-    defaultValues: {
-      ...props.data,
-      ...(props.extraData
-        ? Object.fromEntries(Object.entries(props.extraData).map(([key, config]) => [key, config.defaultValue]))
-        : {}),
-    } as T & E,
+    defaultValues: props.data,
     onSubmit: async ({ value }) => {
-      const data = value as T & E;
+      const data = value;
       if (props.onSubmit) {
         props.onSubmit(data);
       } else {
@@ -71,8 +70,11 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
         console.log("value:", value);
       }
     },
-    // validatorAdapter: zodValidator,
   }));
+
+  const getFormValue = (key: keyof T) => {
+    return form.getFieldValue(key as DeepKeys<T>);
+  };
 
   onMount(() => {
     console.log("form mounted");
@@ -93,7 +95,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
           e.stopPropagation();
           form.handleSubmit();
         }}
-        class="Form bg-area-color flex flex-col gap-3 portrait:rounded-b-none rounded p-3"
+        class="Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none"
       >
         <For each={Object.entries(props.data)}>
           {(_field, index) => {
@@ -122,7 +124,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                     {(field) => {
                       const enumValue = zodValue as ZodEnum<any>;
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -130,29 +132,16 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
-                          <div class="EnumsBox flex flex-wrap gap-1">
-                            <For each={enumValue.options}>
-                              {(option) => {
-                                return (
-                                  <label
-                                    class={`flex cursor-pointer gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${field().state.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
-                                  >
-                                    {option}
-                                    <input
-                                      id={field().name + option}
-                                      name={field().name}
-                                      value={option}
-                                      checked={field().state.value === option}
-                                      type="radio"
-                                      onBlur={field().handleBlur}
-                                      onChange={(e) => field().handleChange(e.target.value)}
-                                      class="mt-0.5 rounded px-4 py-2"
-                                    />
-                                  </label>
-                                );
-                              }}
-                            </For>
-                          </div>
+                          <EnumSelect
+                            value={field().state.value as string}
+                            setValue={(value) => field().setValue(value as DeepValue<T, DeepKeys<T>>)}
+                            options={enumValue.options}
+                            dic={(props.dictionary.fields[fieldKey] as EnumFieldDetail<string>).enumMap}
+                            field={{
+                              id: field().name,
+                              name: field().name,
+                            }}
+                          />
                         </Input>
                       );
                     }}
@@ -171,7 +160,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                   >
                     {(field) => {
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -182,7 +171,9 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                           name={field().name}
                           value={field().state.value as number}
                           onBlur={field().handleBlur}
-                          onChange={(e) => field().handleChange(parseFloat(e.target.value))}
+                          onChange={(e) =>
+                            field().handleChange(parseFloat(e.target.value) as DeepValue<T, DeepKeys<T>>)
+                          }
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         />
@@ -204,11 +195,11 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                       // 非关系字段出现数组时，基本上只可能是字符串数组，因此断言
                       const arrayValue = () => field().state.value as string[];
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
-                          title={props.dictionary.fields[fieldKey].key}
-                          description={props.dictionary.fields[fieldKey].formFieldDescription}
+                          title={fieldKey}
+                          description={""}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
@@ -271,7 +262,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                     {(field) => {
                       // const defaultFieldsetClass = "flex basis-1/2 flex-col gap-1 p-2 lg:basis-1/4";
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -284,14 +275,14 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                           onBlur={field().handleBlur}
                           onChange={(e) => {
                             const target = e.target;
-                            field().handleChange(target.value);
+                            field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
                           }}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                         >
                           <NodeEditor
                             data={field().state.value}
-                            setData={(data) => field().setValue(data)}
+                            setData={(data) => field().setValue(data as DeepValue<T, DeepKeys<T>>)}
                             state={true}
                             id={field().name}
                             class="h-[80vh] w-full"
@@ -314,7 +305,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                   >
                     {(field) => {
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -325,7 +316,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                           <Toggle
                             id={field().name}
                             onClick={() => {
-                              field().setValue(!field().state.value);
+                              field().setValue(!field().state.value as DeepValue<T, DeepKeys<T>>);
                             }}
                             onBlur={field().handleBlur}
                             name={field().name}
@@ -351,7 +342,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                     {(field) => {
                       // console.log("FieldKey:", fieldKey, props.dictionary.fields[fieldKey].key);
                       return fieldGenerator ? (
-                        fieldGenerator(fieldKey, field, props.dictionary)
+                        fieldGenerator(fieldKey, field, getFormValue, props.dictionary)
                       ) : (
                         <Input
                           title={props.dictionary.fields[fieldKey].key}
@@ -364,7 +355,7 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
                           onBlur={field().handleBlur}
                           onChange={(e) => {
                             const target = e.target;
-                            field().handleChange(target.value);
+                            field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
                           }}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
@@ -377,73 +368,6 @@ export const Form = <T extends Record<string, unknown>, E extends Record<string,
             }
           }}
         </For>
-        <Show when={props.extraData}>
-          {(extraData) => {
-            return (
-              <For each={Object.entries(extraData())}>
-                {(_field, index) => {
-                  const fieldKey = _field[0] as DeepKeys<E>;
-                  const fieldValue = _field[1] as ExtraData<E>[keyof E];
-                  const hasFieldGenerator = "fieldGenerator" in fieldValue;
-                  const fieldGenerator = hasFieldGenerator ? fieldValue.fieldGenerator : null;
-                  return (
-                    <form.Field name={fieldKey}>
-                      {(field) => {
-                        const arrayValue = () => field().state.value as string[];
-                        console.log("FieldKey:", fieldKey, arrayValue());
-                        return (
-                          <Input
-                            title={fieldValue.dictionary.key}
-                            description={fieldValue.dictionary.formFieldDescription}
-                            state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                          >
-                            <div class="ArrayBox flex w-full flex-col gap-2">
-                              <For each={arrayValue()}>
-                                {(item, index) => (
-                                  <div class="flex items-center gap-2">
-                                    <div class="flex-1">
-                                      <Autocomplete
-                                        value={item}
-                                        setValue={(id) => {
-                                          const newArray = [...arrayValue()];
-                                          newArray[index()] = id;
-                                          field().setValue(newArray);
-                                        }}
-                                        optionsFetcher={fieldValue.optionsFetcher}
-                                      />
-                                    </div>
-                                    <Button
-                                      onClick={() => {
-                                        const newArray = arrayValue().filter((_, i) => i !== index());
-                                        field().setValue(newArray as any);
-                                      }}
-                                    >
-                                      {dictionary().ui.actions.remove}
-                                    </Button>
-                                  </div>
-                                )}
-                              </For>
-                              <Button
-                                onClick={() => {
-                                  const newArray = [...arrayValue(), ""];
-                                  field().setValue(newArray as any);
-                                }}
-                                class="w-full"
-                              >
-                                {dictionary().ui.actions.add}
-                              </Button>
-                            </div>
-                          </Input>
-                        );
-                      }}
-                    </form.Field>
-                  );
-                }}
-              </For>
-            );
-          }}
-        </Show>
         <form.Subscribe
           selector={(state) => ({
             canSubmit: state.canSubmit,
