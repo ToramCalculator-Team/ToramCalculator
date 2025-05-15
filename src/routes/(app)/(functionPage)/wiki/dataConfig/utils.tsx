@@ -15,3 +15,15 @@ export const itemTypeToTableType = (itemType: ItemType) => {
   )[itemType];
   return tableType;
 };
+
+export const updateObjArrayItemKey = <T extends Record<string, any>>(
+  array: T[],
+  key: keyof T | null,
+  index: number,
+  value: T,
+) => {
+  if (key === null) {
+    return array.map((item, i) => (i === index ? { ...item, value } : item));
+  }
+  return array.map((item, i) => (i === index ? { ...item, [key]: value[key] } : item));
+};

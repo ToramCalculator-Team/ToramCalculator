@@ -1,10 +1,10 @@
 import { DB } from "~/../db/kysely/kyesely";
 import { createMobDataConfig } from "./mobDataConfig";
-import { AnyFieldApi } from "@tanstack/solid-form";
+import { AnyFieldApi, DeepKeys, DeepValue } from "@tanstack/solid-form";
 import { ColumnDef, Cell } from "@tanstack/solid-table";
 import { JSX } from "solid-js";
 import { ZodObject, ZodTypeAny } from "zod";
-import { dictionary } from "~/locales/type";
+import { Dic, dictionary } from "~/locales/type";
 import { createSkillDataConfig } from "./skillConfig";
 import { createAddressDataConfig } from "./addressConfig";
 import { createNpcDataConfig } from "./npcConfig";
@@ -18,6 +18,7 @@ import { createOptionDataConfig } from "./optionConfig";
 import { createSpecialDataConfig } from "./specialConfig";
 import { createWeaponDataConfig } from "./weaponConfig";
 import { createZoneDataConfig } from "./zoneConfig";
+import { SimplifiedFieldApi } from "../utils";
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
 export type dataDisplayConfig<T extends Record<string, unknown>> = {
@@ -28,18 +29,12 @@ export type dataDisplayConfig<T extends Record<string, unknown>> = {
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   table: {
     columnDef: Array<ColumnDef<T, unknown>>;
+    dic: Dic<T>;
     hiddenColumns: Array<keyof T>;
     defaultSort: { id: keyof T; desc: boolean };
-    tdGenerator: (props: { cell: Cell<T, keyof T> }) => JSX.Element;
+    tdGenerator: (props: { cell: Cell<T, keyof T>; dic: Dic<T> }) => JSX.Element;
   };
-  form: {
-    hiddenFields: Array<keyof T>;
-    fieldGenerators: Partial<{
-      [K in keyof T]: (key: K, field: () => AnyFieldApi, getFormValue: (key: keyof T) => unknown) => JSX.Element;
-    }>;
-    onChange?: (data: T) => void;
-    onSubmit?: (data: T) => void;
-  };
+  form: (dic: Dic<T>, handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
   card: {
     cardRender: (
       data: T,

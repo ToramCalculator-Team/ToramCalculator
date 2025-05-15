@@ -37,12 +37,13 @@ import { Dic } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
+import { LoadingBar } from "../loadingBar";
 
 export function VirtualTable<T extends Record<string, unknown>>(props: {
   dataFetcher: () => Promise<T[]>;
   columnsDef: ColumnDef<T>[];
   hiddenColumnDef: Array<keyof T>;
-  tdGenerator: (props: { cell: Cell<T, unknown>; dictionary: Dic<T> }) => JSX.Element;
+  tdGenerator: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
   defaultSort: { id: keyof T; desc: boolean };
   globalFilterStr: Accessor<string>;
   dictionary?: Dic<T>;
@@ -51,7 +52,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   onRefetch?: (refetch: () => void) => void;
 }) {
-  // console.log("VirtualTable", props);
+  console.log("VirtualTable", props);
   //   const start = performance.now();
   //   console.log("virtualTable start", start);
   const media = useContext(MediaContext);
@@ -206,11 +207,13 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                     const allVisible = table()?.getIsAllColumnsVisible() ?? false;
                     props.onColumnVisibilityChange?.((old) => {
                       const newVisibility = { ...old };
-                      table()?.getAllLeafColumns().forEach((col) => {
-                        if (!props.hiddenColumnDef.includes(col.id as keyof T)) {
-                          newVisibility[col.id] = !allVisible;
-                        }
-                      });
+                      table()
+                        ?.getAllLeafColumns()
+                        .forEach((col) => {
+                          if (!props.hiddenColumnDef.includes(col.id as keyof T)) {
+                            newVisibility[col.id] = !allVisible;
+                          }
+                        });
                       return newVisibility;
                     });
                   }}
@@ -303,7 +306,14 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
               )}
             </For>
           </thead>
-          <Show when={data.state === "ready"} fallback={<h1 class="animate-pulse p-3">......</h1>}>
+          <Show
+            when={data.state === "ready"}
+            fallback={
+              <div class="flex h-full w-full items-center justify-center">
+                <LoadingBar />
+              </div>
+            }
+          >
             <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBodyrelative`}>
               <For each={tableContainer().getVirtualItems()}>
                 {(virtualRow) => {
@@ -328,7 +338,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                       >
                         {(cell) => {
                           const tdContent = props.dictionary
-                            ? props.tdGenerator({ cell, dictionary: props.dictionary })
+                            ? props.tdGenerator({ cell, dic: props.dictionary })
                             : JSON.stringify(cell.getValue());
                           return tdContent;
                         }}

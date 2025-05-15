@@ -13,7 +13,7 @@ import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
 import { createItem, Item } from "~/repositories/item";
 import { omit, pick } from "lodash-es";
-import { itemTypeToTableType } from "./utils";
+import { itemTypeToTableType } from "./utils.tsx";
 
 export type optionWithItem = option & item
 export type OptionCard = Item["Card"] & OptEquip["Card"]

@@ -14,7 +14,7 @@ import { CardSection } from "~/components/module/cardSection";
 import { createItem, Item } from "~/repositories/item";
 import { Transaction } from "kysely";
 import { pick, omit } from "lodash-es";
-import { itemTypeToTableType } from "./utils";
+import { itemTypeToTableType } from "./utils.tsx";
 
 export type specialWithItem = special & item
 export type SpecialCard = Item["Card"] & SpeEquip["Card"]

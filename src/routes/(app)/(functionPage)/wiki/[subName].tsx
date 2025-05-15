@@ -441,7 +441,7 @@ export default function WikiSubPage() {
                     tdGenerator: validDataConfig().table.tdGenerator,
                     defaultSort: validDataConfig().table.defaultSort,
                     globalFilterStr: tableGlobalFilterStr,
-                    dictionary: dictionary().db[validTableName()],
+                    dictionary: validDataConfig().table.dic,
                     columnVisibility: tableColumnVisibility(),
                     onColumnVisibilityChange: (updater) => {
                       if (typeof updater === "function") {
@@ -539,19 +539,12 @@ export default function WikiSubPage() {
               </Presence>
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
-                  {Form({
-                    data: validDataConfig().defaultData,
-                    dataSchema: validDataConfig().dataSchema,
-                    hiddenFields: validDataConfig().form.hiddenFields,
-                    fieldGenerators: validDataConfig().form.fieldGenerators,
-                    title: dictionary().db[validTableName()].selfName + ":" + dictionary().ui.actions.upload,
-                    dictionary: dictionary().db[validTableName()],
-                    onSubmit: async (data) => {
-                      await validDataConfig().form.onSubmit?.(data);
-                      const refetch = tableRefetch();
-                      if (refetch) refetch();
-                      setFormSheetIsOpen(false);
-                    },
+                  {validDataConfig().form((table, id) => {
+                    const refetch = tableRefetch();
+                    if (refetch) refetch();
+                    setCardTypeAndIds((pre) => [...pre, { type: table, id }]);
+                    setCardGroupIsOpen(true);
+                    setFormSheetIsOpen(false);
                   })}
                 </Sheet>
               </Portal>

@@ -11,13 +11,14 @@ type SelectProps = {
   setValue: (value: string) => void;
   options?: SelectOption[];
   optionsFetcher?: (name: string) => Promise<SelectOption[]>;
-  optionGenerator?: (index: number, option: SelectOption, selected: boolean, onClick: () => void) => JSX.Element;
+  optionGenerator?: (option: SelectOption, selected: boolean, onClick: () => void) => JSX.Element;
   placeholder?: string;
   class?: string;
   disabled?: boolean;
 };
 
 export function Select(props: SelectProps) {
+  const hasOptionGenerator = props.optionGenerator !== undefined;
   const [isOpen, setIsOpen] = createSignal(false);
   const [selectedOption, setSelectedOption] = createSignal<SelectOption | undefined>(undefined);
 
@@ -35,7 +36,7 @@ export function Select(props: SelectProps) {
   // 当初始选项加载完成后，设置选中的选项
   createEffect(
     on(initialOptions, async (options) => {
-      console.log("options:====", options);
+      // console.log("options:====", options);
       if (options) {
         const option = options.find((opt) => opt.value === props.value);
         if (option) {
@@ -71,19 +72,35 @@ export function Select(props: SelectProps) {
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
-        class={`border-dividing-color bg-primary-color text-main-text-color flex w-full items-center justify-between rounded-md border-1 px-3 py-2 ${
+        class={`border-dividing-color bg-primary-color text-main-text-color flex w-full items-center justify-between rounded-md border-1 p-1 ${
           props.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         }`}
       >
-        <span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>
-        <svg
-          class={`h-4 w-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <div class="bg-area-color flex w-full items-center justify-between rounded-md h-12 px-2">
+          {hasOptionGenerator ? (
+            props.optionGenerator!(
+              selectedOption() ??
+                (initialOptions.latest
+                  ? initialOptions.latest[0]
+                  : {
+                      label: "请选择",
+                      value: "",
+                    }),
+              false,
+              () => handleSelect(selectedOption() ?? initialOptions.latest?.[0]!),
+            )
+          ) : (
+            <span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>
+          )}
+          <svg
+            class={`h-4 w-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </button>
       <Show when={isOpen()}>
         <div class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg">
@@ -91,17 +108,24 @@ export function Select(props: SelectProps) {
             <For each={initialOptions.latest}>
               {(option, index) => {
                 const selected = option.value === selectedOption()?.value;
-                const hasOptionGenerator = props.optionGenerator !== undefined;
                 const optionGenerator = hasOptionGenerator ? props.optionGenerator : undefined;
-                return optionGenerator ? (
-                  optionGenerator(index(), option, selected, () => handleSelect(option))
+                const optionItem = optionGenerator ? (
+                  optionGenerator(option, selected, () => handleSelect(option))
                 ) : (
                   <div
-                    class={`hover:bg-area-color cursor-pointer px-3 py-2 ${selected ? "bg-area-color" : ""}`}
+                    class={`flex items-center hover:bg-area-color cursor-pointer px-3 h-12 ${selected ? "bg-area-color" : ""}`}
                     onClick={(e) => handleSelect(option)}
                   >
                     {option.label}
                   </div>
+                );
+                return (
+                  <>
+                    <Show when={index() !== 0}>
+                      <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                    </Show>
+                    {optionItem}
+                  </>
                 );
               }}
             </For>

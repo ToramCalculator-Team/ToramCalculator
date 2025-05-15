@@ -15,7 +15,7 @@ import { CardSection } from "~/components/module/cardSection";
 import { pick, omit } from "lodash-es";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { fieldInfo } from "../utils";
-import { itemTypeToTableType } from "./utils";
+import { itemTypeToTableType } from "./utils.tsx";
 
 export type crystalWithItem = crystal & item;
 export type CrystalCard = Item["Card"] & Crystal["Card"];

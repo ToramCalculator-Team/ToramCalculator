@@ -172,9 +172,9 @@ export const defaultData: DB = {
     id: "",
     itemId: "",
     probability: 0,
+    breakRewardType: "None",
     relatedPartType: "A",
     relatedPartInfo: "",
-    breakRewardType: "None",
     dropById: "",
   },
   image: {
