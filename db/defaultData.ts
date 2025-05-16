@@ -350,8 +350,8 @@ export const defaultData: DB = {
   },
   recipe_ingredient: {
     id: "",
-    count: 0,
     type: "Metal",
+    count: 0,
     itemId: null,
     recipeId: "",
   },
