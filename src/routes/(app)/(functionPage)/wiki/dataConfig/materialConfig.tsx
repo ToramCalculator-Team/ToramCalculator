@@ -5,126 +5,52 @@ import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, materialSchema } from "~/../db/zod";
 import { DB, item, material } from "~/../db/kysely/kyesely";
-import { Dic, EnumFieldDetail } from "~/locales/type";
+import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { defaultData } from "~/../db/defaultData";
-import { createMaterial, findItemWithMaterialById, findMaterials, Material } from "~/repositories/material";
-import { createItem, findItems, Item } from "~/repositories/item";
+import { createMaterial } from "~/repositories/material";
+import { createItem } from "~/repositories/item";
 import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
-import { pick, omit } from "lodash-es";
-import { EnumSelect } from "~/components/controls/enumSelect";
-import { fieldInfo } from "../utils";
-import { itemTypeToTableType } from "./utils.tsx";
+import { fieldInfo, renderField } from "../utils";
+import pick from "lodash-es/pick";
+import omit from "lodash-es/omit";
+import { itemTypeToTableType } from "./utils";
+import { createForm, Field } from "@tanstack/solid-form";
+import { Input } from "~/components/controls/input";
+import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
+import { ElementType, MaterialType } from "../../../../../../db/kysely/enums";
+import * as Icon from "~/components/icon";
 
-export type materialWithItem = material & item;
-export type MaterialCard = Item["Card"] & Material["Card"];
+type materialWithItem = material & item;
 
 const materialWithItemSchema = z.object({
   ...itemSchema.shape,
   ...materialSchema.shape,
 });
 
-export const createMaterialDataConfig = (
-  dic: Dic<materialWithItem>,
-): dataDisplayConfig<materialWithItem, MaterialCard, {}> => ({
-  table: {
-    columnDef: [
-      {
-        accessorKey: "id",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "name",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemId",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemType",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "type",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "price",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "ptValue",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-    ],
-    dataFetcher: findMaterials,
-    defaultSort: { id: "itemType", desc: false },
-    hiddenColumnDef: ["id", "itemId"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<materialWithItem, keyof materialWithItem> }) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof materialWithItem;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show when={true} fallback={tdContent()}>
-            {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof materialWithItem>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+const defaultMaterialWithItem: materialWithItem = {
+  ...defaultData.item,
+  ...defaultData.material,
+};
+
+const MaterialWithItemWithRelatedDic = (dic: dictionary) => ({
+  ...dic.db.material,
+  fields: {
+    ...dic.db.material.fields,
+    ...dic.db.item.fields,
   },
-  form: {
-    data: {
-      ...defaultData.item,
-      ...defaultData.material,
-    },
-    extraData: {},
-    hiddenFields: ["id", "itemId", "itemType", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    dataSchema: materialWithItemSchema,
-    dictionary: dic,
-    fieldGenerators: {
-      type: (key, field) => {
-        const zodValue = materialSchema.shape[key];
-        return (
-          <EnumSelect
-            title={dic.fields[key].key}
-            description={dic.fields[key].formFieldDescription}
-            state={fieldInfo(field())}
-            options={zodValue.options}
-            field={field}
-            dic={dic.fields[key].enumMap}
-          />
-        );
-      },
-    },
-    onSubmit: async (data) => {
+});
+
+const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+  const form = createForm(() => ({
+    defaultValues: defaultMaterialWithItem,
+    onSubmit: async ({ value }) => {
       const db = await getDB();
       const material = await db.transaction().execute(async (trx) => {
-        const itemData = pick(data, Object.keys(defaultData.item) as (keyof item)[]);
-        const materialData = omit(data, Object.keys(defaultData.item) as (keyof item)[]);
+        const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+        const materialData = omit(value, Object.keys(defaultData.item) as (keyof item)[]);
         const item = await createItem(trx, {
           ...itemData,
           itemType: "Material",
@@ -135,10 +61,122 @@ export const createMaterialDataConfig = (
         });
         return material;
       });
+      handleSubmit("material", material.itemId);
     },
+  }));
+  return (
+    <div class="FormBox flex w-full flex-col">
+      <div class="Title flex items-center p-2 portrait:p-6">
+        <h1 class="FormTitle text-2xl font-black">{dic.db.material.selfName}</h1>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
+      >
+        <For each={Object.entries(defaultMaterialWithItem)}>
+          {(_field, index) => {
+            const fieldKey = _field[0] as keyof materialWithItem;
+            const fieldValue = _field[1];
+            switch (fieldKey) {
+              case "id":
+              case "itemId":
+              case "itemType":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
+                return null;
+              case "type":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: materialWithItemSchema.shape[fieldKey] }}
+                  >
+                    {(field) => (
+                      <Input
+                        title={dic.db.material.fields[fieldKey].key}
+                        description={dic.db.material.fields[fieldKey].formFieldDescription}
+                        state={fieldInfo(field())}
+                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      >
+                        <Select
+                          value={field().state.value}
+                          setValue={(value) => field().setValue(value as MaterialType)}
+                          options={Object.entries(dic.db.material.fields.type.enumMap).map(([key, value]) => ({
+                            label: value,
+                            value: key,
+                          }))}
+                        />
+                      </Input>
+                    )}
+                  </form.Field>
+                );
+              default:
+                return renderField<materialWithItem, keyof materialWithItem>(
+                  form,
+                  fieldKey,
+                  fieldValue,
+                  MaterialWithItemWithRelatedDic(dic),
+                  materialWithItemSchema,
+                );
+            }
+          }}
+        </For>
+        <form.Subscribe
+          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
+          children={(state) => (
+            <div class="flex items-center gap-1">
+              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
+                {state().isSubmitting ? "..." : dic.ui.actions.add}
+              </Button>
+            </div>
+          )}
+        />
+      </form>
+    </div>
+  );
+};
+
+export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<materialWithItem> => ({
+  defaultData: defaultMaterialWithItem,
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .where("id", "=", id)
+      .innerJoin("material", "material.itemId", "item.id")
+      .selectAll(["item", "material"])
+      .executeTakeFirstOrThrow();
   },
+  datasFetcher: async () => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .innerJoin("material", "material.itemId", "item.id")
+      .selectAll(["item", "material"])
+      .execute();
+  },
+  dictionary: dic,
+  dataSchema: materialWithItemSchema,
+  table: {
+    columnDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "type", cell: (info: any) => info.getValue(), size: 150 },
+      { accessorKey: "price", cell: (info: any) => info.getValue(), size: 100 },
+      { accessorKey: "ptValue", cell: (info: any) => info.getValue(), size: 100 },
+    ],
+    dic: MaterialWithItemWithRelatedDic(dic),
+    defaultSort: { id: "id", desc: true },
+    hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    tdGenerator: {},
+  },
+  form: (handleSubmit) => MaterialWithItemForm(dic, handleSubmit),
   card: {
-    dataFetcher: findItemWithMaterialById,
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
@@ -167,7 +205,7 @@ export const createMaterialDataConfig = (
           .execute();
       });
 
-      const [tasksData] = createResource(data.id, async (itemId) => {
+      const [rewardItemData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
           .selectFrom("task_reward")
@@ -197,15 +235,13 @@ export const createMaterialDataConfig = (
           .select(["task.id as taskId", "task.name as taskName"])
           .execute();
       });
-
-
       return (
         <>
-          {DBDataRender<MaterialCard>({
+          {DBDataRender<materialWithItem>({
             data,
-            dictionary: dic,
+            dictionary: MaterialWithItemWithRelatedDic(dic),
             dataSchema: materialWithItemSchema,
-            hiddenFields: ["id", "itemType", "createdByAccountId", "updatedByAccountId", "statisticId"],
+            hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "type", "price", "ptValue"],
               其他属性: ["details", "dataSources"],
@@ -214,7 +250,7 @@ export const createMaterialDataConfig = (
 
           <Show when={recipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.recipes ?? "合成配方"}
+              title={dic.db.recipe.selfName}
               data={recipeData.latest}
               renderItem={(recipe) => {
                 const type = recipe.type;
@@ -228,7 +264,11 @@ export const createMaterialDataConfig = (
                   case "Item":
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId }]),
+                      onClick: () =>
+                        appendCardTypeAndIds((prev) => [
+                          ...prev,
+                          { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
+                        ]),
                     };
                   default:
                     return {
@@ -241,7 +281,7 @@ export const createMaterialDataConfig = (
           </Show>
           <Show when={dropByData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.dropBy ?? "掉落于"}
+              title={"掉落于" + dic.db.mob.selfName}
               data={dropByData.latest}
               renderItem={(dropBy) => {
                 return {
@@ -251,33 +291,37 @@ export const createMaterialDataConfig = (
               }}
             />
           </Show>
-          <Show when={tasksData.latest?.length}>
+          <Show when={rewardItemData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.rewarditem ?? "可从这些任务获得"}
-              data={tasksData.latest}
-              renderItem={(task) => {
+              title={"可从这些" + dic.db.task.selfName + "获得"}
+              data={rewardItemData.latest}
+              renderItem={(rewardItem) => {
                 return {
-                  label: task.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.taskId }]),
+                  label: rewardItem.taskName,
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
                 };
               }}
             />
           </Show>
           <Show when={usedInRecipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedIn ?? "是这些道具的原料"}
+              title={"是这些" + dic.db.item.selfName + "的原料"}
               data={usedInRecipeData.latest}
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId }]),
+                  onClick: () =>
+                    appendCardTypeAndIds((prev) => [
+                      ...prev,
+                      { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
+                    ]),
                 };
               }}
             />
           </Show>
           <Show when={usedInTaskData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedInTask ?? "是这些任务的材料"}
+              title={"被用于" + dic.db.task.selfName}
               data={usedInTaskData.latest}
               renderItem={(usedInTask) => {
                 return {

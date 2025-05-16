@@ -8,8 +8,8 @@ import { DB, item, weapon } from "~/../db/kysely/kyesely";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { defaultData } from "~/../db/defaultData";
-import { createWeapon, findItemWithWeaponById, findWeapons, Weapon } from "~/repositories/weapon";
-import { createItem, findItems, Item } from "~/repositories/item";
+import { createWeapon } from "~/repositories/weapon";
+import { createItem } from "~/repositories/item";
 import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
 import { EnumSelect } from "~/components/controls/enumSelect";
@@ -24,8 +24,7 @@ import { Select } from "~/components/controls/select";
 import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";
 import * as Icon from "~/components/icon";
 
-export type weaponWithItem = weapon & item;
-export type WeaponCard = Item["Card"] & Weapon["Card"];
+type weaponWithItem = weapon & item;
 
 const weaponWithItemSchema = z.object({
   ...itemSchema.shape,
@@ -207,7 +206,6 @@ export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weapo
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-      { accessorKey: "itemType", cell: (info: any) => info.getValue(), size: 150 },
       { accessorKey: "baseAbi", cell: (info: any) => info.getValue(), size: 100 },
       { accessorKey: "stability", cell: (info: any) => info.getValue(), size: 100 },
       { accessorKey: "elementType", cell: (info: any) => info.getValue(), size: 150 },
@@ -215,31 +213,7 @@ export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weapo
     dic: WeaponWithItemWithRelatedDic(dic),
     defaultSort: { id: "baseAbi", desc: true },
     hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    tdGenerator: (props) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=."}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof weaponWithItem;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show when={true} fallback={tdContent()}>
-            {"enumMap" in props.dic.fields[columnId]
-              ? (props.dic.fields[columnId] as EnumFieldDetail<keyof weaponWithItem>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+    tdGenerator: {},
   },
   form: (handleSubmit) => WeaponWithItemForm(dic, handleSubmit),
   card: {
@@ -310,7 +284,8 @@ export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weapo
             hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "type", "baseAbi", "stability", "elementType"],
-              其他属性: ["modifiers", "details", "dataSources", "colorA", "colorB", "colorC"],
+              其他属性: ["modifiers", "details", "dataSources"],
+              颜色信息: ["colorA", "colorB", "colorC"],
             },
           })}
 

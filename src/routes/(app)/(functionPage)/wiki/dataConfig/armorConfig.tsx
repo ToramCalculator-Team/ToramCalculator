@@ -4,118 +4,53 @@ import { getCommonPinningStyles } from "~/lib/table";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, armorSchema } from "~/../db/zod";
-import { armor, DB, item } from "~/../db/kysely/kyesely";
-import { Dic, EnumFieldDetail } from "~/locales/type";
+import { DB, item, armor } from "~/../db/kysely/kyesely";
+import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { defaultData } from "~/../db/defaultData";
-import { findItemWithArmorById, findArmors, Armor, createArmor } from "~/repositories/armor";
-import { createItem, findItems, Item } from "~/repositories/item";
+import { createArmor } from "~/repositories/armor";
+import { createItem } from "~/repositories/item";
 import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
-import { pick, omit } from "lodash-es";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { fieldInfo, renderField } from "../utils";
+import pick from "lodash-es/pick";
+import omit from "lodash-es/omit";
+import { itemTypeToTableType } from "./utils";
+import { createForm, Field } from "@tanstack/solid-form";
+import { Input } from "~/components/controls/input";
+import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
+import * as Icon from "~/components/icon";
 
-export type armorWithItem = armor & item;
-export type ArmorCard = Item["Card"] & Armor["Card"];
+type armorWithItem = armor & item;
 
 const armorWithItemSchema = z.object({
   ...itemSchema.shape,
   ...armorSchema.shape,
 });
 
-export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfig<armorWithItem, ArmorCard, {}> => ({
-  table: {
-    columnDef: [
-      {
-        accessorKey: "id",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "name",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemId",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemType",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "baseDef",
-        cell: (info) => info.getValue(),
-        size: 100,
-      },
-      {
-        accessorKey: "modifiers",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "colorA",
-        cell: (info) => info.getValue(),
-        size: 100,
-      },
-      {
-        accessorKey: "colorB",
-        cell: (info) => info.getValue(),
-        size: 100,
-      },
-      {
-        accessorKey: "colorC",
-        cell: (info) => info.getValue(),
-        size: 100,
-      },
-    ],
-    dataFetcher: findArmors,
-    defaultSort: { id: "itemType", desc: false },
-    hiddenColumnDef: ["id", "itemId"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<armorWithItem, keyof armorWithItem> }) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof armorWithItem;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show when={true} fallback={tdContent()}>
-            {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof armorWithItem>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+const defaultArmorWithItem: armorWithItem = {
+  ...defaultData.item,
+  ...defaultData.armor,
+};
+
+const ArmorWithItemWithRelatedDic = (dic: dictionary) => ({
+  ...dic.db.armor,
+  fields: {
+    ...dic.db.armor.fields,
+    ...dic.db.item.fields,
   },
-  form: {
-    data: {
-      ...defaultData.item,
-      ...defaultData.armor,
-    },
-    extraData: {},
-    hiddenFields: ["id", "itemId", "itemType", "createdByAccountId", "updatedByAccountId","statisticId"],
-    dataSchema: armorWithItemSchema,
-    dictionary: dic,
-    fieldGenerators: {},
-    onSubmit: async (data) => {
+});
+
+const ArmorWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+  const form = createForm(() => ({
+    defaultValues: defaultArmorWithItem,
+    onSubmit: async ({ value }) => {
       const db = await getDB();
       const armor = await db.transaction().execute(async (trx) => {
-        const itemData = pick(data, Object.keys(defaultData.item) as (keyof item)[]);
-        const armorData = omit(data, Object.keys(defaultData.item) as (keyof item)[]);
+        const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+        const armorData = omit(value, Object.keys(defaultData.item) as (keyof item)[]);
         const item = await createItem(trx, {
           ...itemData,
           itemType: "Armor",
@@ -126,10 +61,95 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
         });
         return armor;
       });
+      handleSubmit("armor", armor.itemId);
     },
+  }));
+  return (
+    <div class="FormBox flex w-full flex-col">
+      <div class="Title flex items-center p-2 portrait:p-6">
+        <h1 class="FormTitle text-2xl font-black">{dic.db.armor.selfName}</h1>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
+      >
+        <For each={Object.entries(defaultArmorWithItem)}>
+          {(_field, index) => {
+            const fieldKey = _field[0] as keyof armorWithItem;
+            const fieldValue = _field[1];
+            switch (fieldKey) {
+              case "id":
+              case "itemId":
+              case "itemType":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
+                return null;
+              default:
+                return renderField<armorWithItem, keyof armorWithItem>(
+                  form,
+                  fieldKey,
+                  fieldValue,
+                  ArmorWithItemWithRelatedDic(dic),
+                  armorWithItemSchema,
+                );
+            }
+          }}
+        </For>
+        <form.Subscribe
+          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
+          children={(state) => (
+            <div class="flex items-center gap-1">
+              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
+                {state().isSubmitting ? "..." : dic.ui.actions.add}
+              </Button>
+            </div>
+          )}
+        />
+      </form>
+    </div>
+  );
+};
+
+export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorWithItem> => ({
+  defaultData: defaultArmorWithItem,
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .where("id", "=", id)
+      .innerJoin("armor", "armor.itemId", "item.id")
+      .selectAll(["item", "armor"])
+      .executeTakeFirstOrThrow();
   },
+  datasFetcher: async () => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .innerJoin("armor", "armor.itemId", "item.id")
+      .selectAll(["item", "armor"])
+      .execute();
+  },
+  dictionary: dic,
+  dataSchema: armorWithItemSchema,
+  table: {
+    columnDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
+    ],
+    dic: ArmorWithItemWithRelatedDic(dic),
+    defaultSort: { id: "baseDef", desc: true },
+    hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    tdGenerator: {},
+  },
+  form: (handleSubmit) => ArmorWithItemForm(dic, handleSubmit),
   card: {
-    dataFetcher: findItemWithArmorById,
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
@@ -175,7 +195,7 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
           .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
           .innerJoin("item", "recipe_ingredient.itemId", "item.id")
           .where("recipe_ingredient.itemId", "=", itemId)
-          .select(["item.id as itemId", "item.name as itemName"])
+          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
           .execute();
       });
 
@@ -188,23 +208,23 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
           .select(["task.id as taskId", "task.name as taskName"])
           .execute();
       });
-
       return (
         <>
-          {DBDataRender<ArmorCard>({
+          {DBDataRender<armorWithItem>({
             data,
-            dictionary: dic,
+            dictionary: ArmorWithItemWithRelatedDic(dic),
             dataSchema: armorWithItemSchema,
             hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "baseDef"],
-              其他属性: ["modifiers", "details", "dataSources", "colorA", "colorB", "colorC"],
+              其他属性: ["modifiers", "details", "dataSources"],
+              颜色信息: ["colorA", "colorB", "colorC"],
             },
           })}
 
           <Show when={recipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.recipes ?? "合成配方"}
+              title={dic.db.recipe.selfName}
               data={recipeData.latest}
               renderItem={(recipe) => {
                 const type = recipe.type;
@@ -216,20 +236,13 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
                     };
 
                   case "Item":
-                    const itemType: keyof DB = (
-                      {
-                        Weapon: "weapon",
-                        Armor: "armor",
-                        Option: "option",
-                        Special: "special",
-                        Crystal: "crystal",
-                        Consumable: "consumable",
-                        Material: "material",
-                      } satisfies Record<item["itemType"], keyof DB>
-                    )[recipe.itemType];
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemType, id: recipe.itemId }]),
+                      onClick: () =>
+                        appendCardTypeAndIds((prev) => [
+                          ...prev,
+                          { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
+                        ]),
                     };
                   default:
                     return {
@@ -242,7 +255,7 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
           </Show>
           <Show when={dropByData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.dropBy ?? "掉落于"}
+              title={"掉落于" + dic.db.mob.selfName}
               data={dropByData.latest}
               renderItem={(dropBy) => {
                 return {
@@ -254,7 +267,7 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
           </Show>
           <Show when={rewardItemData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.rewarditem ?? "可从这些任务获得"}
+              title={"可从这些" + dic.db.task.selfName + "获得"}
               data={rewardItemData.latest}
               renderItem={(rewardItem) => {
                 return {
@@ -266,19 +279,23 @@ export const createArmorDataConfig = (dic: Dic<armorWithItem>): dataDisplayConfi
           </Show>
           <Show when={usedInRecipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedIn ?? "是这些道具的原料"}
+              title={"是这些" + dic.db.item.selfName + "的原料"}
               data={usedInRecipeData.latest}
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: usedIn.itemId }]),
+                  onClick: () =>
+                    appendCardTypeAndIds((prev) => [
+                      ...prev,
+                      { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
+                    ]),
                 };
               }}
             />
           </Show>
           <Show when={usedInTaskData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedInTask ?? "是这些任务的材料"}
+              title={"被用于" + dic.db.task.selfName}
               data={usedInTaskData.latest}
               renderItem={(usedInTask) => {
                 return {

@@ -5,107 +5,52 @@ import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, specialSchema } from "~/../db/zod";
 import { DB, item, special } from "~/../db/kysely/kyesely";
-import { Dic, EnumFieldDetail } from "~/locales/type";
+import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { defaultData } from "~/../db/defaultData";
-import { createSpeEquip, findSpeEquipByItemId, findSpeEquips, SpeEquip } from "~/repositories/speEquip";
+import { createSpeEquip, SpeEquip } from "~/repositories/speEquip";
+import { createItem, findItems, Item } from "~/repositories/item";
 import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
-import { createItem, Item } from "~/repositories/item";
-import { Transaction } from "kysely";
-import { pick, omit } from "lodash-es";
-import { itemTypeToTableType } from "./utils.tsx";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { fieldInfo, renderField } from "../utils";
+import pick from "lodash-es/pick";
+import omit from "lodash-es/omit";
+import { itemTypeToTableType } from "./utils";
+import { createForm, Field } from "@tanstack/solid-form";
+import { Input } from "~/components/controls/input";
+import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
+import * as Icon from "~/components/icon";
 
-export type specialWithItem = special & item
-export type SpecialCard = Item["Card"] & SpeEquip["Card"]
+type specialWithItem = special & item;
 
 const specialWithItemSchema = z.object({
   ...itemSchema.shape,
   ...specialSchema.shape,
-})
+});
 
-export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayConfig<specialWithItem, SpecialCard, {}> => ({
-  table: {
-    columnDef: [
-      {
-        accessorKey: "id",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "name",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemId",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        accessorKey: "itemType",
-        cell: (info) => info.getValue(),
-        size: 150,
-      },
-      {
-        accessorKey: "baseDef",
-        cell: (info) => info.getValue(),
-        size: 100,
-      },
-      {
-        accessorKey: "modifiers",
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-    ],
-    dataFetcher: findSpeEquips,
-    defaultSort: { id: "itemType", desc: false },
-    hiddenColumnDef: ["id", "itemId"],
-    dictionary: dic,
-    tdGenerator: (props: { cell: Cell<specialWithItem, keyof specialWithItem>; }) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=.="}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof specialWithItem;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show
-            when={true}
-            fallback={tdContent()}
-          >
-            {"enumMap" in dic.fields[columnId]
-              ? (dic.fields[columnId] as EnumFieldDetail<keyof specialWithItem>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+const defaultSpeEquipWithItem: specialWithItem = {
+  ...defaultData.item,
+  ...defaultData.special,
+};
+
+const SpeEquipWithItemWithRelatedDic = (dic: dictionary) => ({
+  ...dic.db.special,
+  fields: {
+    ...dic.db.special.fields,
+    ...dic.db.item.fields,
   },
-  form: {
-    data: {
-      ...defaultData.item,
-      ...defaultData.special,
-    },
-    extraData: {},
-    hiddenFields: ["id", "itemId", "itemType", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    dataSchema: specialWithItemSchema,
-    dictionary: dic,
-    fieldGenerators: {},
-    onSubmit: async (data) => {
+});
+
+const SpeEquipWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+  const form = createForm(() => ({
+    defaultValues: defaultSpeEquipWithItem,
+    onSubmit: async ({ value }) => {
       const db = await getDB();
       const special = await db.transaction().execute(async (trx) => {
-        const itemData = pick(data, Object.keys(defaultData.item) as (keyof item)[]);
-        const specialData = omit(data, Object.keys(defaultData.item) as (keyof item)[]);
+        const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+        const specialData = omit(value, Object.keys(defaultData.item) as (keyof item)[]);
         const item = await createItem(trx, {
           ...itemData,
           itemType: "Special",
@@ -116,10 +61,95 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
         });
         return special;
       });
+      handleSubmit("special", special.itemId);
     },
+  }));
+  return (
+    <div class="FormBox flex w-full flex-col">
+      <div class="Title flex items-center p-2 portrait:p-6">
+        <h1 class="FormTitle text-2xl font-black">{dic.db.special.selfName}</h1>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
+      >
+        <For each={Object.entries(defaultSpeEquipWithItem)}>
+          {(_field, index) => {
+            const fieldKey = _field[0] as keyof specialWithItem;
+            const fieldValue = _field[1];
+            switch (fieldKey) {
+              case "id":
+              case "itemId":
+              case "itemType":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
+                return null;
+              default:
+                return renderField<specialWithItem, keyof specialWithItem>(
+                  form,
+                  fieldKey,
+                  fieldValue,
+                  SpeEquipWithItemWithRelatedDic(dic),
+                  specialWithItemSchema,
+                );
+            }
+          }}
+        </For>
+        <form.Subscribe
+          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
+          children={(state) => (
+            <div class="flex items-center gap-1">
+              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
+                {state().isSubmitting ? "..." : dic.ui.actions.add}
+              </Button>
+            </div>
+          )}
+        />
+      </form>
+    </div>
+  );
+};
+
+export const createSpeEquipDataConfig = (dic: dictionary): dataDisplayConfig<specialWithItem> => ({
+  defaultData: defaultSpeEquipWithItem,
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .where("id", "=", id)
+      .innerJoin("special", "special.itemId", "item.id")
+      .selectAll(["item", "special"])
+      .executeTakeFirstOrThrow();
   },
+  datasFetcher: async () => {
+    const db = await getDB();
+    return await db
+      .selectFrom("item")
+      .innerJoin("special", "special.itemId", "item.id")
+      .selectAll(["item", "special"])
+      .execute();
+  },
+  dictionary: dic,
+  dataSchema: specialWithItemSchema,
+  table: {
+    columnDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
+    ],
+    dic: SpeEquipWithItemWithRelatedDic(dic),
+    defaultSort: { id: "baseDef", desc: true },
+    hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    tdGenerator: {},
+  },
+  form: (handleSubmit) => SpeEquipWithItemForm(dic, handleSubmit),
   card: {
-    dataFetcher: findSpeEquipByItemId,
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
@@ -178,12 +208,11 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
           .select(["task.id as taskId", "task.name as taskName"])
           .execute();
       });
-
       return (
         <>
-          {DBDataRender<SpecialCard>({
+          {DBDataRender<specialWithItem>({
             data,
-            dictionary: dic,
+            dictionary: SpeEquipWithItemWithRelatedDic(dic),
             dataSchema: specialWithItemSchema,
             hiddenFields: ["itemId"],
             fieldGroupMap: {
@@ -194,7 +223,7 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
 
           <Show when={recipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.recipes ?? "合成配方"}
+              title={dic.db.recipe.selfName}
               data={recipeData.latest}
               renderItem={(recipe) => {
                 const type = recipe.type;
@@ -208,7 +237,11 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
                   case "Item":
                     return {
                       label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId }]),
+                      onClick: () =>
+                        appendCardTypeAndIds((prev) => [
+                          ...prev,
+                          { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
+                        ]),
                     };
                   default:
                     return {
@@ -221,7 +254,7 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
           </Show>
           <Show when={dropByData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.dropBy ?? "掉落于"}
+              title={"掉落于" + dic.db.mob.selfName}
               data={dropByData.latest}
               renderItem={(dropBy) => {
                 return {
@@ -233,7 +266,7 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
           </Show>
           <Show when={rewardItemData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.rewarditem ?? "可从这些任务获得"}
+              title={"可从这些" + dic.db.task.selfName + "获得"}
               data={rewardItemData.latest}
               renderItem={(rewardItem) => {
                 return {
@@ -245,19 +278,23 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
           </Show>
           <Show when={usedInRecipeData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedIn ?? "是这些道具的原料"}
+              title={"是这些" + dic.db.item.selfName + "的原料"}
               data={usedInRecipeData.latest}
               renderItem={(usedIn) => {
                 return {
                   label: usedIn.itemName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId }]),
+                  onClick: () =>
+                    appendCardTypeAndIds((prev) => [
+                      ...prev,
+                      { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
+                    ]),
                 };
               }}
             />
           </Show>
           <Show when={usedInTaskData.latest?.length}>
             <CardSection
-              title={dic.cardFields?.usedInTask ?? "是这些任务的材料"}
+              title={"被用于" + dic.db.task.selfName}
               data={usedInTaskData.latest}
               renderItem={(usedInTask) => {
                 return {
@@ -272,4 +309,3 @@ export const createSpecialDataConfig = (dic: Dic<specialWithItem>): dataDisplayC
     },
   },
 });
-

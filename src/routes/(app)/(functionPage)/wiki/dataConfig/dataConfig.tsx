@@ -14,8 +14,8 @@ import { createArmorDataConfig } from "./armorConfig";
 import { createConsumableDataConfig } from "./consumableConfig";
 import { createCrystalDataConfig } from "./crystalConfig";
 import { createMaterialDataConfig } from "./materialConfig";
-import { createOptionDataConfig } from "./optionConfig";
-import { createSpecialDataConfig } from "./specialConfig";
+import { createOptEquipDataConfig } from "./optionConfig";
+import { createSpeEquipDataConfig } from "./specialConfig";
 import { createWeaponDataConfig } from "./weaponConfig";
 import { createZoneDataConfig } from "./zoneConfig";
 import { SimplifiedFieldApi } from "../utils";
@@ -28,11 +28,16 @@ export type dataDisplayConfig<T extends Record<string, unknown>> = {
   dictionary: dictionary;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   table: {
+    measure?: {
+      estimateSize: number;
+    };
     columnDef: Array<ColumnDef<T, unknown>>;
     dic: Dic<T>;
     hiddenColumns: Array<keyof T>;
     defaultSort: { id: keyof T; desc: boolean };
-    tdGenerator: (props: { cell: Cell<T, keyof T>; dic: Dic<T> }) => JSX.Element;
+    tdGenerator: Partial<{
+      [K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
+    }>;
   };
   form: (handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
   card: {
@@ -58,9 +63,9 @@ export const DBDataConfig = (
   consumable: createConsumableDataConfig(dictionary),
   crystal: createCrystalDataConfig(dictionary),
   material: createMaterialDataConfig(dictionary),
-  option: createOptionDataConfig(dictionary),
+  option: createOptEquipDataConfig(dictionary),
 
-  special: createSpecialDataConfig(dictionary),
+  special: createSpeEquipDataConfig(dictionary),
 
   task: createTaskDataConfig(dictionary),
 

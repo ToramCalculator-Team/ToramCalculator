@@ -63,7 +63,6 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   dictionary: Dic<T>,
   dataSchema: ZodObject<Record<string, ZodTypeAny>>,
 ) {
-  console.log(dictionary);
   // 如果fieldKey内存在.，则认为是子表单字段
   const isSubFormField = fieldKey.includes(".");
   // 获取字段名

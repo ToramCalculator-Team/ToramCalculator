@@ -33,26 +33,31 @@ import { setStore, store } from "~/store";
 import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
-import { Dic } from "~/locales/type";
+import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/table";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
 import { LoadingBar } from "../loadingBar";
 
 export function VirtualTable<T extends Record<string, unknown>>(props: {
+  measure?: {
+    estimateSize: number;
+  };
   dataFetcher: () => Promise<T[]>;
   columnsDef: ColumnDef<T>[];
   hiddenColumnDef: Array<keyof T>;
-  tdGenerator: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
+  tdGenerator: Partial<{
+    [K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
+  }>;
   defaultSort: { id: keyof T; desc: boolean };
   globalFilterStr: Accessor<string>;
-  dictionary?: Dic<T>;
+  dictionary: Dic<T>;
   columnHandleClick: (id: string) => void;
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   onRefetch?: (refetch: () => void) => void;
 }) {
-  console.log("VirtualTable", props);
+  // console.log("VirtualTable", props);
   //   const start = performance.now();
   //   console.log("virtualTable start", start);
   const media = useContext(MediaContext);
@@ -79,8 +84,9 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
     return createVirtualizer({
       count: table()?.getRowCount() ?? 0,
       getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-      estimateSize: () => 73,
+      estimateSize: () => props.measure?.estimateSize ?? 73,
       overscan: 5,
+      measureElement: (element) => element.getBoundingClientRect().height,
     });
   });
 
@@ -225,6 +231,12 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                     if (props.hiddenColumnDef.includes(column.id as keyof T)) {
                       return;
                     }
+                    let columnKey = column.id;
+                    try {
+                      columnKey = props.dictionary?.fields[column.id as keyof Dic<T>["fields"]]["key"] ?? column.id;
+                    } catch (error) {
+                      console.log("字典中不存在该字段", column.id);
+                    }
                     return (
                       <Button
                         size="sm"
@@ -236,9 +248,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                           }));
                         }}
                       >
-                        {props.dictionary
-                          ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
-                          : column.id}
+                        {columnKey}
                       </Button>
                     );
                   }}
@@ -274,6 +284,13 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                         // 默认隐藏的数据
                         return;
                       }
+
+                      let columnKey = column.id;
+                      try {
+                        columnKey = props.dictionary?.fields[column.id as keyof Dic<T>["fields"]]["key"] ?? column.id;
+                      } catch (error) {
+                        console.log("字典中不存在该字段", column.id);
+                      }
                       return (
                         <th
                           style={{
@@ -290,9 +307,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                               header.column.getCanSort() ? "cursor-pointer select-none" : ""
                             }`}
                           >
-                            {props.dictionary
-                              ? props.dictionary.fields[column.id as keyof Dic<T>["fields"]]["key"]
-                              : column.id}
+                            {columnKey}
                             {{
                               asc: " ▲",
                               desc: " ▼",
@@ -314,7 +329,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
               </div>
             }
           >
-            <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBodyrelative`}>
+            <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBody relative`}>
               <For each={tableContainer().getVirtualItems()}>
                 {(virtualRow) => {
                   const row = table()?.getRowModel().rows[virtualRow.index];
@@ -323,7 +338,12 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                   }
                   return (
                     <tr
-                      data-index={virtualRow.index}
+                      ref={(el) => {
+                        if (el && props.measure) {
+                          el.setAttribute("data-index", virtualRow.index.toString());
+                          tableContainer().measureElement(el);
+                        }
+                      }}
                       style={{
                         position: "absolute",
                         transform: `translateY(${virtualRow.start}px)`,
@@ -337,10 +357,34 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                           .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
                       >
                         {(cell) => {
-                          const tdContent = props.dictionary
-                            ? props.tdGenerator({ cell, dic: props.dictionary })
-                            : JSON.stringify(cell.getValue());
-                          return tdContent;
+                          const columnId = cell.column.id as keyof T;
+                          let columnKey = columnId;
+                          const isEnum = "enumMap" in props.dictionary.fields[columnId];
+                          try {
+                            columnKey = isEnum
+                              ? (props.dictionary.fields[columnId] as EnumFieldDetail<string>).enumMap[
+                                  cell.getValue<string>()
+                                ]
+                              : cell.getValue<string>();
+                          } catch (error) {
+                            console.log("字典中不存在该字段", columnId);
+                          }
+
+                          const hasFieldGenerator = columnId in props.tdGenerator;
+                          const fieldGenerator = hasFieldGenerator ? props.tdGenerator[columnId]! : () => null;
+                          return (
+                            <td
+                              style={{
+                                ...getCommonPinningStyles(cell.column),
+                                width: getCommonPinningStyles(cell.column).width + "px",
+                              }}
+                              class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-3 text-ellipsis`}
+                            >
+                              <Show when={hasFieldGenerator} fallback={String(columnKey)}>
+                                {fieldGenerator({ cell, dic: props.dictionary })}
+                              </Show>
+                            </td>
+                          );
                         }}
                       </For>
                     </tr>

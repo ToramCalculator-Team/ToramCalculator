@@ -58,7 +58,7 @@ const MobWithRelatedDic = (dic: dictionary) => ({
       formFieldDescription: dic.db.drop_item.fields.itemId.formFieldDescription,
     },
   },
-})
+});
 
 const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -372,7 +372,13 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof mob;
                 const simpleFieldValue = _field[1];
-                return renderField<MobWithRelated, keyof MobWithRelated>(form, simpleFieldKey, simpleFieldValue, MobWithRelatedDic(dic), MobWithRelatedSchema);
+                return renderField<MobWithRelated, keyof MobWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  MobWithRelatedDic(dic),
+                  MobWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -544,74 +550,25 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
       dic: MobWithRelatedDic(dic),
       defaultSort: { id: "experience", desc: true },
       hiddenColumns: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-      tdGenerator: (props) => {
-        const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=."}</>);
-        let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-        const columnId = props.cell.column.id as keyof MobWithRelated;
-        switch (columnId) {
-          case "initialElement":
-            setTdContent(
-              {
-                Water: <Icon.Element.Water class="h-12 w-12" />,
-                Fire: <Icon.Element.Fire class="h-12 w-12" />,
-                Earth: <Icon.Element.Earth class="h-12 w-12" />,
-                Wind: <Icon.Element.Wind class="h-12 w-12" />,
-                Light: <Icon.Element.Light class="h-12 w-12" />,
-                Dark: <Icon.Element.Dark class="h-12 w-12" />,
-                Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-              }[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()] ?? undefined,
-            );
-
-            break;
-          case "experience":
-            setTdContent(
-              flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) +
-                "+" +
-                props.cell.row.original.partsExperience,
-            );
-            break;
-
-          // 以下值需要添加百分比符号
-          case "physicalResistance":
-          case "magicalResistance":
-          case "dodge":
-          case "block":
-          case "normalAttackResistanceModifier":
-          case "physicalAttackResistanceModifier":
-          case "magicalAttackResistanceModifier":
-            setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()) + "%");
-            break;
-
-          case "name":
-            setTdContent(
-              <div class="text-accent-color flex flex-col gap-1">
-                <span>{props.cell.getValue()}</span>
-                <Show when={props.cell.row.original.type === "Mob"}>
-                  <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
-                </Show>
-              </div>,
-            );
-            break;
-
-          default:
-            setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-            break;
-        }
-        return (
-          <td
-            style={{
-              ...getCommonPinningStyles(props.cell.column),
-              width: getCommonPinningStyles(props.cell.column).width + "px",
-            }}
-            class={defaultTdClass}
-          >
-            <Show when={true} fallback={tdContent()}>
-              {"enumMap" in props.dic.fields[columnId]
-                ? (props.dic.fields[columnId] as EnumFieldDetail<keyof MobWithRelated>).enumMap[props.cell.getValue()]
-                : props.cell.getValue()}
+      tdGenerator: {
+        initialElement: (props) =>
+          ({
+            Water: <Icon.Element.Water class="h-12 w-12" />,
+            Fire: <Icon.Element.Fire class="h-12 w-12" />,
+            Earth: <Icon.Element.Earth class="h-12 w-12" />,
+            Wind: <Icon.Element.Wind class="h-12 w-12" />,
+            Light: <Icon.Element.Light class="h-12 w-12" />,
+            Dark: <Icon.Element.Dark class="h-12 w-12" />,
+            Normal: <Icon.Element.NoElement class="h-12 w-12" />,
+          })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
+        name: (props) => (
+          <div class="text-accent-color flex flex-col gap-1">
+            <span>{props.cell.getValue<string>()}</span>
+            <Show when={props.cell.row.original.type === "Mob"}>
+              <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
             </Show>
-          </td>
-        );
+          </div>
+        ),
       },
     },
     form: (handleSubmit) => MobWithRelatedForm(dic, handleSubmit),

@@ -435,6 +435,7 @@ export default function WikiSubPage() {
                     />
                   </div>
                   {VirtualTable({
+                    measure: validDataConfig().table.measure,
                     dataFetcher: validDataConfig().datasFetcher,
                     columnsDef: validDataConfig().table.columnDef,
                     hiddenColumnDef: validDataConfig().table.hiddenColumns,

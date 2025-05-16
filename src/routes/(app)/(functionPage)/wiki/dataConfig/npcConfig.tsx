@@ -248,31 +248,7 @@ export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithR
     dic: NpcWithRelatedDic(dic),
     hiddenColumns: ["id"],
     defaultSort: { id: "name", desc: false },
-    tdGenerator: (props) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=."}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof NpcWithRelated;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show when={true} fallback={tdContent()}>
-            {"enumMap" in props.dic.fields[columnId]
-              ? (props.dic.fields[columnId] as EnumFieldDetail<keyof NpcWithRelated>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+    tdGenerator: {},
   },
   dataFetcher: async (id) => {
     const db = await getDB();

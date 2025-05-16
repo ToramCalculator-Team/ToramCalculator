@@ -382,7 +382,13 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof zone;
                 const simpleFieldValue = _field[1];
-                return renderField<ZoneWithRelated, keyof ZoneWithRelated>(form, simpleFieldKey, simpleFieldValue, ZoneWithRelatedDic(dic), ZoneWithRelatedSchema);
+                return renderField<ZoneWithRelated, keyof ZoneWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  ZoneWithRelatedDic(dic),
+                  ZoneWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -444,31 +450,7 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
     dic: ZoneWithRelatedDic(dic),
     hiddenColumns: ["id"],
     defaultSort: { id: "name", desc: false },
-    tdGenerator: (props) => {
-      const [tdContent, setTdContent] = createSignal<JSX.Element>(<>{"=.=.=."}</>);
-      let defaultTdClass = "text-main-text-color flex flex-col justify-center px-6 py-3";
-      const columnId = props.cell.column.id as keyof ZoneWithRelated;
-      switch (columnId) {
-        default:
-          setTdContent(flexRender(props.cell.column.columnDef.cell, props.cell.getContext()));
-          break;
-      }
-      return (
-        <td
-          style={{
-            ...getCommonPinningStyles(props.cell.column),
-            width: getCommonPinningStyles(props.cell.column).width + "px",
-          }}
-          class={defaultTdClass}
-        >
-          <Show when={true} fallback={tdContent()}>
-            {"enumMap" in props.dic.fields[columnId]
-              ? (props.dic.fields[columnId] as EnumFieldDetail<keyof ZoneWithRelated>).enumMap[props.cell.getValue()]
-              : props.cell.getValue()}
-          </Show>
-        </td>
-      );
-    },
+    tdGenerator: {},
   },
   dataFetcher: async (id) => {
     const db = await getDB();
