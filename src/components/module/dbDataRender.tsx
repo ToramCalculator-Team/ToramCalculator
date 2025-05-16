@@ -59,15 +59,16 @@ export function DBDataRender<T extends Record<string, unknown>>(props: {
                     const content = Object.entries(val as Record<string, unknown>);
                     return (
                       props.fieldGenerator?.(key, val, props.dictionary) ?? (
-                        <div class="Fieldflex flex-col gap-2">
-                          <span class="Title text-main-text-color text-nowrap">{props.dictionary.fields[key].key}</span> :
+                        <div class="Field flex flex-col gap-2">
+                          <span class="Title text-main-text-color text-nowrap">{props.dictionary.fields[key].key}</span>
                           <Show when={content.length > 0}>
                             <div class="List bg-area-color rounded-md p-2">
                               <For each={content}>
                                 {([key, val]) => (
                                   <div class="Field flex gap-1">
-                                    <span class="text-boundary-color text-nowrap">{key} : </span>
-                                    <span class="text-nowrap">{String(val)}</span>
+                                    <span class="text-sm text-boundary-color text-nowrap w-3">{key}</span>
+                                    &nbsp;:&nbsp;
+                                    <span class="text-sm text-nowrap">{String(val)}</span>
                                   </div>
                                 )}
                               </For>

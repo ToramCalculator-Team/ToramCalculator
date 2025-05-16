@@ -34,7 +34,7 @@ export type dataDisplayConfig<T extends Record<string, unknown>> = {
     defaultSort: { id: keyof T; desc: boolean };
     tdGenerator: (props: { cell: Cell<T, keyof T>; dic: Dic<T> }) => JSX.Element;
   };
-  form: (dic: Dic<T>, handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
+  form: (handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
   card: {
     cardRender: (
       data: T,

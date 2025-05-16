@@ -1,6 +1,6 @@
 import { AnyFieldApi, DeepKeys, DeepValue, Field } from "@tanstack/solid-form";
 import { For } from "solid-js";
-import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject } from "zod";
+import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
@@ -58,15 +58,24 @@ export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyType
 // 工具：根据值类型选择字段组件
 export function renderField<T extends Record<string, unknown>, K extends DeepKeys<T>>(
   form: any,
-  fieldKey: K,
+  fieldKey: string,
   fieldValue: DeepValue<T, K>,
-  dictionary: Dic<any>,
-  dataSchema: ZodObject<any>,
+  dictionary: Dic<T>,
+  dataSchema: ZodObject<Record<string, ZodTypeAny>>,
 ) {
+  console.log(dictionary);
   // 如果fieldKey内存在.，则认为是子表单字段
   const isSubFormField = fieldKey.includes(".");
   // 获取字段名
-  const fieldName = isSubFormField ? fieldKey.split(".").pop() as string : fieldKey;
+  const fieldName = isSubFormField ? (fieldKey.split(".").pop() as string) : fieldKey;
+  let inputTitle = fieldName;
+  let inputDescription = "";
+  try {
+    inputTitle = dictionary.fields[fieldName].key;
+    inputDescription = dictionary.fields[fieldName].formFieldDescription;
+  } catch (error) {
+    console.log("字典中不存在字段：", fieldKey);
+  }
   // 输入框的类型计算
   const zodValue = dataSchema.shape[fieldName];
   // 判断字段类型，便于确定默认输入框
@@ -88,8 +97,8 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
             const enumValue = zodValue as ZodEnum<any>;
             return (
               <Input
-                title={dictionary.fields[fieldName].key}
-                description={dictionary.fields[fieldName].formFieldDescription}
+                title={inputTitle}
+                description={inputDescription}
                 state={fieldInfo(field())}
                 class={fieldCalss}
               >
@@ -123,17 +132,15 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             return (
               <Input
-                title={dictionary.fields[fieldName].key}
-                description={dictionary.fields[fieldName].formFieldDescription}
+                title={inputTitle}
+                description={inputDescription}
                 autocomplete="off"
                 type="number"
                 id={field().name}
                 name={field().name}
                 value={field().state.value as number}
                 onBlur={field().handleBlur}
-                onChange={(e) =>
-                  field().handleChange(parseFloat(e.target.value) as DeepValue<T, DeepKeys<T>>)
-                }
+                onChange={(e) => field().handleChange(parseFloat(e.target.value) as DeepValue<T, DeepKeys<T>>)}
                 state={fieldInfo(field())}
                 class={fieldCalss}
               />
@@ -155,13 +162,8 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             // 一般数组对象字段会单独处理，如果这里被调用，说明是简单的字符串数组
             const arrayValue = () => field().state.value as string[];
-            return  (
-              <Input
-                title={fieldKey}
-                description={""}
-                state={fieldInfo(field())}
-                class={fieldCalss}
-              >
+            return (
+              <Input title={fieldKey} description={""} state={fieldInfo(field())} class={fieldCalss}>
                 <div class="ArrayBox flex w-full flex-col gap-2">
                   <For each={arrayValue()}>
                     {(item, index) => (
@@ -222,8 +224,8 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             return (
               <Input
-                title={dictionary.fields[fieldName].key}
-                description={dictionary.fields[fieldName].formFieldDescription}
+                title={inputTitle}
+                description={inputDescription}
                 autocomplete="off"
                 type="text"
                 id={field().name}
@@ -264,8 +266,8 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             return (
               <Input
-                title={dictionary.fields[fieldName].key}
-                description={dictionary.fields[fieldName].formFieldDescription}
+                title={inputTitle}
+                description={inputDescription}
                 state={fieldInfo(field())}
                 class={fieldCalss}
               >
@@ -299,8 +301,8 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             return (
               <Input
-                title={dictionary.fields[fieldName].key}
-                description={dictionary.fields[fieldName].formFieldDescription}
+                title={inputTitle}
+                description={inputDescription}
                 autocomplete="off"
                 type="text"
                 id={field().name}

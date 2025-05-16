@@ -382,7 +382,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof zone;
                 const simpleFieldValue = _field[1];
-                return renderField(form, simpleFieldKey, simpleFieldValue, dic.db.zone, ZoneWithRelatedSchema);
+                return renderField<ZoneWithRelated, keyof ZoneWithRelated>(form, simpleFieldKey, simpleFieldValue, ZoneWithRelatedDic(dic), ZoneWithRelatedSchema);
             }
           }}
         </For>

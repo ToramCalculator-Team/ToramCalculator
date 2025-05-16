@@ -49,13 +49,11 @@ const MobWithRelatedDic = (dic: dictionary) => ({
     ...dic.db.mob.fields,
     appearInZones: {
       key: "appearInZones",
-      ...dic.db.zone.fields,
       tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
       formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
     },
     dropItems: {
       key: "dropItems",
-      ...dic.db.drop_item.fields,
       tableFieldDescription: dic.db.drop_item.fields.itemId.tableFieldDescription,
       formFieldDescription: dic.db.drop_item.fields.itemId.formFieldDescription,
     },
@@ -341,7 +339,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                             // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                             const simpleFieldKey = `dropItems[${i}].${fieldKey}`;
                                             const simpleFieldValue = fieldValue;
-                                            return renderField(
+                                            return renderField<drop_item, keyof drop_item>(
                                               form,
                                               simpleFieldKey,
                                               simpleFieldValue,
@@ -374,7 +372,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof mob;
                 const simpleFieldValue = _field[1];
-                return renderField(form, simpleFieldKey, simpleFieldValue, dic.db.mob, MobWithRelatedSchema);
+                return renderField<MobWithRelated, keyof MobWithRelated>(form, simpleFieldKey, simpleFieldValue, MobWithRelatedDic(dic), MobWithRelatedSchema);
             }
           }}
         </For>
@@ -616,7 +614,7 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
         );
       },
     },
-    form: (dic, handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
+    form: (handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
     card: {
       cardRender: (data, appendCardTypeAndIds) => {
         const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);

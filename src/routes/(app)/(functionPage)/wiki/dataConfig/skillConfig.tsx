@@ -198,7 +198,7 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                           // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                           const simpleFieldKey = `effects[${index}].${fieldKey}`;
                                           const simpleFieldValue = fieldValue;
-                                          return renderField(
+                                          return renderField<skill_effect, keyof skill_effect>(
                                             form,
                                             simpleFieldKey,
                                             simpleFieldValue,
@@ -230,7 +230,7 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof skill;
                 const simpleFieldValue = _field[1];
-                return renderField(form, simpleFieldKey, simpleFieldValue, dic.db.skill, SkillWithRelatedSchema);
+                return renderField<SkillWithRelated, keyof SkillWithRelated>(form, simpleFieldKey, simpleFieldValue, SkillWithRelatedDic(dic), SkillWithRelatedSchema);
             }
           }}
         </For>

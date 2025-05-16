@@ -159,7 +159,7 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof activity;
                 const simpleFieldValue = _field[1];
-                return renderField(form, simpleFieldKey, simpleFieldValue, dic.db.activity, ActivityWithRelatedSchema);
+                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(form, simpleFieldKey, simpleFieldValue, ActivityWithRelatedDic(dic), ActivityWithRelatedSchema);
             }
           }}
         </For>

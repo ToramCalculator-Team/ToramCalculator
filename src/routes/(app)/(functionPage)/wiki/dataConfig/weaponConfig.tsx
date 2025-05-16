@@ -20,6 +20,9 @@ import { itemTypeToTableType } from "./utils";
 import { createForm, Field } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
 import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
+import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";
+import * as Icon from "~/components/icon";
 
 export type weaponWithItem = weapon & item;
 export type WeaponCard = Item["Card"] & Weapon["Card"];
@@ -40,7 +43,7 @@ const WeaponWithItemWithRelatedDic = (dic: dictionary) => ({
     ...dic.db.weapon.fields,
     ...dic.db.item.fields,
   },
-})
+});
 
 const WeaponWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -101,12 +104,13 @@ const WeaponWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                         state={fieldInfo(field())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
-                        <EnumSelect
+                        <Select
                           value={field().state.value}
-                          setValue={(value) => field().setValue(value as any)}
-                          options={weaponWithItemSchema.shape[fieldKey].options}
-                          dic={dic.db.weapon.fields[fieldKey].enumMap}
-                          field={{ id: field().name, name: field().name }}
+                          setValue={(value) => field().setValue(value as WeaponType)}
+                          options={Object.entries(dic.db.weapon.fields.type.enumMap).map(([key, value]) => ({
+                            label: value,
+                            value: key,
+                          }))}
                         />
                       </Input>
                     )}
@@ -116,7 +120,10 @@ const WeaponWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                 return (
                   <form.Field
                     name={fieldKey}
-                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: weaponWithItemSchema.shape[fieldKey] }}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: weaponWithItemSchema.shape[fieldKey],
+                    }}
                   >
                     {(field) => (
                       <Input
@@ -127,17 +134,35 @@ const WeaponWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                       >
                         <EnumSelect
                           value={field().state.value}
-                          setValue={(value) => field().setValue(value as any)}
+                          setValue={(value) => field().setValue(value as ElementType)}
                           options={weaponWithItemSchema.shape[fieldKey].options}
                           dic={dic.db.weapon.fields[fieldKey].enumMap}
-                          field={{ id: field().name, name: field().name }}
+                          iconMap={{
+                            Water: <Icon.Element.Water class="h-6 w-6" />,
+                            Fire: <Icon.Element.Fire class="h-6 w-6" />,
+                            Earth: <Icon.Element.Earth class="h-6 w-6" />,
+                            Wind: <Icon.Element.Wind class="h-6 w-6" />,
+                            Light: <Icon.Element.Light class="h-6 w-6" />,
+                            Dark: <Icon.Element.Dark class="h-6 w-6" />,
+                            Normal: <Icon.Element.NoElement class="h-6 w-6" />,
+                          }}
+                          field={{
+                            id: field().name,
+                            name: field().name,
+                          }}
                         />
                       </Input>
                     )}
                   </form.Field>
                 );
               default:
-                return renderField(form, fieldKey, fieldValue, dic.db.weapon, weaponWithItemSchema);
+                return renderField<weaponWithItem, keyof weaponWithItem>(
+                  form,
+                  fieldKey,
+                  fieldValue,
+                  WeaponWithItemWithRelatedDic(dic),
+                  weaponWithItemSchema,
+                );
             }
           }}
         </For>

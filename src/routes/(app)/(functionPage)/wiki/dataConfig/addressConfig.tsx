@@ -192,7 +192,7 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof address;
                 const simpleFieldValue = _field[1];
-                return renderField(form, simpleFieldKey, simpleFieldValue, dic.db.address, AddressWithRelatedSchema);
+                return renderField<AddressWithRelated, keyof AddressWithRelated>(form, simpleFieldKey, simpleFieldValue, AddressWithRelatedDic(dic), AddressWithRelatedSchema);
             }
           }}
         </For>
