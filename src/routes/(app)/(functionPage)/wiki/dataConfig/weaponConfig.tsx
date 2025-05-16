@@ -180,7 +180,7 @@ const WeaponWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weaponWithItem> => ({
+export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weaponWithItem, weapon & item> => ({
   defaultData: defaultWeaponWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();

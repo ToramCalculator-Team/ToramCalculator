@@ -471,7 +471,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWithRelated> => ({
+export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWithRelated, task> => ({
   defaultData: defaultTaskWithRelated,
   table: {
     columnDef: [

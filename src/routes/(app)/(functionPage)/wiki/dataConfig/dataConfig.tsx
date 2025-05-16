@@ -21,22 +21,22 @@ import { createZoneDataConfig } from "./zoneConfig";
 import { SimplifiedFieldApi } from "../utils";
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-export type dataDisplayConfig<T extends Record<string, unknown>> = {
+export type dataDisplayConfig<T extends Record<string, unknown>, D extends Record<string, unknown>> = {
   defaultData: T;
   dataFetcher: (id: string) => Promise<T>;
-  datasFetcher: () => Promise<T[]>;
+  datasFetcher: () => Promise<D[]>;
   dictionary: dictionary;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   table: {
     measure?: {
       estimateSize: number;
     };
-    columnDef: Array<ColumnDef<T, unknown>>;
-    dic: Dic<T>;
-    hiddenColumns: Array<keyof T>;
-    defaultSort: { id: keyof T; desc: boolean };
+    columnDef: Array<ColumnDef<D, unknown>>;
+    dic: Dic<D>;
+    hiddenColumns: Array<keyof D>;
+    defaultSort: { id: keyof D; desc: boolean };
     tdGenerator: Partial<{
-      [K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
+      [K in keyof D]: (props: { cell: Cell<D, unknown>; dic: Dic<D> }) => JSX.Element;
     }>;
   };
   form: (handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
@@ -52,7 +52,7 @@ export type dataDisplayConfig<T extends Record<string, unknown>> = {
 
 export const DBDataConfig = (
   dictionary: dictionary,
-): Partial<Record<keyof DB, dataDisplayConfig<Record<string, unknown>>>> => ({
+): Partial<Record<keyof DB, dataDisplayConfig<Record<string, unknown>, Record<string, unknown>>>> => ({
   activity: createActivityDataConfig(dictionary),
   address: createAddressDataConfig(dictionary),
   armor: createArmorDataConfig(dictionary),

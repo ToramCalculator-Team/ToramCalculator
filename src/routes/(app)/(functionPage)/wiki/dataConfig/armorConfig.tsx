@@ -1,10 +1,10 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show } from "solid-js";
+import { createResource, createSignal, For, Index, JSX, Show } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { itemSchema, armorSchema } from "~/../db/zod";
-import { DB, item, armor } from "~/../db/kysely/kyesely";
+import { itemSchema, armorSchema, mobSchema, recipeSchema, taskSchema, recipe_ingredientSchema } from "~/../db/zod";
+import { DB, item, armor, recipe, mob, task, recipe_ingredient } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { DBDataRender } from "~/components/module/dbDataRender";
 import { defaultData } from "~/../db/defaultData";
@@ -22,30 +22,99 @@ import { Input } from "~/components/controls/input";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import * as Icon from "~/components/icon";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { Toggle } from "~/components/controls/toggle";
 
-type armorWithItem = armor & item;
+type armorWithRelated = armor &
+  item & {
+    recipe: recipe & {
+      recipeEntries: (recipe_ingredient & {
+        item: item;
+      })[];
+    };
+    dropBy: mob[];
+    usedInItem: item[];
+    usedInTask: task[];
+    rewardFrom: task[];
+  };
 
-const armorWithItemSchema = z.object({
+const armorWithRelatedSchema = z.object({
   ...itemSchema.shape,
   ...armorSchema.shape,
+  recipe: recipeSchema.extend({
+    recipeEntries: z.array(
+      recipe_ingredientSchema.extend({
+        item: itemSchema,
+      }),
+    ),
+  }),
+  dropBy: z.array(mobSchema),
+  usedInItem: z.array(itemSchema),
+  usedInTask: z.array(taskSchema),
+  rewardFrom: z.array(taskSchema),
 });
 
-const defaultArmorWithItem: armorWithItem = {
+const defaultArmorWithRelated: armorWithRelated = {
   ...defaultData.item,
   ...defaultData.armor,
+  recipe: {
+    ...defaultData.recipe,
+    recipeEntries: [],
+  },
+  dropBy: [],
+  usedInItem: [],
+  usedInTask: [],
+  rewardFrom: [],
 };
 
-const ArmorWithItemWithRelatedDic = (dic: dictionary) => ({
+const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
   ...dic.db.armor,
   fields: {
     ...dic.db.armor.fields,
     ...dic.db.item.fields,
+    recipe: {
+      key: dic.db.recipe.selfName,
+      tableFieldDescription: dic.db.recipe.description,
+      formFieldDescription: dic.db.recipe.description,
+      selfName: dic.db.recipe.selfName,
+      description: dic.db.recipe.description,
+      fields: {
+        ...dic.db.recipe.fields,
+        recipeEntries: {
+          key: dic.db.recipe_ingredient.selfName,
+          tableFieldDescription: dic.db.recipe_ingredient.description,
+          formFieldDescription: dic.db.recipe_ingredient.description,
+        },
+      },
+    },
+    dropBy: {
+      key: dic.db.mob.selfName,
+      tableFieldDescription: dic.db.mob.description,
+      formFieldDescription: dic.db.mob.description,
+    },
+    usedInItem: {
+      key: dic.db.item.selfName,
+      tableFieldDescription: dic.db.item.description,
+      formFieldDescription: dic.db.item.description,
+    },
+    usedInTask: {
+      key: dic.db.task.selfName,
+      tableFieldDescription: dic.db.task.description,
+      formFieldDescription: dic.db.task.description,
+    },
+    rewardFrom: {
+      key: dic.db.task.selfName,
+      tableFieldDescription: dic.db.task.description,
+      formFieldDescription: dic.db.task.description,
+    },
   },
 });
 
-const ArmorWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+  const [isLimit, setIsLimit] = createSignal(false);
   const form = createForm(() => ({
-    defaultValues: defaultArmorWithItem,
+    defaultValues: defaultArmorWithRelated,
     onSubmit: async ({ value }) => {
       const db = await getDB();
       const armor = await db.transaction().execute(async (trx) => {
@@ -77,9 +146,9 @@ const ArmorWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: 
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultArmorWithItem)}>
+        <For each={Object.entries(defaultArmorWithRelated)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof armorWithItem;
+            const fieldKey = _field[0] as keyof armorWithRelated;
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
@@ -89,13 +158,190 @@ const ArmorWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: 
               case "updatedByAccountId":
               case "statisticId":
                 return null;
+              case "recipe":
+                return (
+                  <form.Field
+                    name={`recipe`}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: armorWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <Input
+                        title={dic.db.recipe.selfName}
+                        description={dic.db.recipe.description}
+                        state={fieldInfo(field())}
+                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      >
+                        <Index each={Object.entries(field().state.value)}>
+                          {(recipeField, index) => {
+                            const recipeFieldKey = recipeField()[0] as keyof armorWithRelated["recipe"];
+                            const recipeFieldValue = recipeField()[1];
+                            switch (recipeFieldKey) {
+                              case "id":
+                              case "itemId":
+                                return null;
+                              case "activityId":
+                                return (
+                                  <form.Field
+                                    name={fieldKey}
+                                    validators={{
+                                      onChangeAsyncDebounceMs: 500,
+                                      onChangeAsync: armorWithRelatedSchema.shape[fieldKey],
+                                    }}
+                                  >
+                                    {(field) => (
+                                      <>
+                                        <Input
+                                          title={"活动限时标记"}
+                                          description={"仅在某个活动开启时可进入的区域"}
+                                          state={undefined}
+                                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                        >
+                                          <Toggle
+                                            id={"isLimit"}
+                                            onClick={() => setIsLimit(!isLimit())}
+                                            onBlur={undefined}
+                                            name={"isLimit"}
+                                            checked={isLimit()}
+                                          />
+                                        </Input>
+                                        <Show when={isLimit()}>
+                                          <Input
+                                            title={dic.db.activity.selfName}
+                                            description={dic.db.activity.description}
+                                            state={fieldInfo(field())}
+                                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                          >
+                                            <Autocomplete
+                                              id={field().name + "activityId"}
+                                              initialValue={defaultData.activity}
+                                              setValue={(value) => {
+                                                field().setValue({
+                                                  ...field().state.value,
+                                                  activityId: value.id,
+                                                });
+                                              }}
+                                              datasFetcher={async () => {
+                                                const db = await getDB();
+                                                const activities = await db
+                                                  .selectFrom("activity")
+                                                  .selectAll("activity")
+                                                  .execute();
+                                                return activities;
+                                              }}
+                                              displayField="name"
+                                              valueField="id"
+                                            />
+                                          </Input>
+                                        </Show>
+                                      </>
+                                    )}
+                                  </form.Field>
+                                );
+                              case "recipeEntries":
+                                return (
+                                  <form.Field name={`recipe.recipeEntries`} mode="array">
+                                    {(subField) => (
+                                      <Input
+                                        title={dic.db.recipe_ingredient.selfName}
+                                        description={dic.db.recipe_ingredient.description}
+                                        state={fieldInfo(subField())}
+                                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                      >
+                                        <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
+                                          <Show when={subField().state.value.length > 0}>
+                                            <Index each={subField().state.value}>
+                                              {(recipeEntry, i) => {
+                                                return (
+                                                  <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
+                                                    <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                                      <span class="text-accent-color font-bold">
+                                                        {dic.db.recipe_ingredient.selfName + " " + i}
+                                                      </span>
+                                                      <Button
+                                                        onClick={() => {
+                                                          subField().removeValue(i);
+                                                        }}
+                                                      >
+                                                        -
+                                                      </Button>
+                                                    </div>
+                                                    <Index each={Object.entries(recipeEntry())}>
+                                                      {(recipeEntryField, index) => {
+                                                        const recipeEntryFieldKey =
+                                                          recipeEntryField()[0] as keyof armorWithRelated["recipe"]["recipeEntries"][0];
+                                                        const recipeEntryFieldValue = recipeEntryField()[1];
+                                                        switch (recipeEntryFieldKey) {
+                                                          case "id":
+                                                          case "recipeId":
+                                                            return null;
+                                                          case "item":
+                                                            return null;
+                                                          default:
+                                                            // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                                            const simpleFieldKey = `recipe.recipeEntries[${index}].${recipeEntryFieldKey}`;
+                                                            const simpleFieldValue = recipeEntryFieldValue;
+                                                            return renderField<
+                                                              recipe_ingredient,
+                                                              keyof recipe_ingredient
+                                                            >(
+                                                              form,
+                                                              simpleFieldKey,
+                                                              simpleFieldValue,
+                                                              dic.db.recipe_ingredient,
+                                                              recipe_ingredientSchema,
+                                                            );
+                                                        }
+                                                      }}
+                                                    </Index>
+                                                  </div>
+                                                );
+                                              }}
+                                            </Index>
+                                          </Show>
+                                          <Button
+                                            onClick={() => {
+                                              subField().pushValue({
+                                                ...defaultData.recipe_ingredient,
+                                                item: defaultData.item,
+                                              });
+                                            }}
+                                            class="w-full"
+                                          >
+                                            +
+                                          </Button>
+                                        </div>
+                                      </Input>
+                                    )}
+                                  </form.Field>
+                                );
+                              default:
+                                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                const simpleFieldKey = `recipe.${fieldKey}`;
+                                const simpleFieldValue = fieldValue;
+                                return renderField<armorWithRelated["recipe"], keyof armorWithRelated["recipe"]>(
+                                  form,
+                                  simpleFieldKey,
+                                  simpleFieldValue,
+                                  ArmorWithRelatedWithRelatedDic(dic).fields.recipe,
+                                  recipeSchema,
+                                );
+                            }
+                          }}
+                        </Index>
+                      </Input>
+                    )}
+                  </form.Field>
+                );
               default:
-                return renderField<armorWithItem, keyof armorWithItem>(
+                return renderField<armorWithRelated, keyof armorWithRelated>(
                   form,
                   fieldKey,
                   fieldValue,
-                  ArmorWithItemWithRelatedDic(dic),
-                  armorWithItemSchema,
+                  ArmorWithRelatedWithRelatedDic(dic),
+                  armorWithRelatedSchema,
                 );
             }
           }}
@@ -115,8 +361,8 @@ const ArmorWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: 
   );
 };
 
-export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorWithItem> => ({
-  defaultData: defaultArmorWithItem,
+export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorWithRelated, armor & item> => ({
+  defaultData: defaultArmorWithRelated,
   dataFetcher: async (id) => {
     const db = await getDB();
     return await db
@@ -124,6 +370,60 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
       .where("id", "=", id)
       .innerJoin("armor", "armor.itemId", "item.id")
       .selectAll(["item", "armor"])
+      .select((eb) => [
+        jsonObjectFrom(
+          eb
+            .selectFrom("recipe")
+            .where("recipe.itemId", "=", id)
+            .selectAll("recipe")
+            .select((eb) => [
+              jsonArrayFrom(
+                eb
+                  .selectFrom("recipe_ingredient")
+                  .where("recipe_ingredient.recipeId", "=", "recipe.id")
+                  .select((eb) => [
+                    jsonObjectFrom(
+                      eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                    )
+                      .$notNull()
+                      .as("item"),
+                  ])
+                  .selectAll("recipe_ingredient"),
+              ).as("recipeEntries"),
+            ]),
+        )
+          .$notNull()
+          .as("recipe"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("drop_item")
+            .innerJoin("mob", "drop_item.dropById", "mob.id")
+            .where("drop_item.itemId", "=", id)
+            .selectAll("mob"),
+        ).as("dropBy"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("recipe_ingredient")
+            .where("recipe_ingredient.itemId", "=", id)
+            .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
+            .innerJoin("item", "recipe_ingredient.itemId", "item.id")
+            .selectAll("item"),
+        ).as("usedInItem"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("task_collect_require")
+            .innerJoin("task", "task_collect_require.taskId", "task.id")
+            .where("task_collect_require.itemId", "=", id)
+            .selectAll("task"),
+        ).as("usedInTask"),
+        jsonArrayFrom(
+          eb
+            .selectFrom("task_reward")
+            .innerJoin("task", "task_reward.taskId", "task.id")
+            .where("task_reward.itemId", "=", id)
+            .selectAll("task"),
+        ).as("rewardFrom"),
+      ])
       .executeTakeFirstOrThrow();
   },
   datasFetcher: async () => {
@@ -135,7 +435,7 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
       .execute();
   },
   dictionary: dic,
-  dataSchema: armorWithItemSchema,
+  dataSchema: armorWithRelatedSchema,
   table: {
     columnDef: [
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
@@ -143,12 +443,12 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
     ],
-    dic: ArmorWithItemWithRelatedDic(dic),
+    dic: ArmorWithRelatedWithRelatedDic(dic),
     defaultSort: { id: "baseDef", desc: true },
     hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     tdGenerator: {},
   },
-  form: (handleSubmit) => ArmorWithItemForm(dic, handleSubmit),
+  form: (handleSubmit) => ArmorWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
@@ -210,10 +510,10 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
       });
       return (
         <>
-          {DBDataRender<armorWithItem>({
+          {DBDataRender<armorWithRelated>({
             data,
-            dictionary: ArmorWithItemWithRelatedDic(dic),
-            dataSchema: armorWithItemSchema,
+            dictionary: ArmorWithRelatedWithRelatedDic(dic),
+            dataSchema: armorWithRelatedSchema,
             hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "baseDef"],

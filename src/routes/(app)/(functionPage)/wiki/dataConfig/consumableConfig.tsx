@@ -140,7 +140,7 @@ const ConsumableWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   );
 };
 
-export const createConsumableDataConfig = (dic: dictionary): dataDisplayConfig<consumableWithItem> => ({
+export const createConsumableDataConfig = (dic: dictionary): dataDisplayConfig<consumableWithItem, consumable & item> => ({
   defaultData: defaultConsumableWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();

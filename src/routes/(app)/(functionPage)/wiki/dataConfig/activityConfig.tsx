@@ -183,7 +183,7 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
   );
 };
 
-export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<ActivityWithRelated> => ({
+export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<ActivityWithRelated, activity> => ({
   defaultData: {
     ...defaultData.activity,
     zones: [],

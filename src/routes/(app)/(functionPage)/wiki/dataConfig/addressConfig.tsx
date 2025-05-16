@@ -216,7 +216,7 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   );
 };
 
-export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<AddressWithRelated> => ({
+export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<AddressWithRelated, address> => ({
   defaultData: defaultAddressWithRelated,
   table: {
     columnDef: [

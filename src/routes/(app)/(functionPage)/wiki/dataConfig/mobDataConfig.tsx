@@ -1,5 +1,5 @@
 import { flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, createEffect, Index } from "solid-js";
+import { createResource, createSignal, For, JSX, Show, createEffect, Index, on } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
@@ -15,7 +15,14 @@ import { DBDataRender } from "~/components/module/dbDataRender";
 import { getDB } from "~/repositories/database";
 import { Select } from "~/components/controls/select";
 import { MOB_DIFFICULTY_FLAG } from "~/../db/enums";
-import { ItemType, MobDifficultyFlag, MobType, ElementType } from "~/../db/kysely/enums";
+import {
+  ItemType,
+  MobDifficultyFlag,
+  MobType,
+  ElementType,
+  BossPartType,
+  BossPartBreakRewardType,
+} from "~/../db/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
@@ -25,6 +32,7 @@ import { createForm, Field } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
+import { Toggle } from "~/components/controls/toggle";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -96,6 +104,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
       handleSubmit("mob", mob.id);
     },
   }));
+
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
@@ -120,6 +129,41 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
               case "createdByAccountId":
               case "updatedByAccountId":
                 return null;
+              case "captureable":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: MobWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <form.Subscribe selector={(state) => state.values.type}>
+                        {(type) => (
+                          <Show when={type() === "Mob"}>
+                            <Input
+                              title={dic.db.mob.fields[fieldKey].key}
+                              description={dic.db.mob.fields[fieldKey].formFieldDescription}
+                              state={fieldInfo(field())}
+                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            >
+                              <Toggle
+                                id={field().name}
+                                onClick={() => {
+                                  field().setValue(!field().state.value);
+                                }}
+                                onBlur={field().handleBlur}
+                                name={field().name}
+                                checked={field().state.value as boolean}
+                              />
+                            </Input>
+                          </Show>
+                        )}
+                      </form.Subscribe>
+                    )}
+                  </form.Field>
+                );
               case "type":
                 return (
                   <form.Field
@@ -201,7 +245,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                     {(field) => {
                       return (
                         <Input
-                          title={dic.db.zone.selfName}
+                          title={"所属的" + dic.db.zone.selfName}
                           description={dic.db.zone.description}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
@@ -300,6 +344,74 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                           case "id":
                                           case "dropById":
                                             return null;
+                                          case "breakRewardType":
+                                            return (
+                                              <form.Subscribe selector={(state) => state.values.type}>
+                                                {(selector) => (
+                                                  <Show when={selector() === "Boss"}>
+                                                    {renderField<drop_item, "breakRewardType">(
+                                                      form,
+                                                      `dropItems[${i}].breakRewardType`,
+                                                      fieldValue as BossPartBreakRewardType,
+                                                      dic.db.drop_item,
+                                                      drop_itemSchema,
+                                                    )}
+                                                  </Show>
+                                                )}
+                                              </form.Subscribe>
+                                            );
+                                          case "relatedPartInfo":
+                                            return (
+                                              <form.Subscribe
+                                                selector={(state) => ({
+                                                  type: state.values.type,
+                                                  breakRewardType: state.values.dropItems[i].breakRewardType,
+                                                })}
+                                              >
+                                                {(selector) => (
+                                                  <Show
+                                                    when={
+                                                      selector().type === "Boss" &&
+                                                      selector().breakRewardType !== "None"
+                                                    }
+                                                  >
+                                                    {renderField<drop_item, "relatedPartInfo">(
+                                                      form,
+                                                      `dropItems[${i}].relatedPartInfo`,
+                                                      fieldValue as string,
+                                                      dic.db.drop_item,
+                                                      drop_itemSchema,
+                                                    )}
+                                                  </Show>
+                                                )}
+                                              </form.Subscribe>
+                                            );
+                                          case "relatedPartType":
+                                            return (
+                                              <form.Subscribe
+                                                selector={(state) => ({
+                                                  type: state.values.type,
+                                                  breakRewardType: state.values.dropItems[i].breakRewardType,
+                                                })}
+                                              >
+                                                {(selector) => (
+                                                  <Show
+                                                    when={
+                                                      selector().type === "Boss" &&
+                                                      selector().breakRewardType !== "None"
+                                                    }
+                                                  >
+                                                    {renderField<drop_item, "relatedPartType">(
+                                                      form,
+                                                      `dropItems[${i}].relatedPartType`,
+                                                      fieldValue as BossPartType,
+                                                      dic.db.drop_item,
+                                                      drop_itemSchema,
+                                                    )}
+                                                  </Show>
+                                                )}
+                                              </form.Subscribe>
+                                            );
                                           case "itemId":
                                             return (
                                               <form.Field name={`dropItems[${i}].${fieldKey}`}>
@@ -402,7 +514,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithRelated> => {
+export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithRelated, mob> => {
   return {
     defaultData: defaultMobWithRelated,
     dataFetcher: async (id) => {
@@ -436,23 +548,6 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
       const res = await db
         .selectFrom("mob")
         .selectAll("mob")
-        .select((eb) => [
-          jsonArrayFrom(
-            eb
-              .selectFrom("_mobTozone")
-              .innerJoin("zone", "zone.id", "_mobTozone.B")
-              .whereRef("_mobTozone.A", "=", "mob.id")
-              .selectAll("zone"),
-          ).as("appearInZones"),
-          jsonArrayFrom(
-            eb
-              .selectFrom("drop_item")
-              .innerJoin("item", "item.id", "drop_item.itemId")
-              .where("drop_item.dropById", "=", "mob.id")
-              .selectAll("drop_item")
-              .select("item.name"),
-          ).as("dropItems"),
-        ])
         .execute();
       return res;
     },

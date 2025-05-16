@@ -132,7 +132,7 @@ export default function WikiSubPage() {
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
   const [tableName, setTableName] = createSignal<keyof DB>();
-  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any>>();
+  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any>>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 

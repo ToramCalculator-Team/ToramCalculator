@@ -140,7 +140,7 @@ const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<materialWithItem> => ({
+export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<materialWithItem, material & item> => ({
   defaultData: defaultMaterialWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();

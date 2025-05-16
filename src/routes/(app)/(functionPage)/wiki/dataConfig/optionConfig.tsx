@@ -115,7 +115,7 @@ const OptEquipWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createOptEquipDataConfig = (dic: dictionary): dataDisplayConfig<optionWithItem> => ({
+export const createOptEquipDataConfig = (dic: dictionary): dataDisplayConfig<optionWithItem, option & item> => ({
   defaultData: defaultOptEquipWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();

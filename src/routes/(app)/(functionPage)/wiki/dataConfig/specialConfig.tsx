@@ -115,7 +115,7 @@ const SpeEquipWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createSpeEquipDataConfig = (dic: dictionary): dataDisplayConfig<specialWithItem> => ({
+export const createSpeEquipDataConfig = (dic: dictionary): dataDisplayConfig<specialWithItem, special & item> => ({
   defaultData: defaultSpeEquipWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();

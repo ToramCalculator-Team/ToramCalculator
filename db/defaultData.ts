@@ -225,7 +225,7 @@ export const defaultData: DB = {
   mob: {
     id: "",
     name: "",
-    type: "Mob",
+    type: "Boss",
     captureable: false,
     baseLv: 0,
     experience: 0,

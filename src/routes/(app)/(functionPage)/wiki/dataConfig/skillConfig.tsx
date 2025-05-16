@@ -254,7 +254,7 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillWithRelated> => ({
+export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillWithRelated, skill> => ({
   defaultData: defaultSkillWithRelated,
   table: {
     columnDef: [

@@ -228,7 +228,7 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithRelated> => ({
+export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithRelated, npc> => ({
   defaultData: defaultNpcWithRelated,
   table: {
     columnDef: [

@@ -18,6 +18,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
+import { Toggle } from "~/components/controls/toggle";
 
 type ZoneWithRelated = zone & {
   mobs: mob[];
@@ -65,6 +66,7 @@ const ZoneWithRelatedDic = (dic: dictionary) => ({
 });
 
 const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+  const [isLimit, setIsLimit] = createSignal(false);
   const form = createForm(() => ({
     defaultValues: defaultZoneWithRelated,
     onSubmit: async ({ value }) => {
@@ -75,6 +77,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
         console.log("linkZones", linkZones, "mobs", mobs, "npcs", npcs, "zone", rest);
         const zone = await createZone(trx, {
           ...rest,
+          activityId: rest.activityId !== "" ? rest.activityId : null,
           id: createId(),
         });
         if (linkZones.length > 0) {
@@ -319,28 +322,46 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                     }}
                   >
                     {(field) => (
-                      <Input
-                        title={dic.db.zone.fields[fieldKey].key}
-                        description={dic.db.zone.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <Autocomplete
-                          id={field().name}
-                          initialValue={defaultData.activity}
-                          setValue={(value) => {
-                            field().setValue(value.id);
-                            console.log("field().state.value", field().state.value);
-                          }}
-                          datasFetcher={async () => {
-                            const db = await getDB();
-                            const activities = await db.selectFrom("activity").selectAll("activity").execute();
-                            return activities;
-                          }}
-                          displayField="name"
-                          valueField="id"
-                        />
-                      </Input>
+                      <>
+                        <Input
+                          title={"活动限时标记"}
+                          description={"仅在某个活动开启时可进入的区域"}
+                          state={undefined}
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        >
+                          <Toggle
+                            id={"isLimit"}
+                            onClick={() => setIsLimit(!isLimit())}
+                            onBlur={undefined}
+                            name={"isLimit"}
+                            checked={isLimit()}
+                          />
+                        </Input>
+                        <Show when={isLimit()}>
+                          <Input
+                            title={dic.db.zone.fields[fieldKey].key}
+                            description={dic.db.zone.fields[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <Autocomplete
+                              id={field().name}
+                              initialValue={defaultData.activity}
+                              setValue={(value) => {
+                                field().setValue(value.id);
+                                console.log("field().state.value", field().state.value);
+                              }}
+                              datasFetcher={async () => {
+                                const db = await getDB();
+                                const activities = await db.selectFrom("activity").selectAll("activity").execute();
+                                return activities;
+                              }}
+                              displayField="name"
+                              valueField="id"
+                            />
+                          </Input>
+                        </Show>
+                      </>
                     )}
                   </form.Field>
                 );
@@ -412,7 +433,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWithRelated> => ({
+export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWithRelated, zone> => ({
   defaultData: defaultZoneWithRelated,
   table: {
     columnDef: [

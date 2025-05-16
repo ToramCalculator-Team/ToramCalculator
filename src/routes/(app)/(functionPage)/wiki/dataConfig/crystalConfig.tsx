@@ -227,7 +227,7 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crystalWithItem> => ({
+export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crystalWithItem, crystal & item> => ({
   defaultData: defaultCrystalWithItem,
   dataFetcher: async (id) => {
     const db = await getDB();
@@ -257,17 +257,6 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
       .selectFrom("item")
       .innerJoin("crystal", "crystal.itemId", "item.id")
       .selectAll(["item", "crystal"])
-      .select((eb) => [
-        jsonArrayFrom(
-          eb.selectFrom("_frontRelation").whereRef("_frontRelation.A", "=", "item.id").selectAll(["crystal", "item"]),
-        ).as("front"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("_backRelation")
-            .whereRef("_backRelation.A", "=", "crystal.itemId")
-            .selectAll(["crystal", "item"]),
-        ).as("back"),
-      ])
       .execute();
 
     return result;
