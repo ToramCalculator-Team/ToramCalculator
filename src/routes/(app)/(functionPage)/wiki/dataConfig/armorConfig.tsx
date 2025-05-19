@@ -26,16 +26,13 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Toggle } from "~/components/controls/toggle";
 import { RecipeIngredientType } from "../../../../../../db/kysely/enums";
+import { createId } from "@paralleldrive/cuid2";
 
 type armorWithRelated = armor &
   item & {
     recipe: recipe & {
       recipeEntries: recipe_ingredient[];
     };
-    dropBy: mob[];
-    usedInItem: item[];
-    usedInTask: task[];
-    rewardFrom: task[];
   };
 
 const armorWithRelatedSchema = z.object({
@@ -44,10 +41,6 @@ const armorWithRelatedSchema = z.object({
   recipe: recipeSchema.extend({
     recipeEntries: z.array(recipe_ingredientSchema),
   }),
-  dropBy: z.array(mobSchema),
-  usedInItem: z.array(itemSchema),
-  usedInTask: z.array(taskSchema),
-  rewardFrom: z.array(taskSchema),
 });
 
 const defaultArmorWithRelated: armorWithRelated = {
@@ -57,10 +50,6 @@ const defaultArmorWithRelated: armorWithRelated = {
     ...defaultData.recipe,
     recipeEntries: [],
   },
-  dropBy: [],
-  usedInItem: [],
-  usedInTask: [],
-  rewardFrom: [],
 };
 
 const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
@@ -83,26 +72,6 @@ const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
         },
       },
     },
-    dropBy: {
-      key: dic.db.mob.selfName,
-      tableFieldDescription: dic.db.mob.description,
-      formFieldDescription: dic.db.mob.description,
-    },
-    usedInItem: {
-      key: dic.db.item.selfName,
-      tableFieldDescription: dic.db.item.description,
-      formFieldDescription: dic.db.item.description,
-    },
-    usedInTask: {
-      key: dic.db.task.selfName,
-      tableFieldDescription: dic.db.task.description,
-      formFieldDescription: dic.db.task.description,
-    },
-    rewardFrom: {
-      key: dic.db.task.selfName,
-      tableFieldDescription: dic.db.task.description,
-      formFieldDescription: dic.db.task.description,
-    },
   },
 });
 
@@ -114,7 +83,9 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
       const db = await getDB();
       const armor = await db.transaction().execute(async (trx) => {
         const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
-        const armorData = omit(value, Object.keys(defaultData.item) as (keyof item)[]);
+        const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
+        const recipeData = pick(value.recipe, Object.keys(defaultData.recipe) as (keyof recipe)[]);
+        const recipeEntriesData = value.recipe.recipeEntries;
         const item = await createItem(trx, {
           ...itemData,
           itemType: "Armor",
@@ -123,6 +94,22 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
           ...armorData,
           itemId: item.id,
         });
+        const recipe = await trx.insertInto("recipe").values({
+          ...recipeData,
+          id: createId(),
+          itemId: item.id,
+        }).returningAll().executeTakeFirstOrThrow();
+        const recipeEntries = await trx
+          .insertInto("recipe_ingredient")
+          .values(
+            recipeEntriesData.map((entry) => ({
+              ...entry,
+              id: createId(),
+              recipeId: recipe.id,
+            })),
+          )
+          .returningAll()
+          .execute();
         return armor;
       });
       handleSubmit("armor", armor.itemId);
@@ -409,8 +396,8 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                 );
                               default:
                                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                const simpleFieldKey = `recipe.${fieldKey}`;
-                                const simpleFieldValue = fieldValue;
+                                const simpleFieldKey = `recipe.${recipeFieldKey}`;
+                                const simpleFieldValue = recipeFieldValue;
                                 return renderField<armorWithRelated["recipe"], keyof armorWithRelated["recipe"]>(
                                   form,
                                   simpleFieldKey,
@@ -484,35 +471,6 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
         )
           .$notNull()
           .as("recipe"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("drop_item")
-            .innerJoin("mob", "drop_item.dropById", "mob.id")
-            .where("drop_item.itemId", "=", id)
-            .selectAll("mob"),
-        ).as("dropBy"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("recipe_ingredient")
-            .where("recipe_ingredient.itemId", "=", id)
-            .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
-            .innerJoin("item", "recipe_ingredient.itemId", "item.id")
-            .selectAll("item"),
-        ).as("usedInItem"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_collect_require")
-            .innerJoin("task", "task_collect_require.taskId", "task.id")
-            .where("task_collect_require.itemId", "=", id)
-            .selectAll("task"),
-        ).as("usedInTask"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_reward")
-            .innerJoin("task", "task_reward.taskId", "task.id")
-            .where("task_reward.itemId", "=", id)
-            .selectAll("task"),
-        ).as("rewardFrom"),
       ])
       .executeTakeFirstOrThrow();
   },
