@@ -1,2 +1,2 @@
-id,type,count,probability,itemId,taskId
+id,type,value,probability,itemId,taskId
 defaultTaskRewardId,Item,0,0,defaultArmorItemId,defaultTaskId

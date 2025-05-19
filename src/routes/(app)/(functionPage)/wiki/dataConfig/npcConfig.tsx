@@ -21,6 +21,8 @@ import { createForm } from "@tanstack/solid-form";
 import { TaskType } from "~/../db/kysely/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
+import * as Icon from "~/components/icon";
+import { store } from "~/store";
 
 type NpcWithRelated = npc & {
   tasks: task[];
@@ -98,6 +100,9 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
                 return null;
               case "zoneId":
                 return (
@@ -204,7 +209,13 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof npc;
                 const simpleFieldValue = _field[1];
-                return renderField<NpcWithRelated, keyof NpcWithRelated>(form, simpleFieldKey, simpleFieldValue, NpcWithRelatedDic(dic), NpcWithRelatedSchema);
+                return renderField<NpcWithRelated, keyof NpcWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  NpcWithRelatedDic(dic),
+                  NpcWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -230,26 +241,6 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
 
 export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithRelated, npc> => ({
   defaultData: defaultNpcWithRelated,
-  table: {
-    columnDef: [
-      {
-        id: "id",
-        accessorFn: (row) => row.id,
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.name,
-        cell: (info) => info.getValue(),
-        size: 220,
-      },
-    ],
-    dic: NpcWithRelatedDic(dic),
-    hiddenColumns: ["id"],
-    defaultSort: { id: "name", desc: false },
-    tdGenerator: {},
-  },
   dataFetcher: async (id) => {
     const db = await getDB();
     const res = await db
@@ -266,19 +257,31 @@ export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithR
   },
   datasFetcher: async () => {
     const db = await getDB();
-    const res = await db
-      .selectFrom("npc")
-      .selectAll("npc")
-      .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("task").whereRef("task.npcId", "=", eb.ref("npc.id")).selectAll("task")).as(
-          "tasks",
-        ),
-      ])
-      .execute();
+    const res = await db.selectFrom("npc").selectAll("npc").execute();
     return res as NpcWithRelated[];
   },
   dictionary: dic,
   dataSchema: NpcWithRelatedSchema,
+  table: {
+    columnDef: [
+      {
+        id: "id",
+        accessorFn: (row) => row.id,
+        cell: (info) => info.getValue(),
+        size: 200,
+      },
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        cell: (info) => info.getValue(),
+        size: 220,
+      },
+    ],
+    dic: NpcWithRelatedDic(dic),
+    hiddenColumns: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+  },
   form: (handleSubmit) => NpcWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (
@@ -315,6 +318,25 @@ export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithR
               };
             }}
           />
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async () => {
+                    const db = await getDB();
+                    await db.deleteFrom("npc").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
+          </Show>
         </>
       );
     },

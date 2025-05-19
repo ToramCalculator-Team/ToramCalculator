@@ -21,6 +21,9 @@ import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { itemTypeToTableType, updateObjArrayItemKey } from "./utils";
 import { TaskRewardType } from "../../../../../../db/kysely/enums";
+import { createStatistic } from "~/repositories/statistic";
+import { store } from "~/store";
+import * as Icon from "~/components/icon";
 
 type TaskWithRelated = task & {
   collectRequires: task_collect_require[];
@@ -71,24 +74,21 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   const form = createForm(() => ({
     defaultValues: defaultTaskWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const task = await db.transaction().execute(async (trx) => {
         const { collectRequires, killRequirements, rewards, ...rest } = value;
-        console.log(
-          "collectRequires",
-          collectRequires,
-          "killRequirements",
-          killRequirements,
-          "rewards",
-          rewards,
-          "task",
-          rest,
-        );
-        const task = await createTask(trx, {
-          ...rest,
-          id: createId(),
-        });
+        const statistic = await createStatistic(trx);
+        const task = await trx
+          .insertInto("task")
+          .values({
+            ...rest,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (collectRequires.length > 0) {
           for (const collectRequire of collectRequires) {
             await trx
@@ -149,6 +149,9 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
                 return null;
               case "npcId":
                 return (
@@ -497,44 +500,6 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
 
 export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWithRelated, task> => ({
   defaultData: defaultTaskWithRelated,
-  table: {
-    columnDef: [
-      {
-        id: "id",
-        accessorFn: (row) => row.id,
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.name,
-        cell: (info) => info.getValue(),
-        size: 220,
-      },
-      {
-        id: "lv",
-        accessorFn: (row) => row.lv,
-        cell: (info) => info.getValue<number | null>(),
-        size: 120,
-      },
-      {
-        id: "type",
-        accessorFn: (row) => row.type,
-        cell: (info) => info.getValue<string | null>(),
-        size: 160,
-      },
-      {
-        id: "description",
-        accessorFn: (row) => row.description,
-        cell: (info) => info.getValue<string | null>(),
-        size: 160,
-      },
-    ],
-    dic: TaskWithRelatedDic(dic),
-    hiddenColumns: ["id"],
-    defaultSort: { id: "name", desc: false },
-    tdGenerator: {},
-  },
   dataFetcher: async (id) => {
     const db = await getDB();
     const res = await db
@@ -588,6 +553,44 @@ export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWit
   },
   dictionary: dic,
   dataSchema: TaskWithRelatedSchema,
+  table: {
+    columnDef: [
+      {
+        id: "id",
+        accessorFn: (row) => row.id,
+        cell: (info) => info.getValue(),
+        size: 200,
+      },
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        cell: (info) => info.getValue(),
+        size: 220,
+      },
+      {
+        id: "lv",
+        accessorFn: (row) => row.lv,
+        cell: (info) => info.getValue<number | null>(),
+        size: 120,
+      },
+      {
+        id: "type",
+        accessorFn: (row) => row.type,
+        cell: (info) => info.getValue<string | null>(),
+        size: 160,
+      },
+      {
+        id: "description",
+        accessorFn: (row) => row.description,
+        cell: (info) => info.getValue<string | null>(),
+        size: 160,
+      },
+    ],
+    dic: TaskWithRelatedDic(dic),
+    hiddenColumns: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+  },
   form: (handleSubmit) => TaskWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (
@@ -678,6 +681,25 @@ export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWit
               };
             }}
           />
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async() => {
+                    const db = await getDB();
+                    await db.deleteFrom("task").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
+          </Show>
         </>
       );
     },

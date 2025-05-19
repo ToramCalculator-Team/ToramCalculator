@@ -1,3 +1,12 @@
 id,name,type,posX,posY,worldId
-defaultAddressId,defaultAddress,Normal,0,0,defaultWorldId
-ir7vpvh6cn062rb9yyo285z3,索菲亚街道,Normal,0,0,toramWorldId
+defaultAddressId,defaultAddress,Normal,0,0,defaultWorldId,102,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+ir7vpvh6cn062rb9yyo285z3,索菲亚街道,Normal,0,0,toramWorldId,103,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+bzctanykfeuk652bqvx1w9nu,莱卡平原,Normal,0,-1,irunaWorldId,104,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+t1ajct1o2wuwgikcceaqu2mu,废弃的寺院街,Normal,-1,-1,irunaWorldId,105,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+k96qb5fzzfurnozpneyhad0m,废弃的寺院,Normal,-1,-2,irunaWorldId,106,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+hpfin05wrz2zzxttoa021grr,伊库尔湖沼区,Normal,-2,-1,irunaWorldId,107,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+v5x85chfgr8304j81l3919xv,尼赛尔山,Normal,0,-2,irunaWorldId,108,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+wil39diri1wg58slh3rjfuly,雷谷盐原·游民营,Normal,0,-2,irunaWorldId,109,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+spjg4w13lzndfqp90oqsw3ty,凯渥斯峡谷,Normal,1,-2,irunaWorldId,110,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+xo17tukpqxgbtikkinydws1a,规划中地区,Normal,1,0,irunaWorldId,111,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+rpja8f24eyjhtoz3v93y0meq,渊底的遗迹,Normal,2,0,irunaWorldId,112,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83

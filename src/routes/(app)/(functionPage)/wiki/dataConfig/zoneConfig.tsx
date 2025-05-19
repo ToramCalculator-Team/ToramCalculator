@@ -1,7 +1,7 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
 import { createResource, createSignal, For, JSX, Show, Index } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
-import { createZone, findZoneById, findZones, Zone } from "~/repositories/zone";
+import { createZone, deleteZone, findZoneById, findZones, Zone } from "~/repositories/zone";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema, addressSchema, mobSchema, npcSchema, zoneSchema } from "~/../db/zod";
@@ -19,6 +19,9 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
+import * as Icon from "~/components/icon";
+import { store } from "~/store";
+import { createStatistic } from "~/repositories/statistic";
 
 type ZoneWithRelated = zone & {
   mobs: mob[];
@@ -70,16 +73,23 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   const form = createForm(() => ({
     defaultValues: defaultZoneWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const zone = await db.transaction().execute(async (trx) => {
         const { linkZones, mobs, npcs, ...rest } = value;
         console.log("linkZones", linkZones, "mobs", mobs, "npcs", npcs, "zone", rest);
-        const zone = await createZone(trx, {
-          ...rest,
-          activityId: rest.activityId !== "" ? rest.activityId : null,
-          id: createId(),
-        });
+        const statistic = await createStatistic(trx);
+        const zone = await trx
+          .insertInto("zone")
+          .values({
+            ...rest,
+            activityId: rest.activityId !== "" ? rest.activityId : null,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (linkZones.length > 0) {
           for (const linkedZone of linkZones) {
             await trx.insertInto("_linkZones").values({ A: zone.id, B: linkedZone.id }).execute();
@@ -119,6 +129,9 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
+              case "createdByAccountId":
+              case "updatedByAccountId":
+              case "statisticId":
                 return null;
               case "mobs":
                 return (
@@ -259,7 +272,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                   >
                     {(field) => (
                       <Input
-                        title={dic.db.zone.selfName}
+                        title={"链接的" + dic.db.zone.selfName}
                         description={dic.db.zone.description}
                         state={fieldInfo(field())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
@@ -469,7 +482,7 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
       },
     ],
     dic: ZoneWithRelatedDic(dic),
-    hiddenColumns: ["id"],
+    hiddenColumns: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
@@ -563,19 +576,19 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
 
       const [linkZonesData] = createResource(data.id, async (zoneId) => {
         const db = await getDB();
-        const res = await db
+        const resL = await db
           .selectFrom("zone")
           .innerJoin("_linkZones", "zone.id", "_linkZones.B")
           .where("_linkZones.A", "=", zoneId)
           .selectAll("zone")
-          .union(
-            db
-              .selectFrom("zone")
-              .innerJoin("_linkZones", "zone.id", "_linkZones.A")
-              .where("_linkZones.B", "=", zoneId)
-              .selectAll("zone"),
-          )
           .execute();
+        const resR = await db
+          .selectFrom("zone")
+          .innerJoin("_linkZones", "zone.id", "_linkZones.A")
+          .where("_linkZones.B", "=", zoneId)
+          .selectAll("zone")
+          .execute();
+        const res = [...resL, ...resR];
         return res;
       });
 
@@ -657,6 +670,25 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
                 };
               }}
             />
+          </Show>
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async () => {
+                    const db = await getDB();
+                    await db.deleteFrom("zone").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
           </Show>
         </>
       );

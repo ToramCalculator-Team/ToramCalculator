@@ -33,6 +33,8 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
+import { createStatistic } from "~/repositories/statistic";
+import { store } from "~/store";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -72,16 +74,21 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   const form = createForm(() => ({
     defaultValues: defaultMobWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const mob = await db.transaction().execute(async (trx) => {
         const { appearInZones, dropItems, ...rest } = value;
-        console.log("appearInZones", appearInZones);
-        console.log("dropItems", dropItems);
-        console.log("rest", rest);
-        const mob = await createMob(trx, {
-          ...rest,
-        });
+        const statistic = await createStatistic(trx);
+        const mob = await trx
+          .insertInto("mob")
+          .values({
+            ...rest,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (appearInZones.length > 0) {
           for (const zone of appearInZones) {
             await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
@@ -129,6 +136,38 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
               case "createdByAccountId":
               case "updatedByAccountId":
                 return null;
+              
+                case "partsExperience":
+                  return (
+                    <form.Field
+                      name={fieldKey}
+                      validators={{
+                        onChangeAsyncDebounceMs: 500,
+                        onChangeAsync: MobWithRelatedSchema.shape[fieldKey],
+                      }}
+                    >
+                      {(field) => (
+                        <form.Subscribe selector={(state) => state.values.type}>
+                          {(type) => (
+                            <Show when={type() === "Boss"}>
+                              <Input
+                                type="number"
+                                title={dic.db.mob.fields[fieldKey].key}
+                                description={dic.db.mob.fields[fieldKey].formFieldDescription}
+                                state={fieldInfo(field())}
+                                value={field().state.value}
+                                onChange={(e) => {
+                                  field().setValue(Number(e.target.value));
+                                }}
+                                class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              >
+                              </Input>
+                            </Show>
+                          )}
+                        </form.Subscribe>
+                      )}
+                    </form.Field>
+                  );
               case "captureable":
                 return (
                   <form.Field
@@ -389,10 +428,19 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                           case "relatedPartType":
                                             return (
                                               <form.Subscribe
-                                                selector={(state) => ({
-                                                  type: state.values.type,
-                                                  breakRewardType: state.values.dropItems[i].breakRewardType,
-                                                })}
+                                                selector={(state) => {
+                                                  const currentDropItem = state.values.dropItems[i];
+                                                  if (!currentDropItem) { 
+                                                    return {
+                                                      type: state.values.type,
+                                                      breakRewardType: "None",
+                                                    }
+                                                  }
+                                                  return {
+                                                    type: state.values.type,
+                                                    breakRewardType: state.values.dropItems[i].breakRewardType,
+                                                  }
+                                                }}
                                               >
                                                 {(selector) => (
                                                   <Show
@@ -545,10 +593,7 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
     },
     datasFetcher: async () => {
       const db = await getDB();
-      const res = await db
-        .selectFrom("mob")
-        .selectAll("mob")
-        .execute();
+      const res = await db.selectFrom("mob").selectAll("mob").execute();
       return res;
     },
     dictionary: dic,
@@ -809,6 +854,25 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
                 };
               }}
             />
+
+            <Show when={data.createdByAccountId === store.session.user.account?.id}>
+              <section class="FunFieldGroup flex w-full flex-col gap-2">
+                <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                  {dic.ui.actions.operation}
+                  <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                </h3>
+                <div class="FunGroup flex flex-col gap-3">
+                  <Button
+                    class="w-fit"
+                    icon={<Icon.Line.Trash />}
+                    onclick={async () => {
+                      const db = await getDB();
+                      await db.deleteFrom("mob").where("id", "=", data.id).executeTakeFirstOrThrow();
+                    }}
+                  />
+                </div>
+              </section>
+            </Show>
           </>
         );
       },

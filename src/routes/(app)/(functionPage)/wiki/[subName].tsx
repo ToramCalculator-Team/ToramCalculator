@@ -189,6 +189,7 @@ export default function WikiSubPage() {
         if (params.subName in defaultData) {
           const wikiType = params.subName as keyof DB;
           // 初始化页面状态
+          setTableGlobalFilterStr("");
           setIsTableFullscreen(false);
           setActiveBannerIndex(0);
           setTableName(wikiType);
@@ -668,24 +669,6 @@ export default function WikiSubPage() {
                                                   cardData,
                                                   setCardTypeAndIds,
                                                 )}
-
-                                                <section class="FunFieldGroup flex w-full flex-col gap-2">
-                                                  <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                                                    {dictionary().ui.actions.operation}
-                                                    <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-                                                  </h3>
-                                                  <div class="FunGroup flex flex-col gap-3">
-                                                    <Button
-                                                      class="w-fit"
-                                                      icon={<Icon.Line.Edit />}
-                                                      onclick={() => {
-                                                        const { type, id } = cardTypeAndIds()[index()];
-                                                        setCardTypeAndIds((pre) => pre.slice(0, -1));
-                                                        // setFormSheetIsOpen(true);
-                                                      }}
-                                                    />
-                                                  </div>
-                                                </section>
                                               </div>
                                             </OverlayScrollbarsComponent>
                                             <div

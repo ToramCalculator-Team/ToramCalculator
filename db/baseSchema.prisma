@@ -91,6 +91,13 @@ model account_create_data {
     items           item[]
     skills          skill[]
     simulators      simulator[]
+    world           world[]
+    address         address[]
+    activity        activity[]
+    zone            zone[]
+    recipe          recipe[]
+    npc             npc[]
+    task            task[]
     belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId       String      @id
 }
@@ -101,6 +108,13 @@ model account_update_data {
     items           item[]
     skills          skill[]
     simulator       simulator[]
+    world           world[]
+    address         address[]
+    activity        activity[]
+    zone            zone[]
+    recipe          recipe[]
+    npc             npc[]
+    task            task[]
     belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId       String      @id
 }
@@ -113,6 +127,14 @@ model world {
 
     name      String
     addresses address[]
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 地点
@@ -128,6 +150,14 @@ model address {
 
     belongToWorld world  @relation(fields: [worldId], references: [id], onDelete: Cascade)
     worldId       String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 活动
@@ -137,6 +167,14 @@ model activity {
 
     zones   zone[]
     recipes recipe[]
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 地点区域
@@ -155,6 +193,14 @@ model zone {
 
     link   zone[] @relation("linkZones")
     linked zone[] @relation("linkZones")
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 model image {
@@ -188,6 +234,13 @@ model statistic {
     belongToSkill     skill?
     belongToCharacter character?
     belongToSimulator simulator?
+    world             world?
+    address           address?
+    activity          activity?
+    zone              zone?
+    recipe            recipe?
+    npc               npc?
+    task              task?
 }
 
 // 怪物
@@ -393,6 +446,14 @@ model recipe {
 
     inActivity activity? @relation(fields: [activityId], references: [id])
     activityId String?
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 配方项
@@ -435,6 +496,14 @@ model npc {
 
     belongToZone zone   @relation(fields: [zoneId], references: [id])
     zoneId       String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 任务
@@ -451,6 +520,14 @@ model task {
 
     belongToNpc npc    @relation(fields: [npcId], references: [id])
     npcId       String
+
+    statistic   statistic @relation(fields: [statisticId], references: [id])
+    statisticId String    @unique
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdByAccountId String?
 }
 
 // 任务击杀要求

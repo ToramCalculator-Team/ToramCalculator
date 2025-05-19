@@ -20,7 +20,7 @@ type SearchConfig = {
 };
 
 type SearchResults = {
-  [K in SearchableTables]?: DB[K][];
+  [K in SearchableTables]?: Record<string, unknown>[];
 };
 
 // 物品类型到表的映射
@@ -188,11 +188,11 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
       // 对于物品相关的表，使用 dataFetcher 获取完整数据
       if ('joinWith' in config) {
         const config = DBDataConfig(dictionary)[table];
-        if (config?.card?.dataFetcher) {
+        if (config?.dataFetcher) {
           const fullResults = await Promise.all(
             tableResults.map(async (result) => {
               try {
-                const fullData = await config.card.dataFetcher(result.itemId);
+                const fullData = await config.dataFetcher(result.itemId);
                 return fullData;
               } catch (error) {
                 console.warn(`Failed to fetch data for ${table} with id ${result.itemId}:`, error);
@@ -212,15 +212,15 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
           const targetTable = itemTypeToTable[item.itemType] as keyof SearchResults;
           if (targetTable) {
             const config = DBDataConfig(dictionary)[targetTable];
-            if (config?.card?.dataFetcher) {
+            if (config?.dataFetcher) {
               try {
-                const fullData = await config.card.dataFetcher(item.id);
+                const fullData = await config.dataFetcher(item.id);
                 if (!results[targetTable]) {
                   results[targetTable] = [];
                 }
                 results[targetTable]!.push(fullData);
               } catch (error) {
-                console.warn(`Failed to fetch data for ${targetTable} with id ${item.id}:`, error);
+                // console.warn(`Failed to fetch data for ${targetTable} with id ${item.id}:`, error);
               }
             }
           }

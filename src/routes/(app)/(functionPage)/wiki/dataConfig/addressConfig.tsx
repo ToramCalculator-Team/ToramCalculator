@@ -18,6 +18,10 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { createForm } from "@tanstack/solid-form";
+import { createId } from "@paralleldrive/cuid2";
+import { createStatistic } from "~/repositories/statistic";
+import { store } from "~/store";
+import * as Icon from "~/components/icon";
 
 type AddressWithRelated = address & {
   zones: zone[];
@@ -50,15 +54,17 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   const form = createForm(() => ({
     defaultValues: defaultAddressWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const address = await db.transaction().execute(async (trx) => {
         const { zones, ...rest } = value;
-        console.log("zones", zones);
-        console.log("rest", rest);
-        const address = await createAddress(trx, {
+        const statistic = await createStatistic(trx);
+        const address = await trx.insertInto("address").values({
           ...rest,
-        });
+          id: createId(),
+          statisticId: statistic.id,
+          createdByAccountId: store.session.user.account?.id,
+          updatedByAccountId: store.session.user.account?.id,
+        }).returningAll().executeTakeFirstOrThrow();
         if (zones.length > 0) {
           for (const zone of zones) {
             await trx.updateTable("zone").set({ addressId: address.id }).where("id", "=", zone.id).execute();
@@ -88,6 +94,9 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
+              case "statisticId":
+              case "createdByAccountId":
+              case "updatedByAccountId":
                 return null;
               case "zones":
                 return (
@@ -218,6 +227,33 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
 
 export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<AddressWithRelated, address> => ({
   defaultData: defaultAddressWithRelated,
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("address")
+      .where("id", "=", id)
+      .selectAll("address")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("zone")
+            .where("zone.addressId", "=", id)
+            .selectAll("zone"),
+        ).as("zones"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("address")
+      .selectAll("address")
+      .execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: AddressWithRelatedSchema,
   table: {
     columnDef: [
       {
@@ -256,41 +292,6 @@ export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<Addr
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("address")
-      .where("id", "=", id)
-      .selectAll("address")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("zone")
-            .where("zone.addressId", "=", id)
-            .selectAll("zone"),
-        ).as("zones"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("address")
-      .selectAll("address")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("zone")
-            .whereRef("zone.addressId", "=", "address.id")
-            .selectAll("zone"),
-        ).as("zones"),
-      ])
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: AddressWithRelatedSchema,
   form: (handleSubmit) => AddressWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (
@@ -331,6 +332,25 @@ export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<Addr
               };
             }}
           />
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async() => {
+                    const db = await getDB();
+                    await db.deleteFrom("address").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
+          </Show>
         </>
       );
     },

@@ -17,6 +17,10 @@ import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
+import * as Icon from "~/components/icon";
+import { store } from "~/store";
+import { createStatistic } from "~/repositories/statistic";
+import { createId } from "@paralleldrive/cuid2";
 
 type ActivityWithRelated = activity & {
   zones: zone[];
@@ -49,15 +53,17 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
   const form = createForm(() => ({
     defaultValues: defaultActivityWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const activity = await db.transaction().execute(async (trx) => {
         const { zones, ...rest } = value;
-        console.log("zones", zones);
-        console.log("rest", rest);
-        const activity = await createActivity(trx, {
+        const statistic = await createStatistic(trx);
+        const activity = await trx.insertInto("activity").values({
           ...rest,
-        });
+          id: createId(),
+          statisticId: statistic.id,
+          createdByAccountId: store.session.user.account?.id,
+          updatedByAccountId: store.session.user.account?.id,
+        }).returningAll().executeTakeFirstOrThrow();
         if (zones.length > 0) {
           for (const zone of zones) {
             await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zone.id).execute();
@@ -188,6 +194,28 @@ export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<Act
     ...defaultData.activity,
     zones: [],
   },
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("activity")
+      .where("id", "=", id)
+      .selectAll("activity")
+      .select((eb) => [
+        jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("activity")
+      .selectAll("activity")
+      .execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: ActivityWithRelatedSchema,
   table: {
     columnDef: [
       {
@@ -206,33 +234,6 @@ export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<Act
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("activity")
-      .where("id", "=", id)
-      .selectAll("activity")
-      .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("activity")
-      .selectAll("activity")
-      .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("zone").whereRef("zone.activityId", "=", "activity.id").selectAll("zone")).as(
-          "zones",
-        ),
-      ])
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: ActivityWithRelatedSchema,
   form: (handleSubmit) => ActivityWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (
@@ -269,6 +270,25 @@ export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<Act
               };
             }}
           />
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async () => {
+                    const db = await getDB();
+                    await db.deleteFrom("activity").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
+          </Show>
         </>
       );
     },

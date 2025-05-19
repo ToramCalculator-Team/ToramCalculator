@@ -88,6 +88,9 @@ export const defaultData: DB = {
   activity: {
     id: "",
     name: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   address: {
     id: "",
@@ -96,6 +99,9 @@ export const defaultData: DB = {
     posX: 0,
     posY: 0,
     worldId: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   armor: {
     baseDef: 0,
@@ -255,6 +261,9 @@ export const defaultData: DB = {
     id: "",
     name: "",
     zoneId: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   option: {
     baseDef: 0,
@@ -347,6 +356,9 @@ export const defaultData: DB = {
     id: "",
     itemId: "",
     activityId: null,
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   recipe_ingredient: {
     id: "",
@@ -436,6 +448,9 @@ export const defaultData: DB = {
     type: "Collect",
     description: "",
     npcId: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   task_collect_require: {
     id: "",
@@ -493,6 +508,9 @@ export const defaultData: DB = {
   world: {
     id: "",
     name: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
   zone: {
     id: "",
@@ -500,5 +518,8 @@ export const defaultData: DB = {
     rewardNodes: 0,
     activityId: "",
     addressId: "",
+    statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null
   },
 };

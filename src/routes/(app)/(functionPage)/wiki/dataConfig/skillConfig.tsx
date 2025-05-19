@@ -21,6 +21,9 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { SkillDistanceType, SkillTreeType } from "../../../../../../db/kysely/enums";
+import * as Icon from "~/components/icon";
+import { store } from "~/store";
+import { createStatistic } from "~/repositories/statistic";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -47,21 +50,27 @@ const SkillWithRelatedDic = (dic: dictionary) => ({
       formFieldDescription: dic.db.skill_effect.fields.condition.formFieldDescription,
     },
   },
-})
+});
 
 const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
     defaultValues: defaultSkillWithRelated,
     onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
       const db = await getDB();
       const skill = await db.transaction().execute(async (trx) => {
         const { effects, ...rest } = value;
-        console.log("effects", effects, "skill", rest);
-        const skill = await createSkill(trx, {
-          ...rest,
-          id: createId(),
-        });
+        const statistic = await createStatistic(trx);
+        const skill = await trx
+          .insertInto("skill")
+          .values({
+            ...rest,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (effects?.length > 0) {
           for (const effect of effects) {
             await trx
@@ -230,7 +239,13 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof skill;
                 const simpleFieldValue = _field[1];
-                return renderField<SkillWithRelated, keyof SkillWithRelated>(form, simpleFieldKey, simpleFieldValue, SkillWithRelatedDic(dic), SkillWithRelatedSchema);
+                return renderField<SkillWithRelated, keyof SkillWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  SkillWithRelatedDic(dic),
+                  SkillWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -256,6 +271,30 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
 
 export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillWithRelated, skill> => ({
   defaultData: defaultSkillWithRelated,
+  dataFetcher: async (id) => {
+    const db = await getDB();
+    const res = await db
+      .selectFrom("skill")
+      .where("id", "=", id)
+      .selectAll("skill")
+      .select((eb) => [
+        jsonArrayFrom(
+          eb
+            .selectFrom("skill_effect")
+            .whereRef("skill_effect.belongToskillId", "=", eb.ref("skill.id"))
+            .selectAll("skill_effect"),
+        ).as("effects"),
+      ])
+      .executeTakeFirstOrThrow();
+    return res;
+  },
+  datasFetcher: async () => {
+    const db = await getDB();
+    const res = await db.selectFrom("skill").selectAll("skill").execute();
+    return res;
+  },
+  dictionary: dic,
+  dataSchema: SkillWithRelatedSchema,
   table: {
     columnDef: [
       {
@@ -300,41 +339,6 @@ export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillW
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("skill")
-      .where("id", "=", id)
-      .selectAll("skill")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("skill_effect")
-            .whereRef("skill_effect.belongToskillId", "=", eb.ref("skill.id"))
-            .selectAll("skill_effect"),
-        ).as("effects"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("skill")
-      .selectAll("skill")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("skill_effect")
-            .whereRef("skill_effect.belongToskillId", "=", eb.ref("skill.id"))
-            .selectAll("skill_effect"),
-        ).as("effects"),
-      ])
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: SkillWithRelatedSchema,
   form: (handleSubmit) => SkillWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (
@@ -378,6 +382,25 @@ export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillW
               };
             }}
           />
+
+          <Show when={data.createdByAccountId === store.session.user.account?.id}>
+            <section class="FunFieldGroup flex w-full flex-col gap-2">
+              <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                {dic.ui.actions.operation}
+                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              </h3>
+              <div class="FunGroup flex flex-col gap-3">
+                <Button
+                  class="w-fit"
+                  icon={<Icon.Line.Trash />}
+                  onclick={async () => {
+                    const db = await getDB();
+                    await db.deleteFrom("skill").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  }}
+                />
+              </div>
+            </section>
+          </Show>
         </>
       );
     },
