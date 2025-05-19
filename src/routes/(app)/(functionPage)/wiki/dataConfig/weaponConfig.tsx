@@ -176,8 +176,8 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                     {(field) => (
                                       <>
                                         <Input
-                                          title={"活动限时标记"}
-                                          description={"仅在某个活动开启时可进入的区域"}
+                                          title={"活动配方标记"}
+                                          description={"仅在某个活动开启时可使用的配方"}
                                           state={undefined}
                                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                                         >
@@ -624,6 +624,7 @@ export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weapo
       });
       return (
         <>
+          <div class="WeaponImage bg-area-color h-[18vh] w-full rounded"></div>
           {DBDataRender<weaponWithRelated>({
             data,
             dictionary: WeaponWithRelatedWithRelatedDic(dic),

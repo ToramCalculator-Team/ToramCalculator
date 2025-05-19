@@ -1,7 +1,7 @@
 import { createMemo, For, JSX, Show } from "solid-js";
 import { z, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod";
 import { DB } from "~/../db/kysely/kyesely";
-import { Dic } from "~/locales/type";
+import { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 缓存 Zod 类型解析
 const schemaTypeCache = new WeakMap<ZodTypeAny, ZodFirstPartyTypeKind>();
@@ -53,6 +53,12 @@ export function DBDataRender<T extends Record<string, unknown>>(props: {
                   const val = props.data[key];
                   const schemaField = props.dataSchema.shape[key];
                   const kind = getZodType(schemaField);
+                  const fieldName = props.dictionary.fields[key].key;
+                  let fieldValue = val;
+                  try {
+                    fieldValue = (props.dictionary.fields[key] as EnumFieldDetail<any>).enumMap[val] as unknown as T[keyof T];
+                  } catch (error) {
+                  }
 
                   // 处理嵌套结构
                   if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
@@ -82,9 +88,9 @@ export function DBDataRender<T extends Record<string, unknown>>(props: {
                   return (
                     props.fieldGenerator?.(key, val, props.dictionary) ?? (
                       <div class="Field flex gap-2">
-                        <span class="text-main-text-color text-nowrap">{props.dictionary.fields[key].key}</span>:
-                        <span class="font-bold text-nowrap">{String(val)}</span>
-                        <span class="text-dividing-color w-full text-right">{`[${kind}]`}</span>
+                        <span class="text-main-text-color text-nowrap">{fieldName}</span>:
+                        <span class="font-bold">{String(fieldValue)}</span>
+                        {/* <span class="text-dividing-color w-full text-right">{`[${kind}]`}</span> */}
                       </div>
                     )
                   );

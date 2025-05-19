@@ -24,28 +24,29 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { createId } from "@paralleldrive/cuid2";
+import { CrystalType } from "../../../../../../db/kysely/enums";
 
-type crystalWithItem = crystal &
+type crystalWithRelated = crystal &
   item & {
     front: Array<crystal & item>;
     back: Array<crystal & item>;
   };
 
-const crystalWithItemSchema = z.object({
+const crystalWithRelatedSchema = z.object({
   ...itemSchema.shape,
   ...crystalSchema.shape,
   front: z.array(crystalSchema.extend(itemSchema.shape)),
   back: z.array(crystalSchema.extend(itemSchema.shape)),
 });
 
-const defaultCrystalWithItem: crystalWithItem = {
+const defaultCrystalWithRelated: crystalWithRelated = {
   ...defaultData.item,
   ...defaultData.crystal,
   front: [],
   back: [],
 };
 
-const CrystalWithItemWithRelatedDic = (dic: dictionary) => ({
+const CrystalWithRelatedWithRelatedDic = (dic: dictionary) => ({
   ...dic.db.crystal,
   fields: {
     ...dic.db.crystal.fields,
@@ -63,15 +64,20 @@ const CrystalWithItemWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
-    defaultValues: defaultCrystalWithItem,
+    defaultValues: defaultCrystalWithRelated,
     onSubmit: async ({ value }) => {
+      console.log("value:",value)
       const db = await getDB();
       const { front, back, ...rest } = value;
       const crystal = await db.transaction().execute(async (trx) => {
         const itemData = pick(rest, Object.keys(defaultData.item) as (keyof item)[]);
-        const crystalData = omit(rest, Object.keys(defaultData.item) as (keyof item)[]);
+        const crystalData = pick(rest, Object.keys(defaultData.crystal) as (keyof crystal)[]);
+        console.log("front:", front);
+        console.log("back:", back);
+        console.log("itemData:", itemData);
+        console.log("crystalData:", crystalData);
         const item = await createItem(trx, {
           ...itemData,
           id: createId(),
@@ -82,16 +88,36 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
           itemId: item.id,
         });
         for (const frontCrystal of front) {
-          await trx.insertInto("_frontRelation").values({
-            A: item.id,
-            B: frontCrystal.itemId,
-          }).execute();
+          await trx
+            .insertInto("_frontRelation")
+            .values({
+              A: frontCrystal.itemId,
+              B: item.id,
+            })
+            .execute();
+          await trx
+            .insertInto("_backRelation")
+            .values({
+              A: item.id,
+              B: frontCrystal.itemId,
+            })
+            .execute();
         }
         for (const backCrystal of back) {
-          await trx.insertInto("_backRelation").values({
-            A: item.id,
-            B: backCrystal.itemId,
-          }).execute();
+          await trx
+            .insertInto("_backRelation")
+            .values({
+              A: backCrystal.itemId,
+              B: item.id,
+            })
+            .execute();
+          await trx
+            .insertInto("_frontRelation")
+            .values({
+              A: item.id,
+              B: backCrystal.itemId,
+            })
+            .execute();
         }
 
         return crystal;
@@ -112,9 +138,9 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultCrystalWithItem)}>
+        <For each={Object.entries(defaultCrystalWithRelated)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof crystalWithItem;
+            const fieldKey = _field[0] as keyof crystalWithRelated;
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
@@ -124,6 +150,34 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
               case "updatedByAccountId":
               case "statisticId":
                 return null;
+              case "type":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <Input
+                        title={dic.db.crystal.fields[fieldKey].key}
+                        description={dic.db.crystal.fields[fieldKey].formFieldDescription}
+                        state={fieldInfo(field())}
+                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      >
+                        <Select
+                          value={field().state.value}
+                          setValue={(value) => field().setValue(value as CrystalType)}
+                          options={Object.entries(dic.db.crystal.fields.type.enumMap).map(([key, value]) => ({
+                            label: value,
+                            value: key,
+                          }))}
+                        />
+                      </Input>
+                    )}
+                  </form.Field>
+                );
               case "front":
               case "back":
                 return (
@@ -131,7 +185,7 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithItemSchema.shape[fieldKey],
+                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -155,7 +209,7 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                           field().setValue((pre) => {
                                             const newArray = [...pre];
                                             newArray[index] = value;
-                                            return newArray;
+                                            return newArray as Array<crystal & item>;
                                           });
                                         }}
                                         datasFetcher={async () => {
@@ -202,12 +256,12 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                 );
 
               default:
-                return renderField<crystalWithItem, keyof crystalWithItem>(
+                return renderField<crystalWithRelated, keyof crystalWithRelated>(
                   form,
                   fieldKey,
                   fieldValue,
-                  CrystalWithItemWithRelatedDic(dic),
-                  crystalWithItemSchema,
+                  CrystalWithRelatedWithRelatedDic(dic),
+                  crystalWithRelatedSchema,
                 );
             }
           }}
@@ -227,8 +281,8 @@ const CrystalWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crystalWithItem, crystal & item> => ({
-  defaultData: defaultCrystalWithItem,
+export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crystalWithRelated, crystal & item> => ({
+  defaultData: defaultCrystalWithRelated,
   dataFetcher: async (id) => {
     const db = await getDB();
     const result = await db
@@ -262,7 +316,7 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
     return result;
   },
   dictionary: dic,
-  dataSchema: crystalWithItemSchema,
+  dataSchema: crystalWithRelatedSchema,
   table: {
     measure: {
       estimateSize: 168,
@@ -271,11 +325,11 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-      { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 260 },
+      { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
       { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
       { accessorKey: "details", cell: (info: any) => info.getValue(), size: 150 },
     ],
-    dic: CrystalWithItemWithRelatedDic(dic),
+    dic: CrystalWithRelatedWithRelatedDic(dic),
     defaultSort: { id: "name", desc: true },
     hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     tdGenerator: {
@@ -283,14 +337,14 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
         <div class="ModifierBox bg-area-color flex flex-col gap-1 rounded-r-md">
           <For each={props.cell.getValue<string[]>()}>
             {(modifier) => {
-              return <div class="bg-area-color w-full p-1">{modifier}</div>;
+              return <div class="w-full p-1">{modifier}</div>;
             }}
           </For>
         </div>
       ),
     },
   },
-  form: (handleSubmit) => CrystalWithItemForm(dic, handleSubmit),
+  form: (handleSubmit) => CrystalWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
@@ -354,29 +408,30 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
       const [frontData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
-          .selectFrom("crystal")
-          .innerJoin("item", "crystal.itemId", "item.id")
-          .where("crystal.itemId", "=", itemId)
-          .selectAll(["crystal", "item"])
+          .selectFrom("_frontRelation")
+          .innerJoin("item", "_frontRelation.A", "item.id")
+          .where("_frontRelation.B", "=", itemId)
+          .selectAll(["item"])
           .execute();
       });
 
       const [backData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
-          .selectFrom("crystal")
-          .innerJoin("item", "crystal.itemId", "item.id")
-          .where("crystal.itemId", "=", itemId)
-          .selectAll(["crystal", "item"])
+          .selectFrom("_backRelation")
+          .innerJoin("item", "_backRelation.A", "item.id")
+          .where("_backRelation.B", "=", itemId)
+          .selectAll(["item"])
           .execute();
       });
 
       return (
         <>
-          {DBDataRender<crystalWithItem>({
+          <div class="CrystalImage bg-area-color h-[18vh] w-full rounded"></div>
+          {DBDataRender<crystalWithRelated>({
             data,
-            dictionary: CrystalWithItemWithRelatedDic(dic),
-            dataSchema: crystalWithItemSchema,
+            dictionary: CrystalWithRelatedWithRelatedDic(dic),
+            dataSchema: crystalWithRelatedSchema,
             hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "modifiers", "type"],
@@ -390,7 +445,7 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
               renderItem={(front) => {
                 return {
                   label: front.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: front.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: front.id }]),
                 };
               }}
             />
@@ -402,7 +457,7 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
               renderItem={(back) => {
                 return {
                   label: back.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: back.itemId }]),
+                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: back.id }]),
                 };
               }}
             />

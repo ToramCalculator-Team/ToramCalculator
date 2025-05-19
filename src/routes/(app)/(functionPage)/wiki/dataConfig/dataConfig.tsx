@@ -1,5 +1,5 @@
 import { DB } from "~/../db/kysely/kyesely";
-import { createMobDataConfig } from "./mobDataConfig";
+import { createMobDataConfig } from "./mobConfig";
 import { AnyFieldApi, DeepKeys, DeepValue } from "@tanstack/solid-form";
 import { ColumnDef, Cell } from "@tanstack/solid-table";
 import { JSX } from "solid-js";

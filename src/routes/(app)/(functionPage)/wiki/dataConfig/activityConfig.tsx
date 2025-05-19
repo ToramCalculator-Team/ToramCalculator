@@ -248,6 +248,7 @@ export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<Act
 
       return (
         <>
+          <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
           {DBDataRender<ActivityWithRelated>({
             data,
             dictionary: ActivityWithRelatedDic(dic),

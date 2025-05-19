@@ -101,7 +101,7 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                     {(field) => {
                       return (
                         <Input
-                          title={dic.db.zone.selfName}
+                          title={"包含的" + dic.db.zone.selfName}
                           description={dic.db.zone.description}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border-1"
@@ -310,6 +310,7 @@ export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<Addr
 
       return (
         <>
+          <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
           {DBDataRender<AddressWithRelated>({
             data,
             dictionary: AddressWithRelatedDic(dic),

@@ -294,6 +294,7 @@ export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithR
 
       return (
         <>
+          <div class="NpcImage bg-area-color h-[18vh] w-full rounded"></div>
           {DBDataRender<NpcWithRelated>({
             data,
             dictionary: NpcWithRelatedDic(dic),

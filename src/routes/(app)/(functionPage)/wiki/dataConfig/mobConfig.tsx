@@ -779,7 +779,7 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
             })}
 
             <CardSection
-              title={"包含的" + dic.db.zone.selfName}
+              title={"出现的" + dic.db.zone.selfName}
               data={zonesData.latest}
               renderItem={(zone) => {
                 return {

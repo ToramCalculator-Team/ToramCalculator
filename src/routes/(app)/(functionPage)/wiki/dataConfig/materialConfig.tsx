@@ -23,19 +23,19 @@ import { Select } from "~/components/controls/select";
 import { ElementType, MaterialType } from "../../../../../../db/kysely/enums";
 import * as Icon from "~/components/icon";
 
-type materialWithItem = material & item;
+type materialWithRelated = material & item;
 
-const materialWithItemSchema = z.object({
+const materialWithRelatedSchema = z.object({
   ...itemSchema.shape,
   ...materialSchema.shape,
 });
 
-const defaultMaterialWithItem: materialWithItem = {
+const defaultMaterialWithRelated: materialWithRelated = {
   ...defaultData.item,
   ...defaultData.material,
 };
 
-const MaterialWithItemWithRelatedDic = (dic: dictionary) => ({
+const MaterialWithRelatedWithRelatedDic = (dic: dictionary) => ({
   ...dic.db.material,
   fields: {
     ...dic.db.material.fields,
@@ -43,9 +43,9 @@ const MaterialWithItemWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
-    defaultValues: defaultMaterialWithItem,
+    defaultValues: defaultMaterialWithRelated,
     onSubmit: async ({ value }) => {
       const db = await getDB();
       const material = await db.transaction().execute(async (trx) => {
@@ -77,9 +77,9 @@ const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultMaterialWithItem)}>
+        <For each={Object.entries(defaultMaterialWithRelated)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof materialWithItem;
+            const fieldKey = _field[0] as keyof materialWithRelated;
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
@@ -93,7 +93,7 @@ const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                 return (
                   <form.Field
                     name={fieldKey}
-                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: materialWithItemSchema.shape[fieldKey] }}
+                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: materialWithRelatedSchema.shape[fieldKey] }}
                   >
                     {(field) => (
                       <Input
@@ -115,12 +115,12 @@ const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                   </form.Field>
                 );
               default:
-                return renderField<materialWithItem, keyof materialWithItem>(
+                return renderField<materialWithRelated, keyof materialWithRelated>(
                   form,
                   fieldKey,
                   fieldValue,
-                  MaterialWithItemWithRelatedDic(dic),
-                  materialWithItemSchema,
+                  MaterialWithRelatedWithRelatedDic(dic),
+                  materialWithRelatedSchema,
                 );
             }
           }}
@@ -140,8 +140,8 @@ const MaterialWithItemForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<materialWithItem, material & item> => ({
-  defaultData: defaultMaterialWithItem,
+export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<materialWithRelated, material & item> => ({
+  defaultData: defaultMaterialWithRelated,
   dataFetcher: async (id) => {
     const db = await getDB();
     return await db
@@ -160,7 +160,7 @@ export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<mat
       .execute();
   },
   dictionary: dic,
-  dataSchema: materialWithItemSchema,
+  dataSchema: materialWithRelatedSchema,
   table: {
     columnDef: [
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
@@ -170,12 +170,12 @@ export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<mat
       { accessorKey: "price", cell: (info: any) => info.getValue(), size: 100 },
       { accessorKey: "ptValue", cell: (info: any) => info.getValue(), size: 100 },
     ],
-    dic: MaterialWithItemWithRelatedDic(dic),
+    dic: MaterialWithRelatedWithRelatedDic(dic),
     defaultSort: { id: "id", desc: true },
     hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     tdGenerator: {},
   },
-  form: (handleSubmit) => MaterialWithItemForm(dic, handleSubmit),
+  form: (handleSubmit) => MaterialWithRelatedForm(dic, handleSubmit),
   card: {
     cardRender: (data, appendCardTypeAndIds) => {
       const [recipeData] = createResource(data.id, async (itemId) => {
@@ -237,10 +237,11 @@ export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<mat
       });
       return (
         <>
-          {DBDataRender<materialWithItem>({
+          <div class="MaterialImage bg-area-color h-[18vh] w-full rounded"></div>
+          {DBDataRender<materialWithRelated>({
             data,
-            dictionary: MaterialWithItemWithRelatedDic(dic),
-            dataSchema: materialWithItemSchema,
+            dictionary: MaterialWithRelatedWithRelatedDic(dic),
+            dataSchema: materialWithRelatedSchema,
             hiddenFields: ["itemId"],
             fieldGroupMap: {
               基本信息: ["name", "type", "price", "ptValue"],

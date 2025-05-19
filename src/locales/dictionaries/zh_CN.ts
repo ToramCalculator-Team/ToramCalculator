@@ -2368,7 +2368,7 @@ const dictionary: dictionary = {
             Drug: "药品",
             Magic: "魔素",
             Gold: "金币",
-            Item: "其他",
+            Item: "道具",
           },
         },
         itemId: {
