@@ -27,8 +27,11 @@ export type SimplifiedFieldApi<T extends Record<string, unknown>, K extends Deep
 // 获取表单字段的错误信息
 // export function fieldInfo<T extends Record<string, unknown>, K extends DeepKeys<T>>(field: SimplifiedFieldApi<T, K>): string {
 export function fieldInfo(field: AnyFieldApi): string {
+  if (!field.state.meta) {
+    return "";
+  }
   const errors =
-    field.state.meta.isTouched && field.state.meta.errors.length ? field.state.meta.errors.join(",") : null;
+    field.state.meta.isTouched && field.state.meta.errors?.length ? field.state.meta.errors.join(",") : null;
   const isValidating = field.state.meta.isValidating ? "..." : null;
   if (errors) {
     console.log(field.state.meta.errors);

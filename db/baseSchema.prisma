@@ -79,7 +79,7 @@ model post {
     name        String
     createdAt   DateTime
     updatedAt   DateTime @updatedAt
-    createdBy   user     @relation(fields: [createdById], references: [id])
+    createdBy   user     @relation(fields: [createdById], references: [id], onDelete: Cascade)
     createdById String
 
     @@index([name])
@@ -131,9 +131,9 @@ model world {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -154,9 +154,9 @@ model address {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -171,9 +171,9 @@ model activity {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -186,9 +186,9 @@ model zone {
     mobs        mob[]
     npcs        npc[]
 
-    belongToActivity activity? @relation(fields: [activityId], references: [id])
+    belongToActivity activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
     activityId       String?
-    belongToAddress  address   @relation(fields: [addressId], references: [id])
+    belongToAddress  address   @relation(fields: [addressId], references: [id], onDelete: Cascade)
     addressId        String
 
     link   zone[] @relation("linkZones")
@@ -197,9 +197,9 @@ model zone {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -316,9 +316,9 @@ model item {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 
     // 道具可以作为其他道具的配方原料
@@ -331,7 +331,7 @@ model material {
     ptValue Int
     price   Int
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 }
 
@@ -356,7 +356,7 @@ model crystal {
     front crystal[] @relation("frontRelation")
     back  crystal[] @relation("backRelation")
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 
     usedByWeapon         weapon[]
@@ -387,7 +387,7 @@ model weapon {
 
     usedBy player_weapon[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 }
 
@@ -419,7 +419,7 @@ model option {
 
     usedBy player_option[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 }
 
@@ -441,10 +441,10 @@ model recipe {
 
     recipeEntries recipe_ingredient[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @unique
 
-    inActivity activity? @relation(fields: [activityId], references: [id])
+    inActivity activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
     activityId String?
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -466,7 +466,7 @@ model recipe_ingredient {
     itemId String?
 
     // 从属于配方
-    belongTorecipe recipe @relation(fields: [recipeId], references: [id])
+    belongTorecipe recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
     recipeId       String
 }
 
@@ -474,14 +474,14 @@ model recipe_ingredient {
 model drop_item {
     id String @id
 
-    item            item   @relation(fields: [itemId], references: [id])
+    item            item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId          String
     probability     Int
     relatedPartType String // Enum BOSS_PART_TYPE
     relatedPartInfo String
     breakRewardType String // Enum BOSS_PART_BREAK_REWARD_TYPE
 
-    dropBy   mob    @relation(fields: [dropById], references: [id])
+    dropBy   mob    @relation(fields: [dropById], references: [id], onDelete: Cascade)
     dropById String
 }
 
@@ -500,9 +500,9 @@ model npc {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -518,7 +518,7 @@ model task {
     requires    task_collect_require[]
     rewards     task_reward[]
 
-    belongToNpc npc    @relation(fields: [npcId], references: [id])
+    belongToNpc npc    @relation(fields: [npcId], references: [id], onDelete: Cascade)
     npcId       String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -538,7 +538,7 @@ model task_kill_requirement {
     mobId String
     count Int
 
-    belongToTask task   @relation(fields: [taskId], references: [id])
+    belongToTask task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
     taskId       String
 }
 
@@ -565,7 +565,7 @@ model task_reward {
     item        item?   @relation(fields: [itemId], references: [id]) // 仅当type为item时生效
     itemId      String?
 
-    belongToTask task   @relation(fields: [taskId], references: [id])
+    belongToTask task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
     taskId       String
 }
 
@@ -592,9 +592,9 @@ model skill {
 
     usedByCharacterSkill character_skill[]
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -659,7 +659,7 @@ model player_weapon {
     modifiers  String[]
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
 
     usedByMainHand character[] @relation("weapon")
@@ -679,7 +679,7 @@ model player_armor {
     modifiers  String[]
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
 
     usedBy character[]
@@ -696,7 +696,7 @@ model player_option {
     refinement Int
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
 
     usedBy character[]
@@ -712,7 +712,7 @@ model player_special {
     templateId String
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
 
     usedBy character[]
@@ -742,7 +742,7 @@ model player_pet {
     generation  Int
     maxLv       Int
 
-    master   player @relation(fields: [masterId], references: [id])
+    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
 }
 
@@ -792,7 +792,7 @@ model character {
     partnerSkillBType String // Enum PARTNER_SKILL_TYPE
     consumableList    consumable[]
     combos            combo[]
-    master            player            @relation(fields: [masterId], references: [id])
+    master            player            @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId          String
 
     details String?
@@ -845,7 +845,7 @@ model combo_step {
 // 佣兵
 model mercenary {
     type       String // Enum MERCENARY_TYPE
-    template   character @relation(fields: [templateId], references: [id])
+    template   character @relation(fields: [templateId], references: [id], onDelete: Cascade)
     templateId String    @id
 
     skillAId   String
@@ -870,9 +870,9 @@ model simulator {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 

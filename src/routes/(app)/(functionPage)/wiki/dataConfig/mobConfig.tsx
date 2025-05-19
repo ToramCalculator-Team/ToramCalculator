@@ -402,10 +402,13 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                           case "relatedPartInfo":
                                             return (
                                               <form.Subscribe
-                                                selector={(state) => ({
-                                                  type: state.values.type,
-                                                  breakRewardType: state.values.dropItems[i].breakRewardType,
-                                                })}
+                                                selector={(state) => {
+                                                  const dropItem = state.values.dropItems[i];
+                                                  return {
+                                                    type: state.values.type,
+                                                    breakRewardType: dropItem?.breakRewardType || "None"
+                                                  };
+                                                }}
                                               >
                                                 {(selector) => (
                                                   <Show
@@ -438,7 +441,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                                   }
                                                   return {
                                                     type: state.values.type,
-                                                    breakRewardType: state.values.dropItems[i].breakRewardType,
+                                                    breakRewardType: currentDropItem.breakRewardType || "None",
                                                   }
                                                 }}
                                               >

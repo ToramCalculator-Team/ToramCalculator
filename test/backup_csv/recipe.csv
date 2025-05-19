@@ -1,2 +1,2 @@
-id,itemId,activityId
+id,itemId,activityId,statisticId,updatedByAccountId,createdByAccountId
 defaultItemWeaponRecipeId,defaultWeaponItemId,,124,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
