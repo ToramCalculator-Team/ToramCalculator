@@ -34,8 +34,9 @@ import * as Icon from "~/components/icon";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Toggle } from "~/components/controls/toggle";
-import { BossPartBreakRewardType, BossPartType, RecipeIngredientType } from "../../../../../../db/kysely/enums";
+import { BossPartBreakRewardType, BossPartType, RecipeIngredientType } from "~/../db/kysely/enums";
 import { createId } from "@paralleldrive/cuid2";
+import { createStatistic } from "~/repositories/statistic";
 
 type armorWithRelated = armor &
   item & {
@@ -75,21 +76,6 @@ const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
   fields: {
     ...dic.db.armor.fields,
     ...dic.db.item.fields,
-    usedInDropItems: {
-      key: dic.db.drop_item.selfName,
-      tableFieldDescription: dic.db.drop_item.description,
-      formFieldDescription: dic.db.drop_item.description,
-    },
-    usedInTaskRewards: {
-      key: dic.db.task_reward.selfName,
-      tableFieldDescription: dic.db.task_reward.description,
-      formFieldDescription: dic.db.task_reward.description,
-    },
-    usedInRecipeEntries: {
-      key: dic.db.recipe_ingredient.selfName,
-      tableFieldDescription: dic.db.recipe_ingredient.description,
-      formFieldDescription: dic.db.recipe_ingredient.description,
-    },
     recipe: {
       key: dic.db.recipe.selfName,
       tableFieldDescription: dic.db.recipe.description,
@@ -104,6 +90,21 @@ const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
           formFieldDescription: dic.db.recipe_ingredient.description,
         },
       },
+    },
+    usedInDropItems: {
+      key: dic.db.drop_item.selfName,
+      tableFieldDescription: dic.db.drop_item.description,
+      formFieldDescription: dic.db.drop_item.description,
+    },
+    usedInTaskRewards: {
+      key: dic.db.task_reward.selfName,
+      tableFieldDescription: dic.db.task_reward.description,
+      formFieldDescription: dic.db.task_reward.description,
+    },
+    usedInRecipeEntries: {
+      key: dic.db.recipe_ingredient.selfName,
+      tableFieldDescription: dic.db.recipe_ingredient.description,
+      formFieldDescription: dic.db.recipe_ingredient.description,
     },
   },
 });
@@ -130,16 +131,17 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
           ...armorData,
           itemId: item.id,
         });
+        const recipeStatistic = await createStatistic(trx);
         const recipe = await trx
           .insertInto("recipe")
           .values({
             ...recipeData,
             id: createId(),
             itemId: item.id,
+            statisticId: recipeStatistic.id,
           })
           .returningAll()
           .executeTakeFirstOrThrow();
-        console.log("recipeEntriesData", recipeEntriesData);
         const recipeEntries =
           recipeEntriesData.length > 0
             ? await trx
@@ -964,15 +966,6 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
       .innerJoin("armor", "armor.itemId", "item.id")
       .selectAll(["item", "armor"])
       .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
-          "usedInDropItems",
-        ),
-        jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
-          "usedInTaskRewards",
-        ),
-        jsonArrayFrom(
-          eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
-        ).as("usedInRecipeEntries"),
         jsonObjectFrom(
           eb
             .selectFrom("recipe")
@@ -996,6 +989,15 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
         )
           .$notNull()
           .as("recipe"),
+        jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
+          "usedInDropItems",
+        ),
+        jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
+          "usedInTaskRewards",
+        ),
+        jsonArrayFrom(
+          eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
+        ).as("usedInRecipeEntries"),
       ])
       .executeTakeFirstOrThrow();
   },
@@ -1066,7 +1068,7 @@ export const createArmorDataConfig = (dic: dictionary): dataDisplayConfig<armorW
         return await db
           .selectFrom("recipe_ingredient")
           .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
-          .innerJoin("item", "recipe_ingredient.itemId", "item.id")
+          .innerJoin("item", "recipe.itemId", "item.id")
           .where("recipe_ingredient.itemId", "=", itemId)
           .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
           .execute();
