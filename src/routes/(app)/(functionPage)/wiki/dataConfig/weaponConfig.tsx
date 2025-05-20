@@ -94,11 +94,15 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
           ...weaponData,
           itemId: item.id,
         });
-        const recipe = await trx.insertInto("recipe").values({
-          ...recipeData,
-          id: createId(),
-          itemId: item.id,
-        }).returningAll().executeTakeFirstOrThrow();
+        const recipe = await trx
+          .insertInto("recipe")
+          .values({
+            ...recipeData,
+            id: createId(),
+            itemId: item.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         const recipeEntries = await trx
           .insertInto("recipe_ingredient")
           .values(
@@ -163,6 +167,9 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                             switch (recipeFieldKey) {
                               case "id":
                               case "itemId":
+                              case "createdByAccountId":
+                              case "updatedByAccountId":
+                              case "statisticId":
                                 return null;
                               case "activityId":
                                 return (
@@ -416,7 +423,10 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                 return (
                   <form.Field
                     name={fieldKey}
-                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: weaponWithRelatedSchema.shape[fieldKey] }}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: weaponWithRelatedSchema.shape[fieldKey],
+                    }}
                   >
                     {(field) => (
                       <Input

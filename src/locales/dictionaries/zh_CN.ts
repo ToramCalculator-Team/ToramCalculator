@@ -1034,6 +1034,21 @@ const dictionary: dictionary = {
           key: "名称",
           tableFieldDescription: "活动的名称",
           formFieldDescription: "请输入活动名称"
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: "游戏活动信息"
@@ -1074,6 +1089,21 @@ const dictionary: dictionary = {
           key: "世界ID",
           tableFieldDescription: "所属世界的ID",
           formFieldDescription: "选择所属世界"
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: "游戏中的地址信息"
@@ -1503,9 +1533,9 @@ const dictionary: dictionary = {
           },
         },
         dropById: {
-          key: "掉落ID",
-          tableFieldDescription: "掉落物品的掉落ID",
-          formFieldDescription: "选择掉落物品的掉落ID"
+          key: "掉落于",
+          tableFieldDescription: "掉落物品的怪物ID",
+          formFieldDescription: "选择掉落物品的怪物"
         },
       },
       description: ""
@@ -1912,6 +1942,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
           formFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: ""
     },
@@ -2340,6 +2385,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "所属活动",
           formFieldDescription: "所属活动"
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: ""
     },
@@ -2713,6 +2773,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "任务所属的NPC",
           formFieldDescription: "任务所属的NPC",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: ""
     },
@@ -2975,6 +3050,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "世界的名称",
           formFieldDescription: "世界的名称",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: ""
     },
@@ -3005,6 +3095,21 @@ const dictionary: dictionary = {
           key: "所属地图ID",
           tableFieldDescription: "该区域所属的地图ID",
           formFieldDescription: "选择该区域所属的地图"
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       cardFields: {

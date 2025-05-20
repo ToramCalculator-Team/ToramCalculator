@@ -93,11 +93,15 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
           ...consumableData,
           itemId: item.id,
         });
-        const recipe = await trx.insertInto("recipe").values({
-          ...recipeData,
-          id: createId(),
-          itemId: item.id,
-        }).returningAll().executeTakeFirstOrThrow();
+        const recipe = await trx
+          .insertInto("recipe")
+          .values({
+            ...recipeData,
+            id: createId(),
+            itemId: item.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         const recipeEntries = await trx
           .insertInto("recipe_ingredient")
           .values(
@@ -162,6 +166,9 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                             switch (recipeFieldKey) {
                               case "id":
                               case "itemId":
+                              case "createdByAccountId":
+                              case "updatedByAccountId":
+                              case "statisticId":
                                 return null;
                               case "activityId":
                                 return (
@@ -397,7 +404,10 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                 const simpleFieldKey = `recipe.${recipeFieldKey}`;
                                 const simpleFieldValue = recipeFieldValue;
-                                return renderField<consumableWithRelated["recipe"], keyof consumableWithRelated["recipe"]>(
+                                return renderField<
+                                  consumableWithRelated["recipe"],
+                                  keyof consumableWithRelated["recipe"]
+                                >(
                                   form,
                                   simpleFieldKey,
                                   simpleFieldValue,
@@ -415,7 +425,10 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                 return (
                   <form.Field
                     name={fieldKey}
-                    validators={{ onChangeAsyncDebounceMs: 500, onChangeAsync: consumableWithRelatedSchema.shape[fieldKey] }}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: consumableWithRelatedSchema.shape[fieldKey],
+                    }}
                   >
                     {(field) => (
                       <Input
@@ -462,7 +475,9 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
   );
 };
 
-export const createConsumableDataConfig = (dic: dictionary): dataDisplayConfig<consumableWithRelated, consumable & item> => ({
+export const createConsumableDataConfig = (
+  dic: dictionary,
+): dataDisplayConfig<consumableWithRelated, consumable & item> => ({
   defaultData: defaultConsumableWithRelated,
   dataFetcher: async (id) => {
     const db = await getDB();

@@ -167,6 +167,9 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                             switch (recipeFieldKey) {
                               case "id":
                               case "itemId":
+                              case "createdByAccountId":
+                              case "updatedByAccountId":
+                              case "statisticId":
                                 return null;
                               case "activityId":
                                 return (
@@ -306,10 +309,15 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                           case "itemId":
                                                             return (
                                                               <form.Subscribe
-                                                                selector={(state) =>
-                                                                  state.values.recipe.recipeEntries[recipeEntryIndex]
-                                                                    .type
-                                                                }
+                                                                selector={(state) => {
+                                                                  return state.values.recipe.recipeEntries[
+                                                                    recipeEntryIndex
+                                                                  ]
+                                                                    ? state.values.recipe.recipeEntries[
+                                                                        recipeEntryIndex
+                                                                      ].type
+                                                                    : "Gold";
+                                                                }}
                                                               >
                                                                 {(type) => (
                                                                   <Show when={type() === "Item"}>

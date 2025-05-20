@@ -167,6 +167,9 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                             switch (recipeFieldKey) {
                               case "id":
                               case "itemId":
+                              case "createdByAccountId":
+                              case "updatedByAccountId":
+                              case "statisticId":
                                 return null;
                               case "activityId":
                                 return (

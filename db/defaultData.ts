@@ -177,11 +177,11 @@ export const defaultData: DB = {
   drop_item: {
     id: "",
     itemId: "",
-    probability: 0,
+    dropById: "",
     breakRewardType: "None",
     relatedPartType: "A",
     relatedPartInfo: "",
-    dropById: "",
+    probability: 0,
   },
   image: {
     id: "",
@@ -362,10 +362,10 @@ export const defaultData: DB = {
   },
   recipe_ingredient: {
     id: "",
-    type: "Metal",
-    count: 0,
-    itemId: null,
     recipeId: "",
+    type: "Metal",
+    itemId: null,
+    count: 0,
   },
   session: {
     id: "",
@@ -466,11 +466,11 @@ export const defaultData: DB = {
   },
   task_reward: {
     id: "",
+    taskId: "",
     type: "Item",
     value: 0,
     probability: 0,
     itemId: null,
-    taskId: "",
   },
   team: {
     id: "",
