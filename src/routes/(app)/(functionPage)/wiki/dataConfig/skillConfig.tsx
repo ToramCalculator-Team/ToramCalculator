@@ -9,7 +9,7 @@ import { skillSchema, skill_effectSchema, statisticSchema } from "~/../db/zod";
 import { DB, skill, skill_effect } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { EnumSelect } from "~/components/controls/enumSelect";
@@ -359,7 +359,7 @@ export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillW
       return (
         <>
           <div class="SkillImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<SkillWithRelated>({
+          {ObjRender<SkillWithRelated>({
             data,
             dictionary: SkillWithRelatedDic(dic),
             dataSchema: SkillWithRelatedSchema,

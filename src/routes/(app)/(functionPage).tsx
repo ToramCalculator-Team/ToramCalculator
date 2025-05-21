@@ -97,7 +97,7 @@ const Nav = () => {
         opacity: [0, 1],
       }}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav bg-primary-color lg:landscape:bg-area-color flex w-dvw items-center py-2 landscape:h-dvh landscape:w-24 landscape:flex-col landscape:gap-2 landscape:py-5 lg:landscape:gap-8`}
+      class={`Nav lg:landscape:bg-area-color flex w-dvw items-center py-2 landscape:h-dvh landscape:w-24 landscape:flex-col landscape:gap-2 landscape:py-5 lg:landscape:gap-8`}
     >
       <a href={"/"} class="Home group hidden landscape:block" tabIndex={1}>
         <Icon.Line.Logo />
@@ -254,7 +254,7 @@ export default function FunctionPage(props: ParentProps) {
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         id="mainContent"
-        class="Content bg-primary-color-90 z-40 flex h-full w-full flex-col overflow-hidden lg:landscape:px-12"
+        class="Content z-40 flex h-full w-full flex-col overflow-hidden lg:landscape:px-12"
       >
         {props.children}
       </Motion.div>

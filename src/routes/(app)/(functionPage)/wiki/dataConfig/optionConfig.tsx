@@ -6,7 +6,7 @@ import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, optionSchema, recipeSchema, recipe_ingredientSchema, drop_itemSchema, task_rewardSchema } from "~/../db/zod";
 import { DB, item, option, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createOptEquip, OptEquip } from "~/repositories/optEquip";
 import { createItem, findItems, Item } from "~/repositories/item";
@@ -290,6 +290,7 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
+                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -429,6 +430,7 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
+                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -586,6 +588,7 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -766,6 +769,7 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -881,6 +885,7 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1080,7 +1085,7 @@ export const createOptEquipDataConfig = (dic: dictionary): dataDisplayConfig<opt
       return (
         <>
           <div class="OptionImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<optionWithRelated>({
+          {ObjRender<optionWithRelated>({
             data,
             dictionary: OptEquipWithRelatedDic(dic),
             dataSchema: optionWithRelatedSchema,

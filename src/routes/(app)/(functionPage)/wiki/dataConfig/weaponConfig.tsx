@@ -13,7 +13,7 @@ import {
 } from "~/../db/zod";
 import { DB, item, weapon, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createWeapon } from "~/repositories/weapon";
 import { createItem } from "~/repositories/item";
@@ -374,6 +374,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
+                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -511,6 +512,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
+                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -668,6 +670,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -851,6 +854,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -963,6 +967,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1163,7 +1168,7 @@ export const createWeaponDataConfig = (dic: dictionary): dataDisplayConfig<weapo
       return (
         <>
           <div class="WeaponImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<weaponWithRelated>({
+          {ObjRender<weaponWithRelated>({
             data,
             dictionary: WeaponWithRelatedWithRelatedDic(dic),
             dataSchema: weaponWithRelatedSchema,

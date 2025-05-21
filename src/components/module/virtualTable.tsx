@@ -266,17 +266,12 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
           </Motion.div>
         </Show>
       </Presence>
-      <OverlayScrollbarsComponent
-        element="div"
-        options={{ scrollbars: { autoHide: "scroll" } }}
-        ref={setVirtualScrollRef}
-        class="h-full flex-1"
-      >
-        <table class="Table relative max-h-full max-w-full">
-          <thead class={`TableHead bg-primary-color sticky top-0 z-10 flex`}>
+      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}>
+        <div class="TableContainer flex h-full flex-col">
+          <div class={`TableHead z-10 flex w-fit`}>
             <For each={table()?.getHeaderGroups()}>
               {(headerGroup) => (
-                <tr class="border-dividing-color flex min-w-full gap-0 border-b-1 lg:border-b-2">
+                <div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-b-1 lg:border-b-2">
                   <For each={headerGroup.headers}>
                     {(header) => {
                       const { column } = header;
@@ -292,108 +287,122 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                         console.log("字典中不存在该字段", column.id);
                       }
                       return (
-                        <th
+                        <div
                           style={{
                             ...getCommonPinningStyles(column),
                             width: getCommonPinningStyles(column).width + "px",
                           }}
-                          class="flex flex-col"
+                          {...{
+                            onClick: header.column.getToggleSortingHandler(),
+                          }}
+                          class={`hover:bg-area-color flex-none px-6 py-3 text-left font-normal lg:py-6 ${
+                            header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                          }`}
                         >
-                          <div
-                            {...{
-                              onClick: header.column.getToggleSortingHandler(),
-                            }}
-                            class={`hover:bg-area-color flex-1 px-6 py-3 text-left font-normal lg:py-6 ${
-                              header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                            }`}
-                          >
-                            {columnKey}
-                            {{
-                              asc: " ▲",
-                              desc: " ▼",
-                            }[header.column.getIsSorted() as string] ?? null}
-                          </div>
-                        </th>
+                          {columnKey}
+                          {{
+                            asc: " ▲",
+                            desc: " ▼",
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
                       );
                     }}
                   </For>
-                </tr>
+                </div>
               )}
             </For>
-          </thead>
-          <Show
-            when={data.state === "ready"}
-            fallback={
-              <div class="flex h-full w-full items-center justify-center">
-                <LoadingBar />
-              </div>
-            }
+          </div>
+          <OverlayScrollbarsComponent
+            element="div"
+            options={{ scrollbars: { autoHide: "scroll" } }}
+            ref={setVirtualScrollRef}
+            class="TableBodyContaier h-full min-w-full flex-1"
+            style={{
+              width:
+                table()
+                  ?.getAllColumns()
+                  .reduce((acc, col) => {
+                    if (props.hiddenColumnDef.includes(col.id as keyof T)) {
+                      return acc;
+                    }
+                    return acc + col.getSize();
+                  }, 0) + "px",
+            }}
           >
-            <tbody style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBody relative`}>
-              <For each={tableContainer().getVirtualItems()}>
-                {(virtualRow) => {
-                  const row = table()?.getRowModel().rows[virtualRow.index];
-                  if (!row) {
-                    return null;
-                  }
-                  return (
-                    <tr
-                      ref={(el) => {
-                        if (el && props.measure) {
-                          el.setAttribute("data-index", virtualRow.index.toString());
-                          tableContainer().measureElement(el);
-                        }
-                      }}
-                      style={{
-                        position: "absolute",
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                      onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
-                      class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
-                    >
-                      <For
-                        each={row
-                          .getVisibleCells()
-                          .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
-                      >
-                        {(cell) => {
-                          const columnId = cell.column.id as keyof T;
-                          let columnKey = columnId;
-                          const isEnum = "enumMap" in props.dictionary.fields[columnId];
-                          try {
-                            columnKey = isEnum
-                              ? (props.dictionary.fields[columnId] as EnumFieldDetail<string>).enumMap[
-                                  cell.getValue<string>()
-                                ]
-                              : cell.getValue<string>();
-                          } catch (error) {
-                            console.log("字典中不存在该字段", columnId);
+            <Show
+              when={data.state === "ready"}
+              fallback={
+                <div class="flex h-full w-full items-center justify-center">
+                  <LoadingBar />
+                </div>
+              }
+            >
+              <div style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBody relative`}>
+                <For each={tableContainer().getVirtualItems()}>
+                  {(virtualRow) => {
+                    const row = table()?.getRowModel().rows[virtualRow.index];
+                    if (!row) {
+                      return null;
+                    }
+                    return (
+                      <div
+                        ref={(el) => {
+                          if (el && props.measure) {
+                            el.setAttribute("data-index", virtualRow.index.toString());
+                            tableContainer().measureElement(el);
                           }
-
-                          const hasFieldGenerator = columnId in props.tdGenerator;
-                          const fieldGenerator = hasFieldGenerator ? props.tdGenerator[columnId]! : () => null;
-                          return (
-                            <td
-                              style={{
-                                ...getCommonPinningStyles(cell.column),
-                                width: getCommonPinningStyles(cell.column).width + "px",
-                              }}
-                              class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-3 text-ellipsis`}
-                            >
-                              <Show when={hasFieldGenerator} fallback={String(columnKey)}>
-                                {fieldGenerator({ cell, dic: props.dictionary })}
-                              </Show>
-                            </td>
-                          );
                         }}
-                      </For>
-                    </tr>
-                  );
-                }}
-              </For>
-            </tbody>
-          </Show>
-        </table>
+                        style={{
+                          position: "absolute",
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                        onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                        class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
+                      >
+                        <For
+                          each={row
+                            .getVisibleCells()
+                            .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
+                        >
+                          {(cell) => {
+                            const columnId = cell.column.id as keyof T;
+                            let columnKey = columnId;
+                            const isEnum = "enumMap" in props.dictionary.fields[columnId];
+                            try {
+                              columnKey = isEnum
+                                ? (props.dictionary.fields[columnId] as EnumFieldDetail<string>).enumMap[
+                                    cell.getValue<string>()
+                                  ]
+                                : cell.getValue<string>();
+                            } catch (error) {
+                              console.log("字典中不存在该字段", columnId);
+                            }
+
+                            const hasFieldGenerator = columnId in props.tdGenerator;
+                            const fieldGenerator = hasFieldGenerator ? props.tdGenerator[columnId]! : () => null;
+                            return (
+                              <div
+                                style={{
+                                  ...getCommonPinningStyles(cell.column),
+                                  width: getCommonPinningStyles(cell.column).width + "px",
+                                }}
+                                class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-3 text-ellipsis`}
+                              >
+                                <Show when={hasFieldGenerator} fallback={String(columnKey)}>
+                                  {fieldGenerator({ cell, dic: props.dictionary })}
+                                </Show>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    );
+                  }}
+                </For>
+              </div>
+            </Show>
+          </OverlayScrollbarsComponent>
+        </div>
       </OverlayScrollbarsComponent>
     </>
   );

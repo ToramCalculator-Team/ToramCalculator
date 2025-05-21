@@ -44,6 +44,8 @@ import {
   onMount,
   Show,
 } from "solid-js";
+import * as Icon from "~/components/icon";
+import { ObjRender } from "../module/objRender";
 
 interface AutocompleteProps<T extends Record<string, unknown>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
@@ -51,6 +53,7 @@ interface AutocompleteProps<T extends Record<string, unknown>>
   initialValue: T;
   setValue: (value: T) => void;
   datasFetcher: () => Promise<T[]>;
+  extraLabel?: (value: T) => JSX.Element;
   displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
   valueField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
 }
@@ -116,6 +119,8 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
     }
   });
 
+  const [detailVisible, setDetailVisible] = createSignal(false);
+
   onMount(() => {
     // 处理点击外部关闭下拉框
     const handleClickOutside = (event: MouseEvent) => {
@@ -155,14 +160,30 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
             <For each={filteredOptions()}>
               {(option) => (
                 <button
-                  class="w-full px-4 py-2 text-left hover:bg-gray-100"
+                  class="relative flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleSelect(option);
                   }}
                 >
-                  {option[props.displayField] as string }
+                  <span>{option[props.displayField] as string}</span>
+                  {props.extraLabel?.(option)}
+                  <div
+                    class="DetailControlBtn bg-area-color p-1 rounded-md"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDetailVisible(!detailVisible());
+                    }}
+                  >
+                    <Icon.Line.InfoCircle />
+                  </div>
+                  <Show when={detailVisible()}>
+                    <div class="DetailInfo absolute top-0 right-0 w-full h-fit rounded bg-primary-color">
+                      <ObjRender data={option} />
+                    </div>
+                  </Show>
                 </button>
               )}
             </For>

@@ -8,7 +8,7 @@ import { addressSchema, zoneSchema } from "~/../db/zod";
 import { address, DB, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
@@ -132,7 +132,7 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                         }}
                                         datasFetcher={async () => {
                                           const db = await getDB();
-                                          const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                                          const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
                                           return zones;
                                         }}
                                         displayField="name"
@@ -312,7 +312,7 @@ export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<Addr
       return (
         <>
           <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<AddressWithRelated>({
+          {ObjRender<AddressWithRelated>({
             data,
             dictionary: AddressWithRelatedDic(dic),
             dataSchema: AddressWithRelatedSchema,

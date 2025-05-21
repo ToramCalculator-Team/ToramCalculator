@@ -11,7 +11,7 @@ import { Input } from "~/components/controls/input";
 import { z } from "zod";
 import { DB, drop_item, mob, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { getDB } from "~/repositories/database";
 import { Select } from "~/components/controls/select";
 import { MOB_DIFFICULTY_FLAG } from "~/../db/enums";
@@ -136,38 +136,37 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
               case "createdByAccountId":
               case "updatedByAccountId":
                 return null;
-              
-                case "partsExperience":
-                  return (
-                    <form.Field
-                      name={fieldKey}
-                      validators={{
-                        onChangeAsyncDebounceMs: 500,
-                        onChangeAsync: MobWithRelatedSchema.shape[fieldKey],
-                      }}
-                    >
-                      {(field) => (
-                        <form.Subscribe selector={(state) => state.values.type}>
-                          {(type) => (
-                            <Show when={type() === "Boss"}>
-                              <Input
-                                type="number"
-                                title={dic.db.mob.fields[fieldKey].key}
-                                description={dic.db.mob.fields[fieldKey].formFieldDescription}
-                                state={fieldInfo(field())}
-                                value={field().state.value}
-                                onChange={(e) => {
-                                  field().setValue(Number(e.target.value));
-                                }}
-                                class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                              >
-                              </Input>
-                            </Show>
-                          )}
-                        </form.Subscribe>
-                      )}
-                    </form.Field>
-                  );
+
+              case "partsExperience":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: MobWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <form.Subscribe selector={(state) => state.values.type}>
+                        {(type) => (
+                          <Show when={type() === "Boss"}>
+                            <Input
+                              type="number"
+                              title={dic.db.mob.fields[fieldKey].key}
+                              description={dic.db.mob.fields[fieldKey].formFieldDescription}
+                              state={fieldInfo(field())}
+                              value={field().state.value}
+                              onChange={(e) => {
+                                field().setValue(Number(e.target.value));
+                              }}
+                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            ></Input>
+                          </Show>
+                        )}
+                      </form.Subscribe>
+                    )}
+                  </form.Field>
+                );
               case "captureable":
                 return (
                   <form.Field
@@ -307,7 +306,11 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                         }}
                                         datasFetcher={async () => {
                                           const db = await getDB();
-                                          const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                                          const zones = await db
+                                            .selectFrom("zone")
+                                            .selectAll("zone")
+                                            .limit(10)
+                                            .execute();
                                           return zones;
                                         }}
                                         displayField="name"
@@ -406,7 +409,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                                   const dropItem = state.values.dropItems[i];
                                                   return {
                                                     type: state.values.type,
-                                                    breakRewardType: dropItem?.breakRewardType || "None"
+                                                    breakRewardType: dropItem?.breakRewardType || "None",
                                                   };
                                                 }}
                                               >
@@ -433,16 +436,16 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                               <form.Subscribe
                                                 selector={(state) => {
                                                   const currentDropItem = state.values.dropItems[i];
-                                                  if (!currentDropItem) { 
+                                                  if (!currentDropItem) {
                                                     return {
                                                       type: state.values.type,
                                                       breakRewardType: "None",
-                                                    }
+                                                    };
                                                   }
                                                   return {
                                                     type: state.values.type,
                                                     breakRewardType: currentDropItem.breakRewardType || "None",
-                                                  }
+                                                  };
                                                 }}
                                               >
                                                 {(selector) => (
@@ -488,6 +491,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                                         const items = await db
                                                           .selectFrom("item")
                                                           .select(["id", "name"])
+                                                          .limit(10)
                                                           .execute();
                                                         return items;
                                                       }}
@@ -799,7 +803,7 @@ export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithR
                 }}
               />
             </Show>
-            {DBDataRender<MobWithRelated>({
+            {ObjRender<MobWithRelated>({
               data: generateBossDataByFlag(data, difficulty()),
               dictionary: MobWithRelatedDic(dic),
               dataSchema: MobWithRelatedSchema,

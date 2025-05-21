@@ -8,7 +8,7 @@ import { activitySchema, addressSchema, mobSchema, npcSchema, zoneSchema } from 
 import { activity, address, DB, mob, npc, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
@@ -165,7 +165,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const mobs = await db.selectFrom("mob").selectAll("mob").execute();
+                                        const mobs = await db.selectFrom("mob").selectAll("mob").limit(10).execute();
                                         return mobs;
                                       }}
                                       displayField="name"
@@ -229,7 +229,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const npcs = await db.selectFrom("npc").selectAll("npc").execute();
+                                        const npcs = await db.selectFrom("npc").selectAll("npc").limit(10).execute();
                                         return npcs;
                                       }}
                                       displayField="name"
@@ -293,7 +293,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                                        const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
                                         return zones;
                                       }}
                                       displayField="name"
@@ -366,7 +366,11 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                               }}
                               datasFetcher={async () => {
                                 const db = await getDB();
-                                const activities = await db.selectFrom("activity").selectAll("activity").execute();
+                                const activities = await db
+                                  .selectFrom("activity")
+                                  .selectAll("activity")
+                                  .limit(10)
+                                  .execute();
                                 return activities;
                               }}
                               displayField="name"
@@ -402,7 +406,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const addresses = await db.selectFrom("address").selectAll("address").execute();
+                            const addresses = await db.selectFrom("address").selectAll("address").limit(10).execute();
                             return addresses;
                           }}
                           displayField="name"
@@ -605,7 +609,7 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
       return (
         <>
           <div class="ZoneImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<ZoneWithRelated>({
+          {ObjRender<ZoneWithRelated>({
             data,
             dictionary: ZoneWithRelatedDic(dic),
             dataSchema: ZoneWithRelatedSchema,

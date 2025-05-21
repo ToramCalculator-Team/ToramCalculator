@@ -496,7 +496,7 @@ export function BabylonBg(): JSX.Element {
     });
 
     // 加载model
-    void SceneLoader.AppendAsync("/models/", "bg1.glb", scene, (event) => {
+    void SceneLoader.AppendAsync("/models/", "bg.glb", scene, (event) => {
       // 加载进度计算
       if (progress) progress.innerHTML = "加载中..." + Math.floor((event.loaded / event.total) * 100).toString();
     }).then(() => {

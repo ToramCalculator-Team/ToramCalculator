@@ -20,7 +20,7 @@ type SearchConfig = {
 };
 
 type SearchResults = {
-  [K in SearchableTables]?: Record<string, unknown>[];
+  [K in SearchableTables]?: DB[K][];
 };
 
 // 物品类型到表的映射
@@ -216,9 +216,9 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
               try {
                 const fullData = await config.dataFetcher(item.id);
                 if (!results[targetTable]) {
-                  results[targetTable] = [];
+                  results[targetTable] = [] as any;
                 }
-                results[targetTable]!.push(fullData);
+                (results[targetTable] as any[]).push(fullData);
               } catch (error) {
                 // console.warn(`Failed to fetch data for ${targetTable} with id ${item.id}:`, error);
               }

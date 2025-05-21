@@ -8,7 +8,7 @@ import { taskSchema, task_collect_requireSchema, task_kill_requirementSchema, ta
 import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
@@ -177,7 +177,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const npcs = await db.selectFrom("npc").selectAll("npc").execute();
+                            const npcs = await db.selectFrom("npc").selectAll("npc").limit(10).execute();
                             return npcs;
                           }}
                           displayField="name"
@@ -237,6 +237,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                                 const items = await db
                                                   .selectFrom("item")
                                                   .select(["id", "name"])
+                                                  .limit(10)
                                                   .execute();
                                                 return items;
                                               }}
@@ -322,6 +323,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                                 const mobs = await db
                                                   .selectFrom("mob")
                                                   .select(["id", "name"])
+                                                  .limit(10)
                                                   .execute();
                                                 return mobs;
                                               }}
@@ -425,7 +427,11 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                           }}
                                           datasFetcher={async () => {
                                             const db = await getDB();
-                                            const items = await db.selectFrom("item").select(["id", "name"]).execute();
+                                            const items = await db
+                                              .selectFrom("item")
+                                              .select(["id", "name"])
+                                              .limit(10)
+                                              .execute();
                                             return items;
                                           }}
                                           displayField="name"
@@ -635,7 +641,7 @@ export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWit
       return (
         <>
           <div class="TaskImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<TaskWithRelated>({
+          {ObjRender<TaskWithRelated>({
             data,
             dictionary: TaskWithRelatedDic(dic),
             dataSchema: TaskWithRelatedSchema,

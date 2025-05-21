@@ -6,7 +6,7 @@ import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, crystalSchema, recipe_ingredientSchema, drop_itemSchema, task_rewardSchema } from "~/../db/zod";
 import { DB, item, crystal, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createCrystal } from "~/repositories/crystal";
 import { createItem } from "~/repositories/item";
@@ -281,6 +281,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                             .selectFrom("crystal")
                                             .innerJoin("item", "crystal.itemId", "item.id")
                                             .selectAll(["crystal", "item"])
+                                            .limit(10)
                                             .execute();
                                           return crystals;
                                         }}
@@ -406,6 +407,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -589,6 +591,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -701,6 +704,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -928,7 +932,7 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
       return (
         <>
           <div class="CrystalImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<crystalWithRelated>({
+          {ObjRender<crystalWithRelated>({
             data,
             dictionary: CrystalWithRelatedWithRelatedDic(dic),
             dataSchema: crystalWithRelatedSchema,

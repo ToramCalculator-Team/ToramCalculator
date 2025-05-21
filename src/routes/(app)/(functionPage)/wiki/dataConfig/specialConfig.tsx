@@ -13,7 +13,7 @@ import {
 } from "~/../db/zod";
 import { DB, item, special, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createSpeEquip, SpeEquip } from "~/repositories/speEquip";
 import { createItem, findItems, Item } from "~/repositories/item";
@@ -296,6 +296,7 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
+                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -430,6 +431,7 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
+                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -587,6 +589,7 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -767,6 +770,7 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -882,6 +886,7 @@ const SpeEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1080,7 +1085,7 @@ export const createSpeEquipDataConfig = (dic: dictionary): dataDisplayConfig<spe
       return (
         <>
           <div class="SpecialImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<specialWithRelated>({
+          {ObjRender<specialWithRelated>({
             data,
             dictionary: SpeEquipWithRelatedWithRelatedDic(dic),
             dataSchema: specialWithRelatedSchema,

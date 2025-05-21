@@ -13,7 +13,7 @@ import {
 } from "~/../db/zod";
 import { DB, item, material, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createMaterial } from "~/repositories/material";
 import { createItem } from "~/repositories/item";
@@ -299,6 +299,7 @@ const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
+                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -436,6 +437,7 @@ const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
+                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -621,6 +623,7 @@ const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -801,6 +804,7 @@ const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -916,6 +920,7 @@ const MaterialWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1116,7 +1121,7 @@ export const createMaterialDataConfig = (dic: dictionary): dataDisplayConfig<mat
       return (
         <>
           <div class="MaterialImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<materialWithRelated>({
+          {ObjRender<materialWithRelated>({
             data,
             dictionary: MaterialWithRelatedWithRelatedDic(dic),
             dataSchema: materialWithRelatedSchema,

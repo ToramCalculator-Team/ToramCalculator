@@ -8,7 +8,7 @@ import { npcSchema, taskSchema } from "~/../db/zod";
 import { npc, DB, task } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
@@ -129,7 +129,7 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                            const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
                             return zones;
                           }}
                           displayField="name"
@@ -173,7 +173,7 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const tasks = await db.selectFrom("task").selectAll("task").execute();
+                                        const tasks = await db.selectFrom("task").selectAll("task").limit(10).execute();
                                         return tasks;
                                       }}
                                       displayField="name"
@@ -298,7 +298,7 @@ export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithR
       return (
         <>
           <div class="NpcImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<NpcWithRelated>({
+          {ObjRender<NpcWithRelated>({
             data,
             dictionary: NpcWithRelatedDic(dic),
             dataSchema: NpcWithRelatedSchema,

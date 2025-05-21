@@ -13,7 +13,7 @@ import {
 } from "~/../db/zod";
 import { DB, item, consumable, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { DBDataRender } from "~/components/module/dbDataRender";
+import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
 import { createConsumable } from "~/repositories/consumable";
 import { createItem } from "~/repositories/item";
@@ -299,6 +299,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
+                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -436,6 +437,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
+                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -624,6 +626,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
+                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -804,6 +807,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -919,6 +923,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof 
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
+                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1121,7 +1126,7 @@ export const createConsumableDataConfig = (
       return (
         <>
           <div class="ConsumableImage bg-area-color h-[18vh] w-full rounded"></div>
-          {DBDataRender<consumableWithRelated>({
+          {ObjRender<consumableWithRelated>({
             data,
             dictionary: ConsumableWithRelatedDic(dic),
             dataSchema: consumableWithRelatedSchema,
