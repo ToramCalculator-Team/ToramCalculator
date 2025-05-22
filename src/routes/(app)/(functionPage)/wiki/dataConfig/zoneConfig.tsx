@@ -1,5 +1,5 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index } from "solid-js";
+import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createZone, deleteZone, findZoneById, findZones, Zone } from "~/repositories/zone";
 import { fieldInfo, renderField } from "../utils";
@@ -22,6 +22,7 @@ import { Toggle } from "~/components/controls/toggle";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type ZoneWithRelated = zone & {
   mobs: mob[];
@@ -67,6 +68,45 @@ const ZoneWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const ZoneWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("zone")
+    .where("id", "=", id)
+    .selectAll("zone")
+    .select((eb) => [
+      jsonArrayFrom(
+        eb
+          .selectFrom("_linkZones")
+          .innerJoin("zone", "zone.id", "_linkZones.B")
+          .whereRef("_linkZones.A", "=", "zone.id")
+          .selectAll("zone"),
+      ).as("linkZones"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("_mobTozone")
+          .innerJoin("mob", "mob.id", "_mobTozone.B")
+          .whereRef("_mobTozone.A", "=", "zone.id")
+          .selectAll("mob"),
+      ).as("mobs"),
+      jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
+      jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
+        .$notNull()
+        .as("belongToAddress"),
+      jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
+        .$notNull()
+        .as("belongToActivity"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const ZonesFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("zone").selectAll("zone").execute();
+  return res;
+};
 
 const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const [isLimit, setIsLimit] = createSignal(false);
@@ -450,10 +490,10 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWithRelated, zone> => ({
-  defaultData: defaultZoneWithRelated,
-  table: {
-    columnDef: [
+const ZoneTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<zone>({
+    dataFetcher: ZonesFetcher,
+    columnsDef: [
       {
         id: "id",
         accessorFn: (row) => row.id,
@@ -485,217 +525,155 @@ export const createZoneDataConfig = (dic: dictionary): dataDisplayConfig<ZoneWit
         size: 160,
       },
     ],
-    dic: ZoneWithRelatedDic(dic),
-    hiddenColumns: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    dictionary: ZoneWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
-  },
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("zone")
-      .where("id", "=", id)
-      .selectAll("zone")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("_linkZones")
-            .innerJoin("zone", "zone.id", "_linkZones.B")
-            .whereRef("_linkZones.A", "=", "zone.id")
-            .selectAll("zone"),
-        ).as("linkZones"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("_mobTozone")
-            .innerJoin("mob", "mob.id", "_mobTozone.B")
-            .whereRef("_mobTozone.A", "=", "zone.id")
-            .selectAll("mob"),
-        ).as("mobs"),
-        jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
-        jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
-          .$notNull()
-          .as("belongToAddress"),
-        jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
-          .$notNull()
-          .as("belongToActivity"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("zone")
-      .selectAll("zone")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("_linkZones")
-            .innerJoin("zone", "zone.id", "_linkZones.B")
-            .whereRef("_linkZones.A", "=", "zone.id")
-            .selectAll("zone"),
-        ).as("linkZones"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("_mobTozone")
-            .innerJoin("mob", "mob.id", "_mobTozone.B")
-            .whereRef("_mobTozone.A", "=", "zone.id")
-            .selectAll("mob"),
-        ).as("mobs"),
-        jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
-        jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
-          .$notNull()
-          .as("belongToAddress"),
-        jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
-          .$notNull()
-          .as("belongToActivity"),
-      ])
-      .execute();
-    return res;
-  },
-  dictionary: dic,
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
+  defaultData: defaultZoneWithRelated,
+  mainContent: (dic, filterStr, columnHandleClick) => ZoneTable(dic, filterStr, columnHandleClick),
+  dataFetcher: ZoneWithRelatedFetcher,
+  datasFetcher: ZonesFetcher,
   dataSchema: ZoneWithRelatedSchema,
-  form: (handleSubmit) => ZoneWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: ZoneWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [mobData] = createResource(data.id, async (zoneId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("mob")
-          .innerJoin("_mobTozone", "mob.id", "_mobTozone.A")
-          .where("_mobTozone.B", "=", zoneId)
-          .selectAll("mob")
-          .execute();
-      });
+  form: (dic, handleSubmit) => ZoneWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [mobData] = createResource(data.id, async (zoneId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("mob")
+        .innerJoin("_mobTozone", "mob.id", "_mobTozone.A")
+        .where("_mobTozone.B", "=", zoneId)
+        .selectAll("mob")
+        .execute();
+    });
 
-      const [npcsData] = createResource(data.id, async (zoneId) => {
-        const db = await getDB();
-        return await db.selectFrom("npc").where("npc.zoneId", "=", zoneId).selectAll("npc").execute();
-      });
+    const [npcsData] = createResource(data.id, async (zoneId) => {
+      const db = await getDB();
+      return await db.selectFrom("npc").where("npc.zoneId", "=", zoneId).selectAll("npc").execute();
+    });
 
-      const [linkZonesData] = createResource(data.id, async (zoneId) => {
-        const db = await getDB();
-        const resL = await db
-          .selectFrom("zone")
-          .innerJoin("_linkZones", "zone.id", "_linkZones.B")
-          .where("_linkZones.A", "=", zoneId)
-          .selectAll("zone")
-          .execute();
-        const resR = await db
-          .selectFrom("zone")
-          .innerJoin("_linkZones", "zone.id", "_linkZones.A")
-          .where("_linkZones.B", "=", zoneId)
-          .selectAll("zone")
-          .execute();
-        const res = [...resL, ...resR];
-        return res;
-      });
+    const [linkZonesData] = createResource(data.id, async (zoneId) => {
+      const db = await getDB();
+      const resL = await db
+        .selectFrom("zone")
+        .innerJoin("_linkZones", "zone.id", "_linkZones.B")
+        .where("_linkZones.A", "=", zoneId)
+        .selectAll("zone")
+        .execute();
+      const resR = await db
+        .selectFrom("zone")
+        .innerJoin("_linkZones", "zone.id", "_linkZones.A")
+        .where("_linkZones.B", "=", zoneId)
+        .selectAll("zone")
+        .execute();
+      const res = [...resL, ...resR];
+      return res;
+    });
 
-      const [activityData] = createResource(data.activityId, async (activityId) => {
-        const db = await getDB();
-        return await db.selectFrom("activity").where("id", "=", activityId).selectAll("activity").execute();
-      });
+    const [activityData] = createResource(data.activityId, async (activityId) => {
+      const db = await getDB();
+      return await db.selectFrom("activity").where("id", "=", activityId).selectAll("activity").execute();
+    });
 
-      const [addressData] = createResource(data.addressId, async (addressId) => {
-        const db = await getDB();
-        return await db.selectFrom("address").where("id", "=", addressId).selectAll("address").execute();
-      });
+    const [addressData] = createResource(data.addressId, async (addressId) => {
+      const db = await getDB();
+      return await db.selectFrom("address").where("id", "=", addressId).selectAll("address").execute();
+    });
 
-      return (
-        <>
-          <div class="ZoneImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<ZoneWithRelated>({
-            data,
-            dictionary: ZoneWithRelatedDic(dic),
-            dataSchema: ZoneWithRelatedSchema,
-            hiddenFields: ["id", "activityId", "addressId"],
-            fieldGroupMap: {
-              基本信息: ["name", "rewardNodes"],
-            },
-          })}
+    return (
+      <>
+        <div class="ZoneImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<ZoneWithRelated>({
+          data,
+          dictionary: ZoneWithRelatedDic(dic),
+          dataSchema: ZoneWithRelatedSchema,
+          hiddenFields: ["id", "activityId", "addressId"],
+          fieldGroupMap: {
+            基本信息: ["name", "rewardNodes"],
+          },
+        })}
 
+        <CardSection
+          title={"包含的" + dic.db.mob.selfName}
+          data={mobData.latest}
+          renderItem={(mob) => {
+            return {
+              label: mob.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }]),
+            };
+          }}
+        />
+
+        <CardSection
+          title={"包含的" + dic.db.npc.selfName}
+          data={npcsData.latest}
+          renderItem={(npc) => {
+            return {
+              label: npc.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }]),
+            };
+          }}
+        />
+
+        <CardSection
+          title={"连接的" + dic.db.zone.selfName}
+          data={linkZonesData.latest}
+          renderItem={(zone) => {
+            return {
+              label: zone.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+            };
+          }}
+        />
+
+        <CardSection
+          title={"所属的" + dic.db.address.selfName}
+          data={addressData.latest}
+          renderItem={(address) => {
+            return {
+              label: address.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }]),
+            };
+          }}
+        />
+
+        <Show when={activityData.latest?.length}>
           <CardSection
-            title={"包含的" + dic.db.mob.selfName}
-            data={mobData.latest}
-            renderItem={(mob) => {
+            title={"所属的" + dic.db.activity.selfName}
+            data={activityData.latest}
+            renderItem={(activity) => {
               return {
-                label: mob.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }]),
+                label: activity.name,
+                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }]),
               };
             }}
           />
+        </Show>
 
-          <CardSection
-            title={"包含的" + dic.db.npc.selfName}
-            data={npcsData.latest}
-            renderItem={(npc) => {
-              return {
-                label: npc.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }]),
-              };
-            }}
-          />
-
-          <CardSection
-            title={"连接的" + dic.db.zone.selfName}
-            data={linkZonesData.latest}
-            renderItem={(zone) => {
-              return {
-                label: zone.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
-              };
-            }}
-          />
-
-          <CardSection
-            title={"所属的" + dic.db.address.selfName}
-            data={addressData.latest}
-            renderItem={(address) => {
-              return {
-                label: address.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }]),
-              };
-            }}
-          />
-
-          <Show when={activityData.latest?.length}>
-            <CardSection
-              title={"所属的" + dic.db.activity.selfName}
-              data={activityData.latest}
-              renderItem={(activity) => {
-                return {
-                  label: activity.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }]),
-                };
-              }}
-            />
-          </Show>
-
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async () => {
-                    const db = await getDB();
-                    await db.deleteFrom("zone").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("zone").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-});
+};

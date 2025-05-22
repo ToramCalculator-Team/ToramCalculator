@@ -1,7 +1,4 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createAddress, findAddressById, findAddresses, Address } from "~/repositories/address";
+import { Accessor, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { addressSchema, zoneSchema } from "~/../db/zod";
@@ -22,6 +19,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type AddressWithRelated = address & {
   zones: zone[];
@@ -50,6 +48,25 @@ const AddressWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
+const AddressWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("address")
+    .where("id", "=", id)
+    .selectAll("address")
+    .select((eb) => [
+      jsonArrayFrom(eb.selectFrom("zone").where("zone.addressId", "=", id).selectAll("zone")).as("zones"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const AddressesFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("address").selectAll("address").execute();
+  return res;
+};
+
 const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
     defaultValues: defaultAddressWithRelated,
@@ -58,13 +75,17 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
       const address = await db.transaction().execute(async (trx) => {
         const { zones, ...rest } = value;
         const statistic = await createStatistic(trx);
-        const address = await trx.insertInto("address").values({
-          ...rest,
-          id: createId(),
-          statisticId: statistic.id,
-          createdByAccountId: store.session.user.account?.id,
-          updatedByAccountId: store.session.user.account?.id,
-        }).returningAll().executeTakeFirstOrThrow();
+        const address = await trx
+          .insertInto("address")
+          .values({
+            ...rest,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (zones.length > 0) {
           for (const zone of zones) {
             await trx.updateTable("zone").set({ addressId: address.id }).where("id", "=", zone.id).execute();
@@ -132,7 +153,11 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                         }}
                                         datasFetcher={async () => {
                                           const db = await getDB();
-                                          const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
+                                          const zones = await db
+                                            .selectFrom("zone")
+                                            .selectAll("zone")
+                                            .limit(10)
+                                            .execute();
                                           return zones;
                                         }}
                                         displayField="name"
@@ -201,7 +226,13 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof address;
                 const simpleFieldValue = _field[1];
-                return renderField<AddressWithRelated, keyof AddressWithRelated>(form, simpleFieldKey, simpleFieldValue, AddressWithRelatedDic(dic), AddressWithRelatedSchema);
+                return renderField<AddressWithRelated, keyof AddressWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  AddressWithRelatedDic(dic),
+                  AddressWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -225,37 +256,14 @@ const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   );
 };
 
-export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<AddressWithRelated, address> => ({
-  defaultData: defaultAddressWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("address")
-      .where("id", "=", id)
-      .selectAll("address")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("zone")
-            .where("zone.addressId", "=", id)
-            .selectAll("zone"),
-        ).as("zones"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("address")
-      .selectAll("address")
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: AddressWithRelatedSchema,
-  table: {
-    columnDef: [
+const AddressTable = (
+  dic: dictionary,
+  tableGlobalFilterStr: Accessor<string>,
+  columnHandleClick: (id: string) => void,
+) => {
+  return VirtualTable<address>({
+    dataFetcher: AddressesFetcher,
+    columnsDef: [
       {
         id: "id",
         accessorFn: (row) => row.id,
@@ -287,72 +295,71 @@ export const createAddressDataConfig = (dic: dictionary): dataDisplayConfig<Addr
         size: 160,
       },
     ],
-    dic: AddressWithRelatedDic(dic),
-    hiddenColumns: ["id"],
+    dictionary: AddressWithRelatedDic(dic),
+    hiddenColumnDef: ["id"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
+    globalFilterStr: tableGlobalFilterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> = {
+  defaultData: defaultAddressWithRelated,
+  dataFetcher: AddressWithRelatedFetcher,
+  datasFetcher: AddressesFetcher,
+  dataSchema: AddressWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => AddressTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => AddressWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [zonesData] = createResource(data.id, async (addressId) => {
+      const db = await getDB();
+      return await db.selectFrom("zone").where("zone.addressId", "=", addressId).selectAll("zone").execute();
+    });
+
+    return (
+      <>
+        <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<AddressWithRelated>({
+          data,
+          dictionary: AddressWithRelatedDic(dic),
+          dataSchema: AddressWithRelatedSchema,
+          hiddenFields: ["id"],
+          fieldGroupMap: {
+            基本信息: ["name", "type", "posX", "posY"],
+          },
+        })}
+
+        <CardSection
+          title={"包含的" + dic.db.zone.selfName}
+          data={zonesData.latest}
+          renderItem={(zone) => {
+            return {
+              label: zone.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+            };
+          }}
+        />
+
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("address").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-  form: (handleSubmit) => AddressWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: AddressWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [zonesData] = createResource(data.id, async (addressId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("zone")
-          .where("zone.addressId", "=", addressId)
-          .selectAll("zone")
-          .execute();
-      });
-
-      return (
-        <>
-          <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<AddressWithRelated>({
-            data,
-            dictionary: AddressWithRelatedDic(dic),
-            dataSchema: AddressWithRelatedSchema,
-            hiddenFields: ["id"],
-            fieldGroupMap: {
-              基本信息: ["name", "type", "posX", "posY"],
-            },
-          })}
-
-          <CardSection
-            title={"包含的" + dic.db.zone.selfName}
-            data={zonesData.latest}
-            renderItem={(zone) => {
-              return {
-                label: zone.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
-              };
-            }}
-          />
-
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async() => {
-                    const db = await getDB();
-                    await db.deleteFrom("address").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
-  },
-});
+};

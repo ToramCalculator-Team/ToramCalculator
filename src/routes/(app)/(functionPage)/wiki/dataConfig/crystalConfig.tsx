@@ -1,6 +1,4 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createEffect, createResource, createSignal, For, Index, JSX, on, Show } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
+import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { itemSchema, crystalSchema, recipe_ingredientSchema, drop_itemSchema, task_rewardSchema } from "~/../db/zod";
@@ -14,8 +12,7 @@ import { z } from "zod";
 import { CardSection } from "~/components/module/cardSection";
 import { fieldInfo, renderField } from "../utils";
 import pick from "lodash-es/pick";
-import omit from "lodash-es/omit";
-import { itemTypeToTableType } from "./utils";
+import { ItemSharedCardContent, itemTypeToTableType } from "./utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
@@ -25,6 +22,7 @@ import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { createId } from "@paralleldrive/cuid2";
 import { CrystalType, BossPartBreakRewardType, BossPartType } from "~/../db/kysely/enums";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type crystalWithRelated = crystal &
   item & {
@@ -87,6 +85,49 @@ const CrystalWithRelatedWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const CrystalWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const result = await db
+    .selectFrom("item")
+    .where("id", "=", id)
+    .innerJoin("crystal", "crystal.itemId", "item.id")
+    .selectAll(["item", "crystal"])
+    .select((eb) => [
+      jsonArrayFrom(
+        eb.selectFrom("_frontRelation").whereRef("_frontRelation.A", "=", "item.id").selectAll(["crystal", "item"]),
+      ).as("front"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("_backRelation")
+          .whereRef("_backRelation.A", "=", "crystal.itemId")
+          .selectAll(["crystal", "item"]),
+      ).as("back"),
+      jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
+        "usedInDropItems",
+      ),
+      jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
+        "usedInTaskRewards",
+      ),
+      jsonArrayFrom(
+        eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
+      ).as("usedInRecipeEntries"),
+    ])
+    .executeTakeFirstOrThrow();
+
+  return result;
+};
+
+const CrystalsFetcher = async () => {
+  const db = await getDB();
+  const result = await db
+    .selectFrom("item")
+    .innerJoin("crystal", "crystal.itemId", "item.id")
+    .selectAll(["item", "crystal"])
+    .execute();
+
+  return result;
+};
 
 const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -774,141 +815,48 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   );
 };
 
-export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crystalWithRelated, crystal & item> => ({
+const CrystalTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (id: string) => void) => {
+  return VirtualTable<crystal & item>({
+    dataFetcher: CrystalsFetcher,
+      measure: {
+        estimateSize: 168,
+      },
+      columnsDef: [
+        { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
+        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
+        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "details", cell: (info: any) => info.getValue(), size: 150 },
+      ],
+      dictionary: CrystalWithRelatedWithRelatedDic(dic),
+      defaultSort: { id: "name", desc: true },
+      hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+      tdGenerator: {
+        modifiers: (props) => (
+          <div class="ModifierBox bg-area-color flex flex-col gap-1 rounded-r-md">
+            <For each={props.cell.getValue<string[]>()}>
+              {(modifier) => {
+                return <div class="w-full p-1">{modifier}</div>;
+              }}
+            </For>
+          </div>
+        ),
+      },
+      globalFilterStr: filterStr,
+      columnHandleClick: columnHandleClick,
+    },
+  );
+};
+
+export const CrystalDataConfig: dataDisplayConfig<crystalWithRelated, crystal & item> ={
   defaultData: defaultCrystalWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const result = await db
-      .selectFrom("item")
-      .where("id", "=", id)
-      .innerJoin("crystal", "crystal.itemId", "item.id")
-      .selectAll(["item", "crystal"])
-      .select((eb) => [
-        jsonArrayFrom(
-          eb.selectFrom("_frontRelation").whereRef("_frontRelation.A", "=", "item.id").selectAll(["crystal", "item"]),
-        ).as("front"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("_backRelation")
-            .whereRef("_backRelation.A", "=", "crystal.itemId")
-            .selectAll(["crystal", "item"]),
-        ).as("back"),
-        jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
-          "usedInDropItems",
-        ),
-        jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
-          "usedInTaskRewards",
-        ),
-        jsonArrayFrom(
-          eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
-        ).as("usedInRecipeEntries"),
-      ])
-      .executeTakeFirstOrThrow();
-
-    return result;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const result = await db
-      .selectFrom("item")
-      .innerJoin("crystal", "crystal.itemId", "item.id")
-      .selectAll(["item", "crystal"])
-      .execute();
-
-    return result;
-  },
-  dictionary: dic,
+  dataFetcher: CrystalWithRelatedFetcher,
+  datasFetcher: CrystalsFetcher,
   dataSchema: crystalWithRelatedSchema,
-  table: {
-    measure: {
-      estimateSize: 168,
-    },
-    columnDef: [
-      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
-      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
-      { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-      { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
-      { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
-      { accessorKey: "details", cell: (info: any) => info.getValue(), size: 150 },
-    ],
-    dic: CrystalWithRelatedWithRelatedDic(dic),
-    defaultSort: { id: "name", desc: true },
-    hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    tdGenerator: {
-      modifiers: (props) => (
-        <div class="ModifierBox bg-area-color flex flex-col gap-1 rounded-r-md">
-          <For each={props.cell.getValue<string[]>()}>
-            {(modifier) => {
-              return <div class="w-full p-1">{modifier}</div>;
-            }}
-          </For>
-        </div>
-      ),
-    },
-  },
-  form: (handleSubmit) => CrystalWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (data, appendCardTypeAndIds) => {
-      const [recipeData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("recipe")
-          .where("recipe.itemId", "=", itemId)
-          .innerJoin("recipe_ingredient", "recipe.id", "recipe_ingredient.recipeId")
-          .innerJoin("item", "recipe_ingredient.itemId", "item.id")
-          .select([
-            "recipe_ingredient.type",
-            "recipe_ingredient.count",
-            "item.id as itemId",
-            "item.itemType as itemType",
-            "item.name as itemName",
-          ])
-          .execute();
-      });
-
-      const [dropByData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("drop_item")
-          .innerJoin("mob", "drop_item.dropById", "mob.id")
-          .where("drop_item.itemId", "=", itemId)
-          .select(["mob.id as mobId", "mob.name as mobName"])
-          .execute();
-      });
-
-      const [rewardItemData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_reward")
-          .innerJoin("task", "task_reward.taskId", "task.id")
-          .where("task_reward.itemId", "=", itemId)
-          .select(["task.id as taskId", "task.name as taskName"])
-          .execute();
-      });
-
-      const [usedInRecipeData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        const res = await db
-          .selectFrom("recipe_ingredient")
-          .where("recipe_ingredient.itemId", "=", itemId)
-          .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
-          .innerJoin("item", "recipe.itemId", "item.id")
-          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
-          .execute();
-        return res;
-      });
-
-      const [usedInTaskData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        const res = await db
-          .selectFrom("task_collect_require")
-          .innerJoin("task", "task_collect_require.taskId", "task.id")
-          .where("task_collect_require.itemId", "=", itemId)
-          .select(["task.id as taskId", "task.name as taskName"])
-          .execute();
-        return res;
-      });
-
+  mainContent: (dic, filterStr, columnHandleClick) => CrystalTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => CrystalWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
       const [frontData] = createResource(data.id, async (itemId) => {
         const db = await getDB();
         return await db
@@ -966,91 +914,8 @@ export const createCrystalDataConfig = (dic: dictionary): dataDisplayConfig<crys
               }}
             />
           </Show>
-          <Show when={recipeData.latest?.length}>
-            <CardSection
-              title={dic.db.recipe.selfName}
-              data={recipeData.latest}
-              renderItem={(recipe) => {
-                const type = recipe.type;
-                switch (type) {
-                  case "Gold":
-                    return {
-                      label: recipe.itemName,
-                      onClick: () => null,
-                    };
-
-                  case "Item":
-                    return {
-                      label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () =>
-                        appendCardTypeAndIds((prev) => [
-                          ...prev,
-                          { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
-                        ]),
-                    };
-                  default:
-                    return {
-                      label: recipe.itemName,
-                      onClick: () => null,
-                    };
-                }
-              }}
-            />
-          </Show>
-          <Show when={dropByData.latest?.length}>
-            <CardSection
-              title={"掉落于" + dic.db.mob.selfName}
-              data={dropByData.latest}
-              renderItem={(dropBy) => {
-                return {
-                  label: dropBy.mobName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: dropBy.mobId }]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={rewardItemData.latest?.length}>
-            <CardSection
-              title={"可从这些" + dic.db.task.selfName + "获得"}
-              data={rewardItemData.latest}
-              renderItem={(rewardItem) => {
-                return {
-                  label: rewardItem.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={usedInRecipeData.latest?.length}>
-            <CardSection
-              title={"是这些" + dic.db.item.selfName + "的原料"}
-              data={usedInRecipeData.latest}
-              renderItem={(usedIn) => {
-                return {
-                  label: usedIn.itemName,
-                  onClick: () =>
-                    appendCardTypeAndIds((prev) => [
-                      ...prev,
-                      { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
-                    ]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={usedInTaskData.latest?.length}>
-            <CardSection
-              title={"被用于" + dic.db.task.selfName}
-              data={usedInTaskData.latest}
-              renderItem={(usedInTask) => {
-                return {
-                  label: usedInTask.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: usedInTask.taskId }]),
-                };
-              }}
-            />
-          </Show>
+          {ItemSharedCardContent(data.id, dic, appendCardTypeAndIds)}
         </>
       );
-    },
   },
-});
+};

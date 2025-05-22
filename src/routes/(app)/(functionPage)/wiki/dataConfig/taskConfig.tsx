@@ -1,7 +1,4 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createTask, findTaskById, findTasks, Task } from "~/repositories/task";
+import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { taskSchema, task_collect_requireSchema, task_kill_requirementSchema, task_rewardSchema } from "~/../db/zod";
@@ -24,6 +21,7 @@ import { TaskRewardType } from "../../../../../../db/kysely/enums";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type TaskWithRelated = task & {
   collectRequires: task_collect_require[];
@@ -69,6 +67,39 @@ const TaskWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const TaskWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("task")
+    .where("id", "=", id)
+    .selectAll("task")
+    .select((eb) => [
+      jsonArrayFrom(
+        eb
+          .selectFrom("task_collect_require")
+          .whereRef("task_collect_require.taskId", "=", eb.ref("task.id"))
+          .selectAll("task_collect_require"),
+      ).as("collectRequires"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("task_kill_requirement")
+          .whereRef("task_kill_requirement.taskId", "=", eb.ref("task.id"))
+          .selectAll("task_kill_requirement"),
+      ).as("killRequirements"),
+      jsonArrayFrom(
+        eb.selectFrom("task_reward").whereRef("task_reward.taskId", "=", eb.ref("task.id")).selectAll("task_reward"),
+      ).as("rewards"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const TasksFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("task").selectAll("task").execute();
+  return res;
+};
 
 const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -504,63 +535,10 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWithRelated, task> => ({
-  defaultData: defaultTaskWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("task")
-      .where("id", "=", id)
-      .selectAll("task")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_collect_require")
-            .whereRef("task_collect_require.taskId", "=", eb.ref("task.id"))
-            .selectAll("task_collect_require"),
-        ).as("collectRequires"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_kill_requirement")
-            .whereRef("task_kill_requirement.taskId", "=", eb.ref("task.id"))
-            .selectAll("task_kill_requirement"),
-        ).as("killRequirements"),
-        jsonArrayFrom(
-          eb.selectFrom("task_reward").whereRef("task_reward.taskId", "=", eb.ref("task.id")).selectAll("task_reward"),
-        ).as("rewards"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("task")
-      .selectAll("task")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_collect_require")
-            .whereRef("task_collect_require.taskId", "=", eb.ref("task.id"))
-            .selectAll("task_collect_require"),
-        ).as("collectRequires"),
-        jsonArrayFrom(
-          eb
-            .selectFrom("task_kill_requirement")
-            .whereRef("task_kill_requirement.taskId", "=", eb.ref("task.id"))
-            .selectAll("task_kill_requirement"),
-        ).as("killRequirements"),
-        jsonArrayFrom(
-          eb.selectFrom("task_reward").whereRef("task_reward.taskId", "=", eb.ref("task.id")).selectAll("task_reward"),
-        ).as("rewards"),
-      ])
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: TaskWithRelatedSchema,
-  table: {
-    columnDef: [
+const TaskTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<task>({
+    dataFetcher: TasksFetcher,
+    columnsDef: [
       {
         id: "id",
         accessorFn: (row) => row.id,
@@ -592,122 +570,125 @@ export const createTaskDataConfig = (dic: dictionary): dataDisplayConfig<TaskWit
         size: 160,
       },
     ],
-    dic: TaskWithRelatedDic(dic),
-    hiddenColumns: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    dictionary: TaskWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
+  defaultData: defaultTaskWithRelated,
+  dataFetcher: TaskWithRelatedFetcher,
+  datasFetcher: TasksFetcher,
+  dataSchema: TaskWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => TaskTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => TaskWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [collectRequiresData] = createResource(data.id, async (taskId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("task_collect_require")
+        .innerJoin("item", "task_collect_require.itemId", "item.id")
+        .where("task_collect_require.taskId", "=", taskId)
+        .selectAll("task_collect_require")
+        .select(["item.name as itemName"])
+        .execute();
+    });
+
+    const [killRequirementsData] = createResource(data.id, async (taskId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("task_kill_requirement")
+        .innerJoin("mob", "task_kill_requirement.mobId", "mob.id")
+        .where("task_kill_requirement.taskId", "=", taskId)
+        .selectAll("task_kill_requirement")
+        .select(["mob.name as mobName"])
+        .execute();
+    });
+
+    const [rewardsData] = createResource(data.id, async (taskId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("task_reward")
+        .innerJoin("item", "task_reward.itemId", "item.id")
+        .where("task_reward.taskId", "=", taskId)
+        .selectAll("task_reward")
+        .select(["item.name as itemName", "item.itemType"])
+        .execute();
+    });
+
+    return (
+      <>
+        <div class="TaskImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<TaskWithRelated>({
+          data,
+          dictionary: TaskWithRelatedDic(dic),
+          dataSchema: TaskWithRelatedSchema,
+          hiddenFields: ["id"],
+          fieldGroupMap: {
+            基本信息: ["name", "lv", "type", "description"],
+          },
+        })}
+
+        <CardSection
+          title={dic.db.task_collect_require.selfName}
+          data={collectRequiresData.latest}
+          renderItem={(collectRequire) => {
+            return {
+              label: collectRequire.itemName,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: collectRequire.itemId }]),
+            };
+          }}
+        />
+
+        <CardSection
+          title={dic.db.task_kill_requirement.selfName}
+          data={killRequirementsData.latest}
+          renderItem={(killRequirement) => {
+            return {
+              label: killRequirement.mobName,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: killRequirement.mobId }]),
+            };
+          }}
+        />
+
+        <CardSection
+          title={dic.db.task_reward.selfName}
+          data={rewardsData.latest}
+          renderItem={(reward) => {
+            return {
+              label: reward.itemName,
+              onClick: () =>
+                appendCardTypeAndIds((prev) => [
+                  ...prev,
+                  { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
+                ]),
+            };
+          }}
+        />
+
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("task").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-  form: (handleSubmit) => TaskWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: TaskWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [collectRequiresData] = createResource(data.id, async (taskId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_collect_require")
-          .innerJoin("item", "task_collect_require.itemId", "item.id")
-          .where("task_collect_require.taskId", "=", taskId)
-          .selectAll("task_collect_require")
-          .select(["item.name as itemName"])
-          .execute();
-      });
-
-      const [killRequirementsData] = createResource(data.id, async (taskId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_kill_requirement")
-          .innerJoin("mob", "task_kill_requirement.mobId", "mob.id")
-          .where("task_kill_requirement.taskId", "=", taskId)
-          .selectAll("task_kill_requirement")
-          .select(["mob.name as mobName"])
-          .execute();
-      });
-
-      const [rewardsData] = createResource(data.id, async (taskId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_reward")
-          .innerJoin("item", "task_reward.itemId", "item.id")
-          .where("task_reward.taskId", "=", taskId)
-          .selectAll("task_reward")
-          .select(["item.name as itemName", "item.itemType"])
-          .execute();
-      });
-
-      return (
-        <>
-          <div class="TaskImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<TaskWithRelated>({
-            data,
-            dictionary: TaskWithRelatedDic(dic),
-            dataSchema: TaskWithRelatedSchema,
-            hiddenFields: ["id"],
-            fieldGroupMap: {
-              基本信息: ["name", "lv", "type", "description"],
-            },
-          })}
-
-          <CardSection
-            title={dic.db.task_collect_require.selfName}
-            data={collectRequiresData.latest}
-            renderItem={(collectRequire) => {
-              return {
-                label: collectRequire.itemName,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: collectRequire.itemId }]),
-              };
-            }}
-          />
-
-          <CardSection
-            title={dic.db.task_kill_requirement.selfName}
-            data={killRequirementsData.latest}
-            renderItem={(killRequirement) => {
-              return {
-                label: killRequirement.mobName,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: killRequirement.mobId }]),
-              };
-            }}
-          />
-
-          <CardSection
-            title={dic.db.task_reward.selfName}
-            data={rewardsData.latest}
-            renderItem={(reward) => {
-              return {
-                label: reward.itemName,
-                onClick: () =>
-                  appendCardTypeAndIds((prev) => [
-                    ...prev,
-                    { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
-                  ]),
-              };
-            }}
-          />
-
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async() => {
-                    const db = await getDB();
-                    await db.deleteFrom("task").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
-  },
-});
+};

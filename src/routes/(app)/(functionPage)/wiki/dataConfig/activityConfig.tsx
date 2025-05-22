@@ -1,7 +1,4 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createActivity, findActivityById, findActivities, Activity } from "~/repositories/activity";
+import { Accessor, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema, zoneSchema } from "~/../db/zod";
@@ -21,6 +18,7 @@ import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type ActivityWithRelated = activity & {
   zones: zone[];
@@ -37,17 +35,36 @@ const defaultActivityWithRelated: ActivityWithRelated = {
 };
 
 const ActivityWithRelatedDic = (dic: dictionary) => ({
-    ...dic.db.activity,
-    fields: {
-      ...dic.db.activity.fields,
-      zones: {
-        key: "zones",
-        ...dic.db.zone.fields,
-        tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
-        formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
-      },
+  ...dic.db.activity,
+  fields: {
+    ...dic.db.activity.fields,
+    zones: {
+      key: "zones",
+      ...dic.db.zone.fields,
+      tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
+      formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
+    },
   },
 });
+
+const ActivityWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("activity")
+    .where("id", "=", id)
+    .selectAll("activity")
+    .select((eb) => [
+      jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const ActivitiesFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("activity").selectAll("activity").execute();
+  return res;
+};
 
 const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -57,13 +74,17 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
       const activity = await db.transaction().execute(async (trx) => {
         const { zones, ...rest } = value;
         const statistic = await createStatistic(trx);
-        const activity = await trx.insertInto("activity").values({
-          ...rest,
-          id: createId(),
-          statisticId: statistic.id,
-          createdByAccountId: store.session.user.account?.id,
-          updatedByAccountId: store.session.user.account?.id,
-        }).returningAll().executeTakeFirstOrThrow();
+        const activity = await trx
+          .insertInto("activity")
+          .values({
+            ...rest,
+            id: createId(),
+            statisticId: statistic.id,
+            createdByAccountId: store.session.user.account?.id,
+            updatedByAccountId: store.session.user.account?.id,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
         if (zones.length > 0) {
           for (const zone of zones) {
             await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zone.id).execute();
@@ -128,7 +149,11 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                         }}
                                         datasFetcher={async () => {
                                           const db = await getDB();
-                                          const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
+                                          const zones = await db
+                                            .selectFrom("zone")
+                                            .selectAll("zone")
+                                            .limit(10)
+                                            .execute();
                                           return zones;
                                         }}
                                         displayField="name"
@@ -165,7 +190,13 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof activity;
                 const simpleFieldValue = _field[1];
-                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(form, simpleFieldKey, simpleFieldValue, ActivityWithRelatedDic(dic), ActivityWithRelatedSchema);
+                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  ActivityWithRelatedDic(dic),
+                  ActivityWithRelatedSchema,
+                );
             }
           }}
         </For>
@@ -189,35 +220,14 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
   );
 };
 
-export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<ActivityWithRelated, activity> => ({
-  defaultData: {
-    ...defaultData.activity,
-    zones: [],
-  },
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("activity")
-      .where("id", "=", id)
-      .selectAll("activity")
-      .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("activity")
-      .selectAll("activity")
-      .execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: ActivityWithRelatedSchema,
-  table: {
-    columnDef: [
+const ActivityTable = (
+  dic: dictionary,
+  tableGlobalFilterStr: Accessor<string>,
+  columnHandleClick: (id: string) => void,
+) => {
+  return VirtualTable<activity>({
+    dataFetcher: ActivitiesFetcher,
+    columnsDef: [
       {
         accessorKey: "id",
         cell: (info) => info.getValue(),
@@ -229,68 +239,74 @@ export const createActivityDataConfig = (dic: dictionary): dataDisplayConfig<Act
         size: 220,
       },
     ],
-    dic: ActivityWithRelatedDic(dic),
-    hiddenColumns: ["id"],
+    dictionary: ActivityWithRelatedDic(dic),
+    hiddenColumnDef: ["id"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
+    globalFilterStr: tableGlobalFilterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity> = {
+  defaultData: {
+    ...defaultData.activity,
+    zones: [],
   },
-  form: (handleSubmit) => ActivityWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: ActivityWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [zonesData] = createResource(data.id, async (activityId) => {
-        const db = await getDB();
-        return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
-      });
+  dataFetcher: ActivityWithRelatedFetcher,
+  datasFetcher: ActivitiesFetcher,
+  dataSchema: ActivityWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => ActivityTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => ActivityWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [zonesData] = createResource(data.id, async (activityId) => {
+      const db = await getDB();
+      return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
+    });
 
-      return (
-        <>
-          <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<ActivityWithRelated>({
-            data,
-            dictionary: ActivityWithRelatedDic(dic),
-            dataSchema: ActivityWithRelatedSchema,
-            hiddenFields: ["id"],
-            fieldGroupMap: {
-              基本信息: ["name"],
-            },
-          })}
+    return (
+      <>
+        <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<ActivityWithRelated>({
+          data,
+          dictionary: ActivityWithRelatedDic(dic),
+          dataSchema: ActivityWithRelatedSchema,
+          hiddenFields: ["id"],
+          fieldGroupMap: {
+            基本信息: ["name"],
+          },
+        })}
 
-          <CardSection
-            title={"包含的" + dic.db.zone.selfName}
-            data={zonesData.latest}
-            renderItem={(zone) => {
-              return {
-                label: zone.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
-              };
-            }}
-          />
+        <CardSection
+          title={"包含的" + dic.db.zone.selfName}
+          data={zonesData.latest}
+          renderItem={(zone) => {
+            return {
+              label: zone.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+            };
+          }}
+        />
 
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async () => {
-                    const db = await getDB();
-                    await db.deleteFrom("activity").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("activity").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-});
+};

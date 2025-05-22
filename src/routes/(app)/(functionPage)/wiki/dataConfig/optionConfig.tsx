@@ -1,9 +1,14 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index, createEffect, on } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
+import { createResource, createSignal, For, JSX, Show, Index, createEffect, on, Accessor } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { itemSchema, optionSchema, recipeSchema, recipe_ingredientSchema, drop_itemSchema, task_rewardSchema } from "~/../db/zod";
+import {
+  itemSchema,
+  optionSchema,
+  recipeSchema,
+  recipe_ingredientSchema,
+  drop_itemSchema,
+  task_rewardSchema,
+} from "~/../db/zod";
 import { DB, item, option, recipe, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
@@ -11,12 +16,10 @@ import { defaultData } from "~/../db/defaultData";
 import { createOptEquip, OptEquip } from "~/repositories/optEquip";
 import { createItem, findItems, Item } from "~/repositories/item";
 import { z } from "zod";
-import { CardSection } from "~/components/module/cardSection";
-import { EnumSelect } from "~/components/controls/enumSelect";
 import { fieldInfo, renderField } from "../utils";
 import pick from "lodash-es/pick";
 import omit from "lodash-es/omit";
-import { itemTypeToTableType } from "./utils";
+import { ItemSharedCardContent, itemTypeToTableType } from "./utils";
 import { createForm, Field } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
 import { Button } from "~/components/controls/button";
@@ -28,6 +31,7 @@ import { RecipeIngredientType, BossPartBreakRewardType, BossPartType } from "~/.
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "~/repositories/statistic";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type optionWithRelated = option &
   item & {
@@ -99,6 +103,60 @@ const OptEquipWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const OptEquipWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const result = await db
+    .selectFrom("item")
+    .where("id", "=", id)
+    .innerJoin("option", "option.itemId", "item.id")
+    .selectAll(["item", "option"])
+    .select((eb) => [
+      jsonObjectFrom(
+        eb
+          .selectFrom("recipe")
+          .where("recipe.itemId", "=", id)
+          .selectAll("recipe")
+          .select((eb) => [
+            jsonArrayFrom(
+              eb
+                .selectFrom("recipe_ingredient")
+                .where("recipe_ingredient.recipeId", "=", "recipe.id")
+                .select((eb) => [
+                  jsonObjectFrom(
+                    eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                  )
+                    .$notNull()
+                    .as("item"),
+                ])
+                .selectAll("recipe_ingredient"),
+            ).as("recipeEntries"),
+          ]),
+      )
+        .$notNull()
+        .as("recipe"),
+      jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
+        "usedInDropItems",
+      ),
+      jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
+        "usedInTaskRewards",
+      ),
+      jsonArrayFrom(
+        eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
+      ).as("usedInRecipeEntries"),
+    ])
+    .executeTakeFirstOrThrow();
+  return result as unknown as optionWithRelated;
+};
+
+const OptEquipsFetcher = async () => {
+  const db = await getDB();
+  return await db
+    .selectFrom("item")
+    .innerJoin("option", "option.itemId", "item.id")
+    .selectAll(["item", "option"])
+    .execute();
+};
 
 const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const [isLimit, setIsLimit] = createSignal(false);
@@ -954,234 +1012,48 @@ const OptEquipWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
   );
 };
 
-export const createOptEquipDataConfig = (dic: dictionary): dataDisplayConfig<optionWithRelated, option & item> => ({
-  defaultData: defaultOptEquipWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const result = await db
-      .selectFrom("item")
-      .where("id", "=", id)
-      .innerJoin("option", "option.itemId", "item.id")
-      .selectAll(["item", "option"])
-      .select((eb) => [
-        jsonObjectFrom(
-          eb
-            .selectFrom("recipe")
-            .where("recipe.itemId", "=", id)
-            .selectAll("recipe")
-            .select((eb) => [
-              jsonArrayFrom(
-                eb
-                  .selectFrom("recipe_ingredient")
-                  .where("recipe_ingredient.recipeId", "=", "recipe.id")
-                  .select((eb) => [
-                    jsonObjectFrom(
-                      eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
-                    )
-                      .$notNull()
-                      .as("item"),
-                  ])
-                  .selectAll("recipe_ingredient"),
-              ).as("recipeEntries"),
-            ]),
-        )
-          .$notNull()
-          .as("recipe"),
-        jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
-          "usedInDropItems",
-        ),
-        jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
-          "usedInTaskRewards",
-        ),
-        jsonArrayFrom(
-          eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
-        ).as("usedInRecipeEntries"),
-      ])
-      .executeTakeFirstOrThrow();
-    return result as unknown as optionWithRelated;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    return await db
-      .selectFrom("item")
-      .innerJoin("option", "option.itemId", "item.id")
-      .selectAll(["item", "option"])
-      .execute();
-  },
-  dictionary: dic,
-  dataSchema: optionWithRelatedSchema,
-  table: {
-    columnDef: [
+const OptEquipTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<option & item>({
+    dataFetcher: OptEquipsFetcher,
+    columnsDef: [
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
     ],
-    dic: OptEquipWithRelatedDic(dic),
+    dictionary: OptEquipWithRelatedDic(dic),
     defaultSort: { id: "baseDef", desc: true },
-    hiddenColumns: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     tdGenerator: {},
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const OptEquipDataConfig: dataDisplayConfig<optionWithRelated, option & item> = {
+  defaultData: defaultOptEquipWithRelated,
+  dataFetcher: OptEquipWithRelatedFetcher,
+  datasFetcher: OptEquipsFetcher,
+  dataSchema: optionWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => OptEquipTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => OptEquipWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    return (
+      <>
+        <div class="OptionImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<optionWithRelated>({
+          data,
+          dictionary: OptEquipWithRelatedDic(dic),
+          dataSchema: optionWithRelatedSchema,
+          hiddenFields: ["itemId"],
+          fieldGroupMap: {
+            基本信息: ["name", "baseDef"],
+            其他属性: ["modifiers", "details", "dataSources"],
+            颜色信息: ["colorA", "colorB", "colorC"],
+          },
+        })}
+        {ItemSharedCardContent(data.itemId, dic, appendCardTypeAndIds)}
+      </>
+    );
   },
-  form: (handleSubmit) => OptEquipWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (data, appendCardTypeAndIds) => {
-      const [recipeData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("recipe")
-          .where("recipe.itemId", "=", itemId)
-          .innerJoin("recipe_ingredient", "recipe.id", "recipe_ingredient.recipeId")
-          .innerJoin("item", "recipe_ingredient.itemId", "item.id")
-          .select([
-            "recipe_ingredient.type",
-            "recipe_ingredient.count",
-            "item.id as itemId",
-            "item.itemType as itemType",
-            "item.name as itemName",
-          ])
-          .execute();
-      });
-
-      const [dropByData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("drop_item")
-          .innerJoin("mob", "drop_item.dropById", "mob.id")
-          .where("drop_item.itemId", "=", itemId)
-          .select(["mob.id as mobId", "mob.name as mobName"])
-          .execute();
-      });
-
-      const [rewardItemData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_reward")
-          .innerJoin("task", "task_reward.taskId", "task.id")
-          .where("task_reward.itemId", "=", itemId)
-          .select(["task.id as taskId", "task.name as taskName"])
-          .execute();
-      });
-
-      const [usedInRecipeData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("recipe_ingredient")
-          .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
-          .innerJoin("item", "recipe.itemId", "item.id")
-          .where("recipe_ingredient.itemId", "=", itemId)
-          .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
-          .execute();
-      });
-
-      const [usedInTaskData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("task_collect_require")
-          .innerJoin("task", "task_collect_require.taskId", "task.id")
-          .where("task_collect_require.itemId", "=", itemId)
-          .select(["task.id as taskId", "task.name as taskName"])
-          .execute();
-      });
-      return (
-        <>
-          <div class="OptionImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<optionWithRelated>({
-            data,
-            dictionary: OptEquipWithRelatedDic(dic),
-            dataSchema: optionWithRelatedSchema,
-            hiddenFields: ["itemId"],
-            fieldGroupMap: {
-              基本信息: ["name", "baseDef"],
-              其他属性: ["modifiers", "details", "dataSources"],
-              颜色信息: ["colorA", "colorB", "colorC"],
-            },
-          })}
-
-          <Show when={recipeData.latest?.length}>
-            <CardSection
-              title={dic.db.recipe.selfName}
-              data={recipeData.latest}
-              renderItem={(recipe) => {
-                const type = recipe.type;
-                switch (type) {
-                  case "Gold":
-                    return {
-                      label: recipe.itemName,
-                      onClick: () => null,
-                    };
-
-                  case "Item":
-                    return {
-                      label: recipe.itemName + "(" + recipe.count + ")",
-                      onClick: () =>
-                        appendCardTypeAndIds((prev) => [
-                          ...prev,
-                          { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
-                        ]),
-                    };
-                  default:
-                    return {
-                      label: recipe.itemName,
-                      onClick: () => null,
-                    };
-                }
-              }}
-            />
-          </Show>
-          <Show when={dropByData.latest?.length}>
-            <CardSection
-              title={"掉落于" + dic.db.mob.selfName}
-              data={dropByData.latest}
-              renderItem={(dropBy) => {
-                return {
-                  label: dropBy.mobName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: dropBy.mobId }]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={rewardItemData.latest?.length}>
-            <CardSection
-              title={"可从这些" + dic.db.task.selfName + "获得"}
-              data={rewardItemData.latest}
-              renderItem={(rewardItem) => {
-                return {
-                  label: rewardItem.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={usedInRecipeData.latest?.length}>
-            <CardSection
-              title={"是这些" + dic.db.item.selfName + "的原料"}
-              data={usedInRecipeData.latest}
-              renderItem={(usedIn) => {
-                return {
-                  label: usedIn.itemName,
-                  onClick: () =>
-                    appendCardTypeAndIds((prev) => [
-                      ...prev,
-                      { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
-                    ]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={usedInTaskData.latest?.length}>
-            <CardSection
-              title={"被用于" + dic.db.task.selfName}
-              data={usedInTaskData.latest}
-              renderItem={(usedInTask) => {
-                return {
-                  label: usedInTask.taskName,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: usedInTask.taskId }]),
-                };
-              }}
-            />
-          </Show>
-        </>
-      );
-    },
-  },
-});
+};

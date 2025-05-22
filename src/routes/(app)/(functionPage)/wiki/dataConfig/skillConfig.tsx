@@ -1,7 +1,4 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createSkill, findSkillById, findSkills, Skill } from "~/repositories/skill";
+import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
@@ -12,7 +9,6 @@ import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { EnumSelect } from "~/components/controls/enumSelect";
 import { defaultData } from "~/../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 import { z } from "zod";
@@ -20,10 +16,11 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
-import { SkillDistanceType, SkillTreeType } from "../../../../../../db/kysely/enums";
+import { SkillDistanceType, SkillTreeType } from "~/../db/kysely/enums";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -51,6 +48,30 @@ const SkillWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const SkillWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("skill")
+    .where("id", "=", id)
+    .selectAll("skill")
+    .select((eb) => [
+      jsonArrayFrom(
+        eb
+          .selectFrom("skill_effect")
+          .whereRef("skill_effect.belongToskillId", "=", eb.ref("skill.id"))
+          .selectAll("skill_effect"),
+      ).as("effects"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const SkillsFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("skill").selectAll("skill").execute();
+  return res;
+};
 
 const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -269,34 +290,10 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillWithRelated, skill> => ({
-  defaultData: defaultSkillWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("skill")
-      .where("id", "=", id)
-      .selectAll("skill")
-      .select((eb) => [
-        jsonArrayFrom(
-          eb
-            .selectFrom("skill_effect")
-            .whereRef("skill_effect.belongToskillId", "=", eb.ref("skill.id"))
-            .selectAll("skill_effect"),
-        ).as("effects"),
-      ])
-      .executeTakeFirstOrThrow();
-    return res;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db.selectFrom("skill").selectAll("skill").execute();
-    return res;
-  },
-  dictionary: dic,
-  dataSchema: SkillWithRelatedSchema,
-  table: {
-    columnDef: [
+const SkillTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<skill>({
+    dataFetcher: SkillsFetcher,
+    columnsDef: [
       {
         id: "id",
         accessorFn: (row) => row.id,
@@ -334,75 +331,78 @@ export const createSkillDataConfig = (dic: dictionary): dataDisplayConfig<SkillW
         size: 160,
       },
     ],
-    dic: SkillWithRelatedDic(dic),
-    hiddenColumns: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+    dictionary: SkillWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
+
+export const SkillDataConfig: dataDisplayConfig<SkillWithRelated, skill> = {
+  defaultData: defaultSkillWithRelated,
+  dataFetcher: SkillWithRelatedFetcher,
+  datasFetcher: SkillsFetcher,
+  dataSchema: SkillWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => SkillTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => SkillWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [effectsData] = createResource(data.id, async (skillId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("skill_effect")
+        .where("skill_effect.belongToskillId", "=", skillId)
+        .selectAll("skill_effect")
+        .execute();
+    });
+
+    return (
+      <>
+        <div class="SkillImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<SkillWithRelated>({
+          data,
+          dictionary: SkillWithRelatedDic(dic),
+          dataSchema: SkillWithRelatedSchema,
+          hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+          fieldGroupMap: {
+            基本信息: ["name", "treeType", "tier", "posX", "posY"],
+            技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
+            数据来源: ["dataSources"],
+            技能效果: ["details"],
+          },
+        })}
+
+        <CardSection
+          title={dic.db.skill_effect.selfName}
+          data={effectsData.latest}
+          renderItem={(effect) => {
+            return {
+              label: effect.condition,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }]),
+            };
+          }}
+        />
+
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("skill").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-  form: (handleSubmit) => SkillWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: SkillWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [effectsData] = createResource(data.id, async (skillId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("skill_effect")
-          .where("skill_effect.belongToskillId", "=", skillId)
-          .selectAll("skill_effect")
-          .execute();
-      });
-
-      return (
-        <>
-          <div class="SkillImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<SkillWithRelated>({
-            data,
-            dictionary: SkillWithRelatedDic(dic),
-            dataSchema: SkillWithRelatedSchema,
-            hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
-            fieldGroupMap: {
-              基本信息: ["name", "treeType", "tier", "posX", "posY"],
-              技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
-              数据来源: ["dataSources"],
-              技能效果: ["details"],
-            },
-          })}
-
-          <CardSection
-            title={dic.db.skill_effect.selfName}
-            data={effectsData.latest}
-            renderItem={(effect) => {
-              return {
-                label: effect.condition,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }]),
-              };
-            }}
-          />
-
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async () => {
-                    const db = await getDB();
-                    await db.deleteFrom("skill").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
-  },
-});
+};

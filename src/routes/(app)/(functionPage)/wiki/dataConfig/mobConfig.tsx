@@ -1,5 +1,5 @@
 import { flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, createEffect, Index, on } from "solid-js";
+import { createResource, createSignal, For, JSX, Show, createEffect, Index, on, Accessor } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createMob } from "~/repositories/mob";
 import { DataEnums } from "~/../db/dataEnums";
@@ -35,6 +35,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -69,6 +70,39 @@ const MobWithRelatedDic = (dic: dictionary) => ({
     },
   },
 });
+
+const MobWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("mob")
+    .where("id", "=", id)
+    .selectAll("mob")
+    .select((eb) => [
+      jsonArrayFrom(
+        eb
+          .selectFrom("_mobTozone")
+          .innerJoin("zone", "zone.id", "_mobTozone.B")
+          .whereRef("_mobTozone.A", "=", "mob.id")
+          .selectAll("zone"),
+      ).as("appearInZones"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("drop_item")
+          .innerJoin("item", "item.id", "drop_item.itemId")
+          .where("drop_item.dropById", "=", "mob.id")
+          .selectAll("drop_item")
+          .select("item.name"),
+      ).as("dropItems"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res;
+};
+
+const MobsFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("mob").selectAll("mob").execute();
+  return res;
+};
 
 const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
@@ -569,320 +603,289 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const createMobDataConfig = (dic: dictionary): dataDisplayConfig<MobWithRelated, mob> => {
-  return {
-    defaultData: defaultMobWithRelated,
-    dataFetcher: async (id) => {
-      const db = await getDB();
-      const res = await db
-        .selectFrom("mob")
-        .where("id", "=", id)
-        .selectAll("mob")
-        .select((eb) => [
-          jsonArrayFrom(
-            eb
-              .selectFrom("_mobTozone")
-              .innerJoin("zone", "zone.id", "_mobTozone.B")
-              .whereRef("_mobTozone.A", "=", "mob.id")
-              .selectAll("zone"),
-          ).as("appearInZones"),
-          jsonArrayFrom(
-            eb
-              .selectFrom("drop_item")
-              .innerJoin("item", "item.id", "drop_item.itemId")
-              .where("drop_item.dropById", "=", "mob.id")
-              .selectAll("drop_item")
-              .select("item.name"),
-          ).as("dropItems"),
-        ])
-        .executeTakeFirstOrThrow();
-      return res;
-    },
-    datasFetcher: async () => {
-      const db = await getDB();
-      const res = await db.selectFrom("mob").selectAll("mob").execute();
-      return res;
-    },
-    dictionary: dic,
-    dataSchema: MobWithRelatedSchema,
-    table: {
-      columnDef: [
-        {
-          id: "id",
-          accessorFn: (row) => row.id,
-          cell: (info) => info.getValue(),
-          size: 200,
-        },
-        {
-          id: "name",
-          accessorFn: (row) => row.name,
-          cell: (info) => info.getValue(),
-          size: 220,
-        },
-        {
-          id: "initialElement",
-          accessorFn: (row) => row.initialElement,
-          cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
-          size: 200,
-        },
-        {
-          id: "type",
-          accessorFn: (row) => row.type,
-          cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
-          size: 160,
-        },
-        {
-          id: "captureable",
-          accessorFn: (row) => row.captureable,
-          cell: (info) => info.getValue<Boolean>().toString(),
-          size: 160,
-        },
-        {
-          id: "baseLv",
-          accessorFn: (row) => row.baseLv,
-          cell: (info) => info.getValue(),
-          size: 160,
-        },
-        {
-          id: "experience",
-          accessorFn: (row) => row.experience,
-          size: 180,
-        },
-        {
-          id: "physicalDefense",
-          accessorFn: (row) => row.physicalDefense,
-          size: 200,
-        },
-        {
-          id: "physicalResistance",
-          accessorFn: (row) => row.physicalResistance,
-          size: 200,
-        },
-        {
-          id: "magicalDefense",
-          accessorFn: (row) => row.magicalDefense,
-          size: 200,
-        },
-        {
-          id: "magicalResistance",
-          accessorFn: (row) => row.magicalResistance,
-          size: 200,
-        },
-        {
-          id: "criticalResistance",
-          accessorFn: (row) => row.criticalResistance,
-          size: 200,
-        },
-        {
-          id: "avoidance",
-          accessorFn: (row) => row.avoidance,
-          size: 160,
-        },
-        {
-          id: "dodge",
-          accessorFn: (row) => row.dodge,
-          size: 160,
-        },
-        {
-          id: "block",
-          accessorFn: (row) => row.block,
-          size: 160,
-        },
-        {
-          id: "actions",
-          accessorFn: (row) => row.actions,
-          size: 160,
-        },
-      ],
-      dic: MobWithRelatedDic(dic),
-      defaultSort: { id: "experience", desc: true },
-      hiddenColumns: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
-      tdGenerator: {
-        initialElement: (props) =>
-          ({
-            Water: <Icon.Element.Water class="h-12 w-12" />,
-            Fire: <Icon.Element.Fire class="h-12 w-12" />,
-            Earth: <Icon.Element.Earth class="h-12 w-12" />,
-            Wind: <Icon.Element.Wind class="h-12 w-12" />,
-            Light: <Icon.Element.Light class="h-12 w-12" />,
-            Dark: <Icon.Element.Dark class="h-12 w-12" />,
-            Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-          })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
-        name: (props) => (
-          <div class="text-accent-color flex flex-col gap-1">
-            <span>{props.cell.getValue<string>()}</span>
-            <Show when={props.cell.row.original.type === "Mob"}>
-              <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
-            </Show>
-          </div>
-        ),
+const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<mob>({
+    dataFetcher: MobsFetcher,
+    columnsDef: [
+      {
+        id: "id",
+        accessorFn: (row) => row.id,
+        cell: (info) => info.getValue(),
+        size: 200,
       },
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        cell: (info) => info.getValue(),
+        size: 220,
+      },
+      {
+        id: "initialElement",
+        accessorFn: (row) => row.initialElement,
+        cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
+        size: 200,
+      },
+      {
+        id: "type",
+        accessorFn: (row) => row.type,
+        cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
+        size: 160,
+      },
+      {
+        id: "captureable",
+        accessorFn: (row) => row.captureable,
+        cell: (info) => info.getValue<Boolean>().toString(),
+        size: 160,
+      },
+      {
+        id: "baseLv",
+        accessorFn: (row) => row.baseLv,
+        cell: (info) => info.getValue(),
+        size: 160,
+      },
+      {
+        id: "experience",
+        accessorFn: (row) => row.experience,
+        size: 180,
+      },
+      {
+        id: "physicalDefense",
+        accessorFn: (row) => row.physicalDefense,
+        size: 200,
+      },
+      {
+        id: "physicalResistance",
+        accessorFn: (row) => row.physicalResistance,
+        size: 200,
+      },
+      {
+        id: "magicalDefense",
+        accessorFn: (row) => row.magicalDefense,
+        size: 200,
+      },
+      {
+        id: "magicalResistance",
+        accessorFn: (row) => row.magicalResistance,
+        size: 200,
+      },
+      {
+        id: "criticalResistance",
+        accessorFn: (row) => row.criticalResistance,
+        size: 200,
+      },
+      {
+        id: "avoidance",
+        accessorFn: (row) => row.avoidance,
+        size: 160,
+      },
+      {
+        id: "dodge",
+        accessorFn: (row) => row.dodge,
+        size: 160,
+      },
+      {
+        id: "block",
+        accessorFn: (row) => row.block,
+        size: 160,
+      },
+      {
+        id: "actions",
+        accessorFn: (row) => row.actions,
+        size: 160,
+      },
+    ],
+    dictionary: MobWithRelatedDic(dic),
+    defaultSort: { id: "experience", desc: true },
+    hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
+    tdGenerator: {
+      initialElement: (props) =>
+        ({
+          Water: <Icon.Element.Water class="h-12 w-12" />,
+          Fire: <Icon.Element.Fire class="h-12 w-12" />,
+          Earth: <Icon.Element.Earth class="h-12 w-12" />,
+          Wind: <Icon.Element.Wind class="h-12 w-12" />,
+          Light: <Icon.Element.Light class="h-12 w-12" />,
+          Dark: <Icon.Element.Dark class="h-12 w-12" />,
+          Normal: <Icon.Element.NoElement class="h-12 w-12" />,
+        })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
+      name: (props) => (
+        <div class="text-accent-color flex flex-col gap-1">
+          <span>{props.cell.getValue<string>()}</span>
+          <Show when={props.cell.row.original.type === "Mob"}>
+            <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
+          </Show>
+        </div>
+      ),
     },
-    form: (handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
-    card: {
-      cardRender: (data, appendCardTypeAndIds) => {
-        const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
 
-        const [zonesData] = createResource(data.id, async (mobId) => {
-          const db = await getDB();
-          return await db
-            .selectFrom("zone")
-            .innerJoin("_mobTozone", "zone.id", "_mobTozone.B")
-            .where("_mobTozone.A", "=", mobId)
-            .selectAll("zone")
-            .execute();
-        });
+export const MobDataConfig: dataDisplayConfig<MobWithRelated, mob> = {
+  defaultData: defaultMobWithRelated,
+  dataFetcher: MobWithRelatedFetcher,
+  datasFetcher: MobsFetcher,
+  dataSchema: MobWithRelatedSchema,
+  mainContent: (dic, filterStr, columnHandleClick) => MobTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
-        const [dropItemsData] = createResource(data.id, async (mobId) => {
-          const db = await getDB();
-          return await db
-            .selectFrom("drop_item")
-            .innerJoin("item", "item.id", "drop_item.itemId")
-            .where("drop_item.dropById", "=", mobId)
-            .selectAll("item")
-            .execute();
-        });
+    const [zonesData] = createResource(data.id, async (mobId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("zone")
+        .innerJoin("_mobTozone", "zone.id", "_mobTozone.B")
+        .where("_mobTozone.A", "=", mobId)
+        .selectAll("zone")
+        .execute();
+    });
 
-        return (
-          <>
-            <div class="MobImage bg-area-color h-[18vh] w-full rounded"></div>
-            <Show when={data.type === "Boss"}>
-              <Select
-                value={difficulty()}
-                setValue={(value) => {
-                  setDifficulty(value as MobDifficultyFlag);
-                }}
-                options={MOB_DIFFICULTY_FLAG.map((flag) => ({
-                  label: flag,
-                  value: flag,
-                }))}
-                optionGenerator={(option, selected, handleSelect) => {
-                  return (
-                    <div
-                      class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
-                      onClick={handleSelect}
-                    >
-                      <div class="text-accent-color flex gap-1">
-                        <Icon.Filled.Star
-                          class={
-                            ["Normal", "Hard", "Lunatic", "Ultimate"].includes(option.value)
-                              ? "fill-brand-color-1st!"
-                              : "fill-none!"
-                          }
-                        />
-                        <Icon.Filled.Star
-                          class={
-                            ["Hard", "Lunatic", "Ultimate"].includes(option.value)
-                              ? "fill-brand-color-2nd!"
-                              : "fill-none!"
-                          }
-                        />
-                        <Icon.Filled.Star
-                          class={
-                            ["Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-3rd!" : "fill-none!"
-                          }
-                        />
-                        <Icon.Filled.Star
-                          class={["Ultimate"].includes(option.value) ? "fill-brand-color-4th!" : "fill-none!"}
-                        />
-                      </div>
-                      <span class="text-accent-color">
-                        Lv:
-                        {data.baseLv +
-                          ({
-                            Easy: -1,
-                            Normal: 0,
-                            Hard: 1,
-                            Lunatic: 2,
-                            Ultimate: 4,
-                          }[option.value] ?? 0) *
-                            10}
-                      </span>
-                    </div>
-                  );
+    const [dropItemsData] = createResource(data.id, async (mobId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("drop_item")
+        .innerJoin("item", "item.id", "drop_item.itemId")
+        .where("drop_item.dropById", "=", mobId)
+        .selectAll("item")
+        .execute();
+    });
+
+    return (
+      <>
+        <div class="MobImage bg-area-color h-[18vh] w-full rounded"></div>
+        <Show when={data.type === "Boss"}>
+          <Select
+            value={difficulty()}
+            setValue={(value) => {
+              setDifficulty(value as MobDifficultyFlag);
+            }}
+            options={MOB_DIFFICULTY_FLAG.map((flag) => ({
+              label: flag,
+              value: flag,
+            }))}
+            optionGenerator={(option, selected, handleSelect) => {
+              return (
+                <div
+                  class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
+                  onClick={handleSelect}
+                >
+                  <div class="text-accent-color flex gap-1">
+                    <Icon.Filled.Star
+                      class={
+                        ["Normal", "Hard", "Lunatic", "Ultimate"].includes(option.value)
+                          ? "fill-brand-color-1st!"
+                          : "fill-none!"
+                      }
+                    />
+                    <Icon.Filled.Star
+                      class={
+                        ["Hard", "Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-2nd!" : "fill-none!"
+                      }
+                    />
+                    <Icon.Filled.Star
+                      class={["Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-3rd!" : "fill-none!"}
+                    />
+                    <Icon.Filled.Star
+                      class={["Ultimate"].includes(option.value) ? "fill-brand-color-4th!" : "fill-none!"}
+                    />
+                  </div>
+                  <span class="text-accent-color">
+                    Lv:
+                    {data.baseLv +
+                      ({
+                        Easy: -1,
+                        Normal: 0,
+                        Hard: 1,
+                        Lunatic: 2,
+                        Ultimate: 4,
+                      }[option.value] ?? 0) *
+                        10}
+                  </span>
+                </div>
+              );
+            }}
+          />
+        </Show>
+        {ObjRender<MobWithRelated>({
+          data: generateBossDataByFlag(data, difficulty()),
+          dictionary: MobWithRelatedDic(dic),
+          dataSchema: MobWithRelatedSchema,
+          hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+          fieldGroupMap: {
+            常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
+            战斗属性: [
+              "initialElement",
+              "physicalDefense",
+              "physicalResistance",
+              "magicalDefense",
+              "magicalResistance",
+              "criticalResistance",
+              "avoidance",
+              "block",
+              "dodge",
+              "normalAttackResistanceModifier",
+              "physicalAttackResistanceModifier",
+              "magicalAttackResistanceModifier",
+            ],
+            额外说明: ["details"],
+            怪物行为: ["actions"],
+            词条信息: ["dataSources"],
+          },
+        })}
+
+        <CardSection
+          title={"出现的" + dic.db.zone.selfName}
+          data={zonesData.latest}
+          renderItem={(zone) => {
+            return {
+              label: zone.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+            };
+          }}
+        />
+        <CardSection
+          title={"掉落的" + dic.db.drop_item.selfName}
+          data={dropItemsData.latest}
+          renderItem={(item) => {
+            const tableType: keyof DB = (
+              {
+                Weapon: "weapon",
+                Armor: "armor",
+                Option: "option",
+                Special: "special",
+                Crystal: "crystal",
+                Consumable: "consumable",
+                Material: "material",
+              } satisfies Record<ItemType, keyof DB>
+            )[item.itemType];
+            return {
+              label: item.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: tableType, id: item.id }]),
+            };
+          }}
+        />
+
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("mob").where("id", "=", data.id).executeTakeFirstOrThrow();
                 }}
               />
-            </Show>
-            {ObjRender<MobWithRelated>({
-              data: generateBossDataByFlag(data, difficulty()),
-              dictionary: MobWithRelatedDic(dic),
-              dataSchema: MobWithRelatedSchema,
-              hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
-              fieldGroupMap: {
-                常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
-                战斗属性: [
-                  "initialElement",
-                  "physicalDefense",
-                  "physicalResistance",
-                  "magicalDefense",
-                  "magicalResistance",
-                  "criticalResistance",
-                  "avoidance",
-                  "block",
-                  "dodge",
-                  "normalAttackResistanceModifier",
-                  "physicalAttackResistanceModifier",
-                  "magicalAttackResistanceModifier",
-                ],
-                额外说明: ["details"],
-                怪物行为: ["actions"],
-                词条信息: ["dataSources"],
-              },
-            })}
-
-            <CardSection
-              title={"出现的" + dic.db.zone.selfName}
-              data={zonesData.latest}
-              renderItem={(zone) => {
-                return {
-                  label: zone.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
-                };
-              }}
-            />
-            <CardSection
-              title={"掉落的" + dic.db.drop_item.selfName}
-              data={dropItemsData.latest}
-              renderItem={(item) => {
-                const tableType: keyof DB = (
-                  {
-                    Weapon: "weapon",
-                    Armor: "armor",
-                    Option: "option",
-                    Special: "special",
-                    Crystal: "crystal",
-                    Consumable: "consumable",
-                    Material: "material",
-                  } satisfies Record<ItemType, keyof DB>
-                )[item.itemType];
-                return {
-                  label: item.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: tableType, id: item.id }]),
-                };
-              }}
-            />
-
-            <Show when={data.createdByAccountId === store.session.user.account?.id}>
-              <section class="FunFieldGroup flex w-full flex-col gap-2">
-                <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                  {dic.ui.actions.operation}
-                  <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-                </h3>
-                <div class="FunGroup flex flex-col gap-3">
-                  <Button
-                    class="w-fit"
-                    icon={<Icon.Line.Trash />}
-                    onclick={async () => {
-                      const db = await getDB();
-                      await db.deleteFrom("mob").where("id", "=", data.id).executeTakeFirstOrThrow();
-                    }}
-                  />
-                </div>
-              </section>
-            </Show>
-          </>
-        );
-      },
-    },
-  };
+            </div>
+          </section>
+        </Show>
+      </>
+    );
+  },
 };

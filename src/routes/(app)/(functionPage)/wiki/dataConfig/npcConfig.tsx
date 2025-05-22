@@ -1,5 +1,5 @@
 import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index } from "solid-js";
+import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { getCommonPinningStyles } from "~/lib/table";
 import { createNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
 import { fieldInfo, renderField } from "../utils";
@@ -23,6 +23,7 @@ import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
+import { VirtualTable } from "~/components/module/virtualTable";
 
 type NpcWithRelated = npc & {
   tasks: task[];
@@ -51,6 +52,50 @@ const NpcWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
+const NpcWithRelatedFetcher = async (id: string) => {
+  const db = await getDB();
+  const res = await db
+    .selectFrom("npc")
+    .where("id", "=", id)
+    .selectAll("npc")
+    .select((eb) => [
+      jsonArrayFrom(eb.selectFrom("task").whereRef("task.npcId", "=", eb.ref("npc.id")).selectAll("task")).as("tasks"),
+    ])
+    .executeTakeFirstOrThrow();
+  return res as NpcWithRelated;
+};
+
+const NpcsFetcher = async () => {
+  const db = await getDB();
+  const res = await db.selectFrom("npc").selectAll("npc").execute();
+  return res as NpcWithRelated[];
+};
+
+const NpcTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
+  return VirtualTable<npc>({
+    dataFetcher: NpcsFetcher,
+    columnsDef: [
+      {
+        id: "id",
+        accessorFn: (row) => row.id,
+        cell: (info) => info.getValue(),
+        size: 200,
+      },
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        cell: (info) => info.getValue(),
+        size: 220,
+      },
+    ],
+    dictionary: NpcWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+    globalFilterStr: filterStr,
+    columnHandleClick: columnHandleClick,
+  });
+};
 const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const form = createForm(() => ({
     defaultValues: defaultNpcWithRelated,
@@ -239,106 +284,62 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const createNpcDataConfig = (dic: dictionary): dataDisplayConfig<NpcWithRelated, npc> => ({
+export const NpcDataConfig: dataDisplayConfig<NpcWithRelated, npc> = {
   defaultData: defaultNpcWithRelated,
-  dataFetcher: async (id) => {
-    const db = await getDB();
-    const res = await db
-      .selectFrom("npc")
-      .where("id", "=", id)
-      .selectAll("npc")
-      .select((eb) => [
-        jsonArrayFrom(eb.selectFrom("task").whereRef("task.npcId", "=", eb.ref("npc.id")).selectAll("task")).as(
-          "tasks",
-        ),
-      ])
-      .executeTakeFirstOrThrow();
-    return res as NpcWithRelated;
-  },
-  datasFetcher: async () => {
-    const db = await getDB();
-    const res = await db.selectFrom("npc").selectAll("npc").execute();
-    return res as NpcWithRelated[];
-  },
-  dictionary: dic,
+  dataFetcher: NpcWithRelatedFetcher,
+  datasFetcher: NpcsFetcher,
   dataSchema: NpcWithRelatedSchema,
-  table: {
-    columnDef: [
-      {
-        id: "id",
-        accessorFn: (row) => row.id,
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.name,
-        cell: (info) => info.getValue(),
-        size: 220,
-      },
-    ],
-    dic: NpcWithRelatedDic(dic),
-    hiddenColumns: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    defaultSort: { id: "name", desc: false },
-    tdGenerator: {},
+  mainContent: (dic, filterStr, columnHandleClick) => NpcTable(dic, filterStr, columnHandleClick),
+  form: (dic, handleSubmit) => NpcWithRelatedForm(dic, handleSubmit),
+  card: (dic, data, appendCardTypeAndIds) => {
+    const [tasksData] = createResource(data.id, async (npcId) => {
+      const db = await getDB();
+      return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
+    });
+
+    return (
+      <>
+        <div class="NpcImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<NpcWithRelated>({
+          data,
+          dictionary: NpcWithRelatedDic(dic),
+          dataSchema: NpcWithRelatedSchema,
+          hiddenFields: ["id"],
+          fieldGroupMap: {
+            基本信息: ["name"],
+          },
+        })}
+
+        <CardSection
+          title={"持有的" + dic.db.task.selfName}
+          data={tasksData.latest}
+          renderItem={(task) => {
+            return {
+              label: task.name,
+              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }]),
+            };
+          }}
+        />
+
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex flex-col gap-3">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.deleteFrom("npc").where("id", "=", data.id).executeTakeFirstOrThrow();
+                }}
+              />
+            </div>
+          </section>
+        </Show>
+      </>
+    );
   },
-  form: (handleSubmit) => NpcWithRelatedForm(dic, handleSubmit),
-  card: {
-    cardRender: (
-      data: NpcWithRelated,
-      appendCardTypeAndIds: (
-        updater: (prev: { type: keyof DB; id: string }[]) => { type: keyof DB; id: string }[],
-      ) => void,
-    ) => {
-      const [tasksData] = createResource(data.id, async (npcId) => {
-        const db = await getDB();
-        return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
-      });
-
-      return (
-        <>
-          <div class="NpcImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<NpcWithRelated>({
-            data,
-            dictionary: NpcWithRelatedDic(dic),
-            dataSchema: NpcWithRelatedSchema,
-            hiddenFields: ["id"],
-            fieldGroupMap: {
-              基本信息: ["name"],
-            },
-          })}
-
-          <CardSection
-            title={"持有的" + dic.db.task.selfName}
-            data={tasksData.latest}
-            renderItem={(task) => {
-              return {
-                label: task.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }]),
-              };
-            }}
-          />
-
-          <Show when={data.createdByAccountId === store.session.user.account?.id}>
-            <section class="FunFieldGroup flex w-full flex-col gap-2">
-              <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                {dic.ui.actions.operation}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-              </h3>
-              <div class="FunGroup flex flex-col gap-3">
-                <Button
-                  class="w-fit"
-                  icon={<Icon.Line.Trash />}
-                  onclick={async () => {
-                    const db = await getDB();
-                    await db.deleteFrom("npc").where("id", "=", data.id).executeTakeFirstOrThrow();
-                  }}
-                />
-              </div>
-            </section>
-          </Show>
-        </>
-      );
-    },
-  },
-});
+};

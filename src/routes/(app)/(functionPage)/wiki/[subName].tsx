@@ -6,10 +6,12 @@ import {
   createSignal,
   For,
   JSX,
+  Match,
   on,
   onCleanup,
   onMount,
   Show,
+  Switch,
   useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
@@ -31,6 +33,7 @@ import { Dialog } from "~/components/controls/dialog";
 import { getDB } from "~/repositories/database";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { DBDataConfig } from "./dataConfig/dataConfig";
+import AddressPage from "./specialLayoutPage/address";
 
 // 弹出层装饰花纹
 const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
@@ -157,7 +160,7 @@ export default function WikiSubPage() {
       if (newItems.length === 0) return;
       const results: Record<string, unknown>[] = [];
       for (const { type, id } of newItems) {
-        const config = DBDataConfig(dictionary())[type];
+        const config = DBDataConfig[type];
         if (config?.dataFetcher) {
           const result = await config.dataFetcher(id);
           results.push(result);
@@ -193,7 +196,7 @@ export default function WikiSubPage() {
           setIsTableFullscreen(false);
           setActiveBannerIndex(0);
           setTableName(wikiType);
-          setDataConfig(DBDataConfig(dictionary())[wikiType]);
+          setDataConfig(DBDataConfig[wikiType]);
           const validDataConfig = dataConfig();
           if (validDataConfig) {
           }
@@ -305,195 +308,205 @@ export default function WikiSubPage() {
                 </div>
               }
             >
-              <Presence exitBeforeEnter>
-                <Show when={!isTableFullscreen()}>
-                  <Motion.div
-                    class="Title flex flex-col lg:pt-12 landscape:p-3"
-                    animate={{ opacity: [0, 1] }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  >
-                    <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-                      <h1
-                        onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
-                        class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
-                      >
-                        {dictionary().db[validTableName()].selfName}
-                        <Icon.Line.Swap />
-                      </h1>
-                      <input
-                        id="DataSearchBox"
-                        type="search"
-                        placeholder={dictionary().ui.searchPlaceholder}
-                        class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
-                        onInput={(e) => {
-                          setTableGlobalFilterStr(e.target.value);
-                        }}
-                      />
-                      <Button // 仅移动端显示
-                        size="sm"
-                        icon={<Icon.Line.InfoCircle />}
-                        class="flex bg-transparent lg:hidden"
-                        onClick={() => {}}
-                      ></Button>
-                      <Show when={store.session.user.id}>
-                        <Button // 仅PC端显示
-                          icon={<Icon.Line.CloudUpload />}
-                          class="hidden lg:flex"
-                          onClick={() => {
-                            setFormSheetIsOpen(true);
-                          }}
-                        >
-                          {dictionary().ui.actions.add}
-                        </Button>
-                      </Show>
-                    </div>
-                  </Motion.div>
-                </Show>
-              </Presence>
-              <Presence exitBeforeEnter>
-                <Show when={!isTableFullscreen()}>
-                  <Motion.div
-                    class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
-                    animate={{ opacity: [0, 1] }}
-                    exit={{ opacity: [1, 0] }}
-                    transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  >
-                    <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
-                      <For each={[0, 1, 2]}>
-                        {(_, index) => {
-                          const brandColor = {
-                            1: "1st",
-                            2: "2nd",
-                            3: "3rd",
-                          }[1 + (index() % 3)];
-                          return (
-                            <Presence exitBeforeEnter>
-                              <Show when={!isTableFullscreen()}>
-                                <Motion.div
-                                  class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
-                                  onMouseEnter={() => setActiveBannerIndex(index())}
-                                  style={{
-                                    // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
-                                    "background-position": "center center",
-                                  }}
-                                  animate={{
-                                    opacity: [0, 1],
-                                    transform: ["scale(0.9)", "scale(1)"],
-                                  }}
-                                  exit={{
-                                    opacity: [1, 0],
-                                    transform: ["scale(1)", "scale(0.9)"],
-                                  }}
-                                  transition={{
-                                    duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                    delay: index() * 0.05,
-                                  }}
-                                >
-                                  <div
-                                    class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
-                                  >
-                                    <span
-                                      class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
-                                    >
-                                      TOP.{index() + 1}
-                                    </span>
-                                    <div
-                                      class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
-                                    ></div>
-                                    <span
-                                      class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
-                                    >
-                                      {/* {"name" in defaultData[tableName()] ? dataConfig().table.dataList?.latest?.[index()].name : ""} */}
-                                    </span>
-                                  </div>
-                                </Motion.div>
-                              </Show>
-                            </Presence>
-                          );
-                        }}
-                      </For>
-                    </div>
-                  </Motion.div>
-                </Show>
-              </Presence>
-
-              <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
-                <div class="TableModule flex flex-1 flex-col overflow-hidden">
-                  <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
-                    <div class={`Text px-6 text-xl`}>{dictionary().db[validTableName()].selfName}</div>
-                    <div
-                      class={`Description ${!isTableFullscreen() ? "opacity-0" : "opacity-100"} bg-area-color flex-1 rounded p-3`}
+            <Presence exitBeforeEnter>
+              <Show when={!isTableFullscreen()}>
+                <Motion.div
+                  class="Title flex flex-col lg:pt-12 landscape:p-3"
+                  animate={{ opacity: [0, 1] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+                >
+                  <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
+                    <h1
+                      onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
+                      class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
                     >
-                      {dictionary().db[validTableName()].description}
-                    </div>
-                    <Button
-                      level="quaternary"
-                      icon={isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
-                      onClick={() => {
-                        setIsTableFullscreen((pre) => !pre);
+                      {dictionary().db[validTableName()].selfName}
+                      <Icon.Line.Swap />
+                    </h1>
+                    <input
+                      id="DataSearchBox"
+                      type="search"
+                      placeholder={dictionary().ui.searchPlaceholder}
+                      class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                      onInput={(e) => {
+                        setTableGlobalFilterStr(e.target.value);
                       }}
                     />
+                    <Button // 仅移动端显示
+                      size="sm"
+                      icon={<Icon.Line.InfoCircle />}
+                      class="flex bg-transparent lg:hidden"
+                      onClick={() => {}}
+                    ></Button>
+                    <Show when={store.session.user.id}>
+                      <Button // 仅PC端显示
+                        icon={<Icon.Line.CloudUpload />}
+                        class="hidden lg:flex"
+                        onClick={() => {
+                          setFormSheetIsOpen(true);
+                        }}
+                      >
+                        {dictionary().ui.actions.add}
+                      </Button>
+                    </Show>
                   </div>
-                  {VirtualTable({
-                    measure: validDataConfig().table.measure,
-                    dataFetcher: validDataConfig().datasFetcher,
-                    columnsDef: validDataConfig().table.columnDef,
-                    hiddenColumnDef: validDataConfig().table.hiddenColumns,
-                    tdGenerator: validDataConfig().table.tdGenerator,
-                    defaultSort: validDataConfig().table.defaultSort,
-                    globalFilterStr: tableGlobalFilterStr,
-                    dictionary: validDataConfig().table.dic,
-                    columnVisibility: tableColumnVisibility(),
-                    onColumnVisibilityChange: (updater) => {
-                      if (typeof updater === "function") {
-                        setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
-                      } else {
-                        setTableColumnVisibility(() => updater);
-                      }
-                    },
-                    columnHandleClick: (id) => {
-                      setCardTypeAndIds((pre) => [...pre, { type: validTableName(), id }]);
-                      setCardGroupIsOpen(true);
-                    },
-                    onRefetch: (refetch) => setTableRefetch(() => refetch),
-                  })}
-                </div>
-                <Presence exitBeforeEnter>
-                  <Show when={!isTableFullscreen()}>
-                    <Motion.div
-                      animate={{ opacity: [0, 1] }}
-                      exit={{ opacity: 0 }}
-                      class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
-                    >
-                      <div class="Title flex h-12 text-xl">{dictionary().ui.wiki.news.title}</div>
-                      <div class="Content flex flex-1 flex-col gap-3">
-                        <For each={[0, 1, 2]}>
-                          {(_, index) => {
-                            return (
-                              <Motion.div
-                                class="Item bg-area-color h-full w-full flex-1 rounded"
-                                animate={{
-                                  opacity: [0, 1],
-                                  transform: ["scale(0.9)", "scale(1)"],
-                                }}
-                                exit={{
-                                  opacity: [1, 0],
-                                  transform: ["scale(1)", "scale(0.9)"],
-                                }}
-                                transition={{
-                                  duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                  delay: index() * 0.05,
-                                }}
-                              ></Motion.div>
-                            );
-                          }}
-                        </For>
+                </Motion.div>
+              </Show>
+            </Presence>
+              <Switch
+                fallback={
+                  <>
+                    <Presence exitBeforeEnter>
+                      <Show when={!isTableFullscreen()}>
+                        <Motion.div
+                          class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
+                          animate={{ opacity: [0, 1] }}
+                          exit={{ opacity: [1, 0] }}
+                          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+                        >
+                          <div class="BannerContent flex flex-1 gap-6 lg:gap-2">
+                            <For each={[0, 1, 2]}>
+                              {(_, index) => {
+                                const brandColor = {
+                                  1: "1st",
+                                  2: "2nd",
+                                  3: "3rd",
+                                }[1 + (index() % 3)];
+                                return (
+                                  <Presence exitBeforeEnter>
+                                    <Show when={!isTableFullscreen()}>
+                                      <Motion.div
+                                        class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
+                                        onMouseEnter={() => setActiveBannerIndex(index())}
+                                        style={{
+                                          // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
+                                          "background-position": "center center",
+                                        }}
+                                        animate={{
+                                          opacity: [0, 1],
+                                          transform: ["scale(0.9)", "scale(1)"],
+                                        }}
+                                        exit={{
+                                          opacity: [1, 0],
+                                          transform: ["scale(1)", "scale(0.9)"],
+                                        }}
+                                        transition={{
+                                          duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                          delay: index() * 0.05,
+                                        }}
+                                      >
+                                        <div
+                                          class={`mask ${activeBannerIndex() === index() ? `bg-brand-color-${brandColor}` : `bg-area-color`} text-primary-color hidden h-full flex-col justify-center gap-2 p-8 lg:flex`}
+                                        >
+                                          <span
+                                            class={`text-3xl font-bold ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                                          >
+                                            TOP.{index() + 1}
+                                          </span>
+                                          <div
+                                            class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
+                                          ></div>
+                                          <span
+                                            class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
+                                          >
+                                            {/* {"name" in defaultData[tableName()] ? dataConfig().table.dataList?.latest?.[index()].name : ""} */}
+                                          </span>
+                                        </div>
+                                      </Motion.div>
+                                    </Show>
+                                  </Presence>
+                                );
+                              }}
+                            </For>
+                          </div>
+                        </Motion.div>
+                      </Show>
+                    </Presence>
+
+                    <div class="Table&News flex h-full flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:p-3">
+                      <div class="TableModule flex flex-1 flex-col overflow-hidden">
+                        <div class="Title hidden h-12 w-full items-center gap-3 lg:flex">
+                          <div class={`Text px-6 text-xl`}>{dictionary().db[validTableName()].selfName}</div>
+                          <div
+                            class={`Description ${!isTableFullscreen() ? "opacity-0" : "opacity-100"} bg-area-color flex-1 rounded p-3`}
+                          >
+                            {dictionary().db[validTableName()].description}
+                          </div>
+                          <Button
+                            level="quaternary"
+                            icon={isTableFullscreen() ? <Icon.Line.Collapse /> : <Icon.Line.Expand />}
+                            onClick={() => {
+                              setIsTableFullscreen((pre) => !pre);
+                            }}
+                          />
+                        </div>
+                        {VirtualTable({
+                          measure: validDataConfig().table.measure,
+                          dataFetcher: validDataConfig().datasFetcher,
+                          columnsDef: validDataConfig().table.columnDef,
+                          hiddenColumnDef: validDataConfig().table.hiddenColumns,
+                          tdGenerator: validDataConfig().table.tdGenerator,
+                          defaultSort: validDataConfig().table.defaultSort,
+                          globalFilterStr: tableGlobalFilterStr,
+                          dictionary: validDataConfig().table.dic,
+                          columnVisibility: tableColumnVisibility(),
+                          onColumnVisibilityChange: (updater) => {
+                            if (typeof updater === "function") {
+                              setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
+                            } else {
+                              setTableColumnVisibility(() => updater);
+                            }
+                          },
+                          columnHandleClick: (id) => {
+                            setCardTypeAndIds((pre) => [...pre, { type: validTableName(), id }]);
+                            setCardGroupIsOpen(true);
+                          },
+                          onRefetch: (refetch) => setTableRefetch(() => refetch),
+                        })}
                       </div>
-                    </Motion.div>
-                  </Show>
-                </Presence>
-              </div>
+                      <Presence exitBeforeEnter>
+                        <Show when={!isTableFullscreen()}>
+                          <Motion.div
+                            animate={{ opacity: [0, 1] }}
+                            exit={{ opacity: 0 }}
+                            class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
+                          >
+                            <div class="Title flex h-12 text-xl">{dictionary().ui.wiki.news.title}</div>
+                            <div class="Content flex flex-1 flex-col gap-3">
+                              <For each={[0, 1, 2]}>
+                                {(_, index) => {
+                                  return (
+                                    <Motion.div
+                                      class="Item bg-area-color h-full w-full flex-1 rounded"
+                                      animate={{
+                                        opacity: [0, 1],
+                                        transform: ["scale(0.9)", "scale(1)"],
+                                      }}
+                                      exit={{
+                                        opacity: [1, 0],
+                                        transform: ["scale(1)", "scale(0.9)"],
+                                      }}
+                                      transition={{
+                                        duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                        delay: index() * 0.05,
+                                      }}
+                                    ></Motion.div>
+                                  );
+                                }}
+                              </For>
+                            </div>
+                          </Motion.div>
+                        </Show>
+                      </Presence>
+                    </div>
+                  </>
+                }
+              >
+                <Match when={validTableName() === "address"}>
+                  <AddressPage />
+                </Match>
+              </Switch>
 
               <Presence exitBeforeEnter>
                 <Show when={isTableFullscreen() || media.width < 1024}>
@@ -539,6 +552,7 @@ export default function WikiSubPage() {
                   </Motion.div>
                 </Show>
               </Presence>
+
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
                   {validDataConfig().form((table, id) => {
