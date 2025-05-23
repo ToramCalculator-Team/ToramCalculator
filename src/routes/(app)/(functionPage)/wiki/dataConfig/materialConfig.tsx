@@ -1072,7 +1072,7 @@ export const MaterialDataConfig: dataDisplayConfig<materialWithRelated, material
   dataFetcher: MaterialWithRelatedFetcher,
   datasFetcher: MaterialsFetcher,
   dataSchema: materialWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => MaterialTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => MaterialTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => MaterialWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

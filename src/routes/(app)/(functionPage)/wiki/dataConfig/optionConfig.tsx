@@ -1035,7 +1035,7 @@ export const OptEquipDataConfig: dataDisplayConfig<optionWithRelated, option & i
   dataFetcher: OptEquipWithRelatedFetcher,
   datasFetcher: OptEquipsFetcher,
   dataSchema: optionWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => OptEquipTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => OptEquipTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => OptEquipWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

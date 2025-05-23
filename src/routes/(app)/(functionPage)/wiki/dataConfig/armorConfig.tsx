@@ -1042,7 +1042,7 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
   dataFetcher: ArmorWithRelatedFetcher,
   datasFetcher: ArmorsFetcher,
   dataSchema: armorWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => ArmorTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => ArmorTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => ArmorWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

@@ -289,7 +289,7 @@ export const NpcDataConfig: dataDisplayConfig<NpcWithRelated, npc> = {
   dataFetcher: NpcWithRelatedFetcher,
   datasFetcher: NpcsFetcher,
   dataSchema: NpcWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => NpcTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => NpcTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => NpcWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [tasksData] = createResource(data.id, async (npcId) => {

@@ -1080,7 +1080,7 @@ export const ConsumableDataConfig: dataDisplayConfig<consumableWithRelated, cons
   dataFetcher: ConsumableWithRelatedFetcher,
   datasFetcher: ConsumablesFetcher,
   dataSchema: consumableWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => ConsumableTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => ConsumableTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => ConsumableWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

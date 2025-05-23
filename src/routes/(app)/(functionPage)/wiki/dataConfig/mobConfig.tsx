@@ -727,7 +727,7 @@ export const MobDataConfig: dataDisplayConfig<MobWithRelated, mob> = {
   dataFetcher: MobWithRelatedFetcher,
   datasFetcher: MobsFetcher,
   dataSchema: MobWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => MobTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => MobTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);

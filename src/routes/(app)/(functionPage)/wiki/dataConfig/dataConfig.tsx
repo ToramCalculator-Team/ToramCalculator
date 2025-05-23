@@ -25,7 +25,8 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
   dataFetcher: (id: string) => Promise<T>;
   datasFetcher: () => Promise<D[]>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
-  mainContent: (
+  main?: (dic: dictionary) => JSX.Element;
+  table: (
     dic: dictionary,
     filterStr: Accessor<string>,
     columnHandleClick: (id: string) => void,

@@ -256,7 +256,7 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
   dataFetcher: ActivityWithRelatedFetcher,
   datasFetcher: ActivitiesFetcher,
   dataSchema: ActivityWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => ActivityTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => ActivityTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => ActivityWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [zonesData] = createResource(data.id, async (activityId) => {

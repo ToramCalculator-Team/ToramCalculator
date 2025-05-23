@@ -854,7 +854,7 @@ export const CrystalDataConfig: dataDisplayConfig<crystalWithRelated, crystal & 
   dataFetcher: CrystalWithRelatedFetcher,
   datasFetcher: CrystalsFetcher,
   dataSchema: crystalWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => CrystalTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => CrystalTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => CrystalWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
       const [frontData] = createResource(data.id, async (itemId) => {

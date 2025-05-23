@@ -536,10 +536,10 @@ const ZoneTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleCli
 
 export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
   defaultData: defaultZoneWithRelated,
-  mainContent: (dic, filterStr, columnHandleClick) => ZoneTable(dic, filterStr, columnHandleClick),
   dataFetcher: ZoneWithRelatedFetcher,
   datasFetcher: ZonesFetcher,
   dataSchema: ZoneWithRelatedSchema,
+  table: (dic, filterStr, columnHandleClick) => ZoneTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => ZoneWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [mobData] = createResource(data.id, async (zoneId) => {

@@ -1115,7 +1115,7 @@ export const WeaponDataConfig: dataDisplayConfig<weaponWithRelated, weapon & ite
   dataFetcher: WeaponWithRelatedFetcher,
   datasFetcher: WeaponsFetcher,
   dataSchema: weaponWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => weaponTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => weaponTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => WeaponWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

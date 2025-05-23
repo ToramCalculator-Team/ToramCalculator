@@ -1030,7 +1030,7 @@ export const SpeEquipDataConfig: dataDisplayConfig<specialWithRelated, special &
   dataFetcher: SpeEquipWithRelatedFetcher,
   datasFetcher: SpeEquipsFetcher,
   dataSchema: specialWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => SpeEquipTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => SpeEquipTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => SpeEquipWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     return (

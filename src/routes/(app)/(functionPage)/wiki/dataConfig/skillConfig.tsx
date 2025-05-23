@@ -345,7 +345,7 @@ export const SkillDataConfig: dataDisplayConfig<SkillWithRelated, skill> = {
   dataFetcher: SkillWithRelatedFetcher,
   datasFetcher: SkillsFetcher,
   dataSchema: SkillWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => SkillTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => SkillTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => SkillWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [effectsData] = createResource(data.id, async (skillId) => {

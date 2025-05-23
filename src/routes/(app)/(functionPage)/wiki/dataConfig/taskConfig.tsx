@@ -584,7 +584,7 @@ export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
   dataFetcher: TaskWithRelatedFetcher,
   datasFetcher: TasksFetcher,
   dataSchema: TaskWithRelatedSchema,
-  mainContent: (dic, filterStr, columnHandleClick) => TaskTable(dic, filterStr, columnHandleClick),
+  table: (dic, filterStr, columnHandleClick) => TaskTable(dic, filterStr, columnHandleClick),
   form: (dic, handleSubmit) => TaskWithRelatedForm(dic, handleSubmit),
   card: (dic, data, appendCardTypeAndIds) => {
     const [collectRequiresData] = createResource(data.id, async (taskId) => {
