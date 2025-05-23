@@ -36,6 +36,7 @@ import { Toggle } from "~/components/controls/toggle";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { pgWorker } from "~/initialWorker";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -100,7 +101,12 @@ const MobWithRelatedFetcher = async (id: string) => {
 
 const MobsFetcher = async () => {
   const db = await getDB();
-  const res = await db.selectFrom("mob").selectAll("mob").execute();
+  const query = db.selectFrom("mob").selectAll("mob");
+  const res = query.execute();
+  // pgWorker.live.query<mob>(query.compile().sql, [], (res) => {
+  //   console.log("-----MobsFetcher------", query.compile().sql);
+  //   console.log("-----MobsFetcher------", res);
+  // });
   return res;
 };
 

@@ -306,8 +306,14 @@ const AddressTable = (
   });
 };
 
-const AddressPage = (dic: dictionary) => {
+const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => {
   const [expandedAddresses, setExpandedAddresses] = createSignal<Set<string>>(new Set());
+  const [selectedWorldId, setSelectedWorldId] = createSignal<string>("");
+
+  const [worlds] = createResource(async () => {
+    const db = await getDB();
+    return await db.selectFrom("world").selectAll("world").execute();
+  });
 
   const [addresses] = createResource(async () => {
     const db = await getDB();
@@ -322,8 +328,14 @@ const AddressPage = (dic: dictionary) => {
       .execute();
   });
 
+  const filteredAddresses = createMemo(() => {
+    const worldId = selectedWorldId();
+    if (!worldId) return addresses() || [];
+    return (addresses() || []).filter((addr) => addr.worldId === worldId);
+  });
+
   const gridInfo = createMemo(() => {
-    const addressesData = addresses();
+    const addressesData = filteredAddresses();
     if (!addressesData || addressesData.length === 0) return null;
     const posX = addressesData.map((a) => a.posX);
     const posY = addressesData.map((a) => a.posY);
@@ -358,9 +370,28 @@ const AddressPage = (dic: dictionary) => {
   };
 
   return (
-    <div class="AddressPage h-full w-full">
-      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} style={{ height: "100%", width: "100%" }}>
-        <div class="Content relative w-full h-full">
+    <div class="AddressPage flex flex-col h-full w-full">
+      {/* <div class=" px-6">
+        <Select
+          class="w-full"
+          value={selectedWorldId()}
+          setValue={setSelectedWorldId}
+          optionsFetcher={async () => {
+            const db = await getDB();
+            const worlds = await db.selectFrom("world").selectAll("world").execute();
+            return worlds.map((world) => ({
+              label: world.name,
+              value: world.id,
+            }));
+          }}
+        />
+      </div> */}
+      <OverlayScrollbarsComponent
+        element="div"
+        options={{ scrollbars: { autoHide: "scroll" } }}
+        style={{ height: "100%", width: "100%" }}
+      >
+        <div class="Content relative h-full w-full">
           <Show
             when={gridInfo()}
             fallback={
@@ -385,21 +416,24 @@ const AddressPage = (dic: dictionary) => {
                 {gridInfo().gridItems.map(({ x, y, address }) =>
                   address ? (
                     <button
-                      class="bg-primary-color shadow-dividing-color relative flex gap-1 cursor-pointer flex-col items-start justify-start rounded p-2 shadow-md hover:shadow-xl"
+                      class="bg-primary-color shadow-dividing-color relative flex cursor-pointer flex-col items-start justify-start gap-1 rounded p-2 shadow-md hover:shadow-xl"
                       style={{
                         "grid-column": x - gridInfo().minX + 1,
                         "grid-row": y - gridInfo().minY + 1,
                       }}
+                      onClick={() => itemHandleClick(address.id)}
                     >
                       <div class="overflow-hidden font-bold text-nowrap text-ellipsis">{address.name}</div>
                       <div class="Divider bg-boundary-color h-[1px] w-full flex-none rounded-full"></div>
                       <Show when={address.zones && address.zones.length > 0}>
-                        <div class="Zones w-full flex items-start justify-start flex-col gap-1">
-                            {(expandedAddresses().has(address.id) ? address.zones : address.zones.slice(0, 4)).map(
-                              (zone) => (
-                                <div class="w-full overflow-hidden text-start text-sm text-main-text-color text-nowrap text-ellipsis">{zone.name}</div>
-                              ),
-                            )}
+                        <div class="Zones flex w-full flex-col items-start justify-start gap-1">
+                          {(expandedAddresses().has(address.id) ? address.zones : address.zones.slice(0, 4)).map(
+                            (zone) => (
+                              <div class="text-main-text-color w-full overflow-hidden text-start text-sm text-nowrap text-ellipsis">
+                                {zone.name}
+                              </div>
+                            ),
+                          )}
                           {address.zones.length > 4 && (
                             <Button
                               class="w-full rounded-md p-1!"
@@ -437,7 +471,7 @@ const AddressPage = (dic: dictionary) => {
       </OverlayScrollbarsComponent>
     </div>
   );
-}
+};
 
 export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> = {
   defaultData: defaultAddressWithRelated,

@@ -1,6 +1,5 @@
 import { DB } from "~/../db/kysely/kyesely";
 import { MobDataConfig } from "./mobConfig";
-import { AnyFieldApi, DeepKeys, DeepValue } from "@tanstack/solid-form";
 import { ColumnDef, Cell, VisibilityState, OnChangeFn } from "@tanstack/solid-table";
 import { Accessor, JSX, Setter } from "solid-js";
 import { ZodObject, ZodTypeAny } from "zod";
@@ -25,14 +24,14 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
   dataFetcher: (id: string) => Promise<T>;
   datasFetcher: () => Promise<D[]>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
-  main?: (dic: dictionary) => JSX.Element;
+  main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
   table: (
     dic: dictionary,
     filterStr: Accessor<string>,
     columnHandleClick: (id: string) => void,
     columnVisibility?: VisibilityState,
     onColumnVisibilityChange?: OnChangeFn<VisibilityState>,
-    onRefetch?: (refetch: () => void) => void
+    onRefetch?: (refetch: () => void) => void,
   ) => JSX.Element;
   form: (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
   card: (

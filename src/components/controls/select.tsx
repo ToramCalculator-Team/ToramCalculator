@@ -113,7 +113,7 @@ export function Select(props: SelectProps) {
                   optionGenerator(option, selected, () => handleSelect(option))
                 ) : (
                   <div
-                    class={`flex items-center hover:bg-area-color cursor-pointer px-3 h-12 ${selected ? "bg-area-color" : ""}`}
+                    class={`flex items-center text-nowrap hover:bg-area-color cursor-pointer px-3 h-12 ${selected ? "bg-area-color" : ""}`}
                     onClick={(e) => handleSelect(option)}
                   >
                     {option.label}

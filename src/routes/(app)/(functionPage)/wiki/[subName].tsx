@@ -58,10 +58,16 @@ export default function WikiSubPage() {
   const [formSheetIsOpen, setFormSheetIsOpen] = createSignal(false);
 
   // table
-  const [tableFilterInputRef, setTableFilterInputRef] = createSignal<HTMLInputElement>();
   const [tableGlobalFilterStr, setTableGlobalFilterStr] = createSignal<string>("");
   const [tableColumnVisibility, setTableColumnVisibility] = createSignal<VisibilityState>({});
   const [tableConfigSheetIsOpen, setTableConfigSheetIsOpen] = createSignal(false);
+  const tableColumnHandleClick = (id: string) => {
+    const tableType = tableName();
+    if (tableType) {
+      setCardTypeAndIds((pre) => [...pre, { type: tableType, id }]);
+      setCardGroupIsOpen(true);
+    }
+  };
 
   // card
   const [cardTypeAndIds, setCardTypeAndIds] = createSignal<{ type: keyof DB; id: string }[]>([]);
@@ -359,10 +365,7 @@ export default function WikiSubPage() {
                     fallback={validDataConfig().table(
                       dictionary(),
                       tableGlobalFilterStr,
-                      (id) => {
-                        setCardTypeAndIds((pre) => [...pre, { type: validTableName(), id }]);
-                        setCardGroupIsOpen(true);
-                      },
+                      tableColumnHandleClick,
                       tableColumnVisibility(),
                       (updater) => {
                         if (typeof updater === "function") {
@@ -371,13 +374,9 @@ export default function WikiSubPage() {
                           setTableColumnVisibility(() => updater);
                         }
                       },
-                      (refetch) => {
-                        console.log("refetch");
-                        return setTableRefetch(() => refetch);
-                      },
                     )}
                   >
-                    {validDataConfig().main?.(dictionary())}
+                    {validDataConfig().main?.(dictionary(), tableColumnHandleClick)}
                   </Show>
                   {/* {VirtualTable({
                           measure: validDataConfig().table.measure,
@@ -462,7 +461,6 @@ export default function WikiSubPage() {
                     </Show>
                     <input
                       id="filterInput"
-                      ref={setTableFilterInputRef}
                       type="text"
                       placeholder={dictionary().ui.actions.filter}
                       value={tableGlobalFilterStr()}
@@ -487,8 +485,6 @@ export default function WikiSubPage() {
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
                   {validDataConfig().form(dictionary(), (table, id) => {
-                    const refetch = tableRefetch();
-                    if (refetch) refetch();
                     setCardTypeAndIds((pre) => [...pre, { type: table, id }]);
                     setCardGroupIsOpen(true);
                     setFormSheetIsOpen(false);
