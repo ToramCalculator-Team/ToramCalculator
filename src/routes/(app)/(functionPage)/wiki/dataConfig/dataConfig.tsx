@@ -25,25 +25,26 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
   datasFetcher: () => Promise<D[]>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
-  table: (
-    dic: dictionary,
-    filterStr: Accessor<string>,
-    columnHandleClick: (id: string) => void,
-    columnVisibility?: VisibilityState,
-    onColumnVisibilityChange?: OnChangeFn<VisibilityState>,
-    onRefetch?: (refetch: () => void) => void,
-  ) => JSX.Element;
-  form: (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => JSX.Element;
-  card: (
-    dic: dictionary,
-    data: T,
-    appendCTypeAndIds: Setter<
+  table: (options: {
+    dic: dictionary;
+    filterStr: Accessor<string>;
+    columnHandleClick: (id: string) => void;
+    columnVisibility?: VisibilityState;
+    onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+    onRefetch?: (refetch: () => void) => void;
+  }) => JSX.Element;
+  form: (options: { data?: T; dic: dictionary; handleSubmit: (table: keyof DB, id: string) => void }) => JSX.Element;
+  card: (options: {
+    data: T;
+    dic: dictionary;
+    appendCardTypeAndIds: Setter<
       {
         type: keyof DB;
         id: string;
       }[]
-    >,
-  ) => JSX.Element;
+    >;
+    handleEdit: (data: T) => void;
+  }) => JSX.Element;
 };
 
 export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, DB[keyof DB]>>> = {

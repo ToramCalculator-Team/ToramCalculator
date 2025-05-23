@@ -66,29 +66,72 @@ const ActivitiesFetcher = async () => {
   return res;
 };
 
-const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const ActivityWithRelatedForm = (
+  dic: dictionary,
+  handleSubmit: (table: keyof DB, id: string) => void,
+  data?: ActivityWithRelated,
+) => {
+  console.log(data ?? defaultActivityWithRelated);
   const form = createForm(() => ({
-    defaultValues: defaultActivityWithRelated,
+    defaultValues: data ?? defaultActivityWithRelated,
     onSubmit: async ({ value }) => {
+      console.log(value);
       const db = await getDB();
       const activity = await db.transaction().execute(async (trx) => {
+        let activity: activity;
         const { zones, ...rest } = value;
-        const statistic = await createStatistic(trx);
-        const activity = await trx
-          .insertInto("activity")
-          .values({
-            ...rest,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (zones.length > 0) {
-          for (const zone of zones) {
-            await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zone.id).execute();
+        if (data) {
+          // 更新
+          activity = await trx
+            .updateTable("activity")
+            .set({
+              ...rest,
+              updatedByAccountId: store.session.user.account?.id,
+            })
+            .where("id", "=", data.id)
+            .returningAll()
+            .executeTakeFirstOrThrow();
+          
+          // 找出需要处理的区域
+          const zonesToRemove = data.zones.filter(zone => !zones.some(z => z.id === zone.id));
+          const zonesToAdd = zones.filter(zone => !data.zones.some(z => z.id === zone.id));
+
+          // 处理需要移除的区域（将activityId设为null）
+          for (const zone of zonesToRemove) {
+            const res = await trx
+              .updateTable("zone")
+              .set({ activityId: null })
+              .where("id", "=", zone.id)
+              .returningAll()
+              .execute();
+              console.log("移除zone", res);
+            
           }
+
+          // 处理需要添加的区域（将activityId设为当前activity的id）
+          for (const zone of zonesToAdd) {
+            const res = await trx
+              .updateTable("zone")
+              .set({ activityId: activity.id })
+              .where("id", "=", zone.id)
+              .returningAll()
+              .execute();
+              console.log("添加zone", res);
+          }
+        } else {
+          // 新增
+          const statistic = await createStatistic(trx);
+          activity = await trx
+            .insertInto("activity")
+            .values({
+              ...rest,
+              id: createId(),
+              statisticId: statistic.id,
+              createdByAccountId: store.session.user.account?.id,
+              updatedByAccountId: store.session.user.account?.id,
+            })
+            .returningAll()
+            .executeTakeFirstOrThrow();
         }
         return activity;
       });
@@ -114,6 +157,9 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
+              case "statisticId":
+              case "createdByAccountId":
+              case "updatedByAccountId":
                 return null;
               case "zones":
                 return (
@@ -163,6 +209,7 @@ const ActivityWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB
                                     <Button
                                       onClick={(e) => {
                                         field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
+                                        console.log(field().state.value);
                                         e.stopPropagation();
                                       }}
                                     >
@@ -256,9 +303,9 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
   dataFetcher: ActivityWithRelatedFetcher,
   datasFetcher: ActivitiesFetcher,
   dataSchema: ActivityWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => ActivityTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => ActivityWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  table: ({ dic, filterStr, columnHandleClick }) => ActivityTable(dic, filterStr, columnHandleClick),
+  form: ({ data, dic, handleSubmit }) => ActivityWithRelatedForm(dic, handleSubmit, data),
+  card: ({ data, dic, appendCardTypeAndIds, handleEdit }) => {
     const [zonesData] = createResource(data.id, async (activityId) => {
       const db = await getDB();
       return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
@@ -294,7 +341,7 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
@@ -302,6 +349,11 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
                   const db = await getDB();
                   await db.deleteFrom("activity").where("id", "=", data.id).executeTakeFirstOrThrow();
                 }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => handleEdit(data)}
               />
             </div>
           </section>

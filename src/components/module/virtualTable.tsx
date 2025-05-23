@@ -296,7 +296,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                           {...{
                             onClick: header.column.getToggleSortingHandler(),
                           }}
-                          class={`hover:bg-area-color flex-none px-6 py-3 text-left font-normal lg:py-6 ${
+                          class={`hover:bg-area-color text-nowrap flex-none px-6 py-3 text-left font-normal lg:py-6 ${
                             header.column.getCanSort() ? "cursor-pointer select-none" : ""
                           }`}
                         >

@@ -55,6 +55,7 @@ export default function WikiSubPage() {
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
   // form
+  const [formData, setFormData] = createSignal<Record<string, unknown>>();
   const [formSheetIsOpen, setFormSheetIsOpen] = createSignal(false);
 
   // table
@@ -362,19 +363,17 @@ export default function WikiSubPage() {
                   </div>
                   <Show
                     when={validDataConfig().main}
-                    fallback={validDataConfig().table(
-                      dictionary(),
-                      tableGlobalFilterStr,
-                      tableColumnHandleClick,
-                      tableColumnVisibility(),
-                      (updater) => {
+                    fallback={validDataConfig().table({
+                      dic: dictionary(),
+                      filterStr: tableGlobalFilterStr,
+                      columnHandleClick: tableColumnHandleClick,
+                      columnVisibility: tableColumnVisibility(),
+                      onColumnVisibilityChange: (updater) => {
                         if (typeof updater === "function") {
                           setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
-                        } else {
-                          setTableColumnVisibility(() => updater);
                         }
                       },
-                    )}
+                    })}
                   >
                     {validDataConfig().main?.(dictionary(), tableColumnHandleClick)}
                   </Show>
@@ -484,10 +483,14 @@ export default function WikiSubPage() {
 
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
-                  {validDataConfig().form(dictionary(), (table, id) => {
-                    setCardTypeAndIds((pre) => [...pre, { type: table, id }]);
-                    setCardGroupIsOpen(true);
-                    setFormSheetIsOpen(false);
+                  {validDataConfig().form({
+                    data: formData(),
+                    dic: dictionary(),
+                    handleSubmit: (table, id) => {
+                      setCardTypeAndIds((pre) => [...pre, { type: table, id }]);
+                      setCardGroupIsOpen(true);
+                      setFormSheetIsOpen(false);
+                    },
                   })}
                 </Sheet>
               </Portal>
@@ -606,7 +609,16 @@ export default function WikiSubPage() {
                                               class="border-primary-color h-full w-full flex-1 rounded border-8"
                                             >
                                               <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                                {DBDataConfig[type()]?.card(dictionary(), cardData, setCardTypeAndIds)}
+                                                {DBDataConfig[type()]?.card({
+                                                  dic: dictionary(),
+                                                  data: cardData,
+                                                  appendCardTypeAndIds: setCardTypeAndIds,
+                                                  handleEdit: (data) => {
+                                                    setCardTypeAndIds((pre) => pre.slice(0, -1));
+                                                    setFormData(data);
+                                                    setFormSheetIsOpen(true);
+                                                  },
+                                                })}
                                               </div>
                                             </OverlayScrollbarsComponent>
                                             <div

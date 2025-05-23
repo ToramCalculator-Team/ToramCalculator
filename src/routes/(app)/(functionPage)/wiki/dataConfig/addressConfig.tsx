@@ -496,7 +496,8 @@ export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> =
           dataSchema: AddressWithRelatedSchema,
           hiddenFields: ["id"],
           fieldGroupMap: {
-            基本信息: ["name", "type", "posX", "posY"],
+            基本信息: ["name", "type"],
+            坐标信息: ["posX", "posY"],
           },
         })}
 
