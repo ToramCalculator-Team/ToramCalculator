@@ -308,52 +308,52 @@ export default function WikiSubPage() {
                 </div>
               }
             >
-            <Presence exitBeforeEnter>
-              <Show when={!isTableFullscreen()}>
-                <Motion.div
-                  class="Title flex flex-col lg:pt-12 landscape:p-3"
-                  animate={{ opacity: [0, 1] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                >
-                  <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-                    <h1
-                      onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
-                      class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
-                    >
-                      {dictionary().db[validTableName()].selfName}
-                      <Icon.Line.Swap />
-                    </h1>
-                    <input
-                      id="DataSearchBox"
-                      type="search"
-                      placeholder={dictionary().ui.searchPlaceholder}
-                      class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
-                      onInput={(e) => {
-                        setTableGlobalFilterStr(e.target.value);
-                      }}
-                    />
-                    <Button // 仅移动端显示
-                      size="sm"
-                      icon={<Icon.Line.InfoCircle />}
-                      class="flex bg-transparent lg:hidden"
-                      onClick={() => {}}
-                    ></Button>
-                    <Show when={store.session.user.id}>
-                      <Button // 仅PC端显示
-                        icon={<Icon.Line.CloudUpload />}
-                        class="hidden lg:flex"
-                        onClick={() => {
-                          setFormSheetIsOpen(true);
-                        }}
+              <Presence exitBeforeEnter>
+                <Show when={!isTableFullscreen()}>
+                  <Motion.div
+                    class="Title flex flex-col lg:pt-12 landscape:p-3"
+                    animate={{ opacity: [0, 1] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+                  >
+                    <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
+                      <h1
+                        onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
+                        class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
                       >
-                        {dictionary().ui.actions.add}
-                      </Button>
-                    </Show>
-                  </div>
-                </Motion.div>
-              </Show>
-            </Presence>
+                        {dictionary().db[validTableName()].selfName}
+                        <Icon.Line.Swap />
+                      </h1>
+                      <input
+                        id="DataSearchBox"
+                        type="search"
+                        placeholder={dictionary().ui.searchPlaceholder}
+                        class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                        onInput={(e) => {
+                          setTableGlobalFilterStr(e.target.value);
+                        }}
+                      />
+                      <Button // 仅移动端显示
+                        size="sm"
+                        icon={<Icon.Line.InfoCircle />}
+                        class="flex bg-transparent lg:hidden"
+                        onClick={() => {}}
+                      ></Button>
+                      <Show when={store.session.user.id}>
+                        <Button // 仅PC端显示
+                          icon={<Icon.Line.CloudUpload />}
+                          class="hidden lg:flex"
+                          onClick={() => {
+                            setFormSheetIsOpen(true);
+                          }}
+                        >
+                          {dictionary().ui.actions.add}
+                        </Button>
+                      </Show>
+                    </div>
+                  </Motion.div>
+                </Show>
+              </Presence>
               <Switch
                 fallback={
                   <>
@@ -441,7 +441,27 @@ export default function WikiSubPage() {
                             }}
                           />
                         </div>
-                        {VirtualTable({
+                        {validDataConfig().mainContent(
+                          dictionary(),
+                          tableGlobalFilterStr,
+                          (id) => {
+                            setCardTypeAndIds((pre) => [...pre, { type: validTableName(), id }]);
+                            setCardGroupIsOpen(true);
+                          },
+                          tableColumnVisibility(),
+                          (updater) => {
+                            if (typeof updater === "function") {
+                              setTableColumnVisibility((prev) => (prev ? updater(prev) : updater({})));
+                            } else {
+                              setTableColumnVisibility(() => updater);
+                            }
+                          },
+                          (refetch) => {
+                            console.log("refetch");
+                            return setTableRefetch(() => refetch);
+                          },
+                        )}
+                        {/* {VirtualTable({
                           measure: validDataConfig().table.measure,
                           dataFetcher: validDataConfig().datasFetcher,
                           columnsDef: validDataConfig().table.columnDef,
@@ -463,7 +483,7 @@ export default function WikiSubPage() {
                             setCardGroupIsOpen(true);
                           },
                           onRefetch: (refetch) => setTableRefetch(() => refetch),
-                        })}
+                        })} */}
                       </div>
                       <Presence exitBeforeEnter>
                         <Show when={!isTableFullscreen()}>
@@ -555,7 +575,7 @@ export default function WikiSubPage() {
 
               <Portal>
                 <Sheet state={formSheetIsOpen()} setState={setFormSheetIsOpen}>
-                  {validDataConfig().form((table, id) => {
+                  {validDataConfig().form(dictionary(), (table, id) => {
                     const refetch = tableRefetch();
                     if (refetch) refetch();
                     setCardTypeAndIds((pre) => [...pre, { type: table, id }]);
@@ -679,10 +699,7 @@ export default function WikiSubPage() {
                                               class="border-primary-color h-full w-full flex-1 rounded border-8"
                                             >
                                               <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                                {DBDataConfig(dictionary())[type()]?.card.cardRender(
-                                                  cardData,
-                                                  setCardTypeAndIds,
-                                                )}
+                                                {DBDataConfig[type()]?.card(dictionary(), cardData, setCardTypeAndIds)}
                                               </div>
                                             </OverlayScrollbarsComponent>
                                             <div

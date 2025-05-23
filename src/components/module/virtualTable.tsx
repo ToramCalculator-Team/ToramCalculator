@@ -72,6 +72,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
 
   // 暴露 refetch 方法
   createEffect(() => {
+    console.log("VirtualTable createEffect");
     props.onRefetch?.(refetchData);
   });
 
