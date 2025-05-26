@@ -148,7 +148,7 @@ model address {
 
     zones zone[]
 
-    belongToWorld world  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+    belongToWorld world  @relation(fields: [worldId], references: [id])
     worldId       String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
@@ -186,9 +186,9 @@ model zone {
     mobs        mob[]
     npcs        npc[]
 
-    belongToActivity activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+    belongToActivity activity? @relation(fields: [activityId], references: [id])
     activityId       String?
-    belongToAddress  address   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+    belongToAddress  address   @relation(fields: [addressId], references: [id])
     addressId        String
 
     link   zone[] @relation("linkZones")
@@ -341,7 +341,7 @@ model consumable {
     effectDuration Int
     effects        String[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
     // recipe       recipe?
 
@@ -403,7 +403,7 @@ model armor {
 
     usedBy player_armor[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 }
 
@@ -431,7 +431,7 @@ model special {
 
     usedBy player_special[]
 
-    belongToItem item   @relation(fields: [itemId], references: [id])
+    belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 }
 
@@ -444,15 +444,15 @@ model recipe {
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @unique
 
-    inActivity activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+    inActivity activity? @relation(fields: [activityId], references: [id])
     activityId String?
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -474,7 +474,7 @@ model recipe_ingredient {
 model drop_item {
     id String @id
 
-    item            item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    item            item   @relation(fields: [itemId], references: [id])
     itemId          String
     probability     Int
     relatedPartType String // Enum BOSS_PART_TYPE
@@ -518,15 +518,15 @@ model task {
     requires    task_collect_require[]
     rewards     task_reward[]
 
-    belongToNpc npc    @relation(fields: [npcId], references: [id], onDelete: Cascade)
+    belongToNpc npc    @relation(fields: [npcId], references: [id])
     npcId       String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId])
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
-    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId])
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
     createdByAccountId String?
 }
 
@@ -551,7 +551,7 @@ model task_collect_require {
     itemId String
 
     // 从属于任务
-    belongTorecipe task   @relation(fields: [taskId], references: [id])
+    belongTorecipe task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
     taskId         String
 }
 

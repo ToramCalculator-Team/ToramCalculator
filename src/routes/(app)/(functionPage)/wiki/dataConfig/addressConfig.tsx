@@ -22,6 +22,8 @@ import * as Icon from "~/components/icon";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { LoadingBar } from "~/components/loadingBar";
+import { Transaction } from "kysely";
+import { setWikiStore } from "../store";
 
 type AddressWithRelated = address & {
   zones: zone[];
@@ -63,39 +65,91 @@ const AddressWithRelatedFetcher = async (id: string) => {
   return res;
 };
 
+const createAddress = async (trx: Transaction<DB>, address: address) => {
+  const statistic = await createStatistic(trx);
+  return trx
+    .insertInto("address")
+    .values({
+      ...address,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+};
+
+const updateAddress = async (trx: Transaction<DB>, address: address) => {
+  return trx.updateTable("address").set(address).where("id", "=", address.id).returningAll().executeTakeFirstOrThrow();
+};
+
+const deleteAddress = async (trx: Transaction<DB>, address: address) => {
+  await trx.deleteFrom("address").where("id", "=", address.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", address.statisticId).executeTakeFirstOrThrow();
+  // 将相关zones归属调整至defaultAddress
+  await trx.updateTable("zone").set({ addressId: "defaultAddressId" }).where("addressId", "=", address.id).execute();
+};
+
 const AddressesFetcher = async () => {
   const db = await getDB();
   const res = await db.selectFrom("address").selectAll("address").execute();
   return res;
 };
 
-const AddressWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const AddressWithRelatedForm = (
+  dic: dictionary,
+  handleSubmit: (table: keyof DB, id: string) => void,
+  data?: AddressWithRelated,
+) => {
   const form = createForm(() => ({
-    defaultValues: defaultAddressWithRelated,
+    defaultValues: data ?? defaultAddressWithRelated,
     onSubmit: async ({ value }) => {
+      console.log(value);
       const db = await getDB();
-      const address = await db.transaction().execute(async (trx) => {
-        const { zones, ...rest } = value;
-        const statistic = await createStatistic(trx);
-        const address = await trx
-          .insertInto("address")
-          .values({
-            ...rest,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (zones.length > 0) {
-          for (const zone of zones) {
-            await trx.updateTable("zone").set({ addressId: address.id }).where("id", "=", zone.id).execute();
-          }
+      const oldZones = data?.zones ?? [];
+
+      await db.transaction().execute(async (trx) => {
+        let address: address;
+        if (data) {
+          // 更新
+          address = await updateAddress(trx, { ...value, id: data.id });
+        } else {
+          // 新增
+          const { zones, ...rest } = value;
+          const statistic = await createStatistic(trx);
+          const address = await createAddress(trx, { ...rest, id: createId(), statisticId: statistic.id });
+          return address;
         }
-        return address;
+
+        // 统一处理zones
+        const zonesToRemove = oldZones.filter((zone) => !value.zones.some((z) => z.id === zone.id));
+        const zonesToAdd = value.zones.filter((zone) => !oldZones.some((z) => z.id === zone.id));
+
+        // 处理需要移除的区域（删除区域）
+        for (const zone of zonesToRemove) {
+          const res = await db.deleteFrom("zone").where("id", "=", zone.id).returningAll().execute();
+          console.log("移除zone", res);
+        }
+
+        // 处理需要变更地址的区域（将addressId设为当前address的id）
+        for (const zone of zonesToAdd) {
+          const res = await db
+            .updateTable("zone")
+            .set({
+              addressId: address.id,
+            })
+            .where("id", "=", zone.id)
+            .returningAll()
+            .execute();
+          console.log("变更zone", res);
+        }
+        setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }]);
+        setWikiStore("form", {
+          isOpen: false,
+        });
       });
-      handleSubmit("address", address.id);
     },
   }));
   return (
@@ -370,7 +424,7 @@ const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => 
   };
 
   return (
-    <div class="AddressPage flex flex-col h-full w-full">
+    <div class="AddressPage flex h-full w-full flex-col">
       {/* <div class=" px-6">
         <Select
           class="w-full"
@@ -479,9 +533,9 @@ export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> =
   datasFetcher: AddressesFetcher,
   dataSchema: AddressWithRelatedSchema,
   main: AddressPage,
-  table: (dic, filterStr, columnHandleClick) => AddressTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => AddressWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  table: ({ dic, filterStr, columnHandleClick }) => AddressTable(dic, filterStr, columnHandleClick),
+  form: ({ data, dic, handleSubmit }) => AddressWithRelatedForm(dic, handleSubmit, data),
+  card: ({ data, dic }) => {
     const [zonesData] = createResource(data.id, async (addressId) => {
       const db = await getDB();
       return await db.selectFrom("zone").where("zone.addressId", "=", addressId).selectAll("zone").execute();
@@ -507,7 +561,7 @@ export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> =
           renderItem={(zone) => {
             return {
               label: zone.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
             };
           }}
         />
@@ -518,13 +572,25 @@ export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> =
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("address").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteAddress(trx, data);
+                  });
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
             </div>

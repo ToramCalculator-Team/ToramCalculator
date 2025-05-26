@@ -19,6 +19,8 @@ import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { Transaction } from "kysely";
+import { setWikiStore } from "../store";
 
 type ActivityWithRelated = activity & {
   zones: zone[];
@@ -66,6 +68,43 @@ const ActivitiesFetcher = async () => {
   return res;
 };
 
+const createActivity = async (trx: Transaction<DB>, activity: activity) => {
+  const statistic = await createStatistic(trx);
+  return trx
+    .insertInto("activity")
+    .values({
+      ...activity,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+};
+
+const updateActivity = async (trx: Transaction<DB>, activity: activity) => {
+  return trx
+    .updateTable("activity")
+    .set({
+      ...activity,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", activity.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+};
+
+const deleteActivity = async (trx: Transaction<DB>, activity: activity) => {
+  await trx.deleteFrom("activity").where("id", "=", activity.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", activity.statisticId).executeTakeFirstOrThrow();
+  // 将用到此活动的zone的activityId设为null
+  await trx.updateTable("zone").set({ activityId: null }).where("activityId", "=", activity.id).execute();
+  // 将用到此活动的recipe的activityId设为null
+  await trx.updateTable("recipe").set({ activityId: null }).where("activityId", "=", activity.id).execute();
+};
+
 const ActivityWithRelatedForm = (
   dic: dictionary,
   handleSubmit: (table: keyof DB, id: string) => void,
@@ -77,65 +116,50 @@ const ActivityWithRelatedForm = (
     onSubmit: async ({ value }) => {
       console.log(value);
       const db = await getDB();
-      const activity = await db.transaction().execute(async (trx) => {
+      const oldZones = data?.zones ?? [];
+      const { zones, ...rest } = value;
+      await db.transaction().execute(async (trx) => {
         let activity: activity;
-        const { zones, ...rest } = value;
         if (data) {
           // 更新
-          activity = await trx
-            .updateTable("activity")
-            .set({
-              ...rest,
-              updatedByAccountId: store.session.user.account?.id,
-            })
-            .where("id", "=", data.id)
-            .returningAll()
-            .executeTakeFirstOrThrow();
-          
-          // 找出需要处理的区域
-          const zonesToRemove = data.zones.filter(zone => !zones.some(z => z.id === zone.id));
-          const zonesToAdd = zones.filter(zone => !data.zones.some(z => z.id === zone.id));
-
-          // 处理需要移除的区域（将activityId设为null）
-          for (const zone of zonesToRemove) {
-            const res = await trx
-              .updateTable("zone")
-              .set({ activityId: null })
-              .where("id", "=", zone.id)
-              .returningAll()
-              .execute();
-              console.log("移除zone", res);
-            
-          }
-
-          // 处理需要添加的区域（将activityId设为当前activity的id）
-          for (const zone of zonesToAdd) {
-            const res = await trx
-              .updateTable("zone")
-              .set({ activityId: activity.id })
-              .where("id", "=", zone.id)
-              .returningAll()
-              .execute();
-              console.log("添加zone", res);
-          }
+          activity = await updateActivity(trx, { ...rest, id: data.id });
         } else {
           // 新增
           const statistic = await createStatistic(trx);
-          activity = await trx
-            .insertInto("activity")
-            .values({
-              ...rest,
-              id: createId(),
-              statisticId: statistic.id,
-              createdByAccountId: store.session.user.account?.id,
-              updatedByAccountId: store.session.user.account?.id,
-            })
-            .returningAll()
-            .executeTakeFirstOrThrow();
+          activity = await createActivity(trx, { ...rest, id: createId(), statisticId: statistic.id });
         }
-        return activity;
+
+        // 统一处理zones
+        const zonesToRemove = oldZones.filter((zone) => !zones.some((z) => z.id === zone.id));
+        const zonesToAdd = zones.filter((zone) => !oldZones.some((z) => z.id === zone.id));
+
+        // 处理需要移除的区域（将activityId设为null）
+        for (const zone of zonesToRemove) {
+          const res = await trx
+            .updateTable("zone")
+            .set({ activityId: null })
+            .where("id", "=", zone.id)
+            .returningAll()
+            .execute();
+          console.log("移除zone", res);
+        }
+
+        // 处理需要添加的区域（将activityId设为当前activity的id）
+        for (const zone of zonesToAdd) {
+          const res = await trx
+            .updateTable("zone")
+            .set({ activityId: activity.id })
+            .where("id", "=", zone.id)
+            .returningAll()
+            .execute();
+          console.log("添加zone", res);
+        }
+
+        setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]);
+        setWikiStore("form", {
+          isOpen: false,
+        });
       });
-      handleSubmit("activity", activity.id);
     },
   }));
   return (
@@ -267,12 +291,15 @@ const ActivityWithRelatedForm = (
   );
 };
 
-const ActivityTable = (
-  dic: dictionary,
-  tableGlobalFilterStr: Accessor<string>,
-  columnHandleClick: (id: string) => void,
-) => {
-  return VirtualTable<activity>({
+export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity> = {
+  defaultData: {
+    ...defaultData.activity,
+    zones: [],
+  },
+  dataFetcher: ActivityWithRelatedFetcher,
+  datasFetcher: ActivitiesFetcher,
+  dataSchema: ActivityWithRelatedSchema,
+  table: {
     dataFetcher: ActivitiesFetcher,
     columnsDef: [
       {
@@ -286,26 +313,13 @@ const ActivityTable = (
         size: 220,
       },
     ],
-    dictionary: ActivityWithRelatedDic(dic),
+    dictionary: (dic) => ActivityWithRelatedDic(dic),
     hiddenColumnDef: ["id"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
-    globalFilterStr: tableGlobalFilterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity> = {
-  defaultData: {
-    ...defaultData.activity,
-    zones: [],
   },
-  dataFetcher: ActivityWithRelatedFetcher,
-  datasFetcher: ActivitiesFetcher,
-  dataSchema: ActivityWithRelatedSchema,
-  table: ({ dic, filterStr, columnHandleClick }) => ActivityTable(dic, filterStr, columnHandleClick),
   form: ({ data, dic, handleSubmit }) => ActivityWithRelatedForm(dic, handleSubmit, data),
-  card: ({ data, dic, appendCardTypeAndIds, handleEdit }) => {
+  card: ({ data, dic }) => {
     const [zonesData] = createResource(data.id, async (activityId) => {
       const db = await getDB();
       return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
@@ -330,7 +344,7 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
           renderItem={(zone) => {
             return {
               label: zone.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
             };
           }}
         />
@@ -347,13 +361,20 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("activity").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteActivity(trx, data);
+                  });
                 }}
               />
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Edit />}
-                onclick={() => handleEdit(data)}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
+                }}
               />
             </div>
           </section>

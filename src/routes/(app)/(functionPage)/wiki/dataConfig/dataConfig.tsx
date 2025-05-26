@@ -25,29 +25,24 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
   datasFetcher: () => Promise<D[]>;
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
-  table: (options: {
-    dic: dictionary;
-    filterStr: Accessor<string>;
-    columnHandleClick: (id: string) => void;
-    columnVisibility?: VisibilityState;
-    onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
-    onRefetch?: (refetch: () => void) => void;
-  }) => JSX.Element;
+  table: {
+    dataFetcher: () => Promise<D[]>,
+    columnsDef: ColumnDef<D>[],
+    dictionary: (dic: dictionary) => Dic<D>;
+    hiddenColumnDef: Array<keyof D>;
+    defaultSort: { id: keyof D; desc: boolean };
+    tdGenerator: Partial<{
+      [K in keyof D]: (props: { cell: Cell<D, unknown>; dic: Dic<D> }) => JSX.Element;
+    }>;
+  };
   form: (options: { data?: T; dic: dictionary; handleSubmit: (table: keyof DB, id: string) => void }) => JSX.Element;
   card: (options: {
     data: T;
     dic: dictionary;
-    appendCardTypeAndIds: Setter<
-      {
-        type: keyof DB;
-        id: string;
-      }[]
-    >;
-    handleEdit: (data: T) => void;
   }) => JSX.Element;
 };
 
-export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, DB[keyof DB]>>> = {
+export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, any>>> = {
   activity: ActivityDataConfig,
   address: AddressDataConfig,
   armor: ArmorDataConfig,
