@@ -38,6 +38,8 @@ import { BossPartBreakRewardType, BossPartType, RecipeIngredientType } from "~/.
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "~/repositories/statistic";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { Transaction } from "kysely";
+import { store } from "~/store";
 
 type armorWithRelated = armor &
   item & {
@@ -162,6 +164,61 @@ const ArmorsFetcher = async () => {
     .selectAll(["item", "armor"])
     .execute();
 };
+
+const createArmor = async (trx: Transaction<DB>, value: armor) => {
+  const statistic = await createStatistic(trx);
+  const item = await trx
+    .insertInto("item")
+    .values({
+      ...defaultData.item,
+      itemType: "Armor",
+      statisticId: statistic.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  const armor = await trx
+    .insertInto("armor")
+    .values({
+      ...value,
+      itemId: item.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return {
+    ...item,
+    ...armor,
+  };
+};
+
+const updateArmor = async (trx: Transaction<DB>, value: item & armor) => { 
+  const item = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+  const armor = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
+  await trx.updateTable("item").set({
+    ...item,
+    updatedByAccountId: store.session.user.account?.id
+  }).where("id", "=", item.id).executeTakeFirstOrThrow();
+  return await trx.updateTable("armor").set({
+    ...armor,
+  }).where("itemId", "=", armor.itemId).executeTakeFirstOrThrow();
+}
+
+const deleteArmor = async (trx: Transaction<DB>, value: item & armor) => {
+  const item = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+  await trx.deleteFrom("item").where("id", "=", item.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", item.statisticId).executeTakeFirstOrThrow();
+  // 删除配方
+  await trx.deleteFrom("recipe").where("itemId", "=", item.id).executeTakeFirstOrThrow();
+  // 重置掉落物
+  await trx.updateTable("drop_item").set({
+    itemId: `default${item.itemType}ItemId`,
+  }).where("itemId", "=", item.id).executeTakeFirstOrThrow();
+  // 重置奖励
+  await trx.updateTable("task_reward").set({
+    itemId: null,
+  }).where("itemId", "=", item.id).executeTakeFirstOrThrow();
+  
+}
 
 const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
   const [isLimit, setIsLimit] = createSignal(false);
