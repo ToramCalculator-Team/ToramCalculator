@@ -208,7 +208,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const npcs = await db.selectFrom("npc").selectAll("npc").limit(10).execute();
+                            const npcs = await db.selectFrom("npc").selectAll("npc").execute();
                             return npcs;
                           }}
                           displayField="name"
@@ -268,7 +268,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                                 const items = await db
                                                   .selectFrom("item")
                                                   .select(["id", "name"])
-                                                  .limit(10)
+                                                  
                                                   .execute();
                                                 return items;
                                               }}
@@ -354,7 +354,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                                 const mobs = await db
                                                   .selectFrom("mob")
                                                   .select(["id", "name"])
-                                                  .limit(10)
+                                                  
                                                   .execute();
                                                 return mobs;
                                               }}
@@ -461,7 +461,7 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                             const items = await db
                                               .selectFrom("item")
                                               .select(["id", "name"])
-                                              .limit(10)
+                                              
                                               .execute();
                                             return items;
                                           }}

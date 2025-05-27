@@ -428,7 +428,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
-                                                  .limit(10)
+                                                  
                                                   .execute();
                                                 return activities;
                                               }}
@@ -566,7 +566,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
-                                                                                .limit(10)
+                                                                                
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -724,7 +724,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
-                                                              .limit(10)
+                                                              
                                                               .execute();
                                                             return items;
                                                           }}
@@ -908,7 +908,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
-                                                        .limit(10)
+                                                        
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1021,7 +1021,7 @@ const WeaponWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, 
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
-                                                        .limit(10)
+                                                        
                                                         .execute();
                                                       return items;
                                                     }}

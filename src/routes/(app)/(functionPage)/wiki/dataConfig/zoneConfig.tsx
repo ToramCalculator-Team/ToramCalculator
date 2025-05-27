@@ -205,7 +205,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const mobs = await db.selectFrom("mob").selectAll("mob").limit(10).execute();
+                                        const mobs = await db.selectFrom("mob").selectAll("mob").execute();
                                         return mobs;
                                       }}
                                       displayField="name"
@@ -269,7 +269,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const npcs = await db.selectFrom("npc").selectAll("npc").limit(10).execute();
+                                        const npcs = await db.selectFrom("npc").selectAll("npc").execute();
                                         return npcs;
                                       }}
                                       displayField="name"
@@ -333,7 +333,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
+                                        const zones = await db.selectFrom("zone").selectAll("zone").execute();
                                         return zones;
                                       }}
                                       displayField="name"
@@ -409,7 +409,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                 const activities = await db
                                   .selectFrom("activity")
                                   .selectAll("activity")
-                                  .limit(10)
+                                  
                                   .execute();
                                 return activities;
                               }}
@@ -446,7 +446,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const addresses = await db.selectFrom("address").selectAll("address").limit(10).execute();
+                            const addresses = await db.selectFrom("address").selectAll("address").execute();
                             return addresses;
                           }}
                           displayField="name"

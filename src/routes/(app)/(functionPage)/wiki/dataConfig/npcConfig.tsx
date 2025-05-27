@@ -174,7 +174,7 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
-                            const zones = await db.selectFrom("zone").selectAll("zone").limit(10).execute();
+                            const zones = await db.selectFrom("zone").selectAll("zone").execute();
                             return zones;
                           }}
                           displayField="name"
@@ -218,7 +218,7 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
-                                        const tasks = await db.selectFrom("task").selectAll("task").limit(10).execute();
+                                        const tasks = await db.selectFrom("task").selectAll("task").execute();
                                         return tasks;
                                       }}
                                       displayField="name"

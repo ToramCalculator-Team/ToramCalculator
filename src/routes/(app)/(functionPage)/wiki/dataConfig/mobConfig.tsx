@@ -349,7 +349,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                           const zones = await db
                                             .selectFrom("zone")
                                             .selectAll("zone")
-                                            .limit(10)
+                                            
                                             .execute();
                                           return zones;
                                         }}
@@ -531,7 +531,7 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                                         const items = await db
                                                           .selectFrom("item")
                                                           .select(["id", "name"])
-                                                          .limit(10)
+                                                          
                                                           .execute();
                                                         return items;
                                                       }}

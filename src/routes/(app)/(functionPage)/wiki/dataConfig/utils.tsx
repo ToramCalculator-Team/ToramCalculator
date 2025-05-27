@@ -1,9 +1,15 @@
-import { createResource, JSX, Setter, Show } from "solid-js";
+import { createMemo, createResource, JSX, Setter, Show } from "solid-js";
 import { ItemType } from "~/../db/kysely/enums";
-import { DB } from "~/../db/kysely/kyesely";
+import { DB, item } from "~/../db/kysely/kyesely";
 import { CardSection } from "~/components/module/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
+import { setWikiStore } from "../store";
+import { Transaction } from "kysely";
+import { createStatistic } from "~/repositories/statistic";
+import { createId } from "@paralleldrive/cuid2";
+import { store } from "~/store";
+import { getDictionary } from "~/locales/i18n";
 
 export const itemTypeToTableType = (itemType: ItemType) => {
   const tableType: keyof DB = (
@@ -20,35 +26,15 @@ export const itemTypeToTableType = (itemType: ItemType) => {
   return tableType;
 };
 
-export const updateObjArrayItemKey = <T extends Record<string, any>>(
-  array: T[],
-  key: keyof T | null,
-  index: number,
-  value: T,
-) => {
-  if (key === null) {
-    return array.map((item, i) => (i === index ? { ...item, value } : item));
-  }
-  return array.map((item, i) => (i === index ? { ...item, [key]: value[key] } : item));
-};
-
-export const ItemSharedCardContent = (
-  itemId: string,
-  dic: dictionary,
-  appendCardTypeAndIds: Setter<
-    {
-      type: keyof DB;
-      id: string;
-    }[]
-  >,
-): JSX.Element => {
+export const ItemSharedCardContent = (itemId: string, dic: dictionary): JSX.Element => {
+  const dictionary = createMemo(() => getDictionary(store.settings.language));
   const [recipeData] = createResource(itemId, async (itemId) => {
     const db = await getDB();
-    return await db
+    const recipe = await db
       .selectFrom("recipe")
       .where("recipe.itemId", "=", itemId)
       .innerJoin("recipe_ingredient", "recipe.id", "recipe_ingredient.recipeId")
-      .innerJoin("item", "recipe_ingredient.itemId", "item.id")
+      .leftJoin("item", "recipe_ingredient.itemId", "item.id")
       .select([
         "recipe_ingredient.type",
         "recipe_ingredient.count",
@@ -56,7 +42,9 @@ export const ItemSharedCardContent = (
         "item.itemType as itemType",
         "item.name as itemName",
       ])
-      .execute();
+      .executeTakeFirstOrThrow();
+    console.log("recipe", recipe);
+    return recipe;
   });
   const [dropByData] = createResource(itemId, async (itemId) => {
     const db = await getDB();
@@ -98,36 +86,32 @@ export const ItemSharedCardContent = (
 
   return (
     <>
-      <Show when={recipeData.latest?.length}>
-        <CardSection
-          title={dic.db.recipe.selfName}
-          data={recipeData.latest}
-          renderItem={(recipe) => {
-            const type = recipe.type;
-            switch (type) {
-              case "Gold":
-                return {
-                  label: recipe.itemName,
-                  onClick: () => null,
-                };
-
-              case "Item":
-                return {
-                  label: recipe.itemName + "(" + recipe.count + ")",
-                  onClick: () =>
-                    appendCardTypeAndIds((prev) => [
-                      ...prev,
-                      { type: itemTypeToTableType(recipe.itemType), id: recipe.itemId },
-                    ]),
-                };
-              default:
-                return {
-                  label: recipe.itemName,
-                  onClick: () => null,
-                };
-            }
-          }}
-        />
+      <Show when={recipeData()} fallback={<div>......</div>}>
+        {(vaildRecipeData) => (
+          <CardSection
+            title={dic.db.recipe.selfName}
+            data={[vaildRecipeData()]}
+            renderItem={(recipe) => {
+              const type = recipe.type;
+              switch (type) {
+                case "Item":
+                  return {
+                    label: String(recipe.itemName) + "(" + recipe.count + ")",
+                    onClick: () =>
+                      setWikiStore("cardGroup", (prev) => [
+                        ...prev,
+                        { type: itemTypeToTableType(recipe.itemType!), id: recipe.itemId! },
+                      ]),
+                  };
+                default:
+                  return {
+                    label: dictionary().db.recipe_ingredient.fields.type.enumMap[recipe.type] + ":" + recipe.count,
+                    onClick: () => null,
+                  };
+              }
+            }}
+          />
+        )}
       </Show>
       <Show when={dropByData.latest?.length}>
         <CardSection
@@ -136,7 +120,7 @@ export const ItemSharedCardContent = (
           renderItem={(dropBy) => {
             return {
               label: dropBy.mobName,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: dropBy.mobId }]),
+              onClick: () => setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.mobId }]),
             };
           }}
         />
@@ -148,7 +132,7 @@ export const ItemSharedCardContent = (
           renderItem={(rewardItem) => {
             return {
               label: rewardItem.taskName,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
+              onClick: () => setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.taskId }]),
             };
           }}
         />
@@ -161,7 +145,7 @@ export const ItemSharedCardContent = (
             return {
               label: usedIn.itemName,
               onClick: () =>
-                appendCardTypeAndIds((prev) => [
+                setWikiStore("cardGroup", (prev) => [
                   ...prev,
                   { type: itemTypeToTableType(usedIn.itemType), id: usedIn.itemId },
                 ]),
@@ -176,11 +160,112 @@ export const ItemSharedCardContent = (
           renderItem={(usedInTask) => {
             return {
               label: usedInTask.taskName,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: usedInTask.taskId }]),
+              onClick: () => setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.taskId }]),
             };
           }}
         />
       </Show>
     </>
   );
+};
+
+export const createItem = async (trx: Transaction<DB>, value: item) => {
+  const statistic = await createStatistic(trx);
+  const item = await trx
+    .insertInto("item")
+    .values({
+      ...value,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return item;
+};
+
+export const updateItem = async (trx: Transaction<DB>, value: item) => {
+  const item = await trx
+    .updateTable("item")
+    .set({
+      ...value,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", value.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return item;
+};
+
+export const deleteItem = async (trx: Transaction<DB>, id: string) => {
+  const item = await trx.selectFrom("item").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
+  // 重置掉落物
+  await trx
+    .updateTable("drop_item")
+    .set({
+      itemId: `default${item.itemType}ItemId`,
+    })
+    .where("itemId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置任务收集需求
+  await trx
+    .updateTable("task_collect_require")
+    .set({
+      itemId: `default${item.itemType}ItemId`,
+    })
+    .where("itemId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置任务奖励
+  await trx
+    .updateTable("task_reward")
+    .set({
+      itemId: `default${item.itemType}ItemId`,
+    })
+    .where("itemId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置玩家自定义武器
+  await trx
+    .updateTable("player_weapon")
+    .set({
+      templateId: `default${item.itemType}ItemId`,
+    })
+    .where("templateId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置玩家自定义防具
+  await trx
+    .updateTable("player_armor")
+    .set({
+      templateId: `default${item.itemType}ItemId`,
+    })
+    .where("templateId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置玩家自定义追加
+  await trx
+    .updateTable("player_option")
+    .set({
+      templateId: `default${item.itemType}ItemId`,
+    })
+    .where("templateId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置玩家自定义特殊装备
+  await trx
+    .updateTable("player_special")
+    .set({
+      templateId: `default${item.itemType}ItemId`,
+    })
+    .where("templateId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 重置所属配方项
+  await trx
+    .updateTable("recipe_ingredient")
+    .set({
+      itemId: `default${item.itemType}ItemId`,
+    })
+    .where("itemId", "=", item.id)
+    .executeTakeFirstOrThrow();
+  // 删除道具
+  await trx.deleteFrom("item").where("id", "=", item.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", item.statisticId).executeTakeFirstOrThrow();
 };

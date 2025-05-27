@@ -3,6 +3,8 @@ import { getCookie } from "vinxi/http";
 import { jwtVerify } from "jose";
 import { getDB } from "~/repositories/database";
 import { findUserById } from "~/repositories/user";
+import { sql, Transaction } from "kysely";
+import { DB } from "../../../db/kysely/kyesely";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
@@ -40,40 +42,75 @@ export async function POST(event: APIEvent) {
   //   return new Response("当前用户无权限", { status: 403 });
   // }
 
-  try {
-    // 🛠️ 实际的同步逻辑在这里，比如保存 changes 到数据库
-    const db = await getDB();
-    await db.transaction().execute(async (trx) => {
-      for (const transaction of body) {
-        for (const change of transaction.changes) {
-          switch (change.operation) {
-            case "insert":
-              await trx.insertInto(change.table_name).values(change.value).execute();
-              break;
+  // 获取表的主键列
+  const getPrimaryKeys = async (trx: Transaction<DB>, tableName: string) => {
+    const result = await trx
+      .selectFrom(
+        sql<{ attname: string }>`
+          (SELECT a.attname
+          FROM pg_index i
+          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+          WHERE i.indrelid = ${tableName}::regclass
+          AND i.indisprimary
+          ORDER BY array_position(i.indkey, a.attnum))
+        `.as('primary_keys')
+      )
+      .select('primary_keys.attname')
+      .execute();
+      
+    return result.map(row => row.attname);
+  };
 
-            case "update":
-              await trx
-                .updateTable(change.table_name)
-                .set(change.value)
-                .where("id", "=", change.value.id) // 这里只是示例，最好根据你的实际主键条件来写
-                .execute();
-              break;
+// 在 changes.ts 中修改处理逻辑
+try {
+  const db = await getDB();
+  await db.transaction().execute(async (trx) => {
+    for (const transaction of body) {
+      for (const change of transaction.changes) {
+        // 获取表的主键列
+        const primaryKeys = await getPrimaryKeys(trx, change.table_name);
+        
+        // 如果没有主键，跳过这个变更
+        if (primaryKeys.length === 0) {
+          console.log(`表 ${change.table_name} 没有主键，跳过变更`);
+          continue;
+        }
 
-            case "delete":
-              await trx.deleteFrom(change.table_name).where("id", "=", change.value.id).execute();
-              break;
+        switch (change.operation) {
+          case "insert":
+            await trx.insertInto(change.table_name).values(change.value).execute();
+            break;
 
-            default:
-              throw new Error(`无法识别的数据库操作数: ${change.operation}`);
+          case "update": {
+            let query = trx.updateTable(change.table_name).set(change.value);
+            // 添加所有主键条件
+            for (const pk of primaryKeys) {
+              query = query.where(pk, "=", change.value[pk]);
+            }
+            await query.execute();
+            break;
           }
+
+          case "delete": {
+            let query = trx.deleteFrom(change.table_name);
+            // 添加所有主键条件
+            for (const pk of primaryKeys) {
+              query = query.where(pk, "=", change.value[pk]);
+            }
+            await query.execute();
+            break;
+          }
+
+          default:
+            throw new Error(`无法识别的数据库操作数: ${change.operation}`);
         }
       }
-    });
+    }
+  });
 
-    return new Response("操作成功", { status: 200 });
-    // return new Response("同步失败", { status: 500 });
-  } catch (err) {
-    console.error("❌ 数据处理错误:", err);
-    return new Response("服务器内部错误", { status: 500 });
-  }
+  return new Response("操作成功", { status: 200 });
+} catch (err) {
+  console.error("❌ 数据处理错误:", err);
+  return new Response("服务器内部错误", { status: 500 });
+}
 }

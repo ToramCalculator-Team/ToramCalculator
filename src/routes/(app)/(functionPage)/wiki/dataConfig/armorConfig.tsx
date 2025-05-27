@@ -1,14 +1,10 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
 import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, Show } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import {
   itemSchema,
   armorSchema,
-  mobSchema,
   recipeSchema,
-  taskSchema,
   recipe_ingredientSchema,
   drop_itemSchema,
   task_rewardSchema,
@@ -17,15 +13,10 @@ import { DB, item, armor, recipe, mob, task, recipe_ingredient, drop_item, task_
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
-import { createArmor } from "~/repositories/armor";
-import { createItem } from "~/repositories/item";
 import { z } from "zod";
-import { CardSection } from "~/components/module/cardSection";
-import { EnumSelect } from "~/components/controls/enumSelect";
 import { fieldInfo, renderField } from "../utils";
 import pick from "lodash-es/pick";
-import omit from "lodash-es/omit";
-import { ItemSharedCardContent, itemTypeToTableType } from "./utils";
+import { createItem, deleteItem, ItemSharedCardContent, itemTypeToTableType, updateItem } from "./utils";
 import { createForm, Field } from "@tanstack/solid-form";
 import { Input } from "~/components/controls/input";
 import { Button } from "~/components/controls/button";
@@ -36,10 +27,10 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { Toggle } from "~/components/controls/toggle";
 import { BossPartBreakRewardType, BossPartType, RecipeIngredientType } from "~/../db/kysely/enums";
 import { createId } from "@paralleldrive/cuid2";
-import { createStatistic } from "~/repositories/statistic";
-import { VirtualTable } from "~/components/module/virtualTable";
 import { Transaction } from "kysely";
 import { store } from "~/store";
+import { setWikiStore } from "../store";
+import { createStatistic } from "~/repositories/statistic";
 
 type armorWithRelated = armor &
   item & {
@@ -165,154 +156,205 @@ const ArmorsFetcher = async () => {
     .execute();
 };
 
-const createArmor = async (trx: Transaction<DB>, value: armor) => {
-  const statistic = await createStatistic(trx);
-  const item = await trx
-    .insertInto("item")
-    .values({
-      ...defaultData.item,
-      itemType: "Armor",
-      statisticId: statistic.id,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
+const createArmor = async (trx: Transaction<DB>, value: armor & item) => {
+  const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
+  const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+  const item = await createItem(trx, { ...itemData, itemType: "Armor" });
   const armor = await trx
     .insertInto("armor")
     .values({
-      ...value,
+      ...armorData,
       itemId: item.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
   return {
-    ...item,
     ...armor,
+    ...item,
   };
 };
 
-const updateArmor = async (trx: Transaction<DB>, value: item & armor) => { 
-  const item = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
-  const armor = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
-  await trx.updateTable("item").set({
-    ...item,
-    updatedByAccountId: store.session.user.account?.id
-  }).where("id", "=", item.id).executeTakeFirstOrThrow();
-  return await trx.updateTable("armor").set({
+const updateArmor = async (trx: Transaction<DB>, value: armor & item) => {
+  const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+  const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
+  const item = await updateItem(trx, itemData);
+  const armor = await trx
+    .updateTable("armor")
+    .set({
+      ...armorData,
+    })
+    .where("itemId", "=", armorData.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return {
     ...armor,
-  }).where("itemId", "=", armor.itemId).executeTakeFirstOrThrow();
-}
+    ...item,
+  };
+};
 
-const deleteArmor = async (trx: Transaction<DB>, value: item & armor) => {
-  const item = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
-  await trx.deleteFrom("item").where("id", "=", item.id).executeTakeFirstOrThrow();
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", item.statisticId).executeTakeFirstOrThrow();
-  // 删除配方
-  await trx.deleteFrom("recipe").where("itemId", "=", item.id).executeTakeFirstOrThrow();
-  // 重置掉落物
-  await trx.updateTable("drop_item").set({
-    itemId: `default${item.itemType}ItemId`,
-  }).where("itemId", "=", item.id).executeTakeFirstOrThrow();
-  // 重置奖励
-  await trx.updateTable("task_reward").set({
-    itemId: null,
-  }).where("itemId", "=", item.id).executeTakeFirstOrThrow();
-  
-}
+const deleteArmor = async (trx: Transaction<DB>, itemId: string) => {
+  await trx.deleteFrom("armor").where("itemId", "=", itemId).executeTakeFirstOrThrow();
+  await deleteItem(trx, itemId);
+};
 
-const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
   const [isLimit, setIsLimit] = createSignal(false);
   const form = createForm(() => ({
-    defaultValues: defaultArmorWithRelated,
+    defaultValues: data ?? defaultArmorWithRelated,
     onSubmit: async ({ value }) => {
+      value.itemType = "Armor";
+      console.log(value);
       const db = await getDB();
-      const armor = await db.transaction().execute(async (trx) => {
-        const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
-        const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
-        const recipeData = pick(value.recipe, Object.keys(defaultData.recipe) as (keyof recipe)[]);
-        const usedInDropItemsData = value.usedInDropItems;
-        const usedInTaskRewardsData = value.usedInTaskRewards;
-        const usedInRecipeEntriesData = value.usedInRecipeEntries;
-        const recipeEntriesData = value.recipe.recipeEntries;
-        const item = await createItem(trx, {
-          ...itemData,
-          itemType: "Armor",
+      const oldRecipe = data?.recipe;
+      const oldUsedInDropItems = data?.usedInDropItems ?? [];
+      const oldUsedInTaskRewards = data?.usedInTaskRewards ?? [];
+      const oldUsedInRecipeEntries = data?.usedInRecipeEntries ?? [];
+      const {
+        recipe: recipeData,
+        usedInDropItems: usedInDropItemsData,
+        usedInTaskRewards: usedInTaskRewardsData,
+        usedInRecipeEntries: usedInRecipeEntriesData,
+        ...rest
+      } = value;
+      await db.transaction().execute(async (trx) => {
+        let armorItem: item & armor;
+
+        if (data) {
+          // 更新
+          armorItem = await updateArmor(trx, rest);
+        } else {
+          // 新增
+          armorItem = await createArmor(trx, rest);
+        }
+        // 更新一对一关系
+
+        // 更新配方
+        const { recipeEntries, ...restRecipe } = recipeData;
+        let recipe: recipe;
+        if (oldRecipe) {
+          recipe = await trx
+            .updateTable("recipe")
+            .set(restRecipe)
+            .where("itemId", "=", armorItem.id)
+            .returningAll()
+            .executeTakeFirstOrThrow();
+        } else {
+          const statistic = await createStatistic(trx);
+          recipe = await trx
+            .insertInto("recipe")
+            .values({
+              ...restRecipe,
+              id: createId(),
+              itemId: armorItem.id,
+              statisticId: statistic.id,
+              createdByAccountId: store.session.user.account?.id,
+              updatedByAccountId: store.session.user.account?.id,
+            })
+            .returningAll()
+            .executeTakeFirstOrThrow();
+        }
+        // 更新配方项
+        const newRecipeEntries = recipeEntries;
+        const oldRecipeEntries = data?.recipe?.recipeEntries ?? [];
+        const recipeEntriesToRemove = oldRecipeEntries.filter(
+          (item) => !newRecipeEntries.some((i) => i.id === item.id),
+        );
+        const recipeEntriesToAdd = newRecipeEntries.filter((item) => !oldRecipeEntries.some((i) => i.id === item.id));
+        // 处理需要移除的配方项
+        for (const recipeEntry of recipeEntriesToRemove) {
+          await trx.deleteFrom("recipe_ingredient").where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
+        }
+        // 处理需要新增的配方项
+        for (const recipeEntry of recipeEntriesToAdd) {
+          await trx
+            .insertInto("recipe_ingredient")
+            .values({
+              ...recipeEntry,
+              id: createId(),
+              recipeId: recipe.id,
+            })
+            .executeTakeFirstOrThrow();
+        }
+
+        // 更新一对多关系
+
+        // 更新掉落物
+        const usedInDropItemsToRemove = oldUsedInDropItems.filter(
+          (item) => !usedInDropItemsData.some((i) => i.id === item.id),
+        );
+        const usedInDropItemsToAdd = usedInDropItemsData.filter(
+          (item) => !oldUsedInDropItems.some((i) => i.id === item.id),
+        );
+
+        // 处理需要移除的掉落物
+        for (const dropItem of usedInDropItemsToRemove) {
+          await trx.deleteFrom("drop_item").where("id", "=", dropItem.id).executeTakeFirstOrThrow();
+        }
+        // 处理需要新增的掉落物
+        for (const dropItem of usedInDropItemsToAdd) {
+          await trx
+            .insertInto("drop_item")
+            .values({
+              ...dropItem,
+              id: createId(),
+              itemId: armorItem.id,
+            })
+            .executeTakeFirstOrThrow();
+        }
+
+        // 更新任务奖励
+        const usedInTaskRewardsToRemove = oldUsedInTaskRewards.filter(
+          (item) => !usedInTaskRewardsData.some((i) => i.id === item.id),
+        );
+        const usedInTaskRewardsToAdd = usedInTaskRewardsData.filter(
+          (item) => !oldUsedInTaskRewards.some((i) => i.id === item.id),
+        );
+        // 处理需要移除的任务奖励
+        for (const taskReward of usedInTaskRewardsToRemove) {
+          await trx.deleteFrom("task_reward").where("id", "=", taskReward.id).executeTakeFirstOrThrow();
+        }
+        // 处理需要新增的任务奖励
+        for (const taskReward of usedInTaskRewardsToAdd) {
+          await trx
+            .insertInto("task_reward")
+            .values({
+              ...taskReward,
+              id: createId(),
+              itemId: armorItem.id,
+            })
+            .executeTakeFirstOrThrow();
+        }
+
+        // 更新道具隶属的配方项
+        const usedInRecipeEntriesToRemove = oldUsedInRecipeEntries.filter(
+          (item) => !usedInRecipeEntriesData.some((i) => i.id === item.id),
+        );
+        const usedInRecipeEntriesToAdd = usedInRecipeEntriesData.filter(
+          (item) => !oldUsedInRecipeEntries.some((i) => i.id === item.id),
+        );
+        // 处理需要移除的配方项
+        for (const recipeEntry of usedInRecipeEntriesToRemove) {
+          await trx.deleteFrom("recipe_ingredient").where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
+        }
+        // 处理需要新增的配方项
+        for (const recipeEntry of usedInRecipeEntriesToAdd) {
+          await trx
+            .insertInto("recipe_ingredient")
+            .values({
+              ...recipeEntry,
+              id: createId(),
+              type: "Item",
+              recipeId: recipeData.id,
+            })
+            .executeTakeFirstOrThrow();
+        }
+        setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armorItem.id }]);
+        setWikiStore("form", {
+          data: undefined,
+          isOpen: false,
         });
-        const armor = await createArmor(trx, {
-          ...armorData,
-          itemId: item.id,
-        });
-        const recipeStatistic = await createStatistic(trx);
-        const recipe = await trx
-          .insertInto("recipe")
-          .values({
-            ...recipeData,
-            id: createId(),
-            itemId: item.id,
-            statisticId: recipeStatistic.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        const recipeEntries =
-          recipeEntriesData.length > 0
-            ? await trx
-                .insertInto("recipe_ingredient")
-                .values(
-                  recipeEntriesData.map((entry) => {
-                    console.log("entry", entry);
-                    return {
-                      ...entry,
-                      id: createId(),
-                      recipeId: recipe.id,
-                    };
-                  }),
-                )
-                .returningAll()
-                .execute()
-            : [];
-        const usedInDropItems =
-          usedInDropItemsData.length > 0
-            ? await trx
-                .insertInto("drop_item")
-                .values(
-                  usedInDropItemsData.map((entry) => ({
-                    ...entry,
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
-        const usedInTaskRewards =
-          usedInTaskRewardsData.length > 0
-            ? await trx
-                .insertInto("task_reward")
-                .values(
-                  usedInTaskRewardsData.map((entry) => ({
-                    ...entry,
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
-        const usedInRecipeEntries =
-          usedInRecipeEntriesData.length > 0
-            ? await trx
-                .insertInto("recipe_ingredient")
-                .values(
-                  usedInRecipeEntriesData.map((entry) => ({
-                    ...entry,
-                    type: "Item",
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
-        return armor;
+        return armorItem;
       });
-      handleSubmit("armor", armor.itemId);
     },
   }));
   return (
@@ -413,7 +455,6 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                                 const activities = await db
                                                   .selectFrom("activity")
                                                   .selectAll("activity")
-                                                  .limit(10)
                                                   .execute();
                                                 return activities;
                                               }}
@@ -551,7 +592,6 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                                                               const items = await db
                                                                                 .selectFrom("item")
                                                                                 .select(["id", "name"])
-                                                                                .limit(10)
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -709,7 +749,6 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
-                                                              .limit(10)
                                                               .execute();
                                                             return items;
                                                           }}
@@ -893,7 +932,6 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
-                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1003,7 +1041,6 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
-                                                        .limit(10)
                                                         .execute();
                                                       return items;
                                                     }}
@@ -1072,12 +1109,12 @@ const ArmorWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-const ArmorTable = (
-  dic: dictionary,
-  tableGlobalFilterStr: Accessor<string>,
-  columnHandleClick: (id: string) => void,
-) => {
-  return VirtualTable<armor & item>({
+export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> = {
+  defaultData: defaultArmorWithRelated,
+  dataFetcher: ArmorWithRelatedFetcher,
+  datasFetcher: ArmorsFetcher,
+  dataSchema: armorWithRelatedSchema,
+  table: {
     dataFetcher: ArmorsFetcher,
     columnsDef: [
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
@@ -1085,23 +1122,14 @@ const ArmorTable = (
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
     ],
-    dictionary: ArmorWithRelatedWithRelatedDic(dic),
-    defaultSort: { id: "baseDef", desc: true },
+    dictionary: (dic) => ArmorWithRelatedWithRelatedDic(dic),
     hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
-    globalFilterStr: tableGlobalFilterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> = {
-  defaultData: defaultArmorWithRelated,
-  dataFetcher: ArmorWithRelatedFetcher,
-  datasFetcher: ArmorsFetcher,
-  dataSchema: armorWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => ArmorTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => ArmorWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  },
+  form: ({ data, dic }) => ArmorWithRelatedForm(dic, data),
+  card: ({ data, dic }) => {
+    console.log(data);
     return (
       <>
         <div class="ArmorImage bg-area-color h-[18vh] w-full rounded"></div>
@@ -1116,7 +1144,39 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
             颜色信息: ["colorA", "colorB", "colorC"],
           },
         })}
-        {ItemSharedCardContent(data.id, dic, appendCardTypeAndIds)}
+        {ItemSharedCardContent(data.id, dic)}
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex gap-1">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteArmor(trx, data.itemId);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
+                }}
+              />
+            </div>
+          </section>
+        </Show>
       </>
     );
   },

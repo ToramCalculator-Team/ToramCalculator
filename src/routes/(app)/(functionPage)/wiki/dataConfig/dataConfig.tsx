@@ -26,8 +26,8 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
   dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
   main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
   table: {
-    dataFetcher: () => Promise<D[]>,
-    columnsDef: ColumnDef<D>[],
+    dataFetcher: () => Promise<D[]>;
+    columnsDef: ColumnDef<D>[];
     dictionary: (dic: dictionary) => Dic<D>;
     hiddenColumnDef: Array<keyof D>;
     defaultSort: { id: keyof D; desc: boolean };
@@ -35,11 +35,8 @@ export type dataDisplayConfig<T extends Record<string, unknown>, D extends Recor
       [K in keyof D]: (props: { cell: Cell<D, unknown>; dic: Dic<D> }) => JSX.Element;
     }>;
   };
-  form: (options: { data?: T; dic: dictionary; handleSubmit: (table: keyof DB, id: string) => void }) => JSX.Element;
-  card: (options: {
-    data: T;
-    dic: dictionary;
-  }) => JSX.Element;
+  form: (options: { data?: T; dic: dictionary }) => JSX.Element;
+  card: (options: { data: T; dic: dictionary }) => JSX.Element;
 };
 
 export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, any>>> = {

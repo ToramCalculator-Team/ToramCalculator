@@ -100,7 +100,6 @@ const AddressesFetcher = async () => {
 
 const AddressWithRelatedForm = (
   dic: dictionary,
-  handleSubmit: (table: keyof DB, id: string) => void,
   data?: AddressWithRelated,
 ) => {
   const form = createForm(() => ({
@@ -212,7 +211,7 @@ const AddressWithRelatedForm = (
                                           const zones = await db
                                             .selectFrom("zone")
                                             .selectAll("zone")
-                                            .limit(10)
+                                            
                                             .execute();
                                           return zones;
                                         }}
@@ -533,8 +532,21 @@ export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> =
   datasFetcher: AddressesFetcher,
   dataSchema: AddressWithRelatedSchema,
   main: AddressPage,
-  table: ({ dic, filterStr, columnHandleClick }) => AddressTable(dic, filterStr, columnHandleClick),
-  form: ({ data, dic, handleSubmit }) => AddressWithRelatedForm(dic, handleSubmit, data),
+  table: {
+    dataFetcher: AddressesFetcher,
+    columnsDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "type", cell: (info: any) => info.getValue(), size: 160 },
+      { accessorKey: "posX", cell: (info: any) => info.getValue(), size: 160 },
+      { accessorKey: "posY", cell: (info: any) => info.getValue(), size: 160 },
+    ],
+    dictionary: (dic) => AddressWithRelatedDic(dic),
+    hiddenColumnDef: ["id"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+  },
+  form: ({ data, dic }) => AddressWithRelatedForm(dic, data),
   card: ({ data, dic }) => {
     const [zonesData] = createResource(data.id, async (addressId) => {
       const db = await getDB();

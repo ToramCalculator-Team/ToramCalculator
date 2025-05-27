@@ -6,6 +6,7 @@ import { ItemType } from "~/../db/kysely/enums";
 import { getDB } from "./database";
 import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";
+import { store } from "~/store";
 
 export interface Item extends DataType<item> {
   MainTable: Awaited<ReturnType<typeof findItems>>[number];
@@ -83,6 +84,8 @@ export async function createItem(trx: Transaction<DB>, newItem: Item["Insert"]) 
       ...newItem,
       id: createId(),
       statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

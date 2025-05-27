@@ -96,21 +96,20 @@ const updateActivity = async (trx: Transaction<DB>, activity: activity) => {
 };
 
 const deleteActivity = async (trx: Transaction<DB>, activity: activity) => {
-  await trx.deleteFrom("activity").where("id", "=", activity.id).executeTakeFirstOrThrow();
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", activity.statisticId).executeTakeFirstOrThrow();
   // 将用到此活动的zone的activityId设为null
   await trx.updateTable("zone").set({ activityId: null }).where("activityId", "=", activity.id).execute();
   // 将用到此活动的recipe的activityId设为null
   await trx.updateTable("recipe").set({ activityId: null }).where("activityId", "=", activity.id).execute();
+  // 删除活动
+  await trx.deleteFrom("activity").where("id", "=", activity.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", activity.statisticId).executeTakeFirstOrThrow();
 };
 
 const ActivityWithRelatedForm = (
   dic: dictionary,
-  handleSubmit: (table: keyof DB, id: string) => void,
   data?: ActivityWithRelated,
 ) => {
-  console.log(data ?? defaultActivityWithRelated);
   const form = createForm(() => ({
     defaultValues: data ?? defaultActivityWithRelated,
     onSubmit: async ({ value }) => {
@@ -157,6 +156,7 @@ const ActivityWithRelatedForm = (
 
         setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]);
         setWikiStore("form", {
+          data: undefined,
           isOpen: false,
         });
       });
@@ -222,7 +222,7 @@ const ActivityWithRelatedForm = (
                                           const zones = await db
                                             .selectFrom("zone")
                                             .selectAll("zone")
-                                            .limit(10)
+                                            
                                             .execute();
                                           return zones;
                                         }}
@@ -318,8 +318,10 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({ data, dic, handleSubmit }) => ActivityWithRelatedForm(dic, handleSubmit, data),
+  form: ({ data, dic }) => ActivityWithRelatedForm(dic, data),
   card: ({ data, dic }) => {
+    console.log(data);
+
     const [zonesData] = createResource(data.id, async (activityId) => {
       const db = await getDB();
       return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();
@@ -364,6 +366,8 @@ export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity
                   await db.transaction().execute(async (trx) => {
                     await deleteActivity(trx, data);
                   });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
                 }}
               />
               <Button

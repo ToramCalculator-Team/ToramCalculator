@@ -322,7 +322,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                             .selectFrom("crystal")
                                             .innerJoin("item", "crystal.itemId", "item.id")
                                             .selectAll(["crystal", "item"])
-                                            .limit(10)
+                                            
                                             .execute();
                                           return crystals;
                                         }}
@@ -448,7 +448,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                             const items = await db
                                                               .selectFrom("mob")
                                                               .select(["id", "name"])
-                                                              .limit(10)
+                                                              
                                                               .execute();
                                                             return items;
                                                           }}
@@ -632,7 +632,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                         .selectFrom("recipe")
                                                         .innerJoin("item", "recipe.itemId", "item.id")
                                                         .select(["recipe.id", "item.name"])
-                                                        .limit(10)
+                                                        
                                                         .execute();
                                                       return items;
                                                     }}
@@ -745,7 +745,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                                       const items = await db
                                                         .selectFrom("task")
                                                         .select(["id", "name"])
-                                                        .limit(10)
+                                                        
                                                         .execute();
                                                       return items;
                                                     }}
