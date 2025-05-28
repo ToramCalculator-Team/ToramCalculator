@@ -1,15 +1,167 @@
 import { createMemo, createResource, JSX, Setter, Show } from "solid-js";
 import { ItemType } from "~/../db/kysely/enums";
-import { DB, item } from "~/../db/kysely/kyesely";
+import {
+  DB,
+  drop_item,
+  item,
+  recipe,
+  recipe_ingredient,
+  task_collect_require,
+  task_reward,
+} from "~/../db/kysely/kyesely";
 import { CardSection } from "~/components/module/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { setWikiStore } from "../store";
-import { Transaction } from "kysely";
+import { ExpressionBuilder, Transaction } from "kysely";
 import { createStatistic } from "~/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import {
+  drop_itemSchema,
+  itemSchema,
+  recipe_ingredientSchema,
+  recipeSchema,
+  task_collect_requireSchema,
+  task_rewardSchema,
+} from "../../../../../../db/zod";
+import { z } from "zod";
+import { defaultData } from "../../../../../../db/defaultData";
+
+export type TtemWithRelated = item & {
+  recipe: (recipe & {
+    recipeEntries: recipe_ingredient[];
+  }) | null;
+  usedInDropItems: drop_item[];
+  usedInTaskRewards: task_reward[];
+  usedInRecipeEntries: recipe_ingredient[];
+  usedInTaskCollectRequires: task_collect_require[];
+};
+
+export const itemWithRelatedSchema = z.object({
+  ...itemSchema.shape,
+  recipe: recipeSchema.extend({
+    recipeEntries: z.array(recipe_ingredientSchema),
+  }),
+  usedInDropItems: z.array(drop_itemSchema),
+  usedInTaskRewards: z.array(task_rewardSchema),
+  usedInRecipeEntries: z.array(recipe_ingredientSchema),
+  usedInTaskCollectRequires: z.array(task_collect_requireSchema),
+});
+
+export const defaultItemWithRelated: TtemWithRelated = {
+  ...defaultData.item,
+  recipe: {
+    ...defaultData.recipe,
+    recipeEntries: [],
+  },
+  usedInDropItems: [],
+  usedInTaskRewards: [],
+  usedInRecipeEntries: [],
+  usedInTaskCollectRequires: [],
+};
+
+export const itemWithRelatedDic = (dic: dictionary) => ({
+  ...dic.db.item.fields,
+  recipe: {
+    key: dic.db.recipe.selfName,
+    tableFieldDescription: dic.db.recipe.description,
+    formFieldDescription: dic.db.recipe.description,
+    selfName: dic.db.recipe.selfName,
+    description: dic.db.recipe.description,
+    fields: {
+      ...dic.db.recipe.fields,
+      recipeEntries: {
+        key: dic.db.recipe_ingredient.selfName,
+        tableFieldDescription: dic.db.recipe_ingredient.description,
+        formFieldDescription: dic.db.recipe_ingredient.description,
+      },
+    },
+  },
+  usedInDropItems: {
+    key: dic.db.drop_item.selfName,
+    tableFieldDescription: dic.db.drop_item.description,
+    formFieldDescription: dic.db.drop_item.description,
+  },
+  usedInTaskRewards: {
+    key: dic.db.task_reward.selfName,
+    tableFieldDescription: dic.db.task_reward.description,
+    formFieldDescription: dic.db.task_reward.description,
+  },
+  usedInRecipeEntries: {
+    key: dic.db.recipe_ingredient.selfName,
+    tableFieldDescription: dic.db.recipe_ingredient.description,
+    formFieldDescription: dic.db.recipe_ingredient.description,
+  },
+  usedInTaskCollectRequires: {
+    key: dic.db.task_collect_require.selfName,
+    tableFieldDescription: dic.db.task_collect_require.description,
+    formFieldDescription: dic.db.task_collect_require.description,
+  },
+});
+
+export const itemWithRelatedFetcher = async <T extends DB[keyof DB]>(
+  id: string,
+  tableType: item["itemType"],
+) => {
+  const db = await getDB();
+  const item = await db
+    .selectFrom("item")
+    .where("id", "=", id)
+    .selectAll("item")
+    .select((eb) => [
+      jsonObjectFrom(
+        eb
+          .selectFrom("recipe")
+          .where("recipe.itemId", "=", id)
+          .selectAll("recipe")
+          .select((eb) => [
+            jsonArrayFrom(
+              eb
+                .selectFrom("recipe_ingredient")
+                .where("recipe_ingredient.recipeId", "=", "recipe.id")
+                .select((eb) => [
+                  jsonObjectFrom(
+                    eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                  )
+                    .$notNull()
+                    .as("item"),
+                ])
+                .selectAll("recipe_ingredient"),
+            ).as("recipeEntries"),
+          ]),
+      )
+        .$notNull()
+        .as("recipe"),
+      jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
+        "usedInDropItems",
+      ),
+      jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
+        "usedInTaskRewards",
+      ),
+      jsonArrayFrom(
+        eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
+      ).as("usedInRecipeEntries"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("task_collect_require")
+          .where("task_collect_require.itemId", "=", id)
+          .selectAll("task_collect_require"),
+      ).as("usedInTaskCollectRequires"),
+    ])
+    .executeTakeFirstOrThrow();
+  const subData = (await db
+    .selectFrom(itemTypeToTableType(tableType))
+    .where("itemId", "=", id)
+    .selectAll()
+    .executeTakeFirstOrThrow()) as T;
+  return {
+    ...item,
+    ...subData,
+  };
+};
 
 export const itemTypeToTableType = (itemType: ItemType) => {
   const tableType: keyof DB = (
@@ -26,86 +178,32 @@ export const itemTypeToTableType = (itemType: ItemType) => {
   return tableType;
 };
 
-export const ItemSharedCardContent = (itemId: string, dic: dictionary): JSX.Element => {
+export const ItemSharedCardContent = (item: TtemWithRelated, dic: dictionary): JSX.Element => {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
-  const [recipeData] = createResource(itemId, async (itemId) => {
-    const db = await getDB();
-    const recipe = await db
-      .selectFrom("recipe")
-      .where("recipe.itemId", "=", itemId)
-      .innerJoin("recipe_ingredient", "recipe.id", "recipe_ingredient.recipeId")
-      .leftJoin("item", "recipe_ingredient.itemId", "item.id")
-      .select([
-        "recipe_ingredient.type",
-        "recipe_ingredient.count",
-        "item.id as itemId",
-        "item.itemType as itemType",
-        "item.name as itemName",
-      ])
-      .executeTakeFirstOrThrow();
-    console.log("recipe", recipe);
-    return recipe;
-  });
-  const [dropByData] = createResource(itemId, async (itemId) => {
-    const db = await getDB();
-    return await db
-      .selectFrom("drop_item")
-      .innerJoin("mob", "drop_item.dropById", "mob.id")
-      .where("drop_item.itemId", "=", itemId)
-      .select(["mob.id as mobId", "mob.name as mobName"])
-      .execute();
-  });
-  const [rewardItemData] = createResource(itemId, async (itemId) => {
-    const db = await getDB();
-    return await db
-      .selectFrom("task_reward")
-      .innerJoin("task", "task_reward.taskId", "task.id")
-      .where("task_reward.itemId", "=", itemId)
-      .select(["task.id as taskId", "task.name as taskName"])
-      .execute();
-  });
-  const [usedInRecipeData] = createResource(itemId, async (itemId) => {
-    const db = await getDB();
-    return await db
-      .selectFrom("recipe_ingredient")
-      .innerJoin("recipe", "recipe_ingredient.recipeId", "recipe.id")
-      .innerJoin("item", "recipe.itemId", "item.id")
-      .where("recipe_ingredient.itemId", "=", itemId)
-      .select(["item.id as itemId", "item.name as itemName", "item.itemType as itemType"])
-      .execute();
-  });
-  const [usedInTaskData] = createResource(itemId, async (itemId) => {
-    const db = await getDB();
-    return await db
-      .selectFrom("task_collect_require")
-      .innerJoin("task", "task_collect_require.taskId", "task.id")
-      .where("task_collect_require.itemId", "=", itemId)
-      .select(["task.id as taskId", "task.name as taskName"])
-      .execute();
-  });
 
-  return (
+  return (  
     <>
-      <Show when={recipeData()} fallback={<div>......</div>}>
+      <Show when={item.recipe}>
         {(vaildRecipeData) => (
           <CardSection
             title={dic.db.recipe.selfName}
-            data={[vaildRecipeData()]}
-            renderItem={(recipe) => {
-              const type = recipe.type;
+            data={vaildRecipeData().recipeEntries}
+            renderItem={(recipeEntry) => {
+              const type = recipeEntry.type;
               switch (type) {
                 case "Item":
                   return {
-                    label: String(recipe.itemName) + "(" + recipe.count + ")",
+                    label: String(recipeEntry.item!.name) + "(" + recipeEntry.count + ")",
                     onClick: () =>
                       setWikiStore("cardGroup", (prev) => [
                         ...prev,
-                        { type: itemTypeToTableType(recipe.itemType!), id: recipe.itemId! },
+                        { type: itemTypeToTableType(recipeEntry.item!.itemType!), id: recipeEntry.item!.id! },
                       ]),
                   };
                 default:
                   return {
-                    label: dictionary().db.recipe_ingredient.fields.type.enumMap[recipe.type] + ":" + recipe.count,
+                    label:
+                      dictionary().db.recipe_ingredient.fields.type.enumMap[recipeEntry.type] + ":" + recipeEntry.count,
                     onClick: () => null,
                   };
               }
@@ -113,10 +211,10 @@ export const ItemSharedCardContent = (itemId: string, dic: dictionary): JSX.Elem
           />
         )}
       </Show>
-      <Show when={dropByData.latest?.length}>
+      <Show when={item.usedInDropItems.length}>
         <CardSection
           title={"掉落于" + dic.db.mob.selfName}
-          data={dropByData.latest}
+          data={item.usedInDropItems}
           renderItem={(dropBy) => {
             return {
               label: dropBy.mobName,

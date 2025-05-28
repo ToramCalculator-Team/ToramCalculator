@@ -54,7 +54,6 @@ export default function WikiSubPage() {
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
-
   const getCachedCardDatas = async () => {
     return await Promise.all(
       wikiStore.cardGroup.map(async ({ type, id }) => {
@@ -378,7 +377,9 @@ export default function WikiSubPage() {
                   },
                 })}
               >
-                {validDataConfig().main?.(dictionary(), (id) => setWikiStore("cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]))}
+                {validDataConfig().main?.(dictionary(), (id) =>
+                  setWikiStore("cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+                )}
               </Show>
             </div>
             <Presence exitBeforeEnter>
@@ -474,12 +475,6 @@ export default function WikiSubPage() {
               {validDataConfig().form({
                 data: wikiStore.form.data,
                 dic: dictionary(),
-                handleSubmit: (table, id) => {
-                  setWikiStore("cardGroup", (pre) => [...pre, { type: table, id }]);
-                  setWikiStore("form", {
-                    isOpen: false,
-                  });
-                },
               })}
             </Sheet>
           </Portal>

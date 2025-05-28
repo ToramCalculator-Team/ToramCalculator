@@ -1,4 +1,4 @@
-import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, Show } from "solid-js";
+import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import {
@@ -8,8 +8,9 @@ import {
   recipe_ingredientSchema,
   drop_itemSchema,
   task_rewardSchema,
+  task_collect_requireSchema,
 } from "~/../db/zod";
-import { DB, item, armor, recipe, mob, task, recipe_ingredient, drop_item, task_reward } from "~/../db/kysely/kyesely";
+import { DB, item, armor, recipe, mob, task, recipe_ingredient, drop_item, task_reward, task_collect_require } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
@@ -40,6 +41,7 @@ type armorWithRelated = armor &
     usedInDropItems: drop_item[];
     usedInTaskRewards: task_reward[];
     usedInRecipeEntries: recipe_ingredient[];
+    usedInTaskCollectRequires: task_collect_require[];
   };
 
 const armorWithRelatedSchema = z.object({
@@ -51,6 +53,7 @@ const armorWithRelatedSchema = z.object({
   usedInDropItems: z.array(drop_itemSchema),
   usedInTaskRewards: z.array(task_rewardSchema),
   usedInRecipeEntries: z.array(recipe_ingredientSchema),
+  usedInTaskCollectRequires: z.array(task_collect_requireSchema),
 });
 
 const defaultArmorWithRelated: armorWithRelated = {
@@ -63,6 +66,7 @@ const defaultArmorWithRelated: armorWithRelated = {
   usedInDropItems: [],
   usedInTaskRewards: [],
   usedInRecipeEntries: [],
+  usedInTaskCollectRequires: [],
 };
 
 const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
@@ -99,6 +103,11 @@ const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
       key: dic.db.recipe_ingredient.selfName,
       tableFieldDescription: dic.db.recipe_ingredient.description,
       formFieldDescription: dic.db.recipe_ingredient.description,
+    },
+    usedInTaskCollectRequires: {
+      key: dic.db.task_collect_require.selfName,
+      tableFieldDescription: dic.db.task_collect_require.description,
+      formFieldDescription: dic.db.task_collect_require.description,
     },
   },
 });
@@ -143,6 +152,12 @@ const ArmorWithRelatedFetcher = async (id: string) => {
       jsonArrayFrom(
         eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
       ).as("usedInRecipeEntries"),
+      jsonArrayFrom(
+        eb
+          .selectFrom("task_collect_require")
+          .where("task_collect_require.itemId", "=", id)
+          .selectAll("task_collect_require"),
+      ).as("usedInTaskCollectRequires"),
     ])
     .executeTakeFirstOrThrow();
 };
@@ -177,7 +192,10 @@ const createArmor = async (trx: Transaction<DB>, value: armor & item) => {
 const updateArmor = async (trx: Transaction<DB>, value: armor & item) => {
   const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
   const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
-  const item = await updateItem(trx, itemData);
+  const item = await updateItem(trx, {
+    ...itemData,
+    itemType: "Armor",
+  });
   const armor = await trx
     .updateTable("armor")
     .set({
@@ -202,8 +220,7 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
   const form = createForm(() => ({
     defaultValues: data ?? defaultArmorWithRelated,
     onSubmit: async ({ value }) => {
-      value.itemType = "Armor";
-      console.log(value);
+      console.log("oldValue", data, "newValue", value);
       const db = await getDB();
       const oldRecipe = data?.recipe;
       const oldUsedInDropItems = data?.usedInDropItems ?? [];
@@ -228,52 +245,76 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
         }
         // 更新一对一关系
 
-        // 更新配方
+        // 处理配方
         const { recipeEntries, ...restRecipe } = recipeData;
         let recipe: recipe;
-        if (oldRecipe) {
-          recipe = await trx
-            .updateTable("recipe")
-            .set(restRecipe)
-            .where("itemId", "=", armorItem.id)
-            .returningAll()
-            .executeTakeFirstOrThrow();
+        if (oldRecipe?.id) {
+          // 更新配方
+          const { recipeEntries: oldRecipeEntries } = oldRecipe;
+          if (recipeEntries.length > 0) {
+            // 如果配方项不为空，则更新配方和配方项
+            recipe = await trx
+              .updateTable("recipe")
+              .set(restRecipe)
+              .where("itemId", "=", armorItem.id)
+              .returningAll()
+              .executeTakeFirstOrThrow();
+
+            // 更新配方项
+            const recipeEntriesToRemove = oldRecipeEntries.filter(
+              (item) => !recipeEntries.some((i) => i.id === item.id),
+            );
+            const recipeEntriesToAdd = recipeEntries.filter((item) => !oldRecipeEntries.some((i) => i.id === item.id));
+            // 处理需要移除的配方项
+            for (const recipeEntry of recipeEntriesToRemove) {
+              await trx.deleteFrom("recipe_ingredient").where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
+            }
+            // 处理需要新增的配方项
+            for (const recipeEntry of recipeEntriesToAdd) {
+              await trx
+                .insertInto("recipe_ingredient")
+                .values({
+                  ...recipeEntry,
+                  id: createId(),
+                  recipeId: recipe.id,
+                })
+                .executeTakeFirstOrThrow();
+            }
+          } else {
+            // 如果新配方项为空，则删除旧配方和所有配方项
+            await trx.deleteFrom("recipe").where("itemId", "=", armorItem.id).executeTakeFirstOrThrow();
+            await trx.deleteFrom("recipe_ingredient").where("recipeId", "=", oldRecipe.id).executeTakeFirstOrThrow();
+          }
         } else {
-          const statistic = await createStatistic(trx);
-          recipe = await trx
-            .insertInto("recipe")
-            .values({
-              ...restRecipe,
-              id: createId(),
-              itemId: armorItem.id,
-              statisticId: statistic.id,
-              createdByAccountId: store.session.user.account?.id,
-              updatedByAccountId: store.session.user.account?.id,
-            })
-            .returningAll()
-            .executeTakeFirstOrThrow();
-        }
-        // 更新配方项
-        const newRecipeEntries = recipeEntries;
-        const oldRecipeEntries = data?.recipe?.recipeEntries ?? [];
-        const recipeEntriesToRemove = oldRecipeEntries.filter(
-          (item) => !newRecipeEntries.some((i) => i.id === item.id),
-        );
-        const recipeEntriesToAdd = newRecipeEntries.filter((item) => !oldRecipeEntries.some((i) => i.id === item.id));
-        // 处理需要移除的配方项
-        for (const recipeEntry of recipeEntriesToRemove) {
-          await trx.deleteFrom("recipe_ingredient").where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
-        }
-        // 处理需要新增的配方项
-        for (const recipeEntry of recipeEntriesToAdd) {
-          await trx
-            .insertInto("recipe_ingredient")
-            .values({
-              ...recipeEntry,
-              id: createId(),
-              recipeId: recipe.id,
-            })
-            .executeTakeFirstOrThrow();
+          if (recipeEntries.length > 0) {
+            // 如果新配方项不为空，则创建配方和配方项
+            const statistic = await createStatistic(trx);
+            recipe = await trx
+              .insertInto("recipe")
+              .values({
+                ...restRecipe,
+                id: createId(),
+                itemId: armorItem.id,
+                statisticId: statistic.id,
+                createdByAccountId: store.session.user.account?.id,
+                updatedByAccountId: store.session.user.account?.id,
+              })
+              .returningAll()
+              .executeTakeFirstOrThrow();
+            // 处理需要新增的配方项
+            for (const recipeEntry of recipeEntries) {
+              await trx
+                .insertInto("recipe_ingredient")
+                .values({
+                  ...recipeEntry,
+                  id: createId(),
+                  recipeId: recipe.id,
+                })
+                .executeTakeFirstOrThrow();
+            }
+          } else {
+            // 如果新配方项为空，则不创建配方和配方项
+          }
         }
 
         // 更新一对多关系
@@ -357,6 +398,9 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
       });
     },
   }));
+  onMount(() => {
+    console.log(form.state.values);
+  });
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
@@ -370,7 +414,7 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultArmorWithRelated)}>
+        <For each={Object.entries(data ?? defaultArmorWithRelated)}>
           {(_field, index) => {
             const fieldKey = _field[0] as keyof armorWithRelated;
             const fieldValue = _field[1];
@@ -391,273 +435,282 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
                       onChangeAsync: armorWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
-                      <Input
-                        title={dic.db.recipe.selfName}
-                        description={dic.db.recipe.description}
-                        state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <Index each={Object.entries(field().state.value)}>
-                          {(recipeField, recipeFieldIndex) => {
-                            const recipeFieldKey = recipeField()[0] as keyof armorWithRelated["recipe"];
-                            const recipeFieldValue = recipeField()[1];
-                            switch (recipeFieldKey) {
-                              case "id":
-                              case "itemId":
-                              case "createdByAccountId":
-                              case "updatedByAccountId":
-                              case "statisticId":
-                                return null;
-                              case "activityId":
-                                return (
-                                  <form.Field
-                                    name={fieldKey}
-                                    validators={{
-                                      onChangeAsyncDebounceMs: 500,
-                                      onChangeAsync: armorWithRelatedSchema.shape[fieldKey],
-                                    }}
-                                  >
-                                    {(field) => (
-                                      <>
-                                        <Input
-                                          title={"活动配方标记"}
-                                          description={"仅在某个活动开启时可使用的配方"}
-                                          state={undefined}
-                                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                                        >
-                                          <Toggle
-                                            id={"isLimit"}
-                                            onClick={() => setIsLimit(!isLimit())}
-                                            onBlur={undefined}
-                                            name={"isLimit"}
-                                            checked={isLimit()}
-                                          />
-                                        </Input>
-                                        <Show when={isLimit()}>
+                    {(field) => {
+                      console.log("field", field().state.value);
+                      return (
+                        <Input
+                          title={dic.db.recipe.selfName}
+                          description={dic.db.recipe.description}
+                          state={fieldInfo(field())}
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        >
+                          <Index each={Object.entries(field().state.value)}>
+                            {(recipeField, recipeFieldIndex) => {
+                              const recipeFieldKey = recipeField()[0] as keyof armorWithRelated["recipe"];
+                              const recipeFieldValue = recipeField()[1];
+                              switch (recipeFieldKey) {
+                                case "id":
+                                case "itemId":
+                                case "createdByAccountId":
+                                case "updatedByAccountId":
+                                case "statisticId":
+                                  return null;
+                                case "activityId":
+                                  return (
+                                    <form.Field
+                                      name={fieldKey}
+                                      validators={{
+                                        onChangeAsyncDebounceMs: 500,
+                                        onChangeAsync: armorWithRelatedSchema.shape[fieldKey],
+                                      }}
+                                    >
+                                      {(field) => (
+                                        <>
                                           <Input
-                                            title={dic.db.activity.selfName}
-                                            description={dic.db.activity.description}
-                                            state={fieldInfo(field())}
+                                            title={"活动配方标记"}
+                                            description={"仅在某个活动开启时可使用的配方"}
+                                            state={undefined}
                                             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                                           >
-                                            <Autocomplete
-                                              id={field().name + "activityId"}
-                                              initialValue={defaultData.activity}
-                                              setValue={(value) => {
-                                                field().setValue({
-                                                  ...field().state.value,
-                                                  activityId: value.id,
-                                                });
-                                              }}
-                                              datasFetcher={async () => {
-                                                const db = await getDB();
-                                                const activities = await db
-                                                  .selectFrom("activity")
-                                                  .selectAll("activity")
-                                                  .execute();
-                                                return activities;
-                                              }}
-                                              displayField="name"
-                                              valueField="id"
+                                            <Toggle
+                                              id={"isLimit"}
+                                              onClick={() => setIsLimit(!isLimit())}
+                                              onBlur={undefined}
+                                              name={"isLimit"}
+                                              checked={isLimit()}
                                             />
                                           </Input>
-                                        </Show>
-                                      </>
-                                    )}
-                                  </form.Field>
-                                );
-                              case "recipeEntries":
-                                return (
-                                  <form.Field name={`recipe.recipeEntries`} mode="array">
-                                    {(recipeEntriesField) => (
-                                      <Input
-                                        title={dic.db.recipe_ingredient.selfName}
-                                        description={dic.db.recipe_ingredient.description}
-                                        state={fieldInfo(recipeEntriesField())}
-                                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                                      >
-                                        <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
-                                          <Show when={recipeEntriesField().state.value.length > 0}>
-                                            <Index each={recipeEntriesField().state.value}>
-                                              {(recipeEntry, recipeEntryIndex) => {
-                                                return (
-                                                  <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                                    <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
-                                                      <span class="text-accent-color font-bold">
-                                                        {dic.db.recipe_ingredient.selfName + " " + recipeEntryIndex}
-                                                      </span>
-                                                      <Button
-                                                        onClick={() => {
-                                                          recipeEntriesField().removeValue(recipeEntryIndex);
-                                                        }}
-                                                      >
-                                                        -
-                                                      </Button>
-                                                    </div>
-                                                    <Index each={Object.entries(recipeEntry())}>
-                                                      {(recipeEntryField, recipeEntryFieldIndex) => {
-                                                        const recipeEntryFieldKey =
-                                                          recipeEntryField()[0] as keyof armorWithRelated["recipe"]["recipeEntries"][number];
-                                                        const recipeEntryFieldValue = recipeEntryField()[1];
-                                                        switch (recipeEntryFieldKey) {
-                                                          case "id":
-                                                          case "recipeId":
-                                                            return null;
-                                                          case "type":
-                                                            return (
-                                                              <form.Field
-                                                                name={`recipe.recipeEntries[${recipeEntryIndex}].${recipeEntryFieldKey}`}
-                                                                validators={{
-                                                                  onChangeAsyncDebounceMs: 500,
-                                                                  onChangeAsync:
-                                                                    recipe_ingredientSchema.shape[recipeEntryFieldKey],
-                                                                }}
-                                                              >
-                                                                {(field) => (
-                                                                  <Input
-                                                                    title={
-                                                                      dic.db.recipe_ingredient.fields[
-                                                                        recipeEntryFieldKey
-                                                                      ].key
-                                                                    }
-                                                                    description={
-                                                                      dic.db.recipe_ingredient.fields[
-                                                                        recipeEntryFieldKey
-                                                                      ].formFieldDescription
-                                                                    }
-                                                                    state={fieldInfo(field())}
-                                                                  >
-                                                                    <Select
-                                                                      value={field().state.value}
-                                                                      setValue={(value) =>
-                                                                        field().setValue(value as RecipeIngredientType)
-                                                                      }
-                                                                      options={Object.entries(
-                                                                        dic.db.recipe_ingredient.fields.type.enumMap,
-                                                                      ).map(([key, value]) => ({
-                                                                        label: value,
-                                                                        value: key,
-                                                                      }))}
-                                                                    />
-                                                                  </Input>
-                                                                )}
-                                                              </form.Field>
-                                                            );
-                                                          case "itemId":
-                                                            return (
-                                                              <form.Subscribe
-                                                                selector={(state) =>
-                                                                  state.values.recipe.recipeEntries[recipeEntryIndex]
-                                                                    ? state.values.recipe.recipeEntries[
-                                                                        recipeEntryIndex
-                                                                      ].type
-                                                                    : "Magic"
-                                                                }
-                                                              >
-                                                                {(type) => (
-                                                                  <Show when={type() === "Item"}>
-                                                                    <form.Field
-                                                                      name={`recipe.recipeEntries[${recipeEntryIndex}].itemId`}
-                                                                      validators={{
-                                                                        onChangeAsyncDebounceMs: 500,
-                                                                        onChangeAsync:
-                                                                          recipe_ingredientSchema.shape[
-                                                                            recipeEntryFieldKey
-                                                                          ],
-                                                                      }}
-                                                                    >
-                                                                      {(itemIdField) => (
-                                                                        <Input
-                                                                          title={
-                                                                            dic.db.recipe_ingredient.fields[
-                                                                              recipeEntryFieldKey
-                                                                            ].key
-                                                                          }
-                                                                          description={
-                                                                            dic.db.recipe_ingredient.fields[
-                                                                              recipeEntryFieldKey
-                                                                            ].formFieldDescription
-                                                                          }
-                                                                          state={fieldInfo(itemIdField())}
-                                                                        >
-                                                                          <Autocomplete
-                                                                            id={recipeEntryFieldKey + recipeEntryIndex}
-                                                                            initialValue={{ id: "", name: "" }}
-                                                                            setValue={(value) => {
-                                                                              itemIdField().setValue(value.id);
-                                                                            }}
-                                                                            datasFetcher={async () => {
-                                                                              const db = await getDB();
-                                                                              const items = await db
-                                                                                .selectFrom("item")
-                                                                                .select(["id", "name"])
-                                                                                .execute();
-                                                                              return items;
-                                                                            }}
-                                                                            displayField="name"
-                                                                            valueField="id"
-                                                                          />
-                                                                        </Input>
-                                                                      )}
-                                                                    </form.Field>
-                                                                  </Show>
-                                                                )}
-                                                              </form.Subscribe>
-                                                            );
-                                                          default:
-                                                            // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                                            const simpleFieldKey = `recipe.recipeEntries[${recipeEntryIndex}].${recipeEntryFieldKey}`;
-                                                            const simpleFieldValue = recipeEntryFieldValue;
-                                                            return renderField<
-                                                              recipe_ingredient,
-                                                              keyof recipe_ingredient
-                                                            >(
-                                                              form,
-                                                              simpleFieldKey,
-                                                              simpleFieldValue,
-                                                              dic.db.recipe_ingredient,
-                                                              recipe_ingredientSchema,
-                                                            );
-                                                        }
-                                                      }}
-                                                    </Index>
-                                                  </div>
-                                                );
-                                              }}
-                                            </Index>
+                                          <Show when={isLimit()}>
+                                            <Input
+                                              title={dic.db.activity.selfName}
+                                              description={dic.db.activity.description}
+                                              state={fieldInfo(field())}
+                                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                            >
+                                              <Autocomplete
+                                                id={field().name + "activityId"}
+                                                initialValue={defaultData.activity}
+                                                setValue={(value) => {
+                                                  field().setValue({
+                                                    ...field().state.value,
+                                                    activityId: value.id,
+                                                  });
+                                                }}
+                                                datasFetcher={async () => {
+                                                  const db = await getDB();
+                                                  const activities = await db
+                                                    .selectFrom("activity")
+                                                    .selectAll("activity")
+                                                    .execute();
+                                                  return activities;
+                                                }}
+                                                displayField="name"
+                                                valueField="id"
+                                              />
+                                            </Input>
                                           </Show>
-                                          <Button
-                                            onClick={() => {
-                                              recipeEntriesField().pushValue({
-                                                ...defaultData.recipe_ingredient,
-                                              });
-                                            }}
-                                            class="w-full"
-                                          >
-                                            +
-                                          </Button>
-                                        </div>
-                                      </Input>
-                                    )}
-                                  </form.Field>
-                                );
-                              default:
-                                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                const simpleFieldKey = `recipe.${recipeFieldKey}`;
-                                const simpleFieldValue = recipeFieldValue;
-                                return renderField<armorWithRelated["recipe"], keyof armorWithRelated["recipe"]>(
-                                  form,
-                                  simpleFieldKey,
-                                  simpleFieldValue,
-                                  ArmorWithRelatedWithRelatedDic(dic).fields.recipe,
-                                  recipeSchema,
-                                );
-                            }
-                          }}
-                        </Index>
-                      </Input>
-                    )}
+                                        </>
+                                      )}
+                                    </form.Field>
+                                  );
+                                case "recipeEntries":
+                                  return (
+                                    <form.Field name={`recipe.recipeEntries`} mode="array">
+                                      {(recipeEntriesField) => (
+                                        <Input
+                                          title={dic.db.recipe_ingredient.selfName}
+                                          description={dic.db.recipe_ingredient.description}
+                                          state={fieldInfo(recipeEntriesField())}
+                                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                        >
+                                          <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
+                                            <Show when={recipeEntriesField().state.value.length > 0}>
+                                              <Index each={recipeEntriesField().state.value}>
+                                                {(recipeEntry, recipeEntryIndex) => {
+                                                  return (
+                                                    <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
+                                                      <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                                        <span class="text-accent-color font-bold">
+                                                          {dic.db.recipe_ingredient.selfName + " " + recipeEntryIndex}
+                                                        </span>
+                                                        <Button
+                                                          onClick={() => {
+                                                            recipeEntriesField().removeValue(recipeEntryIndex);
+                                                          }}
+                                                        >
+                                                          -
+                                                        </Button>
+                                                      </div>
+                                                      <Index each={Object.entries(recipeEntry())}>
+                                                        {(recipeEntryField, recipeEntryFieldIndex) => {
+                                                          const recipeEntryFieldKey =
+                                                            recipeEntryField()[0] as keyof armorWithRelated["recipe"]["recipeEntries"][number];
+                                                          const recipeEntryFieldValue = recipeEntryField()[1];
+                                                          switch (recipeEntryFieldKey) {
+                                                            case "id":
+                                                            case "recipeId":
+                                                              return null;
+                                                            case "type":
+                                                              return (
+                                                                <form.Field
+                                                                  name={`recipe.recipeEntries[${recipeEntryIndex}].${recipeEntryFieldKey}`}
+                                                                  validators={{
+                                                                    onChangeAsyncDebounceMs: 500,
+                                                                    onChangeAsync:
+                                                                      recipe_ingredientSchema.shape[
+                                                                        recipeEntryFieldKey
+                                                                      ],
+                                                                  }}
+                                                                >
+                                                                  {(field) => (
+                                                                    <Input
+                                                                      title={
+                                                                        dic.db.recipe_ingredient.fields[
+                                                                          recipeEntryFieldKey
+                                                                        ].key
+                                                                      }
+                                                                      description={
+                                                                        dic.db.recipe_ingredient.fields[
+                                                                          recipeEntryFieldKey
+                                                                        ].formFieldDescription
+                                                                      }
+                                                                      state={fieldInfo(field())}
+                                                                    >
+                                                                      <Select
+                                                                        value={field().state.value}
+                                                                        setValue={(value) =>
+                                                                          field().setValue(
+                                                                            value as RecipeIngredientType,
+                                                                          )
+                                                                        }
+                                                                        options={Object.entries(
+                                                                          dic.db.recipe_ingredient.fields.type.enumMap,
+                                                                        ).map(([key, value]) => ({
+                                                                          label: value,
+                                                                          value: key,
+                                                                        }))}
+                                                                      />
+                                                                    </Input>
+                                                                  )}
+                                                                </form.Field>
+                                                              );
+                                                            case "itemId":
+                                                              return (
+                                                                <form.Subscribe
+                                                                  selector={(state) =>
+                                                                    state.values.recipe.recipeEntries[recipeEntryIndex]
+                                                                      ? state.values.recipe.recipeEntries[
+                                                                          recipeEntryIndex
+                                                                        ].type
+                                                                      : "Magic"
+                                                                  }
+                                                                >
+                                                                  {(type) => (
+                                                                    <Show when={type() === "Item"}>
+                                                                      <form.Field
+                                                                        name={`recipe.recipeEntries[${recipeEntryIndex}].itemId`}
+                                                                        validators={{
+                                                                          onChangeAsyncDebounceMs: 500,
+                                                                          onChangeAsync:
+                                                                            recipe_ingredientSchema.shape[
+                                                                              recipeEntryFieldKey
+                                                                            ],
+                                                                        }}
+                                                                      >
+                                                                        {(itemIdField) => (
+                                                                          <Input
+                                                                            title={
+                                                                              dic.db.recipe_ingredient.fields[
+                                                                                recipeEntryFieldKey
+                                                                              ].key
+                                                                            }
+                                                                            description={
+                                                                              dic.db.recipe_ingredient.fields[
+                                                                                recipeEntryFieldKey
+                                                                              ].formFieldDescription
+                                                                            }
+                                                                            state={fieldInfo(itemIdField())}
+                                                                          >
+                                                                            <Autocomplete
+                                                                              id={
+                                                                                recipeEntryFieldKey + recipeEntryIndex
+                                                                              }
+                                                                              initialValue={{ id: "", name: "" }}
+                                                                              setValue={(value) => {
+                                                                                itemIdField().setValue(value.id);
+                                                                              }}
+                                                                              datasFetcher={async () => {
+                                                                                const db = await getDB();
+                                                                                const items = await db
+                                                                                  .selectFrom("item")
+                                                                                  .select(["id", "name"])
+                                                                                  .execute();
+                                                                                return items;
+                                                                              }}
+                                                                              displayField="name"
+                                                                              valueField="id"
+                                                                            />
+                                                                          </Input>
+                                                                        )}
+                                                                      </form.Field>
+                                                                    </Show>
+                                                                  )}
+                                                                </form.Subscribe>
+                                                              );
+                                                            default:
+                                                              // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                                              const simpleFieldKey = `recipe.recipeEntries[${recipeEntryIndex}].${recipeEntryFieldKey}`;
+                                                              const simpleFieldValue = recipeEntryFieldValue;
+                                                              return renderField<
+                                                                recipe_ingredient,
+                                                                keyof recipe_ingredient
+                                                              >(
+                                                                form,
+                                                                simpleFieldKey,
+                                                                simpleFieldValue,
+                                                                dic.db.recipe_ingredient,
+                                                                recipe_ingredientSchema,
+                                                              );
+                                                          }
+                                                        }}
+                                                      </Index>
+                                                    </div>
+                                                  );
+                                                }}
+                                              </Index>
+                                            </Show>
+                                            <Button
+                                              onClick={() => {
+                                                recipeEntriesField().pushValue({
+                                                  ...defaultData.recipe_ingredient,
+                                                });
+                                              }}
+                                              class="w-full"
+                                            >
+                                              +
+                                            </Button>
+                                          </div>
+                                        </Input>
+                                      )}
+                                    </form.Field>
+                                  );
+                                default:
+                                  // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                  const simpleFieldKey = `recipe.${recipeFieldKey}`;
+                                  const simpleFieldValue = recipeFieldValue;
+                                  return renderField<armorWithRelated["recipe"], keyof armorWithRelated["recipe"]>(
+                                    form,
+                                    simpleFieldKey,
+                                    simpleFieldValue,
+                                    ArmorWithRelatedWithRelatedDic(dic).fields.recipe,
+                                    recipeSchema,
+                                  );
+                              }
+                            }}
+                          </Index>
+                        </Input>
+                      );
+                    }}
                   </form.Field>
                 );
               case "usedInDropItems":
@@ -1171,6 +1224,12 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
                   // 关闭当前卡片
                   setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
                   // 打开表单
+                  if (data.recipe === null || data.recipe === undefined) {
+                    data.recipe = {
+                      ...defaultData.recipe,
+                      recipeEntries: [],
+                    };
+                  }
                   setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
