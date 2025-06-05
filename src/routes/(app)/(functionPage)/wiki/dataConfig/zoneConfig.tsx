@@ -1,12 +1,9 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createZone, deleteZone, findZoneById, findZones, Zone } from "~/repositories/zone";
+import { createResource, createSignal, For, Show, Index } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { activitySchema, addressSchema, mobSchema, npcSchema, zoneSchema } from "~/../db/zod";
-import { activity, address, DB, mob, npc, zone } from "~/../db/kysely/kyesely";
-import { dictionary, EnumFieldDetail } from "~/locales/type";
+import { mobSchema, npcSchema, zoneSchema } from "~/../db/zod";
+import { mob, npc, zone } from "~/../db/kysely/kyesely";
+import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
@@ -22,7 +19,6 @@ import { Toggle } from "~/components/controls/toggle";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
-import { VirtualTable } from "~/components/module/virtualTable";
 import { setWikiStore } from "../store";
 
 type ZoneWithRelated = zone & {

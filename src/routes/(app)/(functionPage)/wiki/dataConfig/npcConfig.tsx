@@ -18,7 +18,6 @@ import { createId } from "@paralleldrive/cuid2";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { createNpc } from "~/repositories/npc";
 
 type NpcWithRelated = npc & {
   tasks: task[];
@@ -77,9 +76,10 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: npc) => {
         const { tasks, ...rest } = value;
         console.log("tasks", tasks);
         console.log("rest", rest);
-        const npc = await createNpc(trx, {
+        const npc = await trx.insertInto("npc").values({
           ...rest,
-        });
+          id: createId(),
+        }).returningAll().executeTakeFirstOrThrow();
         if (tasks.length > 0) {
           for (const task of tasks) {
             await trx

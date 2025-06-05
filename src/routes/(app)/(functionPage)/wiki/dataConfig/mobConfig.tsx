@@ -1,10 +1,5 @@
-import { flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, createEffect, Index, on, Accessor } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createMob } from "~/repositories/mob";
-import { DataEnums } from "~/../db/dataEnums";
+import { For, Show, Index, Accessor, createResource, createSignal } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
-import { dataDisplayConfig } from "./dataConfig";
 import * as Icon from "~/components/icon";
 import { drop_itemSchema, mobSchema, zoneSchema } from "~/../db/zod";
 import { Input } from "~/components/controls/input";
@@ -38,6 +33,8 @@ import { store } from "~/store";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { pgWorker } from "~/initialWorker";
 import { setWikiStore } from "../store";
+import { DataEnums } from "../../../../../../db/dataEnums";
+import { dataDisplayConfig } from "./dataConfig";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
