@@ -1,234 +1,193 @@
-import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, Show } from "solid-js";
+import { createResource, createSignal, For, Index, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { itemSchema, crystalSchema, recipe_ingredientSchema, drop_itemSchema, task_rewardSchema } from "~/../db/zod";
-import { DB, item, crystal, recipe_ingredient, drop_item, task_reward, mob } from "~/../db/kysely/kyesely";
-import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
+import { crystalSchema, itemSchema } from "~/../db/zod";
+import { DB, item, crystal } from "~/../db/kysely/kyesely";
+import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
-import { createCrystal } from "~/repositories/crystal";
-import { createItem } from "~/repositories/item";
-import { z } from "zod";
-import { CardSection } from "~/components/module/cardSection";
 import { fieldInfo, renderField } from "../utils";
-import pick from "lodash-es/pick";
-import { ItemSharedCardContent, itemTypeToTableType } from "./utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
-import { Select } from "~/components/controls/select";
 import * as Icon from "~/components/icon";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { Transaction } from "kysely";
+import { store } from "~/store";
+import { setWikiStore } from "../store";
+import {
+  defaultItemWithRelated,
+  deleteItem,
+  ItemSharedCardContent,
+  ItemWithRelated,
+  itemWithRelatedDic,
+  itemWithRelatedFetcher,
+  itemWithRelatedSchema,
+} from "./utils";
+import z from "zod";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
-import { createId } from "@paralleldrive/cuid2";
-import { CrystalType, BossPartBreakRewardType, BossPartType } from "~/../db/kysely/enums";
-import { VirtualTable } from "~/components/module/virtualTable";
+import { CardSection } from "~/components/module/cardSection";
 
-type crystalWithRelated = crystal &
-  item & {
-    front: Array<crystal & item>;
-    back: Array<crystal & item>;
-    usedInDropItems: drop_item[];
-    usedInTaskRewards: task_reward[];
-    usedInRecipeEntries: recipe_ingredient[];
-  };
+type CrystalWithRelated = crystal & {
+  front: (crystal & item)[];
+  back: (crystal & item)[];
+};
 
-const crystalWithRelatedSchema = z.object({
-  ...itemSchema.shape,
-  ...crystalSchema.shape,
-  front: z.array(crystalSchema.extend(itemSchema.shape)),
-  back: z.array(crystalSchema.extend(itemSchema.shape)),
-  usedInDropItems: z.array(drop_itemSchema),
-  usedInTaskRewards: z.array(task_rewardSchema),
-  usedInRecipeEntries: z.array(recipe_ingredientSchema),
+const CrystalWithRelatedSchema = crystalSchema.extend({
+  front: z.array(
+    z.object({
+      ...crystalSchema.shape,
+      ...itemSchema.shape,
+    }),
+  ),
+  back: z.array(
+    z.object({
+      ...crystalSchema.shape,
+      ...itemSchema.shape,
+    }),
+  ),
 });
 
-const defaultCrystalWithRelated: crystalWithRelated = {
-  ...defaultData.item,
+const defaultCrystalWithRelated: CrystalWithRelated = {
   ...defaultData.crystal,
   front: [],
   back: [],
-  usedInDropItems: [],
-  usedInTaskRewards: [],
-  usedInRecipeEntries: [],
 };
-
-const CrystalWithRelatedWithRelatedDic = (dic: dictionary) => ({
-  ...dic.db.crystal,
-  fields: {
-    ...dic.db.crystal.fields,
-    ...dic.db.item.fields,
-    front: {
-      key: "front",
-      tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
-      formFieldDescription: dic.db.item.fields.name.formFieldDescription,
-    },
-    back: {
-      key: "back",
-      tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
-      formFieldDescription: dic.db.item.fields.name.formFieldDescription,
-    },
-    usedInDropItems: {
-      key: dic.db.drop_item.selfName,
-      tableFieldDescription: dic.db.drop_item.description,
-      formFieldDescription: dic.db.drop_item.description,
-    },
-    usedInTaskRewards: {
-      key: dic.db.task_reward.selfName,
-      tableFieldDescription: dic.db.task_reward.description,
-      formFieldDescription: dic.db.task_reward.description,
-    },
-    usedInRecipeEntries: {
-      key: dic.db.recipe_ingredient.selfName,
-      tableFieldDescription: dic.db.recipe_ingredient.description,
-      formFieldDescription: dic.db.recipe_ingredient.description,
-    },
-  },
-});
 
 const CrystalWithRelatedFetcher = async (id: string) => {
   const db = await getDB();
-  const result = await db
-    .selectFrom("item")
-    .where("id", "=", id)
-    .innerJoin("crystal", "crystal.itemId", "item.id")
-    .selectAll(["item", "crystal"])
-    .select((eb) => [
-      jsonArrayFrom(
-        eb.selectFrom("_frontRelation").whereRef("_frontRelation.A", "=", "item.id").selectAll(["crystal", "item"]),
-      ).as("front"),
-      jsonArrayFrom(
-        eb
-          .selectFrom("_backRelation")
-          .whereRef("_backRelation.A", "=", "crystal.itemId")
-          .selectAll(["crystal", "item"]),
-      ).as("back"),
-      jsonArrayFrom(eb.selectFrom("drop_item").where("drop_item.itemId", "=", id).selectAll("drop_item")).as(
-        "usedInDropItems",
-      ),
-      jsonArrayFrom(eb.selectFrom("task_reward").where("task_reward.itemId", "=", id).selectAll("task_reward")).as(
-        "usedInTaskRewards",
-      ),
-      jsonArrayFrom(
-        eb.selectFrom("recipe_ingredient").where("recipe_ingredient.itemId", "=", id).selectAll("recipe_ingredient"),
-      ).as("usedInRecipeEntries"),
-    ])
-    .executeTakeFirstOrThrow();
-
-  return result;
+  const baseData = await itemWithRelatedFetcher<crystal>(id, "Crystal");
+  const frontData = await db
+    .selectFrom("_frontRelation")
+    .where("_frontRelation.A", "=", id)
+    .innerJoin("item", "_frontRelation.B", "item.id")
+    .innerJoin("crystal", "_frontRelation.B", "crystal.itemId")
+    .selectAll()
+    .execute();
+  const backData = await db
+    .selectFrom("_backRelation")
+    .where("_backRelation.A", "=", id)
+    .innerJoin("item", "_backRelation.B", "item.id")
+    .innerJoin("crystal", "_backRelation.B", "crystal.itemId")
+    .selectAll()
+    .execute();
+  return {
+    ...baseData,
+    front: frontData,
+    back: backData,
+  };
 };
 
 const CrystalsFetcher = async () => {
   const db = await getDB();
-  const result = await db
+  return await db
     .selectFrom("item")
     .innerJoin("crystal", "crystal.itemId", "item.id")
     .selectAll(["item", "crystal"])
     .execute();
-
-  return result;
 };
 
-const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const createCrystal = async (trx: Transaction<DB>, value: crystal) => {
+  return await trx.insertInto("crystal").values(value).returningAll().executeTakeFirstOrThrow();
+};
+
+const updateCrystal = async (trx: Transaction<DB>, value: crystal) => {
+  return await trx
+    .updateTable("crystal")
+    .set(value)
+    .where("itemId", "=", value.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+};
+
+const deleteCrystal = async (trx: Transaction<DB>, itemId: string) => {
+  // 删除前置和后置锻晶关系
+  await trx.deleteFrom("_frontRelation").where("A", "=", itemId).execute();
+  await trx.deleteFrom("_backRelation").where("A", "=", itemId).execute();
+  await trx.deleteFrom("crystal").where("itemId", "=", itemId).executeTakeFirstOrThrow();
+  await deleteItem(trx, itemId);
+};
+
+const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated) => {
+  const formInitialValues = oldCrystal ?? {
+    ...defaultData.crystal,
+    front: [],
+    back: [],
+  };
+  const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
-    defaultValues: defaultCrystalWithRelated,
-    onSubmit: async ({ value }) => {
-      console.log("value:", value);
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newCrystal }) => {
+      console.log("oldCrystal", oldCrystal, "newCrystal", newCrystal);
       const db = await getDB();
-      const { front, back, ...rest } = value;
-      const crystal = await db.transaction().execute(async (trx) => {
-        const itemData = pick(rest, Object.keys(defaultData.item) as (keyof item)[]);
-        const crystalData = pick(rest, Object.keys(defaultData.crystal) as (keyof crystal)[]);
-        const usedInDropItemsData = value.usedInDropItems;
-        const usedInTaskRewardsData = value.usedInTaskRewards;
-        const usedInRecipeEntriesData = value.usedInRecipeEntries;
-        const item = await createItem(trx, {
-          ...itemData,
-          id: createId(),
-          itemType: "Crystal",
-        });
-        const crystal = await createCrystal(trx, {
-          ...crystalData,
-          itemId: item.id,
-        });
-        for (const frontCrystal of front) {
+      await db.transaction().execute(async (trx) => {
+        let crystalItem: crystal;
+        if (oldCrystal) {
+          // 更新
+          crystalItem = await updateCrystal(trx, newCrystal);
+        } else {
+          // 新增
+          crystalItem = await createCrystal(trx, newCrystal);
+        }
+
+        const oldFront = oldCrystal?.front ?? [];
+        const oldBack = oldCrystal?.back ?? [];
+
+        const newFront = newCrystal.front;
+        const newBack = newCrystal.back;
+
+        const frontToAdd = newFront.filter((front) => !oldFront.some((old) => old.itemId === front.itemId));
+        const backToAdd = newBack.filter((back) => !oldBack.some((old) => old.itemId === back.itemId));
+
+        const frontToRemove = oldFront.filter(
+          (old) => !newFront.some((newCrystal) => newCrystal.itemId === old.itemId),
+        );
+        const backToRemove = oldBack.filter((old) => !newBack.some((newCrystal) => newCrystal.itemId === old.itemId));
+
+        for (const frontCrystal of frontToAdd) {
           await trx
             .insertInto("_frontRelation")
             .values({
               A: frontCrystal.itemId,
-              B: item.id,
-            })
-            .execute();
-          await trx
-            .insertInto("_backRelation")
-            .values({
-              A: item.id,
-              B: frontCrystal.itemId,
+              B: crystalItem.itemId,
             })
             .execute();
         }
-        for (const backCrystal of back) {
+        for (const backCrystal of backToAdd) {
           await trx
             .insertInto("_backRelation")
             .values({
               A: backCrystal.itemId,
-              B: item.id,
-            })
-            .execute();
-          await trx
-            .insertInto("_frontRelation")
-            .values({
-              A: item.id,
-              B: backCrystal.itemId,
+              B: crystalItem.itemId,
             })
             .execute();
         }
-        const usedInDropItems =
-          usedInDropItemsData.length > 0
-            ? await trx
-                .insertInto("drop_item")
-                .values(
-                  usedInDropItemsData.map((entry) => ({
-                    ...entry,
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
-        const usedInTaskRewards =
-          usedInTaskRewardsData.length > 0
-            ? await trx
-                .insertInto("task_reward")
-                .values(
-                  usedInTaskRewardsData.map((entry) => ({
-                    ...entry,
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
-        const usedInRecipeEntries =
-          usedInRecipeEntriesData.length > 0
-            ? await trx
-                .insertInto("recipe_ingredient")
-                .values(
-                  usedInRecipeEntriesData.map((entry) => ({
-                    ...entry,
-                    type: "Item",
-                    itemId: item.id,
-                    id: createId(),
-                  })),
-                )
-                .execute()
-            : [];
 
-        return crystal;
+        for (const frontCrystal of frontToRemove) {
+          await trx
+            .deleteFrom("_frontRelation")
+            .where("A", "=", frontCrystal.itemId)
+            .where("B", "=", crystalItem.itemId)
+            .execute();
+        }
+        for (const backCrystal of backToRemove) {
+          await trx
+            .deleteFrom("_backRelation")
+            .where("A", "=", backCrystal.itemId)
+            .where("B", "=", crystalItem.itemId)
+            .execute();
+        }
+
+        setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: crystalItem.itemId }]);
+        setWikiStore("form", {
+          data: undefined,
+          isOpen: false,
+        });
       });
-      handleSubmit("crystal", crystal.itemId);
     },
   }));
+  onMount(() => {
+    console.log(form.state.values);
+  });
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
@@ -242,54 +201,22 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultCrystalWithRelated)}>
-          {(_field, index) => {
-            const fieldKey = _field[0] as keyof crystalWithRelated;
-            const fieldValue = _field[1];
+        <For each={Object.entries(formInitialValues)}>
+          {(field, index) => {
+            const fieldKey = field[0] as keyof CrystalWithRelated;
+            const fieldValue = field[1];
             switch (fieldKey) {
-              case "id":
               case "itemId":
-              case "itemType":
-              case "createdByAccountId":
-              case "updatedByAccountId":
-              case "statisticId":
                 return null;
-              case "type":
-                return (
-                  <form.Field
-                    name={fieldKey}
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(field) => (
-                      <Input
-                        title={dic.db.crystal.fields[fieldKey].key}
-                        description={dic.db.crystal.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <Select
-                          value={field().state.value}
-                          setValue={(value) => field().setValue(value as CrystalType)}
-                          options={Object.entries(dic.db.crystal.fields.type.enumMap).map(([key, value]) => ({
-                            label: value,
-                            value: key,
-                          }))}
-                        />
-                      </Input>
-                    )}
-                  </form.Field>
-                );
               case "front":
               case "back":
                 return (
                   <form.Field
                     name={fieldKey}
+                    mode="array"
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: CrystalWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -322,7 +249,7 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                                             .selectFrom("crystal")
                                             .innerJoin("item", "crystal.itemId", "item.id")
                                             .selectAll(["crystal", "item"])
-                                            
+
                                             .execute();
                                           return crystals;
                                         }}
@@ -359,443 +286,15 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
                     }}
                   </form.Field>
                 );
-              case "usedInDropItems":
-                return (
-                  <form.Field
-                    name={`usedInDropItems`}
-                    mode="array"
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(usedInDropItemsField) => (
-                      <Input
-                        title={"隶属于" + dic.db.drop_item.selfName}
-                        description={dic.db.drop_item.description}
-                        state={fieldInfo(usedInDropItemsField())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
-                          <Show when={usedInDropItemsField().state.value.length > 0}>
-                            <Index each={usedInDropItemsField().state.value}>
-                              {(dropItem, dropItemIndex) => (
-                                <form.Subscribe
-                                  selector={(state) =>
-                                    state.values.usedInDropItems[dropItemIndex]
-                                      ? state.values.usedInDropItems[dropItemIndex].dropById
-                                      : ""
-                                  }
-                                >
-                                  {(mobId) => {
-                                    const [mob, setMob] = createSignal<mob>(defaultData.mob);
-                                    createEffect(
-                                      on(mobId, async () => {
-                                        const db = await getDB();
-                                        const mob = await db
-                                          .selectFrom("mob")
-                                          .where("id", "=", mobId())
-                                          .selectAll("mob")
-                                          .executeTakeFirst();
-                                        mob && setMob(mob);
-                                      }),
-                                    );
-                                    return (
-                                      <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                        <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
-                                          <span class="text-accent-color font-bold">
-                                            {dic.db.drop_item.selfName + " " + dropItemIndex}
-                                          </span>
-                                          <Button
-                                            onClick={() => {
-                                              usedInDropItemsField().removeValue(dropItemIndex);
-                                            }}
-                                          >
-                                            -
-                                          </Button>
-                                        </div>
-                                        <Index each={Object.entries(dropItem())}>
-                                          {(dropItemField, index) => {
-                                            const fieldKey =
-                                              dropItemField()[0] as keyof crystalWithRelated["usedInDropItems"][number];
-                                            const fieldValue = dropItemField()[1];
-                                            switch (fieldKey) {
-                                              case "id":
-                                              case "itemId":
-                                                return null;
-                                              case "dropById":
-                                                return (
-                                                  <form.Field name={`usedInDropItems[${dropItemIndex}].${fieldKey}`}>
-                                                    {(subField) => (
-                                                      <Input
-                                                        title={dic.db.drop_item.fields.dropById.key}
-                                                        description={
-                                                          dic.db.drop_item.fields.dropById.formFieldDescription
-                                                        }
-                                                        state={fieldInfo(subField())}
-                                                      >
-                                                        <Autocomplete
-                                                          id={`usedInDropItems[${dropItemIndex}].${fieldKey}`}
-                                                          initialValue={{
-                                                            id: subField().state.value,
-                                                            name: "",
-                                                          }}
-                                                          setValue={(value) => {
-                                                            subField().setValue(value.id);
-                                                          }}
-                                                          datasFetcher={async () => {
-                                                            const db = await getDB();
-                                                            const items = await db
-                                                              .selectFrom("mob")
-                                                              .select(["id", "name"])
-                                                              
-                                                              .execute();
-                                                            return items;
-                                                          }}
-                                                          displayField="name"
-                                                          valueField="id"
-                                                        />
-                                                      </Input>
-                                                    )}
-                                                  </form.Field>
-                                                );
-
-                                              case "breakRewardType":
-                                                return (
-                                                  <Show when={mob().type === "Boss"}>
-                                                    {renderField<drop_item, "breakRewardType">(
-                                                      form,
-                                                      `usedInDropItems[${dropItemIndex}].breakRewardType`,
-                                                      fieldValue as BossPartBreakRewardType,
-                                                      dic.db.drop_item,
-                                                      drop_itemSchema,
-                                                    )}
-                                                  </Show>
-                                                );
-                                              case "relatedPartInfo":
-                                                return (
-                                                  <form.Subscribe
-                                                    selector={(state) =>
-                                                      state.values.usedInDropItems[dropItemIndex]
-                                                        ? state.values.usedInDropItems[dropItemIndex].breakRewardType
-                                                        : "None"
-                                                    }
-                                                  >
-                                                    {(breakRewardType) => {
-                                                      return (
-                                                        <Show
-                                                          when={breakRewardType() !== "None" && mob().type === "Boss"}
-                                                        >
-                                                          {renderField<drop_item, "relatedPartInfo">(
-                                                            form,
-                                                            `usedInDropItems[${dropItemIndex}].relatedPartInfo`,
-                                                            fieldValue as string,
-                                                            dic.db.drop_item,
-                                                            drop_itemSchema,
-                                                          )}
-                                                        </Show>
-                                                      );
-                                                    }}
-                                                  </form.Subscribe>
-                                                );
-                                              case "relatedPartType":
-                                                return (
-                                                  <form.Subscribe
-                                                    selector={(state) =>
-                                                      state.values.usedInDropItems[dropItemIndex]
-                                                        ? state.values.usedInDropItems[dropItemIndex].breakRewardType
-                                                        : "None"
-                                                    }
-                                                  >
-                                                    {(breakRewardType) => {
-                                                      return (
-                                                        <Show
-                                                          when={breakRewardType() !== "None" && mob().type === "Boss"}
-                                                        >
-                                                          {renderField<drop_item, "relatedPartType">(
-                                                            form,
-                                                            `usedInDropItems[${dropItemIndex}].relatedPartType`,
-                                                            fieldValue as BossPartType,
-                                                            dic.db.drop_item,
-                                                            drop_itemSchema,
-                                                          )}
-                                                        </Show>
-                                                      );
-                                                    }}
-                                                  </form.Subscribe>
-                                                );
-
-                                              default:
-                                                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                                const simpleFieldKey = `usedInDropItems[${dropItemIndex}].${fieldKey}`;
-                                                const simpleFieldValue = fieldValue;
-                                                return renderField<drop_item, keyof drop_item>(
-                                                  form,
-                                                  simpleFieldKey,
-                                                  simpleFieldValue,
-                                                  dic.db.drop_item,
-                                                  drop_itemSchema,
-                                                );
-                                            }
-                                          }}
-                                        </Index>
-                                      </div>
-                                    );
-                                  }}
-                                </form.Subscribe>
-                              )}
-                            </Index>
-                          </Show>
-                          <Button
-                            onClick={() => {
-                              usedInDropItemsField().pushValue(defaultData.drop_item);
-                            }}
-                            class="w-full"
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </Input>
-                    )}
-                  </form.Field>
-                );
-              case "usedInRecipeEntries":
-                return (
-                  <form.Field
-                    name={`usedInRecipeEntries`}
-                    mode="array"
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(usedInRecipeEntriesField) => (
-                      <Input
-                        title={"隶属于" + dic.db.recipe_ingredient.selfName}
-                        description={dic.db.recipe_ingredient.description}
-                        state={fieldInfo(usedInRecipeEntriesField())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
-                          <Show when={usedInRecipeEntriesField().state.value.length > 0}>
-                            <Index each={usedInRecipeEntriesField().state.value}>
-                              {(recipeEntry, recipeEntryIndex) => (
-                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
-                                    <span class="text-accent-color font-bold">
-                                      {dic.db.recipe_ingredient.selfName + " " + recipeEntryIndex}
-                                    </span>
-                                    <Button
-                                      onClick={() => {
-                                        usedInRecipeEntriesField().removeValue(recipeEntryIndex);
-                                      }}
-                                    >
-                                      -
-                                    </Button>
-                                  </div>
-                                  <Index each={Object.entries(recipeEntry())}>
-                                    {(recipeEntryField, index) => {
-                                      const fieldKey =
-                                        recipeEntryField()[0] as keyof crystalWithRelated["usedInRecipeEntries"][number];
-                                      const fieldValue = recipeEntryField()[1];
-                                      switch (fieldKey) {
-                                        case "id":
-                                        case "itemId":
-                                        case "type":
-                                          return null;
-                                        case "recipeId":
-                                          return (
-                                            <form.Field
-                                              name={`usedInRecipeEntries[${recipeEntryIndex}].recipeId`}
-                                              validators={{
-                                                onChangeAsyncDebounceMs: 500,
-                                                onChangeAsync: recipe_ingredientSchema.shape[fieldKey],
-                                              }}
-                                            >
-                                              {(itemIdField) => (
-                                                <Input
-                                                  title={dic.db.recipe_ingredient.fields[fieldKey].key}
-                                                  description={
-                                                    dic.db.recipe_ingredient.fields[fieldKey].formFieldDescription
-                                                  }
-                                                  state={fieldInfo(itemIdField())}
-                                                >
-                                                  <Autocomplete
-                                                    id={fieldKey + recipeEntryIndex}
-                                                    initialValue={{ id: "", name: "" }}
-                                                    setValue={(value) => {
-                                                      itemIdField().setValue(value.id);
-                                                    }}
-                                                    datasFetcher={async () => {
-                                                      const db = await getDB();
-                                                      const items = await db
-                                                        .selectFrom("recipe")
-                                                        .innerJoin("item", "recipe.itemId", "item.id")
-                                                        .select(["recipe.id", "item.name"])
-                                                        
-                                                        .execute();
-                                                      return items;
-                                                    }}
-                                                    displayField="name"
-                                                    valueField="id"
-                                                  />
-                                                </Input>
-                                              )}
-                                            </form.Field>
-                                          );
-
-                                        default:
-                                          // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                          const simpleFieldKey = `usedInRecipeEntries[${recipeEntryIndex}].${fieldKey}`;
-                                          const simpleFieldValue = fieldValue;
-                                          return renderField<recipe_ingredient, keyof recipe_ingredient>(
-                                            form,
-                                            simpleFieldKey,
-                                            simpleFieldValue,
-                                            dic.db.recipe_ingredient,
-                                            recipe_ingredientSchema,
-                                          );
-                                      }
-                                    }}
-                                  </Index>
-                                </div>
-                              )}
-                            </Index>
-                          </Show>
-                          <Button
-                            onClick={() => {
-                              usedInRecipeEntriesField().pushValue(defaultData.recipe_ingredient);
-                            }}
-                            class="w-full"
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </Input>
-                    )}
-                  </form.Field>
-                );
-              case "usedInTaskRewards":
-                return (
-                  <form.Field
-                    name={`usedInTaskRewards`}
-                    mode="array"
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(usedInTaskRewardsField) => (
-                      <Input
-                        title={"隶属于" + dic.db.task_reward.selfName}
-                        description={dic.db.task_reward.description}
-                        state={fieldInfo(usedInTaskRewardsField())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
-                          <Show when={usedInTaskRewardsField().state.value.length > 0}>
-                            <Index each={usedInTaskRewardsField().state.value}>
-                              {(taskReward, taskRewardIndex) => (
-                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
-                                    <span class="text-accent-color font-bold">
-                                      {dic.db.task_reward.selfName + " " + taskRewardIndex}
-                                    </span>
-                                    <Button
-                                      onClick={() => {
-                                        usedInTaskRewardsField().removeValue(taskRewardIndex);
-                                      }}
-                                    >
-                                      -
-                                    </Button>
-                                  </div>
-                                  <Index each={Object.entries(taskReward())}>
-                                    {(taskRewardField, index) => {
-                                      const fieldKey =
-                                        taskRewardField()[0] as keyof crystalWithRelated["usedInTaskRewards"][number];
-                                      const fieldValue = taskRewardField()[1];
-                                      switch (fieldKey) {
-                                        case "id":
-                                        case "itemId":
-                                        case "type":
-                                          return null;
-                                        case "taskId":
-                                          return (
-                                            <form.Field
-                                              name={`usedInTaskRewards[${taskRewardIndex}].taskId`}
-                                              validators={{
-                                                onChangeAsyncDebounceMs: 500,
-                                                onChangeAsync: task_rewardSchema.shape[fieldKey],
-                                              }}
-                                            >
-                                              {(itemIdField) => (
-                                                <Input
-                                                  title={dic.db.task_reward.fields[fieldKey].key}
-                                                  description={dic.db.task_reward.fields[fieldKey].formFieldDescription}
-                                                  state={fieldInfo(itemIdField())}
-                                                >
-                                                  <Autocomplete
-                                                    id={fieldKey + taskRewardIndex}
-                                                    initialValue={{ id: "", name: "" }}
-                                                    setValue={(value) => {
-                                                      itemIdField().setValue(value.id);
-                                                    }}
-                                                    datasFetcher={async () => {
-                                                      const db = await getDB();
-                                                      const items = await db
-                                                        .selectFrom("task")
-                                                        .select(["id", "name"])
-                                                        
-                                                        .execute();
-                                                      return items;
-                                                    }}
-                                                    displayField="name"
-                                                    valueField="id"
-                                                  />
-                                                </Input>
-                                              )}
-                                            </form.Field>
-                                          );
-
-                                        default:
-                                          // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                          const simpleFieldKey = `usedInTaskRewards[${taskRewardIndex}].${fieldKey}`;
-                                          const simpleFieldValue = fieldValue;
-                                          return renderField<task_reward, keyof task_reward>(
-                                            form,
-                                            simpleFieldKey,
-                                            simpleFieldValue,
-                                            dic.db.task_reward,
-                                            task_rewardSchema,
-                                          );
-                                      }
-                                    }}
-                                  </Index>
-                                </div>
-                              )}
-                            </Index>
-                          </Show>
-                          <Button
-                            onClick={() => {
-                              usedInTaskRewardsField().pushValue(defaultData.task_reward);
-                            }}
-                            class="w-full"
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </Input>
-                    )}
-                  </form.Field>
-                );
-
               default:
-                return renderField<crystalWithRelated, keyof crystalWithRelated>(
+                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                const simpleFieldValue = fieldValue as string;
+                return renderField<crystal, keyof crystal>(
                   form,
                   fieldKey,
-                  fieldValue,
-                  CrystalWithRelatedWithRelatedDic(dic),
-                  crystalWithRelatedSchema,
+                  simpleFieldValue,
+                  dic.db.crystal,
+                  crystalSchema,
                 );
             }
           }}
@@ -815,107 +314,128 @@ const CrystalWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB,
   );
 };
 
-const CrystalTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (id: string) => void) => {
-  return VirtualTable<crystal & item>({
-    dataFetcher: CrystalsFetcher,
-      measure: {
-        estimateSize: 168,
-      },
-      columnsDef: [
-        { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
-        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
-        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
-        { accessorKey: "details", cell: (info: any) => info.getValue(), size: 150 },
-      ],
-      dictionary: CrystalWithRelatedWithRelatedDic(dic),
-      defaultSort: { id: "name", desc: true },
-      hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
-      tdGenerator: {
-        modifiers: (props) => (
-          <div class="ModifierBox bg-area-color flex flex-col gap-1 rounded-r-md">
-            <For each={props.cell.getValue<string[]>()}>
-              {(modifier) => {
-                return <div class="w-full p-1">{modifier}</div>;
-              }}
-            </For>
-          </div>
-        ),
-      },
-      globalFilterStr: filterStr,
-      columnHandleClick: columnHandleClick,
-    },
-  );
-};
-
-export const CrystalDataConfig: dataDisplayConfig<crystalWithRelated, crystal & item> ={
-  defaultData: defaultCrystalWithRelated,
+export const CrystalDataConfig: dataDisplayConfig<
+  crystal & item,
+  CrystalWithRelated & ItemWithRelated,
+  CrystalWithRelated & ItemWithRelated
+> = {
+  defaultData: {
+    ...defaultCrystalWithRelated,
+    ...defaultItemWithRelated,
+  },
   dataFetcher: CrystalWithRelatedFetcher,
   datasFetcher: CrystalsFetcher,
-  dataSchema: crystalWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => CrystalTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => CrystalWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
-      const [frontData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("_frontRelation")
-          .innerJoin("item", "_frontRelation.A", "item.id")
-          .where("_frontRelation.B", "=", itemId)
-          .selectAll(["item"])
-          .execute();
-      });
+  dataSchema: CrystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
+  table: {
+    dataFetcher: CrystalsFetcher,
+    columnsDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
+      { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
+      { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
+      { accessorKey: "details", cell: (info: any) => info.getValue(), size: 150 },
+    ],
+    dictionary: (dic) => {
+      return {
+        ...dic.db.crystal,
+        fields: {
+          ...dic.db.crystal.fields,
+          ...dic.db.item.fields,
+          front: {
+            key: "front",
+            tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
+            formFieldDescription: dic.db.item.fields.name.formFieldDescription,
+          },
+          back: {
+            key: "back",
+            tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
+            formFieldDescription: dic.db.item.fields.name.formFieldDescription,
+          },
+        },
+      };
+    },
+    hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+  },
+  form: ({ dic, data }) => CrystalWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
+    const [frontData] = createResource(data.id, async (itemId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("_frontRelation")
+        .innerJoin("item", "_frontRelation.A", "item.id")
+        .where("_frontRelation.B", "=", itemId)
+        .selectAll(["item"])
+        .execute();
+    });
 
-      const [backData] = createResource(data.id, async (itemId) => {
-        const db = await getDB();
-        return await db
-          .selectFrom("_backRelation")
-          .innerJoin("item", "_backRelation.A", "item.id")
-          .where("_backRelation.B", "=", itemId)
-          .selectAll(["item"])
-          .execute();
-      });
+    const [backData] = createResource(data.id, async (itemId) => {
+      const db = await getDB();
+      return await db
+        .selectFrom("_backRelation")
+        .innerJoin("item", "_backRelation.A", "item.id")
+        .where("_backRelation.B", "=", itemId)
+        .selectAll(["item"])
+        .execute();
+    });
 
-      return (
-        <>
-          <div class="CrystalImage bg-area-color h-[18vh] w-full rounded"></div>
-          {ObjRender<crystalWithRelated>({
-            data,
-            dictionary: CrystalWithRelatedWithRelatedDic(dic),
-            dataSchema: crystalWithRelatedSchema,
-            hiddenFields: ["itemId"],
-            fieldGroupMap: {
-              基本信息: ["name", "modifiers", "type"],
-              其他属性: ["details", "dataSources"],
+    return (
+      <>
+        <div class="CrystalImage bg-area-color h-[18vh] w-full rounded"></div>
+        {ObjRender<CrystalWithRelated & ItemWithRelated>({
+          data,
+          dictionary: {
+            ...dic.db.crystal,
+            fields: {
+              ...dic.db.crystal.fields,
+              front: {
+                key: "front",
+                tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
+                formFieldDescription: dic.db.item.fields.name.formFieldDescription,
+              },
+              back: {
+                key: "back",
+                tableFieldDescription: dic.db.item.fields.name.tableFieldDescription,
+                formFieldDescription: dic.db.item.fields.name.formFieldDescription,
+              },
+              ...itemWithRelatedDic(dic).fields,
             },
-          })}
-          <Show when={frontData.latest?.length}>
-            <CardSection
-              title={"前置" + dic.db.crystal.selfName}
-              data={frontData.latest}
-              renderItem={(front) => {
-                return {
-                  label: front.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: front.id }]),
-                };
-              }}
-            />
-          </Show>
-          <Show when={backData.latest?.length}>
-            <CardSection
-              title={"后置" + dic.db.crystal.selfName}
-              data={backData.latest}
-              renderItem={(back) => {
-                return {
-                  label: back.name,
-                  onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "crystal", id: back.id }]),
-                };
-              }}
-            />
-          </Show>
-          {ItemSharedCardContent(data.id, dic, appendCardTypeAndIds)}
-        </>
-      );
+          },
+          dataSchema: CrystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
+          hiddenFields: ["itemId"],
+          fieldGroupMap: {
+            基本信息: ["name", "modifiers", "type"],
+            其他属性: ["details", "dataSources"],
+          },
+        })}
+        <Show when={frontData.latest?.length}>
+          <CardSection
+            title={"前置" + dic.db.crystal.selfName}
+            data={frontData.latest}
+            renderItem={(front) => {
+              return {
+                label: front.name,
+                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }]),
+              };
+            }}
+          />
+        </Show>
+        <Show when={backData.latest?.length}>
+          <CardSection
+            title={"后置" + dic.db.crystal.selfName}
+            data={backData.latest}
+            renderItem={(back) => {
+              return {
+                label: back.name,
+                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }]),
+              };
+            }}
+          />
+        </Show>
+        {ItemSharedCardContent(data, dic)}
+      </>
+    );
   },
 };

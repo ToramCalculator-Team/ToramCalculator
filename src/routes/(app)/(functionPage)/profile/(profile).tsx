@@ -1,4 +1,3 @@
-import { defaultAccount, Account } from "~/repositories/account";
 import { createEffect, createMemo, createSignal, For, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";

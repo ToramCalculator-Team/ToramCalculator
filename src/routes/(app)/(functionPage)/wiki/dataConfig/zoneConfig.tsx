@@ -23,6 +23,7 @@ import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { setWikiStore } from "../store";
 
 type ZoneWithRelated = zone & {
   mobs: mob[];
@@ -108,10 +109,11 @@ const ZonesFetcher = async () => {
   return res;
 };
 
-const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
+  const formInitialValues = oldZone ?? defaultZoneWithRelated;
   const [isLimit, setIsLimit] = createSignal(false);
   const form = createForm(() => ({
-    defaultValues: defaultZoneWithRelated,
+    defaultValues: formInitialValues,
     onSubmit: async ({ value }) => {
       const db = await getDB();
       const zone = await db.transaction().execute(async (trx) => {
@@ -147,7 +149,11 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
         }
         return zone;
       });
-      handleSubmit("zone", zone.id);
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
+      });
     },
   }));
   return (
@@ -177,6 +183,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                 return (
                   <form.Field
                     name={fieldKey}
+                    mode="array"
                     validators={{
                       onChangeAsyncDebounceMs: 500,
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
@@ -409,7 +416,7 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
                                 const activities = await db
                                   .selectFrom("activity")
                                   .selectAll("activity")
-                                  
+
                                   .execute();
                                 return activities;
                               }}
@@ -490,8 +497,12 @@ const ZoneWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-const ZoneTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
-  return VirtualTable<zone>({
+export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRelated> = {
+  defaultData: defaultZoneWithRelated,
+  dataFetcher: ZoneWithRelatedFetcher,
+  datasFetcher: ZonesFetcher,
+  dataSchema: ZoneWithRelatedSchema,
+  table: {
     dataFetcher: ZonesFetcher,
     columnsDef: [
       {
@@ -525,23 +536,13 @@ const ZoneTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleCli
         size: 160,
       },
     ],
-    dictionary: ZoneWithRelatedDic(dic),
+    dictionary: (dic) => ZoneWithRelatedDic(dic),
     hiddenColumnDef: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
-    globalFilterStr: filterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
-  defaultData: defaultZoneWithRelated,
-  dataFetcher: ZoneWithRelatedFetcher,
-  datasFetcher: ZonesFetcher,
-  dataSchema: ZoneWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => ZoneTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => ZoneWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  },
+  form: ({ dic, data }) => ZoneWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
     const [mobData] = createResource(data.id, async (zoneId) => {
       const db = await getDB();
       return await db
@@ -604,7 +605,7 @@ export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
           renderItem={(mob) => {
             return {
               label: mob.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: mob.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }]),
             };
           }}
         />
@@ -615,7 +616,7 @@ export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
           renderItem={(npc) => {
             return {
               label: npc.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "npc", id: npc.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }]),
             };
           }}
         />
@@ -626,7 +627,7 @@ export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
           renderItem={(zone) => {
             return {
               label: zone.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
             };
           }}
         />
@@ -637,7 +638,7 @@ export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
           renderItem={(address) => {
             return {
               label: address.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "address", id: address.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }]),
             };
           }}
         />
@@ -649,7 +650,7 @@ export const ZoneDataConfig: dataDisplayConfig<ZoneWithRelated, zone> = {
             renderItem={(activity) => {
               return {
                 label: activity.name,
-                onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "activity", id: activity.id }]),
+                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]),
               };
             }}
           />

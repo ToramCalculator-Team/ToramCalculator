@@ -83,8 +83,7 @@ export const itemWithRelatedSchema = z.object({
 /**
  * 用于表单默认值
  */
-export const defaultItemWithRelated = <T extends itemSubTableType>(type: T) => ({
-  ...defaultData[type],
+export const defaultItemWithRelated = {
   ...defaultData.item,
   recipe: {
     ...defaultData.recipe,
@@ -94,17 +93,15 @@ export const defaultItemWithRelated = <T extends itemSubTableType>(type: T) => (
   usedInTaskRewards: [],
   usedInRecipeEntries: [],
   usedInTaskCollectRequires: [],
-});
+};
 
 /**
  * 表单和卡片的UI字典
  */
-export const itemWithRelatedDic = <T extends itemSubTableType>(type: T, dic: dictionary) => ({
-  ...dic.db[type],
+export const itemWithRelatedDic = (dic: dictionary) => ({
   ...dic.db.item,
   fields: {
     ...dic.db.item.fields,
-    ...dic.db[type].fields,
     recipe: {
       key: dic.db.recipe.selfName,
       tableFieldDescription: dic.db.recipe.description,
@@ -164,13 +161,13 @@ export const itemWithRelatedFetcher = async <T extends DB[keyof DB]>(id: string,
               eb
                 .selectFrom("recipe_ingredient")
                 .where("recipe_ingredient.recipeId", "=", "recipe.id")
-                .select((eb) => [
-                  jsonObjectFrom(
-                    eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
-                  )
-                    .$notNull()
-                    .as("item"),
-                ])
+                // .select((eb) => [
+                //   jsonObjectFrom(
+                //     eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                //   )
+                //     .$notNull()
+                //     .as("item"),
+                // ])
                 .selectAll("recipe_ingredient"),
             ).as("recipeEntries"),
           ]),
@@ -208,7 +205,27 @@ export const itemWithRelatedFetcher = async <T extends DB[keyof DB]>(id: string,
 /**
  * 用于将itemType转换为数据库表类型
  */
-type itemSubTableType = "weapon" | "armor" | "option" | "special" | "crystal" | "consumable" | "material";
+const itemSubTable = ["weapon", "armor", "option", "special", "crystal", "consumable", "material"] as const;
+type itemSubTableType = (typeof itemSubTable)[number];
+// 添加类型映射
+type ItemTypeToTableType = {
+  Weapon: "weapon";
+  Armor: "armor";
+  Option: "option";
+  Special: "special";
+  Crystal: "crystal";
+  Consumable: "consumable";
+  Material: "material";
+};
+// 添加条件类型
+type SubTableType<T extends itemSubTableType> = T extends "weapon" ? DB["weapon"] :
+  T extends "armor" ? DB["armor"] :
+  T extends "option" ? DB["option"] :
+  T extends "special" ? DB["special"] :
+  T extends "crystal" ? DB["crystal"] :
+  T extends "consumable" ? DB["consumable"] :
+  T extends "material" ? DB["material"] :
+  never;
 export const itemTypeToTableType = (itemType: ItemType) => {
   const tableType: itemSubTableType = (
     {
@@ -540,29 +557,20 @@ export const deleteItem = async (trx: Transaction<DB>, id: string) => {
   await trx.deleteFrom("statistic").where("id", "=", item.statisticId).executeTakeFirstOrThrow();
 };
 
-export const itemForm = <T extends "weapon">(type: T, dic: dictionary, oldItem?: DB[T] & ItemWithRelated) => {
+export const itemForm = (dic: dictionary, oldItem?: ItemWithRelated) => {
   const [recipeIsLimit, setRecipeIsLimit] = createSignal(false);
-  const formInitialValues = oldItem ?? defaultItemWithRelated(type);
+  const formInitialValues = oldItem ?? defaultItemWithRelated;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newItem }) => {
       console.log("oldItem", oldItem, "newItem", newItem);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
-        const itemWithRelatedData = pick(newItem, [
-          ...Object.keys(defaultData.item),
-          "recipe",
-          "usedInDropItems",
-          "usedInTaskRewards",
-          "usedInRecipeEntries",
-          "usedInTaskCollectRequires",
-        ] as (keyof ItemWithRelated)[]);
-        const subItemData = pick(newItem, Object.keys(defaultData[type]) as (keyof DB[T])[]);
+        const itemWithRelatedData = pick(newItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
         let item: item;
         if (oldItem) {
           // 更新
           item = await updateItem(trx, itemWithRelatedData);
-          await trx.updateTable(type as "weapon").set(subItemData).where("itemId", "=", oldItem.id).executeTakeFirstOrThrow();
         } else {
           // 新增
           item = await createItem(trx, newItem);

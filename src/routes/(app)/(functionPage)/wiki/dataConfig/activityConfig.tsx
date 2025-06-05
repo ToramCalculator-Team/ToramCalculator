@@ -291,7 +291,7 @@ const ActivityWithRelatedForm = (
   );
 };
 
-export const ActivityDataConfig: dataDisplayConfig<ActivityWithRelated, activity> = {
+export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated, ActivityWithRelated> = {
   defaultData: {
     ...defaultData.activity,
     zones: [],

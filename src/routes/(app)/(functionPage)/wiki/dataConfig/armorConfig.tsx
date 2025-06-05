@@ -1,58 +1,22 @@
-import { Accessor, createEffect, createResource, createSignal, For, Index, JSX, on, onMount, Show } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import {
-  itemSchema,
   armorSchema,
-  recipeSchema,
-  recipe_ingredientSchema,
-  drop_itemSchema,
-  task_rewardSchema,
-  task_collect_requireSchema,
 } from "~/../db/zod";
-import { DB, item, armor, recipe, mob, task, recipe_ingredient, drop_item, task_reward, task_collect_require } from "~/../db/kysely/kyesely";
-import { dictionary, EnumFieldDetail } from "~/locales/type";
+import { DB, item, armor } from "~/../db/kysely/kyesely";
+import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
-import { z } from "zod";
-import { fieldInfo, renderField } from "../utils";
-import pick from "lodash-es/pick";
-import { createItem, defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema, updateItem } from "./utils";
-import { createForm, Field } from "@tanstack/solid-form";
-import { Input } from "~/components/controls/input";
+import { renderField } from "../utils";
+import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
-import { Select } from "~/components/controls/select";
 import * as Icon from "~/components/icon";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { Autocomplete } from "~/components/controls/autoComplete";
-import { Toggle } from "~/components/controls/toggle";
-import { BossPartBreakRewardType, BossPartType, RecipeIngredientType } from "~/../db/kysely/enums";
-import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { createStatistic } from "~/repositories/statistic";
+import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./utils";
 
-// form和card的数据类型
-type armorWithRelated = armor & ItemWithRelated;
-
-const armorWithRelatedSchema = z.object({
-  ...armorSchema.shape,
-  ...itemWithRelatedSchema.shape,
-});
-
-const defaultArmorWithRelated: armorWithRelated = {
-  ...defaultData.armor,
-  ...defaultItemWithRelated,
-};
-
-const ArmorWithRelatedWithRelatedDic = (dic: dictionary) => ({
-  ...dic.db.armor,
-  fields: {
-    ...dic.db.armor.fields,
-    ...itemWithRelatedDic(dic).fields,
-  },
-});
 
 const ArmorWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<armor>(id, "Armor");
 
@@ -87,24 +51,22 @@ const deleteArmor = async (trx: Transaction<DB>, itemId: string) => {
   await deleteItem(trx, itemId);
 };
 
-const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
+const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
+  const formInitialValues = oldArmor ?? defaultData.armor;
+  const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
-    defaultValues: data ?? defaultArmorWithRelated,
-    onSubmit: async ({ value }) => {
-      console.log("oldValue", data, "newValue", value);
-      const db = await getDB();
-      const armorData = pick(value, Object.keys(defaultData.armor) as (keyof armor)[]);
-      const itemData = pick(value, Object.keys(defaultData.item) as (keyof item)[]);
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newArmor }) => {
+      console.log("oldArmor", oldArmor, "newArmor", newArmor);
+      const db = await getDB(); 
       await db.transaction().execute(async (trx) => {
         let armorItem: armor;
-        if (data) {
+        if (oldArmor) {
           // 更新
-          const item = await updateItem(trx, { ...itemData, itemType: "Armor" });
-          armorItem = await updateArmor(trx, armorData);
+          armorItem = await updateArmor(trx, newArmor);
         } else {
           // 新增
-          const item = await createItem(trx, { ...itemData, itemType: "Armor" });
-          armorItem = await createArmor(trx, { ...armorData, itemId: item.id });
+          armorItem = await createArmor(trx, newArmor);
         }
         setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armorItem.itemId }]);
         setWikiStore("form", {
@@ -130,25 +92,20 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(data ?? defaultArmorWithRelated)}>
+        <For each={Object.entries(formInitialValues)}>
           {(field, index) => {
-            const fieldKey = field[0] as keyof armorWithRelated;
+            const fieldKey = field[0] as keyof armor;
             const fieldValue = field[1];
             switch (fieldKey) {
-              case "id":
               case "itemId":
-              case "itemType":
-              case "createdByAccountId":
-              case "updatedByAccountId":
-              case "statisticId":
                 return null;
               default:
-                return renderField<armorWithRelated, keyof armorWithRelated>(
+                return renderField<armor, keyof armor>(
                   form,
                   fieldKey,
                   fieldValue,
-                  ArmorWithRelatedWithRelatedDic(dic),
-                  armorWithRelatedSchema,
+                  dic.db.armor,
+                  armorSchema,
                 );
             }
           }}
@@ -168,11 +125,14 @@ const ArmorWithRelatedForm = (dic: dictionary, data?: armorWithRelated) => {
   );
 };
 
-export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> = {
-  defaultData: defaultArmorWithRelated,
+export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRelated, armor & ItemWithRelated> = {
+  defaultData: {
+    ...defaultData.armor,
+    ...defaultItemWithRelated
+  },
   dataFetcher: ArmorWithRelatedFetcher,
   datasFetcher: ArmorsFetcher,
-  dataSchema: armorWithRelatedSchema,
+  dataSchema: armorSchema.extend(itemWithRelatedSchema.shape),
   table: {
     dataFetcher: ArmorsFetcher,
     columnsDef: [
@@ -181,7 +141,15 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
     ],
-    dictionary: (dic) => ArmorWithRelatedWithRelatedDic(dic),
+    dictionary: (dic) => {
+      return {
+        ...dic.db.armor,
+        fields: {
+          ...dic.db.armor.fields,
+          ...dic.db.item.fields,
+        },
+      };
+    },
     hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
@@ -192,10 +160,16 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
     return (
       <>
         <div class="ArmorImage bg-area-color h-[18vh] w-full rounded"></div>
-        {ObjRender<armorWithRelated>({
+        {ObjRender<armor & ItemWithRelated>({
           data,
-          dictionary: ArmorWithRelatedWithRelatedDic(dic),
-          dataSchema: armorWithRelatedSchema,
+          dictionary: {
+            ...dic.db.armor,
+            fields: {
+              ...dic.db.armor.fields,
+              ...itemWithRelatedDic(dic).fields,
+            }
+          },
+          dataSchema: armorSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],
           fieldGroupMap: {
             基本信息: ["name", "baseDef"],
@@ -229,13 +203,6 @@ export const ArmorDataConfig: dataDisplayConfig<armorWithRelated, armor & item> 
                 onclick={() => {
                   // 关闭当前卡片
                   setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  // 打开表单
-                  if (data.recipe === null || data.recipe === undefined) {
-                    data.recipe = {
-                      ...defaultData.recipe,
-                      recipeEntries: [],
-                    };
-                  }
                   setWikiStore("form", { isOpen: true, data: data });
                 }}
               />

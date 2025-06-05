@@ -50,7 +50,7 @@ export default function WikiSubPage() {
   const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
-  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any>>();
+  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any, any>>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 

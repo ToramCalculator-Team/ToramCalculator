@@ -1,12 +1,9 @@
-import { Cell, flexRender } from "@tanstack/solid-table";
-import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
-import { getCommonPinningStyles } from "~/lib/table";
-import { createNpc, findNpcById, findNpcs, Npc } from "~/repositories/npc";
+import { createResource, For, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { npcSchema, taskSchema } from "~/../db/zod";
-import { npc, DB, task } from "~/../db/kysely/kyesely";
-import { dictionary, EnumFieldDetail } from "~/locales/type";
+import { npc, task } from "~/../db/kysely/kyesely";
+import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
@@ -16,14 +13,12 @@ import { CardSection } from "~/components/module/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
-import { Select } from "~/components/controls/select";
 import { createForm } from "@tanstack/solid-form";
-import { TaskType } from "~/../db/kysely/enums";
-import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
-import { VirtualTable } from "~/components/module/virtualTable";
+import { setWikiStore } from "../store";
+import { createNpc } from "~/repositories/npc";
 
 type NpcWithRelated = npc & {
   tasks: task[];
@@ -71,32 +66,8 @@ const NpcsFetcher = async () => {
   return res as NpcWithRelated[];
 };
 
-const NpcTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
-  return VirtualTable<npc>({
-    dataFetcher: NpcsFetcher,
-    columnsDef: [
-      {
-        id: "id",
-        accessorFn: (row) => row.id,
-        cell: (info) => info.getValue(),
-        size: 200,
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.name,
-        cell: (info) => info.getValue(),
-        size: 220,
-      },
-    ],
-    dictionary: NpcWithRelatedDic(dic),
-    hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    defaultSort: { id: "name", desc: false },
-    tdGenerator: {},
-    globalFilterStr: filterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const NpcWithRelatedForm = (dic: dictionary, oldNpc?: npc) => {
+  const formInitialValues = oldNpc ?? defaultNpcWithRelated;
   const form = createForm(() => ({
     defaultValues: defaultNpcWithRelated,
     onSubmit: async ({ value }) => {
@@ -123,7 +94,11 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
         }
         return npc;
       });
-      handleSubmit("npc", npc.id);
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
+      });
     },
   }));
   return (
@@ -284,14 +259,24 @@ const NpcWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
   );
 };
 
-export const NpcDataConfig: dataDisplayConfig<NpcWithRelated, npc> = {
+export const NpcDataConfig: dataDisplayConfig<npc, NpcWithRelated, NpcWithRelated> = {
   defaultData: defaultNpcWithRelated,
   dataFetcher: NpcWithRelatedFetcher,
   datasFetcher: NpcsFetcher,
   dataSchema: NpcWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => NpcTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => NpcWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  table: {
+    dataFetcher: NpcsFetcher,
+    columnsDef: [
+      { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+      { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+    ],
+    dictionary: (dic) => NpcWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+    defaultSort: { id: "name", desc: false },
+    tdGenerator: {},
+  },
+  form: ({ dic, data }) => NpcWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
     const [tasksData] = createResource(data.id, async (npcId) => {
       const db = await getDB();
       return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
@@ -316,7 +301,7 @@ export const NpcDataConfig: dataDisplayConfig<NpcWithRelated, npc> = {
           renderItem={(task) => {
             return {
               label: task.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "task", id: task.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }]),
             };
           }}
         />

@@ -37,6 +37,7 @@ import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { pgWorker } from "~/initialWorker";
+import { setWikiStore } from "../store";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -110,7 +111,8 @@ const MobsFetcher = async () => {
   return res;
 };
 
-const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
+  const formInitialValues = oldMob ?? defaultMobWithRelated;
   const form = createForm(() => ({
     defaultValues: defaultMobWithRelated,
     onSubmit: async ({ value }) => {
@@ -148,7 +150,11 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
         }
         return mob;
       });
-      handleSubmit("mob", mob.id);
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
+      });
     },
   }));
 
@@ -349,7 +355,6 @@ const MobWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id:
                                           const zones = await db
                                             .selectFrom("zone")
                                             .selectAll("zone")
-                                            
                                             .execute();
                                           return zones;
                                         }}
@@ -808,14 +813,207 @@ const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClic
   });
 };
 
-export const MobDataConfig: dataDisplayConfig<MobWithRelated, mob> = {
+export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated> = {
   defaultData: defaultMobWithRelated,
   dataFetcher: MobWithRelatedFetcher,
   datasFetcher: MobsFetcher,
   dataSchema: MobWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => MobTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => MobWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  table: {
+    dataFetcher: MobsFetcher,
+    columnsDef: [
+      {
+        id: "id",
+        accessorFn: (row) => row.id,
+        cell: (info) => info.getValue(),
+        size: {
+          "zh-CN": 160,
+          "zh-TW": 160,
+          ja: 160,
+          en: 160,
+        }[store.settings.language],
+      },
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        cell: (info) => info.getValue(),
+        size: {
+          "zh-CN": 180,
+          "zh-TW": 180,
+          ja: 260,
+          en: 260,
+        }[store.settings.language],
+      },
+      {
+        id: "initialElement",
+        accessorFn: (row) => row.initialElement,
+        cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 115,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "type",
+        accessorFn: (row) => row.type,
+        cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
+        size: {
+          "zh-CN": 80,
+          "zh-TW": 80,
+          ja: 120,
+          en: 120,
+        }[store.settings.language],
+      },
+      {
+        id: "captureable",
+        accessorFn: (row) => row.captureable,
+        cell: (info) => info.getValue<Boolean>().toString(),
+        size: {
+          "zh-CN": 100,
+          "zh-TW": 100,
+          ja: 100,
+          en: 100,
+        }[store.settings.language],
+      },
+      {
+        id: "baseLv",
+        accessorFn: (row) => row.baseLv,
+        cell: (info) => info.getValue(),
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 140,
+        }[store.settings.language],
+      },
+      {
+        id: "experience",
+        accessorFn: (row) => row.experience,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "physicalDefense",
+        accessorFn: (row) => row.physicalDefense,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "physicalResistance",
+        accessorFn: (row) => row.physicalResistance,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "magicalDefense",
+        accessorFn: (row) => row.magicalDefense,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "magicalResistance",
+        accessorFn: (row) => row.magicalResistance,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "criticalResistance",
+        accessorFn: (row) => row.criticalResistance,
+        size: {
+          "zh-CN": 115,
+          "zh-TW": 115,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "avoidance",
+        accessorFn: (row) => row.avoidance,
+        size: {
+          "zh-CN": 100,
+          "zh-TW": 100,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "dodge",
+        accessorFn: (row) => row.dodge,
+        size: {
+          "zh-CN": 100,
+          "zh-TW": 100,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "block",
+        accessorFn: (row) => row.block,
+        size: {
+          "zh-CN": 100,
+          "zh-TW": 100,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+      {
+        id: "actions",
+        accessorFn: (row) => row.actions,
+        size: {
+          "zh-CN": 120,
+          "zh-TW": 120,
+          ja: 180,
+          en: 180,
+        }[store.settings.language],
+      },
+    ],
+    dictionary: (dic) => MobWithRelatedDic(dic),
+    hiddenColumnDef: ["id", "captureable", "type","actions", "createdByAccountId", "updatedByAccountId"],
+    defaultSort: { id: "experience", desc: true },
+    tdGenerator: {
+      initialElement: (props) =>
+        ({
+          Water: <Icon.Element.Water class="h-12 w-12" />,
+          Fire: <Icon.Element.Fire class="h-12 w-12" />,
+          Earth: <Icon.Element.Earth class="h-12 w-12" />,
+          Wind: <Icon.Element.Wind class="h-12 w-12" />,
+          Light: <Icon.Element.Light class="h-12 w-12" />,
+          Dark: <Icon.Element.Dark class="h-12 w-12" />,
+          Normal: <Icon.Element.NoElement class="h-12 w-12" />,
+        })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
+      name: (props) => (
+        <div class="text-accent-color flex flex-col gap-1">
+          <span>{props.cell.getValue<string>()}</span>
+          <Show when={props.cell.row.original.type === "Mob"}>
+            <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
+          </Show>
+        </div>
+      ),
+    },
+  },
+  form: ({dic, data}) => MobWithRelatedForm(dic, data),
+  card: ({dic, data}) => {
     const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
     const [zonesData] = createResource(data.id, async (mobId) => {
@@ -927,7 +1125,7 @@ export const MobDataConfig: dataDisplayConfig<MobWithRelated, mob> = {
           renderItem={(zone) => {
             return {
               label: zone.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "zone", id: zone.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
             };
           }}
         />
@@ -948,7 +1146,7 @@ export const MobDataConfig: dataDisplayConfig<MobWithRelated, mob> = {
             )[item.itemType];
             return {
               label: item.name,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: tableType, id: item.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: tableType, id: item.id }]),
             };
           }}
         />

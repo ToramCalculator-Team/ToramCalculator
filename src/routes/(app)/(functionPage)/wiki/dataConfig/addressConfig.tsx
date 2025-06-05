@@ -526,7 +526,7 @@ const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => 
   );
 };
 
-export const AddressDataConfig: dataDisplayConfig<AddressWithRelated, address> = {
+export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, AddressWithRelated> = {
   defaultData: defaultAddressWithRelated,
   dataFetcher: AddressWithRelatedFetcher,
   datasFetcher: AddressesFetcher,

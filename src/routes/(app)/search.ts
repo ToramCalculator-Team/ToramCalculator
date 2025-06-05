@@ -187,7 +187,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
     if (tableResults.length > 0) {
       // 对于物品相关的表，使用 dataFetcher 获取完整数据
       if ('joinWith' in config) {
-        const config = DBDataConfig(dictionary)[table];
+        const config = DBDataConfig[table];
         if (config?.dataFetcher) {
           const fullResults = await Promise.all(
             tableResults.map(async (result) => {
@@ -211,7 +211,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
           // 确保 itemType 匹配映射中的键
           const targetTable = itemTypeToTable[item.itemType] as keyof SearchResults;
           if (targetTable) {
-            const config = DBDataConfig(dictionary)[targetTable];
+            const config = DBDataConfig[targetTable];
             if (config?.dataFetcher) {
               try {
                 const fullData = await config.dataFetcher(item.id);

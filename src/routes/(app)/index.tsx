@@ -31,7 +31,7 @@ import { LoginDialog } from "~/components/module/loginDialog";
 import { LoadingBar } from "~/components/loadingBar";
 import { Portal } from "solid-js/web";
 import { DBDataConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
-import { searchAllTables } from "~/repositories/search";
+import { searchAllTables } from "~/routes/(app)/search";
 import { Decorate } from "~/components/icon";
 
 type Result = DB[keyof DB];
@@ -786,11 +786,10 @@ export default function Index() {
                                               class="border-primary-color h-full w-full flex-1 rounded border-8"
                                             >
                                               <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                                {DBDataConfig[type()]?.card(
-                                                  dictionary(),
-                                                  cardData,
-                                                  setCardTypeAndIds,
-                                                )}
+                                                {DBDataConfig[type()]?.card({
+                                                  data: cardData,
+                                                  dic: dictionary(),
+                                                })}
 
                                                 <section class="FunFieldGroup flex w-full flex-col gap-2">
                                                   <h3 class="text-accent-color flex items-center gap-2 font-bold">

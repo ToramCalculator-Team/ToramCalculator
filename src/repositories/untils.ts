@@ -64,27 +64,5 @@ export type ConvertToAllDetail<T> = {
   };
 };
 
-/**
- * 检查数据是否为当前用户创建
- * 
- * @param db 数据库连接
- * @param table 表名
- * @param id 数据ID
- * @returns Promise<boolean> 是否为创建者
- */
-export async function isCreator<T extends keyof DB>(
-  db: Kysely<DB> | Transaction<DB>,
-  table: T,
-  id: string
-): Promise<boolean> {
-  const result = await db
-    .selectFrom(table)
-    .where("id", "=", id)
-    .select(["createdByAccountId"])
-    .executeTakeFirst();
-  
-  return result?.createdByAccountId === store.user?.id;
-}
-
 
 

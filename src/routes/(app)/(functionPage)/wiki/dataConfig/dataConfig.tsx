@@ -13,33 +13,33 @@ import { ArmorDataConfig } from "./armorConfig";
 import { ConsumableDataConfig } from "./consumableConfig";
 import { CrystalDataConfig } from "./crystalConfig";
 import { MaterialDataConfig } from "./materialConfig";
-import { OptEquipDataConfig } from "./optionConfig";
-import { SpeEquipDataConfig } from "./specialConfig";
+import { OptionDataConfig } from "./optionConfig";
+import { SpecialDataConfig } from "./specialConfig";
 import { WeaponDataConfig } from "./weaponConfig";
 import { ZoneDataConfig } from "./zoneConfig";
 
 // DB表的数据配置，包括表格配置，表单配置，卡片配置
-export type dataDisplayConfig<T extends Record<string, unknown>, D extends Record<string, unknown>> = {
-  defaultData: T;
-  dataFetcher: (id: string) => Promise<T>;
-  datasFetcher: () => Promise<D[]>;
-  dataSchema: ZodObject<{ [K in keyof T]: ZodTypeAny }>;
+export type dataDisplayConfig<T extends Record<string, unknown>, F extends Record<string, unknown>, C extends Record<string, unknown>> = {
+  defaultData: F;
+  dataFetcher: (id: string) => Promise<C>;
+  datasFetcher: () => Promise<T[]>;
+  dataSchema: ZodObject<{ [K in keyof F]: ZodTypeAny }>;
   main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
   table: {
-    dataFetcher: () => Promise<D[]>;
-    columnsDef: ColumnDef<D>[];
-    dictionary: (dic: dictionary) => Dic<D>;
-    hiddenColumnDef: Array<keyof D>;
-    defaultSort: { id: keyof D; desc: boolean };
+    dataFetcher: () => Promise<T[]>;
+    columnsDef: ColumnDef<T>[];
+    dictionary: (dic: dictionary) => Dic<T>;
+    hiddenColumnDef: Array<keyof T>;
+    defaultSort: { id: keyof T; desc: boolean };
     tdGenerator: Partial<{
-      [K in keyof D]: (props: { cell: Cell<D, unknown>; dic: Dic<D> }) => JSX.Element;
+      [K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
     }>;
   };
-  form: (options: { data?: T; dic: dictionary }) => JSX.Element;
-  card: (options: { data: T; dic: dictionary }) => JSX.Element;
+  form: (options: { data?: F; dic: dictionary }) => JSX.Element;
+  card: (options: { data: C; dic: dictionary }) => JSX.Element;
 };
 
-export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, any>>> = {
+export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, any,any>>> = {
   activity: ActivityDataConfig,
   address: AddressDataConfig,
   armor: ArmorDataConfig,
@@ -50,9 +50,9 @@ export const DBDataConfig: Partial<Record<keyof DB, dataDisplayConfig<any, any>>
   consumable: ConsumableDataConfig,
   crystal: CrystalDataConfig,
   material: MaterialDataConfig,
-  option: OptEquipDataConfig,
+  option: OptionDataConfig,
 
-  special: SpeEquipDataConfig,
+  special: SpecialDataConfig,
 
   task: TaskDataConfig,
 

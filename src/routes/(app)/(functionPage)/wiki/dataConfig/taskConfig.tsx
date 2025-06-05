@@ -16,12 +16,13 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { itemTypeToTableType, updateObjArrayItemKey } from "./utils";
 import { TaskRewardType } from "../../../../../../db/kysely/enums";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { setWikiStore } from "../store";
+import { itemTypeToTableType } from "./utils";
 
 type TaskWithRelated = task & {
   collectRequires: task_collect_require[];
@@ -101,9 +102,10 @@ const TasksFetcher = async () => {
   return res;
 };
 
-const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
+  const formInitialValues = oldTask ?? defaultTaskWithRelated;
   const form = createForm(() => ({
-    defaultValues: defaultTaskWithRelated,
+    defaultValues: formInitialValues,
     onSubmit: async ({ value }) => {
       const db = await getDB();
       const task = await db.transaction().execute(async (trx) => {
@@ -158,7 +160,11 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
         }
         return task;
       });
-      handleSubmit("task", task.id);
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
+      });
     },
   }));
   return (
@@ -535,8 +541,12 @@ const TaskWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id
   );
 };
 
-const TaskTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
-  return VirtualTable<task>({
+export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRelated> = {
+  defaultData: defaultTaskWithRelated,
+  dataFetcher: TaskWithRelatedFetcher,
+  datasFetcher: TasksFetcher,
+  dataSchema: TaskWithRelatedSchema,
+  table: {
     dataFetcher: TasksFetcher,
     columnsDef: [
       {
@@ -570,23 +580,13 @@ const TaskTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleCli
         size: 160,
       },
     ],
-    dictionary: TaskWithRelatedDic(dic),
+    dictionary: (dic) => TaskWithRelatedDic(dic),
     hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
-    globalFilterStr: filterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
-  defaultData: defaultTaskWithRelated,
-  dataFetcher: TaskWithRelatedFetcher,
-  datasFetcher: TasksFetcher,
-  dataSchema: TaskWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => TaskTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => TaskWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  },
+  form: ({dic, data}) => TaskWithRelatedForm(dic, data),
+  card: ({dic, data}) => {
     const [collectRequiresData] = createResource(data.id, async (taskId) => {
       const db = await getDB();
       return await db
@@ -594,7 +594,7 @@ export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
         .innerJoin("item", "task_collect_require.itemId", "item.id")
         .where("task_collect_require.taskId", "=", taskId)
         .selectAll("task_collect_require")
-        .select(["item.name as itemName"])
+        .select(["item.name as itemName", "item.itemType"])
         .execute();
     });
 
@@ -639,7 +639,7 @@ export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
           renderItem={(collectRequire) => {
             return {
               label: collectRequire.itemName,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "item", id: collectRequire.itemId }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId }]),
             };
           }}
         />
@@ -650,7 +650,7 @@ export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
           renderItem={(killRequirement) => {
             return {
               label: killRequirement.mobName,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "mob", id: killRequirement.mobId }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: killRequirement.mobId }]),
             };
           }}
         />
@@ -661,11 +661,7 @@ export const TaskDataConfig: dataDisplayConfig<TaskWithRelated, task> = {
           renderItem={(reward) => {
             return {
               label: reward.itemName,
-              onClick: () =>
-                appendCardTypeAndIds((prev) => [
-                  ...prev,
-                  { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
-                ]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(reward.itemType), id: reward.itemId! }]),
             };
           }}
         />

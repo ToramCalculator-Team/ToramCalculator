@@ -45,9 +45,3 @@ export async function createNpc(trx: Transaction<DB>, data: Npc["Insert"]) {
     id: createId(),
   }).returningAll().executeTakeFirstOrThrow();
 }
-
-export const defaultNpc: Npc["Select"] = {
-  id: "",
-  name: "",
-  zoneId: "",
-};

@@ -21,6 +21,7 @@ import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { VirtualTable } from "~/components/module/virtualTable";
+import { setWikiStore } from "../store";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -73,7 +74,8 @@ const SkillsFetcher = async () => {
   return res;
 };
 
-const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, id: string) => void) => {
+const SkillWithRelatedForm = (dic: dictionary, oldSkill?: skill) => {
+  const formInitialValues = oldSkill ?? defaultSkillWithRelated;
   const form = createForm(() => ({
     defaultValues: defaultSkillWithRelated,
     onSubmit: async ({ value }) => {
@@ -106,7 +108,11 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
         }
         return skill;
       });
-      handleSubmit("skill", skill.id);
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "skill", id: skill.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
+      });
     },
   }));
   return (
@@ -192,6 +198,7 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
                 return (
                   <form.Field
                     name={fieldKey}
+                    mode="array"
                     validators={{
                       onChangeAsyncDebounceMs: 500,
                       onChangeAsync: SkillWithRelatedSchema.shape[fieldKey],
@@ -290,8 +297,12 @@ const SkillWithRelatedForm = (dic: dictionary, handleSubmit: (table: keyof DB, i
   );
 };
 
-const SkillTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
-  return VirtualTable<skill>({
+export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWithRelated> = {
+  defaultData: defaultSkillWithRelated,
+  dataFetcher: SkillWithRelatedFetcher,
+  datasFetcher: SkillsFetcher,
+  dataSchema: SkillWithRelatedSchema,
+  table: {
     dataFetcher: SkillsFetcher,
     columnsDef: [
       {
@@ -331,23 +342,13 @@ const SkillTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleCl
         size: 160,
       },
     ],
-    dictionary: SkillWithRelatedDic(dic),
+    dictionary: (dic) => SkillWithRelatedDic(dic),
     hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
-    globalFilterStr: filterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const SkillDataConfig: dataDisplayConfig<SkillWithRelated, skill> = {
-  defaultData: defaultSkillWithRelated,
-  dataFetcher: SkillWithRelatedFetcher,
-  datasFetcher: SkillsFetcher,
-  dataSchema: SkillWithRelatedSchema,
-  table: (dic, filterStr, columnHandleClick) => SkillTable(dic, filterStr, columnHandleClick),
-  form: (dic, handleSubmit) => SkillWithRelatedForm(dic, handleSubmit),
-  card: (dic, data, appendCardTypeAndIds) => {
+  },
+  form: ({dic, data}) => SkillWithRelatedForm(dic, data),
+  card: ({dic, data}) => {
     const [effectsData] = createResource(data.id, async (skillId) => {
       const db = await getDB();
       return await db
@@ -379,7 +380,7 @@ export const SkillDataConfig: dataDisplayConfig<SkillWithRelated, skill> = {
           renderItem={(effect) => {
             return {
               label: effect.condition,
-              onClick: () => appendCardTypeAndIds((prev) => [...prev, { type: "skill_effect", id: effect.id }]),
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "skill_effect", id: effect.id }]),
             };
           }}
         />
