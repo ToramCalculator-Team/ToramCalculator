@@ -204,6 +204,45 @@ class SQLGenerator {
 
     // 生成 Kysely 类型
     execSync("prisma generate --schema=db/temp_client_schema.prisma --generator=kysely", { stdio: "inherit" });
+
+    // 修复关系表名称
+    const relationTables = [
+      '_armorTocrystal',
+      '_avatarTocharacter',
+      '_backRelation',
+      '_campA',
+      '_campB',
+      '_characterToconsumable',
+      '_crystalTooption',
+      '_crystalToplayer_armor',
+      '_crystalToplayer_option',
+      '_crystalToplayer_special',
+      '_crystalToplayer_weapon',
+      '_crystalTospecial',
+      '_crystalToweapon',
+      '_frontRelation',
+      '_linkZones',
+      '_mobTozone',
+    ];
+
+    // 修复 SQL 中的表名引用
+    const fixTableNames = (sql) => {
+      let fixedSql = sql;
+      relationTables.forEach(tableName => {
+        // 替换表名引用，确保使用双引号包裹
+        const regex = new RegExp(`\\b${tableName.toLowerCase()}\\b`, 'g');
+        fixedSql = fixedSql.replace(regex, `"${tableName}"`);
+      });
+      return fixedSql;
+    };
+
+    // 读取并修复 SQL 文件
+    const serverSql = fs.readFileSync(PATHS.serverDB.sql, 'utf-8');
+    const clientSql = fs.readFileSync(PATHS.clientDB.sql, 'utf-8');
+
+    // 写入修复后的 SQL 文件
+    fs.writeFileSync(PATHS.serverDB.sql, fixTableNames(serverSql), 'utf-8');
+    fs.writeFileSync(PATHS.clientDB.sql, fixTableNames(clientSql), 'utf-8');
   }
 }
 
