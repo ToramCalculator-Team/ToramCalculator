@@ -4,7 +4,7 @@ import { DB, mob } from "~/../db/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "../../db/zod";
+import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod/index";
 import { z, ZodRawShape } from "zod";
 
 export interface Mob extends DataType<mob> {

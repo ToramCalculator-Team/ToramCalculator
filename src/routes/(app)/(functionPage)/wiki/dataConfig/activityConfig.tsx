@@ -1,7 +1,7 @@
 import { Accessor, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { activitySchema, zoneSchema } from "~/../db/zod";
+import { activitySchema, zoneSchema } from "~/../db/zod/index";
 import { activity, DB, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
@@ -184,91 +184,7 @@ const ActivityWithRelatedForm = (
               case "statisticId":
               case "createdByAccountId":
               case "updatedByAccountId":
-                return null;
-              case "zones":
-                return (
-                  <form.Field
-                    name={fieldKey}
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: ActivityWithRelatedSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(field) => {
-                      return (
-                        <Input
-                          title={dic.db.zone.selfName}
-                          description={dic.db.zone.description}
-                          state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                        >
-                          <div class="ArrayBox flex w-full flex-col gap-2">
-                            <For each={field().state.value}>
-                              {(_item, index) => {
-                                const initialValue = _item as zone;
-                                return (
-                                  <div class="Filed flex items-center gap-2">
-                                    <label for={field().name + index()} class="flex-1">
-                                      <Autocomplete
-                                        id={field().name + index()}
-                                        initialValue={initialValue}
-                                        setValue={(value) => {
-                                          const newArray = [...field().state.value];
-                                          newArray[index()] = value;
-                                          field().setValue(newArray);
-                                        }}
-                                        datasFetcher={async () => {
-                                          const db = await getDB();
-                                          const zones = await db
-                                            .selectFrom("zone")
-                                            .selectAll("zone")
-                                            
-                                            .execute();
-                                          return zones;
-                                        }}
-                                        displayField="name"
-                                        valueField="id"
-                                      />
-                                    </label>
-                                    <Button
-                                      onClick={(e) => {
-                                        field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index()));
-                                        console.log(field().state.value);
-                                        e.stopPropagation();
-                                      }}
-                                    >
-                                      -
-                                    </Button>
-                                  </div>
-                                );
-                              }}
-                            </For>
-                            <Button
-                              onClick={(e) => {
-                                field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
-                              }}
-                              class="w-full"
-                            >
-                              +
-                            </Button>
-                          </div>
-                        </Input>
-                      );
-                    }}
-                  </form.Field>
-                );
-              default:
-                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                const simpleFieldKey = _field[0] as keyof activity;
-                const simpleFieldValue = _field[1];
-                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(
-                  form,
-                  simpleFieldKey,
-                  simpleFieldValue,
-                  ActivityWithRelatedDic(dic),
-                  ActivityWithRelatedSchema,
-                );
-            }
+                return null; }
           }}
         </For>
         <form.Subscribe

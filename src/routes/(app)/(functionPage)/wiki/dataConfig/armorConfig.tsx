@@ -3,7 +3,7 @@ import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import {
   armorSchema,
-} from "~/../db/zod";
+} from "~/../db/zod/index";
 import { DB, item, armor } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";

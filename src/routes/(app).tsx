@@ -6,6 +6,21 @@ import { RandomBallBackground } from "~/components/module/randomBg";
 import { Setting } from "~/components/module/setting";
 import { BabylonBg } from "~/components/module/babylonBg";
 import hotkeys from "hotkeys-js";
+import { findMobs } from "~/repositories/mob";
+import { findSkills } from "~/repositories/skill";
+import { findCrystals } from "~/repositories/crystal";
+import { findItems } from "~/repositories/item";
+import { findActivities } from "~/repositories/activity";
+import { findAddresses } from "~/repositories/address";
+import { findArmors } from "~/repositories/armor";
+import { findConsumables } from "~/repositories/consumable";
+import { findNpcs } from "~/repositories/npc";
+import { findZones } from "~/repositories/zone";
+import { findMaterials } from "~/repositories/material";
+import { findTasks } from "~/repositories/task";
+import { findWeapons } from "~/repositories/weapon";
+import { findOptEquips } from "~/repositories/optEquip";
+import { findSpeEquips } from "~/repositories/speEquip";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -102,6 +117,22 @@ export default function AppMainContet(props: ParentProps) {
     }
     setStore("resourcesLoaded", true);
 
+    // 数据库查询测试
+    findMobs();
+    findSkills();
+    findCrystals();
+    findNpcs();
+    findZones();
+    findAddresses();
+    findActivities();
+    findArmors();
+    findConsumables();
+    findCrystals();
+    findMaterials();
+    findOptEquips();
+    findSpeEquips();
+    findTasks();
+    findWeapons();
   });
 
   return (

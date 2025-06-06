@@ -1,7 +1,7 @@
 import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { taskSchema, task_collect_requireSchema, task_kill_requirementSchema, task_rewardSchema } from "~/../db/zod";
+import { taskSchema, task_collect_requireSchema, task_kill_requirementSchema, task_rewardSchema } from "~/../db/zod/index";
 import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";

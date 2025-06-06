@@ -1,7 +1,7 @@
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { addressSchema, zoneSchema } from "~/../db/zod";
+import { addressSchema, zoneSchema } from "~/../db/zod/index";
 import { address, DB, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";

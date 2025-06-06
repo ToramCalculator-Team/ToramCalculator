@@ -2,7 +2,7 @@ import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "s
 import { DataEnums } from "~/../db/dataEnums";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { skillSchema, skill_effectSchema, statisticSchema } from "~/../db/zod";
+import { skillSchema, skill_effectSchema, statisticSchema } from "~/../db/zod/index";
 import { DB, skill, skill_effect } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";

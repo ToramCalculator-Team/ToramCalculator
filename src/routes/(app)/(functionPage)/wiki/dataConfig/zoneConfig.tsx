@@ -1,7 +1,7 @@
 import { createResource, createSignal, For, Show, Index } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { mobSchema, npcSchema, zoneSchema } from "~/../db/zod";
+import { mobSchema, npcSchema, zoneSchema } from "~/../db/zod/index";
 import { mob, npc, zone } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";

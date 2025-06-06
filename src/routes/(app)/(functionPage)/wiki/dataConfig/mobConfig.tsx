@@ -1,7 +1,7 @@
 import { For, Show, Index, Accessor, createResource, createSignal } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import * as Icon from "~/components/icon";
-import { drop_itemSchema, mobSchema, zoneSchema } from "~/../db/zod";
+import { drop_itemSchema, mobSchema, zoneSchema } from "~/../db/zod/index";
 import { Input } from "~/components/controls/input";
 import { z } from "zod";
 import { DB, drop_item, mob, zone } from "~/../db/kysely/kyesely";
@@ -33,7 +33,6 @@ import { store } from "~/store";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { pgWorker } from "~/initialWorker";
 import { setWikiStore } from "../store";
-import { DataEnums } from "../../../../../../db/dataEnums";
 import { dataDisplayConfig } from "./dataConfig";
 
 type MobWithRelated = mob & {
@@ -640,7 +639,7 @@ const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClic
       {
         id: "initialElement",
         accessorFn: (row) => row.initialElement,
-        cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
+        cell: (info) => info.getValue<ElementType>(),
         size: {
           "zh-CN": 115,
           "zh-TW": 115,
@@ -651,7 +650,7 @@ const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClic
       {
         id: "type",
         accessorFn: (row) => row.type,
-        cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
+        cell: (info) => info.getValue<MobType>(),
         size: {
           "zh-CN": 80,
           "zh-TW": 80,
@@ -795,7 +794,7 @@ const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClic
           Light: <Icon.Element.Light class="h-12 w-12" />,
           Dark: <Icon.Element.Dark class="h-12 w-12" />,
           Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-        })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
+        })[props.cell.getValue<ElementType>()],
       name: (props) => (
         <div class="text-accent-color flex flex-col gap-1">
           <span>{props.cell.getValue<string>()}</span>
@@ -843,7 +842,7 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
       {
         id: "initialElement",
         accessorFn: (row) => row.initialElement,
-        cell: (info) => info.getValue<DataEnums["mob"]["initialElement"]>(),
+        cell: (info) => info.getValue<ElementType>(),
         size: {
           "zh-CN": 115,
           "zh-TW": 115,
@@ -854,7 +853,7 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
       {
         id: "type",
         accessorFn: (row) => row.type,
-        cell: (info) => info.getValue<keyof DataEnums["mob"]["type"]>(),
+        cell: (info) => info.getValue<MobType>(),
         size: {
           "zh-CN": 80,
           "zh-TW": 80,
@@ -998,7 +997,7 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
           Light: <Icon.Element.Light class="h-12 w-12" />,
           Dark: <Icon.Element.Dark class="h-12 w-12" />,
           Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-        })[props.cell.getValue<keyof DataEnums["mob"]["initialElement"]>()],
+        })[props.cell.getValue<ElementType>()],
       name: (props) => (
         <div class="text-accent-color flex flex-col gap-1">
           <span>{props.cell.getValue<string>()}</span>

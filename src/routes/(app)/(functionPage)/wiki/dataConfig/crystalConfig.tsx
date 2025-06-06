@@ -1,7 +1,7 @@
 import { createResource, createSignal, For, Index, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { crystalSchema, itemSchema } from "~/../db/zod";
+import { crystalSchema, itemSchema } from "~/../db/zod/index";
 import { DB, item, crystal } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";

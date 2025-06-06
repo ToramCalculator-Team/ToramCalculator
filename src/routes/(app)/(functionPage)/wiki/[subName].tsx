@@ -5,6 +5,7 @@ import {
   createResource,
   createSignal,
   For,
+  Index,
   JSX,
   Match,
   on,
@@ -67,29 +68,6 @@ export default function WikiSubPage() {
   };
 
   const [cachedCardDatas, { refetch }] = createResource(() => wikiStore.cardGroup, getCachedCardDatas);
-
-  // createEffect(
-  //   on(
-  //     () => wikiStore.cardGroup,
-  //     async (cardGroup) => {
-  //       console.log("createEffect", cardGroup);
-  //       if (cardGroup.length === 0) return;
-  //       const results: Record<string, unknown>[] = [];
-  //       for (const { type, id } of cardGroup) {
-  //         const config = DBDataConfig[type];
-  //         if (config?.dataFetcher) {
-  //           const result = await config.dataFetcher(id);
-  //           results.push(result);
-  //         }
-  //       }
-  //       setCachedCardDatas((prev) => [...prev, ...results]);
-  //       // 如果cardGroup长度小于 cachedCardDatas，说明有数据被删除
-  //       if (cardGroup.length < cachedCardDatas().length) {
-  //         setCachedCardDatas((prev) => prev.slice(0, cardGroup.length));
-  //       }
-  //     },
-  //   ),
-  // );
 
   createEffect(
     on(
@@ -490,21 +468,21 @@ export default function WikiSubPage() {
                   class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
                   onClick={() => setWikiStore("cardGroup", (pre) => pre.slice(0, -1))}
                 >
-                  <For each={cachedCardDatas()}>
+                  <Index each={cachedCardDatas()}>
                     {(cardData, index) => {
                       return (
-                        <Show when={cachedCardDatas()!.length - index() < 5}>
+                        <Show when={cachedCardDatas()!.length - index < 5}>
                           <Motion.div
                             animate={{
                               transform: [
                                 `rotate(0deg)`,
-                                `rotate(${(cachedCardDatas()!.length - index() - 1) * 2}deg)`,
+                                `rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`,
                               ],
                               opacity: [0, 1],
                             }}
                             exit={{
                               transform: [
-                                `rotate(${(cachedCardDatas()!.length - index() - 1) * 2}deg)`,
+                                `rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`,
                                 `rotate(0deg)`,
                               ],
                               opacity: [1, 0],
@@ -513,10 +491,10 @@ export default function WikiSubPage() {
                             class="DialogBox drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl"
                             onClick={(e) => e.stopPropagation()}
                             style={{
-                              "z-index": `${index()}`,
+                              "z-index": `${index}`,
                             }}
                           >
-                            <Show when={wikiStore.cardGroup[index()]?.type}>
+                            <Show when={wikiStore.cardGroup[index]?.type}>
                               {(type) => {
                                 return (
                                   <>
@@ -546,8 +524,8 @@ export default function WikiSubPage() {
                                       <div class="bg-primary-color z-10 -mx-[1px] py-[3px]">
                                         <div class="border-boundary-color border-y py-[3px]">
                                           <h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">
-                                            {cardData && "name" in cardData
-                                              ? (cardData["name"] as string)
+                                            {cardData() && "name" in cardData()
+                                              ? (cardData()["name"] as string)
                                               : dictionary().db[type()].selfName}
                                           </h1>
                                         </div>
@@ -596,7 +574,7 @@ export default function WikiSubPage() {
                                           <div class="Childern mx-3 my-6 flex flex-col gap-3">
                                             {DBDataConfig[type()]?.card({
                                               dic: dictionary(),
-                                              data: cardData,
+                                              data: cardData(),
                                             })}
                                           </div>
                                         </OverlayScrollbarsComponent>
@@ -621,7 +599,7 @@ export default function WikiSubPage() {
                         </Show>
                       );
                     }}
-                  </For>
+                  </Index>
                 </Motion.div>
               </Show>
             </Presence>

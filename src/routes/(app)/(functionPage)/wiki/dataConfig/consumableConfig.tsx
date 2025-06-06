@@ -1,7 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { consumableSchema } from "~/../db/zod";
+import { consumableSchema } from "~/../db/zod/index";
 import { DB, item, consumable } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";

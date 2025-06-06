@@ -40,7 +40,7 @@ import {
   recipeSchema,
   task_collect_requireSchema,
   task_rewardSchema,
-} from "../../../../../../db/zod";
+} from "~/../db/zod/index";
 import { z } from "zod";
 import { defaultData } from "../../../../../../db/defaultData";
 import { Input } from "~/components/controls/input";

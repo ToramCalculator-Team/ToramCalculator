@@ -1,28 +1,13 @@
 /**
  * @file generator.js
  * @description 数据库 Schema 生成器
- * 
- * 这个脚本的主要功能：
- * 1. 从 baseSchema.prisma 生成客户端和服务端使用的 SQL 文件
- * 2. 处理枚举类型的转换和注入
- * 3. 生成 DataEnums 类型定义
- * 
- * 生成流程：
- * 1. 读取 enums.ts 中的枚举定义
- * 2. 解析 baseSchema.prisma 中的模型定义
- * 3. 将枚举类型注入到相应的模型字段中
- * 4. 生成客户端和服务端各自的 SQL 文件
- * 5. 生成 DataEnums 类型定义文件
- * 
- * 输出文件：
- * - serverDB/init.sql: 服务端数据库初始化 SQL
- * - clientDB/init.sql: 客户端数据库初始化 SQL
- * - dataEnums.ts: 包含所有模型枚举字段的类型定义
- * 
- * 使用方式：
- * 1. 确保 enums.ts 和 baseSchema.prisma 文件存在
- * 2. 运行 tsx generator.js
- * 3. 检查生成的 SQL 文件是否符合预期
+ *
+ * 模块划分：
+ * 1. schema-generator.js - SQL schema 生成
+ * 2. enum-processor.js - 枚举处理
+ * 3. type-generator.js - 类型定义生成
+ * 4. zod-generator.js - Zod schema 生成
+ * 5. data-enums-generator.js - DataEnums 类型生成
  */
 
 import fs from "fs";
@@ -30,191 +15,410 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { execSync } from "child_process";
+import { z } from "zod";
 
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 定义文件路径
-const enumsFilePath = path.join(__dirname, "enums.ts");
-const baseSchemaPath = path.join(__dirname, "baseSchema.prisma");
-const serverDBSqlPath = path.join(__dirname, "serverDB/init.sql");
-const clientDBSqlPath = path.join(__dirname, "clientDB/init.sql");
-const dataEnumsPath = path.join(__dirname, "dataEnums.ts");
+const PATHS = {
+  enums: path.join(__dirname, "enums.ts"),
+  baseSchema: path.join(__dirname, "baseSchema.prisma"),
+  serverDB: {
+    sql: path.join(__dirname, "serverDB/init.sql"),
+    tempSchema: path.join(__dirname, "temp_server_schema.prisma"),
+  },
+  clientDB: {
+    sql: path.join(__dirname, "clientDB/init.sql"),
+    tempSchema: path.join(__dirname, "temp_client_schema.prisma"),
+  },
+  dataEnums: path.join(__dirname, "dataEnums.ts"),
+  zod: {
+    schemas: path.join(__dirname, "zod/index.ts"),
+  },
+  kysely: {
+    types: path.join(__dirname, "kysely/kyesely.ts"),
+    enums: path.join(__dirname, "kysely/enums.ts"),
+  },
+};
 
 // 确保必要的目录存在
-const serverDBDir = path.dirname(serverDBSqlPath);
-const clientDBDir = path.dirname(clientDBSqlPath);
-if (!fs.existsSync(serverDBDir)) {
-  fs.mkdirSync(serverDBDir, { recursive: true });
-}
-if (!fs.existsSync(clientDBDir)) {
-  fs.mkdirSync(clientDBDir, { recursive: true });
-}
-
-/**
- * 将下划线命名转换为 PascalCase
- * @param {string} str - 需要转换的字符串
- * @returns {string} PascalCase 格式的字符串
- */
-const toPascalCase = (str) => str.toLowerCase().replace(/(?:^|_)([a-z])/g, (_, c) => c.toUpperCase());
-
-// 解析 enums.ts 文件，提取所有枚举定义
-const extractedEnums = new Map();
-const enumsModule = require(enumsFilePath);
-
-// 处理枚举定义，支持展开操作符 (...)
-for (const [key, value] of Object.entries(enumsModule)) {
-  const enumName = toPascalCase(key);
-  if (Array.isArray(value)) {
-    extractedEnums.set(
-      enumName,
-      value.flatMap((v) => (v.startsWith("...") ? enumsModule[v.slice(3)] || [] : v))
-    );
-  }
-}
-
-// 解析 baseSchema.prisma 并处理枚举注入
-let schemaContent = fs.readFileSync(baseSchemaPath, "utf-8");
-const lines = schemaContent.split("\n");
-
-// 存储模型和枚举的映射关系
-const enumModels = new Map();
-let updatedSchema = "";
-const enumDefinitions = new Map();
-let currentModel = "";
-let skipGenerators = false;
-let inKyselyGenerator = false;
-let kyselyGenerator = "";
-let clientGenerators = [];
-let tempGenerator = [];
-
-// 逐行处理 schema 内容
-for (const line of lines) {
-  const trimmed = line.trim();
-
-  // 处理 generator 块
-  if (trimmed.startsWith("generator ")) {
-    if (trimmed.includes("kysely")) {
-      inKyselyGenerator = true;
-      tempGenerator = [line];
-    } else {
-      skipGenerators = true;
-      tempGenerator = [line];
+function ensureDirectories() {
+  const dirs = [
+    path.dirname(PATHS.serverDB.sql),
+    path.dirname(PATHS.clientDB.sql),
+    path.dirname(PATHS.zod.schemas),
+  ];
+  dirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-    continue;
+  });
+}
+
+// 工具函数
+const utils = {
+  toPascalCase: (str) => str.toLowerCase().replace(/(?:^|_)([a-z])/g, (_, c) => c.toUpperCase()),
+  
+  cleanupTempFiles: () => {
+    if (fs.existsSync(PATHS.serverDB.tempSchema)) fs.unlinkSync(PATHS.serverDB.tempSchema);
+    if (fs.existsSync(PATHS.clientDB.tempSchema)) fs.unlinkSync(PATHS.clientDB.tempSchema);
+  },
+};
+
+// 枚举处理器
+class EnumProcessor {
+  constructor() {
+    this.extractedEnums = new Map();
+    this.enumModels = new Map();
+    this.enumDefinitions = new Map();
   }
 
-  // 收集 generator 块内容
-  if (inKyselyGenerator || skipGenerators) {
-    tempGenerator.push(line);
-    if (trimmed === "}") {
-      if (inKyselyGenerator) {
-        kyselyGenerator += tempGenerator.join("\n") + "\n";
-        inKyselyGenerator = false;
-      } else {
-        clientGenerators.push(tempGenerator.join("\n"));
-        skipGenerators = false;
-      }
-    }
-    continue;
-  }
-
-  // 处理模型定义
-  const modelMatch = trimmed.match(/^model (\w+) \{$/);
-  if (modelMatch) {
-    currentModel = modelMatch[1];
-    enumModels.set(currentModel, new Map());
-    updatedSchema += line + "\n";
-    continue;
-  }
-
-  // 处理模型结束
-  if (trimmed === "}") {
-    currentModel = "";
-    updatedSchema += line + "\n";
-    continue;
-  }
-
-  // 处理枚举字段
-  let newLine = line;
-  const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
-  if (enumMatch && currentModel) {
-    const [, fieldName, originalEnumName] = enumMatch;
-    const pascalCaseEnum = toPascalCase(originalEnumName);
-
-    // 如果找到对应的枚举定义，替换字段类型
-    if (extractedEnums.has(pascalCaseEnum)) {
-      newLine = line.replace("String", pascalCaseEnum);
-      if (!enumDefinitions.has(pascalCaseEnum)) {
-        enumDefinitions.set(
-          pascalCaseEnum,
-          `enum ${pascalCaseEnum} {\n  ${extractedEnums.get(pascalCaseEnum).join("\n  ")}\n}`
+  processEnums() {
+    const enumsModule = require(PATHS.enums);
+    for (const [key, value] of Object.entries(enumsModule)) {
+      const enumName = utils.toPascalCase(key);
+      if (Array.isArray(value)) {
+        this.extractedEnums.set(
+          enumName,
+          value.flatMap((v) => (v.startsWith("...") ? enumsModule[v.slice(3)] || [] : v)),
         );
       }
-      enumModels.get(currentModel).set(fieldName, originalEnumName);
+    }
+    return this;
+  }
+
+  processSchema() {
+    let schemaContent = fs.readFileSync(PATHS.baseSchema, "utf-8");
+    const lines = schemaContent.split("\n");
+    let updatedSchema = "";
+    let currentModel = "";
+    let skipGenerators = false;
+    let inKyselyGenerator = false;
+    let kyselyGenerator = "";
+    let clientGenerators = [];
+    let tempGenerator = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // 处理 generator 块
+      if (trimmed.startsWith("generator ")) {
+        if (trimmed.includes("kysely")) {
+          inKyselyGenerator = true;
+          tempGenerator = [line];
+        } else {
+          skipGenerators = true;
+          tempGenerator = [line];
+        }
+        continue;
+      }
+
+      // 收集 generator 块内容
+      if (inKyselyGenerator || skipGenerators) {
+        tempGenerator.push(line);
+        if (trimmed === "}") {
+          if (inKyselyGenerator) {
+            kyselyGenerator += tempGenerator.join("\n") + "\n";
+            inKyselyGenerator = false;
+          } else {
+            clientGenerators.push(tempGenerator.join("\n"));
+            skipGenerators = false;
+          }
+        }
+        continue;
+      }
+
+      // 处理模型定义
+      const modelMatch = trimmed.match(/^model (\w+) \{$/);
+      if (modelMatch) {
+        currentModel = modelMatch[1];
+        this.enumModels.set(currentModel, new Map());
+        updatedSchema += line + "\n";
+        continue;
+      }
+
+      // 处理模型结束
+      if (trimmed === "}") {
+        currentModel = "";
+        updatedSchema += line + "\n";
+        continue;
+      }
+
+      // 处理枚举字段
+      let newLine = line;
+      const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
+      if (enumMatch && currentModel) {
+        const [, fieldName, originalEnumName] = enumMatch;
+        const pascalCaseEnum = utils.toPascalCase(originalEnumName);
+
+        if (this.extractedEnums.has(pascalCaseEnum)) {
+          newLine = line.replace("String", pascalCaseEnum);
+          if (!this.enumDefinitions.has(pascalCaseEnum)) {
+            this.enumDefinitions.set(
+              pascalCaseEnum,
+              `enum ${pascalCaseEnum} {\n  ${this.extractedEnums.get(pascalCaseEnum).join("\n  ")}\n}`,
+            );
+          }
+          this.enumModels.get(currentModel).set(fieldName, originalEnumName);
+        }
+      }
+
+      updatedSchema += newLine + "\n";
+    }
+
+    return {
+      updatedSchema,
+      kyselyGenerator,
+      clientGenerators,
+    };
+  }
+}
+
+// SQL 生成器
+class SQLGenerator {
+  static generate(updatedSchema, kyselyGenerator, clientGenerators, enumDefinitions) {
+    // 生成最终的 schema 文件
+    const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
+
+    // 创建临时 schema 文件
+    fs.writeFileSync(PATHS.serverDB.tempSchema, finalSchema, "utf-8");
+    fs.writeFileSync(
+      PATHS.clientDB.tempSchema,
+      clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema,
+      "utf-8",
+    );
+
+    // 生成 SQL 文件
+    execSync(
+      `npx prisma migrate diff --from-empty --to-schema-datamodel ${PATHS.serverDB.tempSchema} --script > ${PATHS.serverDB.sql}`,
+    );
+    execSync(
+      `npx prisma migrate diff --from-empty --to-schema-datamodel ${PATHS.clientDB.tempSchema} --script > ${PATHS.clientDB.sql}`,
+    );
+
+    // 处理客户端 SQL
+    const initTransformPath = path.join(__dirname, "clientDB/init_transform.js");
+    require(initTransformPath);
+
+    // 生成 Kysely 类型
+    execSync("prisma generate --schema=db/temp_client_schema.prisma --generator=kysely", { stdio: "inherit" });
+  }
+}
+
+// Zod Schema 生成器
+class ZodGenerator {
+  static generate() {
+    // 从 db/kysely/enums.ts 生成 zod 枚举
+    let enumSchemas = "";
+    const enumMap = new Map();
+    if (fs.existsSync(PATHS.kysely.enums)) {
+      const enumsContent = fs.readFileSync(PATHS.kysely.enums, "utf-8");
+      const enumConstRegex = /export const (\w+) = \{([\s\S]*?)\} as const;/g;
+      let match;
+      while ((match = enumConstRegex.exec(enumsContent)) !== null) {
+        const enumName = match[1];
+        const body = match[2];
+        const valueRegex = /['"]?\w+['"]?\s*:\s*['"]([^'"]+)['"]/g;
+        let valueMatch;
+        const values = [];
+        while ((valueMatch = valueRegex.exec(body)) !== null) {
+          values.push(valueMatch[1]);
+        }
+        if (values.length > 0) {
+          enumSchemas += `export const ${enumName}Schema = z.enum([${values.map((v) => `"${v}"`).join(", ")}]);\n`;
+          enumSchemas += `export type ${enumName}Type = z.infer<typeof ${enumName}Schema>;\n\n`;
+          enumMap.set(enumName.toLowerCase(), values);
+        }
+      }
+    }
+
+    // 从 Kysely 类型定义生成 Zod schemas
+    const kyselyTypes = fs.readFileSync(PATHS.kysely.types, "utf-8");
+    const parsedTypes = this.parseTypes(kyselyTypes);
+    
+    // 生成 Zod schemas
+    const generatedSchemas = Object.entries(parsedTypes)
+      .map(([typeName, fields]) => {
+        const schemaName = `${typeName.toLowerCase()}Schema`;
+        const fieldsStr = Object.entries(fields)
+          .map(([fieldName, zodType]) => `  ${fieldName}: ${zodType}`)
+          .join(",\n");
+
+        return `export const ${schemaName} = z.object({\n${fieldsStr}\n});`;
+      })
+      .join("\n\n");
+
+    // 生成最终的 Zod schemas 文件内容
+    const zodFileContent = `// Generated by ts-to-zod
+import { z } from "zod";
+
+${enumSchemas}
+${generatedSchemas}
+`;
+
+    // 写入 Zod schemas 文件
+    fs.writeFileSync(PATHS.zod.schemas, zodFileContent, "utf-8");
+  }
+
+  static convertTypeToZod(type) {
+    // 处理联合类型
+    if (type.includes("|")) {
+      const types = type.split("|").map((t) => t.trim());
+      // 如果包含 null，使用 nullable()
+      if (types.includes("null")) {
+        const nonNullTypes = types.filter((t) => t !== "null");
+        if (nonNullTypes.length === 1) {
+          return `${this.convertTypeToZod(nonNullTypes[0])}.nullable()`;
+        }
+        return `z.union([${nonNullTypes.map((t) => this.convertTypeToZod(t)).join(", ")}]).nullable()`;
+      }
+      return `z.union([${types.map((t) => this.convertTypeToZod(t)).join(", ")}])`;
+    }
+
+    // 处理数组类型
+    if (type.endsWith("[]")) {
+      const baseType = type.slice(0, -2);
+      return `z.array(${this.convertTypeToZod(baseType)})`;
+    }
+
+    // 处理基本类型
+    switch (type) {
+      case "string":
+        return "z.string()";
+      case "number":
+        return "z.number()";
+      case "boolean":
+        return "z.boolean()";
+      case "Date":
+      case "Timestamp":
+        return "z.date()";
+      default:
+        // 检查是否是枚举类型
+        if (type.endsWith("Type")) {
+          const enumName = type.replace("Type", "");
+          // 确保枚举名称首字母大写
+          const pascalCaseEnum = enumName.charAt(0).toUpperCase() + enumName.slice(1);
+          return `${pascalCaseEnum}TypeSchema`;
+        }
+        // 检查是否是字面量类型
+        if (type.startsWith('"') && type.endsWith('"')) {
+          return `z.literal(${type})`;
+        }
+        return "z.unknown()";
     }
   }
 
-  updatedSchema += newLine + "\n";
+  static parseFields(fieldsStr) {
+    const fields = {};
+    const fieldRegex = /(\w+)(\?)?:\s*([^;]+);/g;
+    let match;
+
+    while ((match = fieldRegex.exec(fieldsStr)) !== null) {
+      const [, name, optional, type] = match;
+      const zodType = this.convertTypeToZod(type.trim());
+      fields[name] = optional ? `${zodType}.nullable()` : zodType;
+    }
+
+    return fields;
+  }
+
+  static parseTypes(kyselyTypes) {
+    const types = {};
+    const typeRegex = /export\s+type\s+(\w+)\s*=\s*\{([\s\S]*?)\};/g;
+    let match;
+
+    while ((match = typeRegex.exec(kyselyTypes)) !== null) {
+      const [, typeName, fieldsStr] = match;
+      
+      // 跳过不需要的类型
+      if (
+        typeName === "Generated" ||
+        typeName === "Timestamp" ||
+        typeName.includes("Relation") ||
+        typeName.includes("To") ||
+        typeName.includes("_create_data") ||
+        typeName.includes("_update_data")
+      ) {
+        continue;
+      }
+
+      const fields = this.parseFields(fieldsStr);
+      types[typeName] = fields;
+    }
+
+    return types;
+  }
 }
 
-// 生成最终的 schema 文件
-const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
+// DataEnums 生成器
+class DataEnumsGenerator {
+  static generate(enumModels) {
+    const importStatements = Array.from(
+      new Set([].concat(...Array.from(enumModels.values()).map((fieldMap) => Array.from(fieldMap.values())))),
+    )
+      .map((enumName) => `import { ${enumName} } from "./enums";`)
+      .join("\n");
 
-// 创建临时 schema 文件用于生成 SQL
-const tempServerSchemaPath = path.join(__dirname, "temp_server_schema.prisma");
-const tempClientSchemaPath = path.join(__dirname, "temp_client_schema.prisma");
+    const dataEnumEntries = Array.from(enumModels.entries())
+      .map(([modelName, fields]) => {
+        return (
+          `  ${modelName}: {\n` +
+          Array.from(fields.entries())
+            .map(([fieldName, enumName]) => `    ${fieldName}: typeof ${enumName};\n`)
+            .join("") +
+          "  };\n"
+        );
+      })
+      .join("");
 
-fs.writeFileSync(tempServerSchemaPath, finalSchema, "utf-8");
-fs.writeFileSync(tempClientSchemaPath, clientGenerators.join("\n") + "\n" + kyselyGenerator + finalSchema, "utf-8");
+    const dataEnumsFileContent = `// Generated by ts-to-zod
+import { z } from "zod";
 
-// 使用 prisma migrate 生成 SQL
-try {
-  // 生成服务端 SQL
-  execSync(`npx prisma migrate diff --from-empty --to-schema-datamodel ${tempServerSchemaPath} --script > ${serverDBSqlPath}`);
-  
-  // 生成客户端 SQL
-  execSync(`npx prisma migrate diff --from-empty --to-schema-datamodel ${tempClientSchemaPath} --script > ${clientDBSqlPath}`);
-  
-  // 处理客户端 SQL
-  const initTransformPath = path.join(__dirname, "clientDB/init_transform.js");
-  require(initTransformPath);
-  
-  // 生成类型
-  execSync('prisma generate --schema=db/temp_client_schema.prisma', { stdio: 'inherit' });
-  
-  console.log("✅ SQL 文件生成完成！");
-  console.log("✅ 类型生成完成！");
-} catch (error) {
-  console.error("生成文件时出错:", error);
-  // 清理临时文件
-  if (fs.existsSync(tempServerSchemaPath)) fs.unlinkSync(tempServerSchemaPath);
-  if (fs.existsSync(tempClientSchemaPath)) fs.unlinkSync(tempClientSchemaPath);
-  process.exit(1);
+${importStatements}
+
+export type DataEnums = {
+${dataEnumEntries}
+};
+`;
+
+    fs.writeFileSync(PATHS.dataEnums, dataEnumsFileContent, "utf-8");
+  }
 }
 
-// 生成 DataEnums 类型定义
-const importStatements = Array.from(new Set(
-  [].concat(...Array.from(enumModels.values()).map(fieldMap => Array.from(fieldMap.values())))
-)).map(enumName => `import { ${enumName} } from "./enums";`).join("\n");
+// 主执行流程
+async function main() {
+  try {
+    ensureDirectories();
 
-// 生成每个模型的枚举字段类型定义
-const dataEnumEntries = Array.from(enumModels.entries()).map(([modelName, fields]) => {
-  return `  ${modelName}: {\n` +
-    Array.from(fields.entries()).map(([fieldName, enumName]) =>
-      `    ${fieldName}: Record<(typeof ${enumName})[number], string>;`
-    ).join("\n") +
-    `\n  };`;
-}).join("\n");
+    // 处理枚举
+    const enumProcessor = new EnumProcessor();
+    enumProcessor.processEnums();
+    const { updatedSchema, kyselyGenerator, clientGenerators } = enumProcessor.processSchema();
 
-// 写入 DataEnums 类型定义文件
-const dataEnumsType = `${importStatements}\n\nexport type DataEnums = {\n${dataEnumEntries}\n};`;
-fs.writeFileSync(dataEnumsPath, dataEnumsType, "utf-8");
+    // 生成 SQL
+    SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.enumDefinitions);
+    console.log("✅ SQL 文件生成完成！");
+    console.log("✅ Kysely 类型生成完成！");
 
-console.log("✅ dataEnums.ts 生成完成！");
+    // 生成 Zod schemas
+    ZodGenerator.generate();
+    console.log("✅ Zod schemas 生成完成！");
 
-// 清理临时文件
-if (fs.existsSync(tempServerSchemaPath)) fs.unlinkSync(tempServerSchemaPath);
-if (fs.existsSync(tempClientSchemaPath)) fs.unlinkSync(tempClientSchemaPath);
-console.log("✅ 临时文件清理完成！");
+    // 生成 DataEnums
+    DataEnumsGenerator.generate(enumProcessor.enumModels);
+    console.log("✅ DataEnums 类型定义生成完成！");
+
+    // 清理临时文件
+    utils.cleanupTempFiles();
+    console.log("✅ 临时文件清理完成！");
+
+  } catch (error) {
+    console.error("生成文件时出错:", error);
+    utils.cleanupTempFiles();
+    process.exit(1);
+  }
+}
+
+main();

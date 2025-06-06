@@ -5,24 +5,20 @@
     "dev": "vinxi dev",
     "dev:init": "tsx db/generator.js",
     "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:restore",
-
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
     "db:studio": "prisma studio --schema=db/baseSchema.prisma",
     "db:backup": "bash db/backup.sh",
     "db:restore": "bash db/restore.sh",
-
     "build": "vinxi build",
     "start": "vinxi start",
     "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz",
     "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
-
     "prepare": "husky"
   },
   "devDependencies": {
     "@babylonjs/inspector": "^7.32.5",
-    "@prisma/client": "^6.2.1",
     "@types/d3": "^7.4.3",
     "@types/js-cookie": "^3.0.6",
     "@types/lodash-es": "^4.17.12",
