@@ -30,10 +30,10 @@ import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
-import { VirtualTable } from "~/components/module/virtualTable";
-import { pgWorker } from "~/initialWorker";
 import { setWikiStore } from "../store";
 import { dataDisplayConfig } from "./dataConfig";
+import { Transaction } from "kysely";
+import { pick } from "lodash-es";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -46,8 +46,7 @@ const defaultMobWithRelated: MobWithRelated = {
   dropItems: [],
 };
 
-const MobWithRelatedSchema = z.object({
-  ...mobSchema.shape,
+const MobWithRelatedSchema = mobSchema.extend({
   appearInZones: z.array(zoneSchema),
   dropItems: z.array(drop_itemSchema),
 });
@@ -107,33 +106,96 @@ const MobsFetcher = async () => {
   return res;
 };
 
-const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
+const createMob = async (trx: Transaction<DB>, value: mob) => {
+  const statistic = await createStatistic(trx);
+  const mob = await trx
+    .insertInto("mob")
+    .values({
+      ...value,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+
+  return mob;
+};
+
+const updateMob = async (trx: Transaction<DB>, value: mob) => {
+  const mob = await trx
+    .updateTable("mob")
+    .set({
+      ...value,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", value.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+
+  return mob;
+};
+
+const deleteMob = async (trx: Transaction<DB>, mob: mob) => {
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", mob.statisticId).execute();
+  // 删除和zone的关联
+  await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).execute();
+  // 将掉落物归属调整至defaultMob
+  await trx.updateTable("drop_item").set({ dropById: "defaultMobId" }).where("dropById", "=", mob.id).execute();
+  // 删除mob
+  await trx.deleteFrom("mob").where("id", "=", mob.id).execute();
+};
+
+const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
   const formInitialValues = oldMob ?? defaultMobWithRelated;
   const form = createForm(() => ({
-    defaultValues: defaultMobWithRelated,
-    onSubmit: async ({ value }) => {
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newMob }) => {
+      console.log("oldMob", oldMob, "newMob", newMob);
+      const mobData = pick(newMob, Object.keys(defaultMobWithRelated) as (keyof MobWithRelated)[]);
       const db = await getDB();
       const mob = await db.transaction().execute(async (trx) => {
-        const { appearInZones, dropItems, ...rest } = value;
-        const statistic = await createStatistic(trx);
-        const mob = await trx
-          .insertInto("mob")
-          .values({
-            ...rest,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (appearInZones.length > 0) {
-          for (const zone of appearInZones) {
+        let mob: mob;
+        if (oldMob) {
+          mob = await updateMob(trx, mobData);
+        } else {
+          mob = await createMob(trx, mobData);
+        }
+
+        // 关系项更新
+        const oldAppearInZones = oldMob?.appearInZones ?? [];
+        const oldDropItems = oldMob?.dropItems ?? [];
+
+        const { appearInZones: newAppearInZones, dropItems: newDropItems } = newMob;
+        const appearInZonesToAdd = newAppearInZones.filter(
+          (zone) => !oldAppearInZones.some((oldZone) => oldZone.id === zone.id),
+        );
+        const appearInZonesToRemove = oldAppearInZones.filter(
+          (oldZone) => !newAppearInZones.some((newZone) => newZone.id === oldZone.id),
+        );
+
+        // 关联项更新
+        if (appearInZonesToAdd.length > 0) {
+          for (const zone of appearInZonesToAdd) {
             await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
           }
         }
-        if (dropItems.length > 0) {
-          for (const dropItem of dropItems) {
+        if (appearInZonesToRemove.length > 0) {
+          for (const zone of appearInZonesToRemove) {
+            await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).where("B", "=", zone.id).execute();
+          }
+        }
+
+        const dropItemsToAdd = newDropItems.filter(
+          (dropItem) => !oldDropItems.some((oldDropItem) => oldDropItem.id === dropItem.id),
+        );
+        const dropItemsToRemove = oldDropItems.filter(
+          (oldDropItem) => !newDropItems.some((newDropItem) => newDropItem.id === oldDropItem.id),
+        );
+        if (dropItemsToAdd.length > 0) {
+          for (const dropItem of dropItemsToAdd) {
             await trx
               .insertInto("drop_item")
               .values({
@@ -142,6 +204,11 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
                 dropById: mob.id,
               })
               .execute();
+          }
+        }
+        if (dropItemsToRemove.length > 0) {
+          for (const dropItem of dropItemsToRemove) {
+            await trx.deleteFrom("drop_item").where("id", "=", dropItem.id).execute();
           }
         }
         return mob;
@@ -348,10 +415,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
                                         }}
                                         datasFetcher={async () => {
                                           const db = await getDB();
-                                          const zones = await db
-                                            .selectFrom("zone")
-                                            .selectAll("zone")
-                                            .execute();
+                                          const zones = await db.selectFrom("zone").selectAll("zone").execute();
                                           return zones;
                                         }}
                                         displayField="name"
@@ -532,7 +596,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
                                                         const items = await db
                                                           .selectFrom("item")
                                                           .select(["id", "name"])
-                                                          
+
                                                           .execute();
                                                         return items;
                                                       }}
@@ -610,206 +674,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: mob) => {
   );
 };
 
-const MobTable = (dic: dictionary, filterStr: Accessor<string>, columnHandleClick: (column: string) => void) => {
-  return VirtualTable<mob>({
-    dataFetcher: MobsFetcher,
-    columnsDef: [
-      {
-        id: "id",
-        accessorFn: (row) => row.id,
-        cell: (info) => info.getValue(),
-        size: {
-          "zh-CN": 160,
-          "zh-TW": 160,
-          ja: 160,
-          en: 160,
-        }[store.settings.language],
-      },
-      {
-        id: "name",
-        accessorFn: (row) => row.name,
-        cell: (info) => info.getValue(),
-        size: {
-          "zh-CN": 180,
-          "zh-TW": 180,
-          ja: 260,
-          en: 260,
-        }[store.settings.language],
-      },
-      {
-        id: "initialElement",
-        accessorFn: (row) => row.initialElement,
-        cell: (info) => info.getValue<ElementType>(),
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 115,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "type",
-        accessorFn: (row) => row.type,
-        cell: (info) => info.getValue<MobType>(),
-        size: {
-          "zh-CN": 80,
-          "zh-TW": 80,
-          ja: 120,
-          en: 120,
-        }[store.settings.language],
-      },
-      {
-        id: "captureable",
-        accessorFn: (row) => row.captureable,
-        cell: (info) => info.getValue<Boolean>().toString(),
-        size: {
-          "zh-CN": 100,
-          "zh-TW": 100,
-          ja: 100,
-          en: 100,
-        }[store.settings.language],
-      },
-      {
-        id: "baseLv",
-        accessorFn: (row) => row.baseLv,
-        cell: (info) => info.getValue(),
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 140,
-        }[store.settings.language],
-      },
-      {
-        id: "experience",
-        accessorFn: (row) => row.experience,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "physicalDefense",
-        accessorFn: (row) => row.physicalDefense,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "physicalResistance",
-        accessorFn: (row) => row.physicalResistance,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "magicalDefense",
-        accessorFn: (row) => row.magicalDefense,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "magicalResistance",
-        accessorFn: (row) => row.magicalResistance,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "criticalResistance",
-        accessorFn: (row) => row.criticalResistance,
-        size: {
-          "zh-CN": 115,
-          "zh-TW": 115,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "avoidance",
-        accessorFn: (row) => row.avoidance,
-        size: {
-          "zh-CN": 100,
-          "zh-TW": 100,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "dodge",
-        accessorFn: (row) => row.dodge,
-        size: {
-          "zh-CN": 100,
-          "zh-TW": 100,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "block",
-        accessorFn: (row) => row.block,
-        size: {
-          "zh-CN": 100,
-          "zh-TW": 100,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-      {
-        id: "actions",
-        accessorFn: (row) => row.actions,
-        size: {
-          "zh-CN": 120,
-          "zh-TW": 120,
-          ja: 180,
-          en: 180,
-        }[store.settings.language],
-      },
-    ],
-    dictionary: MobWithRelatedDic(dic),
-    defaultSort: { id: "experience", desc: true },
-    hiddenColumnDef: ["id", "captureable", "type","actions", "createdByAccountId", "updatedByAccountId"],
-    tdGenerator: {
-      initialElement: (props) =>
-        ({
-          Water: <Icon.Element.Water class="h-12 w-12" />,
-          Fire: <Icon.Element.Fire class="h-12 w-12" />,
-          Earth: <Icon.Element.Earth class="h-12 w-12" />,
-          Wind: <Icon.Element.Wind class="h-12 w-12" />,
-          Light: <Icon.Element.Light class="h-12 w-12" />,
-          Dark: <Icon.Element.Dark class="h-12 w-12" />,
-          Normal: <Icon.Element.NoElement class="h-12 w-12" />,
-        })[props.cell.getValue<ElementType>()],
-      name: (props) => (
-        <div class="text-accent-color flex flex-col gap-1">
-          <span>{props.cell.getValue<string>()}</span>
-          <Show when={props.cell.row.original.type === "Mob"}>
-            <span class="text-main-text-color text-xs">{props.cell.row.original.captureable}</span>
-          </Show>
-        </div>
-      ),
-    },
-    globalFilterStr: filterStr,
-    columnHandleClick: columnHandleClick,
-  });
-};
-
-export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated> = {
+export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelated> = {
   defaultData: defaultMobWithRelated,
   dataFetcher: MobWithRelatedFetcher,
   datasFetcher: MobsFetcher,
@@ -985,7 +850,7 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
       },
     ],
     dictionary: (dic) => MobWithRelatedDic(dic),
-    hiddenColumnDef: ["id", "captureable", "type","actions", "createdByAccountId", "updatedByAccountId"],
+    hiddenColumnDef: ["id", "captureable", "type", "actions", "createdByAccountId", "updatedByAccountId"],
     defaultSort: { id: "experience", desc: true },
     tdGenerator: {
       initialElement: (props) =>
@@ -1008,8 +873,8 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
       ),
     },
   },
-  form: ({dic, data}) => MobWithRelatedForm(dic, data),
-  card: ({dic, data}) => {
+  form: ({ dic, data }) => MobWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
     const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
     const [zonesData] = createResource(data.id, async (mobId) => {
@@ -1146,20 +1011,32 @@ export const MobDataConfig: dataDisplayConfig<mob,MobWithRelated,MobWithRelated>
             };
           }}
         />
-
         <Show when={data.createdByAccountId === store.session.user.account?.id}>
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("mob").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteMob(trx, data);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
             </div>

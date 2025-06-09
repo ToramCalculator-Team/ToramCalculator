@@ -207,25 +207,6 @@ export const itemWithRelatedFetcher = async <T extends DB[keyof DB]>(id: string,
  */
 const itemSubTable = ["weapon", "armor", "option", "special", "crystal", "consumable", "material"] as const;
 type itemSubTableType = (typeof itemSubTable)[number];
-// 添加类型映射
-type ItemTypeToTableType = {
-  Weapon: "weapon";
-  Armor: "armor";
-  Option: "option";
-  Special: "special";
-  Crystal: "crystal";
-  Consumable: "consumable";
-  Material: "material";
-};
-// 添加条件类型
-type SubTableType<T extends itemSubTableType> = T extends "weapon" ? DB["weapon"] :
-  T extends "armor" ? DB["armor"] :
-  T extends "option" ? DB["option"] :
-  T extends "special" ? DB["special"] :
-  T extends "crystal" ? DB["crystal"] :
-  T extends "consumable" ? DB["consumable"] :
-  T extends "material" ? DB["material"] :
-  never;
 export const itemTypeToTableType = (itemType: ItemType) => {
   const tableType: itemSubTableType = (
     {
@@ -257,7 +238,7 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
             .where("recipe_ingredient.id", "=", entry.id)
             .select((eb) => [
               jsonObjectFrom(
-                eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                eb.selectFrom("item").whereRef("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
               ).as("relatedItem"),
             ])
             .selectAll()
@@ -280,7 +261,7 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
             .selectFrom("drop_item")
             .where("drop_item.id", "=", item.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("mob").where("mob.id", "=", "drop_item.dropById").selectAll("mob")).as(
+              jsonObjectFrom(eb.selectFrom("mob").whereRef("mob.id", "=", "drop_item.dropById").selectAll("mob")).as(
                 "relatedMob",
               ),
             ])
@@ -304,7 +285,7 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
             .selectFrom("task_reward")
             .where("task_reward.id", "=", reward.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("task").where("task.id", "=", "task_reward.taskId").selectAll("task")).as(
+              jsonObjectFrom(eb.selectFrom("task").whereRef("task.id", "=", "task_reward.taskId").selectAll("task")).as(
                 "relatedTask",
               ),
             ])
@@ -329,7 +310,7 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
             .where("recipe_ingredient.id", "=", entry.id)
             .select((eb) => [
               jsonObjectFrom(
-                eb.selectFrom("item").where("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                eb.selectFrom("item").whereRef("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
               ).as("relatedItem"),
             ])
             .selectAll()
@@ -353,7 +334,7 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
             .where("task_collect_require.id", "=", require.id)
             .select((eb) => [
               jsonObjectFrom(
-                eb.selectFrom("task").where("task.id", "=", "task_collect_require.taskId").selectAll("task"),
+                eb.selectFrom("task").whereRef("task.id", "=", "task_collect_require.taskId").selectAll("task"),
               ).as("relatedTask"),
             ])
             .selectAll()
@@ -397,61 +378,53 @@ export const ItemSharedCardContent = (item: ItemWithRelated, dic: dictionary): J
           />
         )}
       </Show>
-      <Show when={item.usedInDropItems.length}>
-        <CardSection
-          title={"掉落于" + dic.db.mob.selfName}
-          data={dropItems() ?? []}
-          renderItem={(dropBy) => {
-            return {
-              label: dropBy.relatedMob?.name ?? "",
-              onClick: () =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }]),
-            };
-          }}
-        />
-      </Show>
-      <Show when={item.usedInTaskRewards.length}>
-        <CardSection
-          title={"可从这些" + dic.db.task.selfName + "获得"}
-          data={taskRewards() ?? []}
-          renderItem={(rewardItem) => {
-            return {
-              label: rewardItem.relatedTask?.name ?? "",
-              onClick: () =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }]),
-            };
-          }}
-        />
-      </Show>
-      <Show when={item.usedInRecipeEntries.length}>
-        <CardSection
-          title={"是这些" + dic.db.item.selfName + "的原料"}
-          data={recipeEntriesUsed() ?? []}
-          renderItem={(usedIn) => {
-            return {
-              label: usedIn.relatedItem?.name ?? "",
-              onClick: () =>
-                setWikiStore("cardGroup", (prev) => [
-                  ...prev,
-                  { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
-                ]),
-            };
-          }}
-        />
-      </Show>
-      <Show when={item.usedInTaskCollectRequires.length}>
-        <CardSection
-          title={"被用于" + dic.db.task.selfName}
-          data={taskCollectRequires() ?? []}
-          renderItem={(usedInTask) => {
-            return {
-              label: usedInTask.relatedTask?.name ?? "",
-              onClick: () =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }]),
-            };
-          }}
-        />
-      </Show>
+      <CardSection
+        title={"掉落于" + dic.db.mob.selfName}
+        data={dropItems() ?? []}
+        renderItem={(dropBy) => {
+          return {
+            label: dropBy.relatedMob?.name ?? "",
+            onClick: () =>
+              setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }]),
+          };
+        }}
+      />
+      <CardSection
+        title={"可从这些" + dic.db.task.selfName + "获得"}
+        data={taskRewards() ?? []}
+        renderItem={(rewardItem) => {
+          return {
+            label: rewardItem.relatedTask?.name ?? "",
+            onClick: () =>
+              setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }]),
+          };
+        }}
+      />
+      <CardSection
+        title={"是这些" + dic.db.item.selfName + "的原料"}
+        data={recipeEntriesUsed() ?? []}
+        renderItem={(usedIn) => {
+          return {
+            label: usedIn.relatedItem?.name ?? "",
+            onClick: () =>
+              setWikiStore("cardGroup", (prev) => [
+                ...prev,
+                { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
+              ]),
+          };
+        }}
+      />
+      <CardSection
+        title={"被用于" + dic.db.task.selfName}
+        data={taskCollectRequires() ?? []}
+        renderItem={(usedInTask) => {
+          return {
+            label: usedInTask.relatedTask?.name ?? "",
+            onClick: () =>
+              setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }]),
+          };
+        }}
+      />
     </>
   );
 };

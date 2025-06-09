@@ -44,21 +44,31 @@ export async function POST(event: APIEvent) {
 
   // 获取表的主键列
   const getPrimaryKeys = async (trx: Transaction<DB>, tableName: string) => {
-    const result = await trx
-      .selectFrom(
-        sql<{ attname: string }>`
-          (SELECT a.attname
-          FROM pg_index i
-          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-          WHERE i.indrelid = ${tableName}::regclass
-          AND i.indisprimary
-          ORDER BY array_position(i.indkey, a.attnum))
-        `.as('primary_keys')
-      )
-      .select('primary_keys.attname')
-      .execute();
-      
-    return result.map(row => row.attname);
+    try {
+      const rows = await trx
+        .selectFrom(
+          sql<{ column_name: string }>`
+            (SELECT kcu.column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+              AND tc.table_schema = kcu.table_schema
+            WHERE tc.constraint_type = 'PRIMARY KEY'
+              AND tc.table_name = ${tableName}
+              AND tc.table_schema = 'public'
+            ORDER BY kcu.ordinal_position)
+          `.as('primary_keys')
+        )
+        .select('primary_keys.column_name')
+        .execute();
+
+      const primaryKeys = rows.map((row) => row.column_name);
+      console.log("Primary keys for table", tableName, ":", primaryKeys);
+      return primaryKeys;
+    } catch (error) {
+      console.error("Error getting primary keys for table", tableName, ":", error);
+      throw error;
+    }
   };
 
 // 在 changes.ts 中修改处理逻辑

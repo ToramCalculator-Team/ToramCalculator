@@ -2,7 +2,7 @@ import { createResource, For, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { npcSchema, taskSchema } from "~/../db/zod/index";
-import { npc, task } from "~/../db/kysely/kyesely";
+import { DB, npc, task } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
@@ -18,13 +18,15 @@ import { createId } from "@paralleldrive/cuid2";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
+import { Transaction } from "kysely";
+import { createStatistic } from "~/repositories/statistic";
+import { pick } from "lodash-es";
 
 type NpcWithRelated = npc & {
   tasks: task[];
 };
 
-const NpcWithRelatedSchema = z.object({
-  ...npcSchema.shape,
+const NpcWithRelatedSchema = npcSchema.extend({
   tasks: z.array(taskSchema),
 });
 
@@ -65,32 +67,68 @@ const NpcsFetcher = async () => {
   return res as NpcWithRelated[];
 };
 
-const NpcWithRelatedForm = (dic: dictionary, oldNpc?: npc) => {
+const createNpc = async (trx: Transaction<DB>, value: npc) => {
+  const statistic = await createStatistic(trx);
+  const npc = await trx.insertInto("npc").values({
+    ...value,
+    id: createId(),
+    statisticId: statistic.id,
+    createdByAccountId: store.session.user.account?.id,
+    updatedByAccountId: store.session.user.account?.id,
+  }).returningAll().executeTakeFirstOrThrow();
+  return npc;
+};
+
+const updateNpc = async (trx: Transaction<DB>, value: npc) => {
+  const npc = await trx.updateTable("npc").set({
+    ...value,
+    updatedByAccountId: store.session.user.account?.id,
+  }).where("id", "=", value.id).returningAll().executeTakeFirstOrThrow();
+  return npc;
+};
+
+const deleteNpc = async (trx: Transaction<DB>, npc: npc) => {
+  // 重置npc相关数据
+  // 重置task
+  await trx.updateTable("task").set({ npcId: "defaultNpcId" }).where("npcId", "=", npc.id).execute();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", npc.statisticId).execute();
+  // 删除npc
+  await trx.deleteFrom("npc").where("id", "=", npc.id).execute();
+};
+
+const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
   const formInitialValues = oldNpc ?? defaultNpcWithRelated;
   const form = createForm(() => ({
-    defaultValues: defaultNpcWithRelated,
-    onSubmit: async ({ value }) => {
-      console.log("Submit value：", value);
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newNpc }) => {
+      console.log("oldNpc", oldNpc, "newNpc", newNpc);
+      const npcData = pick(newNpc, Object.keys(defaultNpcWithRelated) as (keyof NpcWithRelated)[]);
       const db = await getDB();
       const npc = await db.transaction().execute(async (trx) => {
-        const { tasks, ...rest } = value;
-        console.log("tasks", tasks);
-        console.log("rest", rest);
-        const npc = await trx.insertInto("npc").values({
-          ...rest,
-          id: createId(),
-        }).returningAll().executeTakeFirstOrThrow();
-        if (tasks.length > 0) {
-          for (const task of tasks) {
-            await trx
-              .insertInto("task")
-              .values({
-                ...task,
-                id: createId(),
-                npcId: npc.id,
-              })
-              .execute();
-          }
+        let npc: npc;
+        if (oldNpc) {
+          npc = await updateNpc(trx, npcData);
+        } else {
+          npc = await createNpc(trx, npcData);
+        }
+
+        // 关系项更新
+        const oldTasks = oldNpc?.tasks ?? [];
+        const { tasks: newTasks } = newNpc;
+        const tasksToAdd = newTasks.filter((task) => !oldTasks.some((oldTask) => oldTask.id === task.id));
+        const tasksToRemove = oldTasks.filter((oldTask) => !newTasks.some((newTask) => newTask.id === oldTask.id));
+
+        // 关联项更新
+        for (const task of tasksToAdd) {
+          await trx.insertInto("task").values({
+            ...task,
+            id: createId(),
+            npcId: npc.id,
+          }).execute();
+        }
+        for (const task of tasksToRemove) {
+          await trx.deleteFrom("task").where("id", "=", task.id).execute();
         }
         return npc;
       });
@@ -128,7 +166,6 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: npc) => {
                 return (
                   <form.Field
                     name={fieldKey}
-                    mode="array"
                     validators={{
                       onChangeAsyncDebounceMs: 500,
                       onChangeAsync: NpcWithRelatedSchema.shape[fieldKey],
@@ -312,13 +349,27 @@ export const NpcDataConfig: dataDisplayConfig<npc, NpcWithRelated, NpcWithRelate
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("npc").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteNpc(trx, data);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
             </div>

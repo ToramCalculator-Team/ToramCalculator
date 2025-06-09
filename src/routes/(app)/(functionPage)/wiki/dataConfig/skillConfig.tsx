@@ -22,13 +22,13 @@ import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { setWikiStore } from "../store";
+import { Transaction } from "kysely";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
 };
 
-const SkillWithRelatedSchema = z.object({
-  ...skillSchema.shape,
+const SkillWithRelatedSchema = skillSchema.extend({
   effects: z.array(skill_effectSchema),
 });
 
@@ -72,6 +72,39 @@ const SkillsFetcher = async () => {
   const db = await getDB();
   const res = await db.selectFrom("skill").selectAll("skill").execute();
   return res;
+};
+
+const createSkill = async (trx: Transaction<DB>, value: skill) => {
+  const statistic = await createStatistic(trx);
+  const skill = await trx.insertInto("skill").values({
+    ...value,
+    id: createId(),
+    statisticId: statistic.id,
+    createdByAccountId: store.session.user.account?.id,
+    updatedByAccountId: store.session.user.account?.id,
+  }).returningAll().executeTakeFirstOrThrow();
+  return skill;
+};
+
+const updateSkill = async (trx: Transaction<DB>, value: skill) => {
+  const skill = await trx.updateTable("skill").set({
+    ...value,
+    updatedByAccountId: store.session.user.account?.id,
+  }).where("id", "=", value.id).returningAll().executeTakeFirstOrThrow();
+  return skill;
+};
+const deleteSkill = async (trx: Transaction<DB>, skill: skill) => {
+  // 重置技能关联数据
+  // 重置角色技能
+  await trx.updateTable("character_skill").set({
+    templateId: "defaultSkillId",
+  }).where("templateId", "=", skill.id).execute();
+  // 删除技能效果
+  await trx.deleteFrom("skill_effect").where("belongToskillId", "=", skill.id).execute();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", skill.statisticId).execute();
+  // 删除技能
+  await trx.deleteFrom("skill").where("id", "=", skill.id).execute();
 };
 
 const SkillWithRelatedForm = (dic: dictionary, oldSkill?: skill) => {
@@ -347,8 +380,8 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({dic, data}) => SkillWithRelatedForm(dic, data),
-  card: ({dic, data}) => {
+  form: ({ dic, data }) => SkillWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
     const [effectsData] = createResource(data.id, async (skillId) => {
       const db = await getDB();
       return await db
@@ -391,13 +424,27 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("skill").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteSkill(trx, data);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
             </div>

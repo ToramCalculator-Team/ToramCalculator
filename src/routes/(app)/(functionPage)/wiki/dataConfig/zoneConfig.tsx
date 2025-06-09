@@ -27,8 +27,7 @@ type ZoneWithRelated = zone & {
   linkZones: zone[];
 };
 
-const ZoneWithRelatedSchema = z.object({
-  ...zoneSchema.shape,
+const ZoneWithRelatedSchema = zoneSchema.extend({
   mobs: z.array(mobSchema),
   npcs: z.array(npcSchema),
   linkZones: z.array(zoneSchema),

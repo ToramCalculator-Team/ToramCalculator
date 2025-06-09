@@ -26,12 +26,9 @@ import { LoadingBar } from "~/components/loadingBar";
 import { defaultData } from "~/../db/defaultData";
 import { DB } from "~/../db/kysely/kyesely";
 import { dataDisplayConfig } from "./dataConfig/dataConfig";
-import { Form } from "~/components/module/form";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { MediaContext } from "~/contexts/Media";
-import { VisibilityState } from "@tanstack/solid-table";
 import { Dialog } from "~/components/controls/dialog";
-import { getDB } from "~/repositories/database";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { DBDataConfig } from "./dataConfig/dataConfig";
 import { Decorate } from "~/components/icon";
@@ -69,6 +66,7 @@ export default function WikiSubPage() {
 
   const [cachedCardDatas, { refetch }] = createResource(() => wikiStore.cardGroup, getCachedCardDatas);
 
+  // 监听url参数变化, 初始化页面状态
   createEffect(
     on(
       () => params.subName,

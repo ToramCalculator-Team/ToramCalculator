@@ -1,7 +1,12 @@
 import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { taskSchema, task_collect_requireSchema, task_kill_requirementSchema, task_rewardSchema } from "~/../db/zod/index";
+import {
+  taskSchema,
+  task_collect_requireSchema,
+  task_kill_requirementSchema,
+  task_rewardSchema,
+} from "~/../db/zod/index";
 import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
@@ -23,6 +28,7 @@ import * as Icon from "~/components/icon";
 import { VirtualTable } from "~/components/module/virtualTable";
 import { setWikiStore } from "../store";
 import { itemTypeToTableType } from "./utils";
+import { Transaction } from "kysely";
 
 type TaskWithRelated = task & {
   collectRequires: task_collect_require[];
@@ -100,6 +106,48 @@ const TasksFetcher = async () => {
   const db = await getDB();
   const res = await db.selectFrom("task").selectAll("task").execute();
   return res;
+};
+
+const createTask = async (trx: Transaction<DB>, value: task) => {
+  const statistic = await createStatistic(trx);
+  const task = await trx
+    .insertInto("task")
+    .values({
+      ...value,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return task;
+};
+
+const updateTask = async (trx: Transaction<DB>, value: task) => {
+  const task = await trx
+    .updateTable("task")
+    .set({
+      ...value,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", value.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return task;
+};
+
+const deleteTask = async (trx: Transaction<DB>, task: task) => {
+  // 重置任务关联数据
+
+  // 删除任务关联数据
+  await trx.deleteFrom("task_collect_require").where("taskId", "=", task.id).execute();
+  await trx.deleteFrom("task_kill_requirement").where("taskId", "=", task.id).execute();
+  await trx.deleteFrom("task_reward").where("taskId", "=", task.id).execute();
+  // 删除统计数据
+  await trx.deleteFrom("statistic").where("id", "=", task.statisticId).execute();
+  // 删除任务
+  await trx.deleteFrom("task").where("id", "=", task.id).execute();
 };
 
 const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
@@ -274,7 +322,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                                 const items = await db
                                                   .selectFrom("item")
                                                   .select(["id", "name"])
-                                                  
+
                                                   .execute();
                                                 return items;
                                               }}
@@ -360,7 +408,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                                 const mobs = await db
                                                   .selectFrom("mob")
                                                   .select(["id", "name"])
-                                                  
+
                                                   .execute();
                                                 return mobs;
                                               }}
@@ -467,7 +515,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                             const items = await db
                                               .selectFrom("item")
                                               .select(["id", "name"])
-                                              
+
                                               .execute();
                                             return items;
                                           }}
@@ -585,8 +633,8 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({dic, data}) => TaskWithRelatedForm(dic, data),
-  card: ({dic, data}) => {
+  form: ({ dic, data }) => TaskWithRelatedForm(dic, data),
+  card: ({ dic, data }) => {
     const [collectRequiresData] = createResource(data.id, async (taskId) => {
       const db = await getDB();
       return await db
@@ -639,11 +687,14 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
           renderItem={(collectRequire) => {
             return {
               label: collectRequire.itemName,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId }]),
+              onClick: () =>
+                setWikiStore("cardGroup", (pre) => [
+                  ...pre,
+                  { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId },
+                ]),
             };
           }}
         />
-
         <CardSection
           title={dic.db.task_kill_requirement.selfName}
           data={killRequirementsData.latest}
@@ -654,14 +705,17 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
             };
           }}
         />
-
         <CardSection
           title={dic.db.task_reward.selfName}
           data={rewardsData.latest}
           renderItem={(reward) => {
             return {
               label: reward.itemName,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(reward.itemType), id: reward.itemId! }]),
+              onClick: () =>
+                setWikiStore("cardGroup", (pre) => [
+                  ...pre,
+                  { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
+                ]),
             };
           }}
         />
@@ -672,13 +726,27 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
               {dic.ui.actions.operation}
               <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
             </h3>
-            <div class="FunGroup flex flex-col gap-3">
+            <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
                 icon={<Icon.Line.Trash />}
                 onclick={async () => {
                   const db = await getDB();
-                  await db.deleteFrom("task").where("id", "=", data.id).executeTakeFirstOrThrow();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteTask(trx, data);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  // 打开表单
+                  setWikiStore("form", { isOpen: true, data: data });
                 }}
               />
             </div>

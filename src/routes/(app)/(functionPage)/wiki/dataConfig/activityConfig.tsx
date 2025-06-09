@@ -6,8 +6,6 @@ import { activity, DB, zone } from "~/../db/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
-import { Input } from "~/components/controls/input";
-import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "~/../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 import { z } from "zod";
@@ -18,7 +16,6 @@ import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
-import { VirtualTable } from "~/components/module/virtualTable";
 import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 

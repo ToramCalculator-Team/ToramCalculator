@@ -183,6 +183,37 @@ export const ConsumableDataConfig: dataDisplayConfig<
           },
         })}
         {ItemSharedCardContent(data, dic)}
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex gap-1">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteConsumable(trx, data.itemId);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setWikiStore("form", { isOpen: true, data: data });
+                }}
+              />
+            </div>
+          </section>
+        </Show>
       </>
     );
   },

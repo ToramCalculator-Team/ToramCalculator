@@ -410,31 +410,58 @@ export const CrystalDataConfig: dataDisplayConfig<
             其他属性: ["details", "dataSources"],
           },
         })}
-        <Show when={frontData.latest?.length}>
-          <CardSection
-            title={"前置" + dic.db.crystal.selfName}
-            data={frontData.latest}
-            renderItem={(front) => {
-              return {
-                label: front.name,
-                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }]),
-              };
-            }}
-          />
-        </Show>
-        <Show when={backData.latest?.length}>
-          <CardSection
-            title={"后置" + dic.db.crystal.selfName}
-            data={backData.latest}
-            renderItem={(back) => {
-              return {
-                label: back.name,
-                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }]),
-              };
-            }}
-          />
-        </Show>
+        <CardSection
+          title={"前置" + dic.db.crystal.selfName}
+          data={frontData.latest}
+          renderItem={(front) => {
+            return {
+              label: front.name,
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }]),
+            };
+          }}
+        />
+        <CardSection
+          title={"后置" + dic.db.crystal.selfName}
+          data={backData.latest}
+          renderItem={(back) => {
+            return {
+              label: back.name,
+              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }]),
+            };
+          }}
+        />
         {ItemSharedCardContent(data, dic)}
+        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+          <section class="FunFieldGroup flex w-full flex-col gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.ui.actions.operation}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="FunGroup flex gap-1">
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Trash />}
+                onclick={async () => {
+                  const db = await getDB();
+                  await db.transaction().execute(async (trx) => {
+                    await deleteCrystal(trx, data.itemId);
+                  });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                }}
+              />
+              <Button
+                class="w-fit"
+                icon={<Icon.Line.Edit />}
+                onclick={() => {
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setWikiStore("form", { isOpen: true, data: data });
+                }}
+              />
+            </div>
+          </section>
+        </Show>
       </>
     );
   },

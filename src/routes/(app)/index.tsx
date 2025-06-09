@@ -1,5 +1,4 @@
 import {
-  Accessor,
   createEffect,
   createMemo,
   createResource,
@@ -11,6 +10,7 @@ import {
   Show,
   useContext,
   on,
+  Index,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
@@ -33,17 +33,17 @@ import { Portal } from "solid-js/web";
 import { DBDataConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
 import { searchAllTables } from "~/routes/(app)/search";
 import { Decorate } from "~/components/icon";
+import { setWikiStore, wikiStore } from "./(functionPage)/wiki/store";
 
 type Result = DB[keyof DB];
 
 type FinalResult = Partial<Record<keyof DB, Result[]>>;
 
-export default function Index() {
+export default function IndexPage() {
   let searchButtonRef!: HTMLButtonElement;
   let searchInputRef!: HTMLInputElement;
 
   const navigate = useNavigate();
-  const [dialogState, setSheetState] = createSignal(false);
   const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
   const [searchResult, setSearchResult] = createSignal<FinalResult>({
@@ -55,11 +55,6 @@ export default function Index() {
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
   const [isSearching, setIsSearching] = createSignal(false);
-
-  // card
-  const [cardTypeAndIds, setCardTypeAndIds] = createSignal<{ type: keyof DB; id: string }[]>([]);
-  const [cardGroupIsOpen, setCardGroupIsOpen] = createSignal(false);
-  const [cachedCardDatas, setCachedCardDatas] = createSignal<Record<string, unknown>[]>([]);
 
   const media = useContext(MediaContext);
 
@@ -138,42 +133,20 @@ export default function Index() {
       icon: "Gamepad",
     },
   ]);
-  // const [UserList, { refetch: refetchUserList }] = createResource(
-  //   async () =>
-  //     await pgWorker.live.query<User>(`select * from public.user`, [], (res) => {
-  //       console.log(res);
-  //     }),
-  // );lse);
 
-  // 获取新数据并更新缓存
-  createResource(
-    () => cardTypeAndIds().slice(cachedCardDatas().length),
-    async (newItems) => {
-      if (newItems.length === 0) return;
-      const results: Record<string, unknown>[] = [];
-      for (const { type, id } of newItems) {
+  const getCachedCardDatas = async () => {
+    return await Promise.all(
+      wikiStore.cardGroup.map(async ({ type, id }) => {
         const config = DBDataConfig[type];
         if (config?.dataFetcher) {
           const result = await config.dataFetcher(id);
-          results.push(result);
+          return result;
         }
-      }
-      setCachedCardDatas((prev) => [...prev, ...results]);
-    },
-  );
+      }),
+    );
+  };
 
-  // 添加一个 effect 来同步 cardTypeAndIds 和 cachedCardDatas
-  createEffect(
-    on(cardTypeAndIds, (newIds) => {
-      // 如果 cardTypeAndIds 长度小于 cachedCardDatas，说明有数据被删除
-      if (newIds.length < cachedCardDatas().length) {
-        setCachedCardDatas((prev) => prev.slice(0, newIds.length));
-      }
-      if (cardTypeAndIds().length <= 0) {
-        setCardGroupIsOpen(false);
-      }
-    }),
-  );
+  const [cachedCardDatas, { refetch }] = createResource(() => wikiStore.cardGroup, getCachedCardDatas);
 
   const search = async () => {
     if (searchInputValue() === "" || searchInputValue() === null) {
@@ -537,13 +510,11 @@ export default function Index() {
                                               onClick={async () => {
                                                 // 设置卡片类型和ID
                                                 "id" in resultItem
-                                                  ? setCardTypeAndIds((pre) => [
+                                                  ? setWikiStore("cardGroup", (pre) => [
                                                       ...pre,
                                                       { type: groupType, id: resultItem.id },
                                                     ])
                                                   : null;
-                                                // 设置卡片组是否打开
-                                                setCardGroupIsOpen(true);
                                               }}
                                             >
                                               <div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
@@ -671,37 +642,38 @@ export default function Index() {
         </Presence>
       </Motion.div>
 
+      {/* 卡片组 */}
       <Portal>
         <Presence exitBeforeEnter>
-          <Show when={cardGroupIsOpen()}>
+          <Show when={cachedCardDatas()?.length}>
             <Motion.div
               animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
               exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
               class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-              onClick={() => setCardTypeAndIds((pre) => pre.slice(0, -1))}
+              onClick={() => setWikiStore("cardGroup", (pre) => pre.slice(0, -1))}
             >
-              <For each={cachedCardDatas()}>
+              <Index each={cachedCardDatas()}>
                 {(cardData, index) => {
                   return (
-                    <Show when={cachedCardDatas().length - index() < 5}>
+                    <Show when={cachedCardDatas()!.length - index < 5}>
                       <Motion.div
                         animate={{
-                          transform: [`rotate(0deg)`, `rotate(${(cachedCardDatas().length - index() - 1) * 2}deg)`],
+                          transform: [`rotate(0deg)`, `rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`],
                           opacity: [0, 1],
                         }}
                         exit={{
-                          transform: [`rotate(${(cachedCardDatas().length - index() - 1) * 2}deg)`, `rotate(0deg)`],
+                          transform: [`rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`, `rotate(0deg)`],
                           opacity: [1, 0],
                         }}
                         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
                         class="DialogBox drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          "z-index": `${index()}`,
+                          "z-index": `${index}`,
                         }}
                       >
-                        <Show when={cardTypeAndIds()[index()]?.type}>
+                        <Show when={wikiStore.cardGroup[index]?.type}>
                           {(type) => {
                             return (
                               <>
@@ -728,8 +700,8 @@ export default function Index() {
                                   <div class="bg-primary-color z-10 -mx-[1px] py-[3px]">
                                     <div class="border-boundary-color border-y py-[3px]">
                                       <h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">
-                                        {"name" in cardData
-                                          ? (cardData["name"] as string)
+                                        {cardData() && "name" in cardData()
+                                          ? (cardData()["name"] as string)
                                           : dictionary().db[type()].selfName}
                                       </h1>
                                     </div>
@@ -777,27 +749,9 @@ export default function Index() {
                                     >
                                       <div class="Childern mx-3 my-6 flex flex-col gap-3">
                                         {DBDataConfig[type()]?.card({
-                                          data: cardData,
                                           dic: dictionary(),
+                                          data: cardData(),
                                         })}
-
-                                        <section class="FunFieldGroup flex w-full flex-col gap-2">
-                                          <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                                            {dictionary().ui.actions.operation}
-                                            <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-                                          </h3>
-                                          <div class="FunGroup flex flex-col gap-3">
-                                            <Button
-                                              class="w-fit"
-                                              icon={<Icon.Line.Edit />}
-                                              onclick={() => {
-                                                const { type, id } = cardTypeAndIds()[index()];
-                                                setCardTypeAndIds((pre) => pre.slice(0, -1));
-                                                // setFormSheetIsOpen(true);
-                                              }}
-                                            />
-                                          </div>
-                                        </section>
                                       </div>
                                     </OverlayScrollbarsComponent>
                                     <div
@@ -821,7 +775,7 @@ export default function Index() {
                     </Show>
                   );
                 }}
-              </For>
+              </Index>
             </Motion.div>
           </Show>
         </Presence>

@@ -24,6 +24,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { LoadingBar } from "~/components/loadingBar";
 import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
+import { pick } from "lodash-es";
 
 type AddressWithRelated = address & {
   zones: zone[];
@@ -85,11 +86,12 @@ const updateAddress = async (trx: Transaction<DB>, address: address) => {
 };
 
 const deleteAddress = async (trx: Transaction<DB>, address: address) => {
-  await trx.deleteFrom("address").where("id", "=", address.id).executeTakeFirstOrThrow();
   // 删除统计
   await trx.deleteFrom("statistic").where("id", "=", address.statisticId).executeTakeFirstOrThrow();
   // 将相关zones归属调整至defaultAddress
   await trx.updateTable("zone").set({ addressId: "defaultAddressId" }).where("addressId", "=", address.id).execute();
+  // 删除地址
+  await trx.deleteFrom("address").where("id", "=", address.id).executeTakeFirstOrThrow();
 };
 
 const AddressesFetcher = async () => {
@@ -98,33 +100,28 @@ const AddressesFetcher = async () => {
   return res;
 };
 
-const AddressWithRelatedForm = (
-  dic: dictionary,
-  data?: AddressWithRelated,
-) => {
+const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated) => {
   const form = createForm(() => ({
-    defaultValues: data ?? defaultAddressWithRelated,
-    onSubmit: async ({ value }) => {
-      console.log(value);
+    defaultValues: oldAddress ?? defaultAddressWithRelated,
+    onSubmit: async ({ value: newAddress }) => {
+      console.log("oldAddress", oldAddress, "newAddress", newAddress);
+      const addressData = pick(newAddress, Object.keys(defaultAddressWithRelated) as (keyof AddressWithRelated)[]);
       const db = await getDB();
-      const oldZones = data?.zones ?? [];
-
       await db.transaction().execute(async (trx) => {
         let address: address;
-        if (data) {
+        if (oldAddress) {
           // 更新
-          address = await updateAddress(trx, { ...value, id: data.id });
+          address = await updateAddress(trx, addressData);
         } else {
           // 新增
-          const { zones, ...rest } = value;
-          const statistic = await createStatistic(trx);
-          const address = await createAddress(trx, { ...rest, id: createId(), statisticId: statistic.id });
-          return address;
+          address = await createAddress(trx, addressData);
         }
 
+        const oldZones = oldAddress?.zones ?? [];
+        const { zones: newZones } = newAddress;
         // 统一处理zones
-        const zonesToRemove = oldZones.filter((zone) => !value.zones.some((z) => z.id === zone.id));
-        const zonesToAdd = value.zones.filter((zone) => !oldZones.some((z) => z.id === zone.id));
+        const zonesToRemove = oldZones.filter((zone) => !newZones.some((z) => z.id === zone.id));
+        const zonesToAdd = newZones.filter((zone) => !oldZones.some((z) => z.id === zone.id));
 
         // 处理需要移除的区域（删除区域）
         for (const zone of zonesToRemove) {
@@ -211,7 +208,7 @@ const AddressWithRelatedForm = (
                                           const zones = await db
                                             .selectFrom("zone")
                                             .selectAll("zone")
-                                            
+
                                             .execute();
                                           return zones;
                                         }}
@@ -593,6 +590,8 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
                   await db.transaction().execute(async (trx) => {
                     await deleteAddress(trx, data);
                   });
+                  // 关闭当前卡片
+                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
                 }}
               />
               <Button
