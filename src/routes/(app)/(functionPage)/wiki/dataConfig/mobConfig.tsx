@@ -86,10 +86,8 @@ const MobWithRelatedFetcher = async (id: string) => {
       jsonArrayFrom(
         eb
           .selectFrom("drop_item")
-          .innerJoin("item", "item.id", "drop_item.itemId")
-          .where("drop_item.dropById", "=", "mob.id")
+          .whereRef("drop_item.dropById", "=", "mob.id")
           .selectAll("drop_item")
-          .select("item.name"),
       ).as("dropItems"),
     ])
     .executeTakeFirstOrThrow();
@@ -150,6 +148,7 @@ const deleteMob = async (trx: Transaction<DB>, mob: mob) => {
 };
 
 const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
+  console.log("oldMob", oldMob);
   const formInitialValues = oldMob ?? defaultMobWithRelated;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
@@ -478,6 +477,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                           <Show when={field().state.value.length > 0}>
                             <Index each={field().state.value}>
                               {(dropItem, i) => {
+                                console.log("i, dropItem", i, dropItem());
                                 return (
                                   <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                     <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">

@@ -58,6 +58,7 @@ export default function WikiSubPage() {
         const config = DBDataConfig[type];
         if (config?.dataFetcher) {
           const result = await config.dataFetcher(id);
+          console.log("result", result);
           return result;
         }
       }),
