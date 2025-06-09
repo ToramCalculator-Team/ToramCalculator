@@ -5,6 +5,7 @@ import { getDB } from "~/repositories/database";
 import { findUserById } from "~/repositories/user";
 import { sql, Transaction } from "kysely";
 import { DB } from "../../../db/kysely/kyesely";
+import { getPrimaryKeys } from "~/repositories/untils";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
@@ -41,35 +42,6 @@ export async function POST(event: APIEvent) {
   // if (user.role !== "admin") {
   //   return new Response("当前用户无权限", { status: 403 });
   // }
-
-  // 获取表的主键列
-  const getPrimaryKeys = async (trx: Transaction<DB>, tableName: string) => {
-    try {
-      const rows = await trx
-        .selectFrom(
-          sql<{ column_name: string }>`
-            (SELECT kcu.column_name
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu
-              ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'PRIMARY KEY'
-              AND tc.table_name = ${tableName}
-              AND tc.table_schema = 'public'
-            ORDER BY kcu.ordinal_position)
-          `.as('primary_keys')
-        )
-        .select('primary_keys.column_name')
-        .execute();
-
-      const primaryKeys = rows.map((row) => row.column_name);
-      console.log("Primary keys for table", tableName, ":", primaryKeys);
-      return primaryKeys;
-    } catch (error) {
-      console.error("Error getting primary keys for table", tableName, ":", error);
-      throw error;
-    }
-  };
 
 // 在 changes.ts 中修改处理逻辑
 try {

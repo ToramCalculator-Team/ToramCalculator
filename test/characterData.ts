@@ -1,6 +1,6 @@
 import { type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MAIN_WEAPON_TYPE } from "../db/enums";
+import { MAIN_HAND_TYPE, MAIN_WEAPON_TYPE, SUB_HAND_TYPE, SUB_WEAPON_TYPE } from "../db/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,
@@ -233,10 +233,11 @@ export type SkillModifierType = keyof typeof SkillAttrEnum;
 export type AttrType = CharacterAttrType | mobAttrType | SkillModifierType;
 export type SourceName = AttrType | "SYSTEM";
 
-type MainHandHandType = (typeof MAIN_WEAPON_TYPE)[number] | "None";
+type MainHandType = (typeof MAIN_HAND_TYPE)[number];
+type SubHandType = (typeof SUB_HAND_TYPE)[number];
 
-const weaponAbiT: Record<
-MainHandHandType,
+const MainWeaponAbiT: Record<
+MainHandType,
   {
     baseHit: number;
     baseAspd: number;
@@ -570,11 +571,17 @@ MainHandHandType,
   },
 };
 
+const SubWeaponModifier: Record<
+  SubHandType,
+  {
+  }> = {}
+
 const enum ValueType {
   system,
   user,
   both,
 }
+
 const enum OriginType {
   baseValue,
   staticConstant,
@@ -617,6 +624,7 @@ interface AttrData {
       }[];
   modifiers: ModifiersData;
 }
+
 interface CharacterAttrData extends AttrData {
   type: ValueType;
   name: CharacterAttrEnum;
@@ -788,12 +796,12 @@ const characterData = (character: Character["Card"]) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert,
+        formula: MainWeaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
         originType: OriginType.baseValue,
       },
     ],
@@ -926,22 +934,22 @@ const characterData = (character: Character["Card"]) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
         originType: OriginType.baseValue,
       },
       {
@@ -964,22 +972,22 @@ const characterData = (character: Character["Card"]) => {
       },
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
         originType: OriginType.baseValue,
       },
     ],
@@ -1005,22 +1013,22 @@ const characterData = (character: Character["Card"]) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
         originType: OriginType.baseValue,
       },
       {
@@ -1043,22 +1051,22 @@ const characterData = (character: Character["Card"]) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: weaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
+        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
         originType: OriginType.baseValue,
       },
       {

@@ -188,18 +188,22 @@ export const MERCENARY_TYPE = ["Tank", "Dps"] as const;
 export const VISIBILITY = ["Public", "Private"] as const;
 // 主武器类型
 export const MAIN_WEAPON_TYPE = [
-  "OneHandSword",
-  "TwoHandSword",
-  "Bow",
-  "Bowgun",
-  "Rod",
-  "Magictool",
-  "Knuckle",
-  "Halberd",
-  "Katana",
+  "OneHandSword",// 0
+  "TwoHandSword",// 1
+  "Bow",// 2
+  "Bowgun",// 3
+  "Rod",// 4
+  "Magictool",// 5
+  "Knuckle",// 6
+  "Halberd",// 7
+  "Katana",// 8
 ] as const;
+// 主手武器类型
+export const MAIN_HAND_TYPE = [...MAIN_WEAPON_TYPE, "None"] as const;
 // 副武器
 export const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
+// 副手武器类型
+export const SUB_HAND_TYPE = [...SUB_WEAPON_TYPE, MAIN_WEAPON_TYPE[0], MAIN_HAND_TYPE[5], MAIN_HAND_TYPE[6], MAIN_HAND_TYPE[8], "None"] as const;
 // 武器
 export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
 // 用户防具类型

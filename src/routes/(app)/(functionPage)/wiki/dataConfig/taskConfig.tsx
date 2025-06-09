@@ -25,9 +25,8 @@ import { TaskRewardType } from "../../../../../../db/kysely/enums";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";
-import { VirtualTable } from "~/components/module/virtualTable";
 import { setWikiStore } from "../store";
-import { itemTypeToTableType } from "./utils";
+import { itemTypeToTableType } from "./item";
 import { Transaction } from "kysely";
 
 type TaskWithRelated = task & {

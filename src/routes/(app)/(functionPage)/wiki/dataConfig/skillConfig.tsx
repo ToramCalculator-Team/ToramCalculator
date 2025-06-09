@@ -20,9 +20,10 @@ import { SkillDistanceType, SkillTreeType } from "~/../db/kysely/enums";
 import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
-import { VirtualTable } from "~/components/module/virtualTable";
 import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
+import { NodeEditor } from "~/components/module/nodeEditor";
+import { pick } from "lodash-es";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -76,29 +77,43 @@ const SkillsFetcher = async () => {
 
 const createSkill = async (trx: Transaction<DB>, value: skill) => {
   const statistic = await createStatistic(trx);
-  const skill = await trx.insertInto("skill").values({
-    ...value,
-    id: createId(),
-    statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
-  }).returningAll().executeTakeFirstOrThrow();
+  const skill = await trx
+    .insertInto("skill")
+    .values({
+      ...value,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
   return skill;
 };
 
 const updateSkill = async (trx: Transaction<DB>, value: skill) => {
-  const skill = await trx.updateTable("skill").set({
-    ...value,
-    updatedByAccountId: store.session.user.account?.id,
-  }).where("id", "=", value.id).returningAll().executeTakeFirstOrThrow();
+  const skill = await trx
+    .updateTable("skill")
+    .set({
+      ...value,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", value.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
   return skill;
 };
+
 const deleteSkill = async (trx: Transaction<DB>, skill: skill) => {
   // 重置技能关联数据
   // 重置角色技能
-  await trx.updateTable("character_skill").set({
-    templateId: "defaultSkillId",
-  }).where("templateId", "=", skill.id).execute();
+  await trx
+    .updateTable("character_skill")
+    .set({
+      templateId: "defaultSkillId",
+    })
+    .where("templateId", "=", skill.id)
+    .execute();
   // 删除技能效果
   await trx.deleteFrom("skill_effect").where("belongToskillId", "=", skill.id).execute();
   // 删除统计
@@ -107,38 +122,39 @@ const deleteSkill = async (trx: Transaction<DB>, skill: skill) => {
   await trx.deleteFrom("skill").where("id", "=", skill.id).execute();
 };
 
-const SkillWithRelatedForm = (dic: dictionary, oldSkill?: skill) => {
+const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
   const formInitialValues = oldSkill ?? defaultSkillWithRelated;
   const form = createForm(() => ({
-    defaultValues: defaultSkillWithRelated,
-    onSubmit: async ({ value }) => {
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newSkill }) => {
+      console.log("oldSkill", oldSkill, "newSkill", newSkill);
+      const skillData = pick(newSkill, Object.keys(defaultSkillWithRelated) as (keyof SkillWithRelated)[]);
       const db = await getDB();
       const skill = await db.transaction().execute(async (trx) => {
-        const { effects, ...rest } = value;
-        const statistic = await createStatistic(trx);
-        const skill = await trx
-          .insertInto("skill")
-          .values({
-            ...rest,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (effects?.length > 0) {
-          for (const effect of effects) {
-            await trx
-              .insertInto("skill_effect")
-              .values({
-                ...effect,
-                id: createId(),
-                belongToskillId: skill.id,
-              })
-              .execute();
-          }
+        let skill: skill;
+        if (oldSkill) {
+          skill = await updateSkill(trx, skillData);
+        } else {
+          skill = await createSkill(trx, skillData);
         }
+
+        const oldEffects = oldSkill?.effects ?? [];
+        const { effects: newEffects } = newSkill;
+        const effectsToAdd = newEffects.filter((effect) => !oldEffects.some((oldEffect) => oldEffect.id === effect.id));
+        const effectsToRemove = oldEffects.filter((oldEffect) => !newEffects.some((newEffect) => newEffect.id === oldEffect.id));
+
+        for (const effect of effectsToAdd) {
+          await trx.insertInto("skill_effect").values({
+            ...effect,
+            id: createId(),
+            belongToskillId: skill.id,
+          }).execute();
+        }
+
+        for (const effect of effectsToRemove) {
+          await trx.deleteFrom("skill_effect").where("id", "=", effect.id).execute();
+        }
+        
         return skill;
       });
       setWikiStore("cardGroup", (pre) => [...pre, { type: "skill", id: skill.id }]);
@@ -262,8 +278,46 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: skill) => {
                                       switch (fieldKey) {
                                         case "id":
                                         case "belongToskillId":
-                                        case "logic":
                                           return null;
+                                        case "logic":
+                                          return (
+                                            <form.Field
+                                              name={`effects[${index}].logic`}
+                                              validators={{
+                                                onChangeAsyncDebounceMs: 500,
+                                                onChangeAsync: skill_effectSchema.shape[fieldKey],
+                                              }}
+                                            >
+                                              {(field) => {
+                                                return (
+                                                  <Input
+                                                    title={dic.db.skill_effect.fields.logic.key}
+                                                    description={dic.db.skill_effect.fields.logic.formFieldDescription}
+                                                    autocomplete="off"
+                                                    type="text"
+                                                    id={field().name}
+                                                    name={field().name}
+                                                    value={field().state.value as string}
+                                                    onBlur={field().handleBlur}
+                                                    onChange={(e) => {
+                                                      const target = e.target;
+                                                      field().handleChange(target.value);
+                                                    }}
+                                                    state={fieldInfo(field())}
+                                                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                                  >
+                                                    <NodeEditor
+                                                      data={field().state.value}
+                                                      setData={(data) => field().setValue(data)}
+                                                      state={true}
+                                                      id={field().name}
+                                                      class="h-[80vh] w-full"
+                                                    />
+                                                  </Input>
+                                                );
+                                              }}
+                                            </form.Field>
+                                          );
                                         default:
                                           // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                           const simpleFieldKey = `effects[${index}].${fieldKey}`;

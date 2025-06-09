@@ -34,6 +34,7 @@ import { setWikiStore } from "../store";
 import { dataDisplayConfig } from "./dataConfig";
 import { Transaction } from "kysely";
 import { pick } from "lodash-es";
+import { arrayDiff } from "./utils";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -154,7 +155,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newMob }) => {
       console.log("oldMob", oldMob, "newMob", newMob);
-      const mobData = pick(newMob, Object.keys(defaultMobWithRelated) as (keyof MobWithRelated)[]);
+      const mobData = pick(newMob, Object.keys(defaultData.mob) as (keyof mob)[]);
       const db = await getDB();
       const mob = await db.transaction().execute(async (trx) => {
         let mob: mob;
@@ -164,53 +165,61 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
           mob = await createMob(trx, mobData);
         }
 
+        const {
+          dataToAdd: appearInZonesToAdd,
+          dataToRemove: appearInZonesToRemove,
+          dataToUpdate: appearInZonesToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "zone",
+          oldArray: oldMob?.appearInZones ?? [],
+          newArray: newMob.appearInZones,
+        });
+
         // 关系项更新
-        const oldAppearInZones = oldMob?.appearInZones ?? [];
-        const oldDropItems = oldMob?.dropItems ?? [];
-
-        const { appearInZones: newAppearInZones, dropItems: newDropItems } = newMob;
-        const appearInZonesToAdd = newAppearInZones.filter(
-          (zone) => !oldAppearInZones.some((oldZone) => oldZone.id === zone.id),
-        );
-        const appearInZonesToRemove = oldAppearInZones.filter(
-          (oldZone) => !newAppearInZones.some((newZone) => newZone.id === oldZone.id),
-        );
-
-        // 关联项更新
-        if (appearInZonesToAdd.length > 0) {
-          for (const zone of appearInZonesToAdd) {
-            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
-          }
+        for (const zone of appearInZonesToAdd) {
+          await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
         }
-        if (appearInZonesToRemove.length > 0) {
-          for (const zone of appearInZonesToRemove) {
-            await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).where("B", "=", zone.id).execute();
-          }
+        for (const zone of appearInZonesToRemove) {
+          await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).where("B", "=", zone.id).execute();
+        }
+        for (const zone of appearInZonesToUpdate) {
+          await trx
+            .updateTable("_mobTozone")
+            .set({ B: zone.id })
+            .where("A", "=", mob.id)
+            .where("B", "=", zone.id)
+            .execute();
         }
 
-        const dropItemsToAdd = newDropItems.filter(
-          (dropItem) => !oldDropItems.some((oldDropItem) => oldDropItem.id === dropItem.id),
-        );
-        const dropItemsToRemove = oldDropItems.filter(
-          (oldDropItem) => !newDropItems.some((newDropItem) => newDropItem.id === oldDropItem.id),
-        );
-        if (dropItemsToAdd.length > 0) {
-          for (const dropItem of dropItemsToAdd) {
-            await trx
-              .insertInto("drop_item")
-              .values({
-                ...dropItem,
-                id: createId(),
-                dropById: mob.id,
-              })
-              .execute();
-          }
+        const {
+          dataToAdd: dropItemsToAdd,
+          dataToRemove: dropItemsToRemove,
+          dataToUpdate: dropItemsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "drop_item",
+          oldArray: oldMob?.dropItems ?? [],
+          newArray: newMob.dropItems,
+        });
+
+        for (const dropItem of dropItemsToAdd) {
+          await trx
+            .insertInto("drop_item")
+            .values({
+              ...dropItem,
+              id: createId(),
+              dropById: mob.id,
+            })
+            .execute();
         }
-        if (dropItemsToRemove.length > 0) {
-          for (const dropItem of dropItemsToRemove) {
-            await trx.deleteFrom("drop_item").where("id", "=", dropItem.id).execute();
-          }
+        for (const dropItem of dropItemsToRemove) {
+          await trx.deleteFrom("drop_item").where("id", "=", dropItem.id).execute();
         }
+        for (const dropItem of dropItemsToUpdate) {
+          await trx.updateTable("drop_item").set(dropItem).where("id", "=", dropItem.id).execute();
+        }
+
         return mob;
       });
       setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }]);

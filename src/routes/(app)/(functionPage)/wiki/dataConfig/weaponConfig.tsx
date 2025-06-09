@@ -21,7 +21,7 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
-} from "./utils";
+} from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";

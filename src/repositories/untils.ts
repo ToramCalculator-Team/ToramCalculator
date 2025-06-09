@@ -1,4 +1,4 @@
-import { Selectable, Insertable, Updateable, Kysely, Transaction } from "kysely";
+import { Selectable, Insertable, Updateable, Kysely, Transaction, sql } from "kysely";
 import { DB } from "../../db/kysely/kyesely";
 import { store } from "~/store";
 
@@ -48,7 +48,7 @@ export interface DataType<T> {
 
 /**
  * 根据对象类型生成各类UI需要的字典类型
- * 
+ *
  * @param T 原始类型
  * @returns 转换后的类型
  * cardFieldDescription: 卡片字段描述
@@ -64,5 +64,68 @@ export type ConvertToAllDetail<T> = {
   };
 };
 
+// 获取表的主键列
+export const getPrimaryKeys = async <T extends keyof DB>(
+  trx: Transaction<DB>,
+  tableName: T,
+): Promise<(keyof DB[T])[]> => {
+  try {
+    // 1. 先检查是否是视图
+    const isView = await trx
+      .selectFrom(
+        sql<{ is_view: boolean }>`
+          (SELECT EXISTS (
+            SELECT 1 
+            FROM information_schema.views 
+            WHERE table_name = ${tableName}
+            AND table_schema = 'public'
+          ) as is_view)
+        `.as("view_check"),
+      )
+      .select("is_view")
+      .executeTakeFirst();
 
+    // 2. 如果是视图，使用 _local 表
+    let targetTable = String(tableName);
+    if (isView?.is_view) {
+      targetTable = `${targetTable}_local`;
+    }
 
+    // 3. 获取主键约束
+    const constraints = await trx
+      .selectFrom(
+        sql<{ constraint_name: string }>`
+          (SELECT constraint_name
+          FROM information_schema.table_constraints
+          WHERE table_name = ${targetTable}
+            AND table_schema = 'public'
+            AND constraint_type = 'PRIMARY KEY')
+        `.as("constraints"),
+      )
+      .select("constraint_name")
+      .execute();
+
+    if (constraints.length === 0) {
+      return [];
+    }
+
+    // 4. 获取主键列
+    const rows = await trx
+      .selectFrom(
+        sql<{ column_name: string }>`
+          (SELECT column_name
+          FROM information_schema.key_column_usage
+          WHERE table_name = ${targetTable}
+            AND table_schema = 'public'
+            AND constraint_name = ${constraints[0].constraint_name}
+          ORDER BY ordinal_position)
+        `.as("primary_keys"),
+      )
+      .select("column_name")
+      .execute();
+
+    return rows.map((row) => row.column_name as keyof DB[T]);
+  } catch (error) {
+    throw error;
+  }
+};

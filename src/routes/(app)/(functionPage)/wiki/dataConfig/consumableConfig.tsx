@@ -21,7 +21,7 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
-} from "./utils";
+} from "./item";
 
 const ConsumableWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<consumable>(id, "Consumable");
 

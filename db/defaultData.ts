@@ -417,7 +417,7 @@ export const defaultData: DB = {
     startupFrames: "",
     cost: "",
     description: "",
-    logic: undefined,
+    logic: [],
     details: null,
     belongToskillId: "",
   },

@@ -21,7 +21,7 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
-} from "./utils";
+} from "./item";
 import z from "zod";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";

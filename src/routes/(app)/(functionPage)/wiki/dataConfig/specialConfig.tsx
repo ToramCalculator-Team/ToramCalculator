@@ -15,7 +15,7 @@ import * as Icon from "~/components/icon";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./utils";
+import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
 
 
 const SpecialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<special>(id, "Special");
