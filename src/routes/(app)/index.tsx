@@ -274,6 +274,7 @@ export default function IndexPage() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
+        {/* 右上角控件 */}
         <div
           class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${searchResultOpened() ? `z-0 opacity-0` : `z-10 opacity-100`}`}
         >
@@ -290,9 +291,12 @@ export default function IndexPage() {
             }}
           </For>
         </div>
+
+        {/* 顶部 */}
         <div
           class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
         >
+          {/* 问候语 */}
           <Presence exitBeforeEnter>
             <Show when={!searchResultOpened()}>
               <Motion.div
@@ -315,7 +319,7 @@ export default function IndexPage() {
                 class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden landscape:flex-none`}
               >
                 <div
-                  class={`LogoBox mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
+                  class={`LogoBox cursor-pointer mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
                   onClick={() => setLoginDialogIsOpen(true)}
                 >
                   <Icon.LogoText class="h-12 landscape:h-auto" />
@@ -327,6 +331,7 @@ export default function IndexPage() {
             </Show>
           </Presence>
 
+          {/* 搜索功能区 */}
           <Motion.div
             animate={{
               filter: ["blur(20px)", "blur(0px)"],
@@ -384,6 +389,8 @@ export default function IndexPage() {
             </div>
             <div class="hidden w-60 flex-none landscape:flex"></div>
           </Motion.div>
+
+          {/* 搜索结果 */}
           <Presence exitBeforeEnter>
             <Show when={searchResultOpened()}>
               <Motion.div
@@ -551,6 +558,7 @@ export default function IndexPage() {
           </Presence>
         </div>
 
+        {/* Bottom */}
         <Presence exitBeforeEnter>
           <Show when={!searchResultOpened()}>
             <Motion.div
@@ -576,7 +584,7 @@ export default function IndexPage() {
               transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
               class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 self-center px-6 portrait:rounded-t-[24px] landscape:grid landscape:w-fit landscape:bg-transparent`}
             >
-              <div class="Btn bg-primary-color absolute top-3 left-1/2 h-2 w-24 -translate-x-1/2 rounded-full"></div>
+              <div class="Btn bg-primary-color absolute top-3 left-1/2 h-2 w-24 -translate-x-1/2 rounded-full landscape:hidden"></div>
               <Motion.div
                 class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:px-3 landscape:backdrop-blur-sm`}
                 animate={{
