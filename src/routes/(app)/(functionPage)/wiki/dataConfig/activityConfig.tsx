@@ -1,4 +1,4 @@
-import { Accessor, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
+import { Accessor, createResource, createSignal, For, Index, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema, zoneSchema } from "~/../db/zod/index";
@@ -18,6 +18,10 @@ import { createStatistic } from "~/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
+import { pick } from "lodash-es";
+import { arrayDiff, CardSharedSection } from "./utils";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
 
 type ActivityWithRelated = activity & {
   zones: zone[];
@@ -103,59 +107,47 @@ const deleteActivity = async (trx: Transaction<DB>, activity: activity) => {
   await trx.deleteFrom("statistic").where("id", "=", activity.statisticId).executeTakeFirstOrThrow();
 };
 
-const ActivityWithRelatedForm = (
-  dic: dictionary,
-  data?: ActivityWithRelated,
-) => {
+const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRelated) => {
+  const formInitialValues = oldActivity ?? defaultActivityWithRelated;
   const form = createForm(() => ({
-    defaultValues: data ?? defaultActivityWithRelated,
-    onSubmit: async ({ value }) => {
-      console.log(value);
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newActivity }) => {
+      console.log("oldActivity", oldActivity, "newActivity", newActivity);
+      const activityData = pick(newActivity, Object.keys(defaultData.activity) as (keyof activity)[]);
       const db = await getDB();
-      const oldZones = data?.zones ?? [];
-      const { zones, ...rest } = value;
-      await db.transaction().execute(async (trx) => {
+      const activity = await db.transaction().execute(async (trx) => {
         let activity: activity;
-        if (data) {
+        if (oldActivity) {
           // 更新
-          activity = await updateActivity(trx, { ...rest, id: data.id });
+          activity = await updateActivity(trx, activityData);
         } else {
           // 新增
-          const statistic = await createStatistic(trx);
-          activity = await createActivity(trx, { ...rest, id: createId(), statisticId: statistic.id });
+          activity = await createActivity(trx, activityData);
         }
 
-        // 统一处理zones
-        const zonesToRemove = oldZones.filter((zone) => !zones.some((z) => z.id === zone.id));
-        const zonesToAdd = zones.filter((zone) => !oldZones.some((z) => z.id === zone.id));
-
-        // 处理需要移除的区域（将activityId设为null）
-        for (const zone of zonesToRemove) {
-          const res = await trx
-            .updateTable("zone")
-            .set({ activityId: null })
-            .where("id", "=", zone.id)
-            .returningAll()
-            .execute();
-          console.log("移除zone", res);
-        }
-
-        // 处理需要添加的区域（将activityId设为当前activity的id）
-        for (const zone of zonesToAdd) {
-          const res = await trx
-            .updateTable("zone")
-            .set({ activityId: activity.id })
-            .where("id", "=", zone.id)
-            .returningAll()
-            .execute();
-          console.log("添加zone", res);
-        }
-
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
+        const {
+          dataToAdd: subZonesToAdd,
+          dataToRemove: subZonesToRemove,
+          dataToUpdate: subZonesToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "zone",
+          oldArray: oldActivity?.zones ?? [],
+          newArray: newActivity.zones,
         });
+
+        for (const zone of subZonesToAdd) {
+          await trx.updateTable("zone").set({ activityId: activity.id }).where("id", "=", zone.id).execute();
+        }
+        for (const zone of subZonesToRemove) {
+          await trx.updateTable("zone").set({ activityId: null }).where("id", "=", zone.id).execute();
+        }
+        return activity;
+      });
+      setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]);
+      setWikiStore("form", {
+        data: undefined,
+        isOpen: false,
       });
     },
   }));
@@ -181,7 +173,88 @@ const ActivityWithRelatedForm = (
               case "statisticId":
               case "createdByAccountId":
               case "updatedByAccountId":
-                return null; }
+                return null;
+              case "zones":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: ActivityWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => {
+                      return (
+                        <Input
+                          title={"所属的" + dic.db.zone.selfName}
+                          description={dic.db.zone.description}
+                          state={fieldInfo(field())}
+                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        >
+                          <div class="ArrayBox flex w-full flex-col gap-2">
+                            <Index each={field().state.value}>
+                              {(item, index) => {
+                                return (
+                                  <div class="Filed flex items-center gap-2">
+                                    <label for={fieldKey + index} class="flex-1">
+                                      <Autocomplete
+                                        id={fieldKey + index}
+                                        initialValue={item()}
+                                        setValue={(value) => {
+                                          field().setValue((pre) => {
+                                            const newArray = [...pre];
+                                            newArray[index] = value;
+                                            return newArray;
+                                          });
+                                        }}
+                                        datasFetcher={async () => {
+                                          const db = await getDB();
+                                          const zones = await db.selectFrom("zone").selectAll("zone").execute();
+                                          return zones;
+                                        }}
+                                        displayField="name"
+                                        valueField="id"
+                                      />
+                                    </label>
+                                    <Button
+                                      onClick={(e) => {
+                                        field().removeValue(index);
+                                        e.stopPropagation();
+                                      }}
+                                    >
+                                      -
+                                    </Button>
+                                  </div>
+                                );
+                              }}
+                            </Index>
+                            <Button
+                              onClick={(e) => {
+                                field().pushValue(defaultData.zone);
+                              }}
+                              class="w-full"
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </Input>
+                      );
+                    }}
+                  </form.Field>
+                );
+
+              default:
+                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                const simpleFieldKey = _field[0] as keyof ActivityWithRelated;
+                const simpleFieldValue = _field[1];
+                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(
+                  form,
+                  simpleFieldKey,
+                  simpleFieldValue,
+                  ActivityWithRelatedDic(dic),
+                  ActivityWithRelatedSchema,
+                );
+            }
           }}
         </For>
         <form.Subscribe
@@ -263,39 +336,7 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
             };
           }}
         />
-
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteActivity(trx, data);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  // 打开表单
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection<ActivityWithRelated> dic={dic} data={data} delete={deleteActivity} />
       </>
     );
   },

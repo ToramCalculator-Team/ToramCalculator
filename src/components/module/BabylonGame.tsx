@@ -9,7 +9,7 @@ import { Color3, Color4 } from "@babylonjs/core/Maths/math";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import { AppendSceneAsync, SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import * as _ from "lodash-es";
@@ -22,8 +22,88 @@ import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
 import { Scalar } from "@babylonjs/core/Maths/math.scalar";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
+import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
+import { Material } from "@babylonjs/core/Materials/material";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { SubMesh } from "@babylonjs/core/Meshes/subMesh";
+import { Nullable } from "@babylonjs/core/types";
+import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture";
 
 // 模拟无限宽平面
+
+// ==================== 材质插件 ====================
+/**
+ * 战争迷雾材质插件
+ * 实现了一个基于距离的迷雾效果
+ */
+class FogOfWarPluginMaterial extends MaterialPluginBase {
+  static fogCenter = new Vector3(1, 1, 0);
+  _isEnabled = false;
+
+  constructor(material: Material) {
+    super(material, "FogOfWar", 200, { FogOfWar: false });
+    this.isEnabled = true;
+  }
+
+  get isEnabled() {
+    return this._isEnabled;
+  }
+
+  set isEnabled(enabled) {
+    if (this._isEnabled === enabled) return;
+    this._isEnabled = enabled;
+    this.markAllDefinesAsDirty();
+    this._enable(this._isEnabled);
+  }
+
+  prepareDefines(defines: Record<string, boolean>, scene: Scene, mesh: Mesh) {
+    defines.FogOfWar = this._isEnabled;
+  }
+
+  getClassName() {
+    return "FogOfWarPluginMaterial";
+  }
+
+  getUniforms() {
+    return {
+      ubo: [{ name: "fogCenter", size: 3, type: "vec3" }],
+      fragment: `#ifdef FogOfWar
+                uniform vec3 fogCenter;
+                #endif`,
+    };
+  }
+
+  bindForSubMesh(
+    uniformBuffer: { updateVector3: (arg0: string, arg1: Vector3) => void },
+    scene: Scene,
+    engine: Engine,
+    subMesh: SubMesh,
+  ) {
+    if (this._isEnabled) {
+      uniformBuffer.updateVector3("fogCenter", FogOfWarPluginMaterial.fogCenter);
+    }
+  }
+
+  getCustomCode = (shaderType: string): Nullable<{ [pointName: string]: string }> => {
+    if (shaderType === "vertex") {
+      return {
+        CUSTOM_VERTEX_DEFINITIONS: `varying vec3 vWorldPos;`,
+        CUSTOM_VERTEX_MAIN_END: `vWorldPos = worldPos.xyz;`,
+      };
+    }
+    if (shaderType === "fragment") {
+      return {
+        CUSTOM_FRAGMENT_MAIN_END: `
+          float d = length(vWorldPos.xyz - fogCenter);
+          d = (18.0 - d)/10.0;
+          gl_FragColor.rgb *= vec3(d);
+        `,
+        CUSTOM_FRAGMENT_DEFINITIONS: `varying vec3 vWorldPos;`,
+      };
+    }
+    return null;
+  };
+}
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -88,6 +168,7 @@ export function BabylonBg(): JSX.Element {
   const rotationSpeed = 0.1; // 旋转速度
   const maxPitch = Math.PI / 2 - 0.1; // 最大俯仰角（防止相机翻转）
   const minPitch = -Math.PI / 2 + 0.1; // 最小俯仰角
+  let isMouseControl = false;
   let targetRotationY = 0; // 目标Y轴旋转
   let targetRotationX = 0; // 目标X轴旋转
   let currentRotationY = 0; // 当前Y轴旋转
@@ -137,6 +218,7 @@ export function BabylonBg(): JSX.Element {
   };
 
   const cameraMouseControl = (e: MouseEvent, camera: UniversalCamera) => {
+    if (!isMouseControl) return;
     // 计算鼠标移动增量
     const deltaX = e.movementX;
     const deltaY = e.movementY;
@@ -239,9 +321,9 @@ export function BabylonBg(): JSX.Element {
     new AxesViewer(scene, 0.1);
   }
 
-  // 其他bbl内容
+  // 主场景内容
 
-  onMount(() => {
+  onMount(async () => {
     engine = new Engine(canvas, true);
     //自定义加载动画
     engine.loadingScreen = {
@@ -279,6 +361,10 @@ export function BabylonBg(): JSX.Element {
     camera.minZ = 0.1;
     camera.fov = 1;
     camera.inputs.addMouseWheel();
+
+    // skybox
+    // const envTexture = new CubeTexture("/models/skybox.dds", scene);
+    // scene.createDefaultSkybox(envTexture, true, 1000);
 
     // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
@@ -380,98 +466,100 @@ export function BabylonBg(): JSX.Element {
       SPS.setParticles();
     });
 
+    await AppendSceneAsync("models/landscape.glb", scene);
+
     // 加载model
-    void SceneLoader.AppendAsync("models/", "landscape.glb", scene, (event) => {
-      // 加载进度计算
-      if (progress) progress.innerHTML = "加载中..." + Math.floor((event.loaded / event.total) * 100).toString();
-    }).then(() => {
-      // 加载完成后的处理
-      const root = scene.getMeshByName("__root__");
-      if (root) {
-        root.rotationQuaternion = null;
-        scene.onBeforeRenderObservable.add(() => {
-          root.position.x = Math.round(camera.position.x / stepX) * stepX;
-          root.position.z = Math.round(camera.position.z / stepZ) * stepZ;
-          const rotationY = camera.absoluteRotation.toEulerAngles().y - Math.PI;
-          const snapAngle = Math.PI / 3;
-          root.rotation.y = Math.round(rotationY / snapAngle) * snapAngle;
-        });
-      }
-      const ground = scene.getMeshByName("groundSubtrateLow");
-      if (ground) {
-        NodeMaterial.ParseFromSnippetAsync("#LLUXAC", scene).then((nodeMaterial) => {
-          ground.material = nodeMaterial;
-          // 利用纹理深度进行碰撞
-          let mesh = MeshBuilder.CreateGround(
-            "collider",
-            { width: 1, height: 1, subdivisions: 1, updatable: true },
-            scene,
-          );
-          mesh.isVisible = false;
-          mesh.checkCollisions = true;
-          const texture = nodeMaterial.getActiveTextures()[0];
-          // texture.readPixels()?.then((data) => {
-          //     function findPixel(
-          //       textureData: number[],
-          //       textureSize: number,
-          //       planeSize: number,
-          //       x: number,
-          //       y: number
-          //   ): number[] {
-          //       // Convert coordinates to texture space
-          //       let xCrd = ScalarMath.Map(x, -planeSize, planeSize, 0, textureSize);
-          //       let yCrd = ScalarMath.Map(y, -planeSize, planeSize, 0, textureSize);
-          //       // Determine integer and fractional parts for linear interpolation
-          //       const x0 = Math.floor(xCrd);
-          //       const y0 = Math.floor(yCrd);
-          //       const dx = xCrd - x0;
-          //       const dy = yCrd - y0;
-          //       // Function to get pixel color, considering array boundaries
-          //       const getPixel = (x: number, y: number): number[] => {
-          //           const clampedX = Math.max(0, Math.min(textureSize - 1, x));
-          //           const clampedY = Math.max(0, Math.min(textureSize - 1, y));
-          //           const index = (clampedY * textureSize + clampedX) * 4;
-          //           return textureData.slice(index, index + 4);
-          //       };
-          //       // Get color values for neighboring pixels
-          //       const topLeft = getPixel(x0, y0);
-          //       const topRight = getPixel(x0 + 1, y0);
-          //       const bottomLeft = getPixel(x0, y0 + 1);
-          //       const bottomRight = getPixel(x0 + 1, y0 + 1);
-          //       // Linear interpolation
-          //       const interpolate = (a: number[], b: number[], t: number) =>
-          //           a.map((v, i) => v * (1 - t) + b[i] * t);
-          //       // Interpolate by x between top and bottom pixels
-          //       const top = interpolate(topLeft, topRight, dx);
-          //       const bottom = interpolate(bottomLeft, bottomRight, dx);
-          //       // Interpolate by y between the results
-          //       const result = interpolate(top, bottom, dy);
-          //       // Round values to get integer results
-          //       return result.map(value => Math.round(value));
-          //   }
-          //     scene.onBeforeRenderObservable.add(() => {
-          //       mesh.position.x = Math.round(camera!.globalPosition.x / colliderStep) * colliderStep || 0;
-          //       mesh.position.z = Math.round(camera!.globalPosition.z / colliderStep) * colliderStep || 0;
-          //       const positions = mesh.getVerticesData(VertexBuffer.PositionKind)!;
-          //       const numberOfVertices = positions.length / 3;
-          //       for (let i = 0; i < numberOfVertices; i++) {
-          //         let px = findPixel(
-          //           numberArray,
-          //           textureSize,
-          //           groundSize,
-          //           positions[i * 3] + mesh.position.x,
-          //           positions[i * 3 + 2] + mesh.position.z,
-          //         );
-          //         const normalizedPixelValue = ScalarMath.Map(px[0], 0, 255, 0, 1);
-          //         positions[i * 3 + 1] = ScalarMath.Map(normalizedPixelValue, 0, 1, -elevationMin, elevationMax);
-          //       }
-          //       mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
-          //       mesh.refreshBoundingInfo();
-          //     });
-          // });
-        });
-      }
-    });
+    // void SceneLoader.AppendAsync("models/", "landscape.glb", scene, (event) => {
+    //   // 加载进度计算
+    //   if (progress) progress.innerHTML = "加载中..." + Math.floor((event.loaded / event.total) * 100).toString();
+    // }).then(() => {
+    // 加载完成后的处理
+    const root = scene.getMeshByName("__root__");
+    if (root) {
+      root.rotationQuaternion = null;
+      scene.onBeforeRenderObservable.add(() => {
+        root.position.x = Math.round(camera.position.x / stepX) * stepX;
+        root.position.z = Math.round(camera.position.z / stepZ) * stepZ;
+        const rotationY = camera.absoluteRotation.toEulerAngles().y - Math.PI;
+        const snapAngle = Math.PI / 3;
+        root.rotation.y = Math.round(rotationY / snapAngle) * snapAngle;
+      });
+    }
+    const ground = scene.getMeshByName("groundSubtrateLow");
+    if (ground) {
+      NodeMaterial.ParseFromSnippetAsync("#LLUXAC", scene).then((nodeMaterial) => {
+        ground.material = nodeMaterial;
+        // 利用纹理深度进行碰撞
+        let mesh = MeshBuilder.CreateGround(
+          "collider",
+          { width: 1, height: 1, subdivisions: 1, updatable: true },
+          scene,
+        );
+        mesh.isVisible = false;
+        mesh.checkCollisions = true;
+        const texture = nodeMaterial.getActiveTextures()[0];
+        // texture.readPixels()?.then((data) => {
+        //     function findPixel(
+        //       textureData: number[],
+        //       textureSize: number,
+        //       planeSize: number,
+        //       x: number,
+        //       y: number
+        //   ): number[] {
+        //       // Convert coordinates to texture space
+        //       let xCrd = ScalarMath.Map(x, -planeSize, planeSize, 0, textureSize);
+        //       let yCrd = ScalarMath.Map(y, -planeSize, planeSize, 0, textureSize);
+        //       // Determine integer and fractional parts for linear interpolation
+        //       const x0 = Math.floor(xCrd);
+        //       const y0 = Math.floor(yCrd);
+        //       const dx = xCrd - x0;
+        //       const dy = yCrd - y0;
+        //       // Function to get pixel color, considering array boundaries
+        //       const getPixel = (x: number, y: number): number[] => {
+        //           const clampedX = Math.max(0, Math.min(textureSize - 1, x));
+        //           const clampedY = Math.max(0, Math.min(textureSize - 1, y));
+        //           const index = (clampedY * textureSize + clampedX) * 4;
+        //           return textureData.slice(index, index + 4);
+        //       };
+        //       // Get color values for neighboring pixels
+        //       const topLeft = getPixel(x0, y0);
+        //       const topRight = getPixel(x0 + 1, y0);
+        //       const bottomLeft = getPixel(x0, y0 + 1);
+        //       const bottomRight = getPixel(x0 + 1, y0 + 1);
+        //       // Linear interpolation
+        //       const interpolate = (a: number[], b: number[], t: number) =>
+        //           a.map((v, i) => v * (1 - t) + b[i] * t);
+        //       // Interpolate by x between top and bottom pixels
+        //       const top = interpolate(topLeft, topRight, dx);
+        //       const bottom = interpolate(bottomLeft, bottomRight, dx);
+        //       // Interpolate by y between the results
+        //       const result = interpolate(top, bottom, dy);
+        //       // Round values to get integer results
+        //       return result.map(value => Math.round(value));
+        //   }
+        //     scene.onBeforeRenderObservable.add(() => {
+        //       mesh.position.x = Math.round(camera!.globalPosition.x / colliderStep) * colliderStep || 0;
+        //       mesh.position.z = Math.round(camera!.globalPosition.z / colliderStep) * colliderStep || 0;
+        //       const positions = mesh.getVerticesData(VertexBuffer.PositionKind)!;
+        //       const numberOfVertices = positions.length / 3;
+        //       for (let i = 0; i < numberOfVertices; i++) {
+        //         let px = findPixel(
+        //           numberArray,
+        //           textureSize,
+        //           groundSize,
+        //           positions[i * 3] + mesh.position.x,
+        //           positions[i * 3 + 2] + mesh.position.z,
+        //         );
+        //         const normalizedPixelValue = ScalarMath.Map(px[0], 0, 255, 0, 1);
+        //         positions[i * 3 + 1] = ScalarMath.Map(normalizedPixelValue, 0, 1, -elevationMin, elevationMax);
+        //       }
+        //       mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
+        //       mesh.refreshBoundingInfo();
+        //     });
+        // });
+      });
+    }
+    // });
 
     // if (mainSpotLightShadowGenerator) {
     //   scene.meshes.forEach((mesh) => {
@@ -517,7 +605,11 @@ export function BabylonBg(): JSX.Element {
 
   return (
     <>
-      <canvas ref={canvas!} class="fixed top-0 left-0 h-dvh w-dvw bg-transparent">
+      <canvas
+        ref={canvas!}
+        class="fixed top-0 left-0 h-dvh w-dvw bg-transparent"
+        onClick={() => (isMouseControl = !isMouseControl)}
+      >
         当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
       </canvas>
       <div

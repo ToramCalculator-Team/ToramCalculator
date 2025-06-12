@@ -34,7 +34,7 @@ import { setWikiStore } from "../store";
 import { dataDisplayConfig } from "./dataConfig";
 import { Transaction } from "kysely";
 import { pick } from "lodash-es";
-import { arrayDiff } from "./utils";
+import { arrayDiff, CardSharedSection } from "./utils";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -83,12 +83,9 @@ const MobWithRelatedFetcher = async (id: string) => {
           .whereRef("_mobTozone.A", "=", "mob.id")
           .selectAll("zone"),
       ).as("appearInZones"),
-      jsonArrayFrom(
-        eb
-          .selectFrom("drop_item")
-          .whereRef("drop_item.dropById", "=", "mob.id")
-          .selectAll("drop_item")
-      ).as("dropItems"),
+      jsonArrayFrom(eb.selectFrom("drop_item").whereRef("drop_item.dropById", "=", "mob.id").selectAll("drop_item")).as(
+        "dropItems",
+      ),
     ])
     .executeTakeFirstOrThrow();
   return res;
@@ -137,18 +134,17 @@ const updateMob = async (trx: Transaction<DB>, value: mob) => {
 };
 
 const deleteMob = async (trx: Transaction<DB>, mob: mob) => {
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", mob.statisticId).execute();
   // 删除和zone的关联
   await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).execute();
   // 将掉落物归属调整至defaultMob
   await trx.updateTable("drop_item").set({ dropById: "defaultMobId" }).where("dropById", "=", mob.id).execute();
   // 删除mob
   await trx.deleteFrom("mob").where("id", "=", mob.id).execute();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", mob.statisticId).execute();
 };
 
 const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
-  console.log("oldMob", oldMob);
   const formInitialValues = oldMob ?? defaultMobWithRelated;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
@@ -1020,37 +1016,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
             };
           }}
         />
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteMob(trx, data);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection<MobWithRelated> dic={dic} data={data} delete={deleteMob} />
       </>
     );
   },
