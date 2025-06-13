@@ -108,7 +108,6 @@ const deleteNpc = async (trx: Transaction<DB>, npc: npc) => {
 };
 
 const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
-  console.log("oldNpc", oldNpc);
   const formInitialValues = oldNpc ?? defaultNpcWithRelated;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
@@ -167,8 +166,9 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultNpcWithRelated)}>
+        <For each={Object.entries(formInitialValues)}>
           {(_field, index) => {
+            console.log("index", index(), _field);
             const fieldKey = _field[0] as keyof NpcWithRelated;
             const fieldValue = _field[1];
             switch (fieldKey) {
@@ -195,7 +195,7 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
                       >
                         <Autocomplete
                           id={fieldKey}
-                          initialValue={defaultData.zone}
+                          initialValue={field().state.value}
                           setValue={(value) => {
                             field().setValue(value.id);
                           }}
@@ -237,7 +237,7 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
                                   <label for={field().name + index()} class="flex-1">
                                     <Autocomplete
                                       id={field().name + index()}
-                                      initialValue={initialValue}
+                                      initialValue={initialValue.id}
                                       setValue={(value) => {
                                         const newArray = [...field().state.value];
                                         newArray[index()] = value;

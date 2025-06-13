@@ -193,7 +193,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                                     <label for={field().name + index()} class="flex-1">
                                       <Autocomplete
                                         id={field().name + index()}
-                                        initialValue={initialValue}
+                                        initialValue={initialValue.id}
                                         setValue={(value) => {
                                           const newArray = [...field().state.value];
                                           newArray[index()] = value;

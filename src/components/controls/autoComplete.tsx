@@ -50,7 +50,7 @@ import { ObjRender } from "../module/objRender";
 interface AutocompleteProps<T extends Record<string, unknown>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
   id: string;
-  initialValue: T;
+  initialValue: string;
   setValue: (value: T) => void;
   datasFetcher: () => Promise<T[]>;
   extraLabel?: (value: T) => JSX.Element;
@@ -111,9 +111,7 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
   createEffect(async () => {
     const initialOptions = await props.datasFetcher();
     setOptions(initialOptions);
-    const option = options().find(
-      (option) => String(option[props.valueField]) === props.initialValue[props.valueField],
-    );
+    const option = options().find((option) => option[props.valueField] === props.initialValue);
     if (option) {
       setDisplayValue(String(option[props.displayField]));
     }
@@ -170,7 +168,7 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
                   <span>{option[props.displayField] as string}</span>
                   {props.extraLabel?.(option)}
                   <div
-                    class="DetailControlBtn bg-area-color p-1 rounded-md"
+                    class="DetailControlBtn bg-area-color rounded-md p-1"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -180,7 +178,7 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
                     <Icon.Line.InfoCircle />
                   </div>
                   <Show when={detailVisible()}>
-                    <div class="DetailInfo absolute top-0 right-0 w-full h-fit rounded bg-primary-color">
+                    <div class="DetailInfo bg-primary-color absolute top-0 right-0 h-fit w-full rounded">
                       <ObjRender data={option} />
                     </div>
                   </Show>

@@ -24,6 +24,8 @@ import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
 import { NodeEditor } from "~/components/module/nodeEditor";
 import { pick } from "lodash-es";
+import { arrayDiff } from "./utils";
+import { CardSharedSection } from "./utils";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -116,10 +118,10 @@ const deleteSkill = async (trx: Transaction<DB>, skill: skill) => {
     .execute();
   // 删除技能效果
   await trx.deleteFrom("skill_effect").where("belongToskillId", "=", skill.id).execute();
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", skill.statisticId).execute();
   // 删除技能
   await trx.deleteFrom("skill").where("id", "=", skill.id).execute();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", skill.statisticId).execute();
 };
 
 const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
@@ -138,23 +140,33 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
           skill = await createSkill(trx, skillData);
         }
 
-        const oldEffects = oldSkill?.effects ?? [];
-        const { effects: newEffects } = newSkill;
-        const effectsToAdd = newEffects.filter((effect) => !oldEffects.some((oldEffect) => oldEffect.id === effect.id));
-        const effectsToRemove = oldEffects.filter((oldEffect) => !newEffects.some((newEffect) => newEffect.id === oldEffect.id));
-
+        // 更新技能效果
+        const {
+          dataToAdd: effectsToAdd,
+          dataToRemove: effectsToRemove,
+          dataToUpdate: effectsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "skill_effect",
+          oldArray: oldSkill?.effects ?? [],
+          newArray: newSkill.effects,
+        });
         for (const effect of effectsToAdd) {
-          await trx.insertInto("skill_effect").values({
-            ...effect,
-            id: createId(),
-            belongToskillId: skill.id,
-          }).execute();
+          await trx
+            .insertInto("skill_effect")
+            .values({
+              ...effect,
+              id: createId(),
+              belongToskillId: skill.id,
+            })
+            .execute();
         }
-
         for (const effect of effectsToRemove) {
           await trx.deleteFrom("skill_effect").where("id", "=", effect.id).execute();
         }
-        
+        for (const effect of effectsToUpdate) {
+          await trx.updateTable("skill_effect").set(effect).where("id", "=", effect.id).execute();
+        }
         return skill;
       });
       setWikiStore("cardGroup", (pre) => [...pre, { type: "skill", id: skill.id }]);
@@ -177,8 +189,9 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultSkillWithRelated)}>
+        <For each={Object.entries(formInitialValues)}>
           {(_field, index) => {
+            console.log("index", index(), _field);
             const fieldKey = _field[0] as keyof SkillWithRelated;
             const fieldValue = _field[1];
             switch (fieldKey) {
@@ -263,6 +276,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={field().state.value}>
                             {(effect, index) => {
+                              console.log("effect", effect(), index);
                               return (
                                 <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                   <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
@@ -471,39 +485,7 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
             };
           }}
         />
-
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteSkill(trx, data);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  // 打开表单
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection dic={dic} data={data} delete={deleteSkill} />
       </>
     );
   },

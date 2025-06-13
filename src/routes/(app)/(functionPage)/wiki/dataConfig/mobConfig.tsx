@@ -409,7 +409,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                                     <label for={fieldKey + index} class="flex-1">
                                       <Autocomplete
                                         id={fieldKey + index}
-                                        initialValue={item()}
+                                        initialValue={item().id}
                                         setValue={(value) => {
                                           field().setValue((pre) => {
                                             const newArray = [...pre];
@@ -470,167 +470,160 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
-                          <Show when={field().state.value.length > 0}>
-                            <Index each={field().state.value}>
-                              {(dropItem, i) => {
-                                console.log("i, dropItem", i, dropItem());
-                                return (
-                                  <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                    <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
-                                      <span class="text-accent-color font-bold">
-                                        {dic.db.drop_item.selfName + " " + i}
-                                      </span>
-                                      <Button
-                                        onClick={() => {
-                                          field().removeValue(i);
-                                        }}
-                                      >
-                                        -
-                                      </Button>
-                                    </div>
-                                    <Index each={Object.entries(dropItem())}>
-                                      {(dropItemField, index) => {
-                                        const fieldKey = dropItemField()[0] as keyof drop_item;
-                                        const fieldValue = dropItemField()[1];
-                                        switch (fieldKey) {
-                                          case "id":
-                                          case "dropById":
-                                            return null;
-                                          case "breakRewardType":
-                                            return (
-                                              <form.Subscribe selector={(state) => state.values.type}>
-                                                {(selector) => (
-                                                  <Show when={selector() === "Boss"}>
-                                                    {renderField<drop_item, "breakRewardType">(
-                                                      form,
-                                                      `dropItems[${i}].breakRewardType`,
-                                                      fieldValue as BossPartBreakRewardType,
-                                                      dic.db.drop_item,
-                                                      drop_itemSchema,
-                                                    )}
-                                                  </Show>
-                                                )}
-                                              </form.Subscribe>
-                                            );
-                                          case "relatedPartInfo":
-                                            return (
-                                              <form.Subscribe
-                                                selector={(state) => {
-                                                  const dropItem = state.values.dropItems[i];
-                                                  return {
-                                                    type: state.values.type,
-                                                    breakRewardType: dropItem?.breakRewardType || "None",
-                                                  };
-                                                }}
-                                              >
-                                                {(selector) => (
-                                                  <Show
-                                                    when={
-                                                      selector().type === "Boss" &&
-                                                      selector().breakRewardType !== "None"
-                                                    }
-                                                  >
-                                                    {renderField<drop_item, "relatedPartInfo">(
-                                                      form,
-                                                      `dropItems[${i}].relatedPartInfo`,
-                                                      fieldValue as string,
-                                                      dic.db.drop_item,
-                                                      drop_itemSchema,
-                                                    )}
-                                                  </Show>
-                                                )}
-                                              </form.Subscribe>
-                                            );
-                                          case "relatedPartType":
-                                            return (
-                                              <form.Subscribe
-                                                selector={(state) => {
-                                                  const currentDropItem = state.values.dropItems[i];
-                                                  if (!currentDropItem) {
-                                                    return {
-                                                      type: state.values.type,
-                                                      breakRewardType: "None",
-                                                    };
-                                                  }
-                                                  return {
-                                                    type: state.values.type,
-                                                    breakRewardType: currentDropItem.breakRewardType || "None",
-                                                  };
-                                                }}
-                                              >
-                                                {(selector) => (
-                                                  <Show
-                                                    when={
-                                                      selector().type === "Boss" &&
-                                                      selector().breakRewardType !== "None"
-                                                    }
-                                                  >
-                                                    {renderField<drop_item, "relatedPartType">(
-                                                      form,
-                                                      `dropItems[${i}].relatedPartType`,
-                                                      fieldValue as BossPartType,
-                                                      dic.db.drop_item,
-                                                      drop_itemSchema,
-                                                    )}
-                                                  </Show>
-                                                )}
-                                              </form.Subscribe>
-                                            );
-                                          case "itemId":
-                                            return (
-                                              <form.Field name={`dropItems[${i}].${fieldKey}`}>
-                                                {(subField) => (
-                                                  <Input
-                                                    title={dic.db.task_collect_require.fields.itemId.key}
-                                                    description={
-                                                      dic.db.task_collect_require.fields.itemId.formFieldDescription
-                                                    }
-                                                    state={fieldInfo(field())}
-                                                  >
-                                                    <Autocomplete
-                                                      id={`dropItems[${i}].${fieldKey}`}
-                                                      initialValue={{
-                                                        id: subField().state.value,
-                                                        name: "",
-                                                      }}
-                                                      setValue={(value) => {
-                                                        subField().setValue(value.id);
-                                                      }}
-                                                      datasFetcher={async () => {
-                                                        const db = await getDB();
-                                                        const items = await db
-                                                          .selectFrom("item")
-                                                          .select(["id", "name"])
-
-                                                          .execute();
-                                                        return items;
-                                                      }}
-                                                      displayField="name"
-                                                      valueField="id"
-                                                    />
-                                                  </Input>
-                                                )}
-                                              </form.Field>
-                                            );
-                                          default:
-                                            // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                            const simpleFieldKey = `dropItems[${i}].${fieldKey}`;
-                                            const simpleFieldValue = fieldValue;
-                                            return renderField<drop_item, keyof drop_item>(
-                                              form,
-                                              simpleFieldKey,
-                                              simpleFieldValue,
-                                              dic.db.drop_item,
-                                              drop_itemSchema,
-                                            );
-                                        }
+                          <Index each={field().state.value}>
+                            {(dropItem, i) => {
+                              console.log("i, dropItem", i, dropItem());
+                              return (
+                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
+                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                    <span class="text-accent-color font-bold">
+                                      {dic.db.drop_item.selfName + " " + i}
+                                    </span>
+                                    <Button
+                                      onClick={() => {
+                                        field().removeValue(i);
                                       }}
-                                    </Index>
+                                    >
+                                      -
+                                    </Button>
                                   </div>
-                                );
-                              }}
-                            </Index>
-                          </Show>
+                                  <Index each={Object.entries(dropItem())}>
+                                    {(dropItemField, index) => {
+                                      const fieldKey = dropItemField()[0] as keyof drop_item;
+                                      const fieldValue = dropItemField()[1];
+                                      switch (fieldKey) {
+                                        case "id":
+                                        case "dropById":
+                                          return null;
+                                        case "breakRewardType":
+                                          return (
+                                            <form.Subscribe selector={(state) => state.values.type}>
+                                              {(selector) => (
+                                                <Show when={selector() === "Boss"}>
+                                                  {renderField<drop_item, "breakRewardType">(
+                                                    form,
+                                                    `dropItems[${i}].breakRewardType`,
+                                                    fieldValue as BossPartBreakRewardType,
+                                                    dic.db.drop_item,
+                                                    drop_itemSchema,
+                                                  )}
+                                                </Show>
+                                              )}
+                                            </form.Subscribe>
+                                          );
+                                        case "relatedPartInfo":
+                                          return (
+                                            <form.Subscribe
+                                              selector={(state) => {
+                                                const dropItem = state.values.dropItems[i];
+                                                return {
+                                                  type: state.values.type,
+                                                  breakRewardType: dropItem?.breakRewardType || "None",
+                                                };
+                                              }}
+                                            >
+                                              {(selector) => (
+                                                <Show
+                                                  when={
+                                                    selector().type === "Boss" && selector().breakRewardType !== "None"
+                                                  }
+                                                >
+                                                  {renderField<drop_item, "relatedPartInfo">(
+                                                    form,
+                                                    `dropItems[${i}].relatedPartInfo`,
+                                                    fieldValue as string,
+                                                    dic.db.drop_item,
+                                                    drop_itemSchema,
+                                                  )}
+                                                </Show>
+                                              )}
+                                            </form.Subscribe>
+                                          );
+                                        case "relatedPartType":
+                                          return (
+                                            <form.Subscribe
+                                              selector={(state) => {
+                                                const currentDropItem = state.values.dropItems[i];
+                                                if (!currentDropItem) {
+                                                  return {
+                                                    type: state.values.type,
+                                                    breakRewardType: "None",
+                                                  };
+                                                }
+                                                return {
+                                                  type: state.values.type,
+                                                  breakRewardType: currentDropItem.breakRewardType || "None",
+                                                };
+                                              }}
+                                            >
+                                              {(selector) => (
+                                                <Show
+                                                  when={
+                                                    selector().type === "Boss" && selector().breakRewardType !== "None"
+                                                  }
+                                                >
+                                                  {renderField<drop_item, "relatedPartType">(
+                                                    form,
+                                                    `dropItems[${i}].relatedPartType`,
+                                                    fieldValue as BossPartType,
+                                                    dic.db.drop_item,
+                                                    drop_itemSchema,
+                                                  )}
+                                                </Show>
+                                              )}
+                                            </form.Subscribe>
+                                          );
+                                        case "itemId":
+                                          return (
+                                            <form.Field name={`dropItems[${i}].${fieldKey}`}>
+                                              {(subField) => (
+                                                <Input
+                                                  title={dic.db.task_collect_require.fields.itemId.key}
+                                                  description={
+                                                    dic.db.task_collect_require.fields.itemId.formFieldDescription
+                                                  }
+                                                  state={fieldInfo(field())}
+                                                >
+                                                  <Autocomplete
+                                                    id={`dropItems[${i}].${fieldKey}`}
+                                                    initialValue={subField().state.value}
+                                                    setValue={(value) => {
+                                                      subField().setValue(value.id);
+                                                    }}
+                                                    datasFetcher={async () => {
+                                                      const db = await getDB();
+                                                      const items = await db
+                                                        .selectFrom("item")
+                                                        .select(["id", "name"])
+
+                                                        .execute();
+                                                      return items;
+                                                    }}
+                                                    displayField="name"
+                                                    valueField="id"
+                                                  />
+                                                </Input>
+                                              )}
+                                            </form.Field>
+                                          );
+                                        default:
+                                          // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                          const simpleFieldKey = `dropItems[${i}].${fieldKey}`;
+                                          const simpleFieldValue = fieldValue;
+                                          return renderField<drop_item, keyof drop_item>(
+                                            form,
+                                            simpleFieldKey,
+                                            simpleFieldValue,
+                                            dic.db.drop_item,
+                                            drop_itemSchema,
+                                          );
+                                      }
+                                    }}
+                                  </Index>
+                                </div>
+                              );
+                            }}
+                          </Index>
                           <Button
                             onClick={() => {
                               field().pushValue(defaultData.drop_item);
