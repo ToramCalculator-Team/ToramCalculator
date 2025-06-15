@@ -834,7 +834,7 @@ export const itemForm = (dic: dictionary, oldItem?: ItemWithRelated) => {
                                           >
                                             <Autocomplete
                                               id={field().name + "activityId"}
-                                              initialValue={defaultData.activity}
+                                              initialValue={field().state.value.activityId ?? defaultData.activity.id}
                                               setValue={(value) => {
                                                 field().setValue({
                                                   ...recipeData,
@@ -978,7 +978,7 @@ export const itemForm = (dic: dictionary, oldItem?: ItemWithRelated) => {
                                                                         >
                                                                           <Autocomplete
                                                                             id={recipeEntryFieldKey + recipeEntryIndex}
-                                                                            initialValue={{ id: "", name: "" }}
+                                                                            initialValue={field().state.value.itemId}
                                                                             setValue={(value) => {
                                                                               itemIdField().setValue(value.id);
                                                                             }}
@@ -986,7 +986,7 @@ export const itemForm = (dic: dictionary, oldItem?: ItemWithRelated) => {
                                                                               const db = await getDB();
                                                                               const items = await db
                                                                                 .selectFrom("item")
-                                                                                .select(["id", "name"])
+                                                                                .selectAll()
                                                                                 .execute();
                                                                               return items;
                                                                             }}
@@ -1145,7 +1145,7 @@ export const itemForm = (dic: dictionary, oldItem?: ItemWithRelated) => {
                                                           const db = await getDB();
                                                           const items = await db
                                                             .selectFrom("mob")
-                                                            .select(["id", "name"])
+                                                            .selectAll()
                                                             .execute();
                                                           return items;
                                                         }}
