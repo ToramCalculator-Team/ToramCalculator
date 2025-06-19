@@ -50,7 +50,7 @@ const ActivityWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const ActivityWithRelatedFetcher = async (id: string) => {
+const ActivityWithRelatedFetcher = async (id: string): Promise<ActivityWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("activity")

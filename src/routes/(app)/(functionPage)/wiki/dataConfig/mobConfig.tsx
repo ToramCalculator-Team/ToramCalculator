@@ -69,7 +69,7 @@ const MobWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const MobWithRelatedFetcher = async (id: string) => {
+const MobWithRelatedFetcher = async (id: string): Promise<MobWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("mob")
@@ -403,13 +403,13 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                         >
                           <div class="ArrayBox flex w-full flex-col gap-2">
                             <Index each={field().state.value}>
-                              {(item, index) => {
+                              {(zone, index) => {
                                 return (
                                   <div class="Filed flex items-center gap-2">
                                     <label for={fieldKey + index} class="flex-1">
                                       <Autocomplete
                                         id={fieldKey + index}
-                                        initialValue={item().id}
+                                        initialValue={zone().id}
                                         setValue={(value) => {
                                           field().setValue((pre) => {
                                             const newArray = [...pre];
@@ -587,9 +587,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                                                   <Autocomplete
                                                     id={`dropItems[${i}].${fieldKey}`}
                                                     initialValue={subField().state.value}
-                                                    setValue={(value) => {
-                                                      subField().setValue(value.id);
-                                                    }}
+                                                    setValue={(value) => subField().setValue(value.id)}
                                                     datasFetcher={async () => {
                                                       const db = await getDB();
                                                       const items = await db
@@ -661,7 +659,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
             return (
               <div class="flex items-center gap-1">
                 <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                  {state().isSubmitting ? "..." : dic.ui.actions.add}
+                  {state().isSubmitting ? "..." : oldMob ? dic.ui.actions.update : dic.ui.actions.add}
                 </Button>
               </div>
             );

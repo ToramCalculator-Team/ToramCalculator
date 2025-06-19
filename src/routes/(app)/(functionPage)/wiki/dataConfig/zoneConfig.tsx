@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Show, Index } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { mobSchema, npcSchema, zoneSchema } from "~/../db/zod/index";
-import { mob, npc, zone } from "~/../db/kysely/kyesely";
+import { DB, mob, npc, zone } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
@@ -20,6 +20,9 @@ import * as Icon from "~/components/icon";
 import { store } from "~/store";
 import { createStatistic } from "~/repositories/statistic";
 import { setWikiStore } from "../store";
+import { pick } from "lodash-es";
+import { Transaction } from "kysely";
+import { arrayDiff, CardSharedSection } from "./utils";
 
 type ZoneWithRelated = zone & {
   mobs: mob[];
@@ -65,7 +68,7 @@ const ZoneWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const ZoneWithRelatedFetcher = async (id: string) => {
+const ZoneWithRelatedFetcher = async (id: string): Promise<ZoneWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("zone")
@@ -87,12 +90,6 @@ const ZoneWithRelatedFetcher = async (id: string) => {
           .selectAll("mob"),
       ).as("mobs"),
       jsonArrayFrom(eb.selectFrom("npc").whereRef("npc.zoneId", "=", "zone.id").selectAll("npc")).as("npcs"),
-      jsonObjectFrom(eb.selectFrom("address").whereRef("address.id", "=", "zone.addressId").selectAll("address"))
-        .$notNull()
-        .as("belongToAddress"),
-      jsonObjectFrom(eb.selectFrom("activity").whereRef("activity.id", "=", "zone.activityId").selectAll("activity"))
-        .$notNull()
-        .as("belongToActivity"),
     ])
     .executeTakeFirstOrThrow();
   return res;
@@ -104,44 +101,115 @@ const ZonesFetcher = async () => {
   return res;
 };
 
+const createZone = async (trx: Transaction<DB>, value: zone) => {
+  const statistic = await createStatistic(trx);
+  const zone = await trx
+    .insertInto("zone")
+    .values({
+      ...value,
+      activityId: value.activityId !== "" ? value.activityId : null,
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return zone;
+};
+
+const updateZone = async (trx: Transaction<DB>, value: zone) => {
+  const zone = await trx
+    .updateTable("zone")
+    .set({
+      ...value,
+      activityId: value.activityId !== "" ? value.activityId : null,
+    })
+    .where("id", "=", value.id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return zone;
+};
+
+const deleteZone = async (trx: Transaction<DB>, zone: zone) => {
+  await trx.deleteFrom("_linkZones").where("A", "=", zone.id).execute();
+  await trx.deleteFrom("_linkZones").where("B", "=", zone.id).execute();
+  await trx.deleteFrom("_mobTozone").where("B", "=", zone.id).execute();
+  await trx.updateTable("npc").set({ zoneId: "defaultZoneId" }).where("zoneId", "=", zone.id).execute();
+  await trx.deleteFrom("zone").where("id", "=", zone.id).execute();
+  await trx.deleteFrom("statistic").where("id", "=", zone.statisticId).execute();
+};
+
 const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
   const formInitialValues = oldZone ?? defaultZoneWithRelated;
   const [isLimit, setIsLimit] = createSignal(false);
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value: newZone }) => {
+      console.log("oldZone", oldZone, "newZone", newZone);
+      const zoneData = pick(newZone, Object.keys(defaultData.zone) as (keyof zone)[]);
       const db = await getDB();
       const zone = await db.transaction().execute(async (trx) => {
-        const { linkZones, mobs, npcs, ...rest } = value;
-        console.log("linkZones", linkZones, "mobs", mobs, "npcs", npcs, "zone", rest);
-        const statistic = await createStatistic(trx);
-        const zone = await trx
-          .insertInto("zone")
-          .values({
-            ...rest,
-            activityId: rest.activityId !== "" ? rest.activityId : null,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (linkZones.length > 0) {
-          for (const linkedZone of linkZones) {
-            await trx.insertInto("_linkZones").values({ A: zone.id, B: linkedZone.id }).execute();
-          }
+        let zone: zone;
+        if (oldZone) {
+          zone = await updateZone(trx, zoneData);
+        } else {
+          zone = await createZone(trx, zoneData);
         }
-        if (mobs.length > 0) {
-          for (const mob of mobs) {
-            await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
-          }
+
+        const {
+          dataToAdd: linkZonesToAdd,
+          dataToRemove: linkZonesToRemove,
+          dataToUpdate: linkZonesToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "zone",
+          oldArray: oldZone?.linkZones ?? [],
+          newArray: newZone.linkZones,
+        });
+
+        for (const linkZone of linkZonesToAdd) {
+          await trx.insertInto("_linkZones").values({ A: zone.id, B: linkZone.id }).execute();
         }
-        if (npcs.length > 0) {
-          for (const npc of npcs) {
-            await trx.updateTable("npc").set({ zoneId: zone.id }).where("id", "=", npc.id).execute();
-          }
+        for (const linkZone of linkZonesToRemove) {
+          await trx.deleteFrom("_linkZones").where("A", "=", zone.id).where("B", "=", linkZone.id).execute();
         }
+
+        const {
+          dataToAdd: mobsToAdd,
+          dataToRemove: mobsToRemove,
+          dataToUpdate: mobsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "mob",
+          oldArray: oldZone?.mobs ?? [],
+          newArray: newZone.mobs,
+        });
+
+        for (const mob of mobsToAdd) {
+          await trx.insertInto("_mobTozone").values({ A: mob.id, B: zone.id }).execute();
+        }
+        for (const mob of mobsToRemove) {
+          await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).where("B", "=", zone.id).execute();
+        }
+
+        const {
+          dataToAdd: npcsToAdd,
+          dataToRemove: npcsToRemove,
+          dataToUpdate: npcsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "npc",
+          oldArray: oldZone?.npcs ?? [],
+          newArray: newZone.npcs,
+        });
+
+        for (const npc of npcsToAdd) {
+          await trx.updateTable("npc").set({ zoneId: zone.id }).where("id", "=", npc.id).execute();
+        }
+        for (const npc of npcsToRemove) {
+          await trx.updateTable("npc").set({ zoneId: "defaultZoneId" }).where("id", "=", npc.id).execute();
+        }
+
         return zone;
       });
       setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]);
@@ -164,10 +232,10 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultZoneWithRelated)}>
-          {(_field, index) => {
-            const fieldKey = _field[0] as keyof ZoneWithRelated;
-            const fieldValue = _field[1];
+        <For each={Object.entries(formInitialValues)}>
+          {(zoneField, zoneFieldIndex) => {
+            const fieldKey = zoneField[0] as keyof ZoneWithRelated;
+            const fieldValue = zoneField[1];
             switch (fieldKey) {
               case "id":
               case "createdByAccountId":
@@ -184,26 +252,26 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(mobs) => (
                       <Input
                         title={dic.db.mob.selfName}
                         description={dic.db.mob.description}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(mobs())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
-                          <Index each={field().state.value}>
-                            {(item, index) => {
+                          <Index each={mobs().state.value}>
+                            {(mob, mobIndex) => {
                               return (
                                 <div class="Filed flex items-center gap-2">
-                                  <label for={fieldKey + index} class="flex-1">
+                                  <label for={fieldKey + mobIndex} class="flex-1">
                                     <Autocomplete
-                                      id={fieldKey + index}
-                                      initialValue={item()}
+                                      id={fieldKey + mobIndex}
+                                      initialValue={mob().id}
                                       setValue={(value) => {
-                                        const newArray = [...field().state.value];
-                                        newArray[index] = value;
-                                        field().setValue(newArray);
+                                        const newArray = [...mobs().state.value];
+                                        newArray[mobIndex] = value;
+                                        mobs().setValue(newArray);
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
@@ -216,7 +284,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      field().setValue((prev: mob[]) => prev.filter((_, i) => i !== index));
+                                      mobs().setValue((prev: mob[]) => prev.filter((_, i) => i !== mobIndex));
                                       e.stopPropagation();
                                     }}
                                   >
@@ -228,7 +296,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              field().setValue((prev: mob[]) => [...prev, defaultData.mob]);
+                              mobs().setValue((prev: mob[]) => [...prev, defaultData.mob]);
                             }}
                             class="w-full"
                           >
@@ -248,26 +316,26 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(npcs) => (
                       <Input
                         title={dic.db.npc.selfName}
                         description={dic.db.npc.description}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(npcs())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
-                          <Index each={field().state.value}>
-                            {(item, index) => {
+                          <Index each={npcs().state.value}>
+                            {(npc, npcIndex) => {
                               return (
                                 <div class="Filed flex items-center gap-2">
-                                  <label for={fieldKey + index} class="flex-1">
+                                  <label for={fieldKey + npcIndex} class="flex-1">
                                     <Autocomplete
-                                      id={fieldKey + index}
-                                      initialValue={item()}
+                                      id={fieldKey + npcIndex}
+                                      initialValue={npc().id}
                                       setValue={(value) => {
-                                        const newArray = [...field().state.value];
-                                        newArray[index] = value;
-                                        field().setValue(newArray);
+                                        const newArray = [...npcs().state.value];
+                                        newArray[npcIndex] = value;
+                                        npcs().setValue(newArray);
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
@@ -280,7 +348,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      field().setValue((prev: npc[]) => prev.filter((_, i) => i !== index));
+                                      npcs().setValue((prev: npc[]) => prev.filter((_, i) => i !== npcIndex));
                                       e.stopPropagation();
                                     }}
                                   >
@@ -292,7 +360,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              field().setValue((prev: npc[]) => [...prev, defaultData.npc]);
+                              npcs().setValue((prev: npc[]) => [...prev, defaultData.npc]);
                             }}
                             class="w-full"
                           >
@@ -312,26 +380,26 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(linkZones) => (
                       <Input
                         title={"链接的" + dic.db.zone.selfName}
                         description={dic.db.zone.description}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(linkZones())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
-                          <Index each={field().state.value}>
-                            {(item, index) => {
+                          <Index each={linkZones().state.value}>
+                            {(linkZone, linkZoneIndex) => {
                               return (
                                 <div class="Filed flex items-center gap-2">
-                                  <label for={fieldKey + index} class="flex-1">
+                                  <label for={fieldKey + linkZoneIndex} class="flex-1">
                                     <Autocomplete
-                                      id={fieldKey + index}
-                                      initialValue={item()}
+                                      id={fieldKey + linkZoneIndex}
+                                      initialValue={linkZone().id}
                                       setValue={(value) => {
-                                        const newArray = [...field().state.value];
-                                        newArray[index] = value;
-                                        field().setValue(newArray);
+                                        const newArray = [...linkZones().state.value];
+                                        newArray[linkZoneIndex] = value;
+                                        linkZones().setValue(newArray);
                                       }}
                                       datasFetcher={async () => {
                                         const db = await getDB();
@@ -344,7 +412,9 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      field().setValue((prev: zone[]) => prev.filter((_, i) => i !== index));
+                                      linkZones().setValue((prev: zone[]) =>
+                                        prev.filter((_, i) => i !== linkZoneIndex),
+                                      );
                                       e.stopPropagation();
                                     }}
                                   >
@@ -356,7 +426,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              field().setValue((prev: zone[]) => [...prev, defaultData.zone]);
+                              linkZones().setValue((prev: zone[]) => [...prev, defaultData.zone]);
                             }}
                             class="w-full"
                           >
@@ -376,7 +446,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(activityIdField) => (
                       <>
                         <Input
                           title={"活动限时标记"}
@@ -394,18 +464,15 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                         </Input>
                         <Show when={isLimit()}>
                           <Input
-                            title={dic.db.zone.fields[fieldKey].key}
-                            description={dic.db.zone.fields[fieldKey].formFieldDescription}
-                            state={fieldInfo(field())}
+                            title={dic.db.activity.selfName}
+                            description={dic.db.activity.description}
+                            state={fieldInfo(activityIdField())}
                             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                           >
                             <Autocomplete
-                              id={field().name}
-                              initialValue={defaultData.activity}
-                              setValue={(value) => {
-                                field().setValue(value.id);
-                                console.log("field().state.value", field().state.value);
-                              }}
+                              id={activityIdField().name}
+                              initialValue={activityIdField().state.value ?? ""}
+                              setValue={(value) => activityIdField().setValue(value.id)}
                               datasFetcher={async () => {
                                 const db = await getDB();
                                 const activities = await db
@@ -433,19 +500,17 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       onChangeAsync: ZoneWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(addressIdField) => (
                       <Input
-                        title={dic.db.zone.fields[fieldKey].key}
-                        description={dic.db.zone.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
+                        title={dic.db.address.selfName}
+                        description={dic.db.address.description}
+                        state={fieldInfo(addressIdField())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <Autocomplete
-                          id={field().name}
-                          initialValue={defaultData.address}
-                          setValue={(value) => {
-                            field().setValue(value.id);
-                          }}
+                          id={addressIdField().name}
+                          initialValue={addressIdField().state.value}
+                          setValue={(value) => addressIdField().setValue(value.id)}
                           datasFetcher={async () => {
                             const db = await getDB();
                             const addresses = await db.selectFrom("address").selectAll("address").execute();
@@ -460,8 +525,8 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                 );
               default:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                const simpleFieldKey = _field[0] as keyof zone;
-                const simpleFieldValue = _field[1];
+                const simpleFieldKey = zoneField[0] as keyof zone;
+                const simpleFieldValue = zoneField[1];
                 return renderField<ZoneWithRelated, keyof ZoneWithRelated>(
                   form,
                   simpleFieldKey,
@@ -651,24 +716,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           />
         </Show>
 
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex flex-col gap-3">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.deleteFrom("zone").where("id", "=", data.id).executeTakeFirstOrThrow();
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection dic={dic} data={data} delete={deleteZone} />
       </>
     );
   },

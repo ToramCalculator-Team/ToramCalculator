@@ -235,7 +235,7 @@ const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated
                                     <label for={fieldKey + index} class="flex-1">
                                       <Autocomplete
                                         id={fieldKey + index}
-                                        initialValue={item()}
+                                        initialValue={item().id}
                                         setValue={(value) => {
                                           field().setValue((pre) => {
                                             const newArray = [...pre];

@@ -1,9 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import {
-  armorSchema,
-} from "~/../db/zod/index";
+import { armorSchema } from "~/../db/zod/index";
 import { DB, item, armor } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
@@ -15,8 +13,18 @@ import * as Icon from "~/components/icon";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
-
+import {
+  defaultItemWithRelated,
+  deleteItem,
+  itemForm,
+  ItemSharedCardContent,
+  ItemWithRelated,
+  itemWithRelatedDic,
+  itemWithRelatedFetcher,
+  itemWithRelatedSchema,
+} from "./item";
+import { CardSharedSection } from "./utils";
+import { pick } from "lodash-es";
 
 const ArmorWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<armor>(id, "Armor");
 
@@ -30,35 +38,37 @@ const ArmorsFetcher = async () => {
 };
 
 const createArmor = async (trx: Transaction<DB>, value: armor) => {
-  return await trx
-  .insertInto("armor")
-  .values(value)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+  return await trx.insertInto("armor").values(value).returningAll().executeTakeFirstOrThrow();
 };
 
 const updateArmor = async (trx: Transaction<DB>, value: armor) => {
   return await trx
-  .updateTable("armor")
-  .set(value)
-  .where("itemId", "=", value.itemId)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+    .updateTable("armor")
+    .set(value)
+    .where("itemId", "=", value.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 };
 
-const deleteArmor = async (trx: Transaction<DB>, itemId: string) => {
-  await trx.deleteFrom("armor").where("itemId", "=", itemId).executeTakeFirstOrThrow();
-  await deleteItem(trx, itemId);
+const deleteArmor = async (trx: Transaction<DB>, data: armor) => {
+  await trx.deleteFrom("armor").where("itemId", "=", data.itemId).executeTakeFirstOrThrow();
+  await deleteItem(trx, data.itemId);
 };
 
-const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
-  const formInitialValues = oldArmor ?? defaultData.armor;
-  const [item, setItem] = createSignal<ItemWithRelated>();
+const ArmorWithRelatedForm = (dic: dictionary, oldArmorWithRelated?: armor & ItemWithRelated) => {
+  const oldArmor = oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultData.armor) as (keyof armor)[]);
+  const oldItem =
+    oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+  const armorFormInitialValues = oldArmor ?? defaultData.armor;
+  const itemFormInitialValues = oldItem ?? defaultItemWithRelated;
+
+  // 暂存item数据，用于armor表使用
+  const [item, setItem] = createSignal<ItemWithRelated>(itemFormInitialValues);
   const form = createForm(() => ({
-    defaultValues: formInitialValues,
+    defaultValues: armorFormInitialValues,
     onSubmit: async ({ value: newArmor }) => {
       console.log("oldArmor", oldArmor, "newArmor", newArmor);
-      const db = await getDB(); 
+      const db = await getDB();
       await db.transaction().execute(async (trx) => {
         let armorItem: armor;
         if (oldArmor) {
@@ -76,9 +86,11 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
       });
     },
   }));
+
   onMount(() => {
     console.log(form.state.values);
   });
+
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
@@ -92,7 +104,8 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(formInitialValues)}>
+        {itemForm(dic, setItem, item())}
+        <For each={Object.entries(armorFormInitialValues)}>
           {(field, index) => {
             const fieldKey = field[0] as keyof armor;
             const fieldValue = field[1];
@@ -100,13 +113,7 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
               case "itemId":
                 return null;
               default:
-                return renderField<armor, keyof armor>(
-                  form,
-                  fieldKey,
-                  fieldValue,
-                  dic.db.armor,
-                  armorSchema,
-                );
+                return renderField<armor, keyof armor>(form, fieldKey, fieldValue, dic.db.armor, armorSchema);
             }
           }}
         </For>
@@ -128,7 +135,7 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmor?: armor) => {
 export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRelated, armor & ItemWithRelated> = {
   defaultData: {
     ...defaultData.armor,
-    ...defaultItemWithRelated
+    ...defaultItemWithRelated,
   },
   dataFetcher: ArmorWithRelatedFetcher,
   datasFetcher: ArmorsFetcher,
@@ -160,55 +167,25 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
     return (
       <>
         <div class="ArmorImage bg-area-color h-[18vh] w-full rounded"></div>
-        {ObjRender<armor & ItemWithRelated>({
-          data,
-          dictionary: {
+        <ObjRender<armor & ItemWithRelated>
+          data={data}
+          dictionary={{
             ...dic.db.armor,
             fields: {
               ...dic.db.armor.fields,
               ...itemWithRelatedDic(dic).fields,
-            }
-          },
-          dataSchema: armorSchema.extend(itemWithRelatedSchema.shape),
-          hiddenFields: ["itemId"],
-          fieldGroupMap: {
+            },
+          }}
+          dataSchema={armorSchema.extend(itemWithRelatedSchema.shape)}
+          hiddenFields={["itemId"]}
+          fieldGroupMap={{
             基本信息: ["name", "baseDef"],
             其他属性: ["modifiers", "details", "dataSources"],
             颜色信息: ["colorA", "colorB", "colorC"],
-          },
-        })}
-        {ItemSharedCardContent(data, dic)}
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteArmor(trx, data.itemId);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+          }}
+        />
+        <ItemSharedCardContent data={data} dic={dic} />
+        <CardSharedSection dic={dic} data={data} delete={deleteArmor} />
       </>
     );
   },

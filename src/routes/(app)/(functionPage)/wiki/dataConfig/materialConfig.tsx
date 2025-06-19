@@ -1,9 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import {
-  materialSchema,
-} from "~/../db/zod/index";
+import { materialSchema } from "~/../db/zod/index";
 import { DB, item, material } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
@@ -15,11 +13,18 @@ import * as Icon from "~/components/icon";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
+import {
+  defaultItemWithRelated,
+  deleteItem,
+  ItemSharedCardContent,
+  ItemWithRelated,
+  itemWithRelatedDic,
+  itemWithRelatedFetcher,
+  itemWithRelatedSchema,
+} from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { MaterialType } from "../../../../../../db/kysely/enums";
-
 
 const MaterialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<material>(id, "Material");
 
@@ -33,20 +38,16 @@ const MaterialsFetcher = async () => {
 };
 
 const createMaterial = async (trx: Transaction<DB>, value: material) => {
-  return await trx
-  .insertInto("material")
-  .values(value)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+  return await trx.insertInto("material").values(value).returningAll().executeTakeFirstOrThrow();
 };
 
 const updateMaterial = async (trx: Transaction<DB>, value: material) => {
   return await trx
-  .updateTable("material")
-  .set(value)
-  .where("itemId", "=", value.itemId)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+    .updateTable("material")
+    .set(value)
+    .where("itemId", "=", value.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 };
 
 const deleteMaterial = async (trx: Transaction<DB>, itemId: string) => {
@@ -61,7 +62,7 @@ const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newMaterial }) => {
       console.log("oldMaterial", oldMaterial, "newMaterial", newMaterial);
-      const db = await getDB(); 
+      const db = await getDB();
       await db.transaction().execute(async (trx) => {
         let materialItem: material;
         if (oldMaterial) {
@@ -102,34 +103,34 @@ const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
             switch (fieldKey) {
               case "itemId":
                 return null;
-                case "type":
-                  return (
-                    <form.Field
-                      name={fieldKey}
-                      validators={{
-                        onChangeAsyncDebounceMs: 500,
-                        onChangeAsync: materialSchema.shape[fieldKey],
-                      }}
-                    >
-                      {(field) => (
-                        <Input
-                          title={dic.db.material.fields[fieldKey].key}
-                          description={dic.db.material.fields[fieldKey].formFieldDescription}
-                          state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                        >
-                          <Select
-                            value={field().state.value}
-                            setValue={(value) => field().setValue(value as MaterialType)}
-                            options={Object.entries(dic.db.material.fields.type.enumMap).map(([key, value]) => ({
-                              label: value,
-                              value: key,
-                            }))}
-                          />
-                        </Input>
-                      )}
-                    </form.Field>
-                  );
+              case "type":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: materialSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <Input
+                        title={dic.db.material.fields[fieldKey].key}
+                        description={dic.db.material.fields[fieldKey].formFieldDescription}
+                        state={fieldInfo(field())}
+                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      >
+                        <Select
+                          value={field().state.value}
+                          setValue={(value) => field().setValue(value as MaterialType)}
+                          options={Object.entries(dic.db.material.fields.type.enumMap).map(([key, value]) => ({
+                            label: value,
+                            value: key,
+                          }))}
+                        />
+                      </Input>
+                    )}
+                  </form.Field>
+                );
               default:
                 return renderField<material, keyof material>(
                   form,
@@ -156,10 +157,14 @@ const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
   );
 };
 
-export const MaterialDataConfig: dataDisplayConfig<material & item, material & ItemWithRelated, material & ItemWithRelated> = {
+export const MaterialDataConfig: dataDisplayConfig<
+  material & item,
+  material & ItemWithRelated,
+  material & ItemWithRelated
+> = {
   defaultData: {
     ...defaultData.material,
-    ...defaultItemWithRelated
+    ...defaultItemWithRelated,
   },
   dataFetcher: MaterialWithRelatedFetcher,
   datasFetcher: MaterialsFetcher,
@@ -200,7 +205,7 @@ export const MaterialDataConfig: dataDisplayConfig<material & item, material & I
             fields: {
               ...dic.db.material.fields,
               ...itemWithRelatedDic(dic).fields,
-            }
+            },
           },
           dataSchema: materialSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],

@@ -1,9 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import {
-  specialSchema,
-} from "~/../db/zod/index";
+import { specialSchema } from "~/../db/zod/index";
 import { DB, item, special } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
@@ -15,8 +13,15 @@ import * as Icon from "~/components/icon";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
-
+import {
+  defaultItemWithRelated,
+  deleteItem,
+  ItemSharedCardContent,
+  ItemWithRelated,
+  itemWithRelatedDic,
+  itemWithRelatedFetcher,
+  itemWithRelatedSchema,
+} from "./item";
 
 const SpecialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<special>(id, "Special");
 
@@ -30,20 +35,16 @@ const SpecialsFetcher = async () => {
 };
 
 const createSpecial = async (trx: Transaction<DB>, value: special) => {
-  return await trx
-  .insertInto("special")
-  .values(value)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+  return await trx.insertInto("special").values(value).returningAll().executeTakeFirstOrThrow();
 };
 
 const updateSpecial = async (trx: Transaction<DB>, value: special) => {
   return await trx
-  .updateTable("special")
-  .set(value)
-  .where("itemId", "=", value.itemId)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+    .updateTable("special")
+    .set(value)
+    .where("itemId", "=", value.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 };
 
 const deleteSpecial = async (trx: Transaction<DB>, itemId: string) => {
@@ -58,7 +59,7 @@ const SpecialWithRelatedForm = (dic: dictionary, oldSpecial?: special) => {
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newSpecial }) => {
       console.log("oldSpecial", oldSpecial, "newSpecial", newSpecial);
-      const db = await getDB(); 
+      const db = await getDB();
       await db.transaction().execute(async (trx) => {
         let specialItem: special;
         if (oldSpecial) {
@@ -100,13 +101,7 @@ const SpecialWithRelatedForm = (dic: dictionary, oldSpecial?: special) => {
               case "itemId":
                 return null;
               default:
-                return renderField<special, keyof special>(
-                  form,
-                  fieldKey,
-                  fieldValue,
-                  dic.db.special,
-                  specialSchema,
-                );
+                return renderField<special, keyof special>(form, fieldKey, fieldValue, dic.db.special, specialSchema);
             }
           }}
         </For>
@@ -125,10 +120,14 @@ const SpecialWithRelatedForm = (dic: dictionary, oldSpecial?: special) => {
   );
 };
 
-export const SpecialDataConfig: dataDisplayConfig<special & item, special & ItemWithRelated, special & ItemWithRelated> = {
+export const SpecialDataConfig: dataDisplayConfig<
+  special & item,
+  special & ItemWithRelated,
+  special & ItemWithRelated
+> = {
   defaultData: {
     ...defaultData.special,
-    ...defaultItemWithRelated
+    ...defaultItemWithRelated,
   },
   dataFetcher: SpecialWithRelatedFetcher,
   datasFetcher: SpecialsFetcher,
@@ -167,7 +166,7 @@ export const SpecialDataConfig: dataDisplayConfig<special & item, special & Item
             fields: {
               ...dic.db.special.fields,
               ...itemWithRelatedDic(dic).fields,
-            }
+            },
           },
           dataSchema: specialSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],

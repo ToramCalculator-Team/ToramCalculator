@@ -167,7 +167,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
             fields: {
               ...dic.db.option.fields,
               ...itemWithRelatedDic(dic).fields,
-            }
+            },
           },
           dataSchema: optionSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],

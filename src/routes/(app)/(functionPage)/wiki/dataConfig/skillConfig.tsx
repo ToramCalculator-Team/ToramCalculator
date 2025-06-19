@@ -53,7 +53,7 @@ const SkillWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const SkillWithRelatedFetcher = async (id: string) => {
+const SkillWithRelatedFetcher = async (id: string): Promise<SkillWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("skill")
@@ -130,7 +130,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newSkill }) => {
       console.log("oldSkill", oldSkill, "newSkill", newSkill);
-      const skillData = pick(newSkill, Object.keys(defaultSkillWithRelated) as (keyof SkillWithRelated)[]);
+      const skillData = pick(newSkill, Object.keys(defaultData.skill) as (keyof skill)[]);
       const db = await getDB();
       const skill = await db.transaction().execute(async (trx) => {
         let skill: skill;
@@ -190,10 +190,10 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
         <For each={Object.entries(formInitialValues)}>
-          {(_field, index) => {
-            console.log("index", index(), _field);
-            const fieldKey = _field[0] as keyof SkillWithRelated;
-            const fieldValue = _field[1];
+          {(skillField, skillFieldIndex) => {
+            console.log("skillFieldIndex", skillFieldIndex(), skillField);
+            const fieldKey = skillField[0] as keyof SkillWithRelated;
+            const fieldValue = skillField[1];
             switch (fieldKey) {
               case "id":
               case "statisticId":
@@ -266,27 +266,27 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                       onChangeAsync: SkillWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(effects) => (
                       <Input
                         title={dic.db.skill_effect.selfName}
                         description={dic.db.skill_effect.description}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(effects())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
-                          <Index each={field().state.value}>
-                            {(effect, index) => {
-                              console.log("effect", effect(), index);
+                          <Index each={effects().state.value}>
+                            {(effect, effectIndex) => {
+                              console.log("effect", effect(), effectIndex);
                               return (
                                 <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                   <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
                                     <span class="text-accent-color font-bold">
-                                      {fieldKey.toLocaleUpperCase() + " " + index}
+                                      {fieldKey.toLocaleUpperCase() + " " + effectIndex}
                                     </span>
-                                    <Button onClick={() => field().removeValue(index)}>-</Button>
+                                    <Button onClick={() => effects().removeValue(effectIndex)}>-</Button>
                                   </div>
                                   <Index each={Object.entries(effect())}>
-                                    {(effectField, index) => {
+                                    {(effectField, effectFieldIndex) => {
                                       const fieldKey = effectField()[0] as keyof skill_effect;
                                       const fieldValue = effectField()[1];
                                       switch (fieldKey) {
@@ -296,35 +296,35 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                                         case "logic":
                                           return (
                                             <form.Field
-                                              name={`effects[${index}].logic`}
+                                              name={`effects[${effectIndex}].logic`}
                                               validators={{
                                                 onChangeAsyncDebounceMs: 500,
                                                 onChangeAsync: skill_effectSchema.shape[fieldKey],
                                               }}
                                             >
-                                              {(field) => {
+                                              {(logicField) => {
                                                 return (
                                                   <Input
                                                     title={dic.db.skill_effect.fields.logic.key}
                                                     description={dic.db.skill_effect.fields.logic.formFieldDescription}
                                                     autocomplete="off"
                                                     type="text"
-                                                    id={field().name}
-                                                    name={field().name}
-                                                    value={field().state.value as string}
-                                                    onBlur={field().handleBlur}
+                                                    id={logicField().name}
+                                                    name={logicField().name}
+                                                    value={logicField().state.value as string}
+                                                    onBlur={logicField().handleBlur}
                                                     onChange={(e) => {
                                                       const target = e.target;
-                                                      field().handleChange(target.value);
+                                                      logicField().handleChange(target.value);
                                                     }}
-                                                    state={fieldInfo(field())}
+                                                    state={fieldInfo(logicField())}
                                                     class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                                                   >
                                                     <NodeEditor
-                                                      data={field().state.value}
-                                                      setData={(data) => field().setValue(data)}
+                                                      data={logicField().state.value}
+                                                      setData={(data) => logicField().setValue(data)}
                                                       state={true}
-                                                      id={field().name}
+                                                      id={logicField().name}
                                                       class="h-[80vh] w-full"
                                                     />
                                                   </Input>
@@ -334,7 +334,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                                           );
                                         default:
                                           // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                                          const simpleFieldKey = `effects[${index}].${fieldKey}`;
+                                          const simpleFieldKey = `effects[${effectIndex}].${fieldKey}`;
                                           const simpleFieldValue = fieldValue;
                                           return renderField<skill_effect, keyof skill_effect>(
                                             form,
@@ -352,8 +352,8 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                           </Index>
                           <Button
                             onClick={() => {
-                              const newArray = [...field().state.value, defaultData.skill_effect];
-                              field().setValue(newArray);
+                              const newArray = [...effects().state.value, defaultData.skill_effect];
+                              effects().setValue(newArray);
                             }}
                             class="w-full"
                           >
@@ -366,8 +366,8 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                 );
               default:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                const simpleFieldKey = _field[0] as keyof skill;
-                const simpleFieldValue = _field[1];
+                const simpleFieldKey = skillField[0] as keyof skill;
+                const simpleFieldValue = skillField[1];
                 return renderField<SkillWithRelated, keyof SkillWithRelated>(
                   form,
                   simpleFieldKey,

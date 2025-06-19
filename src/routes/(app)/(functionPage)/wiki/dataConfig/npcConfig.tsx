@@ -49,7 +49,7 @@ const NpcWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const NpcWithRelatedFetcher = async (id: string) => {
+const NpcWithRelatedFetcher = async (id: string): Promise<NpcWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("npc")

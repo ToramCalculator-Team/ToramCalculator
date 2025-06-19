@@ -54,7 +54,7 @@ const AddressWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const AddressWithRelatedFetcher = async (id: string) => {
+const AddressWithRelatedFetcher = async (id: string): Promise<AddressWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("address")

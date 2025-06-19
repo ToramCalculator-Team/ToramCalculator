@@ -28,6 +28,8 @@ import * as Icon from "~/components/icon";
 import { setWikiStore } from "../store";
 import { itemTypeToTableType } from "./item";
 import { Transaction } from "kysely";
+import { pick } from "lodash-es";
+import { arrayDiff, CardSharedSection } from "./utils";
 
 type TaskWithRelated = task & {
   collectRequires: task_collect_require[];
@@ -74,7 +76,7 @@ const TaskWithRelatedDic = (dic: dictionary) => ({
   },
 });
 
-const TaskWithRelatedFetcher = async (id: string) => {
+const TaskWithRelatedFetcher = async (id: string): Promise<TaskWithRelated> => {
   const db = await getDB();
   const res = await db
     .selectFrom("task")
@@ -143,68 +145,123 @@ const deleteTask = async (trx: Transaction<DB>, task: task) => {
   await trx.deleteFrom("task_collect_require").where("taskId", "=", task.id).execute();
   await trx.deleteFrom("task_kill_requirement").where("taskId", "=", task.id).execute();
   await trx.deleteFrom("task_reward").where("taskId", "=", task.id).execute();
-  // 删除统计数据
-  await trx.deleteFrom("statistic").where("id", "=", task.statisticId).execute();
   // 删除任务
   await trx.deleteFrom("task").where("id", "=", task.id).execute();
+  // 删除统计数据
+  await trx.deleteFrom("statistic").where("id", "=", task.statisticId).execute();
 };
 
 const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
   const formInitialValues = oldTask ?? defaultTaskWithRelated;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value: newTask }) => {
+      console.log("oldTask", oldTask, "newTask", newTask);
+      const taskData = pick(newTask, Object.keys(defaultData.task) as (keyof task)[]);
       const db = await getDB();
       const task = await db.transaction().execute(async (trx) => {
-        const { collectRequires, killRequirements, rewards, ...rest } = value;
-        const statistic = await createStatistic(trx);
-        const task = await trx
-          .insertInto("task")
-          .values({
-            ...rest,
-            id: createId(),
-            statisticId: statistic.id,
-            createdByAccountId: store.session.user.account?.id,
-            updatedByAccountId: store.session.user.account?.id,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-        if (collectRequires.length > 0) {
-          for (const collectRequire of collectRequires) {
-            await trx
-              .insertInto("task_collect_require")
-              .values({
-                ...collectRequire,
-                id: createId(),
-                taskId: task.id,
-              })
-              .execute();
-          }
+        let task: task;
+        if (oldTask) {
+          task = await updateTask(trx, taskData);
+        } else {
+          task = await createTask(trx, taskData);
         }
-        if (killRequirements.length > 0) {
-          for (const killRequirement of killRequirements) {
-            await trx
-              .insertInto("task_kill_requirement")
-              .values({
-                ...killRequirement,
-                id: createId(),
-                taskId: task.id,
-              })
-              .execute();
-          }
+
+        // 收集要求
+        const {
+          dataToAdd: collectRequiresToAdd,
+          dataToRemove: collectRequiresToRemove,
+          dataToUpdate: collectRequiresToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "task_collect_require",
+          oldArray: oldTask?.collectRequires ?? [],
+          newArray: newTask.collectRequires,
+        });
+
+        for (const collectRequire of collectRequiresToAdd) {
+          await trx
+            .insertInto("task_collect_require")
+            .values({
+              ...collectRequire,
+              id: createId(),
+              taskId: task.id,
+            })
+            .execute();
         }
-        if (rewards.length > 0) {
-          for (const reward of rewards) {
-            await trx
-              .insertInto("task_reward")
-              .values({
-                ...reward,
-                id: createId(),
-                taskId: task.id,
-              })
-              .execute();
-          }
+        for (const collectRequire of collectRequiresToRemove) {
+          await trx.deleteFrom("task_collect_require").where("id", "=", collectRequire.id).execute();
         }
+        for (const collectRequire of collectRequiresToUpdate) {
+          await trx
+            .updateTable("task_collect_require")
+            .set(collectRequire)
+            .where("id", "=", collectRequire.id)
+            .execute();
+        }
+
+        // 击杀要求
+        const {
+          dataToAdd: killRequirementsToAdd,
+          dataToRemove: killRequirementsToRemove,
+          dataToUpdate: killRequirementsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "task_kill_requirement",
+          oldArray: oldTask?.killRequirements ?? [],
+          newArray: newTask.killRequirements,
+        });
+
+        for (const killRequirement of killRequirementsToAdd) {
+          await trx
+            .insertInto("task_kill_requirement")
+            .values({
+              ...killRequirement,
+              id: createId(),
+              taskId: task.id,
+            })
+            .execute();
+        }
+        for (const killRequirement of killRequirementsToRemove) {
+          await trx.deleteFrom("task_kill_requirement").where("id", "=", killRequirement.id).execute();
+        }
+        for (const killRequirement of killRequirementsToUpdate) {
+          await trx
+            .updateTable("task_kill_requirement")
+            .set(killRequirement)
+            .where("id", "=", killRequirement.id)
+            .execute();
+        }
+
+        // 奖励
+        const {
+          dataToAdd: rewardsToAdd,
+          dataToRemove: rewardsToRemove,
+          dataToUpdate: rewardsToUpdate,
+        } = await arrayDiff({
+          trx,
+          table: "task_reward",
+          oldArray: oldTask?.rewards ?? [],
+          newArray: newTask.rewards,
+        });
+
+        for (const reward of rewardsToAdd) {
+          await trx
+            .insertInto("task_reward")
+            .values({
+              ...reward,
+              id: createId(),
+              taskId: task.id,
+            })
+            .execute();
+        }
+        for (const reward of rewardsToRemove) {
+          await trx.deleteFrom("task_reward").where("id", "=", reward.id).execute();
+        }
+        for (const reward of rewardsToUpdate) {
+          await trx.updateTable("task_reward").set(reward).where("id", "=", reward.id).execute();
+        }
+
         return task;
       });
       setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }]);
@@ -246,18 +303,18 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                       onChangeAsync: TaskWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(npcIdField) => (
                       <Input
                         title={dic.db.task.fields[fieldKey].key}
                         description={dic.db.task.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(npcIdField())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <Autocomplete
-                          id={field().name}
-                          initialValue={defaultData.npc}
+                          id={npcIdField().name}
+                          initialValue={npcIdField().state.value}
                           setValue={(value) => {
-                            field().setValue(value.id);
+                            npcIdField().setValue(value.id);
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
@@ -280,70 +337,101 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                       onChangeAsync: TaskWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(collectRequires) => (
                       <form.Subscribe selector={(state) => state.values.type}>
                         {(type) => (
                           <Show when={type() === "Collect" || type() === "Both"}>
                             <Input
                               title={dic.db.task_collect_require.selfName}
                               description={dic.db.task_collect_require.description}
-                              state={fieldInfo(field())}
+                              state={fieldInfo(collectRequires())}
                               class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                             >
                               <div class="ArrayBox flex w-full flex-col gap-2">
-                                <Index each={field().state.value}>
-                                  {(item, index) => {
-                                    const initialValue = item() as task_collect_require & { itemName: string };
+                                <Index each={collectRequires().state.value}>
+                                  {(collectRequire, collectRequireIndex) => {
                                     return (
                                       <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                         <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
                                           <span class="text-accent-color font-bold">
-                                            {dic.db.task_collect_require.selfName + " " + index}
+                                            {dic.db.task_collect_require.selfName + " " + collectRequireIndex}
                                           </span>
-                                          <Button onClick={() => field().removeValue(index)}>-</Button>
+                                          <Button onClick={() => collectRequires().removeValue(collectRequireIndex)}>
+                                            -
+                                          </Button>
                                         </div>
-                                        <div class="SubForm flex w-full flex-col gap-2">
-                                          <Input
-                                            title={dic.db.task_collect_require.fields.itemId.key}
-                                            description={dic.db.task_collect_require.fields.itemId.formFieldDescription}
-                                            state={fieldInfo(field())}
-                                          >
-                                            <Autocomplete
-                                              id={fieldKey + "itemId" + index}
-                                              initialValue={{ id: initialValue.itemId, name: initialValue.itemName }}
-                                              setValue={(value) => {
-                                                const newArray = [...field().state.value];
-                                                newArray[index] = { ...initialValue, itemId: value.id };
-                                                field().setValue(newArray);
-                                              }}
-                                              datasFetcher={async () => {
-                                                const db = await getDB();
-                                                const items = await db
-                                                  .selectFrom("item")
-                                                  .select(["id", "name"])
-
-                                                  .execute();
-                                                return items;
-                                              }}
-                                              displayField="name"
-                                              valueField="id"
-                                            />
-                                          </Input>
-                                          <Input
-                                            type="number"
-                                            title={dic.db.task_collect_require.fields.count.key}
-                                            description={dic.db.task_collect_require.fields.count.formFieldDescription}
-                                            state={fieldInfo(field())}
-                                          />
-                                        </div>
+                                        <Index each={Object.entries(collectRequire())}>
+                                          {(collectRequireField, collectRequireFieldIndex) => {
+                                            const fieldKey = collectRequireField()[0] as keyof task_collect_require;
+                                            const fieldValue = collectRequireField()[1];
+                                            switch (fieldKey) {
+                                              case "id":
+                                              case "taskId":
+                                                return null;
+                                              case "itemId":
+                                                return (
+                                                  <form.Field
+                                                    name={`collectRequires[${collectRequireIndex}].itemId`}
+                                                    validators={{
+                                                      onChangeAsyncDebounceMs: 500,
+                                                      onChangeAsync: task_collect_requireSchema.shape[fieldKey],
+                                                    }}
+                                                  >
+                                                    {(itemIdField) => {
+                                                      return (
+                                                        <Input
+                                                          title={dic.db.task_collect_require.fields.itemId.key}
+                                                          description={
+                                                            dic.db.task_collect_require.fields.itemId
+                                                              .formFieldDescription
+                                                          }
+                                                          state={fieldInfo(itemIdField())}
+                                                        >
+                                                          <Autocomplete
+                                                            id={`collectRequires[${collectRequireIndex}].itemId`}
+                                                            initialValue={itemIdField().state.value}
+                                                            setValue={(value) => itemIdField().setValue(value.id)}
+                                                            datasFetcher={async () => {
+                                                              const db = await getDB();
+                                                              const items = await db
+                                                                .selectFrom("item")
+                                                                .select(["id", "name"])
+                                                                .execute();
+                                                              return items;
+                                                            }}
+                                                            displayField="name"
+                                                            valueField="id"
+                                                          />
+                                                        </Input>
+                                                      );
+                                                    }}
+                                                  </form.Field>
+                                                );
+                                              default:
+                                                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                                const simpleFieldKey = `collectRequires[${collectRequireIndex}].${fieldKey}`;
+                                                const simpleFieldValue = fieldValue;
+                                                return renderField<task_collect_require, keyof task_collect_require>(
+                                                  form,
+                                                  simpleFieldKey,
+                                                  simpleFieldValue,
+                                                  dic.db.task_collect_require,
+                                                  task_collect_requireSchema,
+                                                );
+                                            }
+                                          }}
+                                        </Index>
                                       </div>
                                     );
                                   }}
                                 </Index>
                                 <Button
                                   onClick={() => {
-                                    const newArray = [...field().state.value, defaultData.task_collect_require];
-                                    field().setValue(newArray);
+                                    const newArray = [
+                                      ...collectRequires().state.value,
+                                      defaultData.task_collect_require,
+                                    ];
+                                    collectRequires().setValue(newArray);
                                   }}
                                   class="w-full"
                                 >
@@ -366,70 +454,101 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                       onChangeAsync: TaskWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(killRequirements) => (
                       <form.Subscribe selector={(state) => state.values.type}>
                         {(type) => (
                           <Show when={type() === "Defeat" || type() === "Both"}>
                             <Input
                               title={dic.db.task_kill_requirement.selfName}
                               description={dic.db.task_kill_requirement.description}
-                              state={fieldInfo(field())}
+                              state={fieldInfo(killRequirements())}
                               class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                             >
                               <div class="ArrayBox flex w-full flex-col gap-2">
-                                <Index each={field().state.value}>
-                                  {(item, index) => {
-                                    const initialValue = item() as task_kill_requirement & { mobName: string };
+                                <Index each={killRequirements().state.value}>
+                                  {(killRequirement, killRequirementIndex) => {
                                     return (
                                       <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                         <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
                                           <span class="text-accent-color font-bold">
-                                            {dic.db.task_kill_requirement.selfName + " " + index}
+                                            {dic.db.task_kill_requirement.selfName + " " + killRequirementIndex}
                                           </span>
-                                          <Button onClick={() => field().removeValue(index)}>-</Button>
+                                          <Button onClick={() => killRequirements().removeValue(killRequirementIndex)}>
+                                            -
+                                          </Button>
                                         </div>
-                                        <div class="SubForm-DropItem flex w-full flex-col gap-2">
-                                          <Input
-                                            title={dic.db.task_kill_requirement.fields.mobId.key}
-                                            description={dic.db.task_kill_requirement.fields.mobId.formFieldDescription}
-                                            state={fieldInfo(field())}
-                                          >
-                                            <Autocomplete
-                                              id={fieldKey + "mobId" + index}
-                                              initialValue={{ id: initialValue.mobId, name: initialValue.mobName }}
-                                              setValue={(value) => {
-                                                const newArray = [...field().state.value];
-                                                newArray[index] = { ...initialValue, mobId: value.id };
-                                                field().setValue(newArray);
-                                              }}
-                                              datasFetcher={async () => {
-                                                const db = await getDB();
-                                                const mobs = await db
-                                                  .selectFrom("mob")
-                                                  .select(["id", "name"])
-
-                                                  .execute();
-                                                return mobs;
-                                              }}
-                                              displayField="name"
-                                              valueField="id"
-                                            />
-                                          </Input>
-                                          <Input
-                                            type="number"
-                                            title={dic.db.task_kill_requirement.fields.count.key}
-                                            description={dic.db.task_kill_requirement.fields.count.formFieldDescription}
-                                            state={fieldInfo(field())}
-                                          />
-                                        </div>
+                                        <Index each={Object.entries(killRequirement())}>
+                                          {(killRequirementField, killRequirementFieldIndex) => {
+                                            const fieldKey = killRequirementField()[0] as keyof task_kill_requirement;
+                                            const fieldValue = killRequirementField()[1];
+                                            switch (fieldKey) {
+                                              case "id":
+                                              case "taskId":
+                                                return null;
+                                              case "mobId":
+                                                return (
+                                                  <form.Field
+                                                    name={`killRequirements[${killRequirementIndex}].mobId`}
+                                                    validators={{
+                                                      onChangeAsyncDebounceMs: 500,
+                                                      onChangeAsync: task_kill_requirementSchema.shape[fieldKey],
+                                                    }}
+                                                  >
+                                                    {(itemIdField) => {
+                                                      return (
+                                                        <Input
+                                                          title={dic.db.task_kill_requirement.fields.mobId.key}
+                                                          description={
+                                                            dic.db.task_kill_requirement.fields.mobId
+                                                              .formFieldDescription
+                                                          }
+                                                          state={fieldInfo(itemIdField())}
+                                                        >
+                                                          <Autocomplete
+                                                            id={`killRequirements[${killRequirementIndex}].mobId`}
+                                                            initialValue={itemIdField().state.value}
+                                                            setValue={(value) => itemIdField().setValue(value.id)}
+                                                            datasFetcher={async () => {
+                                                              const db = await getDB();
+                                                              const items = await db
+                                                                .selectFrom("mob")
+                                                                .select(["id", "name"])
+                                                                .execute();
+                                                              return items;
+                                                            }}
+                                                            displayField="name"
+                                                            valueField="id"
+                                                          />
+                                                        </Input>
+                                                      );
+                                                    }}
+                                                  </form.Field>
+                                                );
+                                              default:
+                                                // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                                const simpleFieldKey = `killRequirements[${killRequirementIndex}].${fieldKey}`;
+                                                const simpleFieldValue = fieldValue;
+                                                return renderField<task_kill_requirement, keyof task_kill_requirement>(
+                                                  form,
+                                                  simpleFieldKey,
+                                                  simpleFieldValue,
+                                                  dic.db.task_kill_requirement,
+                                                  task_kill_requirementSchema,
+                                                );
+                                            }
+                                          }}
+                                        </Index>
                                       </div>
                                     );
                                   }}
                                 </Index>
                                 <Button
                                   onClick={() => {
-                                    const newArray = [...field().state.value, defaultData.task_kill_requirement];
-                                    field().setValue(newArray);
+                                    const newArray = [
+                                      ...killRequirements().state.value,
+                                      defaultData.task_kill_requirement,
+                                    ];
+                                    killRequirements().setValue(newArray);
                                   }}
                                   class="w-full"
                                 >
@@ -452,98 +571,119 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                       onChangeAsync: TaskWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(field) => (
+                    {(rewards) => (
                       <Input
                         title={dic.db.task_reward.selfName}
                         description={dic.db.task_reward.description}
-                        state={fieldInfo(field())}
+                        state={fieldInfo(rewards())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
-                          <Index each={field().state.value}>
-                            {(item, index) => {
-                              const zodValue = task_rewardSchema.shape;
+                          <Index each={rewards().state.value}>
+                            {(reward, rewardIndex) => {
                               return (
                                 <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
                                   <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
                                     <span class="text-accent-color font-bold">
-                                      {dic.db.task_reward.selfName + " " + index}
+                                      {dic.db.task_reward.selfName + " " + rewardIndex}
                                     </span>
-                                    <Button onClick={() => field().removeValue(index)}>-</Button>
+                                    <Button onClick={() => rewards().removeValue(rewardIndex)}>-</Button>
                                   </div>
-                                  <div class="SubForm-DropItem flex w-full flex-col gap-2">
-                                    <Input
-                                      title={dic.db.task_reward.fields.type.key}
-                                      description={dic.db.task_reward.fields.type.formFieldDescription}
-                                      state={fieldInfo(field())}
-                                    >
-                                      <EnumSelect
-                                        value={item().type}
-                                        setValue={(value) => {
-                                          const newArray = [...field().state.value];
-                                          newArray[index] = { ...item(), type: value as TaskRewardType };
-                                          field().setValue(newArray);
-                                        }}
-                                        options={zodValue.type.options}
-                                        dic={dic.db.task_reward.fields.type.enumMap}
-                                        field={{
-                                          id: field().name,
-                                          name: field().name,
-                                        }}
-                                      />
-                                    </Input>
-                                    <Show when={item().type === "Item"}>
-                                      <Input
-                                        title={dic.db.task_reward.fields.itemId.key}
-                                        description={dic.db.task_reward.fields.itemId.formFieldDescription}
-                                        state={fieldInfo(field())}
-                                      >
-                                        <Autocomplete
-                                          id={fieldKey + "itemId" + index}
-                                          initialValue={{
-                                            id: item().itemId!, // 类型为Item的task_reward，itemId一定不为空
-                                            name: "",
-                                          }}
-                                          setValue={(value) => {
-                                            const newArray = [...field().state.value];
-                                            newArray[index] = { ...item(), itemId: value.id };
-                                            field().setValue(newArray);
-                                          }}
-                                          datasFetcher={async () => {
-                                            const db = await getDB();
-                                            const items = await db
-                                              .selectFrom("item")
-                                              .select(["id", "name"])
-
-                                              .execute();
-                                            return items;
-                                          }}
-                                          displayField="name"
-                                          valueField="id"
-                                        />
-                                      </Input>
-                                      <Input
-                                        type="number"
-                                        title={dic.db.task_reward.fields.probability.key}
-                                        description={dic.db.task_reward.fields.probability.formFieldDescription}
-                                        state={fieldInfo(field())}
-                                      />
-                                    </Show>
-                                    <Input
-                                      type="number"
-                                      title={dic.db.task_reward.fields.value.key}
-                                      description={dic.db.task_reward.fields.value.formFieldDescription}
-                                      state={fieldInfo(field())}
-                                    />
-                                  </div>
+                                  <Index each={Object.entries(reward())}>
+                                    {(rewardField, rewardFieldIndex) => {
+                                      const fieldKey = rewardField()[0] as keyof task_reward;
+                                      const fieldValue = rewardField()[1];
+                                      switch (fieldKey) {
+                                        case "id":
+                                        case "taskId":
+                                          return null;
+                                        case "itemId":
+                                          return (
+                                            <form.Subscribe
+                                              selector={(state) => state.values.rewards[rewardIndex].type}
+                                            >
+                                              {(type) => (
+                                                <Show when={type() === "Item"}>
+                                                  <form.Field
+                                                    name={`rewards[${rewardIndex}].itemId`}
+                                                    validators={{
+                                                      onChangeAsyncDebounceMs: 500,
+                                                      onChangeAsync: task_rewardSchema.shape[fieldKey],
+                                                    }}
+                                                  >
+                                                    {(itemIdField) => {
+                                                      return (
+                                                        <Input
+                                                          title={dic.db.task_collect_require.fields.itemId.key}
+                                                          description={
+                                                            dic.db.task_collect_require.fields.itemId
+                                                              .formFieldDescription
+                                                          }
+                                                          state={fieldInfo(itemIdField())}
+                                                        >
+                                                          <Autocomplete
+                                                            id={`rewards[${rewardIndex}].itemId`}
+                                                            initialValue={itemIdField().state.value ?? ""}
+                                                            setValue={(value) => itemIdField().setValue(value.id)}
+                                                            datasFetcher={async () => {
+                                                              const db = await getDB();
+                                                              const items = await db
+                                                                .selectFrom("item")
+                                                                .select(["id", "name"])
+                                                                .execute();
+                                                              return items;
+                                                            }}
+                                                            displayField="name"
+                                                            valueField="id"
+                                                          />
+                                                        </Input>
+                                                      );
+                                                    }}
+                                                  </form.Field>
+                                                </Show>
+                                              )}
+                                            </form.Subscribe>
+                                          );
+                                        case "probability":
+                                          return (
+                                            <form.Subscribe
+                                              selector={(state) => state.values.rewards[rewardIndex].type}
+                                            >
+                                              {(type) => (
+                                                <Show when={type() === "Item"}>
+                                                  {renderField<task_reward, keyof task_reward>(
+                                                    form,
+                                                    `rewards[${rewardIndex}].${fieldKey}`,
+                                                    fieldValue,
+                                                    dic.db.task_reward,
+                                                    task_rewardSchema,
+                                                  )}
+                                                </Show>
+                                              )}
+                                            </form.Subscribe>
+                                          );
+                                        default:
+                                          // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
+                                          const simpleFieldKey = `rewards[${rewardIndex}].${fieldKey}`;
+                                          const simpleFieldValue = fieldValue;
+                                          return renderField<task_reward, keyof task_reward>(
+                                            form,
+                                            simpleFieldKey,
+                                            simpleFieldValue,
+                                            dic.db.task_reward,
+                                            task_rewardSchema,
+                                          );
+                                      }
+                                    }}
+                                  </Index>
                                 </div>
                               );
                             }}
                           </Index>
                           <Button
                             onClick={() => {
-                              const newArray = [...field().state.value, defaultData.task_reward];
-                              field().setValue(newArray);
+                              const newArray = [...rewards().state.value, defaultData.task_reward];
+                              rewards().setValue(newArray);
                             }}
                             class="w-full"
                           >
@@ -719,38 +859,7 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
           }}
         />
 
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteTask(trx, data);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  // 打开表单
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection dic={dic} data={data} delete={deleteTask} />
       </>
     );
   },
