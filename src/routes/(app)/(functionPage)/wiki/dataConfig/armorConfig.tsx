@@ -74,7 +74,7 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmorWithRelated?: armor & Ite
       console.log("oldArmorWithRelated", oldArmorWithRelated, "newArmorWithRelated", newArmorWithRelated);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
-        const item = await ItemSharedFormDataSubmitor(trx, newItem, oldItem);
+        const item = await ItemSharedFormDataSubmitor(trx, "Armor", newItem, oldItem);
         let armorItem: armor;
         if (oldArmor) {
           // 更新
@@ -129,12 +129,7 @@ const ArmorWithRelatedForm = (dic: dictionary, oldArmorWithRelated?: armor & Ite
           selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
           children={(state) => (
             <div class="flex items-center gap-1">
-              <Button
-                level="primary"
-                class={`SubmitBtn flex-1`}
-                disabled={!state().canSubmit}
-                type="submit"
-              >
+              <Button level="primary" class={`SubmitBtn flex-1`} disabled={!state().canSubmit} type="submit">
                 {state().isSubmitting ? "..." : dic.ui.actions.add}
               </Button>
             </div>

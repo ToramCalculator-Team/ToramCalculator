@@ -17,11 +17,15 @@ import {
   defaultItemWithRelated,
   deleteItem,
   ItemSharedCardContent,
+  ItemSharedFormDataSubmitor,
+  ItemSharedFormField,
   ItemWithRelated,
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
 } from "./item";
+import { CardSharedSection } from "./utils";
+import pick from "lodash-es/pick";
 
 const ConsumableWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<consumable>(id, "Consumable");
 
@@ -47,27 +51,48 @@ const updateConsumable = async (trx: Transaction<DB>, value: consumable) => {
     .executeTakeFirstOrThrow();
 };
 
-const deleteConsumable = async (trx: Transaction<DB>, itemId: string) => {
-  await trx.deleteFrom("consumable").where("itemId", "=", itemId).executeTakeFirstOrThrow();
-  await deleteItem(trx, itemId);
+const deleteConsumable = async (trx: Transaction<DB>, data: consumable & ItemWithRelated) => {
+  await trx.deleteFrom("consumable").where("itemId", "=", data.id).executeTakeFirstOrThrow();
+  await deleteItem(trx, data.id);
 };
 
-const ConsumableWithRelatedForm = (dic: dictionary, oldConsumable?: consumable) => {
-  const formInitialValues = oldConsumable ?? defaultData.consumable;
-  const [item, setItem] = createSignal<ItemWithRelated>();
+const ConsumableWithRelatedForm = (dic: dictionary, oldConsumableWithRelated?: consumable & ItemWithRelated) => {
+  const oldConsumable =
+    oldConsumableWithRelated &&
+    pick(oldConsumableWithRelated, Object.keys(defaultData.consumable) as (keyof consumable)[]);
+  const oldItem =
+    oldConsumableWithRelated &&
+    pick(oldConsumableWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+  const consumableFormFieldInitialValues = oldConsumable ?? defaultData.consumable;
+  const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
+  const formInitialValues = oldConsumableWithRelated ?? {
+    ...defaultData.consumable,
+    ...defaultItemWithRelated,
+  };
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newConsumable }) => {
-      console.log("oldConsumable", oldConsumable, "newConsumable", newConsumable);
+    onSubmit: async ({ value: newConsumableWithRelated }) => {
+      const newConsumable = pick(newConsumableWithRelated, Object.keys(defaultData.consumable) as (keyof consumable)[]);
+      const newItem = pick(newConsumableWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log(
+        "oldConsumableWithRelated",
+        oldConsumableWithRelated,
+        "newConsumableWithRelated",
+        newConsumableWithRelated,
+      );
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
+        const item = await ItemSharedFormDataSubmitor(trx, "Consumable", newItem, oldItem);
         let consumableItem: consumable;
         if (oldConsumable) {
           // 更新
           consumableItem = await updateConsumable(trx, newConsumable);
         } else {
           // 新增
-          consumableItem = await createConsumable(trx, newConsumable);
+          consumableItem = await createConsumable(trx, {
+            ...newConsumable,
+            itemId: item.id,
+          });
         }
         setWikiStore("cardGroup", (pre) => [...pre, { type: "consumable", id: consumableItem.itemId }]);
         setWikiStore("form", {
@@ -77,9 +102,11 @@ const ConsumableWithRelatedForm = (dic: dictionary, oldConsumable?: consumable) 
       });
     },
   }));
+
   onMount(() => {
     console.log(form.state.values);
   });
+
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
@@ -93,7 +120,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, oldConsumable?: consumable) 
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(formInitialValues)}>
+        <For each={Object.entries(consumableFormFieldInitialValues)}>
           {(field, index) => {
             const fieldKey = field[0] as keyof consumable;
             const fieldValue = field[1];
@@ -111,6 +138,7 @@ const ConsumableWithRelatedForm = (dic: dictionary, oldConsumable?: consumable) 
             }
           }}
         </For>
+        {ItemSharedFormField(dic, itemFormFieldInitialValues, form)}
         <form.Subscribe
           selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
           children={(state) => (
@@ -182,38 +210,8 @@ export const ConsumableDataConfig: dataDisplayConfig<
             其他属性: ["details", "dataSources"],
           },
         })}
-        {ItemSharedCardContent(data, dic)}
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteConsumable(trx, data.itemId);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <ItemSharedCardContent data={data} dic={dic} />
+        <CardSharedSection dic={dic} data={data} delete={deleteConsumable} />
       </>
     );
   },

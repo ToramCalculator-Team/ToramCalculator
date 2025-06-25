@@ -26,6 +26,7 @@ import z from "zod";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/module/cardSection";
+import { CardSharedSection, getSpriteIcon } from "./utils";
 
 type CrystalWithRelated = crystal & {
   front: (crystal & item)[];
@@ -99,12 +100,12 @@ const updateCrystal = async (trx: Transaction<DB>, value: crystal) => {
     .executeTakeFirstOrThrow();
 };
 
-const deleteCrystal = async (trx: Transaction<DB>, itemId: string) => {
+const deleteCrystal = async (trx: Transaction<DB>, data: crystal & ItemWithRelated) => {
   // 删除前置和后置锻晶关系
-  await trx.deleteFrom("_frontRelation").where("A", "=", itemId).execute();
-  await trx.deleteFrom("_backRelation").where("A", "=", itemId).execute();
-  await trx.deleteFrom("crystal").where("itemId", "=", itemId).executeTakeFirstOrThrow();
-  await deleteItem(trx, itemId);
+  await trx.deleteFrom("_frontRelation").where("A", "=", data.id).execute();
+  await trx.deleteFrom("_backRelation").where("A", "=", data.id).execute();
+  await trx.deleteFrom("crystal").where("itemId", "=", data.id).executeTakeFirstOrThrow();
+  await deleteItem(trx, data.id);
 };
 
 const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated) => {
@@ -413,55 +414,35 @@ export const CrystalDataConfig: dataDisplayConfig<
         <CardSection
           title={"前置" + dic.db.crystal.selfName}
           data={frontData.latest}
-          renderItem={(front) => {
-            return {
-              label: front.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }]),
-            };
+          dataRender={(front) => {
+            return (
+              <Button
+                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }])}
+                icon={getSpriteIcon("crystal")}
+                class="justify-start"
+              >
+                {front.name}
+              </Button>
+            );
           }}
         />
         <CardSection
           title={"后置" + dic.db.crystal.selfName}
           data={backData.latest}
-          renderItem={(back) => {
-            return {
-              label: back.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }]),
-            };
+          dataRender={(back) => {
+            return (
+              <Button
+                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }])}
+                icon={getSpriteIcon("crystal")}
+                class="justify-start"
+              >
+                {back.name}
+              </Button>
+            );
           }}
         />
-        {ItemSharedCardContent(data, dic)}
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteCrystal(trx, data.itemId);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <CardSharedSection dic={dic} data={data} delete={deleteCrystal} />
+        <ItemSharedCardContent data={data} dic={dic} />
       </>
     );
   },

@@ -17,6 +17,8 @@ import {
   defaultItemWithRelated,
   deleteItem,
   ItemSharedCardContent,
+  ItemSharedFormDataSubmitor,
+  ItemSharedFormField,
   ItemWithRelated,
   itemWithRelatedDic,
   itemWithRelatedFetcher,
@@ -25,6 +27,8 @@ import {
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { MaterialType } from "../../../../../../db/kysely/enums";
+import pick from "lodash-es/pick";
+import { CardSharedSection } from "./utils";
 
 const MaterialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<material>(id, "Material");
 
@@ -50,27 +54,40 @@ const updateMaterial = async (trx: Transaction<DB>, value: material) => {
     .executeTakeFirstOrThrow();
 };
 
-const deleteMaterial = async (trx: Transaction<DB>, itemId: string) => {
-  await trx.deleteFrom("material").where("itemId", "=", itemId).executeTakeFirstOrThrow();
-  await deleteItem(trx, itemId);
+const deleteMaterial = async (trx: Transaction<DB>, data: material & ItemWithRelated) => {
+  await trx.deleteFrom("material").where("itemId", "=", data.id).executeTakeFirstOrThrow();
+  await deleteItem(trx, data.id);
 };
 
-const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
-  const formInitialValues = oldMaterial ?? defaultData.material;
-  const [item, setItem] = createSignal<ItemWithRelated>();
+const MaterialWithRelatedForm = (dic: dictionary, oldMaterialWithRelated?: material & ItemWithRelated) => {
+  const oldMaterial = oldMaterialWithRelated && pick(oldMaterialWithRelated, Object.keys(defaultData.material) as (keyof material)[]);
+  const oldItem =
+    oldMaterialWithRelated && pick(oldMaterialWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+  const materialFormFieldInitialValues = oldMaterial ?? defaultData.material;
+  const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
+  const formInitialValues = oldMaterialWithRelated ?? {
+    ...defaultData.material,
+    ...defaultItemWithRelated,
+  };
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newMaterial }) => {
-      console.log("oldMaterial", oldMaterial, "newMaterial", newMaterial);
+    onSubmit: async ({ value: newMaterialWithRelated }) => {
+      const newMaterial = pick(newMaterialWithRelated, Object.keys(defaultData.material) as (keyof material)[]);
+      const newItem = pick(newMaterialWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log("oldMaterialWithRelated", oldMaterialWithRelated, "newMaterialWithRelated", newMaterialWithRelated);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
+        const item = await ItemSharedFormDataSubmitor(trx, "Material", newItem, oldItem);
         let materialItem: material;
         if (oldMaterial) {
           // 更新
           materialItem = await updateMaterial(trx, newMaterial);
         } else {
           // 新增
-          materialItem = await createMaterial(trx, newMaterial);
+          materialItem = await createMaterial(trx, {
+            ...newMaterial,
+            itemId: item.id,
+          });
         }
         setWikiStore("cardGroup", (pre) => [...pre, { type: "material", id: materialItem.itemId }]);
         setWikiStore("form", {
@@ -96,7 +113,7 @@ const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(formInitialValues)}>
+        <For each={Object.entries(materialFormFieldInitialValues)}>
           {(field, index) => {
             const fieldKey = field[0] as keyof material;
             const fieldValue = field[1];
@@ -142,6 +159,7 @@ const MaterialWithRelatedForm = (dic: dictionary, oldMaterial?: material) => {
             }
           }}
         </For>
+        {ItemSharedFormField(dic, itemFormFieldInitialValues, form)}
         <form.Subscribe
           selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
           children={(state) => (
@@ -214,38 +232,8 @@ export const MaterialDataConfig: dataDisplayConfig<
             其他属性: ["details", "dataSources"],
           },
         })}
-        {ItemSharedCardContent(data, dic)}
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
-          <section class="FunFieldGroup flex w-full flex-col gap-2">
-            <h3 class="text-accent-color flex items-center gap-2 font-bold">
-              {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
-            </h3>
-            <div class="FunGroup flex gap-1">
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Trash />}
-                onclick={async () => {
-                  const db = await getDB();
-                  await db.transaction().execute(async (trx) => {
-                    await deleteMaterial(trx, data.itemId);
-                  });
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                }}
-              />
-              <Button
-                class="w-fit"
-                icon={<Icon.Line.Edit />}
-                onclick={() => {
-                  // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
-                  setWikiStore("form", { isOpen: true, data: data });
-                }}
-              />
-            </div>
-          </section>
-        </Show>
+        <ItemSharedCardContent data={data} dic={dic} />
+        <CardSharedSection dic={dic} data={data} delete={deleteMaterial} />
       </>
     );
   },

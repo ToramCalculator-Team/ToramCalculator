@@ -4,10 +4,7 @@ import { Button } from "~/components/controls/button";
 interface CardSectionProps<T> {
   title: string;
   data: T[] | undefined;
-  renderItem: (item: T) => {
-    label: string;
-    onClick?: () => void;
-  };
+  dataRender: (item: T) => JSX.Element;
 }
 
 export function CardSection<T>(props: CardSectionProps<T>) {
@@ -21,10 +18,7 @@ export function CardSection<T>(props: CardSectionProps<T>) {
         <div class="Content flex flex-col gap-3 p-1">
           <Show when={props.data}>
             <For each={props.data}>
-              {(item) => {
-                const { label, onClick } = props.renderItem(item);
-                return <Button onClick={onClick}>{label}</Button>;
-              }}
+              {(item) => props.dataRender(item)}
             </For>
           </Show>
         </div>

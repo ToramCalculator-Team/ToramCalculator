@@ -35,6 +35,7 @@ import { dataDisplayConfig } from "./dataConfig";
 import { Transaction } from "kysely";
 import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
+import { itemTypeToTableType } from "./item";
 
 type MobWithRelated = mob & {
   appearInZones: zone[];
@@ -979,32 +980,15 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
         <CardSection
           title={"出现的" + dic.db.zone.selfName}
           data={zonesData.latest}
-          renderItem={(zone) => {
-            return {
-              label: zone.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
-            };
+          dataRender={(zone) => {
+            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>{zone.name}</Button>
           }}
         />
         <CardSection
           title={"掉落的" + dic.db.drop_item.selfName}
           data={dropItemsData.latest}
-          renderItem={(item) => {
-            const tableType: keyof DB = (
-              {
-                Weapon: "weapon",
-                Armor: "armor",
-                Option: "option",
-                Special: "special",
-                Crystal: "crystal",
-                Consumable: "consumable",
-                Material: "material",
-              } satisfies Record<ItemType, keyof DB>
-            )[item.itemType];
-            return {
-              label: item.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: tableType, id: item.id }]),
-            };
+          dataRender={(item) => {
+            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(item.itemType!), id: item.id }])}>{item.name}</Button>
           }}
         />
         <CardSharedSection<MobWithRelated> dic={dic} data={data} delete={deleteMob} />

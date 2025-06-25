@@ -51,7 +51,7 @@ import { Toggle } from "~/components/controls/toggle";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Select } from "~/components/controls/select";
 import { pick } from "lodash-es";
-import { arrayDiff } from "./utils";
+import { arrayDiff, getSpriteIcon } from "./utils";
 
 /**
  * item卡片数据类型
@@ -1398,7 +1398,7 @@ export const deleteItem = async (trx: Transaction<DB>, id: string) => {
 export const ItemSharedFormField = <S extends ItemWithRelated>(
   dic: dictionary,
   oldItem: ItemWithRelated,
-  form: SolidFormApi<ItemWithRelated, any, any, any, any, any, any, any, any, unknown>,
+  form: SolidFormApi<any, any, any, any, any, any, any, any, any, unknown>,
 ) => {
   return (
     <For each={Object.entries(oldItem ?? defaultItemWithRelated)}>
@@ -1632,7 +1632,9 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                                                         default:
                                                           // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                                           const simpleFieldKey = `recipe.recipeEntries[${recipeEntryIndex}].${recipeEntryFieldKey}`;
-                                                          const simpleFieldValue = recipeEntryFieldValue;
+                                                          const simpleFieldValue = recipeEntryFieldValue as
+                                                            | string
+                                                            | number;
                                                           return renderField<
                                                             recipe_ingredient,
                                                             keyof recipe_ingredient
@@ -1672,7 +1674,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                             default:
                               // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                               const simpleFieldKey = `recipe.${recipeFieldKey}`;
-                              const simpleFieldValue = recipeFieldValue;
+                              const simpleFieldValue = recipeFieldValue as string;
                               return renderField<ItemWithRelated["recipe"], keyof ItemWithRelated["recipe"]>(
                                 form,
                                 simpleFieldKey,
@@ -1842,7 +1844,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                                           default:
                                             // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                             const simpleFieldKey = `usedInDropItems[${dropItemIndex}].${fieldKey}`;
-                                            const simpleFieldValue = fieldValue;
+                                            const simpleFieldValue = fieldValue as string | number;
                                             return renderField<drop_item, keyof drop_item>(
                                               form,
                                               simpleFieldKey,
@@ -1958,7 +1960,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                                     default:
                                       // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                       const simpleFieldKey = `usedInRecipeEntries[${recipeEntryIndex}].${fieldKey}`;
-                                      const simpleFieldValue = fieldValue;
+                                      const simpleFieldValue = fieldValue as string | number;
                                       return renderField<recipe_ingredient, keyof recipe_ingredient>(
                                         form,
                                         simpleFieldKey,
@@ -2065,7 +2067,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                                     default:
                                       // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                       const simpleFieldKey = `usedInTaskRewards[${taskRewardIndex}].${fieldKey}`;
-                                      const simpleFieldValue = fieldValue;
+                                      const simpleFieldValue = fieldValue as string | number;
                                       return renderField<task_reward, keyof task_reward>(
                                         form,
                                         simpleFieldKey,
@@ -2176,7 +2178,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
                                   default:
                                     // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                                     const simpleFieldKey = `usedInTaskCollectRequires[${taskCollectRequireIndex}].${fieldKey}`;
-                                    const simpleFieldValue = fieldValue;
+                                    const simpleFieldValue = fieldValue as string | number;
                                     return renderField<task_collect_require, keyof task_collect_require>(
                                       form,
                                       simpleFieldKey,
@@ -2220,6 +2222,7 @@ export const ItemSharedFormField = <S extends ItemWithRelated>(
 
 export const ItemSharedFormDataSubmitor = async (
   trx: Transaction<DB>,
+  type: ItemType,
   newItem: ItemWithRelated,
   oldItem?: ItemWithRelated,
 ) => {
@@ -2231,7 +2234,10 @@ export const ItemSharedFormDataSubmitor = async (
     item = await updateItem(trx, itemData);
   } else {
     // 新增
-    item = await createItem(trx, itemData);
+    item = await createItem(trx, {
+      ...itemData,
+      itemType: type,
+    });
   }
 
   // 关系项更新
@@ -2253,21 +2259,30 @@ export const ItemSharedFormDataSubmitor = async (
   let recipe: recipe;
   if (oldRecipe) {
     // 更新
-    recipe = await trx.updateTable("recipe").set({
-      ...newRecipeData,
-      updatedByAccountId: store.session.user.account?.id,
-    }).where("id", "=", oldRecipe.id).returningAll().executeTakeFirstOrThrow();
+    recipe = await trx
+      .updateTable("recipe")
+      .set({
+        ...newRecipeData,
+        updatedByAccountId: store.session.user.account?.id,
+      })
+      .where("id", "=", oldRecipe.id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
   } else {
     // 新增
     const statistic = await createStatistic(trx);
-    recipe = await trx.insertInto("recipe").values({
-      ...newRecipeData,
-      id: createId(),
-      statisticId: statistic.id,
-      itemId: item.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
-    }).returningAll().executeTakeFirstOrThrow();
+    recipe = await trx
+      .insertInto("recipe")
+      .values({
+        ...newRecipeData,
+        id: createId(),
+        statisticId: statistic.id,
+        itemId: item.id,
+        createdByAccountId: store.session.user.account?.id,
+        updatedByAccountId: store.session.user.account?.id,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
   }
 
   // 处理配方更新
@@ -2302,9 +2317,13 @@ export const ItemSharedFormDataSubmitor = async (
     await trx.deleteFrom("recipe_ingredient").where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
   }
   for (const recipeEntry of recipeEntriesToUpdate) {
-    await trx.updateTable("recipe_ingredient").set({
-      ...recipeEntry,
-    }).where("id", "=", recipeEntry.id).executeTakeFirstOrThrow();
+    await trx
+      .updateTable("recipe_ingredient")
+      .set({
+        ...recipeEntry,
+      })
+      .where("id", "=", recipeEntry.id)
+      .executeTakeFirstOrThrow();
   }
 
   // 更新一对多关系
@@ -2467,7 +2486,11 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .where("recipe_ingredient.id", "=", entry.id)
             .select((eb) => [
               jsonObjectFrom(
-                eb.selectFrom("item").whereRef("item.id", "=", "recipe_ingredient.itemId").selectAll("item"),
+                eb
+                  .selectFrom("recipe")
+                  .whereRef("recipe.id", "=", "recipe_ingredient.recipeId")
+                  .innerJoin("item", "item.id", "recipe.itemId")
+                  .selectAll("item"),
               ).as("relatedItem"),
             ])
             .selectAll()
@@ -2509,27 +2532,33 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
           <CardSection
             title={props.dic.db.recipe.selfName}
             data={recipeEntries() ?? []}
-            renderItem={(recipeEntry) => {
+            dataRender={(recipeEntry) => {
               const type = recipeEntry.type;
               switch (type) {
                 case "Item":
-                  return {
-                    label: String(recipeEntry.relatedItem?.name) + "(" + recipeEntry.count + ")",
-                    onClick: () =>
-                      setWikiStore("cardGroup", (prev) => [
-                        ...prev,
-                        {
-                          type: itemTypeToTableType(recipeEntry.relatedItem?.itemType!),
-                          id: recipeEntry.relatedItem?.id!,
-                        },
-                      ]),
-                  };
+                  return (
+                    <Button
+                      onClick={() =>
+                        setWikiStore("cardGroup", (prev) => [
+                          ...prev,
+                          {
+                            type: itemTypeToTableType(recipeEntry.relatedItem?.itemType!),
+                            id: recipeEntry.relatedItem?.id ?? "",
+                          },
+                        ])
+                      }
+                      icon={getSpriteIcon(itemTypeToTableType(recipeEntry.relatedItem?.itemType!))}
+                      class="justify-start"
+                    >
+                      {recipeEntry.relatedItem?.name ?? ""}
+                    </Button>
+                  );
                 default:
-                  return {
-                    label:
-                      props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type] + ":" + recipeEntry.count,
-                    onClick: () => null,
-                  };
+                  return (
+                    <Button onClick={() => null} icon={getSpriteIcon(recipeEntry.type)} class="justify-start">
+                      {props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type] + ":" + recipeEntry.count}
+                    </Button>
+                  );
               }
             }}
           />
@@ -2538,48 +2567,73 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
       <CardSection
         title={"掉落于" + props.dic.db.mob.selfName}
         data={dropItems() ?? []}
-        renderItem={(dropBy) => {
-          return {
-            label: dropBy.relatedMob?.name ?? "",
-            onClick: () =>
-              setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }]),
-          };
+        dataRender={(dropBy) => {
+          return (
+            <Button
+              onClick={() =>
+                setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }])
+              }
+              icon={getSpriteIcon("mob")}
+              class="justify-start"
+            >
+              {dropBy.relatedMob?.name ?? ""}
+            </Button>
+          );
         }}
       />
       <CardSection
         title={"可从这些" + props.dic.db.task.selfName + "获得"}
         data={taskRewards() ?? []}
-        renderItem={(rewardItem) => {
-          return {
-            label: rewardItem.relatedTask?.name ?? "",
-            onClick: () =>
-              setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }]),
-          };
+        dataRender={(rewardItem) => {
+          return (
+            <Button
+              onClick={() =>
+                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }])
+              }
+              icon={getSpriteIcon("task")}
+              class="justify-start"
+            >
+              {rewardItem.relatedTask?.name ?? ""}
+            </Button>
+          );
         }}
       />
       <CardSection
         title={"是这些" + props.dic.db.item.selfName + "的原料"}
         data={recipeEntriesUsed() ?? []}
-        renderItem={(usedIn) => {
-          return {
-            label: usedIn.relatedItem?.name ?? "",
-            onClick: () =>
-              setWikiStore("cardGroup", (prev) => [
-                ...prev,
-                { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
-              ]),
-          };
+        dataRender={(usedIn) => {
+          console.log("usedIn", usedIn);
+          return (
+            <Button
+              onClick={() =>
+                setWikiStore("cardGroup", (prev) => [
+                  ...prev,
+                  { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
+                ])
+              }
+              icon={getSpriteIcon(itemTypeToTableType(usedIn.relatedItem?.itemType!))}
+              class="justify-start"
+            >
+              {usedIn.relatedItem?.name ?? ""}
+            </Button>
+          );
         }}
       />
       <CardSection
         title={"被用于" + props.dic.db.task.selfName}
         data={taskCollectRequires() ?? []}
-        renderItem={(usedInTask) => {
-          return {
-            label: usedInTask.relatedTask?.name ?? "",
-            onClick: () =>
-              setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }]),
-          };
+        dataRender={(usedInTask) => {
+          return (
+            <Button
+              onClick={() =>
+                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }])
+              }
+              icon={getSpriteIcon("task")}
+              class="justify-start"
+            >
+              {usedInTask.relatedTask?.name ?? ""}
+            </Button>
+          );
         }}
       />
     </>
