@@ -5,8 +5,8 @@ import { crystalSubRelations } from "./crystal";
 import { DataType } from "./untils";
 import { DB, option } from "~/../db/kysely/kyesely";
 
-export interface OptEquip extends DataType<option> {
-  MainTable: Awaited<ReturnType<typeof findOptEquips>>[number];
+export interface Option extends DataType<option> {
+  MainTable: Awaited<ReturnType<typeof findOptions>>[number];
   MainForm: option;
 }
 
@@ -23,7 +23,7 @@ export function optEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expr
   ];
 }
 
-export async function findOptEquipByItemId(id: string) {
+export async function findOptionByItemId(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("option")
@@ -33,7 +33,7 @@ export async function findOptEquipByItemId(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findOptEquips() {
+export async function findOptions() {
   const db = await getDB();
   return await db
     .selectFrom("option")
@@ -42,7 +42,7 @@ export async function findOptEquips() {
     .execute();
 }
 
-export async function updateOptEquip(id: string, updateWith: OptEquip["Update"]) {
+export async function updateOption(id: string, updateWith: Option["Update"]) {
   const db = await getDB();
   return await db
     .updateTable("option")
@@ -52,12 +52,12 @@ export async function updateOptEquip(id: string, updateWith: OptEquip["Update"])
     .executeTakeFirst();
 }
 
-export async function createOptEquip(trx: Transaction<DB>, newOptEquip: OptEquip["Insert"]) {
-  const optEquip = await trx.insertInto("option").values(newOptEquip).returningAll().executeTakeFirstOrThrow();
+export async function createOption(trx: Transaction<DB>, newOption: Option["Insert"]) {
+  const optEquip = await trx.insertInto("option").values(newOption).returningAll().executeTakeFirstOrThrow();
   return optEquip;
 }
 
-export async function deleteOptEquip(id: string) {
+export async function deleteOption(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }

@@ -17,6 +17,8 @@ import {
   defaultItemWithRelated,
   deleteItem,
   ItemSharedCardContent,
+  ItemSharedFormDataSubmitor,
+  ItemSharedFormField,
   ItemWithRelated,
   itemWithRelatedDic,
   itemWithRelatedFetcher,
@@ -27,6 +29,10 @@ import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/module/cardSection";
 import { CardSharedSection, getSpriteIcon } from "./utils";
+import pick from "lodash-es/pick";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { CrystalType } from "../../../../../../db/kysely/enums";
+import { Select } from "~/components/controls/select";
 
 type CrystalWithRelated = crystal & {
   front: (crystal & item)[];
@@ -108,26 +114,42 @@ const deleteCrystal = async (trx: Transaction<DB>, data: crystal & ItemWithRelat
   await deleteItem(trx, data.id);
 };
 
-const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated) => {
-  const formInitialValues = oldCrystal ?? {
-    ...defaultData.crystal,
-    front: [],
-    back: [],
+const CrystalWithRelatedForm = (dic: dictionary, oldCrystalWithRelated?: CrystalWithRelated & ItemWithRelated) => {
+  const oldCrystal =
+    oldCrystalWithRelated &&
+    pick(oldCrystalWithRelated, Object.keys(defaultCrystalWithRelated) as (keyof CrystalWithRelated)[]);
+  const oldItem =
+    oldCrystalWithRelated &&
+    pick(oldCrystalWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+  const crystalFormFieldInitialValues = oldCrystal ?? defaultData.crystal;
+  const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
+  const formInitialValues = oldCrystalWithRelated ?? {
+    ...defaultCrystalWithRelated,
+    ...defaultItemWithRelated,
   };
   const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newCrystal }) => {
-      console.log("oldCrystal", oldCrystal, "newCrystal", newCrystal);
+    onSubmit: async ({ value: newCrystalWithRelated }) => {
+      const newCrystal = pick(
+        newCrystalWithRelated,
+        Object.keys(defaultCrystalWithRelated) as (keyof CrystalWithRelated)[],
+      );
+      const newItem = pick(newCrystalWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log("oldCrystalWithRelated", oldCrystalWithRelated, "newCrystalWithRelated", newCrystalWithRelated);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
+        const item = await ItemSharedFormDataSubmitor(trx, "Crystal", newItem, oldItem);
         let crystalItem: crystal;
         if (oldCrystal) {
           // 更新
           crystalItem = await updateCrystal(trx, newCrystal);
         } else {
           // 新增
-          crystalItem = await createCrystal(trx, newCrystal);
+          crystalItem = await createCrystal(trx, {
+            ...newCrystal,
+            itemId: item.id,
+          });
         }
 
         const oldFront = oldCrystal?.front ?? [];
@@ -202,13 +224,52 @@ const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(formInitialValues)}>
+        <For each={Object.entries(crystalFormFieldInitialValues)}>
           {(field, index) => {
             const fieldKey = field[0] as keyof CrystalWithRelated;
             const fieldValue = field[1];
             switch (fieldKey) {
               case "itemId":
                 return null;
+              case "type":
+                return (
+                  <form.Field
+                    name={fieldKey}
+                    validators={{
+                      onChangeAsyncDebounceMs: 500,
+                      onChangeAsync: CrystalWithRelatedSchema.shape[fieldKey],
+                    }}
+                  >
+                    {(field) => (
+                      <Input
+                        title={dic.db.crystal.fields[fieldKey].key}
+                        description={dic.db.crystal.fields[fieldKey].formFieldDescription}
+                        state={fieldInfo(field())}
+                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      >
+                        <Select
+                          value={field().state.value}
+                          setValue={(value) => field().setValue(value as CrystalType)}
+                          options={Object.entries(dic.db.crystal.fields.type.enumMap).map(([key, value]) => ({
+                            label: value,
+                            value: key,
+                          }))}
+                          optionGenerator={(option, selected, handleSelect) => {
+                            return (
+                              <div
+                                class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
+                                onClick={handleSelect}
+                              >
+                                {getSpriteIcon(option.value, 24)}
+                                {option.label}
+                              </div>
+                            );
+                          }}
+                        />
+                      </Input>
+                    )}
+                  </form.Field>
+                );
               case "front":
               case "back":
                 return (
@@ -300,6 +361,7 @@ const CrystalWithRelatedForm = (dic: dictionary, oldCrystal?: CrystalWithRelated
             }
           }}
         </For>
+        {ItemSharedFormField(dic, itemFormFieldInitialValues, form)}
         <form.Subscribe
           selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
           children={(state) => (

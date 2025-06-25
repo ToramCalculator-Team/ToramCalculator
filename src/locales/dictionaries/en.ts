@@ -107,7 +107,7 @@ const enums:DataEnums = {
       NormalCrystal: "Normal Crystal",
       WeaponCrystal: "Weapon Crystal",
       ArmorCrystal: "Armor Crystal",
-      OptEquipCrystal: "Additional Crystal",
+      OptionCrystal: "Additional Crystal",
       SpecialCrystal: "Special Crystal"
     }
   },
@@ -1282,7 +1282,7 @@ const dictionary: dictionary = {
             NormalCrystal: "",
             WeaponCrystal: "",
             ArmorCrystal: "",
-            OptEquipCrystal: "",
+            OptionCrystal: "",
             SpecialCrystal: ""
           }
         },

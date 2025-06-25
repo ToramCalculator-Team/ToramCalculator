@@ -1,8 +1,8 @@
 type,modifiers,itemId
-OptEquipCrystal,"{""distanceDamageBouns.short + 10%"",""maxHp + 30%"",""cr + 50%"",""maxMp - 100"",""armor.type == \""Light\"" && pPie - 10%""}",defaultOptEquipCrystalBItemId
-OptEquipCrystal,"{""distanceDamageBonus.short + 12%"",""distanceDamageBonus.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pPie + 10%""}",defaultOptEquipCrystalAItemId
-SpecialCrystal,"{""mAtk + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro - 9%"",""subWeapon.type == \""Shield\"" && aggro + 9%""}",defaultSpeEquipCrystalAItemId
-NormalCrystal,"{""dictanceDamageBouns.short + 9%"",""accuracy + 5%"",""maxMp + 200"",""maxHp - 300"",""cr - 7""}",defaultSpeEquipCrystalBItemId
+OptionCrystal,"{""distanceDamageBouns.short + 10%"",""maxHp + 30%"",""cr + 50%"",""maxMp - 100"",""armor.type == \""Light\"" && pPie - 10%""}",defaultOptionCrystalBItemId
+OptionCrystal,"{""distanceDamageBonus.short + 12%"",""distanceDamageBonus.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pPie + 10%""}",defaultOptionCrystalAItemId
+SpecialCrystal,"{""mAtk + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro - 9%"",""subWeapon.type == \""Shield\"" && aggro + 9%""}",defaultSpecialCrystalAItemId
+NormalCrystal,"{""dictanceDamageBouns.short + 9%"",""accuracy + 5%"",""maxMp + 200"",""maxHp - 300"",""cr - 7""}",defaultSpecialCrystalBItemId
 WeaponCrystal,"{""mAtk + 8%"",""mPie + 20%"",""cspd - 16%""}",defaultWeaponCrystalAItemId
 WeaponCrystal,"{""mAtk + 10%"",""mPie + 7%"",""aggro - 11%"",""mDef - 30%""}",defaultWeaponCrystalBItemId
 ArmorCrystal,"{""mAtk + 10%"",""int + 6%"",""cspd + 40%"",""ampr + 10%""}",defaultArmorCrystalAItemId

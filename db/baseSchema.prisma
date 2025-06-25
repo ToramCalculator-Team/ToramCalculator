@@ -208,16 +208,16 @@ model image {
 
     dataUrl String
 
-    belongToNpc      npc?    @relation(fields: [npcId], references: [id], onDelete: Cascade)
-    npcId            String?
-    belongToWeapon   weapon? @relation(fields: [weaponId], references: [itemId], onDelete: Cascade)
-    weaponId         String?
-    belongToArmor    armor?  @relation(fields: [armorId], references: [itemId], onDelete: Cascade)
-    armorId          String?
-    belongToOptEquip option? @relation(fields: [optEquipId], references: [itemId], onDelete: Cascade)
-    optEquipId       String?
-    usedByMob        mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
-    mobId            String?
+    belongToNpc    npc?    @relation(fields: [npcId], references: [id], onDelete: Cascade)
+    npcId          String?
+    belongToWeapon weapon? @relation(fields: [weaponId], references: [itemId], onDelete: Cascade)
+    weaponId       String?
+    belongToArmor  armor?  @relation(fields: [armorId], references: [itemId], onDelete: Cascade)
+    armorId        String?
+    belongToOption option? @relation(fields: [optEquipId], references: [itemId], onDelete: Cascade)
+    optEquipId     String?
+    usedByMob      mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
+    mobId          String?
 }
 
 // 统计字段
@@ -359,14 +359,14 @@ model crystal {
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 
-    usedByWeapon         weapon[]
-    usedByPlayerWeapon   player_weapon[]
-    usedByArmor          armor[]
-    usedByPlayerArmor    player_armor[]
-    usedByOptEquip       option[]
-    usedByPlayerOptEquip player_option[]
-    usedBySpeEquip       special[]
-    usedByPlayerSpeEquip player_special[]
+    usedByWeapon        weapon[]
+    usedByPlayerWeapon  player_weapon[]
+    usedByArmor         armor[]
+    usedByPlayerArmor   player_armor[]
+    usedByOption        option[]
+    usedByPlayerOption  player_option[]
+    usedBySpecial       special[]
+    usedByPlayerSpecial player_special[]
 
     frontRelated crystal[] @relation("frontRelation")
     backRelated  crystal[] @relation("backRelation")

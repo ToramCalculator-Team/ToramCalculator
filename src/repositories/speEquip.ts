@@ -11,8 +11,8 @@ import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
 
-export interface SpeEquip extends DataType<special> {
-  MainTable: Awaited<ReturnType<typeof findSpeEquips>>[number];
+export interface Special extends DataType<special> {
+  MainTable: Awaited<ReturnType<typeof findSpecials>>[number];
 }
 
 export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
@@ -28,7 +28,7 @@ export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expr
   ];
 }
 
-export async function findSpeEquipByItemId(id: string) {
+export async function findSpecialByItemId(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("special")
@@ -39,7 +39,7 @@ export async function findSpeEquipByItemId(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findSpeEquips() {
+export async function findSpecials() {
   const db = await getDB();
   return await db
     .selectFrom("special")
@@ -48,23 +48,23 @@ export async function findSpeEquips() {
     .execute();
 }
 
-export async function updateSpeEquip(id: string, updateWith: SpeEquip["Update"]) {
+export async function updateSpecial(id: string, updateWith: Special["Update"]) {
   const db = await getDB();
   return await db.updateTable("special").set(updateWith).where("itemId", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function insertSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip["Insert"]) {
-  const speEquip = await trx.insertInto("special").values(newSpeEquip).returningAll().executeTakeFirstOrThrow();
+export async function insertSpecial(trx: Transaction<DB>, newSpecial: Special["Insert"]) {
+  const speEquip = await trx.insertInto("special").values(newSpecial).returningAll().executeTakeFirstOrThrow();
   return speEquip;
 }
 
-export async function createSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip["Insert"]) {
-  const speEquip = await insertSpeEquip(trx, newSpeEquip);
+export async function createSpecial(trx: Transaction<DB>, newSpecial: Special["Insert"]) {
+  const speEquip = await insertSpecial(trx, newSpecial);
   return speEquip;
 }
 
-// export async function createSpeEquip(
-//   newSpeEquip: item & {
+// export async function createSpecial(
+//   newSpecial: item & {
 //     speEquip: special & {
 //       defaultCrystals: crystal[];
 //       image: image;
@@ -76,7 +76,7 @@ export async function createSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip
 // ) {
 //   const db = await getDB();
 //   return await db.transaction().execute(async (trx) => {
-//     const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpeEquip;
+//     const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpecial;
 //     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;
 //     const { ingredients: recipeIngredientsInput } = recipeInput;
 //     const image = await insertImage(trx, imageInput);
@@ -91,7 +91,7 @@ export async function createSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip
 //       id: createId(),
 //       statisticId: statistic.id,
 //     });
-//     const speEquip = await insertSpeEquip(trx, {
+//     const speEquip = await insertSpecial(trx, {
 //       ...speEquipInput,
 //       itemId: item.id,
 //     });
@@ -110,7 +110,7 @@ export async function createSpeEquip(trx: Transaction<DB>, newSpeEquip: SpeEquip
 //   });
 // }
 
-export async function deleteSpeEquip(id: string) {
+export async function deleteSpecial(id: string) {
   const db = await getDB();
   return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
 }

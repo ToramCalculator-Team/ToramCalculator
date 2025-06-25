@@ -19,8 +19,8 @@ import { findZones } from "~/repositories/zone";
 import { findMaterials } from "~/repositories/material";
 import { findTasks } from "~/repositories/task";
 import { findWeapons } from "~/repositories/weapon";
-import { findOptEquips } from "~/repositories/optEquip";
-import { findSpeEquips } from "~/repositories/speEquip";
+import { findOptions } from "~/repositories/optEquip";
+import { findSpecials } from "~/repositories/speEquip";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -129,8 +129,8 @@ export default function AppMainContet(props: ParentProps) {
     findConsumables();
     findCrystals();
     findMaterials();
-    findOptEquips();
-    findSpeEquips();
+    findOptions();
+    findSpecials();
     findTasks();
     findWeapons();
   });

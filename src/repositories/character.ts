@@ -6,8 +6,8 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { comboSubRelations } from "./combo";
 import { playerWeponSubRelations } from "./playerWeapon";
 import { playerArmorSubRelations } from "./playerArmor";
-import { playerOptEquipSubRelations } from "./playerOptEquip";
-import { playerSpeEquipSubRelations } from "./playerSpeEquip";
+import { playerOptionSubRelations } from "./playerOption";
+import { playerSpecialSubRelations } from "./playerSpecial";
 import { DataType } from "./untils";
 
 export interface Character extends DataType<character> {
@@ -59,7 +59,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .selectFrom("player_option")
         .whereRef("id", "=", "character.optEquipId")
         .selectAll("player_option")
-        .select((eb) => playerOptEquipSubRelations(eb, eb.val("character.optEquipId"))),
+        .select((eb) => playerOptionSubRelations(eb, eb.val("character.optEquipId"))),
     )
       .$notNull()
       .as("optEquip"),
@@ -68,7 +68,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .selectFrom("player_special")
         .whereRef("id", "=", "character.speEquipId")
         .selectAll("player_special")
-        .select((eb) => playerSpeEquipSubRelations(eb, eb.val("character.speEquipId"))),
+        .select((eb) => playerSpecialSubRelations(eb, eb.val("character.speEquipId"))),
     )
       .$notNull()
       .as("speEquip"),

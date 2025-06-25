@@ -105,7 +105,7 @@ export const CardSharedSection = <T extends object>(props: {
   );
 };
 
-export const getSpriteIcon = (iconName: string) => {
+export const getSpriteIcon = (iconName: string, size?: number) => {
   // if (iconName in defaultData) {
   //   const tableName = iconName as keyof DB;
   //   switch (tableName) {
@@ -159,28 +159,34 @@ export const getSpriteIcon = (iconName: string) => {
   // }
   // 不区分大小写查找
   const backgroundImage = sprites.find((sprite) => sprite.name.toLowerCase() === iconName.toLowerCase());
+
   return (
     <Show when={backgroundImage} fallback={<Icon.Line.Gamepad />}>
-      {(backgroundImage) => (
-        <div class="flex-none relative h-6 w-6">
-          <img
-            src={spritesUrl}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: `${backgroundImage().width}px`,
-              height: `${backgroundImage().height}px`,
-              "object-position": `${-backgroundImage().x}px ${-backgroundImage().y}px`,
-              "object-fit": "none",
-              "max-width": "none",
-              "max-height": "none",
-            }}
-            alt={iconName}
-          />
-        </div>
-      )}
+      {(backgroundImage) => {
+        // 获取图片收缩比例
+        const scaleX = size ? size / backgroundImage().width : 1;
+        const scaleY = size ? size / backgroundImage().height : 1;
+        return (
+          <div class="relative h-6 w-6 flex-none">
+            <img
+              src={spritesUrl}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: `translate(-50%, -50%) scale(${scaleX}, ${scaleY})`,
+                width: `${backgroundImage().width}px`,
+                height: `${backgroundImage().height}px`,
+                "object-position": `${-backgroundImage().x}px ${-backgroundImage().y}px`,
+                "object-fit": "none",
+                "max-width": "none",
+                "max-height": "none",
+              }}
+              alt={iconName}
+            />
+          </div>
+        );
+      }}
     </Show>
   );
 };

@@ -5,12 +5,12 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { DataType } from "./untils";
 
-export interface PlayerOptEquip extends DataType<player_option> {
-  MainTable: Awaited<ReturnType<typeof findPlayerOptEquips>>[number];
+export interface PlayerOption extends DataType<player_option> {
+  MainTable: Awaited<ReturnType<typeof findPlayerOptions>>[number];
   MainForm: player_option;
 }
 
-export function playerOptEquipSubRelations(eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) {
+export function playerOptionSubRelations(eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -29,48 +29,48 @@ export function playerOptEquipSubRelations(eb: ExpressionBuilder<DB, "player_opt
   ];
 }
 
-export async function findPlayerOptEquipById(id: string) {
+export async function findPlayerOptionById(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("player_option")
     .where("id", "=", id)
     .selectAll("player_option")
-    .select((eb) => playerOptEquipSubRelations(eb, eb.val(id)))
+    .select((eb) => playerOptionSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function findPlayerOptEquips() {
+export async function findPlayerOptions() {
   const db = await getDB();
   return await db.selectFrom("player_option").selectAll("player_option").execute();
 }
 
-export async function updatePlayerOptEquip(id: string, updateWith: PlayerOptEquip["Update"]) {
+export async function updatePlayerOption(id: string, updateWith: PlayerOption["Update"]) {
   const db = await getDB();
   return await db.updateTable("player_option").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function insertPlayerOptEquip(trx: Transaction<DB>, newOptEquip: PlayerOptEquip["Insert"]) {
+export async function insertPlayerOption(trx: Transaction<DB>, newOption: PlayerOption["Insert"]) {
   const player_option = await trx
     .insertInto("player_option")
-    .values(newOptEquip)
+    .values(newOption)
     .returningAll()
     .executeTakeFirstOrThrow();
   return player_option;
 }
 
-export async function createPlayerOptEquip(newOptEquip: PlayerOptEquip["Insert"]) {
+export async function createPlayerOption(newOption: PlayerOption["Insert"]) {
   const db = await getDB();
   return await db.transaction().execute(async (trx) => {
     const player_option = await trx
       .insertInto("player_option")
-      .values(newOptEquip)
+      .values(newOption)
       .returningAll()
       .executeTakeFirstOrThrow();
     return player_option;
   });
 }
 
-export async function deletePlayerOptEquip(id: string) {
+export async function deletePlayerOption(id: string) {
   const db = await getDB();
   return await db.deleteFrom("player_option").where("id", "=", id).returningAll().executeTakeFirst();
 }

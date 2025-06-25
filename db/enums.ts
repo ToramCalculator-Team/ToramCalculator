@@ -209,7 +209,7 @@ export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
 // 用户防具类型
 export const PLAYER_ARMOR_ABILITY_TYPE = ["Normal", "Light", "Heavy"] as const;
 // 装备
-export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "OptEquip", "SpeEquip"] as const;
+export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "Option", "Special"] as const;
 // 时装
 export const AVATAR_TYPE = ["Decoration", "Top", "Bottom"] as const;
 // 锻晶
@@ -217,7 +217,7 @@ export const CRYSTAL_TYPE = [
   "NormalCrystal",
   "WeaponCrystal",
   "ArmorCrystal",
-  "OptEquipCrystal",
+  "OptionCrystal",
   "SpecialCrystal",
 ] as const;
 // 消耗品

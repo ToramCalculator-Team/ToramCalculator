@@ -1,2 +1,2 @@
 id,name,extraAbi,templateId,refinement,masterId
-defaultPlayerOptEquipId,defaultPlayerOptEquip,0,defaultOptEquipItemId,15,defaultPlayerId
+defaultPlayerOptionId,defaultPlayerOption,0,defaultOptionItemId,15,defaultPlayerId

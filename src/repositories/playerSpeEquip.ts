@@ -5,12 +5,12 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { DataType } from "./untils";
 
-export interface PlayerSpeEquip extends DataType<player_special> {
-  MainTable: Awaited<ReturnType<typeof findPlayerSpeEquips>>[number];
+export interface PlayerSpecial extends DataType<player_special> {
+  MainTable: Awaited<ReturnType<typeof findPlayerSpecials>>[number];
   MainForm: player_special;
 }
 
-export function playerSpeEquipSubRelations(eb: ExpressionBuilder<DB, "player_special">, id: Expression<string>) {
+export function playerSpecialSubRelations(eb: ExpressionBuilder<DB, "player_special">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -29,48 +29,48 @@ export function playerSpeEquipSubRelations(eb: ExpressionBuilder<DB, "player_spe
   ];
 }
 
-export async function findPlayerSpeEquipById(id: string) {
+export async function findPlayerSpecialById(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("player_special")
     .where("id", "=", id)
     .selectAll("player_special")
-    .select((eb) => playerSpeEquipSubRelations(eb, eb.val(id)))
+    .select((eb) => playerSpecialSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
-export async function findPlayerSpeEquips() {
+export async function findPlayerSpecials() {
   const db = await getDB();
   return await db.selectFrom("player_special").selectAll("player_special").execute();
 }
 
-export async function updatePlayerSpeEquip(id: string, updateWith: PlayerSpeEquip["Update"]) {
+export async function updatePlayerSpecial(id: string, updateWith: PlayerSpecial["Update"]) {
   const db = await getDB();
   return await db.updateTable("player_special").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
 }
 
-export async function insertPlayerSpeEquip(trx: Transaction<DB>, newSpeEquip: PlayerSpeEquip["Insert"]) {
+export async function insertPlayerSpecial(trx: Transaction<DB>, newSpecial: PlayerSpecial["Insert"]) {
   const player_special = await trx
     .insertInto("player_special")
-    .values(newSpeEquip)
+    .values(newSpecial)
     .returningAll()
     .executeTakeFirstOrThrow();
   return player_special;
 }
 
-export async function createPlayerSpeEquip(newSpeEquip: PlayerSpeEquip["Insert"]) {
+export async function createPlayerSpecial(newSpecial: PlayerSpecial["Insert"]) {
   const db = await getDB();
   return await db.transaction().execute(async (trx) => {
     const player_special = await trx
       .insertInto("player_special")
-      .values(newSpeEquip)
+      .values(newSpecial)
       .returningAll()
       .executeTakeFirstOrThrow();
     return player_special;
   });
 }
 
-export async function deletePlayerSpeEquip(id: string) {
+export async function deletePlayerSpecial(id: string) {
   const db = await getDB();
   return await db.deleteFrom("player_special").where("id", "=", id).returningAll().executeTakeFirst();
 }
