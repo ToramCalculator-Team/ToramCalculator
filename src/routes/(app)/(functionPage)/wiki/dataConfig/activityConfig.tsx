@@ -27,7 +27,7 @@ type ActivityWithRelated = activity & {
   zones: zone[];
 };
 
-const ActivityWithRelatedSchema = z.object({
+const activityWithRelatedSchema = z.object({
   ...activitySchema.shape,
   zones: z.array(zoneSchema),
 });
@@ -180,7 +180,7 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: ActivityWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: activityWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -252,7 +252,7 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
                   simpleFieldKey,
                   simpleFieldValue,
                   ActivityWithRelatedDic(dic),
-                  ActivityWithRelatedSchema,
+                  activityWithRelatedSchema,
                 );
             }
           }}
@@ -284,7 +284,7 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
   },
   dataFetcher: ActivityWithRelatedFetcher,
   datasFetcher: ActivitiesFetcher,
-  dataSchema: ActivityWithRelatedSchema,
+  dataSchema: activityWithRelatedSchema,
   table: {
     dataFetcher: ActivitiesFetcher,
     columnsDef: [
@@ -319,7 +319,7 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
         {ObjRender<ActivityWithRelated>({
           data,
           dictionary: ActivityWithRelatedDic(dic),
-          dataSchema: ActivityWithRelatedSchema,
+          dataSchema: activityWithRelatedSchema,
           hiddenFields: ["id"],
           fieldGroupMap: {
             基本信息: ["name"],
@@ -329,11 +329,12 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
         <CardSection
           title={"包含的" + dic.db.zone.selfName}
           data={zonesData.latest}
-          renderItem={(zone) => {
-            return {
-              label: zone.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
-            };
+          dataRender={(zone) => {
+            return (
+              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>
+                {zone.name}
+              </Button>
+            );
           }}
         />
         <CardSharedSection<ActivityWithRelated> dic={dic} data={data} delete={deleteActivity} />

@@ -350,11 +350,8 @@ export const NpcDataConfig: dataDisplayConfig<npc, NpcWithRelated, NpcWithRelate
         <CardSection
           title={"持有的" + dic.db.task.selfName}
           data={tasksData.latest}
-          renderItem={(task) => {
-            return {
-              label: task.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }]),
-            };
+          dataRender={(task) => {
+            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }])}>{task.name}</Button>;
           }}
         />
         <CardSharedSection<NpcWithRelated> dic={dic} data={data} delete={deleteNpc} />

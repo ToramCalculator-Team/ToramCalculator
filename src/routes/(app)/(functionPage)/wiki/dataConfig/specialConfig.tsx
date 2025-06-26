@@ -23,7 +23,7 @@ import {
   itemWithRelatedSchema,
 } from "./item";
 
-const SpecialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<special>(id, "Special");
+const SpecialWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<special>(id, "Special");
 
 const SpecialsFetcher = async () => {
   const db = await getDB();
@@ -52,7 +52,7 @@ const deleteSpecial = async (trx: Transaction<DB>, itemId: string) => {
   await deleteItem(trx, itemId);
 };
 
-const SpecialWithRelatedForm = (dic: dictionary, oldSpecial?: special) => {
+const SpecialWithItemForm = (dic: dictionary, oldSpecial?: special) => {
   const formInitialValues = oldSpecial ?? defaultData.special;
   const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
@@ -129,7 +129,7 @@ export const SpecialDataConfig: dataDisplayConfig<
     ...defaultData.special,
     ...defaultItemWithRelated,
   },
-  dataFetcher: SpecialWithRelatedFetcher,
+  dataFetcher: SpecialWithItemFetcher,
   datasFetcher: SpecialsFetcher,
   dataSchema: specialSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -153,7 +153,7 @@ export const SpecialDataConfig: dataDisplayConfig<
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => SpecialWithRelatedForm(dic, data),
+  form: ({ data, dic }) => SpecialWithItemForm(dic, data),
   card: ({ data, dic }) => {
     console.log(data);
     return (
@@ -175,7 +175,7 @@ export const SpecialDataConfig: dataDisplayConfig<
             其他属性: ["modifiers", "details", "dataSources"],
           },
         })}
-        {ItemSharedCardContent(data, dic)}
+        <ItemSharedCardContent data={data} dic={dic} />
         <Show when={data.createdByAccountId === store.session.user.account?.id}>
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">

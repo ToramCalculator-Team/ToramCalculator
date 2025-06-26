@@ -18,7 +18,7 @@ import { setWikiStore } from "../store";
 import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
 
 
-const OptionWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<option>(id, "Option");
+const OptionWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<option>(id, "Option");
 
 const OptionsFetcher = async () => {
   const db = await getDB();
@@ -51,7 +51,7 @@ const deleteOption = async (trx: Transaction<DB>, itemId: string) => {
   await deleteItem(trx, itemId);
 };
 
-const OptionWithRelatedForm = (dic: dictionary, oldOption?: option) => {
+const OptionWithItemForm = (dic: dictionary, oldOption?: option) => {
   const formInitialValues = oldOption ?? defaultData.option;
   const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
@@ -130,7 +130,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
     ...defaultData.option,
     ...defaultItemWithRelated
   },
-  dataFetcher: OptionWithRelatedFetcher,
+  dataFetcher: OptionWithItemFetcher,
   datasFetcher: OptionsFetcher,
   dataSchema: optionSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -154,7 +154,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => OptionWithRelatedForm(dic, data),
+  form: ({ data, dic }) => OptionWithItemForm(dic, data),
   card: ({ data, dic }) => {
     console.log(data);
     return (
@@ -177,7 +177,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
             颜色信息: ["colorA", "colorB", "colorC"],
           },
         })}
-        {ItemSharedCardContent(data, dic)}
+        <ItemSharedCardContent data={data} dic={dic} />
         <Show when={data.createdByAccountId === store.session.user.account?.id}>
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">

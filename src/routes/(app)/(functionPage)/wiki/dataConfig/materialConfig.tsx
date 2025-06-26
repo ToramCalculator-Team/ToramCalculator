@@ -30,7 +30,7 @@ import { MaterialType } from "../../../../../../db/kysely/enums";
 import pick from "lodash-es/pick";
 import { CardSharedSection } from "./utils";
 
-const MaterialWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<material>(id, "Material");
+const MaterialWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<material>(id, "Material");
 
 const MaterialsFetcher = async () => {
   const db = await getDB();
@@ -59,22 +59,22 @@ const deleteMaterial = async (trx: Transaction<DB>, data: material & ItemWithRel
   await deleteItem(trx, data.id);
 };
 
-const MaterialWithRelatedForm = (dic: dictionary, oldMaterialWithRelated?: material & ItemWithRelated) => {
-  const oldMaterial = oldMaterialWithRelated && pick(oldMaterialWithRelated, Object.keys(defaultData.material) as (keyof material)[]);
+const MaterialWithItemForm = (dic: dictionary, oldMaterialWithItem?: material & ItemWithRelated) => {
+  const oldMaterial = oldMaterialWithItem && pick(oldMaterialWithItem, Object.keys(defaultData.material) as (keyof material)[]);
   const oldItem =
-    oldMaterialWithRelated && pick(oldMaterialWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+    oldMaterialWithItem && pick(oldMaterialWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
   const materialFormFieldInitialValues = oldMaterial ?? defaultData.material;
   const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
-  const formInitialValues = oldMaterialWithRelated ?? {
+  const formInitialValues = oldMaterialWithItem ?? {
     ...defaultData.material,
     ...defaultItemWithRelated,
   };
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newMaterialWithRelated }) => {
-      const newMaterial = pick(newMaterialWithRelated, Object.keys(defaultData.material) as (keyof material)[]);
-      const newItem = pick(newMaterialWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-      console.log("oldMaterialWithRelated", oldMaterialWithRelated, "newMaterialWithRelated", newMaterialWithRelated);
+    onSubmit: async ({ value: newMaterialWithItem }) => {
+      const newMaterial = pick(newMaterialWithItem, Object.keys(defaultData.material) as (keyof material)[]);
+      const newItem = pick(newMaterialWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log("oldMaterialWithItem", oldMaterialWithItem, "newMaterialWithItem", newMaterialWithItem);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
         const item = await ItemSharedFormDataSubmitor(trx, "Material", newItem, oldItem);
@@ -184,7 +184,7 @@ export const MaterialDataConfig: dataDisplayConfig<
     ...defaultData.material,
     ...defaultItemWithRelated,
   },
-  dataFetcher: MaterialWithRelatedFetcher,
+  dataFetcher: MaterialWithItemFetcher,
   datasFetcher: MaterialsFetcher,
   dataSchema: materialSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -210,7 +210,7 @@ export const MaterialDataConfig: dataDisplayConfig<
     defaultSort: { id: "id", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => MaterialWithRelatedForm(dic, data),
+  form: ({ data, dic }) => MaterialWithItemForm(dic, data),
   card: ({ data, dic }) => {
     console.log(data);
     return (

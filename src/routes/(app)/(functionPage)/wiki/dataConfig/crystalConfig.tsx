@@ -39,7 +39,7 @@ type CrystalWithRelated = crystal & {
   back: (crystal & item)[];
 };
 
-const CrystalWithRelatedSchema = crystalSchema.extend({
+const crystalWithRelatedSchema = crystalSchema.extend({
   front: z.array(
     z.object({
       ...crystalSchema.shape,
@@ -60,7 +60,7 @@ const defaultCrystalWithRelated: CrystalWithRelated = {
   back: [],
 };
 
-const CrystalWithRelatedFetcher = async (id: string) => {
+const CrystalWithItemFetcher = async (id: string) => {
   const db = await getDB();
   const baseData = await itemWithRelatedFetcher<crystal>(id, "Crystal");
   const frontData = await db
@@ -114,29 +114,29 @@ const deleteCrystal = async (trx: Transaction<DB>, data: crystal & ItemWithRelat
   await deleteItem(trx, data.id);
 };
 
-const CrystalWithRelatedForm = (dic: dictionary, oldCrystalWithRelated?: CrystalWithRelated & ItemWithRelated) => {
+const CrystalWithItemForm = (dic: dictionary, oldCrystalWithItem?: CrystalWithRelated & ItemWithRelated) => {
   const oldCrystal =
-    oldCrystalWithRelated &&
-    pick(oldCrystalWithRelated, Object.keys(defaultCrystalWithRelated) as (keyof CrystalWithRelated)[]);
+    oldCrystalWithItem &&
+    pick(oldCrystalWithItem, Object.keys(defaultCrystalWithRelated) as (keyof CrystalWithRelated)[]);
   const oldItem =
-    oldCrystalWithRelated &&
-    pick(oldCrystalWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+    oldCrystalWithItem &&
+    pick(oldCrystalWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
   const crystalFormFieldInitialValues = oldCrystal ?? defaultData.crystal;
   const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
-  const formInitialValues = oldCrystalWithRelated ?? {
+  const formInitialValues = oldCrystalWithItem ?? {
     ...defaultCrystalWithRelated,
     ...defaultItemWithRelated,
   };
   const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newCrystalWithRelated }) => {
+    onSubmit: async ({ value: newCrystalWithItem }) => {
       const newCrystal = pick(
-        newCrystalWithRelated,
+        newCrystalWithItem,
         Object.keys(defaultCrystalWithRelated) as (keyof CrystalWithRelated)[],
       );
-      const newItem = pick(newCrystalWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-      console.log("oldCrystalWithRelated", oldCrystalWithRelated, "newCrystalWithRelated", newCrystalWithRelated);
+      const newItem = pick(newCrystalWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log("oldCrystalWithItem", oldCrystalWithItem, "newCrystalWithItem", newCrystalWithItem);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
         const item = await ItemSharedFormDataSubmitor(trx, "Crystal", newItem, oldItem);
@@ -237,7 +237,7 @@ const CrystalWithRelatedForm = (dic: dictionary, oldCrystalWithRelated?: Crystal
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: CrystalWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => (
@@ -278,7 +278,7 @@ const CrystalWithRelatedForm = (dic: dictionary, oldCrystalWithRelated?: Crystal
                     mode="array"
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: CrystalWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: crystalWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -386,9 +386,9 @@ export const CrystalDataConfig: dataDisplayConfig<
     ...defaultCrystalWithRelated,
     ...defaultItemWithRelated,
   },
-  dataFetcher: CrystalWithRelatedFetcher,
+  dataFetcher: CrystalWithItemFetcher,
   datasFetcher: CrystalsFetcher,
-  dataSchema: CrystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
+  dataSchema: crystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
   table: {
     dataFetcher: CrystalsFetcher,
     columnsDef: [
@@ -422,7 +422,7 @@ export const CrystalDataConfig: dataDisplayConfig<
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({ dic, data }) => CrystalWithRelatedForm(dic, data),
+  form: ({ dic, data }) => CrystalWithItemForm(dic, data),
   card: ({ dic, data }) => {
     const [frontData] = createResource(data.id, async (itemId) => {
       const db = await getDB();
@@ -466,7 +466,7 @@ export const CrystalDataConfig: dataDisplayConfig<
               ...itemWithRelatedDic(dic).fields,
             },
           },
-          dataSchema: CrystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
+          dataSchema: crystalWithRelatedSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],
           fieldGroupMap: {
             基本信息: ["name", "modifiers", "type"],

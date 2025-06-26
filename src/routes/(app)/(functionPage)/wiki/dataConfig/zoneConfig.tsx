@@ -662,44 +662,48 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
         <CardSection
           title={"包含的" + dic.db.mob.selfName}
           data={mobData.latest}
-          renderItem={(mob) => {
-            return {
-              label: mob.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }]),
-            };
+          dataRender={(mob) => {
+            return (
+              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }])}>
+                {mob.name}
+              </Button>
+            );
           }}
         />
 
         <CardSection
           title={"包含的" + dic.db.npc.selfName}
           data={npcsData.latest}
-          renderItem={(npc) => {
-            return {
-              label: npc.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }]),
-            };
+          dataRender={(npc) => {
+            return (
+              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }])}>
+                {npc.name}
+              </Button>
+            );
           }}
         />
 
         <CardSection
           title={"连接的" + dic.db.zone.selfName}
           data={linkZonesData.latest}
-          renderItem={(zone) => {
-            return {
-              label: zone.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
-            };
+          dataRender={(zone) => {
+            return (
+              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>
+                {zone.name}
+              </Button>
+            );
           }}
         />
 
         <CardSection
           title={"所属的" + dic.db.address.selfName}
           data={addressData.latest}
-          renderItem={(address) => {
-            return {
-              label: address.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }]),
-            };
+          dataRender={(address) => {
+            return (
+              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }])}>
+                {address.name}
+              </Button>
+            );
           }}
         />
 
@@ -707,11 +711,14 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           <CardSection
             title={"所属的" + dic.db.activity.selfName}
             data={activityData.latest}
-            renderItem={(activity) => {
-              return {
-                label: activity.name,
-                onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]),
-              };
+            dataRender={(activity) => {
+              return (
+                <Button
+                  onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }])}
+                >
+                  {activity.name}
+                </Button>
+              );
             }}
           />
         </Show>

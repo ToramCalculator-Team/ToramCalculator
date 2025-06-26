@@ -27,7 +27,19 @@ import {
 import { CardSharedSection } from "./utils";
 import { pick } from "lodash-es";
 
-const ArmorWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<armor>(id, "Armor");
+type ArmorWithRelated = armor & {
+  
+}
+
+const armorWithRelatedSchema = armorSchema.extend({
+
+});
+
+const defaultArmorWithRelated: ArmorWithRelated = {
+  ...defaultData.armor,
+}
+
+const ArmorWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<armor>(id, "Armor");
 
 const ArmorsFetcher = async () => {
   const db = await getDB();
@@ -56,37 +68,38 @@ const deleteArmor = async (trx: Transaction<DB>, data: armor) => {
   await deleteItem(trx, data.itemId);
 };
 
-const ArmorWithRelatedForm = (dic: dictionary, oldArmorWithRelated?: armor & ItemWithRelated) => {
-  const oldArmor = oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultData.armor) as (keyof armor)[]);
-  const oldItem =
-    oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-  const armorFormFieldInitialValues = oldArmor ?? defaultData.armor;
-  const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
-  const formInitialValues = oldArmorWithRelated ?? {
-    ...defaultData.armor,
+const ArmorWithItemForm = (dic: dictionary, oldArmorWithItem?: ArmorWithRelated & ItemWithRelated) => {
+  const oldArmorWithRelated = oldArmorWithItem && pick(oldArmorWithItem, Object.keys(defaultArmorWithRelated) as (keyof ArmorWithRelated)[]);
+  const oldItemWithRelated = oldArmorWithItem && pick(oldArmorWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+  const armorFormFieldInitialValues = oldArmorWithRelated ?? defaultArmorWithRelated;
+  const itemFormFieldInitialValues = oldItemWithRelated ?? defaultItemWithRelated;
+  const formInitialValues = oldArmorWithItem ?? {
+    ...defaultArmorWithRelated,
     ...defaultItemWithRelated,
   };
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newArmorWithRelated }) => {
-      const newArmor = pick(newArmorWithRelated, Object.keys(defaultData.armor) as (keyof armor)[]);
-      const newItem = pick(newArmorWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-      console.log("oldArmorWithRelated", oldArmorWithRelated, "newArmorWithRelated", newArmorWithRelated);
+    onSubmit: async ({ value: newArmorWithItem }) => {
+      const newArmorWithRelated = pick(newArmorWithItem, Object.keys(defaultArmorWithRelated) as (keyof ArmorWithRelated)[]);
+      const newItemWithRelated = pick(newArmorWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+      console.log("oldArmorWithItem", oldArmorWithItem, "newArmorWithItem", newArmorWithItem);
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
-        const item = await ItemSharedFormDataSubmitor(trx, "Armor", newItem, oldItem);
-        let armorItem: armor;
-        if (oldArmor) {
+        const item = await ItemSharedFormDataSubmitor(trx, "Armor", newItemWithRelated, oldItemWithRelated);
+        const newArmor = pick(newArmorWithRelated, Object.keys(defaultArmorWithRelated) as (keyof armor)[]);
+        // const oldArmor = oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultArmorWithRelated) as (keyof armor)[]);
+        let armor: armor;
+        if (oldArmorWithRelated) {
           // 更新
-          armorItem = await updateArmor(trx, newArmor);
+          armor = await updateArmor(trx, newArmor);
         } else {
           // 新增
-          armorItem = await createArmor(trx, {
+          armor = await createArmor(trx, {
             ...newArmor,
             itemId: item.id,
           });
         }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armorItem.itemId }]);
+        setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armor.itemId }]);
         setWikiStore("form", {
           data: undefined,
           isOpen: false,
@@ -145,7 +158,7 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
     ...defaultData.armor,
     ...defaultItemWithRelated,
   },
-  dataFetcher: ArmorWithRelatedFetcher,
+  dataFetcher: ArmorWithItemFetcher,
   datasFetcher: ArmorsFetcher,
   dataSchema: armorSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -169,7 +182,7 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => ArmorWithRelatedForm(dic, data),
+  form: ({ data, dic }) => ArmorWithItemForm(dic, data),
   card: ({ data, dic }) => {
     console.log(data);
     return (

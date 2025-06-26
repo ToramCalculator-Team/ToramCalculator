@@ -31,7 +31,7 @@ type AddressWithRelated = address & {
   zones: zone[];
 };
 
-const AddressWithRelatedSchema = z.object({
+const addressWithRelatedSchema = z.object({
   ...addressSchema.shape,
   zones: z.array(zoneSchema),
 });
@@ -173,7 +173,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: AddressWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: addressWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -244,7 +244,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: AddressWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: addressWithRelatedSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => (
@@ -279,7 +279,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                   simpleFieldKey,
                   simpleFieldValue,
                   AddressWithRelatedDic(dic),
-                  AddressWithRelatedSchema,
+                  addressWithRelatedSchema,
                 );
             }
           }}
@@ -475,7 +475,7 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
   defaultData: defaultAddressWithRelated,
   dataFetcher: AddressWithRelatedFetcher,
   datasFetcher: AddressesFetcher,
-  dataSchema: AddressWithRelatedSchema,
+  dataSchema: addressWithRelatedSchema,
   main: AddressPage,
   table: {
     dataFetcher: AddressesFetcher,
@@ -504,7 +504,7 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
         {ObjRender<AddressWithRelated>({
           data,
           dictionary: AddressWithRelatedDic(dic),
-          dataSchema: AddressWithRelatedSchema,
+          dataSchema: addressWithRelatedSchema,
           hiddenFields: ["id"],
           fieldGroupMap: {
             基本信息: ["name", "type"],
@@ -515,11 +515,8 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
         <CardSection
           title={"包含的" + dic.db.zone.selfName}
           data={zonesData.latest}
-          renderItem={(zone) => {
-            return {
-              label: zone.name,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]),
-            };
+          dataRender={(zone) => {
+            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
           }}
         />
         <CardSharedSection<AddressWithRelated> dic={dic} data={data} delete={deleteAddress} />

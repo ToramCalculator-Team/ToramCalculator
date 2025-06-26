@@ -27,7 +27,7 @@ import { Select } from "~/components/controls/select";
 import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
 
-const WeaponWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<weapon>(id, "Weapon");
+const WeaponWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<weapon>(id, "Weapon");
 
 const WeaponsFetcher = async () => {
   const db = await getDB();
@@ -56,7 +56,7 @@ const deleteWeapon = async (trx: Transaction<DB>, itemId: string) => {
   await deleteItem(trx, itemId);
 };
 
-const WeaponWithRelatedForm = (dic: dictionary, oldWeapon?: weapon) => {
+const WeaponWithItemForm = (dic: dictionary, oldWeapon?: weapon) => {
   const formInitialValues = oldWeapon ?? defaultData.weapon;
   const [item, setItem] = createSignal<ItemWithRelated>();
   const form = createForm(() => ({
@@ -196,7 +196,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
     ...defaultData.weapon,
     ...defaultItemWithRelated,
   },
-  dataFetcher: WeaponWithRelatedFetcher,
+  dataFetcher: WeaponWithItemFetcher,
   datasFetcher: WeaponsFetcher,
   dataSchema: weaponSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -222,7 +222,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
     defaultSort: { id: "baseAbi", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => WeaponWithRelatedForm(dic, data),
+  form: ({ data, dic }) => WeaponWithItemForm(dic, data),
   card: ({ data, dic }) => {
     console.log(data);
     return (
@@ -245,7 +245,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
             颜色信息: ["colorA", "colorB", "colorC"],
           },
         })}
-        {ItemSharedCardContent(data, dic)}
+        <ItemSharedCardContent data={data} dic={dic} />
         <Show when={data.createdByAccountId === store.session.user.account?.id}>
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">

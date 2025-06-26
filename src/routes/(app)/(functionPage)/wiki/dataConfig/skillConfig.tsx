@@ -478,11 +478,14 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
         <CardSection
           title={dic.db.skill_effect.selfName}
           data={effectsData.latest}
-          renderItem={(effect) => {
-            return {
-              label: effect.condition,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "skill_effect", id: effect.id }]),
-            };
+          dataRender={(effect) => {
+            return (
+              <Button
+                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "skill_effect", id: effect.id }])}
+              >
+                {effect.condition}
+              </Button>
+            );
           }}
         />
         <CardSharedSection dic={dic} data={data} delete={deleteSkill} />

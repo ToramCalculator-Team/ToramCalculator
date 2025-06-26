@@ -823,39 +823,50 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
         <CardSection
           title={dic.db.task_collect_require.selfName}
           data={collectRequiresData.latest}
-          renderItem={(collectRequire) => {
-            return {
-              label: collectRequire.itemName,
-              onClick: () =>
-                setWikiStore("cardGroup", (pre) => [
-                  ...pre,
-                  { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId },
-                ]),
-            };
+          dataRender={(collectRequire) => {
+            return (
+              <Button
+                onClick={() =>
+                  setWikiStore("cardGroup", (pre) => [
+                    ...pre,
+                    { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId },
+                  ])
+                }
+              >
+                {collectRequire.itemName}
+              </Button>
+            );
           }}
         />
         <CardSection
           title={dic.db.task_kill_requirement.selfName}
           data={killRequirementsData.latest}
-          renderItem={(killRequirement) => {
-            return {
-              label: killRequirement.mobName,
-              onClick: () => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: killRequirement.mobId }]),
-            };
+          dataRender={(killRequirement) => {
+            return (
+              <Button
+                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: killRequirement.mobId }])}
+              >
+                {killRequirement.mobName}
+              </Button>
+            );
           }}
         />
         <CardSection
           title={dic.db.task_reward.selfName}
           data={rewardsData.latest}
-          renderItem={(reward) => {
-            return {
-              label: reward.itemName,
-              onClick: () =>
-                setWikiStore("cardGroup", (pre) => [
-                  ...pre,
-                  { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
-                ]),
-            };
+          dataRender={(reward) => {
+            return (
+              <Button
+                onClick={() =>
+                  setWikiStore("cardGroup", (pre) => [
+                    ...pre,
+                    { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
+                  ])
+                }
+              >
+                {reward.itemName}
+              </Button>
+            );
           }}
         />
 

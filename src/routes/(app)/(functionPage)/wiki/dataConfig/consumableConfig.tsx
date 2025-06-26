@@ -27,7 +27,7 @@ import {
 import { CardSharedSection } from "./utils";
 import pick from "lodash-es/pick";
 
-const ConsumableWithRelatedFetcher = async (id: string) => await itemWithRelatedFetcher<consumable>(id, "Consumable");
+const ConsumableWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<consumable>(id, "Consumable");
 
 const ConsumablesFetcher = async () => {
   const db = await getDB();
@@ -56,29 +56,29 @@ const deleteConsumable = async (trx: Transaction<DB>, data: consumable & ItemWit
   await deleteItem(trx, data.id);
 };
 
-const ConsumableWithRelatedForm = (dic: dictionary, oldConsumableWithRelated?: consumable & ItemWithRelated) => {
+const ConsumableWithItemForm = (dic: dictionary, oldConsumableWithItem?: consumable & ItemWithRelated) => {
   const oldConsumable =
-    oldConsumableWithRelated &&
-    pick(oldConsumableWithRelated, Object.keys(defaultData.consumable) as (keyof consumable)[]);
+    oldConsumableWithItem &&
+    pick(oldConsumableWithItem, Object.keys(defaultData.consumable) as (keyof consumable)[]);
   const oldItem =
-    oldConsumableWithRelated &&
-    pick(oldConsumableWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+    oldConsumableWithItem &&
+    pick(oldConsumableWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
   const consumableFormFieldInitialValues = oldConsumable ?? defaultData.consumable;
   const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
-  const formInitialValues = oldConsumableWithRelated ?? {
+  const formInitialValues = oldConsumableWithItem ?? {
     ...defaultData.consumable,
     ...defaultItemWithRelated,
   };
   const form = createForm(() => ({
     defaultValues: formInitialValues,
-    onSubmit: async ({ value: newConsumableWithRelated }) => {
-      const newConsumable = pick(newConsumableWithRelated, Object.keys(defaultData.consumable) as (keyof consumable)[]);
-      const newItem = pick(newConsumableWithRelated, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
+    onSubmit: async ({ value: newConsumableWithItem }) => {
+      const newConsumable = pick(newConsumableWithItem, Object.keys(defaultData.consumable) as (keyof consumable)[]);
+      const newItem = pick(newConsumableWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
       console.log(
-        "oldConsumableWithRelated",
-        oldConsumableWithRelated,
-        "newConsumableWithRelated",
-        newConsumableWithRelated,
+        "oldConsumableWithItem",
+        oldConsumableWithItem,
+        "newConsumableWithItem",
+        newConsumableWithItem,
       );
       const db = await getDB();
       await db.transaction().execute(async (trx) => {
@@ -163,7 +163,7 @@ export const ConsumableDataConfig: dataDisplayConfig<
     ...defaultData.consumable,
     ...defaultItemWithRelated,
   },
-  dataFetcher: ConsumableWithRelatedFetcher,
+  dataFetcher: ConsumableWithItemFetcher,
   datasFetcher: ConsumablesFetcher,
   dataSchema: consumableSchema.extend(itemWithRelatedSchema.shape),
   table: {
@@ -189,7 +189,7 @@ export const ConsumableDataConfig: dataDisplayConfig<
     defaultSort: { id: "id", desc: true },
     tdGenerator: {},
   },
-  form: ({ dic, data }) => ConsumableWithRelatedForm(dic, data),
+  form: ({ dic, data }) => ConsumableWithItemForm(dic, data),
   card: ({ dic, data }) => {
     return (
       <>
