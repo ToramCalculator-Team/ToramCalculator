@@ -1,7 +1,7 @@
 import { Button  } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
-import { emailExists, getUserByCookie } from "~/lib/session";
+import { emailExists, getUserByCookie } from "~/utils/session";
 import { setStore, store } from "~/store";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Accessor, createEffect, createMemo, createSignal, on, onMount, Show } from "solid-js";

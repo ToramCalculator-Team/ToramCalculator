@@ -34,7 +34,7 @@ import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/contexts/Media";
 import { Dic, EnumFieldDetail } from "~/locales/type";
-import { getCommonPinningStyles } from "~/lib/table";
+import { getCommonPinningStyles } from "~/utils/table";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
 import { LoadingBar } from "../loadingBar";

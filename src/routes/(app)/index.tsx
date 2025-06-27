@@ -34,6 +34,7 @@ import { DBDataConfig } from "./(functionPage)/wiki/dataConfig/dataConfig";
 import { searchAllTables } from "~/routes/(app)/search";
 import { Decorate } from "~/components/icon";
 import { setWikiStore, wikiStore } from "./(functionPage)/wiki/store";
+import { getCardDatas } from "~/utils/cardDataCache";
 
 type Result = DB[keyof DB];
 
@@ -133,20 +134,11 @@ export default function IndexPage() {
       icon: "Gamepad",
     },
   ]);
-
-  const getCachedCardDatas = async () => {
-    return await Promise.all(
-      wikiStore.cardGroup.map(async ({ type, id }) => {
-        const config = DBDataConfig[type];
-        if (config?.dataFetcher) {
-          const result = await config.dataFetcher(id);
-          return result;
-        }
-      }),
-    );
-  };
-
-  const [cachedCardDatas, { refetch }] = createResource(() => wikiStore.cardGroup, getCachedCardDatas);
+  
+  const [cachedCardDatas, { refetch }] = createResource(
+    () => wikiStore.cardGroup,
+    (cardGroup) => getCardDatas(cardGroup)
+  );
 
   const search = async () => {
     if (searchInputValue() === "" || searchInputValue() === null) {
@@ -756,7 +748,7 @@ export default function IndexPage() {
                                       class="border-primary-color h-full w-full flex-1 rounded border-8"
                                     >
                                       <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                        {DBDataConfig[type()]?.card({
+                                        {DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
                                           dic: dictionary(),
                                           data: cardData(),
                                         })}

@@ -306,8 +306,6 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
   },
   form: ({ data, dic }) => ActivityWithRelatedForm(dic, data),
   card: ({ data, dic }) => {
-    console.log(data);
-
     const [zonesData] = createResource(data.id, async (activityId) => {
       const db = await getDB();
       return await db.selectFrom("zone").where("zone.activityId", "=", activityId).selectAll("zone").execute();

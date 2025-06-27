@@ -140,7 +140,6 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
     />
   ),
   card: ({ data, dic }) => {
-    console.log(data);
     return (
       <>
         <div class="ArmorImage bg-area-color h-[18vh] w-full rounded"></div>

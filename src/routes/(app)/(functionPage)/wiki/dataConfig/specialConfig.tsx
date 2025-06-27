@@ -147,7 +147,6 @@ export const SpecialDataConfig: dataDisplayConfig<
     />
   ),
   card: ({ data, dic }) => {
-    console.log(data);
     return (
       <>
         <div class="SpecialImage bg-area-color h-[18vh] w-full rounded"></div>

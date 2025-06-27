@@ -18,7 +18,7 @@ import {
   BossPartType,
   BossPartBreakRewardType,
 } from "~/../db/kysely/enums";
-import { generateBossDataByFlag } from "~/lib/mob";
+import { generateBossDataByFlag } from "~/utils/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "~/../db/defaultData";
 import { jsonArrayFrom } from "kysely/helpers/postgres";

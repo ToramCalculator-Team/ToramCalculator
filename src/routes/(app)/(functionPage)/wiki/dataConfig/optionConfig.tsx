@@ -137,7 +137,6 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
     />
   ),
   card: ({ data, dic }) => {
-    console.log(data);
     return (
       <>
         <div class="OptionImage bg-area-color h-[18vh] w-full rounded"></div>

@@ -7,7 +7,7 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import initSQL from "~/../db/clientDB/init.sql?raw";
 import { DB } from "../../db/kysely/kyesely";
-import { ChangeLogSynchronizer } from "~/lib/sync";
+import { ChangeLogSynchronizer } from "~/utils/sync";
 
 const ELECTRIC_HOST =
   import.meta.env.VITE_SERVER_HOST == "localhost"

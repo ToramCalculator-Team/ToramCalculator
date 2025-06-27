@@ -211,7 +211,6 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
     />
   ),
   card: ({ data, dic }) => {
-    console.log(data);
     return (
       <>
         <div class="WeaponImage bg-area-color h-[18vh] w-full rounded"></div>

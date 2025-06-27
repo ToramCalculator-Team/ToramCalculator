@@ -33,6 +33,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { DBDataConfig } from "./dataConfig/dataConfig";
 import { Decorate } from "~/components/icon";
 import { setWikiStore, wikiStore } from "./store";
+import { getCardDatas } from '~/utils/cardDataCache';
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -52,20 +53,10 @@ export default function WikiSubPage() {
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
-  const getCachedCardDatas = async () => {
-    return await Promise.all(
-      wikiStore.cardGroup.map(async ({ type, id }) => {
-        const config = DBDataConfig[type];
-        if (config?.dataFetcher) {
-          const result = await config.dataFetcher(id);
-          console.log("result", result);
-          return result;
-        }
-      }),
-    );
-  };
-
-  const [cachedCardDatas, { refetch }] = createResource(() => wikiStore.cardGroup, getCachedCardDatas);
+  const [cachedCardDatas, { refetch }] = createResource(
+    () => wikiStore.cardGroup,
+    (cardGroup) => getCardDatas(cardGroup)
+  );
 
   // 监听url参数变化, 初始化页面状态
   createEffect(

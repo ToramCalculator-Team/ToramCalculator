@@ -183,7 +183,6 @@ export const MaterialDataConfig: dataDisplayConfig<
     />
   ),
   card: ({ data, dic }) => {
-    console.log(data);
     return (
       <>
         <div class="MaterialImage bg-area-color h-[18vh] w-full rounded"></div>
