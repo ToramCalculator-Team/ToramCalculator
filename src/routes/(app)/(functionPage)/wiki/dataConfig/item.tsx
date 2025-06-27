@@ -51,7 +51,7 @@ import { Toggle } from "~/components/controls/toggle";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Select } from "~/components/controls/select";
 import { omit, pick } from "lodash-es";
-import { arrayDiff, getSpriteIcon } from "./utils";
+import { arrayDiff, getSpriteIcon, TextScroll } from "./utils";
 
 /**
  * item卡片数据类型
@@ -317,7 +317,7 @@ export const deleteItem = async (trx: Transaction<DB>, id: string) => {
   await trx.deleteFrom("statistic").where("id", "=", item.statisticId).executeTakeFirstOrThrow();
 };
 
-export const ItemSharedFormField = <S extends ItemWithRelated>(
+export const ItemSharedFormField = (
   dic: dictionary,
   oldItem: ItemWithRelated,
   form: SolidFormApi<any, any, any, any, any, any, any, any, any, unknown>,
@@ -1167,6 +1167,7 @@ export const ItemSharedFormDataSubmitor = async (
   const oldUsedInDropItems = oldItem?.usedInDropItems ?? [];
   const oldUsedInTaskRewards = oldItem?.usedInTaskRewards ?? [];
   const oldUsedInRecipeEntries = oldItem?.usedInRecipeEntries ?? [];
+  const oldUsedInTaskCollectRequires = oldItem?.usedInTaskCollectRequires ?? [];
 
   const {
     recipe: newRecipe,
@@ -1219,12 +1220,6 @@ export const ItemSharedFormDataSubmitor = async (
     newArray: newRecipe.recipeEntries,
   });
 
-  console.table({
-    recipeEntriesToAdd,
-    recipeEntriesToRemove,
-    recipeEntriesToUpdate,
-  });
-
   for (const recipeEntry of recipeEntriesToAdd) {
     await trx
       .insertInto("recipe_ingredient")
@@ -1249,13 +1244,12 @@ export const ItemSharedFormDataSubmitor = async (
   }
 
   // 更新一对多关系
-
-  // 更新掉落物
+  // 1.更新掉落物
   const usedInDropItemsToRemove = oldUsedInDropItems.filter(
     (item) => !newUsedInDropItems.some((i) => i.id === item.id),
   );
   const usedInDropItemsToAdd = newUsedInDropItems.filter((item) => !oldUsedInDropItems.some((i) => i.id === item.id));
-
+  const usedInDropItemsToUpdate = newUsedInDropItems.filter((item) => oldUsedInDropItems.some((i) => i.id === item.id));
   // 处理需要移除的掉落物
   for (const dropItem of usedInDropItemsToRemove) {
     await trx.deleteFrom("drop_item").where("id", "=", dropItem.id).executeTakeFirstOrThrow();
@@ -1271,13 +1265,24 @@ export const ItemSharedFormDataSubmitor = async (
       })
       .executeTakeFirstOrThrow();
   }
+  // 处理需要更新的掉落物
+  for (const dropItem of usedInDropItemsToUpdate) {
+    await trx
+      .updateTable("drop_item")
+      .set({ ...dropItem })
+      .where("id", "=", dropItem.id)
+      .executeTakeFirstOrThrow();
+  }
 
-  // 更新任务奖励
+  // 2.更新任务奖励
   const usedInTaskRewardsToRemove = oldUsedInTaskRewards.filter(
     (item) => !newUsedInTaskRewards.some((i) => i.id === item.id),
   );
   const usedInTaskRewardsToAdd = newUsedInTaskRewards.filter(
     (item) => !oldUsedInTaskRewards.some((i) => i.id === item.id),
+  );
+  const usedInTaskRewardsToUpdate = newUsedInTaskRewards.filter((item) =>
+    oldUsedInTaskRewards.some((i) => i.id === item.id),
   );
   // 处理需要移除的任务奖励
   for (const taskReward of usedInTaskRewardsToRemove) {
@@ -1294,13 +1299,24 @@ export const ItemSharedFormDataSubmitor = async (
       })
       .executeTakeFirstOrThrow();
   }
+  // 处理需要更新的任务奖励
+  for (const taskReward of usedInTaskRewardsToUpdate) {
+    await trx
+      .updateTable("task_reward")
+      .set({ ...taskReward })
+      .where("id", "=", taskReward.id)
+      .executeTakeFirstOrThrow();
+  }
 
-  // 更新道具隶属的配方项
+  // 3.更新道具隶属的配方项
   const usedInRecipeEntriesToRemove = oldUsedInRecipeEntries.filter(
     (item) => !newUsedInRecipeEntries.some((i) => i.id === item.id),
   );
   const usedInRecipeEntriesToAdd = newUsedInRecipeEntries.filter(
     (item) => !oldUsedInRecipeEntries.some((i) => i.id === item.id),
+  );
+  const usedInRecipeEntriesToUpdate = newUsedInRecipeEntries.filter((item) =>
+    oldUsedInRecipeEntries.some((i) => i.id === item.id),
   );
   // 处理需要移除的配方项
   for (const usedInRecipeEntry of usedInRecipeEntriesToRemove) {
@@ -1318,7 +1334,51 @@ export const ItemSharedFormDataSubmitor = async (
       })
       .executeTakeFirstOrThrow();
   }
-  console.log("已处理item：", item);
+  // 处理需要更新的配方项
+  for (const usedInRecipeEntry of usedInRecipeEntriesToUpdate) {
+    await trx
+      .updateTable("recipe_ingredient")
+      .set({ ...usedInRecipeEntry })
+      .where("id", "=", usedInRecipeEntry.id)
+      .executeTakeFirstOrThrow();
+  }
+
+  // 4.更新任务收集需求
+  const usedInTaskCollectRequiresToRemove = oldUsedInTaskCollectRequires.filter(
+    (item) => !newItem.usedInTaskCollectRequires.some((i) => i.id === item.id),
+  );
+  const usedInTaskCollectRequiresToAdd = newItem.usedInTaskCollectRequires.filter(
+    (item) => !oldUsedInTaskCollectRequires.some((i) => i.id === item.id),
+  );
+  const usedInTaskCollectRequiresToUpdate = newItem.usedInTaskCollectRequires.filter((item) =>
+    oldUsedInTaskCollectRequires.some((i) => i.id === item.id),
+  );
+  // 处理需要移除的任务收集需求
+  for (const usedInTaskCollectRequire of usedInTaskCollectRequiresToRemove) {
+    await trx
+      .deleteFrom("task_collect_require")
+      .where("id", "=", usedInTaskCollectRequire.id)
+      .executeTakeFirstOrThrow();
+  }
+  // 处理需要新增的任务收集需求
+  for (const usedInTaskCollectRequire of usedInTaskCollectRequiresToAdd) {
+    await trx
+      .insertInto("task_collect_require")
+      .values({
+        ...usedInTaskCollectRequire,
+        id: createId(),
+        itemId: item.id,
+      })
+      .executeTakeFirstOrThrow();
+  }
+  // 处理需要更新的任务收集需求
+  for (const usedInTaskCollectRequire of usedInTaskCollectRequiresToUpdate) {
+    await trx
+      .updateTable("task_collect_require")
+      .set({ ...usedInTaskCollectRequire })
+      .where("id", "=", usedInTaskCollectRequire.id)
+      .executeTakeFirstOrThrow();
+  }
   return item;
 };
 
@@ -1469,16 +1529,16 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
                           },
                         ])
                       }
-                      icon={getSpriteIcon(itemTypeToTableType(recipeEntry.relatedItem?.itemType!))}
+                      icon={getSpriteIcon(itemTypeToTableType(recipeEntry.relatedItem?.itemType!), 24)}
                       class="justify-start"
                     >
-                      {recipeEntry.relatedItem?.name ?? ""}
+                      <TextScroll text={recipeEntry.relatedItem?.name ?? ""} width={100} /> <span class="flex-none">{` - ${recipeEntry.count}`}</span>
                     </Button>
                   );
                 default:
                   return (
-                    <Button onClick={() => null} icon={getSpriteIcon(recipeEntry.type)} class="justify-start">
-                      {props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type] + ":" + recipeEntry.count}
+                    <Button onClick={() => null} icon={getSpriteIcon(recipeEntry.type, 24)} class="justify-start">
+                      <TextScroll text={props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type]} width={100} /> <span class="flex-none">{` - ${recipeEntry.count}`}</span>
                     </Button>
                   );
               }
@@ -1495,10 +1555,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }])
               }
-              icon={getSpriteIcon("mob")}
+              // icon={getSpriteIcon("mob")}
               class="justify-start"
             >
-              {dropBy.relatedMob?.name ?? ""}
+              <TextScroll text={dropBy.relatedMob?.name ?? ""} width={100} /> <span class="flex-none">{` - ${dropBy.relatedPartType} - ${dropBy.probability}%`}</span>
             </Button>
           );
         }}
@@ -1512,10 +1572,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }])
               }
-              icon={getSpriteIcon("task")}
+              // icon={getSpriteIcon("task")}
               class="justify-start"
             >
-              {rewardItem.relatedTask?.name ?? ""}
+              <TextScroll text={rewardItem.relatedTask?.name ?? ""} width={100} /> <span class="flex-none">{` - ${rewardItem.value} - ${rewardItem.probability}%`}</span>
             </Button>
           );
         }}
@@ -1533,10 +1593,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
                   { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
                 ])
               }
-              icon={getSpriteIcon(itemTypeToTableType(usedIn.relatedItem?.itemType!))}
+              icon={getSpriteIcon(itemTypeToTableType(usedIn.relatedItem?.itemType!), 24)}
               class="justify-start"
             >
-              {usedIn.relatedItem?.name ?? ""}
+              <TextScroll text={usedIn.relatedItem?.name ?? ""} width={100} /> <span class="flex-none">{` - ${usedIn.count}`}</span>
             </Button>
           );
         }}
@@ -1550,14 +1610,108 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }])
               }
-              icon={getSpriteIcon("task")}
+              icon={getSpriteIcon("task", 24)}
               class="justify-start"
             >
-              {usedInTask.relatedTask?.name ?? ""}
+              <TextScroll text={usedInTask.relatedTask?.name ?? ""} width={100} /> <span class="flex-none">{` - ${usedInTask.count}`}</span>
             </Button>
           );
         }}
       />
     </>
+  );
+};
+
+export const ItemWithSubObjectForm = <SubObject extends Record<string, any>>(props: {
+  dic: dictionary;
+  type: ItemType;
+  oldData?: SubObject & ItemWithRelated;
+  subObjectConfig: {
+    defaultData: SubObject;
+    fieldsRender: (
+      data: SubObject,
+      form: SolidFormApi<SubObject & ItemWithRelated, any, any, any, any, any, any, any, any, unknown>,
+    ) => JSX.Element;
+    fieldsHandler: (trx: Transaction<DB>, data: SubObject, oldData: SubObject | undefined, item: item) => Promise<void>;
+  };
+}) => {
+  let formInitialValues: SubObject & ItemWithRelated;
+  let itemFormFieldInitialValues: ItemWithRelated;
+  let subObjectFormFieldInitialValues: SubObject;
+
+  if (props.oldData) {
+    formInitialValues = props.oldData;
+    subObjectFormFieldInitialValues = pick(
+      props.oldData,
+      Object.keys(props.subObjectConfig.defaultData) as (keyof SubObject)[],
+    );
+    itemFormFieldInitialValues = pick(
+      props.oldData,
+      Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[],
+    ) as unknown as ItemWithRelated;
+  } else {
+    formInitialValues = {
+      ...props.subObjectConfig.defaultData,
+      ...defaultItemWithRelated,
+    };
+    subObjectFormFieldInitialValues = props.subObjectConfig.defaultData;
+    itemFormFieldInitialValues = defaultItemWithRelated;
+  }
+
+  const form = createForm(() => ({
+    defaultValues: formInitialValues,
+    onSubmit: async ({ value: newData }) => {
+      const newSubObject = pick(newData, Object.keys(props.subObjectConfig.defaultData) as (keyof SubObject)[]);
+      const newItemWithRelated = pick(
+        newData,
+        Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[],
+      ) as unknown as ItemWithRelated;
+      const oldItemWithRelated =
+        props.oldData &&
+        (pick(
+          props.oldData,
+          Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[],
+        ) as unknown as ItemWithRelated);
+      const oldSubObject =
+        props.oldData &&
+        (pick(
+          props.oldData,
+          Object.keys(props.subObjectConfig.defaultData) as (keyof SubObject)[],
+        ) as unknown as SubObject);
+      console.log("oldData", props.oldData, "newData", newData);
+      const db = await getDB();
+      await db.transaction().execute(async (trx) => {
+        const item = await ItemSharedFormDataSubmitor(trx, props.type, newItemWithRelated, oldItemWithRelated);
+        await props.subObjectConfig.fieldsHandler(trx, newSubObject, oldSubObject, item);
+      });
+    },
+  }));
+  return (
+    <div class="FormBox flex w-full flex-col">
+      <div class="Title flex items-center p-2 portrait:p-6">
+        <h1 class="FormTitle text-2xl font-black flex items-center gap-2">{getSpriteIcon(itemTypeToTableType(props.type), 32)} {props.dic.db[itemTypeToTableType(props.type)].selfName}</h1>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
+      >
+        {ItemSharedFormField(props.dic, itemFormFieldInitialValues, form)}
+        {props.subObjectConfig.fieldsRender(subObjectFormFieldInitialValues, form)}
+        <form.Subscribe
+          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
+          children={(state) => (
+            <div class="flex items-center gap-1">
+              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
+                {state().isSubmitting ? "..." : props.oldData ? props.dic.ui.actions.update : props.dic.ui.actions.add}
+              </Button>
+            </div>
+          )}
+        />
+      </form>
+    </div>
   );
 };

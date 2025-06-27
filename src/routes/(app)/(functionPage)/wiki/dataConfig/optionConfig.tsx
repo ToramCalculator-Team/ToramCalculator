@@ -1,9 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "~/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import {
-  optionSchema,
-} from "~/../db/zod/index";
+import { optionSchema } from "~/../db/zod/index";
 import { DB, item, option } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
@@ -15,8 +13,25 @@ import * as Icon from "~/components/icon";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
-import { defaultItemWithRelated, deleteItem, ItemSharedCardContent, ItemWithRelated, itemWithRelatedDic, itemWithRelatedFetcher, itemWithRelatedSchema } from "./item";
+import {
+  defaultItemWithRelated,
+  deleteItem,
+  ItemSharedCardContent,
+  ItemWithRelated,
+  itemWithRelatedDic,
+  itemWithRelatedFetcher,
+  itemWithRelatedSchema,
+  ItemWithSubObjectForm,
+} from "./item";
+import pick from "lodash-es/pick";
 
+type OptionWithRelated = option & {};
+
+const optionWithRelatedSchema = optionSchema.extend({});
+
+const defaultOptionWithRelated: OptionWithRelated = {
+  ...defaultData.option,
+};
 
 const OptionWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<option>(id, "Option");
 
@@ -30,20 +45,16 @@ const OptionsFetcher = async () => {
 };
 
 const createOption = async (trx: Transaction<DB>, value: option) => {
-  return await trx
-  .insertInto("option")
-  .values(value)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+  return await trx.insertInto("option").values(value).returningAll().executeTakeFirstOrThrow();
 };
 
 const updateOption = async (trx: Transaction<DB>, value: option) => {
   return await trx
-  .updateTable("option")
-  .set(value)
-  .where("itemId", "=", value.itemId)
-  .returningAll()
-  .executeTakeFirstOrThrow();
+    .updateTable("option")
+    .set(value)
+    .where("itemId", "=", value.itemId)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 };
 
 const deleteOption = async (trx: Transaction<DB>, itemId: string) => {
@@ -51,84 +62,10 @@ const deleteOption = async (trx: Transaction<DB>, itemId: string) => {
   await deleteItem(trx, itemId);
 };
 
-const OptionWithItemForm = (dic: dictionary, oldOption?: option) => {
-  const formInitialValues = oldOption ?? defaultData.option;
-  const [item, setItem] = createSignal<ItemWithRelated>();
-  const form = createForm(() => ({
-    defaultValues: formInitialValues,
-    onSubmit: async ({ value: newOption }) => {
-      console.log("oldOption", oldOption, "newOption", newOption);
-      const db = await getDB(); 
-      await db.transaction().execute(async (trx) => {
-        let optionItem: option;
-        if (oldOption) {
-          // 更新
-          optionItem = await updateOption(trx, newOption);
-        } else {
-          // 新增
-          optionItem = await createOption(trx, newOption);
-        }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "option", id: optionItem.itemId }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
-        });
-      });
-    },
-  }));
-  onMount(() => {
-    console.log(form.state.values);
-  });
-  return (
-    <div class="FormBox flex w-full flex-col">
-      <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{dic.db.option.selfName}</h1>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
-      >
-        <For each={Object.entries(formInitialValues)}>
-          {(field, index) => {
-            const fieldKey = field[0] as keyof option;
-            const fieldValue = field[1];
-            switch (fieldKey) {
-              case "itemId":
-                return null;
-              default:
-                return renderField<option, keyof option>(
-                  form,
-                  fieldKey,
-                  fieldValue,
-                  dic.db.option,
-                  optionSchema,
-                );
-            }
-          }}
-        </For>
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-          children={(state) => (
-            <div class="flex items-center gap-1">
-              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                {state().isSubmitting ? "..." : dic.ui.actions.add}
-              </Button>
-            </div>
-          )}
-        />
-      </form>
-    </div>
-  );
-};
-
 export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWithRelated, option & ItemWithRelated> = {
   defaultData: {
     ...defaultData.option,
-    ...defaultItemWithRelated
+    ...defaultItemWithRelated,
   },
   dataFetcher: OptionWithItemFetcher,
   datasFetcher: OptionsFetcher,
@@ -154,7 +91,51 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => OptionWithItemForm(dic, data),
+  form: ({ data, dic }) => (
+    <ItemWithSubObjectForm
+      dic={dic}
+      type="Option"
+      oldData={data}
+      subObjectConfig={{
+        defaultData: defaultOptionWithRelated,
+        fieldsRender: (data, form) => {
+          return (
+            <For each={Object.entries(data)}>
+              {(field, index) => {
+                const fieldKey = field[0] as keyof option;
+                const fieldValue = field[1];
+                switch (fieldKey) {
+                  case "itemId":
+                    return null;
+                  default:
+                    return renderField<option, keyof option>(form, fieldKey, fieldValue, dic.db.option, optionSchema);
+                }
+              }}
+            </For>
+          );
+        },
+        fieldsHandler: async (trx, newOptionWithRelated, oldOptionWithRelated, item) => {
+          const newOption = pick(newOptionWithRelated, Object.keys(defaultData.option) as (keyof option)[]);
+          let optionItem: option;
+          if (oldOptionWithRelated) {
+            // 更新
+            optionItem = await updateOption(trx, newOption);
+          } else {
+            // 新增
+            optionItem = await createOption(trx, {
+              ...newOption,
+              itemId: item.id,
+            });
+          }
+          setWikiStore("cardGroup", (pre) => [...pre, { type: "option", id: optionItem.itemId }]);
+          setWikiStore("form", {
+            data: undefined,
+            isOpen: false,
+          });
+        },
+      }}
+    />
+  ),
   card: ({ data, dic }) => {
     console.log(data);
     return (

@@ -75,6 +75,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   try {
     inputTitle = dictionary.fields[fieldName].key;
     inputDescription = dictionary.fields[fieldName].formFieldDescription;
+    // console.log("key", fieldName, "inputTitle", inputTitle);
   } catch (error) {
     console.log("字典中不存在字段：", fieldKey);
   }
@@ -165,7 +166,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
             // 一般数组对象字段会单独处理，如果这里被调用，说明是简单的字符串数组
             const arrayValue = () => field().state.value as string[];
             return (
-              <Input title={fieldKey} description={""} state={fieldInfo(field())} class={fieldCalss}>
+              <Input title={inputTitle} description={""} state={fieldInfo(field())} class={fieldCalss}>
                 <div class="ArrayBox flex w-full flex-col gap-2">
                   <For each={arrayValue()}>
                     {(item, index) => (

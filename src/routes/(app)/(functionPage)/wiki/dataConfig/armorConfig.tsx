@@ -23,21 +23,18 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
+  ItemWithSubObjectForm,
 } from "./item";
 import { CardSharedSection } from "./utils";
 import { pick } from "lodash-es";
 
-type ArmorWithRelated = armor & {
-  
-}
+type ArmorWithRelated = armor & {};
 
-const armorWithRelatedSchema = armorSchema.extend({
-
-});
+const armorWithRelatedSchema = armorSchema.extend({});
 
 const defaultArmorWithRelated: ArmorWithRelated = {
   ...defaultData.armor,
-}
+};
 
 const ArmorWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<armor>(id, "Armor");
 
@@ -66,91 +63,6 @@ const updateArmor = async (trx: Transaction<DB>, value: armor) => {
 const deleteArmor = async (trx: Transaction<DB>, data: armor) => {
   await trx.deleteFrom("armor").where("itemId", "=", data.itemId).executeTakeFirstOrThrow();
   await deleteItem(trx, data.itemId);
-};
-
-const ArmorWithItemForm = (dic: dictionary, oldArmorWithItem?: ArmorWithRelated & ItemWithRelated) => {
-  const oldArmorWithRelated = oldArmorWithItem && pick(oldArmorWithItem, Object.keys(defaultArmorWithRelated) as (keyof ArmorWithRelated)[]);
-  const oldItemWithRelated = oldArmorWithItem && pick(oldArmorWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-  const armorFormFieldInitialValues = oldArmorWithRelated ?? defaultArmorWithRelated;
-  const itemFormFieldInitialValues = oldItemWithRelated ?? defaultItemWithRelated;
-  const formInitialValues = oldArmorWithItem ?? {
-    ...defaultArmorWithRelated,
-    ...defaultItemWithRelated,
-  };
-  const form = createForm(() => ({
-    defaultValues: formInitialValues,
-    onSubmit: async ({ value: newArmorWithItem }) => {
-      const newArmorWithRelated = pick(newArmorWithItem, Object.keys(defaultArmorWithRelated) as (keyof ArmorWithRelated)[]);
-      const newItemWithRelated = pick(newArmorWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-      console.log("oldArmorWithItem", oldArmorWithItem, "newArmorWithItem", newArmorWithItem);
-      const db = await getDB();
-      await db.transaction().execute(async (trx) => {
-        const item = await ItemSharedFormDataSubmitor(trx, "Armor", newItemWithRelated, oldItemWithRelated);
-        const newArmor = pick(newArmorWithRelated, Object.keys(defaultArmorWithRelated) as (keyof armor)[]);
-        // const oldArmor = oldArmorWithRelated && pick(oldArmorWithRelated, Object.keys(defaultArmorWithRelated) as (keyof armor)[]);
-        let armor: armor;
-        if (oldArmorWithRelated) {
-          // 更新
-          armor = await updateArmor(trx, newArmor);
-        } else {
-          // 新增
-          armor = await createArmor(trx, {
-            ...newArmor,
-            itemId: item.id,
-          });
-        }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armor.itemId }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
-        });
-      });
-    },
-  }));
-
-  onMount(() => {
-    console.log(form.state.values);
-  });
-
-  return (
-    <div class="FormBox flex w-full flex-col">
-      <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{dic.db.armor.selfName}</h1>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
-      >
-        <For each={Object.entries(armorFormFieldInitialValues)}>
-          {(field, index) => {
-            const fieldKey = field[0] as keyof armor;
-            const fieldValue = field[1];
-            switch (fieldKey) {
-              case "itemId":
-                return null;
-              default:
-                return renderField<armor, keyof armor>(form, fieldKey, fieldValue, dic.db.armor, armorSchema);
-            }
-          }}
-        </For>
-        {ItemSharedFormField(dic, itemFormFieldInitialValues, form)}
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-          children={(state) => (
-            <div class="flex items-center gap-1">
-              <Button level="primary" class={`SubmitBtn flex-1`} disabled={!state().canSubmit} type="submit">
-                {state().isSubmitting ? "..." : dic.ui.actions.add}
-              </Button>
-            </div>
-          )}
-        />
-      </form>
-    </div>
-  );
 };
 
 export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRelated, armor & ItemWithRelated> = {
@@ -182,7 +94,51 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => ArmorWithItemForm(dic, data),
+  form: ({ data, dic }) => (
+    <ItemWithSubObjectForm
+      dic={dic}
+      type="Armor"
+      oldData={data}
+      subObjectConfig={{
+        defaultData: defaultArmorWithRelated,
+        fieldsRender: (data, form) => {
+          return (
+            <For each={Object.entries(data)}>
+              {(field, index) => {
+                const fieldKey = field[0] as keyof armor;
+                const fieldValue = field[1];
+                switch (fieldKey) {
+                  case "itemId":
+                    return null;
+                  default:
+                    return renderField<armor, keyof armor>(form, fieldKey, fieldValue, dic.db.armor, armorSchema);
+                }
+              }}
+            </For>
+          );
+        },
+        fieldsHandler: async (trx, newArmorWithRelated, oldArmorWithRelated, item) => {
+          const newArmor = pick(newArmorWithRelated, Object.keys(defaultArmorWithRelated) as (keyof armor)[]);
+          let armor: armor;
+          if (oldArmorWithRelated) {
+            // 更新
+            armor = await updateArmor(trx, newArmor);
+          } else {
+            // 新增
+            armor = await createArmor(trx, {
+              ...newArmor,
+              itemId: item.id,
+            });
+          }
+          setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armor.itemId }]);
+          setWikiStore("form", {
+            data: undefined,
+            isOpen: false,
+          });
+        },
+      }}
+    />
+  ),
   card: ({ data, dic }) => {
     console.log(data);
     return (

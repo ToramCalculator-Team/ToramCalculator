@@ -21,7 +21,17 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
+  ItemWithSubObjectForm,
 } from "./item";
+import pick from "lodash-es/pick";
+
+type SpecialWithRelated = special & {};
+
+const specialWithRelatedSchema = specialSchema.extend({});
+
+const defaultSpecialWithRelated: SpecialWithRelated = {
+  ...defaultData.special,
+};
 
 const SpecialWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<special>(id, "Special");
 
@@ -50,74 +60,6 @@ const updateSpecial = async (trx: Transaction<DB>, value: special) => {
 const deleteSpecial = async (trx: Transaction<DB>, itemId: string) => {
   await trx.deleteFrom("special").where("itemId", "=", itemId).executeTakeFirstOrThrow();
   await deleteItem(trx, itemId);
-};
-
-const SpecialWithItemForm = (dic: dictionary, oldSpecial?: special) => {
-  const formInitialValues = oldSpecial ?? defaultData.special;
-  const [item, setItem] = createSignal<ItemWithRelated>();
-  const form = createForm(() => ({
-    defaultValues: formInitialValues,
-    onSubmit: async ({ value: newSpecial }) => {
-      console.log("oldSpecial", oldSpecial, "newSpecial", newSpecial);
-      const db = await getDB();
-      await db.transaction().execute(async (trx) => {
-        let specialItem: special;
-        if (oldSpecial) {
-          // 更新
-          specialItem = await updateSpecial(trx, newSpecial);
-        } else {
-          // 新增
-          specialItem = await createSpecial(trx, newSpecial);
-        }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "special", id: specialItem.itemId }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
-        });
-      });
-    },
-  }));
-  onMount(() => {
-    console.log(form.state.values);
-  });
-  return (
-    <div class="FormBox flex w-full flex-col">
-      <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{dic.db.special.selfName}</h1>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
-      >
-        <For each={Object.entries(formInitialValues)}>
-          {(field, index) => {
-            const fieldKey = field[0] as keyof special;
-            const fieldValue = field[1];
-            switch (fieldKey) {
-              case "itemId":
-                return null;
-              default:
-                return renderField<special, keyof special>(form, fieldKey, fieldValue, dic.db.special, specialSchema);
-            }
-          }}
-        </For>
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-          children={(state) => (
-            <div class="flex items-center gap-1">
-              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                {state().isSubmitting ? "..." : dic.ui.actions.add}
-              </Button>
-            </div>
-          )}
-        />
-      </form>
-    </div>
-  );
 };
 
 export const SpecialDataConfig: dataDisplayConfig<
@@ -153,7 +95,57 @@ export const SpecialDataConfig: dataDisplayConfig<
     defaultSort: { id: "baseDef", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => SpecialWithItemForm(dic, data),
+  form: ({ data, dic }) => (
+    <ItemWithSubObjectForm
+      dic={dic}
+      type="Special"
+      oldData={data}
+      subObjectConfig={{
+        defaultData: defaultSpecialWithRelated,
+        fieldsRender: (data, form) => {
+          return (
+            <For each={Object.entries(data)}>
+              {(field, index) => {
+                const fieldKey = field[0] as keyof special;
+                const fieldValue = field[1];
+                switch (fieldKey) {
+                  case "itemId":
+                    return null;
+                  default:
+                    return renderField<special, keyof special>(
+                      form,
+                      fieldKey,
+                      fieldValue,
+                      dic.db.special,
+                      specialSchema,
+                    );
+                }
+              }}
+            </For>
+          );
+        },
+        fieldsHandler: async (trx, newSpecialWithRelated, oldSpecialWithRelated, item) => {
+          const newSpecial = pick(newSpecialWithRelated, Object.keys(defaultData.special) as (keyof special)[]);
+          let specialItem: special;
+          if (oldSpecialWithRelated) {
+            // 更新
+            specialItem = await updateSpecial(trx, newSpecial);
+          } else {
+            // 新增
+            specialItem = await createSpecial(trx, {
+              ...newSpecial,
+              itemId: item.id,
+            });
+          }
+          setWikiStore("cardGroup", (pre) => [...pre, { type: "special", id: specialItem.itemId }]);
+          setWikiStore("form", {
+            data: undefined,
+            isOpen: false,
+          });
+        },
+      }}
+    />
+  ),
   card: ({ data, dic }) => {
     console.log(data);
     return (

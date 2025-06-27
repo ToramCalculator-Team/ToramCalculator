@@ -21,11 +21,21 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
+  ItemWithSubObjectForm,
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
+import pick from "lodash-es/pick";
+
+type WeaponWithRelated = weapon & {};
+
+const weaponWithRelatedSchema = weaponSchema.extend({});
+
+const defaultWeaponWithRelated: WeaponWithRelated = {
+  ...defaultData.weapon,
+};
 
 const WeaponWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<weapon>(id, "Weapon");
 
@@ -54,141 +64,6 @@ const updateWeapon = async (trx: Transaction<DB>, value: weapon) => {
 const deleteWeapon = async (trx: Transaction<DB>, itemId: string) => {
   await trx.deleteFrom("weapon").where("itemId", "=", itemId).executeTakeFirstOrThrow();
   await deleteItem(trx, itemId);
-};
-
-const WeaponWithItemForm = (dic: dictionary, oldWeapon?: weapon) => {
-  const formInitialValues = oldWeapon ?? defaultData.weapon;
-  const [item, setItem] = createSignal<ItemWithRelated>();
-  const form = createForm(() => ({
-    defaultValues: formInitialValues,
-    onSubmit: async ({ value: newWeapon }) => {
-      console.log("oldWeapon", oldWeapon, "newWeapon", newWeapon);
-      const db = await getDB();
-      await db.transaction().execute(async (trx) => {
-        let weaponItem: weapon;
-        if (oldWeapon) {
-          // 更新
-          weaponItem = await updateWeapon(trx, newWeapon);
-        } else {
-          // 新增
-          weaponItem = await createWeapon(trx, newWeapon);
-        }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "weapon", id: weaponItem.itemId }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
-        });
-      });
-    },
-  }));
-  onMount(() => {
-    console.log(form.state.values);
-  });
-  return (
-    <div class="FormBox flex w-full flex-col">
-      <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{dic.db.weapon.selfName}</h1>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
-      >
-        <For each={Object.entries(formInitialValues)}>
-          {(field, index) => {
-            const fieldKey = field[0] as keyof weapon;
-            const fieldValue = field[1];
-            switch (fieldKey) {
-              case "itemId":
-                return null;
-              case "type":
-                return (
-                  <form.Field
-                    name={fieldKey}
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: weaponSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(field) => (
-                      <Input
-                        title={dic.db.weapon.fields[fieldKey].key}
-                        description={dic.db.weapon.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <Select
-                          value={field().state.value}
-                          setValue={(value) => field().setValue(value as WeaponType)}
-                          options={Object.entries(dic.db.weapon.fields.type.enumMap).map(([key, value]) => ({
-                            label: value,
-                            value: key,
-                          }))}
-                        />
-                      </Input>
-                    )}
-                  </form.Field>
-                );
-              case "elementType":
-                return (
-                  <form.Field
-                    name={fieldKey}
-                    validators={{
-                      onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: weaponSchema.shape[fieldKey],
-                    }}
-                  >
-                    {(field) => (
-                      <Input
-                        title={dic.db.weapon.fields[fieldKey].key}
-                        description={dic.db.weapon.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
-                      >
-                        <EnumSelect
-                          value={field().state.value}
-                          setValue={(value) => field().setValue(value as ElementType)}
-                          options={weaponSchema.shape[fieldKey].options}
-                          dic={dic.db.weapon.fields[fieldKey].enumMap}
-                          iconMap={{
-                            Water: <Icon.Element.Water class="h-6 w-6" />,
-                            Fire: <Icon.Element.Fire class="h-6 w-6" />,
-                            Earth: <Icon.Element.Earth class="h-6 w-6" />,
-                            Wind: <Icon.Element.Wind class="h-6 w-6" />,
-                            Light: <Icon.Element.Light class="h-6 w-6" />,
-                            Dark: <Icon.Element.Dark class="h-6 w-6" />,
-                            Normal: <Icon.Element.NoElement class="h-6 w-6" />,
-                          }}
-                          field={{
-                            id: field().name,
-                            name: field().name,
-                          }}
-                        />
-                      </Input>
-                    )}
-                  </form.Field>
-                );
-              default:
-                return renderField<weapon, keyof weapon>(form, fieldKey, fieldValue, dic.db.weapon, weaponSchema);
-            }
-          }}
-        </For>
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-          children={(state) => (
-            <div class="flex items-center gap-1">
-              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                {state().isSubmitting ? "..." : dic.ui.actions.add}
-              </Button>
-            </div>
-          )}
-        />
-      </form>
-    </div>
-  );
 };
 
 export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWithRelated, weapon & ItemWithRelated> = {
@@ -222,7 +97,119 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
     defaultSort: { id: "baseAbi", desc: true },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => WeaponWithItemForm(dic, data),
+  form: ({ data, dic }) => (
+    <ItemWithSubObjectForm
+      dic={dic}
+      type="Weapon"
+      oldData={data}
+      subObjectConfig={{
+        defaultData: defaultWeaponWithRelated,
+        fieldsRender: (data, form) => {
+          return (
+            <For each={Object.entries(data)}>
+              {(field, index) => {
+                const fieldKey = field[0] as keyof weapon;
+                const fieldValue = field[1];
+
+                switch (fieldKey) {
+                  case "itemId":
+                    return null;
+                  case "type":
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: weaponSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => (
+                          <Input
+                            title={dic.db.weapon.fields[fieldKey].key}
+                            description={dic.db.weapon.fields[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <Select
+                              value={field().state.value}
+                              setValue={(value) => field().setValue(value as WeaponType)}
+                              options={Object.entries(dic.db.weapon.fields.type.enumMap).map(([key, value]) => ({
+                                label: value,
+                                value: key,
+                              }))}
+                            />
+                          </Input>
+                        )}
+                      </form.Field>
+                    );
+                  case "elementType":
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: weaponSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => (
+                          <Input
+                            title={dic.db.weapon.fields[fieldKey].key}
+                            description={dic.db.weapon.fields[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <EnumSelect
+                              value={field().state.value}
+                              setValue={(value) => field().setValue(value as ElementType)}
+                              options={weaponSchema.shape[fieldKey].options}
+                              dic={dic.db.weapon.fields[fieldKey].enumMap}
+                              iconMap={{
+                                Water: <Icon.Element.Water class="h-6 w-6" />,
+                                Fire: <Icon.Element.Fire class="h-6 w-6" />,
+                                Earth: <Icon.Element.Earth class="h-6 w-6" />,
+                                Wind: <Icon.Element.Wind class="h-6 w-6" />,
+                                Light: <Icon.Element.Light class="h-6 w-6" />,
+                                Dark: <Icon.Element.Dark class="h-6 w-6" />,
+                                Normal: <Icon.Element.NoElement class="h-6 w-6" />,
+                              }}
+                              field={{
+                                id: field().name,
+                                name: field().name,
+                              }}
+                            />
+                          </Input>
+                        )}
+                      </form.Field>
+                    );
+                  default:
+                    return renderField<weapon, keyof weapon>(form, fieldKey, fieldValue, dic.db.weapon, weaponSchema);
+                }
+              }}
+            </For>
+          );
+        },
+        fieldsHandler: async (trx, newWeaponWithRelated, oldWeaponWithRelated, item) => {
+          const newWeapon = pick(newWeaponWithRelated, Object.keys(defaultData.weapon) as (keyof weapon)[]);
+          let weaponItem: weapon;
+          if (oldWeaponWithRelated) {
+            // 更新
+            weaponItem = await updateWeapon(trx, newWeapon);
+          } else {
+            // 新增
+            weaponItem = await createWeapon(trx, {
+              ...newWeapon,
+              itemId: item.id,
+            });
+          }
+          setWikiStore("cardGroup", (pre) => [...pre, { type: "weapon", id: weaponItem.itemId }]);
+          setWikiStore("form", {
+            data: undefined,
+            isOpen: false,
+          });
+        },
+      }}
+    />
+  ),
   card: ({ data, dic }) => {
     console.log(data);
     return (

@@ -11,6 +11,7 @@ import { setWikiStore } from "../store";
 import sprites from "~/../public/app-image/sprites.json";
 import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
 import { defaultData } from "../../../../../../db/defaultData";
+import { Motion } from "solid-motionone";
 
 export const arrayDiff = async <T extends keyof DB>(props: {
   trx: Transaction<DB>;
@@ -188,5 +189,23 @@ export const getSpriteIcon = (iconName: string, size?: number) => {
         );
       }}
     </Show>
+  );
+};
+
+/**
+ * 文字滚动展示组件(暂未完成)
+ * @param props.text 要展示的文字
+ * @param props.width 展示的宽度
+ **/
+export const TextScroll = (props: { text: string; width: number }) => {
+  // 当文字长度大于宽度时，文字会滚动
+  const textLength = props.text.length;
+  const scrollDuration = textLength * 0.1;
+  return (
+    <span
+      class="overflow-hidden text-nowrap text-ellipsis"
+    >
+        {props.text}
+    </span>
   );
 };

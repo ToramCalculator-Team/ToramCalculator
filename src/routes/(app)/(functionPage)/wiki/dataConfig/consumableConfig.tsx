@@ -6,7 +6,7 @@ import { DB, item, consumable } from "~/../db/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { defaultData } from "~/../db/defaultData";
-import { renderField } from "../utils";
+import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import * as Icon from "~/components/icon";
@@ -23,9 +23,21 @@ import {
   itemWithRelatedDic,
   itemWithRelatedFetcher,
   itemWithRelatedSchema,
+  ItemWithSubObjectForm,
 } from "./item";
-import { CardSharedSection } from "./utils";
+import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
+import { Input } from "~/components/controls/input";
+import { Select } from "~/components/controls/select";
+import { ConsumableType } from "../../../../../../db/kysely/enums";
+
+type ConsumableWithRelated = consumable & {};
+
+const consumableWithRelatedSchema = consumableSchema.extend({});
+
+const defaultConsumableWithRelated: ConsumableWithRelated = {
+  ...defaultData.consumable,
+};
 
 const ConsumableWithItemFetcher = async (id: string) => await itemWithRelatedFetcher<consumable>(id, "Consumable");
 
@@ -54,104 +66,6 @@ const updateConsumable = async (trx: Transaction<DB>, value: consumable) => {
 const deleteConsumable = async (trx: Transaction<DB>, data: consumable & ItemWithRelated) => {
   await trx.deleteFrom("consumable").where("itemId", "=", data.id).executeTakeFirstOrThrow();
   await deleteItem(trx, data.id);
-};
-
-const ConsumableWithItemForm = (dic: dictionary, oldConsumableWithItem?: consumable & ItemWithRelated) => {
-  const oldConsumable =
-    oldConsumableWithItem &&
-    pick(oldConsumableWithItem, Object.keys(defaultData.consumable) as (keyof consumable)[]);
-  const oldItem =
-    oldConsumableWithItem &&
-    pick(oldConsumableWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-  const consumableFormFieldInitialValues = oldConsumable ?? defaultData.consumable;
-  const itemFormFieldInitialValues = oldItem ?? defaultItemWithRelated;
-  const formInitialValues = oldConsumableWithItem ?? {
-    ...defaultData.consumable,
-    ...defaultItemWithRelated,
-  };
-  const form = createForm(() => ({
-    defaultValues: formInitialValues,
-    onSubmit: async ({ value: newConsumableWithItem }) => {
-      const newConsumable = pick(newConsumableWithItem, Object.keys(defaultData.consumable) as (keyof consumable)[]);
-      const newItem = pick(newConsumableWithItem, Object.keys(defaultItemWithRelated) as (keyof ItemWithRelated)[]);
-      console.log(
-        "oldConsumableWithItem",
-        oldConsumableWithItem,
-        "newConsumableWithItem",
-        newConsumableWithItem,
-      );
-      const db = await getDB();
-      await db.transaction().execute(async (trx) => {
-        const item = await ItemSharedFormDataSubmitor(trx, "Consumable", newItem, oldItem);
-        let consumableItem: consumable;
-        if (oldConsumable) {
-          // 更新
-          consumableItem = await updateConsumable(trx, newConsumable);
-        } else {
-          // 新增
-          consumableItem = await createConsumable(trx, {
-            ...newConsumable,
-            itemId: item.id,
-          });
-        }
-        setWikiStore("cardGroup", (pre) => [...pre, { type: "consumable", id: consumableItem.itemId }]);
-        setWikiStore("form", {
-          data: undefined,
-          isOpen: false,
-        });
-      });
-    },
-  }));
-
-  onMount(() => {
-    console.log(form.state.values);
-  });
-
-  return (
-    <div class="FormBox flex w-full flex-col">
-      <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{dic.db.consumable.selfName}</h1>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
-      >
-        <For each={Object.entries(consumableFormFieldInitialValues)}>
-          {(field, index) => {
-            const fieldKey = field[0] as keyof consumable;
-            const fieldValue = field[1];
-            switch (fieldKey) {
-              case "itemId":
-                return null;
-              default:
-                return renderField<consumable, keyof consumable>(
-                  form,
-                  fieldKey,
-                  fieldValue,
-                  dic.db.consumable,
-                  consumableSchema,
-                );
-            }
-          }}
-        </For>
-        {ItemSharedFormField(dic, itemFormFieldInitialValues, form)}
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-          children={(state) => (
-            <div class="flex items-center gap-1">
-              <Button level="primary" class={`SubmitBtn flex-1`} type="submit" disabled={!state().canSubmit}>
-                {state().isSubmitting ? "..." : dic.ui.actions.add}
-              </Button>
-            </div>
-          )}
-        />
-      </form>
-    </div>
-  );
 };
 
 export const ConsumableDataConfig: dataDisplayConfig<
@@ -189,7 +103,101 @@ export const ConsumableDataConfig: dataDisplayConfig<
     defaultSort: { id: "id", desc: true },
     tdGenerator: {},
   },
-  form: ({ dic, data }) => ConsumableWithItemForm(dic, data),
+  form: ({ dic, data }) => (
+    <ItemWithSubObjectForm
+      dic={dic}
+      type="Consumable"
+      oldData={data}
+      subObjectConfig={{
+        defaultData: defaultConsumableWithRelated,
+        fieldsRender: (data, form) => {
+          return (
+            <For each={Object.entries(data)}>
+              {(field, index) => {
+                const fieldKey = field[0] as keyof consumable;
+                const fieldValue = field[1];
+                switch (fieldKey) {
+                  case "itemId":
+                    return null;
+                  case "type":
+                    return (
+                      <form.Field
+                        name={fieldKey}
+                        validators={{
+                          onChangeAsyncDebounceMs: 500,
+                          onChangeAsync: consumableWithRelatedSchema.shape[fieldKey],
+                        }}
+                      >
+                        {(field) => (
+                          <Input
+                            title={dic.db.consumable.fields[fieldKey].key}
+                            description={dic.db.consumable.fields[fieldKey].formFieldDescription}
+                            state={fieldInfo(field())}
+                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          >
+                            <Select
+                              value={field().state.value}
+                              setValue={(value) => field().setValue(value as ConsumableType)}
+                              options={Object.entries(dic.db.consumable.fields.type.enumMap).map(([key, value]) => ({
+                                label: value,
+                                value: key,
+                              }))}
+                              optionGenerator={(option, selected, handleSelect) => {
+                                return (
+                                  <div
+                                    class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
+                                    onClick={handleSelect}
+                                  >
+                                    {getSpriteIcon(option.value, 24)}
+                                    {option.label}
+                                  </div>
+                                );
+                              }}
+                            />
+                          </Input>
+                        )}
+                      </form.Field>
+                    );
+
+                  default:
+                    return renderField<consumable, keyof consumable>(
+                      form,
+                      fieldKey,
+                      fieldValue,
+                      dic.db.consumable,
+                      consumableSchema,
+                    );
+                }
+              }}
+            </For>
+          );
+        },
+        fieldsHandler: async (trx, newConsumableWithRelated, oldConsumableWithRelated, item) => {
+          const newConsumable = pick(
+            newConsumableWithRelated,
+            Object.keys(defaultData.consumable) as (keyof consumable)[],
+          );
+
+          let consumableItem: consumable;
+          if (oldConsumableWithRelated) {
+            // 更新
+            consumableItem = await updateConsumable(trx, newConsumable);
+          } else {
+            // 新增
+            consumableItem = await createConsumable(trx, {
+              ...newConsumable,
+              itemId: item.id,
+            });
+          }
+          setWikiStore("cardGroup", (pre) => [...pre, { type: "consumable", id: consumableItem.itemId }]);
+          setWikiStore("form", {
+            data: undefined,
+            isOpen: false,
+          });
+        },
+      }}
+    />
+  ),
   card: ({ dic, data }) => {
     return (
       <>

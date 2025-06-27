@@ -31,7 +31,9 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
   dictionary?: Dic<T>;
   hiddenFields?: Array<keyof T>;
   fieldGroupMap?: Record<string, Array<keyof T>>;
-  fieldGenerator?: (key: keyof T, value: T[keyof T], dictionary: Dic<T>) => JSX.Element;
+  fieldGenerator?: Partial<{
+    [K in keyof T]: (key: keyof T, value: T[keyof T], dictionary: Dic<T>) => JSX.Element;
+  }>
 }) {
   return (
     <div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3">
@@ -44,7 +46,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
               const kind = schemaField ? getZodType(schemaField) : ZodFirstPartyTypeKind.ZodString;
               const fieldName = props.dictionary?.fields[key].key ?? key;
               let fieldValue = val;
-              const hasGenerator = "fieldGenerator" in props;
+              const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
               try {
                 fieldValue = (props.dictionary?.fields[key] as EnumFieldDetail<any>).enumMap[
                   val as keyof T
@@ -55,7 +57,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
               if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
                 const content = Object.entries(val as Record<string, unknown>);
                 return props.dictionary && hasGenerator ? (
-                  props.fieldGenerator?.(key, val as T[keyof T], props.dictionary)
+                  props.fieldGenerator?.[key]?.(key, val as T[keyof T], props.dictionary)
                 ) : (
                   <div class="Field flex flex-col gap-2">
                     <span class="Title text-main-text-color text-nowrap">{String(fieldName)}</span>
@@ -76,9 +78,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                 );
               }
 
-              return props.dictionary && hasGenerator ? (
-                props.fieldGenerator?.(key, val as T[keyof T], props.dictionary)
-              ) : (
+              return props.dictionary && hasGenerator ? props.fieldGenerator?.[key]?.(key, val as T[keyof T], props.dictionary) : (
                 <div class="Field flex gap-2">
                   <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:
                   <span class="font-bold">{String(fieldValue)}</span>
@@ -108,7 +108,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                     const kind = schemaField ? getZodType(schemaField) : ZodFirstPartyTypeKind.ZodString;
                     const fieldName = props.dictionary?.fields[key].key ?? key;
                     let fieldValue = val;
-                    const hasGenerator = "fieldGenerator" in props;
+                    const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
                     try {
                       fieldValue = (props.dictionary?.fields[key] as EnumFieldDetail<any>).enumMap[
                         val
@@ -118,9 +118,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                     // 处理嵌套结构
                     if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
                       const content = Object.entries(val as Record<string, unknown>);
-                      return props.dictionary && hasGenerator ? (
-                        props.fieldGenerator?.(key, val, props.dictionary)
-                      ) : (
+                      return props.dictionary && hasGenerator ? props.fieldGenerator?.[key]?.(key, val, props.dictionary) : (
                         <div class="Field flex flex-col gap-2">
                           <span class="Title text-main-text-color text-nowrap">{String(fieldName)}</span>
                           <Show when={content.length > 0}>
@@ -140,9 +138,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                       );
                     }
 
-                    return props.dictionary && hasGenerator ? (
-                      props.fieldGenerator?.(key, val, props.dictionary)
-                    ) : (
+                    return props.dictionary && hasGenerator ? props.fieldGenerator?.[key]?.(key, val, props.dictionary) : (
                       <div class="Field flex gap-2">
                         <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:
                         <span class="font-bold">{String(fieldValue)}</span>

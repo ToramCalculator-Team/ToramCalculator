@@ -146,6 +146,8 @@ worker({
       ["A", "B"],
       `"_crystalToplayer_special"`,
     );
+    const recipeShape = await syncTable("recipe", ["id"]);
+    const recipeIngredientShape = await syncTable("recipe_ingredient", ["id"]);
     const skillShape = await syncTable("skill", ["id"]);
     const skillEffectShape = await syncTable("skill_effect", ["id"]);
     const playerWeponShape = await syncTable("player_weapon", ["id"]);
