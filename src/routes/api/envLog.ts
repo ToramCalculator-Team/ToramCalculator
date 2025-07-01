@@ -3,6 +3,13 @@ import { deleteCookie } from "vinxi/http";
 
 export async function GET({ params }: APIEvent) {
   deleteCookie("jwt");
+  const API_URL =
+    import.meta.env.VITE_SERVER_HOST == "localhost" ? "http://localhost:3001/api" : "https://app.kiaclouth.com/api";
+
+  const ELECTRIC_HOST =
+    import.meta.env.VITE_SERVER_HOST == "localhost"
+      ? "http://localhost:3000/v1/shape"
+      : "https://test.kiaclouth.com/v1/shape";
 
   return new Response(`env: 
 # 中央数据库配置
@@ -16,29 +23,10 @@ PG_DBNAME=${process.env.PG_DBNAME}
 ELECTRIC_HOST=${process.env.ELECTRIC_HOST}
 ELECTRIC_PORT=${process.env.ELECTRIC_PORT}
 
-# Auth.js配置
-AUTH_SECRET=${process.env.AUTH_SECRET}
-AUTH_URL=${process.env.AUTH_URL}
+# 同步方法参数
+API_URL=${API_URL}
 
-# Auth QQ Provider
-QQ_CLIENT_ID=${process.env.QQ_CLIENT_ID}
-QQ_CLIENT_SECRET=${process.env.QQ_CLIENT_SECRET}
-
-# Auth Discord Provider
-DISCORD_CLIENT_ID=${process.env.DISCORD_CLIENT_ID}
-DISCORD_CLIENT_SECRET=${process.env.DISCORD_CLIENT_SECRET}
-
-# Auth Github Provider
-GITHUB_ID=${process.env.GITHUB_ID}
-GITHUB_SECRET=${process.env.GITHUB_SECRET}
-
-# Auth E-mail Provider
-EMAIL_SERVER_USER=${process.env.EMAIL_SERVER_USER}
-EMAIL_SERVER_PASSWORD=${process.env.EMAIL_SERVER_PASSWORD}
-EMAIL_SERVER_HOST=${process.env.EMAIL_SERVER_HOST}
-EMAIL_SERVER_PORT=${process.env.EMAIL_SERVER_PORT}
-EMAIL_FROM=${process.env.EMAIL_FROM}
-
-COMPATIBILITY_DATE=${process.env.COMPATIBILITY_DATE}
+# PGlite同步方法配置
+ELECTRIC_HOST=${ELECTRIC_HOST}
 `);
 }
