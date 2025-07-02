@@ -2,7 +2,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, For, onMount, ParentProps, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
-import { useLocation, useNavigate } from "@solidjs/router";
+import { A, useLocation, useNavigate } from "@solidjs/router";
 import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
@@ -20,7 +20,7 @@ const NavBtn = (props: {
   class?: string;
 }) => {
   return (
-    <a
+    <A
       href={props.config.url}
       tabIndex={0}
       class={
@@ -35,7 +35,7 @@ const NavBtn = (props: {
         {props.config.icon}
       </div>
       <div class="hidden text-xs landscape:block">{props.config.btnName}</div>
-    </a>
+    </A>
   );
 };
 

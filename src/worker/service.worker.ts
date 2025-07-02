@@ -7,6 +7,7 @@
  * 3. 离线支持：网络不可用时自动回退到缓存
  * 4. 消息通信：与客户端双向通信，实时状态同步
  * 5. 缓存状态管理：实时跟踪和管理缓存状态
+ * 6. 开发模式支持：开发环境下不拦截请求，保持热重载能力
  *
  * 工作流程：
  * 第一次访问 → 服务器SSR → 注册SW → 缓存静态资源 → 预缓存页面组件
@@ -16,10 +17,25 @@
  * - 静态资源：缓存优先，网络回退
  * - 动态内容：网络优先，缓存回退
  * - 页面组件：智能预缓存，按需加载
+ * - 开发模式：不拦截请求，直接网络请求
  */
 
 // 版本号
 const VERSION = "1.0.0";
+
+// 开发模式判断 - 在Service Worker启动时确定，避免重复计算
+let IS_DEVELOPMENT_MODE: boolean;
+
+const determineDevelopmentMode = (): boolean => {
+  // 检查是否为开发环境
+  // 在Service Worker中，我们可以通过检查location.hostname来判断
+  // return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  return false;
+};
+
+const isDevelopmentMode = (): boolean => {
+  return IS_DEVELOPMENT_MODE;
+};
 
 // 缓存策略配置
 const CACHE_STRATEGIES = {
@@ -148,6 +164,46 @@ class CacheManager {
     } catch (error) {
       Logger.error("静态资源缓存失败:", error);
       throw error;
+    }
+  }
+
+  /**
+   * 缓存页面HTML
+   * 缓存主要页面的HTML内容，确保离线时页面刷新可用
+   */
+  async cachePageHTML(): Promise<void> {
+    Logger.info("开始缓存页面HTML...");
+
+    try {
+      const cache = await caches.open(CACHE_STRATEGIES.PAGES);
+      const pagesToCache = [
+        "/",
+        "/evaluate",
+        "/search",
+        "/character",
+        "/profile",
+        // 可以添加更多页面
+      ];
+
+      Logger.debug("准备缓存的页面列表:", pagesToCache);
+
+      for (const page of pagesToCache) {
+        try {
+          const response = await fetch(page);
+          if (response.ok) {
+            await cache.put(page, response);
+            Logger.cache(`页面缓存成功: ${page}`);
+          } else {
+            Logger.warn(`页面缓存失败: ${page}`, { status: response.status });
+          }
+        } catch (error) {
+          Logger.error(`页面缓存异常: ${page}`, error);
+        }
+      }
+
+      Logger.cache("页面HTML缓存完成", { count: pagesToCache.length });
+    } catch (error) {
+      Logger.error("页面HTML缓存失败:", error);
     }
   }
 
@@ -300,6 +356,12 @@ class RequestInterceptor {
     const url = new URL(event.request.url);
     const pathname = url.pathname;
 
+    // 开发模式下不拦截请求，保持热重载能力
+    if (isDevelopmentMode()) {
+      Logger.debug(pathname, "开发模式：跳过请求拦截，保持热重载能力");
+      return;
+    }
+
     // 非同源资源不处理
     if (url.origin !== location.origin) {
       return;
@@ -319,8 +381,9 @@ class RequestInterceptor {
       strategy = "静态缓存";
       cacheResult = await this.cacheOrNetwork(event);
     } else if (this.shouldCacheDynamically(pathname)) {
-      strategy = "动态缓存";
-      cacheResult = await this.cacheOrNetworkAndCache(event);
+      // 对于页面路由，使用缓存优先策略以确保离线可用
+      strategy = "页面缓存优先";
+      cacheResult = await this.cacheOrNetwork(event);
     } else {
       // 网络优先
       event.respondWith(fetch(event.request));
@@ -399,7 +462,17 @@ class RequestInterceptor {
    * 动态内容：API响应、页面内容等
    */
   private shouldCacheDynamically(pathname: string): boolean {
-    return Object.keys(ROUTE_CACHE_MAP).includes(pathname);
+    // 检查是否为已知路由
+    if (Object.keys(ROUTE_CACHE_MAP).includes(pathname)) {
+      return true;
+    }
+    
+    // 检查是否为页面路由（不包含文件扩展名且不是API路径）
+    if (!pathname.includes('.') && !pathname.startsWith('/api/')) {
+      return true;
+    }
+    
+    return false;
   }
 
   /**
@@ -421,13 +494,31 @@ class RequestInterceptor {
         try {
           const networkResponse = await fetch(event.request);
           if (networkResponse.ok) {
-            const cache = await caches.open(CACHE_STRATEGIES.STATIC);
+            // 根据请求类型选择缓存策略
+            const url = new URL(event.request.url);
+            const pathname = url.pathname;
+            
+            let cacheStrategy = CACHE_STRATEGIES.STATIC;
+            if (this.shouldCacheDynamically(pathname)) {
+              cacheStrategy = CACHE_STRATEGIES.PAGES;
+            }
+            
+            const cache = await caches.open(cacheStrategy);
             await cache.put(event.request, networkResponse.clone());
             cacheResult = "已缓存网络响应";
           }
           return networkResponse;
         } catch (error) {
-          Logger.error("网络请求失败:", error);
+          Logger.warn("网络请求失败，尝试从缓存获取", { url: event.request.url, error });
+          
+          // 网络失败时尝试从缓存获取
+          const cachedResponse = await caches.match(event.request);
+          if (cachedResponse) {
+            cacheResult = "从缓存获取成功";
+            return cachedResponse;
+          }
+          
+          Logger.error("网络和缓存都不可用", { url: event.request.url });
           throw error;
         }
       }),
@@ -623,6 +714,10 @@ class MessageHandler {
  */
 (async (worker: ServiceWorkerGlobalScope) => {
   Logger.info("🚀 增强版 Service Worker 启动");
+  
+  // 在启动时确定运行模式，避免重复计算
+  IS_DEVELOPMENT_MODE = determineDevelopmentMode();
+  Logger.info(`🔧 运行模式: ${IS_DEVELOPMENT_MODE ? "开发模式" : "生产模式"}`);
 
   const cacheManager = CacheManager.getInstance();
   const requestInterceptor = new RequestInterceptor();
@@ -634,8 +729,18 @@ class MessageHandler {
     event.waitUntil(
       (async () => {
         try {
+          // 开发模式下跳过缓存，保持热重载能力
+          if (isDevelopmentMode()) {
+            Logger.info("🔧 开发模式：跳过静态资源缓存，保持热重载能力");
+            await worker.skipWaiting();
+            Logger.info("✅ Service Worker 安装完成（开发模式）");
+            return;
+          }
+
           // 缓存静态资源
           await cacheManager.cacheStaticAssets();
+          // 缓存页面HTML
+          await cacheManager.cachePageHTML();
           // 跳过等待，立即激活
           await worker.skipWaiting();
           Logger.info("✅ Service Worker 安装完成");
@@ -652,6 +757,15 @@ class MessageHandler {
     event.waitUntil(
       (async () => {
         try {
+          // 开发模式下跳过缓存清理，保持热重载能力
+          if (isDevelopmentMode()) {
+            Logger.info("🔧 开发模式：跳过缓存清理，保持热重载能力");
+            // 立即接管所有客户端
+            await worker.clients.claim();
+            Logger.info("✅ Service Worker 激活完成（开发模式）");
+            return;
+          }
+
           // 清理旧缓存
           const cacheNames = await caches.keys();
           const oldCaches = cacheNames.filter((name) => !Object.values(CACHE_STRATEGIES).includes(name as any));
@@ -673,12 +787,51 @@ class MessageHandler {
 
   // 请求拦截 - 应用缓存策略
   worker.addEventListener("fetch", (event) => {
+    // 开发模式下不拦截请求，保持热重载能力
+    if (isDevelopmentMode()) {
+      return;
+    }
     requestInterceptor.handleFetch(event);
   });
 
   // 消息处理 - 与客户端通信
   worker.addEventListener("message", (event) => {
     messageHandler.handleMessage(event);
+  });
+
+  // 添加调试消息处理
+  worker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "DEBUG_CACHE_STATUS") {
+      event.waitUntil(
+        (async () => {
+          try {
+            const cacheNames = await caches.keys();
+            const cacheStatus: Record<string, string[]> = {};
+            
+            for (const cacheName of cacheNames) {
+              const cache = await caches.open(cacheName);
+              const keys = await cache.keys();
+              cacheStatus[cacheName] = keys.map(req => req.url);
+            }
+            
+            Logger.info("缓存状态调试信息:", cacheStatus);
+            // 直接通知客户端，不通过MessageHandler
+            (self as any).clients.matchAll().then((clients: readonly Client[]) => {
+              clients.forEach((client: Client) => {
+                if (client && "postMessage" in client) {
+                  (client as any).postMessage({ 
+                    type: "DEBUG_CACHE_STATUS", 
+                    data: cacheStatus 
+                  });
+                }
+              });
+            });
+          } catch (error) {
+            Logger.error("获取缓存状态失败:", error);
+          }
+        })()
+      );
+    }
   });
 
   // 错误处理

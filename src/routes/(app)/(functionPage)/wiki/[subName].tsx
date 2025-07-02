@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@solidjs/router";
+import { A, useNavigate, useParams } from "@solidjs/router";
 import {
   createEffect,
   createMemo,
@@ -628,7 +628,7 @@ export default function WikiSubPage() {
                           <For each={group.groupFields}>
                             {(field, index) => {
                               return (
-                                <a
+                                <A
                                   href={`/wiki/${field.name}`}
                                   onClick={() => {
                                     setWikiSelectorIsOpen(false);
@@ -639,7 +639,7 @@ export default function WikiSubPage() {
                                   <span class="text-nowrap overflow-ellipsis">
                                     {dictionary().db[field.name].selfName}
                                   </span>
-                                </a>
+                                </A>
                               );
                             }}
                           </For>

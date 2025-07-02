@@ -5,6 +5,7 @@ import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { defaultData } from "~/../db/defaultData";
 import { Button } from "~/components/controls/button";
+import { A } from "@solidjs/router";
 
 export default function CharacterIndexPage() {
   // UI文本字典
@@ -25,9 +26,9 @@ export default function CharacterIndexPage() {
   return (
     <>
       <div class="Content flex flex-col gap-4 p-3">
-        <a href="/character/defaultCharacterId">
+        <A href="/character/defaultCharacterId">
           <Button>defaultCharacterId</Button>
-        </a>
+        </A>
       </div>
 
       <BabylonBg  />

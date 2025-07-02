@@ -9,6 +9,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
 import { getActStore, setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
+import { A } from "@solidjs/router";
 
 // pwa的非标准类型定义
 type UserChoice = Promise<{
@@ -334,13 +335,13 @@ export const Setting = () => {
                       title: "Repository",
                       description: "Github Repository",
                       children: (
-                        <a
+                        <A
                           target="_blank"
                           href="https://github.com/ToramCalculator-Team/ToramCalculator"
                           class="hover:underline"
                         >
                           https://github.com/ToramCalculator-Team/ToramCalculator
-                        </a>
+                        </A>
                       ),
                     },
                   ])}
