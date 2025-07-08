@@ -14,6 +14,8 @@ import {
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
+import { useMachine } from '@xstate/solid';
+import { indexPageMachine } from '../../machines/indexPageMachine';
 
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -45,13 +47,10 @@ export default function IndexPage() {
   let searchInputRef!: HTMLInputElement;
 
   const navigate = useNavigate();
-  const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
-  const [searchInputValue, setSearchInputValue] = createSignal("");
-  const [searchResult, setSearchResult] = createSignal<FinalResult>({});
-  const [searchResultOpened, setSearchResultOpened] = createSignal(false);
-  const [isNullResult, setIsNullResult] = createSignal(true);
-  const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
-  const [isSearching, setIsSearching] = createSignal(false);
+
+  // 使用 @xstate/solid 的 useMachine 管理状态
+  const [state, send] = useMachine(indexPageMachine);
+  const context = () => state.context;
 
   const media = useContext(MediaContext);
 
@@ -173,37 +172,33 @@ export default function IndexPage() {
     (cardGroup) => getCardDatas(cardGroup),
   );
 
-  const search = async () => {
-    if (searchInputValue() === "" || searchInputValue() === null) {
-      setSearchResultOpened(false);
-      return;
-    }
-
-    setIsSearching(true);
-    setIsNullResult(true);
-
-    try {
-      const finalResult: FinalResult = {
-        ...(await searchAllTables(searchInputValue())),
-      };
-      setSearchResult(finalResult);
-
-      // 所有部分结果都为空时，显示无结果提示
-      const resultListSate: boolean[] = [];
-      Object.entries(finalResult).forEach(([_key, value]) => {
-        if (value.length > 0) {
-          setIsNullResult(false);
-        }
-        resultListSate.push(true);
-      });
-      setResultListState(resultListSate);
-
-      // 在搜索结果返回后再更新UI状态
-      setSearchResultOpened(true);
-      history.pushState({ popup: true }, "");
-    } finally {
-      setIsSearching(false);
-    }
+  // 事件分发函数
+  const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
+    send({ type: 'SEARCH_INPUT_CHANGE', value: e.target.value });
+  };
+  
+  const handleSearch = () => {
+    send({ type: 'SEARCH_SUBMIT' });
+  };
+  
+  const handleClearSearch = () => {
+    send({ type: 'SEARCH_CLEAR' });
+  };
+  
+  const handleToggleSearchResults = () => {
+    send({ type: 'TOGGLE_SEARCH_RESULTS' });
+  };
+  
+  const handleOpenLoginDialog = () => {
+    send({ type: 'OPEN_LOGIN_DIALOG' });
+  };
+  
+  const handleCloseLoginDialog = () => {
+    send({ type: 'CLOSE_LOGIN_DIALOG' });
+  };
+  
+  const handleToggleAnimation = () => {
+    send({ type: 'TOGGLE_ANIMATION' });
   };
 
   // 问候语计算方法
@@ -252,8 +247,8 @@ export default function IndexPage() {
             } else if (document.activeElement === searchInputRef) {
               searchInputRef.blur();
               e.stopPropagation();
-            } else if (searchResultOpened()) {
-              setSearchResultOpened(false);
+            } else if (context().searchResultOpened) {
+              handleToggleSearchResults();
               e.stopPropagation();
             }
             if (document.activeElement === searchInputRef) {
@@ -277,8 +272,10 @@ export default function IndexPage() {
 
     // 浏览器后退事件监听
     const handlePopState = (): void => {
-      setSearchResultOpened(false);
-      history.replaceState(null, "", location.href);
+      // 如果当前在搜索结果状态，后退时关闭搜索
+      if (context().searchResultOpened) {
+        send({ type: 'TOGGLE_SEARCH_RESULTS' });
+      }
     };
 
     // 监听绑带与清除
@@ -301,7 +298,7 @@ export default function IndexPage() {
       >
         {/* 右上角控件 */}
         <div
-          class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${searchResultOpened() ? `z-0 opacity-0` : `z-10 opacity-100`}`}
+          class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${context().searchResultOpened ? `z-0 opacity-0` : `z-10 opacity-100`}`}
         >
           <For each={extraFunctionConfig()}>
             {(config, index) => {
@@ -319,11 +316,11 @@ export default function IndexPage() {
 
         {/* 顶部 */}
         <div
-          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${searchResultOpened() ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
+          class={`Top flex flex-1 flex-col justify-center overflow-hidden ${context().searchResultOpened ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
         >
           {/* 问候语 */}
           <Presence exitBeforeEnter>
-            <Show when={!searchResultOpened()}>
+            <Show when={!context().searchResultOpened}>
               <Motion.div
                 animate={{
                   opacity: [0, 1],
@@ -345,7 +342,7 @@ export default function IndexPage() {
               >
                 <div
                   class={`LogoBox mb-2 cursor-pointer self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
-                  onClick={() => setLoginDialogIsOpen(true)}
+                  onClick={handleOpenLoginDialog}
                 >
                   <Icon.LogoText class="h-12 landscape:h-auto" />
                 </div>
@@ -369,14 +366,12 @@ export default function IndexPage() {
           >
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start landscape:m-0 landscape:flex landscape:w-60 ${
-                searchResultOpened() ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
+                context().searchResultOpened ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
               }`}
             >
               <Button
                 level="quaternary"
-                onClick={() => {
-                  setSearchResultOpened(false);
-                }}
+                onClick={handleClearSearch}
                 class="w-full outline-hidden focus-within:outline-hidden"
               >
                 <Icon.Line.Back />
@@ -384,7 +379,7 @@ export default function IndexPage() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${searchResultOpened() ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
+              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${context().searchResultOpened ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
             >
               <input
                 id="searchInput"
@@ -395,18 +390,16 @@ export default function IndexPage() {
                     ? getGreetings() + "," + userName()
                     : dictionary().ui.searchPlaceholder
                 }
-                value={searchInputValue()}
+                value={context().searchInputValue}
                 tabIndex={1}
-                disabled={isSearching()}
-                onInput={(e) => {
-                  setSearchInputValue(e.target.value);
-                }}
+                disabled={context().isSearching}
+                onInput={handleSearchInput}
                 class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 landscape:flex landscape:bg-transparent dark:mix-blend-normal"
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}
                 class="group-hover:text-accent-color landscape:bg-transparent"
-                onClick={search}
+                onClick={handleSearch}
                 tabindex={1}
               >
                 <Icon.Line.Search />
@@ -417,7 +410,7 @@ export default function IndexPage() {
 
           {/* 搜索结果 */}
           <Presence exitBeforeEnter>
-            <Show when={searchResultOpened()}>
+            <Show when={context().searchResultOpened}>
               <Motion.div
                 animate={{
                   clipPath: ["inset(10% 10% 90% 10% round 12px)", "inset(0% 0% 0% 0% round 12px)"],
@@ -440,7 +433,7 @@ export default function IndexPage() {
                 class={`Result mt-1 flex h-full gap-1 overflow-y-hidden`}
               >
                 <Show
-                  when={!isSearching()}
+                  when={!context().isSearching}
                   fallback={
                     <Motion.div class="flex flex-1 flex-col items-center justify-center gap-4">
                       <LoadingBar class="w-1/2 min-w-[320px]" />
@@ -449,7 +442,7 @@ export default function IndexPage() {
                   }
                 >
                   <Show
-                    when={!isNullResult()}
+                    when={!context().isNullResult}
                     fallback={
                       <Motion.div
                         class={`NullResult flex flex-1 flex-col gap-12 p-6 landscape:p-0`}
@@ -486,36 +479,34 @@ export default function IndexPage() {
                         defer
                       >
                         <div class="ResultGroupContainer flex w-full flex-col gap-1">
-                          <For each={Object.entries(searchResult())}>
+                          <For each={Object.entries(context().searchResult)}>
                             {([key, groupResultValue], groupIndex) => {
                               const groupType = key as keyof DB;
 
                               return (
                                 <Show when={groupResultValue.length > 0}>
                                   <div class={`ResultGroup flex flex-col gap-[2px]`}>
-                                    <Motion.button
-                                      onClick={() =>
-                                        setResultListState([
-                                          ...resultListSate().slice(0, groupIndex()),
-                                          !resultListSate()[groupIndex()],
-                                          ...resultListSate().slice(groupIndex() + 1),
-                                        ])
-                                      }
-                                      class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${resultListSate()[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                                                           <Motion.button
+                                                                                  onClick={() => {
+                                           const newResultListState = [...context().resultListState];
+                                           newResultListState[groupIndex()] = !newResultListState[groupIndex()];
+                                           send({ type: 'UPDATE_RESULT_LIST_STATE', resultListState: newResultListState });
+                                         }}
+                                       class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${context().resultListState[groupIndex()] ? "" : ""} rounded px-3 py-4`}
                                       animate={{
                                         opacity: [0, 1],
                                         transform: ["translateY(30px)", "translateY(0)"],
                                       }}
-                                      transition={{
-                                        duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                        delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
-                                      }}
-                                    >
-                                      <Icon.Line.Basketball />
-                                      <span class="w-full text-left font-bold">
-                                        {dictionary().db[groupType].selfName} [{groupResultValue.length}]
-                                      </span>
-                                      {resultListSate()[groupIndex()] ? (
+                                                                              transition={{
+                                          duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                          delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+                                        }}
+                                      >
+                                        <Icon.Line.Basketball />
+                                        <span class="w-full text-left font-bold">
+                                          {dictionary().db[groupType].selfName} [{groupResultValue.length}]
+                                        </span>
+                                        {context().resultListState[groupIndex()] ? (
                                         <Icon.Line.Left class="rotate-[360deg]" />
                                       ) : (
                                         <Icon.Line.Left class="rotate-[270deg]" />
@@ -526,18 +517,18 @@ export default function IndexPage() {
                                         {(resultItem, index) => {
                                           return (
                                             <Motion.button
-                                              class={`Item group flex flex-col gap-1 ${resultListSate()[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
+                                              class={`Item group flex flex-col gap-1 ${context().resultListState[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
                                               animate={{
                                                 opacity: [0, 1],
                                                 transform: ["translateY(30px)", "translateY(0)"],
                                               }}
                                               transition={{
                                                 duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                                delay: store.settings.userInterface.isAnimationEnabled
-                                                  ? index() < 15
-                                                    ? groupIndex() * 0.3 + index() * 0.07
-                                                    : 0
-                                                  : 0,
+                                                                                                  delay: store.settings.userInterface.isAnimationEnabled
+                                                    ? index() < 15
+                                                      ? groupIndex() * 0.3 + index() * 0.07
+                                                      : 0
+                                                    : 0,
                                               }}
                                               onClick={async () => {
                                                 // 设置卡片类型和ID
@@ -585,7 +576,7 @@ export default function IndexPage() {
 
         {/* Bottom */}
         <Presence exitBeforeEnter>
-          <Show when={!searchResultOpened()}>
+          <Show when={!context().searchResultOpened}>
             <Motion.div
               animate={{
                 opacity: [0, 1],
@@ -627,11 +618,11 @@ export default function IndexPage() {
                       1: "1st",
                       2: "2nd",
                       3: "3rd",
-                    }[1 + (index() % 3)];
+                                         }[1 + (index() % 3)];
 
                     return (
                       <Presence exitBeforeEnter>
-                        <Show when={!searchResultOpened()}>
+                        <Show when={!context().searchResultOpened}>
                           <Motion.a
                             tabIndex={2}
                             href={menuItem.groupType === "wiki" ? `/wiki/${menuItem.title}` : menuItem.title}
@@ -646,7 +637,7 @@ export default function IndexPage() {
                             }}
                             transition={{
                               duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                              delay: index() * 0.05,
+                                                             delay: index() * 0.05,
                             }}
                           >
                             <Button
@@ -814,7 +805,7 @@ export default function IndexPage() {
         </Presence>
       </Portal>
       <Filing />
-      <LoginDialog state={loginDialogIsOpen} setState={setLoginDialogIsOpen} />
+             <LoginDialog state={() => context().loginDialogIsOpen} setState={() => handleCloseLoginDialog()} />
     </MetaProvider>
   );
 }
