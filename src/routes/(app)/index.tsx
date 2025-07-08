@@ -47,11 +47,7 @@ export default function IndexPage() {
   const navigate = useNavigate();
   const [loginDialogIsOpen, setLoginDialogIsOpen] = createSignal(false);
   const [searchInputValue, setSearchInputValue] = createSignal("");
-  const [searchResult, setSearchResult] = createSignal<FinalResult>({
-    mob: [],
-    skill: [],
-    crystal: [],
-  });
+  const [searchResult, setSearchResult] = createSignal<FinalResult>({});
   const [searchResultOpened, setSearchResultOpened] = createSignal(false);
   const [isNullResult, setIsNullResult] = createSignal(true);
   const [resultListSate, setResultListState] = createSignal<boolean[]>([]);
@@ -111,21 +107,6 @@ export default function IndexPage() {
         groupType: "wiki",
         title: "weapon",
         icon: "Category2",
-      },
-      {
-        groupType: "wiki",
-        title: "armor",
-        icon: "User",
-      },
-      {
-        groupType: "wiki",
-        title: "option",
-        icon: "Heart",
-      },
-      {
-        groupType: "wiki",
-        title: "special",
-        icon: "Layers",
       },
       {
         groupType: "wiki",

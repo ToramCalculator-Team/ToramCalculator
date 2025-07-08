@@ -3,8 +3,6 @@ import { getCookie } from "vinxi/http";
 import { jwtVerify } from "jose";
 import { getDB } from "~/repositories/database";
 import { findUserById } from "~/repositories/user";
-import { sql, Transaction } from "kysely";
-import { DB } from "../../../db/generated/kysely/kyesely";
 import { getPrimaryKeys } from "~/repositories/untils";
 
 export async function POST(event: APIEvent) {
@@ -50,7 +48,7 @@ try {
     for (const transaction of body) {
       for (const change of transaction.changes) {
         // 获取表的主键列
-        const primaryKeys = await getPrimaryKeys(trx, change.table_name);
+        const primaryKeys = await getPrimaryKeys(trx, change.table_name) as string[];
         
         // 如果没有主键，跳过这个变更
         if (primaryKeys.length === 0) {

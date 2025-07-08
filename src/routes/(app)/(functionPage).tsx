@@ -7,8 +7,8 @@ import * as Icon from "~/components/icon";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import { Button  } from "~/components/controls/button";
-import { DataEnums } from "../../../db/dataEnums";
 import { MediaContext } from "~/contexts/Media";
+import { DB } from "~/../db/generated/kysely/kyesely";
 
 const NavBtn = (props: {
   config: {
@@ -59,7 +59,7 @@ const Nav = () => {
     }
     return condition ? "bg-area-color lg:bg-brand-color-1st" : "";
   };
-  const navHiddenTables: (keyof DataEnums)[] = [
+  const navHiddenTables: (keyof DB)[] = [
     "verification_token",
     "account",
     "account_create_data",
