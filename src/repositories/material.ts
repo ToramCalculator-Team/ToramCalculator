@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DataType } from "./untils";
-import { material, DB, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
+import { material, DB, item, recipe, recipe_ingredient } from "../../db/generated/kysely/kyesely";
 
 export interface Material extends DataType<material> {
   MainTable: Awaited<ReturnType<typeof findMaterials>>[number];

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { getDB } from "./database";
-import { DB, member } from "~/../db/kysely/kyesely";
+import { DB, member } from "../../db/generated/kysely/kyesely";
 import { playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";

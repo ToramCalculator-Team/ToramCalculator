@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 import { getDB } from "~/repositories/database";
 import { findUserById } from "~/repositories/user";
 import { sql, Transaction } from "kysely";
-import { DB } from "../../../db/kysely/kyesely";
+import { DB } from "../../../db/generated/kysely/kyesely";
 import { getPrimaryKeys } from "~/repositories/untils";
 
 export async function POST(event: APIEvent) {

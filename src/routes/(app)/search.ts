@@ -1,5 +1,5 @@
 import { getDB } from "~/repositories/database";
-import { DB } from "~/../db/kysely/kyesely";
+import { DB } from "../../../db/generated/kysely/kyesely";
 import { ExpressionBuilder, sql } from "kysely";
 import { DBDataConfig } from "~/routes/(app)/(functionPage)/wiki/dataConfig/dataConfig";
 import { getDictionary } from "~/locales/i18n";

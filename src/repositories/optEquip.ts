@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { DataType } from "./untils";
-import { DB, option } from "~/../db/kysely/kyesely";
+import { DB, option } from "../../db/generated/kysely/kyesely";
 
 export interface Option extends DataType<option> {
   MainTable: Awaited<ReturnType<typeof findOptions>>[number];

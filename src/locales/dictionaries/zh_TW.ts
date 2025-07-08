@@ -81,26 +81,26 @@ const SkillTreeType = {
   LuckSkill: "",
   MerchantSkill: "商人技能",
   PetSkill: "寵物技能",
-}
+};
 
 const SkillTargetType = {
   None: "無目標",
   Self: "自己",
   Player: "同伴",
   Enemy: "敵人",
-}
+};
 
 const SkillChargingType = {
   Chanting: "詠唱",
   Reservoir: "蓄力",
-}
+};
 
 const SkillDistanceType = {
   None: "不受影響",
   Long: "僅受遠距離威力影響",
   Short: "僅受近距離威力影響",
   Both: "同時受遠距離和近距離威力影響",
-}
+};
 
 const enums: DataEnums = {
   account: {
@@ -490,7 +490,8 @@ const dictionary: dictionary = {
         title: "隱私",
         postVisibility: {
           title: "作品可見性",
-          description: "作品可見性包括：角色、怪物、鍛晶、主武器、副武器、身體裝備、追加裝備、特殊裝備、寵物、技能、消耗品、連擊、分析器。",
+          description:
+            "作品可見性包括：角色、怪物、鍛晶、主武器、副武器、身體裝備、追加裝備、特殊裝備、寵物、技能、消耗品、連擊、分析器。",
           everyone: "所有人可見",
           friends: "僅好友可見",
           onlyMe: "僅自己可見",
@@ -522,16 +523,15 @@ const dictionary: dictionary = {
         pwa: {
           title: "PWA",
           description: "此應用為漸進式網頁應用程式（PWA），若條件允許，可安裝至裝置以獲得更佳的體驗，預設為不安裝。",
-          notSupported: "此裝置不支援 PWA 或已安裝"
+          notSupported: "此裝置不支援 PWA 或已安裝",
         },
         storageInfo: {
           title: "資源快取使用情況",
           description: "包含 localStorage、IndexedDB 等多項快取（将刷新頁面）",
           usage: "已使用",
-          clearStorage: "清除此應用的所有快取"
-        }
-      }
-      
+          clearStorage: "清除此應用的所有快取",
+        },
+      },
     },
     index: {
       adventurer: "冒險者",
@@ -541,7 +541,7 @@ const dictionary: dictionary = {
       nullSearchResultWarring: "沒有找到相關內容!!!∑(ﾟДﾟノ)ノ",
       nullSearchResultTips: "變強之旅總有艱險阻道，求知路上不免遍佈荊棘\n但是這裡沒有\n搜尋結果裡沒有就是沒有",
     },
-    wiki:{
+    wiki: {
       selector: {
         title: "Wiki選擇器",
         groupName: {
@@ -550,7 +550,7 @@ const dictionary: dictionary = {
         },
       },
       tableConfig: {
-        title: "表格配置"
+        title: "表格配置",
       },
       news: {
         title: "最近更新",
@@ -688,7 +688,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _avatarTocharacter: {
       selfName: "",
@@ -704,7 +704,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _backRelation: {
       selfName: "",
@@ -720,7 +720,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _campA: {
       selfName: "",
@@ -736,7 +736,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _campB: {
       selfName: "",
@@ -752,7 +752,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _characterToconsumable: {
       selfName: "",
@@ -768,7 +768,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalTooption: {
       selfName: "",
@@ -784,7 +784,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -800,7 +800,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_option: {
       selfName: "",
@@ -816,7 +816,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_special: {
       selfName: "",
@@ -832,7 +832,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_weapon: {
       selfName: "",
@@ -848,7 +848,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalTospecial: {
       selfName: "",
@@ -864,7 +864,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _crystalToweapon: {
       selfName: "",
@@ -880,7 +880,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _frontRelation: {
       selfName: "",
@@ -896,7 +896,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     _linkZones: {
       selfName: "",
@@ -905,15 +905,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      cardFields: undefined
+      cardFields: undefined,
     },
     _mobTozone: {
       selfName: "",
@@ -929,7 +929,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     account: {
       selfName: "帳號",
@@ -999,7 +999,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     account_create_data: {
       selfName: "帳號創建資料",
@@ -1010,7 +1010,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     account_update_data: {
       selfName: "帳號更新資料",
@@ -1021,7 +1021,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     activity: {
       selfName: "活動",
@@ -1036,8 +1036,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     address: {
       selfName: "地点",
@@ -1076,8 +1091,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "地址所屬世界的ID。",
           formFieldDescription: "請選擇地址所屬的世界。",
         },
-      } ,
-      description: ""
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+      },
+      description: "",
     },
     armor: {
       selfName: "防具",
@@ -1085,35 +1115,35 @@ const dictionary: dictionary = {
         baseDef: {
           key: "基礎防禦",
           tableFieldDescription: "防具的基礎防禦值",
-          formFieldDescription: "請輸入防具的基礎防禦值"
+          formFieldDescription: "請輸入防具的基礎防禦值",
         },
         modifiers: {
           key: "修正值",
           tableFieldDescription: "防具的屬性修正值",
-          formFieldDescription: "請輸入防具的屬性修正值"
+          formFieldDescription: "請輸入防具的屬性修正值",
         },
         colorA: {
           key: "顏色A",
           tableFieldDescription: "防具的主要顏色",
-          formFieldDescription: "請選擇防具的主要顏色"
+          formFieldDescription: "請選擇防具的主要顏色",
         },
         colorB: {
           key: "顏色B",
           tableFieldDescription: "防具的次要顏色",
-          formFieldDescription: "請選擇防具的次要顏色"
+          formFieldDescription: "請選擇防具的次要顏色",
         },
         colorC: {
           key: "顏色C",
           tableFieldDescription: "防具的第三顏色",
-          formFieldDescription: "請選擇防具的第三顏色"
+          formFieldDescription: "請選擇防具的第三顏色",
         },
         itemId: {
           key: "物品ID",
           tableFieldDescription: "關聯的物品ID",
-          formFieldDescription: "請選擇關聯的物品"
-        }
+          formFieldDescription: "請選擇關聯的物品",
+        },
       },
-      description: "防具裝備信息"
+      description: "防具裝備信息",
     },
     avatar: {
       selfName: "時裝",
@@ -1149,7 +1179,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     character: {
       selfName: "機體",
@@ -1290,7 +1320,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     character_skill: {
       selfName: "機體技能",
@@ -1321,7 +1351,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     combo: {
       selfName: "連擊",
@@ -1347,7 +1377,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     combo_step: {
       selfName: "連擊步驟",
@@ -1390,7 +1420,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     consumable: {
       selfName: "消耗品",
@@ -1411,26 +1441,26 @@ const dictionary: dictionary = {
             EleStro: "屬性強化",
             EleRes: "屬性抗性",
             pRes: "物理抗性",
-            mRes: "魔法抗性"
-          }
+            mRes: "魔法抗性",
+          },
         },
         effectDuration: {
           key: "效果持續時間",
           tableFieldDescription: "效果持續時間（秒）",
-          formFieldDescription: "請輸入效果持續時間（秒）"
+          formFieldDescription: "請輸入效果持續時間（秒）",
         },
         effects: {
           key: "效果",
           tableFieldDescription: "消耗品的效果描述",
-          formFieldDescription: "請輸入消耗品的效果描述"
+          formFieldDescription: "請輸入消耗品的效果描述",
         },
         itemId: {
           key: "物品ID",
           tableFieldDescription: "關聯的物品ID",
-          formFieldDescription: "請選擇關聯的物品"
-        }
+          formFieldDescription: "請選擇關聯的物品",
+        },
       },
-      description: "消耗品信息"
+      description: "消耗品信息",
     },
     crystal: {
       selfName: "晶石",
@@ -1458,7 +1488,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     drop_item: {
       selfName: "掉落物品",
@@ -1509,7 +1539,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     image: {
       selfName: "圖片",
@@ -1550,7 +1580,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     item: {
       selfName: "道具",
@@ -1558,37 +1588,37 @@ const dictionary: dictionary = {
         id: {
           key: "道具ID",
           tableFieldDescription: "道具的唯一識別碼",
-          formFieldDescription: "道具的唯一識別碼"
+          formFieldDescription: "道具的唯一識別碼",
         },
         name: {
           key: "道具名稱",
           tableFieldDescription: "道具名稱",
-          formFieldDescription: "道具名稱"
+          formFieldDescription: "道具名稱",
         },
         dataSources: {
           key: "資料來源",
           tableFieldDescription: "資料來源",
-          formFieldDescription: "資料來源"
+          formFieldDescription: "資料來源",
         },
         details: {
           key: "詳細資料",
           tableFieldDescription: "詳細資料",
-          formFieldDescription: "詳細資料"
+          formFieldDescription: "詳細資料",
         },
         statisticId: {
           key: "統計ID",
           tableFieldDescription: "統計ID",
-          formFieldDescription: "統計ID"
+          formFieldDescription: "統計ID",
         },
         updatedByAccountId: {
           key: "更新者ID",
           tableFieldDescription: "更新者ID",
-          formFieldDescription: "更新者ID"
+          formFieldDescription: "更新者ID",
         },
         createdByAccountId: {
           key: "建立者ID",
           tableFieldDescription: "建立者ID",
-          formFieldDescription: "建立者ID"
+          formFieldDescription: "建立者ID",
         },
         itemType: {
           key: "道具類型",
@@ -1601,11 +1631,11 @@ const dictionary: dictionary = {
             Special: "特殊",
             Crystal: "晶石",
             Consumable: "消耗品",
-            Material: "材料"
-          }
-        }
+            Material: "材料",
+          },
+        },
       },
-      description: ""
+      description: "",
     },
     material: {
       selfName: "材料",
@@ -1620,26 +1650,26 @@ const dictionary: dictionary = {
             Beast: "獸皮",
             Wood: "木材",
             Drug: "藥材",
-            Magic: "魔法材料"
-          }
+            Magic: "魔法材料",
+          },
         },
         ptValue: {
           key: "點數值",
           tableFieldDescription: "材料的點數值",
-          formFieldDescription: "請輸入材料的點數值"
+          formFieldDescription: "請輸入材料的點數值",
         },
         price: {
           key: "價格",
           tableFieldDescription: "材料的價格",
-          formFieldDescription: "請輸入材料的價格"
+          formFieldDescription: "請輸入材料的價格",
         },
         itemId: {
           key: "物品ID",
           tableFieldDescription: "關聯的物品ID",
-          formFieldDescription: "請選擇關聯的物品"
-        }
+          formFieldDescription: "請選擇關聯的物品",
+        },
       },
-      description: "材料信息"
+      description: "材料信息",
     },
     member: {
       selfName: "成員",
@@ -1699,10 +1729,10 @@ const dictionary: dictionary = {
         actions: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     mercenary: {
       selfName: "傭兵",
@@ -1750,7 +1780,7 @@ const dictionary: dictionary = {
           },
         },
       },
-      description: ""
+      description: "",
     },
     mob: {
       selfName: "怪物",
@@ -1767,8 +1797,10 @@ const dictionary: dictionary = {
         },
         type: {
           key: "怪物類型",
-          tableFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
-          formFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+          tableFieldDescription:
+            "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+          formFieldDescription:
+            "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
           enumMap: mobType,
         },
         captureable: {
@@ -1793,14 +1825,16 @@ const dictionary: dictionary = {
         },
         initialElement: {
           key: "元素屬性",
-          tableFieldDescription: "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
+          tableFieldDescription:
+            "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
           formFieldDescription: "這裡填寫怪物的初始屬性即可，有關屬性變化的描述請在怪物行為中編輯",
           enumMap: elementType,
         },
         radius: {
           key: "半徑",
           tableFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中",
-          formFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
+          formFieldDescription:
+            "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
         },
         maxhp: {
           key: "最大生命值",
@@ -1880,20 +1914,23 @@ const dictionary: dictionary = {
         statisticId: {
           key: "統計信息ID",
           tableFieldDescription: "這是怪物的統計信息欄位資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription: "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription:
+            "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
         updatedByAccountId: {
           key: "更新者ID",
           tableFieldDescription: "這是怪物的更新者資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription: "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription:
+            "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
         createdByAccountId: {
           key: "創建者ID",
           tableFieldDescription: "這是怪物的創建者資料庫id，一般來說，你應該不可能看到這個",
-          formFieldDescription: "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+          formFieldDescription:
+            "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
         },
       },
-      description: ""
+      description: "",
     },
     npc: {
       selfName: "NPC",
@@ -1913,8 +1950,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     option: {
       selfName: "追加裝備",
@@ -1922,35 +1974,35 @@ const dictionary: dictionary = {
         baseDef: {
           key: "基礎防禦",
           tableFieldDescription: "追加裝備的基礎防禦值",
-          formFieldDescription: "請輸入追加裝備的基礎防禦值"
+          formFieldDescription: "請輸入追加裝備的基礎防禦值",
         },
         modifiers: {
           key: "修正值",
           tableFieldDescription: "追加裝備的屬性修正值",
-          formFieldDescription: "請輸入追加裝備的屬性修正值"
+          formFieldDescription: "請輸入追加裝備的屬性修正值",
         },
         colorA: {
           key: "顏色A",
           tableFieldDescription: "追加裝備的主要顏色",
-          formFieldDescription: "請選擇追加裝備的主要顏色"
+          formFieldDescription: "請選擇追加裝備的主要顏色",
         },
         colorB: {
           key: "顏色B",
           tableFieldDescription: "追加裝備的次要顏色",
-          formFieldDescription: "請選擇追加裝備的次要顏色"
+          formFieldDescription: "請選擇追加裝備的次要顏色",
         },
         colorC: {
           key: "顏色C",
           tableFieldDescription: "追加裝備的第三顏色",
-          formFieldDescription: "請選擇追加裝備的第三顏色"
+          formFieldDescription: "請選擇追加裝備的第三顏色",
         },
         itemId: {
           key: "物品ID",
           tableFieldDescription: "關聯的物品ID",
-          formFieldDescription: "請選擇關聯的物品"
-        }
+          formFieldDescription: "請選擇關聯的物品",
+        },
       },
-      description: "追加裝備信息"
+      description: "追加裝備信息",
     },
     player: {
       selfName: "玩家",
@@ -1976,7 +2028,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     player_armor: {
       selfName: "玩家防具",
@@ -2027,7 +2079,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     player_option: {
       selfName: "玩家追加裝備",
@@ -2063,7 +2115,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     player_pet: {
       selfName: "玩家寵物",
@@ -2208,7 +2260,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     player_special: {
       selfName: "玩家特殊裝備",
@@ -2239,7 +2291,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     player_weapon: {
       selfName: "玩家武器",
@@ -2290,7 +2342,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     post: {
       selfName: "帖子",
@@ -2321,7 +2373,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     recipe: {
       selfName: "配方",
@@ -2341,8 +2393,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     recipe_ingredient: {
       selfName: "配方材料",
@@ -2383,7 +2450,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     session: {
       selfName: "",
@@ -2409,7 +2476,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     simulator: {
       selfName: "模擬器",
@@ -2445,7 +2512,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     skill: {
       selfName: "技能",
@@ -2465,40 +2532,40 @@ const dictionary: dictionary = {
           tableFieldDescription: "技能的最上層分類，包括魔法技能、黑暗之力、輔助技能、戰士等。",
           formFieldDescription: "技能的最上層分類，包括魔法技能、黑暗之力、輔助技能、戰士等。",
           enumMap: {
-            "BladeSkill": "劍術技能",
-            "ShootSkill": "射擊技能",
-            "MagicSkill": "魔法技能",
-            "MarshallSkill": "格鬥技能",
-            "DualSwordSkill": "雙劍技能",
-            "HalberdSkill": "斧槍技能",
-            "MononofuSkill": "武士技能",
-            "CrusherSkill": "粉碎者技能",
-            "FeatheringSkill": "羽毛技能",
-            "GuardSkill": "守護技能",
-            "ShieldSkill": "盾牌技能",
-            "KnifeSkill": "短刀技能",
-            "KnightSkill": "騎士技能",
-            "HunterSkill": "獵人技能",
-            "PriestSkill": "祭司技能",
-            "AssassinSkill": "刺客技能",
-            "WizardSkill": "巫師技能",
-            "SupportSkill": "輔助技能",
-            "BattleSkill": "戰鬥技能",
-            "SurvivalSkill": "生存技能",
-            "SmithSkill": "鍛造技能",
-            "AlchemySkill": "鍊金技能",
-            "TamerSkill": "馴獸師技能",
-            "DarkPowerSkill": "黑暗之力技能",
-            "MagicBladeSkill": "魔劍技能",
-            "DancerSkill": "舞者技能",
-            "MinstrelSkill": "吟遊詩人技能",
-            "BareHandSkill": "空手技能",
-            "NinjaSkill": "忍者技能",
-            "PartisanSkill": "游擊兵技能",
-            "LuckSkill": "幸運技能",
-            "MerchantSkill": "商人技能",
-            "PetSkill": "寵物技能"
-          }
+            BladeSkill: "劍術技能",
+            ShootSkill: "射擊技能",
+            MagicSkill: "魔法技能",
+            MarshallSkill: "格鬥技能",
+            DualSwordSkill: "雙劍技能",
+            HalberdSkill: "斧槍技能",
+            MononofuSkill: "武士技能",
+            CrusherSkill: "粉碎者技能",
+            FeatheringSkill: "羽毛技能",
+            GuardSkill: "守護技能",
+            ShieldSkill: "盾牌技能",
+            KnifeSkill: "短刀技能",
+            KnightSkill: "騎士技能",
+            HunterSkill: "獵人技能",
+            PriestSkill: "祭司技能",
+            AssassinSkill: "刺客技能",
+            WizardSkill: "巫師技能",
+            SupportSkill: "輔助技能",
+            BattleSkill: "戰鬥技能",
+            SurvivalSkill: "生存技能",
+            SmithSkill: "鍛造技能",
+            AlchemySkill: "鍊金技能",
+            TamerSkill: "馴獸師技能",
+            DarkPowerSkill: "黑暗之力技能",
+            MagicBladeSkill: "魔劍技能",
+            DancerSkill: "舞者技能",
+            MinstrelSkill: "吟遊詩人技能",
+            BareHandSkill: "空手技能",
+            NinjaSkill: "忍者技能",
+            PartisanSkill: "游擊兵技能",
+            LuckSkill: "幸運技能",
+            MerchantSkill: "商人技能",
+            PetSkill: "寵物技能",
+          },
         },
         posX: {
           key: "橫向位置",
@@ -2520,31 +2587,31 @@ const dictionary: dictionary = {
           tableFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
           formFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
           enumMap: {
-            "None": "無目標",
-            "Self": "自身",
-            "Player": "隊友",
-            "Enemy": "敵人"
-          }
+            None: "無目標",
+            Self: "自身",
+            Player: "隊友",
+            Enemy: "敵人",
+          },
         },
         chargingType: {
           key: "詠唱類型",
           tableFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
           formFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
           enumMap: {
-            "Chanting": "詠唱",
-            "Reservoir": "儲存"
-          }
+            Chanting: "詠唱",
+            Reservoir: "儲存",
+          },
         },
         distanceType: {
           key: "距離威力類型",
           tableFieldDescription: "表示哪種類型的距離威力會影響這個技能",
           formFieldDescription: "表示哪種類型的距離威力會影響這個技能",
           enumMap: {
-            "None": "無影響",
-            "Long": "僅遠距離",
-            "Short": "僅近距離",
-            "Both": "兩者皆有"
-          }
+            None: "無影響",
+            Long: "僅遠距離",
+            Short: "僅近距離",
+            Both: "兩者皆有",
+          },
         },
         isPassive: {
           key: "被動",
@@ -2575,9 +2642,9 @@ const dictionary: dictionary = {
           key: "建立者",
           tableFieldDescription: "這是建立者的資料庫ID。通常，這不會顯示。",
           formFieldDescription: "這是建立者的資料庫ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
-        }
+        },
       },
-      description: ""
+      description: "",
     },
     skill_effect: {
       selfName: "技能效果",
@@ -2668,7 +2735,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     special: {
       selfName: "特殊裝備",
@@ -2689,7 +2756,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     statistic: {
       selfName: "統計資訊",
@@ -2720,7 +2787,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     task: {
       selfName: "任務",
@@ -2761,8 +2828,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     task_collect_require: {
       selfName: "任務收集要求",
@@ -2788,7 +2870,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     task_kill_requirement: {
       selfName: "任務擊殺要求",
@@ -2814,7 +2896,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     task_reward: {
       selfName: "任務獎勵",
@@ -2855,7 +2937,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     team: {
       selfName: "隊伍",
@@ -2876,7 +2958,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     user: {
       selfName: "用戶",
@@ -2912,7 +2994,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     verification_token: {
       selfName: "驗證令牌",
@@ -2933,7 +3015,7 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
       },
-      description: ""
+      description: "",
     },
     weapon: {
       selfName: "武器",
@@ -2955,38 +3037,38 @@ const dictionary: dictionary = {
             Arrow: "箭矢",
             ShortSword: "小刀",
             NinjutsuScroll: "忍術卷軸",
-            Shield: "盾牌"
-          }
+            Shield: "盾牌",
+          },
         },
         baseAbi: {
           key: "基礎攻擊力",
           tableFieldDescription: "武器的基礎攻擊力",
-          formFieldDescription: "請輸入武器的基礎攻擊力"
+          formFieldDescription: "請輸入武器的基礎攻擊力",
         },
         stability: {
           key: "穩定率",
           tableFieldDescription: "武器的穩定率，影響傷害波動",
-          formFieldDescription: "請輸入武器的穩定率"
+          formFieldDescription: "請輸入武器的穩定率",
         },
         modifiers: {
           key: "修正值",
           tableFieldDescription: "武器的屬性修正值",
-          formFieldDescription: "請輸入武器的屬性修正值"
+          formFieldDescription: "請輸入武器的屬性修正值",
         },
         colorA: {
           key: "顏色A",
           tableFieldDescription: "武器的主要顏色",
-          formFieldDescription: "請選擇武器的主要顏色"
+          formFieldDescription: "請選擇武器的主要顏色",
         },
         colorB: {
           key: "顏色B",
           tableFieldDescription: "武器的次要顏色",
-          formFieldDescription: "請選擇武器的次要顏色"
+          formFieldDescription: "請選擇武器的次要顏色",
         },
         colorC: {
           key: "顏色C",
           tableFieldDescription: "武器的第三顏色",
-          formFieldDescription: "請選擇武器的第三顏色"
+          formFieldDescription: "請選擇武器的第三顏色",
         },
         elementType: {
           key: "元素屬性",
@@ -2999,16 +3081,16 @@ const dictionary: dictionary = {
             Water: "水屬性",
             Fire: "火屬性",
             Earth: "地屬性",
-            Wind: "風屬性"
-          }
+            Wind: "風屬性",
+          },
         },
         itemId: {
           key: "物品ID",
           tableFieldDescription: "關聯的物品ID",
-          formFieldDescription: "請選擇關聯的物品"
-        }
+          formFieldDescription: "請選擇關聯的物品",
+        },
       },
-      description: "武器裝備信息"
+      description: "武器裝備信息",
     },
     world: {
       selfName: "世界",
@@ -3023,8 +3105,23 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     zone: {
       selfName: "區域",
@@ -3032,37 +3129,51 @@ const dictionary: dictionary = {
         id: {
           key: "ID",
           tableFieldDescription: "區域的唯一識別符",
-          formFieldDescription: "區域的唯一識別符，由系統自動生成"
+          formFieldDescription: "區域的唯一識別符，由系統自動生成",
         },
         name: {
           key: "名稱",
           tableFieldDescription: "區域的名稱",
-          formFieldDescription: "請輸入區域的名稱"
+          formFieldDescription: "請輸入區域的名稱",
         },
         rewardNodes: {
           key: "獎勵節點數",
           tableFieldDescription: "區域內的獎勵節點數量",
-          formFieldDescription: "請輸入區域內的獎勵節點數量"
+          formFieldDescription: "請輸入區域內的獎勵節點數量",
         },
         activityId: {
           key: "活動ID",
           tableFieldDescription: "此區域所屬的活動ID",
-          formFieldDescription: "選擇此區域所屬的活動"
+          formFieldDescription: "選擇此區域所屬的活動",
         },
         addressId: {
           key: "地圖ID",
           tableFieldDescription: "此區域所屬的地圖ID",
-          formFieldDescription: "選擇此區域所屬的地圖"
-        }
+          formFieldDescription: "選擇此區域所屬的地圖",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
       cardFields: {
         mobs: "出現的怪物",
-        npcs: "出現的NPC"
+        npcs: "出現的NPC",
       },
-      description: "遊戲中的區域資訊，包含名稱、連結區域、獎勵節點等"
+      description: "遊戲中的區域資訊，包含名稱、連結區域、獎勵節點等",
     },
   },
-  enums: enums,
 };
 
 export default dictionary;

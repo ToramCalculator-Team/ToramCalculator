@@ -12,7 +12,7 @@ services:
       - ${PG_PORT}:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../db/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../db/generated/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
     command:
       - -c
       - listen_addresses=*

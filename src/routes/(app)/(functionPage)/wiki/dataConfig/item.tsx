@@ -11,7 +11,7 @@ import {
   Setter,
   Show,
 } from "solid-js";
-import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "~/../db/kysely/enums";
+import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "../../../../../../db/kysely/enums";
 import {
   DB,
   drop_item,
@@ -22,7 +22,7 @@ import {
   task,
   task_collect_require,
   task_reward,
-} from "~/../db/kysely/kyesely";
+} from "../../../../../../db/generated/kysely/kyesely";
 import { CardSection } from "~/components/module/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "~/repositories/database";
@@ -40,7 +40,7 @@ import {
   recipeSchema,
   task_collect_requireSchema,
   task_rewardSchema,
-} from "~/../db/zod/index";
+} from "../../../../../../db/generated/zod/index";
 import { z } from "zod";
 import { defaultData } from "../../../../../../db/defaultData";
 import { Input } from "~/components/controls/input";

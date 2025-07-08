@@ -1,5 +1,5 @@
 import { getDB } from "./database";
-import { activity } from "~/../db/kysely/kyesely";
+import { activity } from "../../db/generated/kysely/kyesely";
 import { createId } from "@paralleldrive/cuid2";
 import { DataType } from "./untils";
 

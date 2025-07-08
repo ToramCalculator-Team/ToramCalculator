@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, combo } from "~/../db/kysely/kyesely";
+import { DB, combo } from "../../db/generated/kysely/kyesely";
 import {DataType } from "./untils";
 
 export interface Combo extends DataType<combo> {

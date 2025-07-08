@@ -1,4 +1,4 @@
-import { DB, address } from "~/../db/kysely/kyesely";
+import { DB, address } from "../../db/generated/kysely/kyesely";
 import { getDB } from "./database";
 import { createId } from "@paralleldrive/cuid2";
 import { DataType } from "./untils";

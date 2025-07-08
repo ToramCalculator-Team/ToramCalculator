@@ -1,6 +1,6 @@
 import { Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, image } from "~/../db/kysely/kyesely";
+import { DB, image } from "../../db/generated/kysely/kyesely";
 import { DataType } from "./untils";
 
 export interface Image extends DataType<image> {}

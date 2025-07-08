@@ -27,7 +27,7 @@ echo "用户名: $PG_USERNAME"
 echo "数据库名: $PG_DBNAME"
 
 # 备份目录
-OUTPUT_DIR="./test/backup_csv"
+OUTPUT_DIR="./test/backups"
 mkdir -p "$OUTPUT_DIR"
 
 # 检查是否使用本地数据库

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { getDB } from "./database";
-import { DB, skill_effect } from "~/../db/kysely/kyesely";
+import { DB, skill_effect } from "../../db/generated/kysely/kyesely";
 import { DataType } from "./untils";
 
 export interface SkillEffect extends DataType<skill_effect> {

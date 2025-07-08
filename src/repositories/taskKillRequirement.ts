@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, task_kill_requirement } from "~/../db/kysely/kyesely";
+import { DB, task_kill_requirement } from "../../db/generated/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";

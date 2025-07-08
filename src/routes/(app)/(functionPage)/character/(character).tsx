@@ -3,7 +3,7 @@ import { BabylonBg } from "~/components/module/BabylonGame";
 import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { defaultData } from "~/../db/defaultData";
+import { defaultData } from "../../../../../db/defaultData";
 import { Button } from "~/components/controls/button";
 import { A } from "@solidjs/router";
 

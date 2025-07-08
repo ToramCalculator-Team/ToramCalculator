@@ -1,5 +1,5 @@
 import { Selectable, Insertable, Updateable, Kysely, Transaction, sql } from "kysely";
-import { DB } from "../../db/kysely/kyesely";
+import { DB } from "../../db/generated/kysely/kyesely";
 import { store } from "~/store";
 
 /**

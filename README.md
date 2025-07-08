@@ -42,8 +42,6 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 ├── .husky/              # Git hooks 配置
 ├── backend/             # 后端服务配置
 ├── db/                  # 数据库相关
-│   ├── clientDB/        # 客户端数据库文件
-│   └── serverDB/        # 服务端数据库文件
 ├── public/              # 静态资源
 ├── src/                 # 应用逻辑源代码
 │   ├── components/      # 页面组件

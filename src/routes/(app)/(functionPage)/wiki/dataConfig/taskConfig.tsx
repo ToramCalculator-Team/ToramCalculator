@@ -6,14 +6,14 @@ import {
   task_collect_requireSchema,
   task_kill_requirementSchema,
   task_rewardSchema,
-} from "~/../db/zod/index";
-import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "~/../db/kysely/kyesely";
+} from "../../../../../../db/generated/zod/index";
+import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
-import { defaultData } from "~/../db/defaultData";
+import { defaultData } from "../../../../../../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";

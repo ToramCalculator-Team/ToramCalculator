@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, recipe_ingredient } from "~/../db/kysely/kyesely";
+import { DB, recipe_ingredient } from "../../db/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 

@@ -24,7 +24,7 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/type";
-import { DB } from "~/../db/kysely/kyesely";
+import { DB } from "../../../db/generated/kysely/kyesely";
 import { MediaContext } from "~/contexts/Media";
 import { setStore, store } from "~/store";
 import { LoginDialog } from "~/components/module/loginDialog";
@@ -85,59 +85,111 @@ export default function IndexPage() {
     },
   ]);
 
+  type CustomMenuConfig = {
+    groupType: "wiki" | "appPages";
+    title: keyof dictionary["db"] | keyof dictionary["ui"]["nav"];
+    icon: keyof typeof Icon.Filled;
+  };
+
   // 自定义首页导航配置
-  const [customMenuConfig] = createSignal<
-    {
-      groupType: "wiki" | "appPages";
-      title: keyof dictionary["db"] | string;
-      icon: keyof typeof Icon.Filled;
-    }[]
-  >([
-    {
-      groupType: "wiki",
-      title: "mob",
-      icon: "Browser",
-    },
-    {
-      groupType: "wiki",
-      title: "skill",
-      icon: "Basketball",
-    },
-    {
-      groupType: "wiki",
-      title: "weapon",
-      icon: "Category2",
-    },
-    // {
-    //   groupType: "/wiki/crystal",
-    //   title: "crystal",
-    //   icon: "Box2",
-    // },
-    // {
-    //   groupType: "/wiki/pet",
-    //   title: "pets",
-    //   icon: "Heart",
-    // },
-    // {
-    //   groupType: "/wiki/building",
-    //   title: "items",
-    //   icon: "Layers",
-    // },
-    {
-      groupType: "appPages",
-      title: "character",
-      icon: "User",
-    },
-    {
-      groupType: "appPages",
-      title: "simulator",
-      icon: "Gamepad",
-    },
-  ]);
-  
+  const [customMenuConfig] = createSignal<{
+    top: CustomMenuConfig[];
+    all: CustomMenuConfig[];
+  }>({
+    top: [
+      {
+        groupType: "wiki",
+        title: "mob",
+        icon: "Browser",
+      },
+      {
+        groupType: "wiki",
+        title: "skill",
+        icon: "Basketball",
+      },
+      {
+        groupType: "wiki",
+        title: "weapon",
+        icon: "Category2",
+      },
+      {
+        groupType: "wiki",
+        title: "armor",
+        icon: "User",
+      },
+      {
+        groupType: "wiki",
+        title: "option",
+        icon: "Heart",
+      },
+      {
+        groupType: "wiki",
+        title: "special",
+        icon: "Layers",
+      },
+      {
+        groupType: "wiki",
+        title: "crystal",
+        icon: "Box2",
+      },
+      {
+        groupType: "appPages",
+        title: "character",
+        icon: "User",
+      },
+      {
+        groupType: "appPages",
+        title: "simulator",
+        icon: "Gamepad",
+      },
+    ],
+    all: [
+      {
+        groupType: "wiki",
+        title: "mob",
+        icon: "Browser",
+      },
+      {
+        groupType: "wiki",
+        title: "skill",
+        icon: "Basketball",
+      },
+      {
+        groupType: "wiki",
+        title: "weapon",
+        icon: "Category2",
+      },
+      {
+        groupType: "wiki",
+        title: "crystal",
+        icon: "Box2",
+      },
+      {
+        groupType: "wiki",
+        title: "player_pet",
+        icon: "Heart",
+      },
+      {
+        groupType: "wiki",
+        title: "item",
+        icon: "Layers",
+      },
+      {
+        groupType: "appPages",
+        title: "character",
+        icon: "User",
+      },
+      {
+        groupType: "appPages",
+        title: "simulator",
+        icon: "Gamepad",
+      },
+    ],
+  });
+
   const [cachedCardDatas, { refetch }] = createResource(
     () => wikiStore.cardGroup,
-    (cardGroup) => getCardDatas(cardGroup)
+    (cardGroup) => getCardDatas(cardGroup),
   );
 
   const search = async () => {
@@ -311,7 +363,7 @@ export default function IndexPage() {
                 class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden landscape:flex-none`}
               >
                 <div
-                  class={`LogoBox cursor-pointer mb-2 self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
+                  class={`LogoBox mb-2 cursor-pointer self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
                   onClick={() => setLoginDialogIsOpen(true)}
                 >
                   <Icon.LogoText class="h-12 landscape:h-auto" />
@@ -587,7 +639,7 @@ export default function IndexPage() {
                 }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
               >
-                <For each={customMenuConfig()}>
+                <For each={customMenuConfig().top}>
                   {(menuItem, index) => {
                     const IconComponent = Icon.Filled[menuItem.icon];
                     const brandColor = {

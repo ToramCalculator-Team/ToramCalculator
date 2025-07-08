@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DataType } from "./untils";
-import { consumable, DB, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
+import { consumable, DB, item, recipe, recipe_ingredient } from "../../db/generated/kysely/kyesely";
 import { createId } from "@paralleldrive/cuid2";
 
 export interface Consumable extends DataType<consumable> {

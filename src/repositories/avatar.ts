@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder } from "kysely";
 import { getDB } from "./database";
-import { DB, avatar } from "~/../db/kysely/kyesely";
+import { DB, avatar } from "../../db/generated/kysely/kyesely";
 import { DataType } from "./untils";
 
 export interface Avatar extends DataType<avatar> {

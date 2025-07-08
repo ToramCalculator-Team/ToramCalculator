@@ -1,6 +1,6 @@
 import { type Mob } from "~/repositories/mob";
 import { MobDifficultyFlag } from "../../db/kysely/enums";
-import { mob } from "../../db/kysely/kyesely";
+import { mob } from "../../db/generated/kysely/kyesely";
 /**
  * 
  * @param baseMob 零星状态下的数据

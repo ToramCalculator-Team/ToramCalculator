@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Kysely, Transaction } from "kysely";
 import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import {DataType } from "./untils";
-import { account, DB } from "~/../db/kysely/kyesely";
+import { account, DB } from "../../db/generated/kysely/kyesely";
 
 export interface Account extends DataType<account> {
   MainTable: Awaited<ReturnType<typeof findAccounts>>[number];

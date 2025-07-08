@@ -1,5 +1,4 @@
-import { DataEnums } from "../../db/dataEnums";
-import { DB } from "~/../db/kysely/kyesely";
+import { DB } from "../../db/generated/kysely/kyesely";
 
 export type FieldDetail = {
   key: string;
@@ -211,5 +210,4 @@ export interface dictionary {
     };
   };
   db: { [K in keyof DB]: Dic<DB[K]> };
-  enums: DataEnums;
 }

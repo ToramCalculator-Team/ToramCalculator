@@ -1,15 +1,15 @@
 import { For, Show, Index, Accessor, createResource, createSignal } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import * as Icon from "~/components/icon";
-import { drop_itemSchema, mobSchema, zoneSchema } from "~/../db/zod/index";
+import { drop_itemSchema, mobSchema, zoneSchema } from "../../../../../../db/generated/zod/index";
 import { Input } from "~/components/controls/input";
 import { z } from "zod";
-import { DB, drop_item, mob, zone } from "~/../db/kysely/kyesely";
+import { DB, drop_item, mob, zone } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/module/objRender";
 import { getDB } from "~/repositories/database";
 import { Select } from "~/components/controls/select";
-import { MOB_DIFFICULTY_FLAG } from "~/../db/enums";
+import { MOB_DIFFICULTY_FLAG } from "../../../../../../db/enums";
 import {
   ItemType,
   MobDifficultyFlag,
@@ -17,10 +17,10 @@ import {
   ElementType,
   BossPartType,
   BossPartBreakRewardType,
-} from "~/../db/kysely/enums";
+} from "../../../../../../db/kysely/enums";
 import { generateBossDataByFlag } from "~/utils/mob";
 import { CardSection } from "~/components/module/cardSection";
-import { defaultData } from "~/../db/defaultData";
+import { defaultData } from "../../../../../../db/defaultData";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { createForm, Field } from "@tanstack/solid-form";

@@ -1,14 +1,14 @@
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { addressSchema, zoneSchema } from "~/../db/zod/index";
-import { address, DB, zone } from "~/../db/kysely/kyesely";
+import { addressSchema, zoneSchema } from "../../../../../../db/generated/zod/index";
+import { address, DB, zone } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "~/repositories/database";
 import { ObjRender } from "~/components/module/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
-import { defaultData } from "~/../db/defaultData";
+import { defaultData } from "../../../../../../db/defaultData";
 import { CardSection } from "~/components/module/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";

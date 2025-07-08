@@ -1,5 +1,5 @@
 import { getDB } from "./database";
-import { user, DB } from "../../db/kysely/kyesely";
+import { user, DB } from "../../db/generated/kysely/kyesely";
 import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 import { Expression, ExpressionBuilder, Transaction } from "kysely";

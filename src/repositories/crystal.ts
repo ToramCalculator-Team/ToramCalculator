@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
-import { crystal, DB, item, recipe, recipe_ingredient } from "~/../db/kysely/kyesely";
+import { crystal, DB, item, recipe, recipe_ingredient } from "../../db/generated/kysely/kyesely";
 
 export interface Crystal extends DataType<crystal> {
   MainTable: Awaited<ReturnType<typeof findCrystals>>[number];

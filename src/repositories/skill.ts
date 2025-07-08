@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, skill } from "~/../db/kysely/kyesely";
+import { DB, skill } from "../../db/generated/kysely/kyesely";
 import { insertStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { skillEffectSubRelations } from "./skillEffect";

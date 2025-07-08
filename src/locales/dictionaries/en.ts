@@ -2,8 +2,7 @@ import { DataEnums } from "../../../db/dataEnums";
 import { MobType } from "../../../db/kysely/enums";
 import { type dictionary } from "../type";
 
-
-const elementType={
+const elementType = {
   Normal: "Normal",
   Dark: "Dark",
   Earth: "Earth",
@@ -11,7 +10,7 @@ const elementType={
   Light: "Light",
   Water: "Water",
   Wind: "Wind",
-}
+};
 
 const mobType: Record<MobType, string> = {
   Boss: "Boss",
@@ -19,7 +18,7 @@ const mobType: Record<MobType, string> = {
   Mob: "Mob",
 };
 
-const MainWeaponType= {
+const MainWeaponType = {
   OneHandSword: "One-handed Sword",
   TwoHandSword: "Two-handed Sword",
   Bow: "Bow",
@@ -30,40 +29,40 @@ const MainWeaponType= {
   Katana: "Katana",
   Bowgun: "Bowgun",
   selfName: "Main Weapon Type",
-}
+};
 const SubWeaponType = {
   Arrow: "Arrow",
   ShortSword: "Short Sword",
   NinjutsuScroll: "Ninjutsu Scroll",
   Shield: "Shield",
   selfName: "Sub Weapon Type",
-}
+};
 
 const WeaponType = {
   ...MainWeaponType,
-  ...SubWeaponType
-}
+  ...SubWeaponType,
+};
 
-const enums:DataEnums = {
+const enums: DataEnums = {
   account: {
     type: {
       Admin: "Admin",
-      User: "User"
-    }
+      User: "User",
+    },
   },
   address: {
     type: {
       Normal: "Normal Address",
-      Limited: "Limited Time Address"
-    }
+      Limited: "Limited Time Address",
+    },
   },
   weapon: {
     type: WeaponType,
-    elementType: elementType
+    elementType: elementType,
   },
   mob: {
     type: mobType,
-    initialElement: elementType
+    initialElement: elementType,
   },
   item: {
     itemType: {
@@ -73,8 +72,8 @@ const enums:DataEnums = {
       Special: "Special",
       Crystal: "Crystal",
       Consumable: "Consumable",
-      Material: "Material"
-    }
+      Material: "Material",
+    },
   },
   material: {
     type: {
@@ -83,8 +82,8 @@ const enums:DataEnums = {
       Beast: "Beast",
       Wood: "Wood",
       Drug: "Drug",
-      Magic: "Magic"
-    }
+      Magic: "Magic",
+    },
   },
   consumable: {
     type: {
@@ -99,8 +98,8 @@ const enums:DataEnums = {
       EleStro: "Elemental Strength",
       EleRes: "Elemental Resistance",
       pRes: "Physical Resistance",
-      mRes: "Magic Resistance"
-    }
+      mRes: "Magic Resistance",
+    },
   },
   crystal: {
     type: {
@@ -108,8 +107,8 @@ const enums:DataEnums = {
       WeaponCrystal: "Weapon Crystal",
       ArmorCrystal: "Armor Crystal",
       OptionCrystal: "Additional Crystal",
-      SpecialCrystal: "Special Crystal"
-    }
+      SpecialCrystal: "Special Crystal",
+    },
   },
   recipe_ingredient: {
     type: {
@@ -120,35 +119,35 @@ const enums:DataEnums = {
       Beast: "Beast",
       Wood: "Wood",
       Drug: "Drug",
-      Magic: "Magic"
-    }
+      Magic: "Magic",
+    },
   },
   drop_item: {
     relatedPartType: {
       A: "Part A",
       B: "Part B",
-      C: "Part C"
+      C: "Part C",
     },
     breakRewardType: {
       None: "None",
       CanDrop: "Can Drop",
-      DropUp: "Drop Rate Up"
-    }
+      DropUp: "Drop Rate Up",
+    },
   },
   task: {
     type: {
       Collect: "Collect",
       Defeat: "Defeat",
       Both: "Both",
-      Other: "Other"
-    }
+      Other: "Other",
+    },
   },
   task_reward: {
     type: {
       Exp: "Experience",
       Money: "Money",
-      Item: "Item"
-    }
+      Item: "Item",
+    },
   },
   skill: {
     treeType: {
@@ -184,31 +183,31 @@ const enums:DataEnums = {
       PartisanSkill: "Partisan Skill",
       LuckSkill: "Luck Skill",
       MerchantSkill: "Merchant Skill",
-      PetSkill: "Pet Skill"
+      PetSkill: "Pet Skill",
     },
     chargingType: {
       Chanting: "Chanting",
-      Reservoir: "Reservoir"
+      Reservoir: "Reservoir",
     },
     distanceType: {
       None: "Not Affected",
       Long: "Long Range Only",
       Short: "Short Range Only",
-      Both: "Both Ranges"
+      Both: "Both Ranges",
     },
     targetType: {
       None: "No Target",
       Self: "Self",
       Player: "Ally",
-      Enemy: "Enemy"
-    }
+      Enemy: "Enemy",
+    },
   },
   player_armor: {
     ability: {
       Normal: "Normal",
       Light: "Light",
-      Heavy: "Heavy"
-    }
+      Heavy: "Heavy",
+    },
   },
   player_pet: {
     personaType: {
@@ -226,7 +225,7 @@ const enums:DataEnums = {
       Active: "Active",
       Sturdy: "Sturdy",
       Steady: "Steady",
-      Max: "Max"
+      Max: "Max",
     },
     type: {
       AllTrades: "All Trades",
@@ -237,16 +236,16 @@ const enums:DataEnums = {
       Avoidance: "Avoidance",
       Hit: "Hit",
       SkillsEnhancement: "Skills Enhancement",
-      Genius: "Genius"
+      Genius: "Genius",
     },
-    weaponType: MainWeaponType
+    weaponType: MainWeaponType,
   },
   avatar: {
     type: {
       Decoration: "",
       Top: "",
-      Bottom: ""
-    }
+      Bottom: "",
+    },
   },
   character: {
     personalityType: {
@@ -258,12 +257,12 @@ const enums:DataEnums = {
     },
     partnerSkillAType: {
       Passive: "",
-      Active: ""
+      Active: "",
     },
     partnerSkillBType: {
       Passive: "",
-      Active: ""
-    }
+      Active: "",
+    },
   },
   combo_step: {
     type: {
@@ -281,22 +280,22 @@ const enums:DataEnums = {
       AMomentaryWalk: "",
       Reflection: "",
       Illusion: "",
-      Max: ""
-    }
+      Max: "",
+    },
   },
   mercenary: {
     type: {
       Tank: "",
-      Dps: ""
+      Dps: "",
     },
     skillAType: {
       Passive: "",
-      Active: ""
+      Active: "",
     },
     skillBType: {
       Passive: "",
-      Active: ""
-    }
+      Active: "",
+    },
   },
   member: {
     mobDifficultyFlag: {
@@ -304,8 +303,8 @@ const enums:DataEnums = {
       Normal: "",
       Hard: "",
       Lunatic: "",
-      Ultimate: ""
-    }
+      Ultimate: "",
+    },
   },
   user: {},
   session: {},
@@ -334,7 +333,7 @@ const enums:DataEnums = {
   combo: {},
   simulator: {},
   team: {},
-}
+};
 
 const dictionary: dictionary = {
   ui: {
@@ -396,7 +395,7 @@ const dictionary: dictionary = {
         colorTheme: {
           title: "Color Theme",
           description: "...",
-        }
+        },
       },
       language: {
         title: "Language",
@@ -406,8 +405,8 @@ const dictionary: dictionary = {
           zhCN: "简体中文",
           zhTW: "繁体中文",
           enUS: "English",
-          jaJP: "日本語"
-        }
+          jaJP: "日本語",
+        },
       },
       statusAndSync: {
         title: "Status and Sync",
@@ -418,17 +417,18 @@ const dictionary: dictionary = {
         syncStateAcrossClients: {
           title: "Sync State Across Clients",
           description: "Not implemented yet.",
-        }
+        },
       },
       privacy: {
         title: "Privacy",
         postVisibility: {
           title: "Post Visibility",
-          description: "Post Visibility includes: Character, Monstors, Crystas, Main Weapon, Sub Weapon, Body Armor, Additional Equipment, Special Equipment, Skills, Consumables, Combo, Simulator.",
+          description:
+            "Post Visibility includes: Character, Monstors, Crystas, Main Weapon, Sub Weapon, Body Armor, Additional Equipment, Special Equipment, Skills, Consumables, Combo, Simulator.",
           everyone: "Everyone",
           friends: "Friends",
-          onlyMe: "Only Me"
-        }
+          onlyMe: "Only Me",
+        },
       },
       messages: {
         title: "Messages",
@@ -437,8 +437,8 @@ const dictionary: dictionary = {
           description: "Not implemented yet.",
           notifyOnReferencedContentChange: "Notify on Referenced Content Change",
           notifyOnLike: "Notify on Like",
-          notifyOnBookmark: "Notify on Bookmark"
-        }
+          notifyOnBookmark: "Notify on Bookmark",
+        },
       },
       about: {
         title: "About",
@@ -449,23 +449,23 @@ const dictionary: dictionary = {
         version: {
           title: "Version",
           description: "0.0.1-alpha",
-        }
+        },
       },
       tool: {
         title: "App Operations",
         pwa: {
           title: "PWA",
-          description: "This app is designed as a Progressive Web App (PWA), which can be installed on your device when supported to provide a better experience. It is not installed by default.",
-          notSupported: "PWA is not supported or already installed on this device"
+          description:
+            "This app is designed as a Progressive Web App (PWA), which can be installed on your device when supported to provide a better experience. It is not installed by default.",
+          notSupported: "PWA is not supported or already installed on this device",
         },
         storageInfo: {
           title: "Storage Usage",
           description: "Includes caches such as localStorage, IndexedDB, etc.",
           usage: "Used",
-          clearStorage: "Clear all caches for this app (Will refresh the page)"
-        }
-      }
-      
+          clearStorage: "Clear all caches for this app (Will refresh the page)",
+        },
+      },
     },
     index: {
       adventurer: "Adventurer",
@@ -473,7 +473,7 @@ const dictionary: dictionary = {
       goodAfternoon: "Good Afternoon ~",
       goodEvening: "Good Evening ~",
       nullSearchResultWarring: "Can not find anything!",
-      nullSearchResultTips: "Emmm..."
+      nullSearchResultTips: "Emmm...",
     },
     wiki: {
       selector: {
@@ -484,11 +484,11 @@ const dictionary: dictionary = {
         },
       },
       tableConfig: {
-        title: "Table Config"
+        title: "Table Config",
       },
       news: {
-        title: "News"
-      }
+        title: "News",
+      },
     },
     simulator: {
       pageTitle: "Simulator",
@@ -504,30 +504,30 @@ const dictionary: dictionary = {
         },
         teamConfig: {
           title: "Team Config",
-        }
-      }
+        },
+      },
     },
     character: {
       pageTitle: "Skill",
       description: "Emmm..............",
     },
   },
-  db:{
+  db: {
     _armorTocrystal: {
       selfName: "",
       fields: {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _avatarTocharacter: {
       selfName: "",
@@ -535,15 +535,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _backRelation: {
       selfName: "",
@@ -551,15 +551,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _campA: {
       selfName: "",
@@ -567,15 +567,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _campB: {
       selfName: "",
@@ -583,15 +583,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _characterToconsumable: {
       selfName: "",
@@ -599,15 +599,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalTooption: {
       selfName: "",
@@ -615,15 +615,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_armor: {
       selfName: "",
@@ -631,15 +631,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_option: {
       selfName: "",
@@ -647,15 +647,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_special: {
       selfName: "",
@@ -663,15 +663,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalToplayer_weapon: {
       selfName: "",
@@ -679,15 +679,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalTospecial: {
       selfName: "",
@@ -695,15 +695,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _crystalToweapon: {
       selfName: "",
@@ -711,15 +711,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _frontRelation: {
       selfName: "",
@@ -727,15 +727,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     _linkZones: {
       selfName: "",
@@ -744,15 +744,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      cardFields: undefined
+      cardFields: undefined,
     },
     _mobTozone: {
       selfName: "",
@@ -760,15 +760,15 @@ const dictionary: dictionary = {
         A: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         B: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     account: {
       selfName: "Account",
@@ -776,7 +776,7 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -784,28 +784,28 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             User: "",
-            Admin: ""
-          }
+            Admin: "",
+          },
         },
         provider: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         providerAccountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         refresh_token: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         access_token: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         expires_at: {
           key: "",
@@ -820,25 +820,25 @@ const dictionary: dictionary = {
         scope: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         id_token: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         session_state: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         userId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     account_create_data: {
       selfName: "Account Create Data",
@@ -846,10 +846,10 @@ const dictionary: dictionary = {
         accountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     account_update_data: {
       selfName: "Account Update Data",
@@ -857,10 +857,10 @@ const dictionary: dictionary = {
         accountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     activity: {
       selfName: "Activity",
@@ -868,15 +868,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     address: {
       selfName: "Address",
@@ -884,12 +899,13 @@ const dictionary: dictionary = {
         id: {
           key: "ID",
           tableFieldDescription: "The database ID of the address. Usually not displayed.",
-          formFieldDescription: "The database ID of the address. If you are asked to input this, please report it to the developers."
+          formFieldDescription:
+            "The database ID of the address. If you are asked to input this, please report it to the developers.",
         },
         name: {
           key: "Name",
           tableFieldDescription: "The name of the address, usually consistent with the in-game name.",
-          formFieldDescription: "Please enter the name as it appears in the game."
+          formFieldDescription: "Please enter the name as it appears in the game.",
         },
         type: {
           key: "Type",
@@ -897,26 +913,41 @@ const dictionary: dictionary = {
           formFieldDescription: "Please select the type of address.",
           enumMap: {
             Normal: "Normal Address",
-            Limited: "Limited Time Address"
-          }
+            Limited: "Limited Time Address",
+          },
         },
         posX: {
           key: "X Coordinate",
           tableFieldDescription: "The X coordinate of the address.",
-          formFieldDescription: "Please enter the X coordinate of the address."
+          formFieldDescription: "Please enter the X coordinate of the address.",
         },
         posY: {
           key: "Y Coordinate",
           tableFieldDescription: "The Y coordinate of the address.",
-          formFieldDescription: "Please enter the Y coordinate of the address."
+          formFieldDescription: "Please enter the Y coordinate of the address.",
         },
         worldId: {
           key: "World",
           tableFieldDescription: "The ID of the world this address belongs to.",
-          formFieldDescription: "Please select the world this address belongs to."
-        }
+          formFieldDescription: "Please select the world this address belongs to.",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     armor: {
       selfName: "Armor",
@@ -924,35 +955,35 @@ const dictionary: dictionary = {
         baseDef: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorA: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorB: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorC: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     avatar: {
       selfName: "Avatar",
@@ -960,12 +991,12 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -974,21 +1005,21 @@ const dictionary: dictionary = {
           enumMap: {
             Decoration: "",
             Top: "",
-            Bottom: ""
-          }
+            Bottom: "",
+          },
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         playerId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     character: {
       selfName: "Character",
@@ -996,42 +1027,42 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         lv: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         str: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         int: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         vit: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         agi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         dex: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         personalityType: {
           key: "",
@@ -1042,53 +1073,53 @@ const dictionary: dictionary = {
             Luk: "",
             Cri: "",
             Tec: "",
-            Men: ""
-          }
+            Men: "",
+          },
         },
         personalityValue: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         weaponId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         subWeaponId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         armorId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         optEquipId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         speEquipId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         cooking: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         partnerSkillAId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         partnerSkillAType: {
           key: "",
@@ -1096,8 +1127,8 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             Passive: "",
-            Active: ""
-          }
+            Active: "",
+          },
         },
         partnerSkillBId: {
           key: "",
@@ -1110,26 +1141,26 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             Passive: "",
-            Active: ""
-          }
+            Active: "",
+          },
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         details: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         statisticId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     character_skill: {
       selfName: "Character Skill",
@@ -1137,30 +1168,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         lv: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         isStarGem: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         characterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     combo: {
       selfName: "Combo",
@@ -1168,25 +1199,25 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         disable: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         characterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     combo_step: {
       selfName: "Combo Step",
@@ -1194,7 +1225,7 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -1215,21 +1246,21 @@ const dictionary: dictionary = {
             AMomentaryWalk: "",
             Reflection: "",
             Illusion: "",
-            Max: ""
-          }
+            Max: "",
+          },
         },
         characterSkillId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         comboId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     consumable: {
       selfName: "Consumable",
@@ -1250,26 +1281,26 @@ const dictionary: dictionary = {
             EleStro: "",
             EleRes: "",
             pRes: "",
-            mRes: ""
-          }
+            mRes: "",
+          },
         },
         effectDuration: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         effects: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     crystal: {
       selfName: "Crystal",
@@ -1283,21 +1314,21 @@ const dictionary: dictionary = {
             WeaponCrystal: "",
             ArmorCrystal: "",
             OptionCrystal: "",
-            SpecialCrystal: ""
-          }
+            SpecialCrystal: "",
+          },
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     drop_item: {
       selfName: "Drop Item",
@@ -1305,17 +1336,17 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         probability: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         relatedPartType: {
           key: "",
@@ -1324,13 +1355,13 @@ const dictionary: dictionary = {
           enumMap: {
             A: "",
             B: "",
-            C: ""
-          }
+            C: "",
+          },
         },
         relatedPartInfo: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         breakRewardType: {
           key: "",
@@ -1339,16 +1370,16 @@ const dictionary: dictionary = {
           enumMap: {
             None: "",
             CanDrop: "",
-            DropUp: ""
-          }
+            DropUp: "",
+          },
         },
         dropById: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     image: {
       selfName: "Image",
@@ -1356,40 +1387,40 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         dataUrl: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         npcId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         weaponId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         armorId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         optEquipId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         mobId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     item: {
       selfName: "Item",
@@ -1397,7 +1428,7 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemType: {
           key: "",
@@ -1410,41 +1441,41 @@ const dictionary: dictionary = {
             Special: "",
             Crystal: "",
             Consumable: "",
-            Material: ""
-          }
+            Material: "",
+          },
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         dataSources: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         details: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         statisticId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         updatedByAccountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         createdByAccountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     material: {
       selfName: "Material",
@@ -1459,26 +1490,26 @@ const dictionary: dictionary = {
             Beast: "",
             Wood: "",
             Drug: "",
-            Magic: ""
-          }
+            Magic: "",
+          },
         },
         ptValue: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         price: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     member: {
       selfName: "Member",
@@ -1486,37 +1517,37 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         sequence: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         playerId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         partnerId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         mercenaryId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         mobId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         mobDifficultyFlag: {
           key: "",
@@ -1527,21 +1558,21 @@ const dictionary: dictionary = {
             Normal: "",
             Hard: "",
             Lunatic: "",
-            Ultimate: ""
-          }
+            Ultimate: "",
+          },
         },
         teamId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         actions: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     mercenary: {
       selfName: "Mercenary",
@@ -1552,18 +1583,18 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             Tank: "",
-            Dps: ""
-          }
+            Dps: "",
+          },
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         skillAId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         skillAType: {
           key: "",
@@ -1571,13 +1602,13 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             Passive: "",
-            Active: ""
-          }
+            Active: "",
+          },
         },
         skillBId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         skillBType: {
           key: "",
@@ -1585,11 +1616,11 @@ const dictionary: dictionary = {
           formFieldDescription: "",
           enumMap: {
             Active: "",
-            Passive: ""
-          }
-        }
+            Passive: "",
+          },
+        },
       },
-      description: ""
+      description: "",
     },
     mob: {
       selfName: "Mob",
@@ -1597,18 +1628,22 @@ const dictionary: dictionary = {
         name: {
           key: "Name",
           tableFieldDescription: "The monster's name, usually consistent with the in-game name.",
-          formFieldDescription: "Please enter the monster's name as it appears in the game. You don't want others to be confused by your entry, right?",
+          formFieldDescription:
+            "Please enter the monster's name as it appears in the game. You don't want others to be confused by your entry, right?",
         },
         id: {
           key: "ID",
           tableFieldDescription: "This is the monster's database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the monster's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the monster's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         type: {
           key: "Monster Type",
-          tableFieldDescription: "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
-          formFieldDescription: "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
-          enumMap: mobType
+          tableFieldDescription:
+            "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
+          formFieldDescription:
+            "Currently, only these types are supported. Although there are many types when unpacking, most are ignored for this application.",
+          enumMap: mobType,
         },
         captureable: {
           key: "Capturable",
@@ -1617,8 +1652,10 @@ const dictionary: dictionary = {
         },
         actions: {
           key: "Actions",
-          tableFieldDescription: "Monster behavior description. The simulator will simulate actions based on this logic.",
-          formFieldDescription: "Monster behavior description. The simulator will simulate actions based on this logic.",
+          tableFieldDescription:
+            "Monster behavior description. The simulator will simulate actions based on this logic.",
+          formFieldDescription:
+            "Monster behavior description. The simulator will simulate actions based on this logic.",
         },
         baseLv: {
           key: "Base Level",
@@ -1632,14 +1669,17 @@ const dictionary: dictionary = {
         },
         initialElement: {
           key: "Element Attribute",
-          tableFieldDescription: "This is the initial element. Monsters may change their attributes during battle. Refer to the behavior description for details.",
-          formFieldDescription: "Enter the monster's initial element here. Attribute changes should be described in the behavior section.",
-          enumMap: elementType
+          tableFieldDescription:
+            "This is the initial element. Monsters may change their attributes during battle. Refer to the behavior description for details.",
+          formFieldDescription:
+            "Enter the monster's initial element here. Attribute changes should be described in the behavior section.",
+          enumMap: elementType,
         },
         radius: {
           key: "Radius",
           tableFieldDescription: "The monster's model size, mainly used to calculate whether skills hit.",
-          formFieldDescription: "The monster's model size, mainly used to calculate whether skills hit. Subtract 1 from the distance displayed on the screen after casting Holy Fist.",
+          formFieldDescription:
+            "The monster's model size, mainly used to calculate whether skills hit. Subtract 1 from the distance displayed on the screen after casting Holy Fist.",
         },
         maxhp: {
           key: "Max HP",
@@ -1653,8 +1693,10 @@ const dictionary: dictionary = {
         },
         physicalResistance: {
           key: "Physical Resistance",
-          tableFieldDescription: "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
-          formFieldDescription: "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          tableFieldDescription:
+            "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          formFieldDescription:
+            "This is the most practical physical damage reduction range for monsters. Players can only counteract it with skill constants.",
         },
         magicalDefense: {
           key: "Magical Defense",
@@ -1663,13 +1705,17 @@ const dictionary: dictionary = {
         },
         magicalResistance: {
           key: "Magical Resistance",
-          tableFieldDescription: "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
-          formFieldDescription: "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          tableFieldDescription:
+            "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
+          formFieldDescription:
+            "This is the most practical magical damage reduction range for monsters. Players can only counteract it with skill constants.",
         },
         criticalResistance: {
           key: "Critical Resistance",
-          tableFieldDescription: "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
-          formFieldDescription: "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
+          tableFieldDescription:
+            "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
+          formFieldDescription:
+            "For magical damage, the critical rate is (Physical Critical Rate * Spell Critical Conversion Rate) - this value.",
         },
         avoidance: {
           key: "Avoidance",
@@ -1719,20 +1765,23 @@ const dictionary: dictionary = {
         statisticId: {
           key: "Statistic ID",
           tableFieldDescription: "This is the monster's statistics database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the monster's statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the monster's statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         updatedByAccountId: {
           key: "Updated By Account ID",
           tableFieldDescription: "This is the monster's updater database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the monster's updater database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the monster's updater database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         createdByAccountId: {
           key: "Created By Account ID",
           tableFieldDescription: "This is the monster's creator database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the monster's creator database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the monster's creator database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
       },
-      description: ""
+      description: "",
     },
     npc: {
       selfName: "NPC",
@@ -1740,20 +1789,35 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         zoneId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     option: {
       selfName: "Option Equipment",
@@ -1761,35 +1825,35 @@ const dictionary: dictionary = {
         baseDef: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorA: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorB: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorC: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player: {
       selfName: "Player",
@@ -1797,25 +1861,25 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         useIn: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         accountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player_armor: {
       selfName: "Player Armor",
@@ -1823,17 +1887,17 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         extraAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         ability: {
           key: "",
@@ -1842,31 +1906,31 @@ const dictionary: dictionary = {
           enumMap: {
             Normal: "",
             Light: "",
-            Heavy: ""
-          }
+            Heavy: "",
+          },
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         refinement: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player_option: {
       selfName: "Player Option",
@@ -1874,35 +1938,35 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         extraAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         refinement: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player_pet: {
       selfName: "Player Pet",
@@ -1910,67 +1974,67 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         pStr: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         pInt: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         pVit: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         pAgi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         pDex: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         str: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         int: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         vit: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         agi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         dex: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         weaponType: {
           key: "",
@@ -1985,8 +2049,8 @@ const dictionary: dictionary = {
             Magictool: "",
             Knuckle: "",
             Halberd: "",
-            Katana: ""
-          }
+            Katana: "",
+          },
         },
         personaType: {
           key: "",
@@ -2007,8 +2071,8 @@ const dictionary: dictionary = {
             Active: "",
             Sturdy: "",
             Steady: "",
-            Max: ""
-          }
+            Max: "",
+          },
         },
         type: {
           key: "",
@@ -2023,31 +2087,31 @@ const dictionary: dictionary = {
             Avoidance: "",
             Hit: "",
             SkillsEnhancement: "",
-            Genius: ""
-          }
+            Genius: "",
+          },
         },
         weaponAtk: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         generation: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         maxLv: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player_special: {
       selfName: "Player Special",
@@ -2055,30 +2119,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         extraAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     player_weapon: {
       selfName: "Player Weapon",
@@ -2086,50 +2150,50 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         stability: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         extraAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         templateId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         refinement: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         masterId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     post: {
       selfName: "Post",
@@ -2137,30 +2201,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         createdAt: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         updatedAt: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         createdById: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     recipe: {
       selfName: "Recipe",
@@ -2168,20 +2232,35 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         activityId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     recipe_ingredient: {
       selfName: "Recipe Ingredient",
@@ -2189,12 +2268,12 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         count: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -2208,21 +2287,21 @@ const dictionary: dictionary = {
             Drug: "",
             Magic: "",
             Gold: "",
-            Item: ""
-          }
+            Item: "",
+          },
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         recipeId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     session: {
       selfName: "Session",
@@ -2230,25 +2309,25 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         sessionToken: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         expires: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         userId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     simulator: {
       selfName: "Simulator",
@@ -2256,35 +2335,35 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         details: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         statisticId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         updatedByAccountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         createdByAccountId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     skill: {
       selfName: "Skill",
@@ -2292,52 +2371,56 @@ const dictionary: dictionary = {
         id: {
           key: "ID",
           tableFieldDescription: "This is the skill's database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the skill's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the skill's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         name: {
           key: "Name",
           tableFieldDescription: "The skill's name, usually consistent with the in-game name.",
-          formFieldDescription: "Please enter the skill name as it appears in the game. You don't want others to be confused by your entry, right?",
+          formFieldDescription:
+            "Please enter the skill name as it appears in the game. You don't want others to be confused by your entry, right?",
         },
         treeType: {
           key: "Skill Tree",
-          tableFieldDescription: "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
-          formFieldDescription: "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
+          tableFieldDescription:
+            "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
+          formFieldDescription:
+            "The top-level classification of the skill, such as Magic Skills, Dark Power, Support Skills, Warrior, etc.",
           enumMap: {
-            "BladeSkill": "Blade Skill",
-            "ShootSkill": "Shoot Skill",
-            "MagicSkill": "Magic Skill",
-            "MarshallSkill": "Marshall Skill",
-            "DualSwordSkill": "Dual Sword Skill",
-            "HalberdSkill": "Halberd Skill",
-            "MononofuSkill": "Mononofu Skill",
-            "CrusherSkill": "Crusher Skill",
-            "FeatheringSkill": "Feathering Skill",
-            "GuardSkill": "Guard Skill",
-            "ShieldSkill": "Shield Skill",
-            "KnifeSkill": "Knife Skill",
-            "KnightSkill": "Knight Skill",
-            "HunterSkill": "Hunter Skill",
-            "PriestSkill": "Priest Skill",
-            "AssassinSkill": "Assassin Skill",
-            "WizardSkill": "Wizard Skill",
-            "SupportSkill": "Support Skill",
-            "BattleSkill": "Battle Skill",
-            "SurvivalSkill": "Survival Skill",
-            "SmithSkill": "Smith Skill",
-            "AlchemySkill": "Alchemy Skill",
-            "TamerSkill": "Tamer Skill",
-            "DarkPowerSkill": "Dark Power Skill",
-            "MagicBladeSkill": "Magic Blade Skill",
-            "DancerSkill": "Dancer Skill",
-            "MinstrelSkill": "Minstrel Skill",
-            "BareHandSkill": "Bare Hand Skill",
-            "NinjaSkill": "Ninja Skill",
-            "PartisanSkill": "Partisan Skill",
-            "LuckSkill": "Luck Skill",
-            "MerchantSkill": "Merchant Skill",
-            "PetSkill": "Pet Skill"
-          }
+            BladeSkill: "Blade Skill",
+            ShootSkill: "Shoot Skill",
+            MagicSkill: "Magic Skill",
+            MarshallSkill: "Marshall Skill",
+            DualSwordSkill: "Dual Sword Skill",
+            HalberdSkill: "Halberd Skill",
+            MononofuSkill: "Mononofu Skill",
+            CrusherSkill: "Crusher Skill",
+            FeatheringSkill: "Feathering Skill",
+            GuardSkill: "Guard Skill",
+            ShieldSkill: "Shield Skill",
+            KnifeSkill: "Knife Skill",
+            KnightSkill: "Knight Skill",
+            HunterSkill: "Hunter Skill",
+            PriestSkill: "Priest Skill",
+            AssassinSkill: "Assassin Skill",
+            WizardSkill: "Wizard Skill",
+            SupportSkill: "Support Skill",
+            BattleSkill: "Battle Skill",
+            SurvivalSkill: "Survival Skill",
+            SmithSkill: "Smith Skill",
+            AlchemySkill: "Alchemy Skill",
+            TamerSkill: "Tamer Skill",
+            DarkPowerSkill: "Dark Power Skill",
+            MagicBladeSkill: "Magic Blade Skill",
+            DancerSkill: "Dancer Skill",
+            MinstrelSkill: "Minstrel Skill",
+            BareHandSkill: "Bare Hand Skill",
+            NinjaSkill: "Ninja Skill",
+            PartisanSkill: "Partisan Skill",
+            LuckSkill: "Luck Skill",
+            MerchantSkill: "Merchant Skill",
+            PetSkill: "Pet Skill",
+          },
         },
         posX: {
           key: "Horizontal Position",
@@ -2359,31 +2442,31 @@ const dictionary: dictionary = {
           tableFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
           formFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
           enumMap: {
-            "None": "No target",
-            "Self": "Self",
-            "Player": "Ally",
-            "Enemy": "Enemy"
-          }
+            None: "No target",
+            Self: "Self",
+            Player: "Ally",
+            Enemy: "Enemy",
+          },
         },
         chargingType: {
           key: "Casting Type",
           tableFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
           formFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
           enumMap: {
-            "Chanting": "Chanting",
-            "Reservoir": "Reservoir"
-          }
+            Chanting: "Chanting",
+            Reservoir: "Reservoir",
+          },
         },
         distanceType: {
           key: "Distance Power Type",
           tableFieldDescription: "Indicates which types of distance power affect this skill",
           formFieldDescription: "Indicates which types of distance power affect this skill",
           enumMap: {
-            "None": "No effect",
-            "Long": "Long range only",
-            "Short": "Short range only",
-            "Both": "Both"
-          }
+            None: "No effect",
+            Long: "Long range only",
+            Short: "Short range only",
+            Both: "Both",
+          },
         },
         isPassive: {
           key: "Is Passive",
@@ -2403,20 +2486,23 @@ const dictionary: dictionary = {
         statisticId: {
           key: "Statistic ID",
           tableFieldDescription: "This is the statistics database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         updatedByAccountId: {
           key: "Updated By",
           tableFieldDescription: "This is the updater's database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the updater's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+          formFieldDescription:
+            "This is the updater's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
         },
         createdByAccountId: {
           key: "Created By",
           tableFieldDescription: "This is the creator's database ID. Generally, you shouldn't see this.",
-          formFieldDescription: "This is the creator's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
-        }
+          formFieldDescription:
+            "This is the creator's database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+        },
       },
-      description: ""
+      description: "",
     },
     skill_effect: {
       selfName: "Skill Effect",
@@ -2424,90 +2510,90 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         condition: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         elementLogic: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         castingRange: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         effectiveRange: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         motionFixed: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         motionModified: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         chantingFixed: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         chantingModified: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         reservoirFixed: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         reservoirModified: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         startupFrames: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         cost: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         description: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         logic: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         details: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         belongToskillId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     special: {
       selfName: "Special Equipment",
@@ -2515,20 +2601,20 @@ const dictionary: dictionary = {
         baseDef: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     statistic: {
       selfName: "Statistic",
@@ -2536,30 +2622,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         updatedAt: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         createdAt: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         usageTimestamps: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         viewTimestamps: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     task: {
       selfName: "Task",
@@ -2567,17 +2653,17 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         lv: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -2587,21 +2673,36 @@ const dictionary: dictionary = {
             Collect: "",
             Defeat: "",
             Both: "",
-            Other: ""
-          }
+            Other: "",
+          },
         },
         description: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         npcId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     task_collect_require: {
       selfName: "Task Collect Require",
@@ -2609,25 +2710,25 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         count: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         taskId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     task_kill_requirement: {
       selfName: "Task Kill Require",
@@ -2635,25 +2736,25 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         mobId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         count: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         taskId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     task_reward: {
       selfName: "Task Reward",
@@ -2661,7 +2762,7 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         type: {
           key: "",
@@ -2670,31 +2771,31 @@ const dictionary: dictionary = {
           enumMap: {
             Item: "",
             Exp: "",
-            Money: ""
-          }
+            Money: "",
+          },
         },
         value: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         probability: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         taskId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     team: {
       selfName: "Team",
@@ -2702,20 +2803,20 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         gems: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     user: {
       selfName: "User",
@@ -2723,35 +2824,35 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         email: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         emailVerified: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         password: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         image: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     verification_token: {
       selfName: "Verification Token",
@@ -2759,20 +2860,20 @@ const dictionary: dictionary = {
         identifier: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         token: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         expires: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     weapon: {
       selfName: "Weapon",
@@ -2794,38 +2895,38 @@ const dictionary: dictionary = {
             Arrow: "",
             ShortSword: "",
             NinjutsuScroll: "",
-            Shield: ""
-          }
+            Shield: "",
+          },
         },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         stability: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         modifiers: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorA: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorB: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         colorC: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         elementType: {
           key: "",
@@ -2838,16 +2939,16 @@ const dictionary: dictionary = {
             Water: "",
             Fire: "",
             Earth: "",
-            Wind: ""
-          }
+            Wind: "",
+          },
         },
         itemId: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     world: {
       selfName: "World",
@@ -2855,15 +2956,30 @@ const dictionary: dictionary = {
         id: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
+          formFieldDescription: "",
         },
         name: {
           key: "",
           tableFieldDescription: "",
-          formFieldDescription: ""
-        }
+          formFieldDescription: "",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
-      description: ""
+      description: "",
     },
     zone: {
       selfName: "Zone",
@@ -2871,37 +2987,51 @@ const dictionary: dictionary = {
         id: {
           key: "ID",
           tableFieldDescription: "Unique identifier of the zone",
-          formFieldDescription: "Unique identifier of the zone, automatically generated by the system"
+          formFieldDescription: "Unique identifier of the zone, automatically generated by the system",
         },
         name: {
           key: "Name",
           tableFieldDescription: "Name of the zone",
-          formFieldDescription: "Please enter the name of the zone"
+          formFieldDescription: "Please enter the name of the zone",
         },
         rewardNodes: {
           key: "Reward Nodes",
           tableFieldDescription: "Number of reward nodes in the zone",
-          formFieldDescription: "Please enter the number of reward nodes in the zone"
+          formFieldDescription: "Please enter the number of reward nodes in the zone",
         },
         activityId: {
           key: "Activity ID",
           tableFieldDescription: "ID of the activity this zone belongs to",
-          formFieldDescription: "Select the activity this zone belongs to"
+          formFieldDescription: "Select the activity this zone belongs to",
         },
         addressId: {
           key: "Map ID",
           tableFieldDescription: "ID of the map this zone belongs to",
-          formFieldDescription: "Select the map this zone belongs to"
-        }
+          formFieldDescription: "Select the map this zone belongs to",
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
       },
       cardFields: {
         mobs: "Appearing Monsters",
-        npcs: "Appearing NPCs"
+        npcs: "Appearing NPCs",
       },
-      description: "Information about zones in the game, including name, linked zones, reward nodes, etc."
-    }
+      description: "Information about zones in the game, including name, linked zones, reward nodes, etc.",
+    },
   },
-  enums: enums,
 };
 
 export default dictionary;

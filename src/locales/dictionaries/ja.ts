@@ -1,8 +1,8 @@
 import { DataEnums } from "../../../db/dataEnums";
 import { MobType } from "../../../db/kysely/enums";
-import {type dictionary } from "../type";
+import { type dictionary } from "../type";
 
-const elementType={
+const elementType = {
   Normal: "無属性",
   Dark: "闇属性",
   Earth: "地属性",
@@ -18,7 +18,7 @@ const mobType: Record<MobType, string> = {
   Mob: "モブ",
 };
 
-const MainWeaponType= {
+const MainWeaponType = {
   OneHandSword: "片手剣",
   TwoHandSword: "両手剣",
   Bow: "弓",
@@ -43,7 +43,7 @@ const WeaponType = {
   ...SubWeaponType
 }
 
-const enums:DataEnums = {
+const enums: DataEnums = {
   account: {
     type: {
       Admin: "管理者",
@@ -366,7 +366,7 @@ const dictionary: dictionary = {
       logOut: "ログアウト",
       register: "登録",
       switchUser: "ユーザー切り替え",
-      install: "インストール", 
+      install: "インストール",
       unInstall: "アンインストール",
       operation: "操作",
       searching: "検索中..."
@@ -466,7 +466,7 @@ const dictionary: dictionary = {
           clearStorage: "このアプリのすべてのキャッシュを削除する（ページをリフレッシュします）",
         }
       }
-      
+
     },
     index: {
       adventurer: "冒険者",
@@ -477,7 +477,7 @@ const dictionary: dictionary = {
       nullSearchResultTips:
         "強くなる旅には困難が待ち受け、知識を求める道には障害物が散らばっています\nしかし、ここにはありません\n検索結果にないということは、存在しないということです",
     },
-    wiki:{
+    wiki: {
       selector: {
         title: "Wiki選択器",
         groupName: {
@@ -608,7 +608,7 @@ const dictionary: dictionary = {
       description: "このページは開発中です。使用しないでください。",
     },
   },
-  db:{
+  db: {
     _armorTocrystal: {
       selfName: "",
       fields: {
@@ -970,6 +970,21 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: ""
@@ -1012,6 +1027,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "アドレスが所属するワールドのIDです。",
           formFieldDescription: "アドレスが所属するワールドを選択してください。",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       cardFields: {
         zones: "包含する区域",
@@ -1852,6 +1882,21 @@ const dictionary: dictionary = {
           tableFieldDescription: "NPCが所属するゾーンのIDです。",
           formFieldDescription: "NPCが所属するゾーンを選択してください。",
         },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       cardFields: {
         tasks: "提供するクエスト",
@@ -2281,6 +2326,21 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: ""
@@ -2701,6 +2761,21 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: ""
@@ -2963,6 +3038,21 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: ""
@@ -2994,6 +3084,21 @@ const dictionary: dictionary = {
           key: "マップID",
           tableFieldDescription: "このゾーンが属するマップのID",
           formFieldDescription: "このゾーンが属するマップを選択してください"
+        },
+        statisticId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        updatedByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        createdByAccountId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       cardFields: {
@@ -3002,8 +3107,7 @@ const dictionary: dictionary = {
       },
       description: "ゲーム内のゾーン情報、名前、リンクゾーン、報酬ノードなどを含みます"
     }
-    },
-  enums: enums,
+  },
 };
 
 export default dictionary;

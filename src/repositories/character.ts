@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, character } from "~/../db/kysely/kyesely";
+import { DB, character } from "../../db/generated/kysely/kyesely";
 import { createStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { comboSubRelations } from "./combo";

@@ -1,10 +1,10 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
-import { DB, mob } from "~/../db/kysely/kyesely";
+import { DB, mob } from "../../db/generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
-import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "~/../db/zod/index";
+import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "../../db/generated/zod/index";
 import { z, ZodRawShape } from "zod";
 
 export interface Mob extends DataType<mob> {

@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, statistic } from "~/../db/kysely/kyesely";
+import { DB, statistic } from "../../db/generated/kysely/kyesely";
 import { createId } from "@paralleldrive/cuid2";
 
 export type Statistic = Awaited<ReturnType<typeof findStatisticById>>;
