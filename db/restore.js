@@ -16,6 +16,51 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 /**
+ * 解析环境变量引用
+ * @param {string} value - 环境变量值
+ * @returns {string} 解析后的值
+ */
+function resolveEnvReferences(value) {
+  if (!value) return value;
+  
+  let result = value;
+  let maxIterations = 10; // 防止无限循环
+  let iterations = 0;
+  
+  // 循环解析，直到没有更多的变量引用
+  while (result.includes('${') && iterations < maxIterations) {
+    result = result.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+      return process.env[varName] || match;
+    });
+    iterations++;
+  }
+  
+  return result;
+}
+
+/**
+ * 处理环境变量，解析引用
+ */
+function processEnvironmentVariables() {
+  const envVars = [
+    'VITE_SERVER_HOST', // 先处理基础变量
+    'PG_USERNAME', 'PG_PASSWORD', 'PG_HOST', 'PG_PORT', 'PG_DBNAME',
+    'PG_URL', 'ELECTRIC_HOST', 'ELECTRIC_PORT' // 再处理依赖变量
+  ];
+  
+  envVars.forEach(varName => {
+    if (process.env[varName]) {
+      const originalValue = process.env[varName];
+      process.env[varName] = resolveEnvReferences(process.env[varName]);
+      console.log(`环境变量 ${varName}: ${originalValue} -> ${process.env[varName]}`);
+    }
+  });
+}
+
+// 处理环境变量引用
+processEnvironmentVariables();
+
+/**
  * 配置
  */
 const CONFIG = {

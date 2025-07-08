@@ -60,11 +60,11 @@ class FileManager {
     const dirs = [path.dirname(PATHS.serverDB.sql), path.dirname(PATHS.clientDB.sql), path.dirname(PATHS.zod.schemas)];
 
     dirs.forEach((dir) => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
-  }
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+}
 
   /**
    * 清理临时文件
@@ -126,7 +126,7 @@ const utils = {
    * @returns {string} PascalCase 字符串
    */
   toPascalCase: (str) => str.toLowerCase().replace(/(?:^|_)([a-z])/g, (_, c) => c.toUpperCase()),
-
+  
   /**
    * 执行命令并处理错误
    * @param {string} command - 要执行的命令
@@ -854,7 +854,7 @@ ${generatedSchemas}
   static generateModelSchemas() {
     const kyselyTypes = FileManager.safeReadFile(PATHS.kysely.types);
     const parsedTypes = this.parseTypes(kyselyTypes);
-
+    
     // 生成 Zod schemas
     return Object.entries(parsedTypes)
       .map(([typeName, fields]) => {
@@ -971,7 +971,7 @@ ${generatedSchemas}
 
     while ((match = typeRegex.exec(kyselyTypes)) !== null) {
       const [, typeName, fieldsStr] = match;
-
+      
       // 跳过不需要的类型
       if (
         typeName === "Generated" ||
@@ -1027,5 +1027,5 @@ async function main() {
 
 // 如果直接运行此文件，则执行主函数
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+main();
 }
