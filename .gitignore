@@ -26,6 +26,10 @@ pnpm-lock.yaml
 # Temp
 gitignore
 
+# Build artifacts
+public/chunk-manifest.json
+public/service.worker.js
+
 # System Files
 .DS_Store
 Thumbs.db
