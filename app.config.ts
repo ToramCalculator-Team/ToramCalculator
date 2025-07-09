@@ -188,40 +188,6 @@ export default defineConfig({
           });
         },
       },
-      // Service Worker 复制插件 - 在构建完成后复制文件
-      {
-        name: 'copy-service-worker',
-        apply: 'build',
-        async closeBundle() {
-          try {
-            // 使用 ES 模块语法导入
-            const { readdirSync, copyFileSync, existsSync } = await import('fs');
-            const { join } = await import('path');
-            
-            // 检查 .output/public/_build/assets/ 目录下的 service.worker 文件
-            const assetsDir = join(process.cwd(), '.output', 'public', '_build', 'assets');
-            if (existsSync(assetsDir)) {
-              const files = readdirSync(assetsDir);
-              const swFile = files.find((file: string) => file.startsWith('service.worker-') && file.endsWith('.js'));
-              
-              if (swFile) {
-                const sourcePath = join(assetsDir, swFile);
-                const targetPath = join(process.cwd(), '.output', 'public', 'service.worker.js');
-                
-                // 复制文件
-                copyFileSync(sourcePath, targetPath);
-                console.log(`✅ Service Worker 已复制: ${swFile} -> service.worker.js`);
-              } else {
-                console.warn('⚠️ 未找到 Service Worker 构建产物');
-              }
-            } else {
-              console.warn('⚠️ 构建产物目录不存在');
-            }
-          } catch (error) {
-            console.error('❌ Service Worker 复制失败:', error);
-          }
-        }
-      },
     ],
   },
 });

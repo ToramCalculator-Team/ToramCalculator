@@ -688,12 +688,12 @@ class RequestInterceptor {
 
     // 只在缓存命中时记录请求处理
     if (cacheResult && cacheResult.includes("缓存命中")) {
-      const shortPath = this.getShortPath(pathname);
-      Logger.networkSmart(
-        pathname,
+    const shortPath = this.getShortPath(pathname);
+    Logger.networkSmart(
+      pathname,
         `${event.request.method} ${shortPath} -> ${strategy} (${cacheResult})`,
-        event.request.url,
-      );
+      event.request.url,
+    );
     }
   }
 

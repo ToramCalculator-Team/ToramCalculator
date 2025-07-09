@@ -11,10 +11,10 @@
     "db:studio": "prisma studio --schema=db/baseSchema.prisma",
     "db:backup": "tsx db/backup.js",
     "db:restore": "tsx db/restore.js",
-    "build": "vinxi build",
+    "build": "node scripts/build-sw.mjs && vinxi build",
     "start": "vinxi start",
     "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
-    "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
+    "package": "rm -rf .vinxi/ .output bundle.tar.gz && pnpm build && tar -czf bundle.tar.gz .vinxi/ .output/",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -24,6 +24,7 @@
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.7.9",
     "@types/pg": "^8.11.11",
+    "esbuild": "^0.25.6",
     "eslint": "^9.9.0",
     "husky": "^9.1.4",
     "prettier": "^3.3.3",
