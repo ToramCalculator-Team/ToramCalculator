@@ -4,17 +4,22 @@ import { DB } from "../../db/generated/kysely/kyesely";
 let cachedDB: Kysely<DB> | undefined;
 
 const getDB = async (): Promise<Kysely<DB>> => {
-  if (cachedDB) return cachedDB;
+  if (cachedDB) {
+    return cachedDB;
+  }
 
   const isServer = typeof window === "undefined";
 
   if (isServer) {
+    // 服务端模块导入
     const pg = await import("pg");
     const dotenv = await import("dotenv");
     const expand = await import("dotenv-expand");
-    expand.expand(dotenv.config()); // Fixed: Using expand.expand() instead of expand.default()
+    expand.expand(dotenv.config());
     const Pool = pg.default?.Pool ?? pg.Pool;
     const { PostgresDialect } = await import("kysely");
+    
+    // 连接池创建
     const pool = new Pool({
       host: process.env.PG_HOST,
       user: process.env.PG_USERNAME,
@@ -25,32 +30,20 @@ const getDB = async (): Promise<Kysely<DB>> => {
       connectionTimeoutMillis: 2000,
     });
 
+    // Kysely 实例创建
     cachedDB = new Kysely<DB>({
       dialect: new PostgresDialect({ pool }),
     });
 
     return cachedDB;
   } else {
+    // 客户端模块导入
     const { PGliteDialect } = await import("~/repositories/dialect/dialect");
     const { pgWorker } = await import("~/initialWorker");
-
+    
+    // Kysely 实例创建
     cachedDB = new Kysely<DB>({
       dialect: new PGliteDialect(pgWorker),
-      // log(event) {
-      //   if (event.level === "error") {
-      //       console.error("Query failed : ", {
-      //         durationMs: event.queryDurationMillis,
-      //         error: event.error,
-      //         sql: event.query.sql,
-      //       });
-      //   } else { // `'query'`
-      //     console.log("Query executed : ", {
-      //       durationMs: event.queryDurationMillis,
-      //       sql: event.query.sql,
-      //       parameters: event.query.parameters
-      //     });
-      //   }
-      // }
     });
 
     return cachedDB;

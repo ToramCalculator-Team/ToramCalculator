@@ -29,8 +29,8 @@ let IS_DEVELOPMENT_MODE: boolean;
 const determineDevelopmentMode = (): boolean => {
   // 检查是否为开发环境
   // 在Service Worker中，我们可以通过检查location.hostname来判断
-  // return location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  return false;
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  // return false;
 };
 
 const isDevelopmentMode = (): boolean => {

@@ -1,9 +1,8 @@
 import { getDB } from "~/repositories/database";
 import { DB } from "../../../db/generated/kysely/kyesely";
-import { ExpressionBuilder, sql } from "kysely";
-import { DBDataConfig } from "~/routes/(app)/(functionPage)/wiki/dataConfig/dataConfig";
-import { getDictionary } from "~/locales/i18n";
-import { store } from "~/store";
+import { sql } from "kysely";
+import { Performance } from "~/utils/performance";
+import { createId } from "@paralleldrive/cuid2";
 
 // 定义可搜索的表和字段
 type SearchableTables = "mob" | "skill" | "item" | "npc" | "zone" | "address" | "activity" | "armor" | "consumable" | "crystal" | "material" | "option" | "special" | "task" | "weapon";
@@ -16,7 +15,7 @@ type SearchConfig = {
     isArrayField: boolean;
     isEnumField: boolean;
     joinWith?: string;
-  }
+  };
 };
 
 type SearchResults = {
@@ -34,9 +33,13 @@ const itemTypeToTable: Record<string, keyof DB> = {
   Material: "material",
 };
 
-export async function searchAllTables(searchString: string): Promise<SearchResults> {
+// 使用性能监控装饰器包装搜索函数
+export const searchAllTables = Performance.monitor('search_all_tables', async (searchString: string): Promise<SearchResults> => {
+  const searchId = createId();
+  console.log(`🔍 [搜索] 开始搜索: "${searchString}" (ID: ${searchId})`);
+  
+  // 数据库连接
   const db = await getDB();
-  const dictionary = getDictionary(store.settings.language);
   
   // 定义要搜索的表和它们的字段
   const searchConfig = {
@@ -159,6 +162,7 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
   // 对每个表执行搜索
   for (const [tableName, config] of Object.entries(searchConfig)) {
     const table = tableName as SearchableTables;
+    
     let query = db.selectFrom(config.table);
     
     // 如果需要关联查询
@@ -185,51 +189,119 @@ export async function searchAllTables(searchString: string): Promise<SearchResul
       .execute();
 
     if (tableResults.length > 0) {
-      // 对于物品相关的表，使用 dataFetcher 获取完整数据
+      // 对于物品相关的表，使用简化的数据获取
       if ('joinWith' in config) {
-        const config = DBDataConfig[table];
-        if (config?.dataFetcher) {
-          const fullResults = await Promise.all(
-            tableResults.map(async (result) => {
-              try {
-                const fullData = await config.dataFetcher(result.itemId);
-                return fullData;
-              } catch (error) {
-                console.warn(`Failed to fetch data for ${table} with id ${result.itemId}:`, error);
-                return null;
-              }
-            })
-          );
-          (results as any)[table] = fullResults.filter(Boolean);
-        } else {
-          (results as any)[table] = tableResults;
-        }
-      } else if (table === 'item') {
-        // 对于 item 表，根据 itemType 将结果分配到对应的表中
-        const itemResults = tableResults as { id: string; name: string; itemType: string }[];
-        for (const item of itemResults) {
-          // 确保 itemType 匹配映射中的键
-          const targetTable = itemTypeToTable[item.itemType] as keyof SearchResults;
-          if (targetTable) {
-            const config = DBDataConfig[targetTable];
-            if (config?.dataFetcher) {
-              try {
-                const fullData = await config.dataFetcher(item.id);
-                if (!results[targetTable]) {
-                  results[targetTable] = [] as any;
-                }
-                (results[targetTable] as any[]).push(fullData);
-              } catch (error) {
-                // console.warn(`Failed to fetch data for ${targetTable} with id ${item.id}:`, error);
-              }
+        const fullResults = await Promise.all(
+          tableResults.map(async (result) => {
+            try {
+              return await getSimplifiedItemData(db, result.itemId, table);
+            } catch (error) {
+              console.warn(`Failed to fetch data for ${table} with id ${result.itemId}:`, error);
+              return null;
             }
-          }
-        }
+          })
+        );
+        (results as any)[table] = fullResults.filter(Boolean);
+      } else if (table === 'item') {
+        // 对于 item 表，使用批量查询优化性能
+        await processItemResults(db, tableResults, results);
       } else {
         (results as any)[table] = tableResults;
       }
     }
   }
 
+  const totalResults = Object.values(results).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  console.log(`✅ [搜索] 搜索完成，共找到 ${totalResults} 条结果`);
+
   return results;
-} 
+});
+
+/**
+ * 批量处理item结果，减少数据库调用次数
+ */
+const processItemResults = Performance.monitor('process_item_results', async (
+  db: any, 
+  tableResults: any[], 
+  results: SearchResults
+) => {
+  const itemResults = tableResults as { id: string; name: string; itemType: string }[];
+  
+  // 按itemType分组
+  const groupedItems: Record<string, string[]> = {};
+  itemResults.forEach(item => {
+    const targetTable = itemTypeToTable[item.itemType];
+    if (targetTable) {
+      if (!groupedItems[targetTable]) {
+        groupedItems[targetTable] = [];
+      }
+      groupedItems[targetTable].push(item.id);
+    }
+  });
+
+  // 批量查询每个类型的数据
+  for (const [tableType, itemIds] of Object.entries(groupedItems)) {
+    if (itemIds.length === 0) continue;
+
+    try {
+      // 批量查询item数据
+      const items = await db
+        .selectFrom("item")
+        .where("id", "in", itemIds)
+        .selectAll("item")
+        .execute();
+
+      // 批量查询子表数据
+      const subData = await db
+        .selectFrom(tableType)
+        .where("itemId", "in", itemIds)
+        .selectAll()
+        .execute();
+
+      // 合并数据
+      const itemMap = new Map(items.map((item: any) => [item.id, item]));
+      const subDataMap = new Map(subData.map((data: any) => [data.itemId, data]));
+
+      const fullResults = itemIds.map(id => {
+        const item = itemMap.get(id);
+        const sub = subDataMap.get(id);
+        if (item && sub) {
+          return { ...item, ...sub };
+        }
+        return null;
+      }).filter(Boolean);
+
+      if (!results[tableType as keyof SearchResults]) {
+        results[tableType as keyof SearchResults] = [] as any;
+      }
+      (results[tableType as keyof SearchResults] as any[]).push(...fullResults);
+    } catch (error) {
+      console.warn(`Failed to batch fetch data for ${tableType}:`, error);
+    }
+  }
+});
+
+/**
+ * 获取简化的物品数据，避免复杂的关联查询
+ * 这个函数专门为搜索优化，只获取必要的信息
+ */
+const getSimplifiedItemData = Performance.monitor('get_simplified_item_data', async (db: any, itemId: string, tableType: string) => {
+  // 获取基础物品信息
+  const item = await db
+    .selectFrom("item")
+    .where("id", "=", itemId)
+    .selectAll("item")
+    .executeTakeFirstOrThrow();
+  
+  // 获取子表数据
+  const subData = await db
+    .selectFrom(tableType)
+    .where("itemId", "=", itemId)
+    .selectAll()
+    .executeTakeFirstOrThrow();
+  
+  return {
+    ...item,
+    ...subData,
+  };
+});
