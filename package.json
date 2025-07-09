@@ -13,7 +13,7 @@
     "db:restore": "tsx db/restore.js",
     "build": "vinxi build",
     "start": "vinxi start",
-    "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz",
+    "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
     "package": "rm -rf .vinxi/ .output bundle.tar.gz && vinxi build && tar -czf bundle.tar.gz .vinxi/ .output/",
     "prepare": "husky"
   },

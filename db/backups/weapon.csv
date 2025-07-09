@@ -2,3 +2,4 @@ type,baseAbi,stability,modifiers,colorA,colorB,colorC,elementType,itemId
 NinjutsuScroll,0,0,"{""cspd + 250""}",0,0,0,Normal,defaultSubWeaponItemId
 Bowgun,462,70,"{""element = light"",""stro.normal + 25%"",""pAtk + 6%"",""mAtk + 12%"",""cr + 60"",""anticipate + 60%"",""pRes + 30%"",""mRes + 30%"",""ailmentResistance + 15%"",""weaponRange - 3""}",0,0,0,Normal,defaultWeaponItemId
 Bow,6,60,{},0,0,0,Normal,mm17jw5kykup5dq4imvkhmpe
+OneHandSword,10,80,{},0,0,0,Normal,uexlb0x01symqc3oiytuiq74
