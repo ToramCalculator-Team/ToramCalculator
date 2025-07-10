@@ -7,7 +7,7 @@ import { DataType } from "./untils";
 
 export interface Member extends DataType<member> {
   MainTable: Awaited<ReturnType<typeof findMembers>>[number];
-  MainForm: member;
+  MainForm: Awaited<ReturnType<typeof findMemberById>>;
 }
 
 export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {

@@ -1,6 +1,6 @@
-import { type Character } from "~/repositories/character";
+import { CharacterWithRelations, type Character } from "~/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MAIN_HAND_TYPE, MAIN_WEAPON_TYPE, SUB_HAND_TYPE, SUB_WEAPON_TYPE } from "../db/enums";
+import { MAIN_HAND_TYPE, MAIN_WEAPON_TYPE, SUB_HAND_TYPE, SUB_WEAPON_TYPE } from "~/../db/enums";
 
 export enum TemporaryPlayerStatus {
   Lv,
@@ -235,6 +235,11 @@ export type SourceName = AttrType | "SYSTEM";
 
 type MainHandType = (typeof MAIN_HAND_TYPE)[number];
 type SubHandType = (typeof SUB_HAND_TYPE)[number];
+
+// 类型守卫函数
+function isMainHandType(weaponType: string): weaponType is MainHandType {
+  return MAIN_HAND_TYPE.includes(weaponType as MainHandType);
+}
 
 const MainWeaponAbiT: Record<
 MainHandType,
@@ -574,7 +579,17 @@ MainHandType,
 const SubWeaponModifier: Record<
   SubHandType,
   {
-  }> = {}
+  }> = {
+    None: {},
+    OneHandSword: {},
+    Magictool: {},
+    Knuckle: {},
+    Katana: {},
+    Arrow: {},
+    ShortSword: {},
+    NinjutsuScroll: {},
+    Shield: {}
+  }
 
 const enum ValueType {
   system,
@@ -739,7 +754,7 @@ const DefaultModifiersData: ModifiersData = {
   },
 };
 
-const characterData = (character: Character["Card"]) => {
+const characterData = (character: CharacterWithRelations) => {
   const characterMap = new Map<CharacterAttrEnum, CharacterAttrData>();
   const d = (m: CharacterAttrType) => dynamicTotalValue(characterMap.get(CharacterAttrEnum[m]));
   const b = (m: CharacterAttrType) => baseValue(characterMap.get(CharacterAttrEnum[m]));
@@ -796,12 +811,12 @@ const characterData = (character: Character["Card"]) => {
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: MainWeaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].weaAtk_Matk_Convert,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].weaAtk_Matk_Convert : 0,
         originType: OriginType.baseValue,
       },
     ],
@@ -929,27 +944,27 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.STR, {
     type: ValueType.user,
     name: CharacterAttrEnum.STR,
-    baseValue: character.baseStr,
+    baseValue: character.str,
     modifiers: DefaultModifiersData,
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.pAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.mAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.mAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.pStabC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.pStabC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.str.aspdC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.aspdC : 0,
         originType: OriginType.baseValue,
       },
       {
@@ -962,7 +977,7 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.INT, {
     type: ValueType.user,
     name: CharacterAttrEnum.INT,
-    baseValue: character.baseInt,
+    baseValue: character.int,
     modifiers: DefaultModifiersData,
     relation: [
       {
@@ -972,22 +987,22 @@ const characterData = (character: Character["Card"]) => {
       },
       {
         name: "PHYSICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.pAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.mAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.mAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.aspdC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.aspdC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.int.pStabC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.pStabC : 0,
         originType: OriginType.baseValue,
       },
     ],
@@ -995,7 +1010,7 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.VIT, {
     type: ValueType.user,
     name: CharacterAttrEnum.VIT,
-    baseValue: character.baseVit,
+    baseValue: character.vit,
     modifiers: DefaultModifiersData,
     relation: [
       {
@@ -1008,27 +1023,27 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.AGI, {
     type: ValueType.user,
     name: CharacterAttrEnum.AGI,
-    baseValue: character.baseAgi,
+    baseValue: character.agi,
     modifiers: DefaultModifiersData,
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.pAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.mAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.mAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.aspdC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.aspdC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.agi.pStabC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.pStabC : 0,
         originType: OriginType.baseValue,
       },
       {
@@ -1046,27 +1061,27 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.DEX, {
     type: ValueType.user,
     name: CharacterAttrEnum.DEX,
-    baseValue: character.baseDex,
+    baseValue: character.dex,
     modifiers: DefaultModifiersData,
     relation: [
       {
         name: "PHYSICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.pAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "MAGICAL_ATK",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.mAtkC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.mAtkC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "ASPD",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.aspdC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.aspdC : 0,
         originType: OriginType.baseValue,
       },
       {
         name: "PHYSICAL_STABILITY",
-        formula: MainWeaponAbiT[character.mainWeapon.mainWeaponType].abi_Attr_Convert.dex.pStabC,
+        formula: isMainHandType(character.weapon.template.type) ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.pStabC : 0,
         originType: OriginType.baseValue,
       },
       {
@@ -1079,35 +1094,35 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.LUK, {
     type: ValueType.user,
     name: CharacterAttrEnum.LUK,
-    baseValue: character.specialAbiType === "LUK" ? character.specialAbiValue : 0,
+    baseValue: 0, // TODO: 需要从character中获取特殊属性
     modifiers: DefaultModifiersData,
     relation: [],
   });
   characterMap.set(CharacterAttrEnum.TEC, {
     type: ValueType.user,
     name: CharacterAttrEnum.TEC,
-    baseValue: character.specialAbiType === "TEC" ? character.specialAbiValue : 0,
+    baseValue: 0, // TODO: 需要从character中获取特殊属性
     modifiers: DefaultModifiersData,
     relation: [],
   });
   characterMap.set(CharacterAttrEnum.MEN, {
     type: ValueType.user,
     name: CharacterAttrEnum.MEN,
-    baseValue: character.specialAbiType === "MEN" ? character.specialAbiValue : 0,
+    baseValue: 0, // TODO: 需要从character中获取特殊属性
     modifiers: DefaultModifiersData,
     relation: [],
   });
   characterMap.set(CharacterAttrEnum.CRI, {
     type: ValueType.user,
     name: CharacterAttrEnum.CRI,
-    baseValue: character.specialAbiType === "CRI" ? character.specialAbiValue : 0,
+    baseValue: 0, // TODO: 需要从character中获取特殊属性
     modifiers: DefaultModifiersData,
     relation: [],
   });
   characterMap.set(CharacterAttrEnum.MAINWEAPON_BASE_VALUE, {
     type: ValueType.user,
     name: CharacterAttrEnum.MAINWEAPON_BASE_VALUE,
-    baseValue: character.mainWeapon.baseAtk,
+    baseValue: character.weapon.baseAbi,
     modifiers: DefaultModifiersData,
     relation: [
       {
@@ -1120,7 +1135,7 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.SUBWEAPON_BASE_VALUE, {
     type: ValueType.user,
     name: CharacterAttrEnum.SUBWEAPON_BASE_VALUE,
-    baseValue: character.subWeapon.baseAtk,
+    baseValue: character.subWeapon.baseAbi,
     modifiers: DefaultModifiersData,
     relation: [
       {
@@ -1133,7 +1148,7 @@ const characterData = (character: Character["Card"]) => {
   characterMap.set(CharacterAttrEnum.BODYARMOR_BASE_VALUE, {
     type: ValueType.user,
     name: CharacterAttrEnum.BODYARMOR_BASE_VALUE,
-    baseValue: character.bodyArmor.baseDef,
+    baseValue: character.armor.template.baseDef,
     modifiers: DefaultModifiersData,
     relation: [
       {

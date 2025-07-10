@@ -10,6 +10,8 @@ import { playerOptionSubRelations } from "./playerOption";
 import { playerSpecialSubRelations } from "./playerSpecial";
 import { DataType } from "./untils";
 
+export type CharacterWithRelations = Awaited<ReturnType<typeof findCharacterById>>;
+
 export interface Character extends DataType<character> {
   MainTable: Awaited<ReturnType<typeof findCharacters>>[number];
   MainForm: character;

@@ -1,31 +1,17 @@
 import { Simulator } from "~/repositories/simulator";
-import { Character } from "~/repositories/character";
-import { defaultConsumable } from "~/repositories/consumable";
-import { defaultImage } from "~/repositories/image";
-import { defaultMember, Member } from "~/repositories/member";
-import { defaultMob } from "~/repositories/mob";
-import { defaultWeaponEncAttributes } from "~/repositories/client/weaponEncAttrs";
 import { Mob } from "~/repositories/mob";
-import { defaultCustomPet } from "~/repositories/playerPet";
-import { defaultSkill, Skill } from "~/repositories/skill";
-import { defaultStatistic } from "~/repositories/statistic";
-import { skillSequenceList } from "~/routes/(app)/(functionPage)/simulator/(simulator)";
-import { CharacterSkill } from "~/repositories/characterSkill";
+import { CharacterSkillWithRelations } from "~/repositories/characterSkill";
+import { defaultData } from "../../../../../db/defaultData";
+import { Member } from "~/repositories/member";
 
-const sszw: CharacterSkill = {
+const sszw: CharacterSkillWithRelations = {
   id: "",
   lv: 10,
   templateId: "",
   template: {
     id: "",
-    name: {
-      "zh-CN": "神速掌握",
-      "zh-TW": "",
-      en: "",
-      ja: ""
-    },
+    name: "神速掌握",
     dataSources: "",
-    element: "Normal",
     isPassive: false,
     effects: [{
       id: "",
@@ -39,7 +25,12 @@ const sszw: CharacterSkill = {
       startupFrames: "13",
       condition: "",
       cost: "100MP",
-      details: [
+      details: "",
+      belongToskillId: "",
+      elementLogic: "",
+      castingRange: 0,
+      effectiveRange: 0,
+      logic: [
         {
           id: "",
           name: "角色行动速度+10%",
@@ -56,38 +47,33 @@ const sszw: CharacterSkill = {
           yieldFormula: "self.aspd + 300",
           skillEffectId: null,
         },
-      ],
-      belongToskillId: "",
+      ]
     }],
-    statistic: defaultStatistic,
-    treeName: "HalberdSkill",
+    statistic: defaultData.statistic,
+    treeType: "HalberdSkill",
     posX: 0,
     posY: 0,
     tier: 0,
     chargingType: "Reservoir",
-    distanceResist: "None",
     details: "",
     statisticId: "",
     updatedByAccountId: null,
-    createdByAccountId: null
+    createdByAccountId: null,
+    distanceType: "None",
+    targetType: "None"
   },
-  isStarGem: false
+  isStarGem: false,
+  characterId: ""
 }
 
-const yqyq: CharacterSkill = {
+const yqyq: CharacterSkillWithRelations = {
   id: "",
   lv: 10,
   templateId: "",
   template: {
     id: "",
-    name: {
-      "zh-CN": "勇气源泉",
-      "zh-TW": "",
-      en: "",
-      ja: ""
-    },
+    name: "勇气源泉",
     dataSources: "",
-    element: "Normal",
     isPassive: false,
     effects: [{
       id: "",
@@ -101,7 +87,12 @@ const yqyq: CharacterSkill = {
       startupFrames: "",
       condition: "",
       cost: "400MP",
-      details: [
+      details: "",
+      belongToskillId: "",
+      elementLogic: "",
+      castingRange: 0,
+      effectiveRange: 0,
+      logic: [
         {
           id: "",
           name: "角色最终伤害+20%",
@@ -126,38 +117,33 @@ const yqyq: CharacterSkill = {
           yieldFormula: "self.hit - 50%",
           skillEffectId: null,
         },
-      ],
-      belongToskillId: "",
+      ]
     }],
-    statistic: defaultStatistic,
-    treeName: "SupportSkill",
+    statistic: defaultData.statistic,
+    treeType: "SupportSkill",
     posX: 0,
     posY: 0,
     tier: 0,
     chargingType: "Chanting",
-    distanceResist: "None",
+    distanceType: "None",
     details: "",
     statisticId: "",
     updatedByAccountId: null,
-    createdByAccountId: null
+    createdByAccountId: null,
+    targetType: "None"
   },
-  isStarGem: false
+  isStarGem: false,
+  characterId: ""
 }
   
-const mfp: CharacterSkill = {
+const mfp: CharacterSkillWithRelations = {
   id: "",
   lv: 10,
   templateId: "",
   template: {
     id: "",
-    name: {
-      "zh-CN": "魔法炮",
-      "zh-TW": "",
-      en: "",
-      ja: ""
-    },
+    name: "魔法炮",
     dataSources: "",
-    element: "Normal",
     isPassive: false,
     effects: [{
       id: "",
@@ -171,7 +157,12 @@ const mfp: CharacterSkill = {
       startupFrames: "",
       condition: "weapon.type = MagicTool",
       cost: "self.mfp ? 700MP : 0MP",
-      details: [
+      details: "",
+      belongToskillId: "",
+      elementLogic: "",
+      castingRange: 0,
+      effectiveRange: 0,
+      logic: [
         {
           id: "",
           name: "添加魔法炮层数计数器",
@@ -188,38 +179,33 @@ const mfp: CharacterSkill = {
           yieldFormula: "self.mfp + ( self.mfp >= 100 ? 1/3 : 1 )",
           skillEffectId: null,
         },
-      ],
-      belongToskillId: "",
+      ]
     }],
-    statistic: defaultStatistic,
-    treeName: "MagicSkill",
+    statistic: defaultData.statistic,
+    treeType: "MagicSkill",
     posX: 0,
     posY: 0,
     tier: 0,
     chargingType: "Reservoir",
-    distanceResist: "None",
+    distanceType: "None",
     details: "",
     statisticId: "",
     updatedByAccountId: null,
-    createdByAccountId: null
+    createdByAccountId: null,
+    targetType: "None"
   },
-  isStarGem: false
+  isStarGem: false,
+  characterId: ""
 }
 
-const cjb: CharacterSkill = {
+const cjb: CharacterSkillWithRelations = {
   id: "",
   lv: 10,
   templateId: "",
   template: {
     id: "",
-    name: {
-      "zh-CN": "法术/冲击波",
-      "zh-TW": "",
-      en: "",
-      ja: ""
-    },
+    name: "法术/冲击波",
     dataSources: "",
-    element: "Normal",
     isPassive: false,
     effects: [{
       id: "",
@@ -233,7 +219,12 @@ const cjb: CharacterSkill = {
       startupFrames: "",
       condition: "weapon.type = MagicTool",
       cost: "self.mfp ? 700MP : 0MP",
-      details: [
+      details: "",
+      belongToskillId: "",
+      elementLogic: "",
+      castingRange: 0,
+      effectiveRange: 0,
+      logic: [
         {
           id: "",
           name: "Damage",
@@ -250,38 +241,33 @@ const cjb: CharacterSkill = {
           skillEffectId: null,
           mutationTimingFormula: "false",
         },
-      ],
-      belongToskillId: "",
+      ]
     }],
-    statistic: defaultStatistic,
-    treeName: "MagicSkill",
+    statistic: defaultData.statistic,
+    treeType: "MagicSkill",
     posX: 0,
     posY: 0,
     tier: 0,
     chargingType: "Chanting",
-    distanceResist: "None",
+    distanceType: "None",
     details: "",
     statisticId: "",
     updatedByAccountId: null,
-    createdByAccountId: null
+    createdByAccountId: null,
+    targetType: "None"
   },
-  isStarGem: false
+  isStarGem: false,
+  characterId: ""
 }
 
-const bn: CharacterSkill = {
+const bn: CharacterSkillWithRelations = {
   id: "",
   lv: 10,
   templateId: "",
   template: {
     id: "",
-    name: {
-      "zh-CN": "法术/爆能",
-      "zh-TW": "",
-      en: "",
-      ja: ""
-    },
+    name: "法术/爆能",
     dataSources: "",
-    element: "Normal",
     isPassive: false,
     effects: [{
       id: "",
@@ -295,7 +281,12 @@ const bn: CharacterSkill = {
       startupFrames: "",
       condition: "weapon.type = MagicTool",
       cost: "self.mfp ? 700MP : 0MP",
-      details: [
+      details: "",
+      belongToskillId: "",
+      elementLogic: "",
+      castingRange: 0,
+      effectiveRange: 0,
+      logic: [
         {
           id: "",
           name: "Damage",
@@ -312,22 +303,23 @@ const bn: CharacterSkill = {
           skillEffectId: null,
           mutationTimingFormula: "false",
         },
-      ],
-      belongToskillId: "",
+      ]
     }],
-    statistic: defaultStatistic,
-    treeName: "MagicSkill",
+    statistic: defaultData.statistic,
+    treeType: "MagicSkill",
     posX: 0,
     posY: 0,
     tier: 0,
     chargingType: "Chanting",
-    distanceResist: "None",
+    distanceType: "None",
     details: "",
     statisticId: "",
     updatedByAccountId: null,
-    createdByAccountId: null
+    createdByAccountId: null,
+    targetType: "None"
   },
-  isStarGem: false
+  isStarGem: false,
+  characterId: ""
 }
 
 export const test: {
@@ -337,11 +329,11 @@ export const test: {
     gems: string[];
     members: { playerId: string | null; mercenaryId: string | null; mobId: string | null; mobDifficultyFlag: string }[];
   };
-  member: Member;
-  Mob: Mob;
-  simulator: Simulator;
-  skillSequence1: CharacterSkill[];
-  skillSequence2: CharacterSkill[];
+  member: Member["MainForm"];
+  Mob: Mob["MainForm"];
+  simulator: Simulator["MainForm"];
+  skillSequence1: CharacterSkillWithRelations[];
+  skillSequence2: CharacterSkillWithRelations[];
 } = {
   member: {
     id: "",
@@ -349,7 +341,7 @@ export const test: {
     partnerId: null,
     mercenaryId: null,
     mobId: null,
-    mobDifficultyFlag: "",
+    mobDifficultyFlag: "Hard",
     player: {
       id: "",
       name: "",
@@ -365,7 +357,7 @@ export const test: {
         vit: 1,
         agi: 1,
         dex: 247,
-        personalityType: "NOSPECIALABI",
+        personalityType: "None",
         personalityValue: 0,
         weapon: {
           id: "",
@@ -377,17 +369,26 @@ export const test: {
           crystalList: [
             {
               name: "寄生甲兽",
-              crystalType: "WEAPONCRYSTAL",
+              type: "WeaponCrystal",
               modifiers: [
                 "mAtk + 5%",
                 "mPie + 20",
                 "cspd - 15%",
               ],
               itemId: "",
+              backs: [],
+              fronts: [],
+              id: "",
+              details: null,
+              dataSources: "",
+              statisticId: "",
+              updatedByAccountId: null,
+              createdByAccountId: null,
+              itemType: "Weapon"
             },
             {
               name: "死灵妖兔II",
-              crystalType: "WEAPONCRYSTAL",
+              type: "WeaponCrystal",
               modifiers: [
                 "mAtk + 7%",
                 "cspd + 14%",
@@ -395,6 +396,15 @@ export const test: {
                 "am + 3",
               ],
               itemId: "",
+              backs: [],
+              fronts: [],
+              id: "",
+              details: null,
+              dataSources: "",
+              statisticId: "",
+              updatedByAccountId: null,
+              createdByAccountId: null,
+              itemType: "Weapon"
             },
           ],
           masterId: "",
@@ -402,16 +412,16 @@ export const test: {
           templateId: null,
           enchantmentAttributesId: null,
           template: {
-            name: "",
             modifiers: [],
-            type: "",
+            type: "Magictool",
             baseAbi: 0,
             stability: 0,
             itemId: "",
             colorA: 0,
             colorB: 0,
             colorC: 0,
-            element: null
+            defaultCrystals: [],
+            elementType: "Normal"
           },
           enchantmentAttributes: {
             id: "",
@@ -443,18 +453,18 @@ export const test: {
           enchantmentAttributesId: null,
           crystalList: [],
           template: {
-            name: "风遁术",
             modifiers: [
               "aspd + 300",
             ],
-            type: "",
+            type: "NinjutsuScroll",
             baseAbi: 0,
             stability: 0,
             itemId: "",
             colorA: 0,
             colorB: 0,
             colorC: 0,
-            element: null,
+            defaultCrystals: [],
+            elementType: "Normal"
           },
           enchantmentAttributes: null,
         },
@@ -468,14 +478,23 @@ export const test: {
           crystalList: [
             {
               name: "铁之女帝",
-              crystalType: "GENERAL",
+              type: "ArmorCrystal",
               modifiers: [
                 "mAtk + 5%",
                 "mPie + 10",
                 "cspd + 20%",
                 "maxMp - 300",
               ],
-              itemId: ""
+              itemId: "",
+              backs: [],
+              fronts: [],
+              id: "",
+              details: null,
+              statisticId: "",
+              itemType: "Weapon",
+              dataSources: "",
+              updatedByAccountId: null,
+              createdByAccountId: null
             },
             {
               name: "约尔拉兹",
@@ -605,7 +624,7 @@ export const test: {
         speEquipId: "",
         combos: [],
         details: "",
-        statistic: defaultStatistic,
+        statistic: defaultData.statistic,
         statisticId: "",
         imageId: "",
         cooking: [],
@@ -623,18 +642,11 @@ export const test: {
   },
   Mob: {
     id: "",
-    image: defaultImage,
-    imageId: "",
-    name: {
-      "zh-CN": "岩龙菲尔岑 四星",
-      "zh-TW": "",
-      en: "",
-      ja: "",
-    },
-    mobType: "Boss",
+    name: "岩龙菲尔岑 四星",
+    type: "Boss",
     baseLv: 251,
     experience: 0,
-    element: "Earth",
+    initialElement: "Earth",
     radius: 2,
     maxhp: 31710000,
     physicalDefense: 6330,
@@ -671,175 +683,47 @@ export const test: {
     statisticId: "",
     captureable: false,
     partsExperience: 0,
-    belongToZones: [],
-    statistic: defaultStatistic,
   },
   skillSequence1: [sszw,sszw,
       mfp,
       yqyq,
       cjb,
-      {
-        id: "",
-        skillTreeName: "MAGIC",
-        name: "爆能",
-        level: 10,
-        weaponElementDependencyType: "TRUE",
-        element: "Normal",
-        skillType: "ACTIVE_SKILL",
-        skillDescription: "",
-        skillEffect: {
-          id: "",
-          actionBaseDurationFormula: "24",
-          actionModifiableDurationFormula: "98",
-          skillExtraActionType: "Chanting",
-          chargingBaseDurationFormula: "0",
-          chargingModifiableDurationFormula: "0",
-          chantingBaseDurationFormula: "0",
-          chantingModifiableDurationFormula: "8",
-          skillStartupFramesFormula: "0",
-          belongToskillId: "",
-          description: "",
-          skillCost: [
-            {
-              id: "",
-              name: "MP Cost",
-              costFormula: "self.mp = self.mp - 500",
-              skillEffectId: null,
-            },
-          ],
-          skillYield: [
-            {
-              id: "",
-              yieldFormula: "1+1",
-              name: "Damage",
-              skillEffectId: null,
-              yieldType: "ImmediateEffect",
-              mutationTimingFormula: null,
-            },
-          ],
-        },
-      },
+      bn
     ],
-  skillSequence2: {
-    name: "skillSequence2",
-    data: [
-      {
-        id: "",
-        state: "PUBLIC",
-        skillTreeName: "MAGIC",
-        name: "冲击波",
-        skillDescription: "",
-        level: 7,
-        weaponElementDependencyType: "TRUE",
-        element: "Normal",
-        skillType: "ACTIVE_SKILL",
-        skillEffect: {
-          id: "",
-          description: "",
-          actionBaseDurationFormula: "13",
-          actionModifiableDurationFormula: "48",
-          skillExtraActionType: "Chanting",
-          chargingBaseDurationFormula: "0",
-          chargingModifiableDurationFormula: "0",
-          chantingBaseDurationFormula: "0",
-          chantingModifiableDurationFormula: "max(0,min((2 - (self.lv - 1) * 0.25),(1 - (self.lv - 5) * 0.5)))",
-          skillStartupFramesFormula: "0",
-          belongToskillId: "",
-          skillCost: [
-            {
-              id: "",
-              name: "MP Cost",
-              costFormula: "self.mp = self.mp - 200",
-              skillEffectId: null,
-            },
-          ],
-          skillYield: [
-            {
-              id: "",
-              name: "Damage",
-              yieldType: "ImmediateEffect",
-              yieldFormula: "m.hp - (s.vMatk + 200) * 5",
-              mutationTimingFormula: null,
-              skillEffectId: null,
-            },
-            // {
-            //   id: "",
-            //   name: "MP Cost half",
-            //   yieldType: "PersistentEffect",
-            //   yieldFormula: "",
-            //   skillEffectId: null,
-            //   mutationTimingFormula: "false",
-            // },
-          ],
-        },
-      },
-      {
-        id: "",
-        state: "PUBLIC",
-        skillTreeName: "MAGIC",
-        name: "爆能",
-        level: 10,
-        weaponElementDependencyType: "TRUE",
-        element: "Normal",
-        skillType: "ACTIVE_SKILL",
-        skillDescription: "",
-        skillEffect: {
-          id: "",
-          actionBaseDurationFormula: "24",
-          actionModifiableDurationFormula: "98",
-          skillExtraActionType: "Chanting",
-          chargingBaseDurationFormula: "0",
-          chargingModifiableDurationFormula: "0",
-          chantingBaseDurationFormula: "0",
-          chantingModifiableDurationFormula: "8",
-          skillStartupFramesFormula: "0",
-          belongToskillId: "",
-          description: "",
-          skillCost: [
-            {
-              id: "",
-              name: "MP Cost",
-              costFormula: "self.mp = self.mp - 500",
-              skillEffectId: null,
-            },
-          ],
-          skillYield: [
-            {
-              id: "",
-              yieldFormula: "1+1",
-              name: "Damage",
-              skillEffectId: null,
-              yieldType: "ImmediateEffect",
-              mutationTimingFormula: null,
-            },
-          ],
-        },
-      },
-    ],
-  },
+  skillSequence2: [sszw,sszw,
+    mfp,
+    yqyq,
+    cjb,
+    bn
+  ],
   simulator: {
     id: "defaultSimulator",
     name: "defaultSimulator",
-    mobs: [],
-    team: [],
-    extraDetails: "defaultExtraDetails",
-    updatedAt: new Date(),
-    updatedByAccountId: "",
-    createdAt: new Date(),
-    createdByAccountId: "",
-    statistic: defaultStatistic,
+    details: "",
     statisticId: "",
+    updatedByAccountId: null,
+    createdByAccountId: null,
+    statistic: defaultData.statistic,
+    campA: [],
+    campB: []
   },
 };
 
-test.simulator.team[0].members = [
+test.simulator.campA = [
   {
     id: "testMobId",
-    Mob: test.Mob,
-    MobId: test.Mob.id,
-    star: 4,
-    flow: "",
+    name: null,
+    gems: [],
+    campA: [],
+    campB: []
   },
 ];
 
-test.simulator.team = [test.member];
+test.simulator.campB = [
+  {
+    ...defaultData.team,
+    members: [
+      
+    ]
+  }
+];

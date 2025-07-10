@@ -8,7 +8,7 @@ import { DataType } from "./untils";
 
 export interface Simulator extends DataType<simulator> {
   MainTable: Awaited<ReturnType<typeof findSimulators>>[number];
-  MainForm: simulator;
+  MainForm: Awaited<ReturnType<typeof findSimulatorById>>;
 }
 
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
