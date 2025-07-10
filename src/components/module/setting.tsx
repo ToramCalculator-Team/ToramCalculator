@@ -10,6 +10,7 @@ import { For, type JSX, Show, createMemo, createResource, createSignal } from "s
 import { getActStore, setStore, store } from "~/store";
 import { Motion, Presence } from "solid-motionone";
 import { A } from "@solidjs/router";
+import { ServiceWorkerManager } from "./swManager";
 
 // pwa的非标准类型定义
 type UserChoice = Promise<{
@@ -128,6 +129,10 @@ export const Setting = () => {
                 <Button level="quaternary">
                   <Icon.Line.Flag />
                   <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
+                </Button>
+                <Button level="quaternary">
+                  <Icon.Line.CloudUpload />
+                  <span class="w-full text-left">Service Worker</span>
                 </Button>
               </div>
               <div class="Divider bg-dividing-color hidden h-full w-[1px] lg:block"></div>
@@ -415,6 +420,10 @@ export const Setting = () => {
                       ),
                     },
                   ])}
+                  <Divider />
+                  <div class="ServiceWorkerSection">
+                    <ServiceWorkerManager />
+                  </div>
                 </div>
               </OverlayScrollbarsComponent>
             </div>

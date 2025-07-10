@@ -2,7 +2,7 @@ import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
 import * as _ from "lodash-es";
 import { type DB } from "../db/generated/kysely/kyesely";
-import { AccountType } from "../db/kysely/enums";
+import { AccountType } from "../db/generated/kysely/enums";
 
 export type DialogType = "form" | "card";
 
@@ -65,7 +65,13 @@ export type Store = {
   }>;
   character: {
     id: string
-  }
+  };
+  sw: {
+    periodicCheckEnabled: boolean;
+    periodicCheckInterval: number; // ms
+    cacheStrategy: 'all' | 'core-only' | 'assets-only';
+    lastManualUpdate?: string; // ISO 时间戳
+  };
 };
 
 const initialStore: Store = {
@@ -115,7 +121,13 @@ const initialStore: Store = {
   },
   character: {
     id: "defaultCharacterId"
-  }
+  },
+  sw: {
+    periodicCheckEnabled: true,
+    periodicCheckInterval: 30 * 60 * 1000, // 30分钟
+    cacheStrategy: 'all',
+    lastManualUpdate: undefined,
+  },
 };
 
 const safeParse = (data: string) => {

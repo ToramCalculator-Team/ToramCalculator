@@ -173,19 +173,19 @@ export default defineConfig({
           const manifestPath = join(publicDir, 'chunk-manifest.json');
           mkdirSync(dirname(manifestPath), { recursive: true }); // 确保目录存在
           writeFileSync(manifestPath, JSON.stringify(chunkManifest, null, 2));
-          console.log('📦 Chunk清单已生成到 public 目录:', manifestPath);
+          // console.log('📦 Chunk清单已生成到 public 目录:', manifestPath);
 
-          console.log("📊 Chunk统计:", {
-            core: chunkManifest.chunks.core.length,
-            routes: Object.keys(chunkManifest.chunks.routes).length,
-            features: Object.keys(chunkManifest.chunks.features).length,
-            workers: chunkManifest.chunks.workers.length,
-            vendors: chunkManifest.chunks.vendors.length,
-            assets:
-              chunkManifest.assets.images.length +
-              chunkManifest.assets.fonts.length +
-              chunkManifest.assets.others.length,
-          });
+          // console.log("📊 Chunk统计:", {
+          //   core: chunkManifest.chunks.core.length,
+          //   routes: Object.keys(chunkManifest.chunks.routes).length,
+          //   features: Object.keys(chunkManifest.chunks.features).length,
+          //   workers: chunkManifest.chunks.workers.length,
+          //   vendors: chunkManifest.chunks.vendors.length,
+          //   assets:
+          //     chunkManifest.assets.images.length +
+          //     chunkManifest.assets.fonts.length +
+          //     chunkManifest.assets.others.length,
+          // });
         },
       },
     ],

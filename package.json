@@ -11,7 +11,7 @@
     "db:studio": "prisma studio --schema=db/baseSchema.prisma",
     "db:backup": "tsx db/backup.js",
     "db:restore": "tsx db/restore.js",
-    "build": "node scripts/build-sw.mjs && vinxi build",
+    "build": "node src/worker/sw/build.mjs && vinxi build",
     "start": "vinxi start",
     "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
     "package": "rm -rf .vinxi/ .output bundle.tar.gz && pnpm build && tar -czf bundle.tar.gz .vinxi/ .output/",

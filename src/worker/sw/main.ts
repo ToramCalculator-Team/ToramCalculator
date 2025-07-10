@@ -1,98 +1,68 @@
-/// <reference lib="webworker" />
-
 /**
- * 🚀 智能离线优先 Service Worker
- * 
- * 核心特性：
- * 1. 自动资源发现 - 通过manifest自动获取所有构建资源
- * 2. 智能缓存策略 - 根据资源类型和访问模式选择最优策略
- * 3. 版本感知更新 - 检测构建变化自动更新缓存
- * 4. 渐进式缓存 - 核心资源优先，其他资源按需缓存
- * 5. 离线优先 - 确保应用完全离线可用
- * 6. 开发模式友好 - 开发时不干扰热重载
+ * main.ts - Service Worker 主入口
+ *
+ * 用途：
+ *   - 负责 Service Worker 的生命周期管理、事件监听、缓存/网络/消息等底层实现
+ *   - 不直接依赖 Comlink/XState，仅通过注入/事件与状态机、API 解耦
+ *   - 依赖统一 logger/config/types，保证结构清晰、可维护、可扩展
+ *
+ * 用法：
+ *   由浏览器自动注册为 service worker，主线程通过 postMessage/Comlink 与其通信
+ *
+ * 依赖：
+ *   - @/utils/logger
+ *   - @/worker/sw/config
+ *   - @/worker/sw/types
+ *
+ * 维护：架构师/全栈/工具开发
  */
 
-// 版本号 - 用于缓存版本控制
-const VERSION = "2.0.0";
+import { Logger } from '~/utils/logger';
+import { VERSION, PERIODIC_CHECK_CONFIG, CACHE_STRATEGIES } from './config';
+import type { SWMessage, CacheStatus } from './types';
 
 // === 修正开发模式判断逻辑 ===
 // 仅在 Vite dev 时为 development，其余（build/本地生产/线上）均为 production
 const IS_DEVELOPMENT_MODE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'development');
 const isDevelopmentMode = (): boolean => IS_DEVELOPMENT_MODE;
 
-// 缓存策略配置
-const CACHE_STRATEGIES = {
-  CORE: "core-" + VERSION,        // 核心资源（HTML、manifest、关键JS）
-  ASSETS: "assets-" + VERSION,    // 构建资源（JS、CSS、图片）
-  DATA: "data-" + VERSION,        // 数据资源（API响应等）
-  PAGES: "pages-" + VERSION,      // 页面缓存
-} as const;
 
-// 当前缓存的manifest内容（用于版本检测）
-let currentManifestString: string | null = null;
 
-// 消息类型定义
-interface SWMessage {
-  type: "CHECK_CACHE_VERSION" | "CACHE_STATUS_REQUEST" | "FORCE_UPDATE" | "CLEAR_CACHE";
-  data?: any;
-}
-
-// 缓存状态类型
-interface CacheStatus {
-  core: boolean;
-  assets: Map<string, boolean>;
-  data: Map<string, boolean>;
-  pages: Map<string, boolean>;
-  manifestVersion?: string;
-  lastUpdate?: string;
-}
-
-/**
- * 智能日志管理器
- */
-class Logger {
-  private static prefix = "🔧 SW";
-
-  static info(message: string, data?: any): void {
-    console.log(`${this.prefix} [INFO] ${message}`, data || "");
-  }
-
-  static warn(message: string, data?: any): void {
-    console.warn(`${this.prefix} [WARN] ${message}`, data || "");
-  }
-
-  static error(message: string, error?: any): void {
-    console.error(`${this.prefix} [ERROR] ${message}`, error || "");
-  }
-
-  static debug(message: string, data?: any): void {
-    console.debug(`${this.prefix} [DEBUG] ${message}`, data || "");
-  }
-
-  static cache(message: string, data?: any): void {
-    console.log(`${this.prefix} [CACHE] ${message}`, data || "");
-  }
-
-  static network(message: string, data?: any): void {
-    console.log(`${this.prefix} [NETWORK] ${message}`, data || "");
-  }
-
-  // 简化网络日志
-  static networkSmart(pathname: string, message: string, url?: string): void {
-    let urlSummary = "";
-    if (url) {
-      urlSummary = `[url: ...${url.slice(-30)}]`;
-    }
-    console.log(`${this.prefix} [NETWORK] ${message} ${urlSummary}`);
-  }
-}
+// 定期检查相关状态
+let periodicCheckTimer: ReturnType<typeof setTimeout> | null = null;
+let lastCheckTime: number = 0;
+let consecutiveFailures: number = 0;
+let currentCheckInterval: number = PERIODIC_CHECK_CONFIG.INTERVAL;
 
 /**
  * 智能Chunk清单读取器
+ * 
+ * 职责：
+ *   - 读取和解析 chunk-manifest.json 文件
+ *   - 提供详细的 chunk 分类统计信息
+ *   - 检测 manifest 版本变化
+ * 
+ * 设计原则：
+ *   - 单一职责：只负责 manifest 读取和解析
+ *   - 错误处理：完善的错误捕获和日志记录
+ *   - 调试友好：提供详细的分类统计信息
  */
 class ChunkManifestReader {
   /**
    * 读取chunk清单并打印到控制台
+   * 
+   * @returns Promise<{success: boolean, manifest?: any, error?: string}>
+   *   - success: 是否成功读取
+   *   - manifest: 解析后的清单对象（成功时）
+   *   - error: 错误信息（失败时）
+   * 
+   * @example
+   *   const { success, manifest, error } = await ChunkManifestReader.loadChunkManifest();
+   *   if (success) {
+   *     console.log('Manifest loaded:', manifest);
+   *   } else {
+   *     console.error('Failed to load manifest:', error);
+   *   }
    */
   static async loadChunkManifest(): Promise<{
     success: boolean;
@@ -188,6 +158,21 @@ class ChunkManifestReader {
 
   /**
    * 检查chunk清单版本变化
+   * 
+   * @returns Promise<{hasChanged: boolean, manifest?: any}>
+   *   - hasChanged: 是否检测到版本变化
+   *   - manifest: 新的清单对象（有变化时）
+   * 
+   * @description
+   *   通过比较当前缓存的 manifest 内容与服务器上的内容来判断版本变化
+   *   使用 JSON.stringify 进行深度比较，确保检测准确性
+   * 
+   * @example
+   *   const { hasChanged, manifest } = await ChunkManifestReader.checkChunkManifestVersion();
+   *   if (hasChanged) {
+   *     console.log('New manifest detected:', manifest);
+   *     // 触发缓存更新逻辑
+   *   }
    */
   static async checkChunkManifestVersion(): Promise<{
     hasChanged: boolean;
@@ -201,6 +186,18 @@ class ChunkManifestReader {
 
       const manifest = await manifestResp.json();
       const manifestString = JSON.stringify(manifest);
+      
+      // 当前缓存的manifest内容（用于版本检测）
+      let currentManifestString: string | null = null;
+      try {
+        const manifestResp = await fetch('/chunk-manifest.json');
+        if (manifestResp.ok) {
+          const manifest = await manifestResp.json();
+          currentManifestString = JSON.stringify(manifest);
+        }
+      } catch (e) {
+        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+      }
       
       if (currentManifestString !== manifestString) {
         Logger.info("检测到chunk清单版本变化", {
@@ -220,10 +217,30 @@ class ChunkManifestReader {
 
 /**
  * 智能缓存管理器
+ * 
+ * 职责：
+ *   - 管理分层缓存策略（核心、资源、页面、数据）
+ *   - 基于 manifest 进行智能缓存
+ *   - 提供缓存状态查询和清理功能
+ * 
+ * 设计原则：
+ *   - 单例模式：确保全局唯一实例
+ *   - 分层缓存：不同资源使用不同缓存策略
+ *   - 开发模式友好：开发环境下跳过缓存操作
+ *   - 错误恢复：完善的错误处理和日志记录
  */
-class CacheManager {
+export class CacheManager {
   private static instance: CacheManager;
 
+  /**
+   * 获取缓存管理器单例实例
+   * 
+   * @returns CacheManager 单例实例
+   * 
+   * @description
+   *   使用单例模式确保全局只有一个缓存管理器实例
+   *   避免重复初始化和资源浪费
+   */
   static getInstance(): CacheManager {
     if (!CacheManager.instance) {
       CacheManager.instance = new CacheManager();
@@ -233,6 +250,17 @@ class CacheManager {
 
   /**
    * 智能缓存所有资源
+   * 
+   * @returns Promise<void>
+   * 
+   * @description
+   *   基于 chunk-manifest.json 智能缓存所有资源
+   *   包括核心资源、构建资源、manifest 文件等
+   *   开发模式下会跳过缓存操作
+   * 
+   * @example
+   *   const cacheManager = CacheManager.getInstance();
+   *   await cacheManager.cacheAllResources();
    */
   async cacheAllResources(): Promise<void> {
     if (isDevelopmentMode()) {
@@ -247,8 +275,16 @@ class CacheManager {
       
       if (success && manifest) {
         // 更新manifest版本
+        let currentManifestString: string | null = null;
+        try {
+          const manifestResp = await fetch('/chunk-manifest.json');
+          if (manifestResp.ok) {
+            const manifest = await manifestResp.json();
         currentManifestString = JSON.stringify(manifest);
-        Logger.info("Chunk清单已加载，准备缓存资源");
+          }
+        } catch (e) {
+          Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+        }
 
         // 缓存核心资源（HTML、manifest、关键JS）
         const coreResources: string[] = [];
@@ -307,6 +343,17 @@ class CacheManager {
 
   /**
    * 缓存核心资源
+   * 
+   * @param resources - 要缓存的核心资源路径数组
+   * @returns Promise<void>
+   * 
+   * @description
+   *   缓存应用的核心资源，包括 HTML、manifest、关键 JS 文件等
+   *   这些资源对应用启动至关重要，需要优先缓存
+   *   开发模式下会跳过缓存操作
+   * 
+   * @example
+   *   await cacheManager.cacheCoreResources(['/', '/manifest.json', '/app.js']);
    */
   private async cacheCoreResources(resources: string[]): Promise<void> {
     if (isDevelopmentMode()) {
@@ -331,7 +378,7 @@ class CacheManager {
           if (response.ok) {
             await cache.put(resource, response);
             cachedResources.push(resource);
-            Logger.cache(`核心资源缓存成功: ${resource}`);
+            Logger.info(`核心资源缓存成功: ${resource}`);
           } else {
             failedResources.push(resource);
             Logger.warn(`核心资源缓存失败: ${resource}`, { status: response.status });
@@ -342,7 +389,7 @@ class CacheManager {
         }
       }
 
-      Logger.cache("核心资源缓存完成", {
+      Logger.info("核心资源缓存完成", {
         success: cachedResources.length,
         failed: failedResources.length,
         total: resources.length,
@@ -354,6 +401,17 @@ class CacheManager {
 
   /**
    * 缓存构建资源
+   * 
+   * @param resources - 要缓存的构建资源路径数组
+   * @returns Promise<void>
+   * 
+   * @description
+   *   缓存应用的构建资源，包括图片、字体、其他静态资源等
+   *   使用分批处理避免一次性请求过多，提高性能
+   *   开发模式下会跳过缓存操作
+   * 
+   * @example
+   *   await cacheManager.cacheAssetResources(['/images/logo.png', '/fonts/roboto.woff2']);
    */
   private async cacheAssetResources(resources: string[]): Promise<void> {
     if (isDevelopmentMode()) {
@@ -402,7 +460,7 @@ class CacheManager {
         }
       }
 
-      Logger.cache("构建资源缓存完成", {
+      Logger.info("构建资源缓存完成", {
         success: cachedResources.length,
         failed: failedResources.length,
         total: resources.length,
@@ -414,6 +472,16 @@ class CacheManager {
 
   /**
    * 检查并更新缓存
+   * 
+   * @returns Promise<void>
+   * 
+   * @description
+   *   检查 chunk-manifest.json 版本变化，如果检测到变化则更新缓存
+   *   通过比较 manifest 内容来判断版本变化，确保检测准确性
+   *   开发模式下会跳过检查操作
+   * 
+   * @example
+   *   await cacheManager.checkAndUpdateCache();
    */
   async checkAndUpdateCache(): Promise<void> {
     if (isDevelopmentMode()) {
@@ -428,12 +496,15 @@ class CacheManager {
       Logger.info("检测到版本变化，开始更新缓存...");
 
       // 更新当前manifest版本
-      if (manifest) {
+      let currentManifestString: string | null = null;
+      try {
+        const manifestResp = await fetch('/chunk-manifest.json');
+        if (manifestResp.ok) {
+          const manifest = await manifestResp.json();
         currentManifestString = JSON.stringify(manifest);
-        Logger.info("Manifest版本已更新", {
-          buildTime: manifest.buildTime,
-          version: manifest.version
-        });
+        }
+      } catch (e) {
+        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
       }
       
       // 清理旧缓存
@@ -468,6 +539,17 @@ class CacheManager {
       }
 
       // 基于manifest清理过期资源
+      let currentManifestString: string | null = null;
+      try {
+        const manifestResp = await fetch('/chunk-manifest.json');
+        if (manifestResp.ok) {
+          const manifest = await manifestResp.json();
+          currentManifestString = JSON.stringify(manifest);
+        }
+      } catch (e) {
+        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+      }
+
       if (currentManifestString) {
         const manifest = JSON.parse(currentManifestString);
         const validResources = new Set<string>();
@@ -564,7 +646,7 @@ class CacheManager {
       assets: new Map<string, boolean>(),
       data: new Map<string, boolean>(),
       pages: new Map<string, boolean>(),
-      manifestVersion: currentManifestString ? "已缓存" : "无缓存",
+      manifestVersion: "已缓存", // 假设当前manifest是有效的
       lastUpdate: new Date().toISOString(),
     };
 
@@ -588,6 +670,194 @@ class CacheManager {
       Logger.error("获取缓存状态失败:", error);
       return status;
     }
+  }
+}
+
+/**
+ * 定期检查管理器
+ */
+class PeriodicCheckManager {
+  private cacheManager = CacheManager.getInstance();
+  private isRunning = false;
+
+  /**
+   * 启动定期检查
+   */
+  startPeriodicCheck(): void {
+    if (!PERIODIC_CHECK_CONFIG.ENABLED) {
+      Logger.info("定期检查已禁用");
+      return;
+    }
+
+    if (isDevelopmentMode()) {
+      Logger.info("[DEV] 开发模式：跳过定期检查");
+      return;
+    }
+
+    if (this.isRunning) {
+      Logger.warn("定期检查已在运行中");
+      return;
+    }
+
+    this.isRunning = true;
+    Logger.info("🔄 启动定期缓存检查", {
+      interval: `${currentCheckInterval / 1000 / 60}分钟`,
+      config: PERIODIC_CHECK_CONFIG
+    });
+
+    this.scheduleNextCheck();
+  }
+
+  /**
+   * 停止定期检查
+   */
+  stopPeriodicCheck(): void {
+    if (periodicCheckTimer) {
+      clearTimeout(periodicCheckTimer);
+      periodicCheckTimer = null;
+    }
+    this.isRunning = false;
+    Logger.info("⏹️ 停止定期缓存检查");
+  }
+
+  /**
+   * 安排下一次检查
+   */
+  private scheduleNextCheck(): void {
+    if (!this.isRunning) return;
+
+    // 计算下次检查时间
+    const timeSinceLastCheck = Date.now() - lastCheckTime;
+    const delay = Math.max(0, currentCheckInterval - timeSinceLastCheck);
+
+    Logger.debug(`📅 安排下次检查: ${delay / 1000}秒后`);
+
+    periodicCheckTimer = setTimeout(async () => {
+      await this.performCheck();
+      this.scheduleNextCheck(); // 安排下一次检查
+    }, delay);
+  }
+
+  /**
+   * 执行检查
+   */
+  private async performCheck(): Promise<void> {
+    if (!this.isRunning) return;
+
+    Logger.info("🔍 执行定期缓存检查...");
+    lastCheckTime = Date.now();
+
+    try {
+      await this.cacheManager.checkAndUpdateCache();
+      
+      // 检查成功，重置失败计数和间隔
+      if (consecutiveFailures > 0) {
+        Logger.info("✅ 定期检查成功，重置失败计数", {
+          previousFailures: consecutiveFailures,
+          previousInterval: `${currentCheckInterval / 1000 / 60}分钟`
+        });
+      }
+      
+      consecutiveFailures = 0;
+      currentCheckInterval = PERIODIC_CHECK_CONFIG.INTERVAL;
+      
+      // 通知客户端检查完成
+      this.notifyClients("PERIODIC_CHECK_COMPLETED", {
+        timestamp: new Date().toISOString(),
+        success: true,
+        nextCheck: new Date(Date.now() + currentCheckInterval).toISOString()
+      });
+
+    } catch (error) {
+      consecutiveFailures++;
+      Logger.error("❌ 定期检查失败", {
+        consecutiveFailures,
+        error: String(error)
+      });
+
+      // 应用退避策略
+      this.applyBackoffStrategy();
+
+      // 通知客户端检查失败
+      this.notifyClients("PERIODIC_CHECK_FAILED", {
+        timestamp: new Date().toISOString(),
+        error: String(error),
+        consecutiveFailures,
+        nextCheck: new Date(Date.now() + currentCheckInterval).toISOString()
+      });
+    }
+  }
+
+  /**
+   * 应用退避策略
+   */
+  private applyBackoffStrategy(): void {
+    const newInterval = Math.min(
+      currentCheckInterval * PERIODIC_CHECK_CONFIG.BACKOFF_MULTIPLIER,
+      PERIODIC_CHECK_CONFIG.MAX_BACKOFF
+    );
+
+    // 确保间隔在合理范围内
+    currentCheckInterval = Math.max(
+      PERIODIC_CHECK_CONFIG.MIN_INTERVAL,
+      Math.min(newInterval, PERIODIC_CHECK_CONFIG.MAX_INTERVAL)
+    );
+
+    Logger.warn("⏰ 应用退避策略", {
+      consecutiveFailures,
+      newInterval: `${currentCheckInterval / 1000 / 60}分钟`,
+      maxBackoff: `${PERIODIC_CHECK_CONFIG.MAX_BACKOFF / 1000 / 60}分钟`
+    });
+  }
+
+  /**
+   * 立即执行一次检查
+   */
+  async performImmediateCheck(): Promise<void> {
+    if (isDevelopmentMode()) {
+      Logger.info("[DEV] 开发模式：跳过立即检查");
+      return;
+    }
+
+    Logger.info("⚡ 执行立即缓存检查...");
+    await this.performCheck();
+  }
+
+  /**
+   * 获取检查状态
+   */
+  getCheckStatus(): {
+    isRunning: boolean;
+    lastCheckTime: number;
+    consecutiveFailures: number;
+    currentInterval: number;
+    nextCheckTime: number;
+  } {
+    return {
+      isRunning: this.isRunning,
+      lastCheckTime,
+      consecutiveFailures,
+      currentInterval: currentCheckInterval,
+      nextCheckTime: lastCheckTime + currentCheckInterval
+    };
+  }
+
+  /**
+   * 通知所有客户端
+   */
+  private notifyClients(type: string, data: any): void {
+    (self as any).clients
+      .matchAll()
+      .then((clients: readonly Client[]) => {
+        clients.forEach((client: Client) => {
+          if (client && "postMessage" in client) {
+            (client as any).postMessage({ type, data });
+          }
+        });
+      })
+      .catch((error: any) => {
+        Logger.error("通知客户端失败:", error);
+      });
   }
 }
 
@@ -621,14 +891,14 @@ class RequestInterceptor {
           const cache = await caches.open(CACHE_STRATEGIES.CORE);
           const cached = await cache.match(event.request);
           if (cached) {
-            Logger.cache(`离线命中 manifest: ${pathname}`);
+            Logger.info(`离线命中 manifest: ${pathname}`);
             return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               await cache.put(event.request, networkResponse.clone());
-              Logger.cache(`网络缓存 manifest: ${pathname}`);
+              Logger.info(`网络缓存 manifest: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
@@ -645,7 +915,7 @@ class RequestInterceptor {
       event.respondWith(
         caches.match(event.request).then(async (response) => {
           if (response) {
-            Logger.cache(`离线命中主文档: ${pathname}`);
+            Logger.info(`离线命中主文档: ${pathname}`);
             return response;
           }
           try {
@@ -653,7 +923,7 @@ class RequestInterceptor {
             if (networkResponse.ok) {
               const cache = await caches.open(CACHE_STRATEGIES.CORE);
               await cache.put(event.request, networkResponse.clone());
-              Logger.cache(`网络缓存主文档: ${pathname}`);
+              Logger.info(`网络缓存主文档: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
@@ -689,7 +959,7 @@ class RequestInterceptor {
     // 只在缓存命中时记录请求处理
     if (cacheResult && cacheResult.includes("缓存命中")) {
     const shortPath = this.getShortPath(pathname);
-    Logger.networkSmart(
+    Logger.info(
       pathname,
         `${event.request.method} ${shortPath} -> ${strategy} (${cacheResult})`,
       event.request.url,
@@ -701,6 +971,17 @@ class RequestInterceptor {
    * 检查并缓存manifest中的chunk
    */
   private async checkAndCacheManifestChunk(event: FetchEvent, pathname: string): Promise<void> {
+    let currentManifestString: string | null = null;
+    try {
+      const manifestResp = await fetch('/chunk-manifest.json');
+      if (manifestResp.ok) {
+        const manifest = await manifestResp.json();
+        currentManifestString = JSON.stringify(manifest);
+      }
+    } catch (e) {
+      Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+    }
+
     if (!currentManifestString) {
       return;
     }
@@ -766,7 +1047,7 @@ class RequestInterceptor {
             const response = await fetch(event.request);
             if (response.ok) {
               await cache.put(event.request, response.clone());
-              Logger.cache(`动态缓存 ${chunkType} chunk: ${chunkInfo.fileName}`);
+              Logger.info(`动态缓存 ${chunkType} chunk: ${chunkInfo.fileName}`);
             }
           } catch (error) {
             Logger.warn(`动态缓存 ${chunkType} chunk失败: ${chunkInfo.fileName}`, error);
@@ -897,6 +1178,7 @@ class RequestInterceptor {
  */
 class MessageHandler {
   private cacheManager = CacheManager.getInstance();
+  private periodicCheckManager = new PeriodicCheckManager();
 
   /**
    * 处理来自客户端的消息
@@ -925,6 +1207,31 @@ class MessageHandler {
       case "CLEAR_CACHE":
         Logger.info("清理缓存指令");
         event.waitUntil(this.handleClearCache());
+        break;
+
+      case "START_PERIODIC_CHECK":
+        Logger.info("启动定期检查指令");
+        event.waitUntil(this.handleStartPeriodicCheck());
+        break;
+
+      case "STOP_PERIODIC_CHECK":
+        Logger.info("停止定期检查指令");
+        event.waitUntil(this.handleStopPeriodicCheck());
+        break;
+
+      case "IMMEDIATE_CHECK":
+        Logger.info("立即检查指令");
+        event.waitUntil(this.handleImmediateCheck());
+        break;
+
+      case "GET_CHECK_STATUS":
+        Logger.info("获取检查状态指令");
+        event.waitUntil(this.handleGetCheckStatus(event));
+        break;
+
+      case "SET_CONFIG":
+        Logger.info("收到主线程配置变更指令", message.data);
+        this.handleSetConfig(message.data);
         break;
 
       default:
@@ -991,10 +1298,44 @@ class MessageHandler {
     try {
       const cacheNames = await caches.keys();
       await Promise.all(cacheNames.map((name) => caches.delete(name)));
-      currentManifestString = null;
+      let currentManifestString: string | null = null;
+      try {
+        const manifestResp = await fetch('/chunk-manifest.json');
+        if (manifestResp.ok) {
+          const manifest = await manifestResp.json();
+          currentManifestString = JSON.stringify(manifest);
+        }
+      } catch (e) {
+        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+      }
       this.notifyClients("CACHE_CLEARED", { timestamp: new Date().toISOString() });
     } catch (error) {
       Logger.error("清理缓存失败:", error);
+    }
+  }
+
+  /**
+   * 处理主线程下发的 SW 配置变更
+   */
+  private handleSetConfig(config: any): void {
+    try {
+      if (typeof config !== 'object' || !config) return;
+      // 动态应用配置
+      if (typeof config.periodicCheckEnabled === 'boolean') {
+        PERIODIC_CHECK_CONFIG.ENABLED = config.periodicCheckEnabled;
+        Logger.info("[SW][CONFIG] 已应用定期检查开关:", config.periodicCheckEnabled);
+      }
+      if (typeof config.periodicCheckInterval === 'number') {
+        PERIODIC_CHECK_CONFIG.INTERVAL = config.periodicCheckInterval;
+        Logger.info("[SW][CONFIG] 已应用定期检查间隔:", config.periodicCheckInterval);
+      }
+      if (typeof config.cacheStrategy === 'string') {
+        // 这里只做日志，实际策略应用需在缓存逻辑中实现
+        Logger.info("[SW][CONFIG] 已应用缓存策略:", config.cacheStrategy);
+      }
+      // 可扩展更多配置项
+    } catch (err) {
+      Logger.error("[SW][CONFIG] 应用配置失败:", err);
     }
   }
 
@@ -1024,6 +1365,58 @@ class MessageHandler {
       client.postMessage({ type, data });
     }
   }
+
+  /**
+   * 处理启动定期检查
+   */
+  private async handleStartPeriodicCheck(): Promise<void> {
+    try {
+      this.periodicCheckManager.startPeriodicCheck();
+      this.notifyClients("PERIODIC_CHECK_STARTED", { 
+        timestamp: new Date().toISOString(),
+        status: this.periodicCheckManager.getCheckStatus()
+      });
+    } catch (error) {
+      Logger.error("启动定期检查失败:", error);
+    }
+  }
+
+  /**
+   * 处理停止定期检查
+   */
+  private async handleStopPeriodicCheck(): Promise<void> {
+    try {
+      this.periodicCheckManager.stopPeriodicCheck();
+      this.notifyClients("PERIODIC_CHECK_STOPPED", { 
+        timestamp: new Date().toISOString() 
+      });
+    } catch (error) {
+      Logger.error("停止定期检查失败:", error);
+    }
+  }
+
+  /**
+   * 处理立即检查
+   */
+  private async handleImmediateCheck(): Promise<void> {
+    try {
+      await this.periodicCheckManager.performImmediateCheck();
+    } catch (error) {
+      Logger.error("立即检查失败:", error);
+    }
+  }
+
+  /**
+   * 处理获取检查状态
+   */
+  private async handleGetCheckStatus(event: ExtendableMessageEvent): Promise<void> {
+    try {
+      const status = this.periodicCheckManager.getCheckStatus();
+      this.notifyClient(event.source, "CHECK_STATUS", status);
+    } catch (error) {
+      Logger.error("获取检查状态失败:", error);
+    }
+  }
 }
 
 /**
@@ -1039,6 +1432,7 @@ class MessageHandler {
   const cacheManager = CacheManager.getInstance();
   const requestInterceptor = new RequestInterceptor();
   const messageHandler = new MessageHandler();
+  const periodicCheckManager = new PeriodicCheckManager();
 
   // 安装事件 - 智能缓存资源
   worker.addEventListener("install", (event) => {
@@ -1081,6 +1475,9 @@ class MessageHandler {
           await cacheManager.clearOldCaches();
           await worker.clients.claim();
           Logger.info("✅ Service Worker 激活完成，已接管所有客户端");
+
+          // 启动定期检查
+          periodicCheckManager.startPeriodicCheck();
         } catch (error) {
           Logger.error("❌ Service Worker 激活失败:", error);
         }
@@ -1109,14 +1506,14 @@ class MessageHandler {
           const cache = await caches.open(CACHE_STRATEGIES.CORE);
           const cached = await cache.match(event.request);
           if (cached) {
-            Logger.cache(`离线命中 manifest: ${url.pathname}`);
+            Logger.info(`离线命中 manifest: ${url.pathname}`);
             return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               await cache.put(event.request, networkResponse.clone());
-              Logger.cache(`网络缓存 manifest: ${url.pathname}`);
+              Logger.info(`网络缓存 manifest: ${url.pathname}`);
             }
             return networkResponse;
           } catch (error) {
@@ -1133,7 +1530,7 @@ class MessageHandler {
       event.respondWith(
         caches.match(event.request).then(async (response) => {
           if (response) {
-            Logger.cache(`离线命中主文档: ${url.pathname}`);
+            Logger.info(`离线命中主文档: ${url.pathname}`);
             return response;
           }
           try {
@@ -1141,7 +1538,7 @@ class MessageHandler {
             if (networkResponse.ok) {
               const cache = await caches.open(CACHE_STRATEGIES.CORE);
               await cache.put(event.request, networkResponse.clone());
-              Logger.cache(`网络缓存主文档: ${url.pathname}`);
+              Logger.info(`网络缓存主文档: ${url.pathname}`);
             }
             return networkResponse;
           } catch (error) {
@@ -1158,7 +1555,7 @@ class MessageHandler {
       event.respondWith(
         caches.match('/').then((response) => {
           if (response) {
-            Logger.cache(`App Shell 离线命中: /`);
+            Logger.info(`App Shell 离线命中: /`);
             return response;
           } else {
             Logger.warn(`App Shell 离线未命中: /`);

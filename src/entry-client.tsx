@@ -3,7 +3,7 @@ import "~/styles/app.css";
 import "overlayscrollbars/overlayscrollbars.css";
 import { OverlayScrollbars, ClickScrollPlugin } from "overlayscrollbars";
 import { mount, StartClient } from "@solidjs/start/client";
-import serviceWorkerUrl from "~/worker/service.worker?worker&url";
+import serviceWorkerUrl from "~/worker/sw/main?worker&url";
 
 // =========================
 // 资源加载进度显示
