@@ -17,7 +17,7 @@ import {
   ElementType,
   BossPartType,
   BossPartBreakRewardType,
-} from "../../../../../../db/kysely/enums";
+} from "../../../../../../db/generated/kysely/enums";
 import { generateBossDataByFlag } from "~/utils/mob";
 import { CardSection } from "~/components/module/cardSection";
 import { defaultData } from "../../../../../../db/defaultData";

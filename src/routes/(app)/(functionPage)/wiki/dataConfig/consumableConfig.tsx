@@ -29,7 +29,7 @@ import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { ConsumableType } from "../../../../../../db/kysely/enums";
+import { ConsumableType } from "../../../../../../db/generated/kysely/enums";
 
 type ConsumableWithRelated = consumable & {};
 

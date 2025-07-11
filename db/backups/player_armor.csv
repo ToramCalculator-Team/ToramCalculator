@@ -1,2 +1,2 @@
-id,name,extraAbi,ability,templateId,refinement,modifiers,masterId
-defaultPlayerArmorId,defaultPlayerArmor,10,Light,defaultArmorItemId,0,{},defaultPlayerId
+id,name,baseDef,extraAbi,ability,templateId,refinement,modifiers,masterId
+defaultPlayerArmorId,defaultPlayerArmor,0,10,Light,defaultArmorItemId,0,{},defaultPlayerId

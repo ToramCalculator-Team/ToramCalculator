@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 import { DB, item } from "../../db/generated/kysely/kyesely";
-import { ItemType } from "../../db/kysely/enums";
+import { ItemType } from "../../db/generated/kysely/enums";
 import { getDB } from "./database";
 import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";

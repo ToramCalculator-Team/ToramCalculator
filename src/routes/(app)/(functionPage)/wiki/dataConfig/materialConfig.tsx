@@ -27,7 +27,7 @@ import {
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { MaterialType } from "../../../../../../db/kysely/enums";
+import { MaterialType } from "../../../../../../db/generated/kysely/enums";
 import pick from "lodash-es/pick";
 import { CardSharedSection } from "./utils";
 

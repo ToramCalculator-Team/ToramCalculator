@@ -30,7 +30,7 @@ import { CardSection } from "~/components/module/cardSection";
 import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { CrystalType } from "../../../../../../db/kysely/enums";
+import { CrystalType } from "../../../../../../db/generated/kysely/enums";
 import { Select } from "~/components/controls/select";
 
 type CrystalWithRelated = crystal & {

@@ -4,27 +4,48 @@ export const machine = setup({
   types: {
     context: {} as {},
     events: {} as
-      | { type: "使用技能" }
       | { type: "前摇结束" }
       | { type: "受到控制" }
-      | { type: "后摇结束" }
       | { type: "移动指令" }
       | { type: "蓄力结束" }
       | { type: "Hp小于等于0" }
       | { type: "停止移动指令" }
       | { type: "控制时间结束" }
-      | { type: "复活倒计时清零" },
+      | { type: "复活倒计时清零" }
+      | { type: "按下技能" }
+      | { type: "判断可用性" }
+      | { type: "技能动作结束" },
   },
   actions: {
     根据角色配置生成初始状态: function ({ context, event }, params) {
       // Add your action code here
       // ...
     },
-    判断是否满足技能需求: function ({ context, event }, params) {
+    "【技能开始】事件": function ({ context, event }, params) {
       // Add your action code here
       // ...
     },
-    产生效果: function ({ context, event }, params) {
+    "【前摇开始】事件": function ({ context, event }, params) {
+      // Add your action code here
+      // ...
+    },
+    "【前摇结束】事件": function ({ context, event }, params) {
+      // Add your action code here
+      // ...
+    },
+    "【技能效果】事件": function ({ context, event }, params) {
+      // Add your action code here
+      // ...
+    },
+    "【技能动画结束】事件": function ({ context, event }, params) {
+      // Add your action code here
+      // ...
+    },
+    "【开始蓄力】事件": function ({ context, event }, params) {
+      // Add your action code here
+      // ...
+    },
+    "【蓄力结束】事件": function ({ context, event }, params) {
       // Add your action code here
       // ...
     },
@@ -34,7 +55,7 @@ export const machine = setup({
     },
   },
   guards: {
-    当前生命值满足连击中各技能的HP消耗需求: function ({ context, event }) {
+    存在后续连击: function ({ context, event }) {
       // Add your guard condition here
       return true;
     },
@@ -42,7 +63,15 @@ export const machine = setup({
       // Add your guard condition here
       return true;
     },
-    存在后续连击: function ({ context, event }) {
+    无蓄力动作: function ({ context, event }) {
+      // Add your guard condition here
+      return true;
+    },
+    可用: function ({ context, event }) {
+      // Add your guard condition here
+      return true;
+    },
+    "不可用，输出警告": function ({ context, event }) {
       // Add your guard condition here
       return true;
     },
@@ -78,17 +107,9 @@ export const machine = setup({
                 移动指令: {
                   target: "移动中",
                 },
-                使用技能: [
-                  {
-                    target: "释放技能中",
-                    guard: {
-                      type: "当前生命值满足连击中各技能的HP消耗需求",
-                    },
-                  },
-                  {
-                    target: "静止状态",
-                  },
-                ],
+                按下技能: {
+                  target: "发动技能中",
+                },
               },
             },
             移动中: {
@@ -98,9 +119,30 @@ export const machine = setup({
                 },
               },
             },
-            释放技能中: {
-              initial: "前摇",
+            发动技能中: {
+              initial: "技能初始化",
               states: {
+                技能初始化: {
+                  on: {
+                    判断可用性: [
+                      {
+                        target: "前摇",
+                        guard: {
+                          type: "可用",
+                        },
+                      },
+                      {
+                        target: "#Member.存活.可操作状态.静止状态",
+                        guard: {
+                          type: "不可用，输出警告",
+                        },
+                      },
+                    ],
+                  },
+                  entry: {
+                    type: "【技能开始】事件",
+                  },
+                },
                 前摇: {
                   on: {
                     前摇结束: [
@@ -111,26 +153,25 @@ export const machine = setup({
                         },
                       },
                       {
-                        target: "后摇",
+                        target: "技能效果动作",
+                        guard: {
+                          type: "无蓄力动作",
+                        },
                       },
                     ],
                   },
                   entry: {
-                    type: "判断是否满足技能需求",
+                    type: "【前摇开始】事件",
+                  },
+                  exit: {
+                    type: "【前摇结束】事件",
                   },
                 },
-                蓄力动作: {
+                技能效果动作: {
                   on: {
-                    蓄力结束: {
-                      target: "后摇",
-                    },
-                  },
-                },
-                后摇: {
-                  on: {
-                    后摇结束: [
+                    技能动作结束: [
                       {
-                        target: "前摇",
+                        target: "技能初始化",
                         guard: {
                           type: "存在后续连击",
                         },
@@ -141,7 +182,23 @@ export const machine = setup({
                     ],
                   },
                   entry: {
-                    type: "产生效果",
+                    type: "【技能效果】事件",
+                  },
+                  exit: {
+                    type: "【技能动画结束】事件",
+                  },
+                },
+                蓄力动作: {
+                  on: {
+                    蓄力结束: {
+                      target: "技能效果动作",
+                    },
+                  },
+                  entry: {
+                    type: "【开始蓄力】事件",
+                  },
+                  exit: {
+                    type: "【蓄力结束】事件",
                   },
                 },
               },

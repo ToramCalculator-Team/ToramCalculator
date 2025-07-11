@@ -1,5 +1,5 @@
 import { type Mob } from "~/repositories/mob";
-import { MobDifficultyFlag } from "../../db/kysely/enums";
+import { MobDifficultyFlag } from "../../db/generated/kysely/enums";
 import { mob } from "../../db/generated/kysely/kyesely";
 /**
  * 

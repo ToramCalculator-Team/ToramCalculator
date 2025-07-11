@@ -11,7 +11,7 @@ import {
   Setter,
   Show,
 } from "solid-js";
-import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "../../../../../../db/kysely/enums";
+import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "../../../../../../db/generated/kysely/enums";
 import {
   DB,
   drop_item,

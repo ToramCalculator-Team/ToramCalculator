@@ -1,24 +1,9 @@
-import { DataEnums } from "../../../db/dataEnums";
-import { MobType } from "../../../db/kysely/enums";
 import { type dictionary } from "../type";
+import * as Enums from "~/../db/enums";
+// 工具類型
+// ----------------------------------------------------------------
 
-const elementType = {
-  Normal: "無屬性",
-  Dark: "暗屬性",
-  Earth: "地屬性",
-  Fire: "火屬性",
-  Light: "光屬性",
-  Water: "水屬性",
-  Wind: "風屬性",
-};
-
-const mobType: Record<MobType, string> = {
-  Boss: "定點王",
-  MiniBoss: "野王",
-  Mob: "小怪",
-};
-
-const MainWeaponType = {
+const mainWeaponType: Record<Enums.MainWeaponType, string> = {
   OneHandSword: "單手劍",
   TwoHandSword: "雙手劍",
   Bow: "弓",
@@ -28,22 +13,123 @@ const MainWeaponType = {
   Halberd: "旋風槍",
   Katana: "拔刀劍",
   Bowgun: "弩",
-  selfName: "主武器類型",
 };
-const SubWeaponType = {
+
+const subWeaponType: Record<Enums.SubWeaponType, string> = {
   Arrow: "箭矢",
   ShortSword: "小刀",
   NinjutsuScroll: "忍術卷軸",
   Shield: "盾牌",
-  selfName: "副武器類型",
 };
 
-const WeaponType = {
-  ...MainWeaponType,
-  ...SubWeaponType,
+// 實際類型
+// ----------------------------------------------------------------
+
+const accountType: Record<Enums.AccountType, string> = {
+  Admin: "管理員",
+  User: "用戶",
 };
 
-const SkillTreeType = {
+const addressType: Record<Enums.AddressType, string> = {
+  Normal: "一般地點",
+  Limited: "限時地點",
+};
+
+const elementType: Record<Enums.ElementType, string> = {
+  Normal: "無屬性",
+  Dark: "暗屬性",
+  Earth: "地屬性",
+  Fire: "火屬性",
+  Light: "光屬性",
+  Water: "水屬性",
+  Wind: "風屬性",
+};
+
+const weaponType: Record<Enums.WeaponType, string> = {
+  ...mainWeaponType,
+  ...subWeaponType,
+};
+
+const mobType: Record<Enums.MobType, string> = {
+  Boss: "定點王",
+  MiniBoss: "野王",
+  Mob: "小怪",
+};
+
+const itemType: Record<Enums.ItemType, string> = {
+  Weapon: "武器",
+  Armor: "防具",
+  Option: "追加裝備",
+  Special: "特殊裝備",
+  Crystal: "鍛晶",
+  Consumable: "消耗品",
+  Material: "素材",
+};
+
+const materialType: Record<Enums.MaterialType, string> = {
+  Metal: "金屬",
+  Cloth: "布料",
+  Beast: "獸品",
+  Wood: "木材",
+  Drug: "藥品",
+  Magic: "魔素",
+};
+
+const consumableType: Record<Enums.ConsumableType, string> = {
+  MaxHp: "最大HP",
+  MaxMp: "最大MP",
+  pAtk: "物理攻擊",
+  mAtk: "魔法攻擊",
+  Aspd: "攻擊速度",
+  Cspd: "技能速度",
+  Hit: "命中",
+  Flee: "回避",
+  EleStro: "對屬增強",
+  EleRes: "對數抗性",
+  pRes: "物理抗性",
+  mRes: "魔法抗性",
+};
+
+const crystalType: Record<Enums.CrystalType, string> = {
+  NormalCrystal: "通用鍛晶",
+  WeaponCrystal: "武器鍛晶",
+  ArmorCrystal: "防具鍛晶",
+  OptionCrystal: "追加鍛晶",
+  SpecialCrystal: "特殊鍛晶",
+};
+
+const recipeIngredientType: Record<Enums.MaterialType | "Gold" | "Item", string> = {
+  ...materialType,
+  Gold: "金幣",
+  Item: "物品",
+};
+
+const dropItemRelatedPartType: Record<Enums.BossPartType, string> = {
+  A: "A",
+  B: "B",
+  C: "C",
+};
+
+const dropItemBreakRewardType: Record<Enums.BossPartBreakRewardType, string> = {
+  None: "無",
+  CanDrop: "可掉落",
+  DropUp: "掉落提升",
+};
+
+const taskType: Record<Enums.TaskType, string> = {
+  Collect: "收集",
+  Defeat: "討伐",
+  Both: "收集與討伐",
+  Other: "其他",
+};
+
+const taskRewardType: Record<Enums.TaskRewardType, string> = {
+  Exp: "經驗值",
+  Money: "金幣",
+  Item: "物品",
+};
+
+const skillTreeType: Record<Enums.SkillTreeType, string> = {
   BladeSkill: "劍術技能",
   ShootSkill: "射擊技能",
   MagicSkill: "魔法技能",
@@ -83,323 +169,109 @@ const SkillTreeType = {
   PetSkill: "寵物技能",
 };
 
-const SkillTargetType = {
-  None: "無目標",
-  Self: "自己",
-  Player: "同伴",
-  Enemy: "敵人",
-};
-
-const SkillChargingType = {
+const skillChargingType: Record<Enums.SkillChargingType, string> = {
   Chanting: "詠唱",
   Reservoir: "蓄力",
 };
 
-const SkillDistanceType = {
+const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
   None: "不受影響",
   Long: "僅受遠距離威力影響",
   Short: "僅受近距離威力影響",
   Both: "同時受遠距離和近距離威力影響",
 };
 
-const enums: DataEnums = {
-  account: {
-    type: {
-      Admin: "管理員",
-      User: "用戶",
-    },
-  },
-  address: {
-    type: {
-      Normal: "一般地點",
-      Limited: "限時地點",
-    },
-  },
-  weapon: {
-    type: WeaponType,
-    elementType: elementType,
-  },
-  mob: {
-    type: {
-      Boss: "定點王",
-      MiniBoss: "野王",
-      Mob: "小怪",
-    },
-    initialElement: elementType,
-  },
-  item: {
-    itemType: {
-      Weapon: "",
-      Armor: "",
-      Option: "",
-      Special: "",
-      Crystal: "",
-      Consumable: "",
-      Material: "",
-    },
-  },
-  material: {
-    type: {
-      Metal: "",
-      Cloth: "",
-      Beast: "",
-      Wood: "",
-      Drug: "",
-      Magic: "",
-    },
-  },
-  consumable: {
-    type: {
-      MaxHp: "",
-      MaxMp: "",
-      pAtk: "",
-      mAtk: "",
-      Aspd: "",
-      Cspd: "",
-      Hit: "",
-      Flee: "",
-      EleStro: "",
-      EleRes: "",
-      pRes: "",
-      mRes: "",
-    },
-  },
-  crystal: {
-    type: {
-      NormalCrystal: "通用鍛晶",
-      WeaponCrystal: "武器鍛晶",
-      ArmorCrystal: "防具鍛晶",
-      OptionCrystal: "追加鍛晶",
-      SpecialCrystal: "特殊鍛晶",
-    },
-  },
-  recipe_ingredient: {
-    type: {
-      Gold: "",
-      Item: "",
-      Metal: "",
-      Cloth: "",
-      Beast: "",
-      Wood: "",
-      Drug: "",
-      Magic: "",
-    },
-  },
-  drop_item: {
-    relatedPartType: {
-      A: "",
-      B: "",
-      C: "",
-    },
-    breakRewardType: {
-      None: "",
-      CanDrop: "",
-      DropUp: "",
-    },
-  },
-  task: {
-    type: {
-      Collect: "",
-      Defeat: "",
-      Both: "",
-      Other: "",
-    },
-  },
-  task_reward: {
-    type: {
-      Exp: "",
-      Money: "",
-      Item: "",
-    },
-  },
-  skill: {
-    treeType: {
-      BladeSkill: "劍術技能",
-      ShootSkill: "射擊技能",
-      MagicSkill: "魔法技能",
-      MarshallSkill: "格鬥技能",
-      DualSwordSkill: "雙劍技能",
-      HalberdSkill: "斧槍技能",
-      MononofuSkill: "武士技能",
-      CrusherSkill: "粉碎者技能",
-      FeatheringSkill: "靈魂技能",
-      GuardSkill: "格擋技能",
-      ShieldSkill: "護盾技能",
-      KnifeSkill: "小刀技能",
-      KnightSkill: "騎士技能",
-      HunterSkill: "狩獵技能",
-      PriestSkill: "祭司技能",
-      AssassinSkill: "暗殺技能",
-      WizardSkill: "巫師技能",
-      //
-      SupportSkill: "輔助技能",
-      BattleSkill: "好戰分子",
-      SurvivalSkill: "生存本能",
-      //
-      SmithSkill: "鍛冶大師",
-      AlchemySkill: "煉金術士",
-      TamerSkill: "馴獸天分",
-      //
-      DarkPowerSkill: "暗黑之力",
-      MagicBladeSkill: "魔劍技能",
-      DancerSkill: "舞者技能",
-      MinstrelSkill: "詩人技能",
-      BareHandSkill: "空手技能",
-      NinjaSkill: "忍者技能",
-      PartisanSkill: "游擊隊技能",
-      //
-      LuckSkill: "",
-      MerchantSkill: "商人技能",
-      PetSkill: "寵物技能",
-    },
-    chargingType: {
-      Chanting: "詠唱",
-      Reservoir: "蓄力",
-    },
-    distanceType: {
-      None: "",
-      Long: "",
-      Short: "",
-      Both: "",
-    },
-    targetType: {
-      None: "",
-      Self: "",
-      Player: "",
-      Enemy: "",
-    },
-  },
-  player_armor: {
-    ability: {
-      Normal: "一般",
-      Light: "輕化",
-      Heavy: "重化",
-    },
-  },
-  player_pet: {
-    personaType: {
-      Fervent: "",
-      Intelligent: "",
-      Mild: "",
-      Swift: "",
-      Justice: "",
-      Devoted: "",
-      Impulsive: "",
-      Calm: "",
-      Sly: "",
-      Timid: "",
-      Brave: "",
-      Active: "",
-      Sturdy: "",
-      Steady: "",
-      Max: "",
-    },
-    type: {
-      AllTrades: "",
-      PhysicalAttack: "",
-      MagicAttack: "",
-      PhysicalDefense: "",
-      MagicDefensem: "",
-      Avoidance: "",
-      Hit: "",
-      SkillsEnhancement: "",
-      Genius: "",
-    },
-    weaponType: MainWeaponType,
-  },
-  avatar: {
-    type: {
-      Decoration: "",
-      Top: "",
-      Bottom: "",
-    },
-  },
-  character: {
-    personalityType: {
-      None: "無",
-      Luk: "幸運",
-      Cri: "暴擊",
-      Tec: "技巧",
-      Men: "異抗",
-    },
-    partnerSkillAType: {
-      Passive: "",
-      Active: "",
-    },
-    partnerSkillBType: {
-      Passive: "",
-      Active: "",
-    },
-  },
-  combo_step: {
-    type: {
-      None: "",
-      Start: "",
-      Rengeki: "",
-      ThirdEye: "",
-      Filling: "",
-      Quick: "",
-      HardHit: "",
-      Tenacity: "",
-      Invincible: "",
-      BloodSucking: "",
-      Tough: "",
-      AMomentaryWalk: "",
-      Reflection: "",
-      Illusion: "",
-      Max: "",
-    },
-  },
-  mercenary: {
-    type: {
-      Tank: "",
-      Dps: "",
-    },
-    skillAType: {
-      Passive: "",
-      Active: "",
-    },
-    skillBType: {
-      Passive: "",
-      Active: "",
-    },
-  },
-  member: {
-    mobDifficultyFlag: {
-      Easy: "",
-      Normal: "",
-      Hard: "",
-      Lunatic: "",
-      Ultimate: "",
-    },
-  },
-  user: {},
-  session: {},
-  verification_token: {},
-  post: {},
-  account_create_data: {},
-  account_update_data: {},
-  world: {},
-  activity: {},
-  zone: {},
-  image: {},
-  statistic: {},
-  armor: {},
-  option: {},
-  special: {},
-  recipe: {},
-  npc: {},
-  task_kill_requirement: {},
-  task_collect_require: {},
-  skill_effect: {},
-  player: {},
-  player_weapon: {},
-  player_option: {},
-  player_special: {},
-  character_skill: {},
-  combo: {},
-  simulator: {},
-  team: {},
+const skillTargetType: Record<Enums.SkillTargetType, string> = {
+  None: "無目標",
+  Self: "自己",
+  Player: "同伴",
+  Enemy: "敵人",
+};
+
+const playerArmorAbilityType: Record<Enums.PlayerArmorAbilityType, string> = {
+  Normal: "一般",
+  Light: "輕化",
+  Heavy: "重化",
+};
+
+const playerPetPersonaType: Record<Enums.PetPersonaType, string> = {
+  Fervent: "熱情",
+  Intelligent: "聰明",
+  Mild: "溫和",
+  Swift: "敏捷",
+  Justice: "正義",
+  Devoted: "忠誠",
+  Impulsive: "衝動",
+  Calm: "冷靜",
+  Sly: "狡猾",
+  Timid: "膽小",
+  Brave: "勇敢",
+  Active: "活躍",
+  Sturdy: "強壯",
+  Steady: "穩定",
+  Max: "最大",
+};
+
+const playerPetType: Record<Enums.PetType, string> = {
+  AllTrades: "全貿易",
+  PhysicalAttack: "物理攻擊",
+  MagicAttack: "魔法攻擊",
+  PhysicalDefense: "物理防禦",
+  MagicDefensem: "魔法防禦",
+  Avoidance: "回避",
+  Hit: "命中",
+  SkillsEnhancement: "技能增強",
+  Genius: "天才",
+};
+
+const playerAvatarType: Record<Enums.AvatarType, string> = {
+  Decoration: "裝飾品",
+  Top: "上衣",
+  Bottom: "下裝",
+};
+
+const characterPersonalityType: Record<Enums.CharacterPersonalityType, string> = {
+  None: "無",
+  Luk: "幸運",
+  Cri: "暴擊",
+  Tec: "技巧",
+  Men: "異抗",
+};
+
+const partnerSkillType: Record<Enums.PartnerSkillType, string> = {
+  Passive: "被動",
+  Active: "主動",
+};
+
+const comboStepType: Record<Enums.ComboStepType, string> = {
+  None: "無",
+  Start: "",
+  Rengeki: "連擊",
+  ThirdEye: "心眼",
+  Filling: "補位",
+  Quick: "迅速",
+  HardHit: "增幅",
+  Tenacity: "執著",
+  Invincible: "無敵",
+  BloodSucking: "吸血",
+  Tough: "強韌",
+  AMomentaryWalk: "",
+  Reflection: "反射",
+  Illusion: "",
+  Max: "",
+};
+
+const mercenaryType: Record<Enums.MercenaryType, string> = {
+  Tank: "坦克",
+  Dps: "輸出",
+};
+
+const mobDifficultyFlag: Record<Enums.MobDifficultyFlag, string> = {
+  Easy: "0星",
+  Normal: "1星",
+  Hard: "2星",
+  Lunatic: "3星",
+  Ultimate: "4星",
 };
 
 const dictionary: dictionary = {
@@ -1805,8 +1677,8 @@ const dictionary: dictionary = {
         },
         captureable: {
           key: "是否可捕獲",
-          tableFieldDescription: `這個屬性只對${enums.mob.type.Boss}和${enums.mob.type.MiniBoss}以外的怪物有效，能抓的甘瑞夫和糖明凰目前被視為特殊怪物。`,
-          formFieldDescription: `如果不是${enums.mob.type.Mob}類型的怪物，請選擇不可捕獲。`,
+          tableFieldDescription: `這個屬性只對${mobType.Boss}和${mobType.MiniBoss}以外的怪物有效，能抓的甘瑞夫和糖明凰目前被視為特殊怪物。`,
+          formFieldDescription: `如果不是${mobType.Mob}類型的怪物，請選擇不可捕獲。`,
         },
         actions: {
           key: "行為",
@@ -1815,13 +1687,13 @@ const dictionary: dictionary = {
         },
         baseLv: {
           key: "基礎等級",
-          tableFieldDescription: `對於${enums.mob.type.Boss}來說，這個值是${enums.member.mobDifficultyFlag.Easy}難度下的等級數值。其他類型的怪物由於沒有難度標識，這個值就是實際等級`,
-          formFieldDescription: `如果怪物類型是${enums.mob.type.Boss}，請填寫你在選擇${enums.member.mobDifficultyFlag.Easy}難度時它的等級。其他類型的怪物直接填寫實際等級即可。`,
+          tableFieldDescription: `對於${mobType.Boss}來說，這個值是${mobDifficultyFlag.Easy}難度下的等級數值。其他類型的怪物由於沒有難度標識，這個值就是實際等級`,
+          formFieldDescription: `如果怪物類型是${mobType.Boss}，請填寫你在選擇${mobDifficultyFlag.Easy}難度時它的等級。其他類型的怪物直接填寫實際等級即可。`,
         },
         experience: {
           key: "經驗",
-          tableFieldDescription: `對於${enums.mob.type.Boss}來說，這個值是${enums.member.mobDifficultyFlag.Easy}難度下的經驗值。其他類型的怪物由於沒有難度標識，這個值就是其際經驗值`,
-          formFieldDescription: `如果怪物類型是${enums.mob.type.Boss}，請填寫你在選擇${enums.member.mobDifficultyFlag.Easy}難度時它的經驗值。其他類型的怪物直接填寫實際經驗值即可。`,
+          tableFieldDescription: `對於${mobType.Boss}來說，這個值是${mobDifficultyFlag.Easy}難度下的經驗值。其他類型的怪物由於沒有難度標識，這個值就是其際經驗值`,
+          formFieldDescription: `如果怪物類型是${mobType.Boss}，請填寫你在選擇${mobDifficultyFlag.Easy}難度時它的經驗值。其他類型的怪物直接填實際經驗值即可。`,
         },
         initialElement: {
           key: "元素屬性",
@@ -1839,7 +1711,7 @@ const dictionary: dictionary = {
         maxhp: {
           key: "最大生命值",
           tableFieldDescription: "不會有人不知道這個屬性是什麼意思吧，不會吧",
-          formFieldDescription: `對於${enums.mob.type.Boss}來說，這個值是${enums.member.mobDifficultyFlag.Easy}難度下顯示的數值。其他類型的怪物由於沒有難度標識，這個值可能需要估測`,
+          formFieldDescription: `對於${mobType.Boss}來說，這個值是${mobDifficultyFlag.Easy}難度下顯示的數值。其他類型的怪物由於沒有難度標識，這個值可能需要估測`,
         },
         physicalDefense: {
           key: "物理防禦",
@@ -1898,8 +1770,8 @@ const dictionary: dictionary = {
         },
         partsExperience: {
           key: "部位經驗",
-          tableFieldDescription: `只有${enums.mob.type.Boss}會有這個值，當某個部位被破壞時，討伐後的總經驗會額外增加此值`,
-          formFieldDescription: `只有${enums.mob.type.Boss}會有這個值，當某個部位被破壞時，討伐後的總經驗會額外增加此值`,
+          tableFieldDescription: `只有${mobType.Boss}會有這個值，當某個部位被破壞時，討伐後的總經驗會額外增加此值`,
+          formFieldDescription: `只有${mobType.Boss}會有這個值，當某個部位被破壞時，討伐後的總經驗會額外增加此值`,
         },
         details: {
           key: "額外說明",
@@ -2039,6 +1911,11 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        baseDef: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2584,8 +2461,8 @@ const dictionary: dictionary = {
         },
         targetType: {
           key: "目標類型",
-          tableFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
-          formFieldDescription: `不需要選擇目標就能施放的技能是${enums.skill.targetType.Self}，可以選擇${enums.skill.targetType.Player}作為目標的技能是${enums.skill.targetType.Player}。`,
+          tableFieldDescription: `不需要選擇目標就能施放的技能是${skillTargetType.Self}，可以選擇${skillTargetType.Player}作為目標的技能是${skillTargetType.Player}。`,
+          formFieldDescription: `不需要選擇目標就能施放的技能是${skillTargetType.Self}，可以選擇${skillTargetType.Player}作為目標的技能是${skillTargetType.Player}。`,
           enumMap: {
             None: "無目標",
             Self: "自身",
@@ -2595,8 +2472,8 @@ const dictionary: dictionary = {
         },
         chargingType: {
           key: "詠唱類型",
-          tableFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
-          formFieldDescription: `不受詠唱影響的技能都是${enums.skill.chargingType.Reservoir}。`,
+          tableFieldDescription: `不受詠唱影響的技能都是${skillChargingType.Reservoir}。`,
+          formFieldDescription: `不受詠唱影響的技能都是${skillChargingType.Reservoir}。`,
           enumMap: {
             Chanting: "詠唱",
             Reservoir: "儲存",

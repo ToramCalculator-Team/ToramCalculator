@@ -794,7 +794,7 @@ class ZodGenerator {
    * 生成 Zod schemas
    */
   static generate() {
-    // 从 db/kysely/enums.ts 生成 zod 枚举
+    // 从 db/generated/kysely/enums.ts 生成 zod 枚举
     const enumSchemas = this.generateEnumSchemas();
 
     // 从 Kysely 类型定义生成 Zod schemas

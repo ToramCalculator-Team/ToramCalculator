@@ -25,7 +25,7 @@ import {
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { ElementType, WeaponType } from "../../../../../../db/kysely/enums";
+import { ElementType, WeaponType } from "../../../../../../db/generated/kysely/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import pick from "lodash-es/pick";
 

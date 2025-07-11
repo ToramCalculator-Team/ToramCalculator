@@ -677,6 +677,7 @@ model player_armor {
     id String @id
 
     name       String
+    baseDef    Int // 当模板不存在时生效
     extraAbi   Int
     ability    String // Enum PLAYER_ARMOR_ABILITY_TYPE
     template   armor?    @relation(fields: [templateId], references: [itemId])

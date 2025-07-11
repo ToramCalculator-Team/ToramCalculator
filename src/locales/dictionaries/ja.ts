@@ -1,24 +1,9 @@
-import { DataEnums } from "../../../db/dataEnums";
-import { MobType } from "../../../db/kysely/enums";
 import { type dictionary } from "../type";
+import * as Enums from "~/../db/enums";
+// 工具类型
+// ----------------------------------------------------------------
 
-const elementType = {
-  Normal: "無属性",
-  Dark: "闇属性",
-  Earth: "地属性",
-  Fire: "火属性",
-  Light: "光属性",
-  Water: "水属性",
-  Wind: "風属性",
-}
-
-const mobType: Record<MobType, string> = {
-  Boss: "ボス",
-  MiniBoss: "ミニボス",
-  Mob: "モブ",
-};
-
-const MainWeaponType = {
+const mainWeaponType: Record<Enums.MainWeaponType, string> = {
   OneHandSword: "片手剣",
   TwoHandSword: "両手剣",
   Bow: "弓",
@@ -28,312 +13,266 @@ const MainWeaponType = {
   Halberd: "ハルバード",
   Katana: "刀",
   Bowgun: "ボウガン",
-  selfName: "メイン武器タイプ",
-}
-const SubWeaponType = {
+};
+
+const subWeaponType: Record<Enums.SubWeaponType, string> = {
   Arrow: "矢",
   ShortSword: "短剣",
   NinjutsuScroll: "忍術巻物",
   Shield: "盾",
-  selfName: "サブ武器タイプ",
-}
+};
 
-const WeaponType = {
-  ...MainWeaponType,
-  ...SubWeaponType
-}
+// 実際のタイプ
+// ----------------------------------------------------------------
 
-const enums: DataEnums = {
-  account: {
-    type: {
-      Admin: "管理者",
-      User: "ユーザー"
-    }
-  },
-  address: {
-    type: {
-      Normal: "通常地点",
-      Limited: "期間限定地点"
-    }
-  },
-  weapon: {
-    type: WeaponType,
-    elementType: elementType
-  },
-  mob: {
-    type: mobType,
-    initialElement: elementType
-  },
-  item: {
-    itemType: {
-      Weapon: "武器",
-      Armor: "防具",
-      Option: "オプション",
-      Special: "特殊",
-      Crystal: "クリスタル",
-      Consumable: "消耗品",
-      Material: "素材"
-    }
-  },
-  material: {
-    type: {
-      Metal: "金属",
-      Cloth: "布",
-      Beast: "獣",
-      Wood: "木",
-      Drug: "薬",
-      Magic: "魔法"
-    }
-  },
-  consumable: {
-    type: {
-      MaxHp: "最大HP",
-      MaxMp: "最大MP",
-      pAtk: "物理攻撃",
-      mAtk: "魔法攻撃",
-      Aspd: "攻撃速度",
-      Cspd: "詠唱速度",
-      Hit: "命中",
-      Flee: "回避",
-      EleStro: "属性強化",
-      EleRes: "属性耐性",
-      pRes: "物理耐性",
-      mRes: "魔法耐性"
-    }
-  },
-  crystal: {
-    type: {
-      NormalCrystal: "通常クリスタル",
-      WeaponCrystal: "武器クリスタル",
-      ArmorCrystal: "防具クリスタル",
-      OptionCrystal: "追加クリスタル",
-      SpecialCrystal: "特殊クリスタル"
-    }
-  },
-  recipe_ingredient: {
-    type: {
-      Gold: "ゴールド",
-      Item: "アイテム",
-      Metal: "金属",
-      Cloth: "布",
-      Beast: "獣",
-      Wood: "木",
-      Drug: "薬",
-      Magic: "魔法"
-    }
-  },
-  drop_item: {
-    relatedPartType: {
-      A: "部位A",
-      B: "部位B",
-      C: "部位C"
-    },
-    breakRewardType: {
-      None: "なし",
-      CanDrop: "ドロップ可能",
-      DropUp: "ドロップ率上昇"
-    }
-  },
-  task: {
-    type: {
-      Collect: "収集",
-      Defeat: "討伐",
-      Both: "両方",
-      Other: "その他"
-    }
-  },
-  task_reward: {
-    type: {
-      Exp: "経験値",
-      Money: "お金",
-      Item: "アイテム"
-    }
-  },
-  skill: {
-    treeType: {
-      BladeSkill: "剣術スキル",
-      ShootSkill: "射撃スキル",
-      MagicSkill: "魔法スキル",
-      MarshallSkill: "格闘スキル",
-      DualSwordSkill: "双剣スキル",
-      HalberdSkill: "斧槍スキル",
-      MononofuSkill: "武士スキル",
-      CrusherSkill: "クラッシャースキル",
-      FeatheringSkill: "フェザリングスキル",
-      GuardSkill: "ガードスキル",
-      ShieldSkill: "シールドスキル",
-      KnifeSkill: "ナイフスキル",
-      KnightSkill: "ナイトスキル",
-      HunterSkill: "ハンタースキル",
-      PriestSkill: "プリーストスキル",
-      AssassinSkill: "アサシンスキル",
-      WizardSkill: "ウィザードスキル",
-      SupportSkill: "サポートスキル",
-      BattleSkill: "バトルスキル",
-      SurvivalSkill: "サバイバルスキル",
-      SmithSkill: "鍛冶スキル",
-      AlchemySkill: "錬金術スキル",
-      TamerSkill: "テイマースキル",
-      DarkPowerSkill: "闇の力スキル",
-      MagicBladeSkill: "魔剣スキル",
-      DancerSkill: "ダンサースキル",
-      MinstrelSkill: "ミンストレルスキル",
-      BareHandSkill: "素手スキル",
-      NinjaSkill: "忍者スキル",
-      PartisanSkill: "パルチザンスキル",
-      LuckSkill: "ラックスキル",
-      MerchantSkill: "商人スキル",
-      PetSkill: "ペットスキル"
-    },
-    chargingType: {
-      Chanting: "詠唱",
-      Reservoir: "チャージ"
-    },
-    distanceType: {
-      None: "影響なし",
-      Long: "遠距離のみ",
-      Short: "近距離のみ",
-      Both: "両方"
-    },
-    targetType: {
-      None: "対象なし",
-      Self: "自分",
-      Player: "味方",
-      Enemy: "敵"
-    }
-  },
-  player_armor: {
-    ability: {
-      Normal: "通常",
-      Light: "軽量化",
-      Heavy: "重量化"
-    }
-  },
-  player_pet: {
-    personaType: {
-      Fervent: "熱心",
-      Intelligent: "知性",
-      Mild: "温和",
-      Swift: "迅速",
-      Justice: "正義",
-      Devoted: "献身",
-      Impulsive: "衝動",
-      Calm: "冷静",
-      Sly: "狡猾",
-      Timid: "臆病",
-      Brave: "勇敢",
-      Active: "活発",
-      Sturdy: "頑丈",
-      Steady: "安定",
-      Max: "最大"
-    },
-    type: {
-      AllTrades: "万能",
-      PhysicalAttack: "物理攻撃",
-      MagicAttack: "魔法攻撃",
-      PhysicalDefense: "物理防御",
-      MagicDefensem: "魔法防御",
-      Avoidance: "回避",
-      Hit: "命中",
-      SkillsEnhancement: "スキル強化",
-      Genius: "天才"
-    },
-    weaponType: MainWeaponType
-  },
-  avatar: {
-    type: {
-      Decoration: "",
-      Top: "",
-      Bottom: ""
-    }
-  },
-  character: {
-    personalityType: {
-      None: "無",
-      Luk: "幸運",
-      Cri: "暴撃",
-      Tec: "技巧",
-      Men: "異抗",
-    },
-    partnerSkillAType: {
-      Passive: "",
-      Active: ""
-    },
-    partnerSkillBType: {
-      Passive: "",
-      Active: ""
-    }
-  },
-  combo_step: {
-    type: {
-      None: "",
-      Start: "",
-      Rengeki: "",
-      ThirdEye: "",
-      Filling: "",
-      Quick: "",
-      HardHit: "",
-      Tenacity: "",
-      Invincible: "",
-      BloodSucking: "",
-      Tough: "",
-      AMomentaryWalk: "",
-      Reflection: "",
-      Illusion: "",
-      Max: ""
-    }
-  },
-  mercenary: {
-    type: {
-      Tank: "",
-      Dps: ""
-    },
-    skillAType: {
-      Passive: "",
-      Active: ""
-    },
-    skillBType: {
-      Passive: "",
-      Active: ""
-    }
-  },
-  member: {
-    mobDifficultyFlag: {
-      Easy: "",
-      Normal: "",
-      Hard: "",
-      Lunatic: "",
-      Ultimate: ""
-    }
-  },
-  user: {},
-  session: {},
-  verification_token: {},
-  post: {},
-  account_create_data: {},
-  account_update_data: {},
-  world: {},
-  activity: {},
-  zone: {},
-  image: {},
-  statistic: {},
-  armor: {},
-  option: {},
-  special: {},
-  recipe: {},
-  npc: {},
-  task_kill_requirement: {},
-  task_collect_require: {},
-  skill_effect: {},
-  player: {},
-  player_weapon: {},
-  player_option: {},
-  player_special: {},
-  character_skill: {},
-  combo: {},
-  simulator: {},
-  team: {},
-}
+const accountType: Record<Enums.AccountType, string> = {
+  Admin: "管理者",
+  User: "ユーザー",
+};
+
+const addressType: Record<Enums.AddressType, string> = {
+  Normal: "通常地点",
+  Limited: "期間限定地点",
+};
+
+const elementType: Record<Enums.ElementType, string> = {
+  Normal: "無属性",
+  Dark: "闇属性",
+  Earth: "地属性",
+  Fire: "火属性",
+  Light: "光属性",
+  Water: "水属性",
+  Wind: "風属性",
+};
+
+const weaponType: Record<Enums.WeaponType, string> = {
+  ...mainWeaponType,
+  ...subWeaponType,
+};
+
+const mobType: Record<Enums.MobType, string> = {
+  Boss: "ボス",
+  MiniBoss: "ミニボス",
+  Mob: "モブ",
+};
+
+const itemType: Record<Enums.ItemType, string> = {
+  Weapon: "武器",
+  Armor: "防具",
+  Option: "追加装備",
+  Special: "特殊装備",
+  Crystal: "クリスタル",
+  Consumable: "消耗品",
+  Material: "素材",
+};
+
+const materialType: Record<Enums.MaterialType, string> = {
+  Metal: "金属",
+  Cloth: "布",
+  Beast: "獣",
+  Wood: "木",
+  Drug: "薬",
+  Magic: "魔法",
+};
+
+const consumableType: Record<Enums.ConsumableType, string> = {
+  MaxHp: "最大HP",
+  MaxMp: "最大MP",
+  pAtk: "物理攻撃",
+  mAtk: "魔法攻撃",
+  Aspd: "攻撃速度",
+  Cspd: "詠唱速度",
+  Hit: "命中",
+  Flee: "回避",
+  EleStro: "属性強化",
+  EleRes: "属性耐性",
+  pRes: "物理耐性",
+  mRes: "魔法耐性",
+};
+
+const crystalType: Record<Enums.CrystalType, string> = {
+  NormalCrystal: "通常クリスタル",
+  WeaponCrystal: "武器クリスタル",
+  ArmorCrystal: "防具クリスタル",
+  OptionCrystal: "追加クリスタル",
+  SpecialCrystal: "特殊クリスタル",
+};
+
+const recipeIngredientType: Record<Enums.MaterialType | "Gold" | "Item", string> = {
+  ...materialType,
+  Gold: "ゴールド",
+  Item: "アイテム"
+};
+
+const dropItemRelatedPartType: Record<Enums.BossPartType, string> = {
+  A: "部位A",
+  B: "部位B",
+  C: "部位C",
+};
+
+const dropItemBreakRewardType: Record<Enums.BossPartBreakRewardType, string> = {
+  None: "なし",
+  CanDrop: "ドロップ可能",
+  DropUp: "ドロップ率上昇",
+};
+
+const taskType: Record<Enums.TaskType, string> = {
+  Collect: "収集",
+  Defeat: "討伐",
+  Both: "両方",
+  Other: "その他",
+};
+
+const taskRewardType: Record<Enums.TaskRewardType, string> = {
+  Exp: "経験値",
+  Money: "お金",
+  Item: "アイテム",
+};
+
+const skillTreeType: Record<Enums.SkillTreeType, string> = {
+  BladeSkill: "剣術スキル",
+  ShootSkill: "射撃スキル",
+  MagicSkill: "魔法スキル",
+  MarshallSkill: "格闘スキル",
+  DualSwordSkill: "双剣スキル",
+  HalberdSkill: "斧槍スキル",
+  MononofuSkill: "武士スキル",
+  CrusherSkill: "クラッシャースキル",
+  FeatheringSkill: "フェザリングスキル",
+  GuardSkill: "ガードスキル",
+  ShieldSkill: "シールドスキル",
+  KnifeSkill: "ナイフスキル",
+  KnightSkill: "ナイトスキル",
+  HunterSkill: "ハンタースキル",
+  PriestSkill: "プリーストスキル",
+  AssassinSkill: "アサシンスキル",
+  WizardSkill: "ウィザードスキル",
+  //
+  SupportSkill: "サポートスキル",
+  BattleSkill: "バトルスキル",
+  SurvivalSkill: "サバイバルスキル",
+  //
+  SmithSkill: "鍛冶スキル",
+  AlchemySkill: "錬金術スキル",
+  TamerSkill: "テイマースキル",
+  //
+  DarkPowerSkill: "闇の力スキル",
+  MagicBladeSkill: "魔剣スキル",
+  DancerSkill: "ダンサースキル",
+  MinstrelSkill: "ミンストレルスキル",
+  BareHandSkill: "素手スキル",
+  NinjaSkill: "忍者スキル",
+  PartisanSkill: "パルチザンスキル",
+  //
+  LuckSkill: "ラックスキル",
+  MerchantSkill: "商人スキル",
+  PetSkill: "ペットスキル",
+};
+
+const skillChargingType: Record<Enums.SkillChargingType, string> = {
+  Chanting: "詠唱",
+  Reservoir: "チャージ",
+};
+
+const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
+  None: "影響なし",
+  Long: "遠距離のみ",
+  Short: "近距離のみ",
+  Both: "両方",
+};
+
+const skillTargetType: Record<Enums.SkillTargetType, string> = {
+  None: "対象なし",
+  Self: "自分",
+  Player: "仲間",
+  Enemy: "敵",
+};
+
+const playerArmorAbilityType: Record<Enums.PlayerArmorAbilityType, string> = {
+  Normal: "通常",
+  Light: "軽化",
+  Heavy: "重化",
+};
+
+const playerPetPersonaType: Record<Enums.PetPersonaType, string> = {
+  Fervent: "熱情",
+  Intelligent: "聡明",
+  Mild: "温和",
+  Swift: "敏捷",
+  Justice: "正義",
+  Devoted: "忠実",
+  Impulsive: "衝動",
+  Calm: "冷静",
+  Sly: "狡猾",
+  Timid: "臆病",
+  Brave: "勇敢",
+  Active: "活発",
+  Sturdy: "強靭",
+  Steady: "安定",
+  Max: "最大",
+};
+
+const playerPetType: Record<Enums.PetType, string> = {
+  AllTrades: "全貿易",
+  PhysicalAttack: "物理攻撃",
+  MagicAttack: "魔法攻撃",
+  PhysicalDefense: "物理防御",
+  MagicDefensem: "魔法防御",
+  Avoidance: "回避",
+  Hit: "命中",
+  SkillsEnhancement: "スキル強化",
+  Genius: "天才",
+};
+
+const playerAvatarType: Record<Enums.AvatarType, string> = {
+  Decoration: "装飾品",
+  Top: "上衣",
+  Bottom: "下装",
+};
+
+const characterPersonalityType: Record<Enums.CharacterPersonalityType, string> = {
+  None: "なし",
+  Luk: "幸運",
+  Cri: "クリティカル",
+  Tec: "技巧",
+  Men: "精神",
+};
+
+const partnerSkillType: Record<Enums.PartnerSkillType, string> = {
+  Passive: "パッシブ",
+  Active: "アクティブ",
+};
+
+const comboStepType: Record<Enums.ComboStepType, string> = {
+  None: "なし",
+  Start: "",
+  Rengeki: "連撃",
+  ThirdEye: "心眼",
+  Filling: "補位",
+  Quick: "迅速",
+  HardHit: "増幅",
+  Tenacity: "執着",
+  Invincible: "無敵",
+  BloodSucking: "吸血",
+  Tough: "強靭",
+  AMomentaryWalk: "",
+  Reflection: "反射",
+  Illusion: "",
+  Max: "",
+};
+
+const mercenaryType: Record<Enums.MercenaryType, string> = {
+  Tank: "タンク",
+  Dps: "DPS",
+};
+
+const mobDifficultyFlag: Record<Enums.MobDifficultyFlag, string> = {
+  Easy: "0星",
+  Normal: "1星",
+  Hard: "2星",
+  Lunatic: "3星",
+  Ultimate: "4星",
+};
 
 const dictionary: dictionary = {
   ui: {
@@ -1741,8 +1680,8 @@ const dictionary: dictionary = {
         },
         captureable: {
           key: "捕獲可能",
-          tableFieldDescription: `${enums.mob.type.Boss}および${enums.mob.type.MiniBoss}以外のモンスターにのみ有効です。捕獲可能なガンリフや糖明凰は特別扱いされています。`,
-          formFieldDescription: `${enums.mob.type.Mob}タイプでない場合は「不可」を選択してください。`,
+          tableFieldDescription: `${mobType.Boss}および${mobType.MiniBoss}以外のモンスターにのみ有効です。捕獲可能なガンリフや糖明凰は特別扱いされています。`,
+          formFieldDescription: `${mobType.Mob}タイプでない場合は「不可」を選択してください。`,
         },
         actions: {
           key: "行動",
@@ -1751,13 +1690,13 @@ const dictionary: dictionary = {
         },
         baseLv: {
           key: "基本レベル",
-          tableFieldDescription: `${enums.mob.type.Boss}の場合、この値は${enums.member.mobDifficultyFlag.Easy}難易度でのレベルです。他のタイプのモンスターには難易度がないため、これが実際のレベルです。`,
-          formFieldDescription: `モンスタータイプが${enums.mob.type.Boss}の場合、${enums.member.mobDifficultyFlag.Easy}難易度でのレベルを入力してください。他のタイプのモンスターは実際のレベルを入力してください。`,
+          tableFieldDescription: `${mobType.Boss}の場合、この値は${mobDifficultyFlag.Easy}難易度でのレベルです。他のタイプのモンスターには難易度がないため、これが実際のレベルです。`,
+          formFieldDescription: `モンスタータイプが${mobType.Boss}の場合、${mobDifficultyFlag.Easy}難易度でのレベルを入力してください。他のタイプのモンスターは実際のレベルを入力してください。`,
         },
         experience: {
           key: "経験値",
-          tableFieldDescription: `${enums.mob.type.Boss}の場合、この値は${enums.member.mobDifficultyFlag.Easy}難易度での経験値です。他のタイプのモンスターには難易度がないため、これが実際の経験値です。`,
-          formFieldDescription: `モンスタータイプが${enums.mob.type.Boss}の場合、${enums.member.mobDifficultyFlag.Easy}難易度での経験値を入力してください。他のタイプのモンスターは実際の経験値を入力してください。`,
+          tableFieldDescription: `${mobType.Boss}の場合、この値は${mobDifficultyFlag.Easy}難易度での経験値です。他のタイプのモンスターには難易度がないため、これが実際の経験値です。`,
+          formFieldDescription: `モンスタータイプが${mobType.Boss}の場合、${mobDifficultyFlag.Easy}難易度での経験値を入力してください。他のタイプのモンスターは実際の経験値を入力してください。`,
         },
         initialElement: {
           key: "属性",
@@ -1773,7 +1712,7 @@ const dictionary: dictionary = {
         maxhp: {
           key: "最大HP",
           tableFieldDescription: "この属性の意味がわからない人はいないよね？いないよね？",
-          formFieldDescription: `${enums.mob.type.Boss}の場合、この値は${enums.member.mobDifficultyFlag.Easy}難易度でのHPです。他のタイプのモンスターには難易度がないため、この値は推測が必要かもしれません。`,
+          formFieldDescription: `${mobType.Boss}の場合、この値は${mobDifficultyFlag.Easy}難易度でのHPです。他のタイプのモンスターには難易度がないため、この値は推測が必要かもしれません。`,
         },
         physicalDefense: {
           key: "物理防御",
@@ -1832,8 +1771,8 @@ const dictionary: dictionary = {
         },
         partsExperience: {
           key: "部位経験値",
-          tableFieldDescription: `${enums.mob.type.Boss}のみこの値を持ちます。部位を破壊すると、討伐後の総経験値がこの値分追加されます。`,
-          formFieldDescription: `${enums.mob.type.Boss}のみこの値を持ちます。部位を破壊すると、討伐後の総経験値がこの値分追加されます。`,
+          tableFieldDescription: `${mobType.Boss}のみこの値を持ちます。部位を破壊すると、討伐後の総経験値がこの値分追加されます。`,
+          formFieldDescription: `${mobType.Boss}のみこの値を持ちます。部位を破壊すると、討伐後の総経験値がこの値分追加されます。`,
         },
         details: {
           key: "備考",
@@ -1973,6 +1912,11 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         },
         name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        baseDef: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -2518,8 +2462,8 @@ const dictionary: dictionary = {
         },
         targetType: {
           key: "ターゲットタイプ",
-          tableFieldDescription: `ターゲットを選択せずに発動できるスキルは${enums.skill.targetType.Self}、${enums.skill.targetType.Player}をターゲットにできるスキルは${enums.skill.targetType.Player}です。`,
-          formFieldDescription: `ターゲットを選択せずに発動できるスキルは${enums.skill.targetType.Self}、${enums.skill.targetType.Player}をターゲットにできるスキルは${enums.skill.targetType.Player}です。`,
+          tableFieldDescription: `ターゲットを選択せずに発動できるスキルは${skillTargetType.Self}、${skillTargetType.Player}をターゲットにできるスキルは${skillTargetType.Player}です。`,
+          formFieldDescription: `ターゲットを選択せずに発動できるスキルは${skillTargetType.Self}、${skillTargetType.Player}をターゲットにできるスキルは${skillTargetType.Player}です。`,
           enumMap: {
             "None": "ターゲットなし",
             "Self": "自身",
@@ -2529,8 +2473,8 @@ const dictionary: dictionary = {
         },
         chargingType: {
           key: "詠唱タイプ",
-          tableFieldDescription: `詠唱の影響を受けないスキルはすべて${enums.skill.chargingType.Reservoir}です。`,
-          formFieldDescription: `詠唱の影響を受けないスキルはすべて${enums.skill.chargingType.Reservoir}です。`,
+          tableFieldDescription: `詠唱の影響を受けないスキルはすべて${skillChargingType.Reservoir}です。`,
+          formFieldDescription: `詠唱の影響を受けないスキルはすべて${skillChargingType.Reservoir}です。`,
           enumMap: {
             "Chanting": "詠唱",
             "Reservoir": "貯蔵"

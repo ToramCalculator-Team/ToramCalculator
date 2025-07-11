@@ -21,7 +21,7 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { TaskRewardType } from "../../../../../../db/kysely/enums";
+import { TaskRewardType } from "../../../../../../db/generated/kysely/enums";
 import { createStatistic } from "~/repositories/statistic";
 import { store } from "~/store";
 import * as Icon from "~/components/icon";

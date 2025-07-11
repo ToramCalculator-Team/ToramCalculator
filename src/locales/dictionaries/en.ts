@@ -1,24 +1,10 @@
-import { DataEnums } from "../../../db/dataEnums";
-import { MobType } from "../../../db/kysely/enums";
 import { type dictionary } from "../type";
+import * as Enums from "~/../db/enums";
 
-const elementType = {
-  Normal: "Normal",
-  Dark: "Dark",
-  Earth: "Earth",
-  Fire: "Fire",
-  Light: "Light",
-  Water: "Water",
-  Wind: "Wind",
-};
+// Tool types
+// ----------------------------------------------------------------
 
-const mobType: Record<MobType, string> = {
-  Boss: "Boss",
-  MiniBoss: "Mini Boss",
-  Mob: "Mob",
-};
-
-const MainWeaponType = {
+const mainWeaponType: Record<Enums.MainWeaponType, string> = {
   OneHandSword: "One-handed Sword",
   TwoHandSword: "Two-handed Sword",
   Bow: "Bow",
@@ -28,311 +14,265 @@ const MainWeaponType = {
   Halberd: "Halberd",
   Katana: "Katana",
   Bowgun: "Bowgun",
-  selfName: "Main Weapon Type",
 };
-const SubWeaponType = {
+
+const subWeaponType: Record<Enums.SubWeaponType, string> = {
   Arrow: "Arrow",
   ShortSword: "Short Sword",
   NinjutsuScroll: "Ninjutsu Scroll",
   Shield: "Shield",
-  selfName: "Sub Weapon Type",
 };
 
-const WeaponType = {
-  ...MainWeaponType,
-  ...SubWeaponType,
+// Actual types
+// ----------------------------------------------------------------
+
+const accountType: Record<Enums.AccountType, string> = {
+  Admin: "Admin",
+  User: "User",
 };
 
-const enums: DataEnums = {
-  account: {
-    type: {
-      Admin: "Admin",
-      User: "User",
-    },
-  },
-  address: {
-    type: {
-      Normal: "Normal Address",
-      Limited: "Limited Time Address",
-    },
-  },
-  weapon: {
-    type: WeaponType,
-    elementType: elementType,
-  },
-  mob: {
-    type: mobType,
-    initialElement: elementType,
-  },
-  item: {
-    itemType: {
-      Weapon: "Weapon",
-      Armor: "Armor",
-      Option: "Option",
-      Special: "Special",
-      Crystal: "Crystal",
-      Consumable: "Consumable",
-      Material: "Material",
-    },
-  },
-  material: {
-    type: {
-      Metal: "Metal",
-      Cloth: "Cloth",
-      Beast: "Beast",
-      Wood: "Wood",
-      Drug: "Drug",
-      Magic: "Magic",
-    },
-  },
-  consumable: {
-    type: {
-      MaxHp: "Max HP",
-      MaxMp: "Max MP",
-      pAtk: "Physical Attack",
-      mAtk: "Magic Attack",
-      Aspd: "Attack Speed",
-      Cspd: "Cast Speed",
-      Hit: "Hit",
-      Flee: "Flee",
-      EleStro: "Elemental Strength",
-      EleRes: "Elemental Resistance",
-      pRes: "Physical Resistance",
-      mRes: "Magic Resistance",
-    },
-  },
-  crystal: {
-    type: {
-      NormalCrystal: "Normal Crystal",
-      WeaponCrystal: "Weapon Crystal",
-      ArmorCrystal: "Armor Crystal",
-      OptionCrystal: "Additional Crystal",
-      SpecialCrystal: "Special Crystal",
-    },
-  },
-  recipe_ingredient: {
-    type: {
-      Gold: "Gold",
-      Item: "Item",
-      Metal: "Metal",
-      Cloth: "Cloth",
-      Beast: "Beast",
-      Wood: "Wood",
-      Drug: "Drug",
-      Magic: "Magic",
-    },
-  },
-  drop_item: {
-    relatedPartType: {
-      A: "Part A",
-      B: "Part B",
-      C: "Part C",
-    },
-    breakRewardType: {
-      None: "None",
-      CanDrop: "Can Drop",
-      DropUp: "Drop Rate Up",
-    },
-  },
-  task: {
-    type: {
-      Collect: "Collect",
-      Defeat: "Defeat",
-      Both: "Both",
-      Other: "Other",
-    },
-  },
-  task_reward: {
-    type: {
-      Exp: "Experience",
-      Money: "Money",
-      Item: "Item",
-    },
-  },
-  skill: {
-    treeType: {
-      BladeSkill: "Blade Skill",
-      ShootSkill: "Shoot Skill",
-      MagicSkill: "Magic Skill",
-      MarshallSkill: "Martial Skill",
-      DualSwordSkill: "Dual Sword Skill",
-      HalberdSkill: "Halberd Skill",
-      MononofuSkill: "Samurai Skill",
-      CrusherSkill: "Crusher Skill",
-      FeatheringSkill: "Feathering Skill",
-      GuardSkill: "Guard Skill",
-      ShieldSkill: "Shield Skill",
-      KnifeSkill: "Knife Skill",
-      KnightSkill: "Knight Skill",
-      HunterSkill: "Hunter Skill",
-      PriestSkill: "Priest Skill",
-      AssassinSkill: "Assassin Skill",
-      WizardSkill: "Wizard Skill",
-      SupportSkill: "Support Skill",
-      BattleSkill: "Battle Skill",
-      SurvivalSkill: "Survival Skill",
-      SmithSkill: "Smith Skill",
-      AlchemySkill: "Alchemy Skill",
-      TamerSkill: "Tamer Skill",
-      DarkPowerSkill: "Dark Power Skill",
-      MagicBladeSkill: "Magic Blade Skill",
-      DancerSkill: "Dancer Skill",
-      MinstrelSkill: "Minstrel Skill",
-      BareHandSkill: "Bare Hand Skill",
-      NinjaSkill: "Ninja Skill",
-      PartisanSkill: "Partisan Skill",
-      LuckSkill: "Luck Skill",
-      MerchantSkill: "Merchant Skill",
-      PetSkill: "Pet Skill",
-    },
-    chargingType: {
-      Chanting: "Chanting",
-      Reservoir: "Reservoir",
-    },
-    distanceType: {
-      None: "Not Affected",
-      Long: "Long Range Only",
-      Short: "Short Range Only",
-      Both: "Both Ranges",
-    },
-    targetType: {
-      None: "No Target",
-      Self: "Self",
-      Player: "Ally",
-      Enemy: "Enemy",
-    },
-  },
-  player_armor: {
-    ability: {
-      Normal: "Normal",
-      Light: "Light",
-      Heavy: "Heavy",
-    },
-  },
-  player_pet: {
-    personaType: {
-      Fervent: "Fervent",
-      Intelligent: "Intelligent",
-      Mild: "Mild",
-      Swift: "Swift",
-      Justice: "Justice",
-      Devoted: "Devoted",
-      Impulsive: "Impulsive",
-      Calm: "Calm",
-      Sly: "Sly",
-      Timid: "Timid",
-      Brave: "Brave",
-      Active: "Active",
-      Sturdy: "Sturdy",
-      Steady: "Steady",
-      Max: "Max",
-    },
-    type: {
-      AllTrades: "All Trades",
-      PhysicalAttack: "Physical Attack",
-      MagicAttack: "Magic Attack",
-      PhysicalDefense: "Physical Defense",
-      MagicDefensem: "Magic Defense",
-      Avoidance: "Avoidance",
-      Hit: "Hit",
-      SkillsEnhancement: "Skills Enhancement",
-      Genius: "Genius",
-    },
-    weaponType: MainWeaponType,
-  },
-  avatar: {
-    type: {
-      Decoration: "",
-      Top: "",
-      Bottom: "",
-    },
-  },
-  character: {
-    personalityType: {
-      None: "无",
-      Luk: "幸运",
-      Cri: "暴击",
-      Tec: "技巧",
-      Men: "异抗",
-    },
-    partnerSkillAType: {
-      Passive: "",
-      Active: "",
-    },
-    partnerSkillBType: {
-      Passive: "",
-      Active: "",
-    },
-  },
-  combo_step: {
-    type: {
-      None: "",
-      Start: "",
-      Rengeki: "",
-      ThirdEye: "",
-      Filling: "",
-      Quick: "",
-      HardHit: "",
-      Tenacity: "",
-      Invincible: "",
-      BloodSucking: "",
-      Tough: "",
-      AMomentaryWalk: "",
-      Reflection: "",
-      Illusion: "",
-      Max: "",
-    },
-  },
-  mercenary: {
-    type: {
-      Tank: "",
-      Dps: "",
-    },
-    skillAType: {
-      Passive: "",
-      Active: "",
-    },
-    skillBType: {
-      Passive: "",
-      Active: "",
-    },
-  },
-  member: {
-    mobDifficultyFlag: {
-      Easy: "",
-      Normal: "",
-      Hard: "",
-      Lunatic: "",
-      Ultimate: "",
-    },
-  },
-  user: {},
-  session: {},
-  verification_token: {},
-  post: {},
-  account_create_data: {},
-  account_update_data: {},
-  world: {},
-  activity: {},
-  zone: {},
-  image: {},
-  statistic: {},
-  armor: {},
-  option: {},
-  special: {},
-  recipe: {},
-  npc: {},
-  task_kill_requirement: {},
-  task_collect_require: {},
-  skill_effect: {},
-  player: {},
-  player_weapon: {},
-  player_option: {},
-  player_special: {},
-  character_skill: {},
-  combo: {},
-  simulator: {},
-  team: {},
+const addressType: Record<Enums.AddressType, string> = {
+  Normal: "Normal Address",
+  Limited: "Limited Time Address",
+};
+
+const elementType: Record<Enums.ElementType, string> = {
+  Normal: "Normal",
+  Dark: "Dark",
+  Earth: "Earth",
+  Fire: "Fire",
+  Light: "Light",
+  Water: "Water",
+  Wind: "Wind",
+};
+
+const weaponType: Record<Enums.WeaponType, string> = {
+  ...mainWeaponType,
+  ...subWeaponType,
+};
+
+const mobType: Record<Enums.MobType, string> = {
+  Boss: "Boss",
+  MiniBoss: "Mini Boss",
+  Mob: "Mob",
+};
+
+const itemType: Record<Enums.ItemType, string> = {
+  Weapon: "Weapon",
+  Armor: "Armor",
+  Option: "Additional Equipment",
+  Special: "Special Equipment",
+  Crystal: "Crystal",
+  Consumable: "Consumable",
+  Material: "Material",
+};
+
+const materialType: Record<Enums.MaterialType, string> = {
+  Metal: "Metal",
+  Cloth: "Cloth",
+  Beast: "Beast",
+  Wood: "Wood",
+  Drug: "Drug",
+  Magic: "Magic",
+};
+
+const consumableType: Record<Enums.ConsumableType, string> = {
+  MaxHp: "Max HP",
+  MaxMp: "Max MP",
+  pAtk: "Physical Attack",
+  mAtk: "Magic Attack",
+  Aspd: "Attack Speed",
+  Cspd: "Cast Speed",
+  Hit: "Hit",
+  Flee: "Flee",
+  EleStro: "Elemental Strength",
+  EleRes: "Elemental Resistance",
+  pRes: "Physical Resistance",
+  mRes: "Magic Resistance",
+};
+
+const crystalType: Record<Enums.CrystalType, string> = {
+  NormalCrystal: "Normal Crystal",
+  WeaponCrystal: "Weapon Crystal",
+  ArmorCrystal: "Armor Crystal",
+  OptionCrystal: "Additional Crystal",
+  SpecialCrystal: "Special Crystal",
+};
+
+const recipeIngredientType: Record<Enums.MaterialType | "Gold" | "Item", string> = {
+  ...materialType,
+  Gold: "Gold",
+  Item: "Item"
+};
+
+const dropItemRelatedPartType: Record<Enums.BossPartType, string> = {
+  A: "A",
+  B: "B",
+  C: "C",
+};
+
+const dropItemBreakRewardType: Record<Enums.BossPartBreakRewardType, string> = {
+  None: "None",
+  CanDrop: "Can Drop",
+  DropUp: "Drop Rate Up",
+};
+
+const taskType: Record<Enums.TaskType, string> = {
+  Collect: "Collect",
+  Defeat: "Defeat",
+  Both: "Both",
+  Other: "Other",
+};
+
+const taskRewardType: Record<Enums.TaskRewardType, string> = {
+  Exp: "Experience",
+  Money: "Money",
+  Item: "Item",
+};
+
+const skillTreeType: Record<Enums.SkillTreeType, string> = {
+  BladeSkill: "Blade Skill",
+  ShootSkill: "Shoot Skill",
+  MagicSkill: "Magic Skill",
+  MarshallSkill: "Martial Skill",
+  DualSwordSkill: "Dual Sword Skill",
+  HalberdSkill: "Halberd Skill",
+  MononofuSkill: "Samurai Skill",
+  CrusherSkill: "Crusher Skill",
+  FeatheringSkill: "Feathering Skill",
+  GuardSkill: "Guard Skill",
+  ShieldSkill: "Shield Skill",
+  KnifeSkill: "Knife Skill",
+  KnightSkill: "Knight Skill",
+  HunterSkill: "Hunter Skill",
+  PriestSkill: "Priest Skill",
+  AssassinSkill: "Assassin Skill",
+  WizardSkill: "Wizard Skill",
+  //
+  SupportSkill: "Support Skill",
+  BattleSkill: "Battle Skill",
+  SurvivalSkill: "Survival Skill",
+  //
+  SmithSkill: "Smith Skill",
+  AlchemySkill: "Alchemy Skill",
+  TamerSkill: "Tamer Skill",
+  //
+  DarkPowerSkill: "Dark Power Skill",
+  MagicBladeSkill: "Magic Blade Skill",
+  DancerSkill: "Dancer Skill",
+  MinstrelSkill: "Minstrel Skill",
+  BareHandSkill: "Bare Hand Skill",
+  NinjaSkill: "Ninja Skill",
+  PartisanSkill: "Partisan Skill",
+  //
+  LuckSkill: "",
+  MerchantSkill: "Merchant Skill",
+  PetSkill: "Pet Skill",
+};
+
+const skillChargingType: Record<Enums.SkillChargingType, string> = {
+  Chanting: "Chanting",
+  Reservoir: "Reservoir",
+};
+
+const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
+  None: "Not Affected",
+  Long: "Long Range Only",
+  Short: "Short Range Only",
+  Both: "Both Ranges",
+};
+
+const skillTargetType: Record<Enums.SkillTargetType, string> = {
+  None: "No Target",
+  Self: "Self",
+  Player: "Player",
+  Enemy: "Enemy",
+};
+
+const playerArmorAbilityType: Record<Enums.PlayerArmorAbilityType, string> = {
+  Normal: "Normal",
+  Light: "Light",
+  Heavy: "Heavy",
+};
+
+const playerPetPersonaType: Record<Enums.PetPersonaType, string> = {
+  Fervent: "Fervent",
+  Intelligent: "Intelligent",
+  Mild: "Mild",
+  Swift: "Swift",
+  Justice: "Justice",
+  Devoted: "Devoted",
+  Impulsive: "Impulsive",
+  Calm: "Calm",
+  Sly: "Sly",
+  Timid: "Timid",
+  Brave: "Brave",
+  Active: "Active",
+  Sturdy: "Sturdy",
+  Steady: "Steady",
+  Max: "Max",
+};
+
+const playerPetType: Record<Enums.PetType, string> = {
+  AllTrades: "All Trades",
+  PhysicalAttack: "Physical Attack",
+  MagicAttack: "Magic Attack",
+  PhysicalDefense: "Physical Defense",
+  MagicDefensem: "Magic Defense",
+  Avoidance: "Avoidance",
+  Hit: "Hit",
+  SkillsEnhancement: "Skills Enhancement",
+  Genius: "Genius",
+};
+
+const playerAvatarType: Record<Enums.AvatarType, string> = {
+  Decoration: "Decoration",
+  Top: "Top",
+  Bottom: "Bottom",
+};
+
+const characterPersonalityType: Record<Enums.CharacterPersonalityType, string> = {
+  None: "None",
+  Luk: "Luck",
+  Cri: "Critical",
+  Tec: "Technique",
+  Men: "Mental",
+};
+
+const partnerSkillType: Record<Enums.PartnerSkillType, string> = {
+  Passive: "Passive",
+  Active: "Active",
+};
+
+const comboStepType: Record<Enums.ComboStepType, string> = {
+  None: "None",
+  Start: "",
+  Rengeki: "Rengeki",
+  ThirdEye: "Third Eye",
+  Filling: "Filling",
+  Quick: "Quick",
+  HardHit: "Hard Hit",
+  Tenacity: "Tenacity",
+  Invincible: "Invincible",
+  BloodSucking: "Blood Sucking",
+  Tough: "Tough",
+  AMomentaryWalk: "",
+  Reflection: "Reflection",
+  Illusion: "",
+  Max: "",
+};
+
+const mercenaryType: Record<Enums.MercenaryType, string> = {
+  Tank: "Tank",
+  Dps: "DPS",
+};
+
+const mobDifficultyFlag: Record<Enums.MobDifficultyFlag, string> = {
+  Easy: "0 Star",
+  Normal: "1 Star",
+  Hard: "2 Star",
+  Lunatic: "3 Star",
+  Ultimate: "4 Star",
 };
 
 const dictionary: dictionary = {
@@ -1647,8 +1587,8 @@ const dictionary: dictionary = {
         },
         captureable: {
           key: "Capturable",
-          tableFieldDescription: `This attribute is only valid for monsters other than ${enums.mob.type.Boss} and ${enums.mob.type.MiniBoss}. Special monsters like Ganrif and Tangming Phoenix are considered exceptions.`,
-          formFieldDescription: `If the monster type is not ${enums.mob.type.Mob}, select 'Not Capturable'.`,
+          tableFieldDescription: `This attribute is only valid for monsters other than ${mobType.Boss} and ${mobType.MiniBoss}. Special monsters like Ganrif and Tangming Phoenix are considered exceptions.`,
+          formFieldDescription: `If the monster type is not ${mobType.Mob}, select 'Not Capturable'.`,
         },
         actions: {
           key: "Actions",
@@ -1659,13 +1599,13 @@ const dictionary: dictionary = {
         },
         baseLv: {
           key: "Base Level",
-          tableFieldDescription: `For ${enums.mob.type.Boss}, this value represents the level at ${enums.member.mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this is the actual level.`,
-          formFieldDescription: `If the monster type is ${enums.mob.type.Boss}, enter the level at ${enums.member.mobDifficultyFlag.Easy} difficulty. For other monsters, enter the actual level.`,
+          tableFieldDescription: `For ${mobType.Boss}, this value represents the level at ${mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this is the actual level.`,
+          formFieldDescription: `If the monster type is ${mobType.Boss}, enter the level at ${mobDifficultyFlag.Easy} difficulty. For other monsters, enter the actual level.`,
         },
         experience: {
           key: "Experience",
-          tableFieldDescription: `For ${enums.mob.type.Boss}, this value represents the experience at ${enums.member.mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this is the actual experience.`,
-          formFieldDescription: `If the monster type is ${enums.mob.type.Boss}, enter the experience at ${enums.member.mobDifficultyFlag.Easy} difficulty. For other monsters, enter the actual experience.`,
+          tableFieldDescription: `For ${mobType.Boss}, this value represents the experience at ${mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this is the actual experience.`,
+          formFieldDescription: `If the monster type is ${mobType.Boss}, enter the experience at ${mobDifficultyFlag.Easy} difficulty. For other monsters, enter the actual experience.`,
         },
         initialElement: {
           key: "Element Attribute",
@@ -1684,7 +1624,7 @@ const dictionary: dictionary = {
         maxhp: {
           key: "Max HP",
           tableFieldDescription: "No one doesn't know what this means, right? Right?",
-          formFieldDescription: `For ${enums.mob.type.Boss}, this value represents the HP at ${enums.member.mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this value may need to be estimated.`,
+          formFieldDescription: `For ${mobType.Boss}, this value represents the HP at ${mobDifficultyFlag.Easy} difficulty. For other monsters without difficulty flags, this value may need to be estimated.`,
         },
         physicalDefense: {
           key: "Physical Defense",
@@ -1749,8 +1689,8 @@ const dictionary: dictionary = {
         },
         partsExperience: {
           key: "Parts Experience",
-          tableFieldDescription: `Only ${enums.mob.type.Boss} has this value. When a part is destroyed, total experience gained increases by this amount.`,
-          formFieldDescription: `Only ${enums.mob.type.Boss} has this value. When a part is destroyed, total experience gained increases by this amount.`,
+          tableFieldDescription: `Only ${mobType.Boss} has this value. When a part is destroyed, total experience gained increases by this amount.`,
+          formFieldDescription: `Only ${mobType.Boss} has this value. When a part is destroyed, total experience gained increases by this amount.`,
         },
         details: {
           key: "Additional Notes",
@@ -1890,6 +1830,11 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        baseDef: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2439,8 +2384,8 @@ const dictionary: dictionary = {
         },
         targetType: {
           key: "Target Type",
-          tableFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
-          formFieldDescription: `Skills that can be cast without selecting a target are ${enums.skill.targetType.Self}, skills that can target ${enums.skill.targetType.Player} are ${enums.skill.targetType.Player}.`,
+          tableFieldDescription: `Skills that can be cast without selecting a target are ${skillTargetType.Self}, skills that can target ${skillTargetType.Player} are ${skillTargetType.Player}.`,
+          formFieldDescription: `Skills that can be cast without selecting a target are ${skillTargetType.Self}, skills that can target ${skillTargetType.Player} are ${skillTargetType.Player}.`,
           enumMap: {
             None: "No target",
             Self: "Self",
@@ -2450,8 +2395,8 @@ const dictionary: dictionary = {
         },
         chargingType: {
           key: "Casting Type",
-          tableFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
-          formFieldDescription: `Skills unaffected by chanting are all ${enums.skill.chargingType.Reservoir}.`,
+          tableFieldDescription: `Skills unaffected by chanting are all ${skillChargingType.Reservoir}.`,
+          formFieldDescription: `Skills unaffected by chanting are all ${skillChargingType.Reservoir}.`,
           enumMap: {
             Chanting: "Chanting",
             Reservoir: "Reservoir",
