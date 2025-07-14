@@ -5,67 +5,6 @@ import { createRoot, createSignal, createEffect } from "solid-js";
 
 // solidjs的响应式系统
 createRoot((dispose) => {
-  // 临时玩家状态
-  enum TemporaryPlayerStatus {
-    Lv,
-    EqAtk,
-    SubEqAtk,
-    EqDef,
-
-    Str,
-    Int,
-    Vit,
-    Agi,
-    Dex,
-    Crt,
-    Luk,
-    Tec,
-    Men,
-
-    Stable,
-    SubStable,
-
-    MaxHp,
-    HpRecovery,
-    MaxMp,
-    MpRecovery,
-
-    Atk,
-    SubAtk,
-    Def,
-    Matk,
-    SubMatk,
-    Mdef,
-
-    AntiVirus,
-
-    AtkMpRecovery,
-
-    Aspd,
-    Cspd,
-
-    Avoid,
-    AvoidTired,
-    AvoidSpeed,
-
-    Guard,
-    GuardPower,
-    GuardSpeed,
-
-    Critical,
-    CriticalDmg,
-    CriticalMagicDmg,
-
-    ElementPower,
-
-    Flee,
-    Hit,
-
-    DamageReductionRate,
-
-    Respawn,
-  }
-
   // 机体属性
   enum CharacterAttrEnum {
     LV, // 等级

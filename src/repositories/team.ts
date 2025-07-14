@@ -4,28 +4,15 @@ import { DB, team } from "../../db/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 
+export type TeamWithRelations = Awaited<ReturnType<typeof findTeamById>>;
+
 export interface Team extends DataType<team> {
   MainTable: Awaited<ReturnType<typeof findTeams>>[number];
   MainForm: team;
 }
 
 export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_campA")
-        .innerJoin("member", "_campA.A", "member.id")
-        .whereRef("_campA.B", "=", "team.id")
-        .select(["member.playerId", "member.mercenaryId", "member.mobId", "member.mobDifficultyFlag"]),
-    ).as("campA"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_campB")
-        .innerJoin("member", "_campB.A", "member.id")
-        .whereRef("_campB.B", "=", "team.id")
-        .select(["member.playerId", "member.mercenaryId", "member.mobId", "member.mobDifficultyFlag"]),
-    ).as("campB"),
-  ];
+  return [jsonArrayFrom(eb.selectFrom("member").whereRef("member.teamId", "=", id).selectAll("member")).as("members")];
 }
 
 export async function findTeamById(id: string) {

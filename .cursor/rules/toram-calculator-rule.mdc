@@ -1,0 +1,60 @@
+---
+alwaysApply: true
+---
+## 📖 项目简介
+
+ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过模拟战斗过程，帮助玩家找到最优的配置方案。
+
+### ✨ 核心功能
+
+- 🎮 队伍配置优化
+- ⚔️ 战斗过程模拟
+- 📊 逐帧数据分析
+- 📈 数据可视化展示
+- 🔗 配置分享功能
+- 📚 内置游戏 Wiki 库
+
+
+## 🏗️ 技术架构
+
+### 1. UI 层 (Presentation Layer)
+- **技术栈**: SolidJS, Tailwind CSS, Babylon.js, Editor.js, TanStack
+- **职责**: 用户界面展示、交互处理、动画效果
+
+### 2. 应用逻辑层 (Application Layer)
+- **技术栈**: XState
+- **职责**: 核心业务逻辑、状态管理、模拟器计算
+
+### 3. 数据层 (Data Layer)
+- **技术栈**: pgLite, kysely, ElectricSQL, PostgreSQL, zod
+- **职责**: 数据访问、存储管理、数据同步、数据验证
+
+### 4. 基础设施层 (Infrastructure Layer)
+- **技术栈**: cuid2, jose, js-cookie
+- **职责**: ID 生成、JWT 处理、Cookie 管理、Web Workers、WASM
+
+### 数据库架构
+
+项目使用两个数据库：
+1. 服务端数据库（PostgreSQL）
+   - 使用 `db/baseSchema.prisma` 作为基础架构定义
+   - 通过 Docker 自动初始化
+   - 使用 Electric 进行数据同步
+
+2. 客户端数据库（PGLite）
+   - 基于服务端架构生成
+   - 支持本地写入和数据同步
+   - 使用视图合并本地和同步数据
+
+### 类型系统
+
+- 所有枚举类型定义在 `db/enums.ts`
+- 使用 `generator.js` 将枚举注入到数据库架构
+
+### 详细规则
+
+- 函数名用 camelCase，组件名用 PascalCase，常量全大写 UPPER_CASE。
+- 如非必要，禁止使用 any 类型
+- worker的路径导入使用vite提供的方法，?worker&url
+- 如果你无法应用更改，请暂停工作，让我手动复制替换内容
+- UI的控件尽量都使用现有的，不要自己创造

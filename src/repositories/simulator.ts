@@ -6,6 +6,8 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { teamSubRelations } from "./team";
 import { DataType } from "./untils";
 
+export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorById>>;
+
 export interface Simulator extends DataType<simulator> {
   MainTable: Awaited<ReturnType<typeof findSimulators>>[number];
   MainForm: Awaited<ReturnType<typeof findSimulatorById>>;

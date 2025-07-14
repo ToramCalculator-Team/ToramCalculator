@@ -1,8 +1,8 @@
 /**
-* @file baseSchema.prisma
-* @description 基础数据库结构
-* @version 1.0.0
-*/
+ * @file baseSchema.prisma
+ * @description 基础数据库结构
+ * @version 1.0.0
+ */
 
 generator client {
     provider        = "prisma-client-js"
@@ -901,6 +901,7 @@ model member {
 
     name              String
     sequence          Int
+    type              String // Enum MEMBER_TYPE
     player            player?    @relation(fields: [playerId], references: [id])
     playerId          String?
     partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])
@@ -912,6 +913,6 @@ model member {
     mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
     actions           Json
 
-    belongToTeams team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-    teamId        String
+    belongToTeam team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+    teamId       String
 }
