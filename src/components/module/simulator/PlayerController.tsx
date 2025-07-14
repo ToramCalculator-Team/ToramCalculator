@@ -1,280 +1,269 @@
-import { createSignal, Show, For, onMount, onCleanup, createEffect } from "solid-js";
+import { createSignal, Show, For, onMount, onCleanup } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { EnhancedSimulatorPool } from "~/components/module/simulator/SimulatorPool";
 
-// 玩家状态接口
-interface PlayerState {
-  id: string;
-  name: string;
-  type: string;
-  isActive: boolean;
-  currentHp: number;
-  maxHp: number;
-  currentMp: number;
-  maxMp: number;
-  position: { x: number; y: number };
-  state: string; // idle, moving, casting_skill, dead等
-  canAct: boolean;
+/**
+ * 批量模拟配置接口
+ */
+interface BatchSimulationConfig {
+  batchSize: number;     // 批量大小
+  priority: 'high' | 'medium' | 'low';
+  description?: string;  // 描述信息
 }
 
-// 战斗快照接口
-interface BattleSnapshot {
-  frame: number;
-  camps: {
-    campA: CampSnapshot;
-    campB: CampSnapshot;
-  };
-  events: BattleEvent[];
-  battleStatus?: {
-    isEnded: boolean;
-    winner?: 'campA' | 'campB';
-    reason?: string;
-  };
+/**
+ * 批量结果统计接口
+ */
+interface BatchResult {
+  batchId: string;
+  completed: number;
+  total: number;
+  successRate: number;
+  avgProcessingTime: number;
+  errors: string[];
+  startTime: number;
+  endTime?: number;
 }
-
-interface CampSnapshot {
-  teams: Record<string, {
-    id: string;
-    name: string | null;
-    members: Record<string, PlayerState>;
-  }>;
-}
-
-interface BattleEvent {
-  id: string;
-  type: string;
-  frame: number;
-  priority: number;
-  sourceId?: string;
-  targetId?: string;
-  data?: Record<string, any>;
-}
-
-// 技能信息
-interface SkillInfo {
-  id: string;
-  name: string;
-  type: 'attack' | 'magic' | 'heal' | 'buff' | 'debuff';
-  cooldown: number;
-  mpCost: number;
-}
-
-// 预定义技能列表
-const AVAILABLE_SKILLS: SkillInfo[] = [
-  { id: 'normal_attack', name: '普通攻击', type: 'attack', cooldown: 0, mpCost: 0 },
-  { id: 'heavy_attack', name: '重击', type: 'attack', cooldown: 3000, mpCost: 10 },
-  { id: 'fireball', name: '火球术', type: 'magic', cooldown: 5000, mpCost: 20 },
-  { id: 'heal', name: '治疗术', type: 'heal', cooldown: 8000, mpCost: 15 },
-  { id: 'shield', name: '护盾', type: 'buff', cooldown: 10000, mpCost: 25 },
-  { id: 'poison', name: '毒液攻击', type: 'debuff', cooldown: 6000, mpCost: 12 }
-];
 
 interface PlayerControllerProps {
   pool: EnhancedSimulatorPool;
   isSimulationActive: boolean;
 }
 
+/**
+ * 批量计算模式的控制器组件
+ * 
+ * 专注于批量战斗模拟的执行、监控和结果展示
+ */
 export function PlayerController(props: PlayerControllerProps) {
-  const [currentSnapshot, setCurrentSnapshot] = createSignal<BattleSnapshot | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = createSignal<string | null>(null);
-  const [selectedSkill, setSelectedSkill] = createSignal<string>('normal_attack');
-  const [moveTarget, setMoveTarget] = createSignal({ x: 0, y: 0 });
-  const [isControlling, setIsControlling] = createSignal(false);
-  const [controlHistory, setControlHistory] = createSignal<string[]>([]);
+  const [batchConfig, setBatchConfig] = createSignal<BatchSimulationConfig>({
+    batchSize: 50,
+    priority: 'medium',
+    description: '标准批量模拟'
+  });
+  const [batchResults, setBatchResults] = createSignal<BatchResult[]>([]);
+  const [poolMetrics, setPoolMetrics] = createSignal(props.pool.getStatus());
+  const [operationHistory, setOperationHistory] = createSignal<string[]>([]);
+  const [isExecutingBatch, setIsExecutingBatch] = createSignal(false);
 
-  // 监听模拟器事件以获取实时快照
+  // 监听批量任务进度
   onMount(() => {
-    console.log('🎮 PlayerController mounted, setting up event listeners');
+    console.log('📊 BatchController mounted, setting up batch simulation monitoring');
     
-    // 监听模拟进度更新
+    // 监听池状态变化
+    const statusInterval = setInterval(() => {
+      const status = props.pool.getStatus();
+      setPoolMetrics(status);
+    }, 2000);
+
+    // 监听任务完成事件
     props.pool.on('task-completed', (data: any) => {
-      console.log('📨 PlayerController received event:', data);
-      
-      if (data.result?.type === 'simulation_progress') {
-        console.log('📊 Processing simulation progress:', data.result.data);
+      addToHistory(`✅ 模拟完成: ${data.taskId}`);
+      updateBatchResults(data);
+    });
+
+    props.pool.on('task-failed', (data: any) => {
+      addToHistory(`❌ 模拟失败: ${data.taskId} - ${data.error}`);
+      updateBatchResults(data);
+    });
+
+    props.pool.on('metrics', (metrics: any) => {
+      console.log('📈 Pool metrics updated:', metrics);
+    });
+
+    onCleanup(() => {
+      clearInterval(statusInterval);
+    });
+  });
+
+  // 添加操作历史
+  const addToHistory = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setOperationHistory(prev => [`[${timestamp}] ${message}`, ...prev.slice(0, 19)]);
+  };
+
+  // 更新批量任务结果
+  const updateBatchResults = (data: any) => {
+    setBatchResults(prev => {
+      const existing = prev.find(r => r.batchId === data.batchId);
+      if (existing) {
+        // 更新现有结果
+        const updated = {
+          ...existing,
+          completed: existing.completed + 1,
+          successRate: ((existing.successRate * (existing.completed - 1) + (data.success ? 100 : 0)) / existing.completed),
+          avgProcessingTime: ((existing.avgProcessingTime * (existing.completed - 1) + (data.processingTime || 0)) / existing.completed),
+          errors: data.success ? existing.errors : [...existing.errors, data.error || 'Unknown error']
+        };
         
-        // 🎯 调试：检查是否收到了战斗快照
-        if (data.result.data.battleSnapshot) {
-          console.log('✅ Received battleSnapshot from Worker:', data.result.data.battleSnapshot);
-          console.log('🏕️ CampA teams:', Object.keys(data.result.data.battleSnapshot.camps.campA.teams));
-          console.log('🏕️ CampB teams:', Object.keys(data.result.data.battleSnapshot.camps.campB.teams));
-          
-          // 使用Worker提供的真实战斗快照
-          setCurrentSnapshot(data.result.data.battleSnapshot);
-        } else {
-          console.log('⚠️ No battleSnapshot received, generating mock data');
-          
-          // 生成模拟快照作为后备
-          const mockSnapshot: BattleSnapshot = {
-            frame: data.result.data.frame || 0,
-            camps: {
-              campA: createMockCampSnapshot('A'),
-              campB: createMockCampSnapshot('B')
-            },
-            events: [],
-            battleStatus: data.result.data.battleStatus
-          };
-          
-          setCurrentSnapshot(mockSnapshot);
+        // 如果批次完成，设置结束时间
+        if (updated.completed >= updated.total) {
+          updated.endTime = Date.now();
+          setIsExecutingBatch(false);
+          addToHistory(`🎉 批量模拟完成: ${updated.batchId} (${updated.total}个)`);
         }
         
-        console.log('🎯 Current snapshot updated, frame:', currentSnapshot()?.frame);
+        return prev.map(r => r.batchId === data.batchId ? updated : r);
       } else {
-        console.log('ℹ️ Received non-progress event:', data.result?.type);
+        // 添加新结果
+        return [...prev, {
+          batchId: data.batchId || `batch_${Date.now()}`,
+          completed: 1,
+          total: data.total || 1,
+          successRate: data.success ? 100 : 0,
+          avgProcessingTime: data.processingTime || 0,
+          errors: data.success ? [] : [data.error || 'Unknown error'],
+          startTime: Date.now()
+        }];
       }
     });
+  };
 
-    // 如果模拟正在运行，立即生成一个初始快照用于测试
-    if (props.isSimulationActive) {
-      console.log('🔄 Simulation active, generating initial snapshot');
-      const initialSnapshot: BattleSnapshot = {
-        frame: 1,
-        camps: {
-          campA: createMockCampSnapshot('A'),
-          campB: createMockCampSnapshot('B')
-        },
-        events: [],
-        battleStatus: undefined
-      };
-      setCurrentSnapshot(initialSnapshot);
-    }
-  });
-
-  // 创建模拟阵营快照
-  const createMockCampSnapshot = (camp: 'A' | 'B'): CampSnapshot => ({
-    teams: {
-      [`team${camp}1`]: {
-        id: `team${camp}1`,
-        name: `${camp}队`,
-        members: {
-          [`player${camp}1`]: {
-            id: `player${camp}1`,
-            name: `玩家${camp}1`,
-            type: camp === 'A' ? 'Player' : 'Mob',
-            isActive: true,
-            currentHp: 800 + Math.floor(Math.random() * 200),
-            maxHp: 1000,
-            currentMp: 80 + Math.floor(Math.random() * 20),
-            maxMp: 100,
-            position: { 
-              x: camp === 'A' ? 100 : 500, 
-              y: 250 + Math.floor(Math.random() * 100) 
-            },
-            state: ['idle', 'moving', 'casting_skill'][Math.floor(Math.random() * 3)],
-            canAct: true
-          }
-        }
-      }
-    }
-  });
-
-  // 获取可控制的玩家列表
-  const getControllablePlayers = (): PlayerState[] => {
-    const snapshot = currentSnapshot();
-    if (!snapshot) return [];
-
-    const players: PlayerState[] = [];
+  // 启动批量模拟
+  const startBatchSimulation = async () => {
+    const config = batchConfig();
+    const batchId = `batch_${Date.now()}`;
     
-    // 只允许控制A阵营的玩家
-    Object.values(snapshot.camps.campA.teams).forEach(team => {
-      Object.values(team.members).forEach(member => {
-        if (member.type === 'Player' && member.canAct) {
-          players.push(member);
-        }
+    try {
+      setIsExecutingBatch(true);
+      addToHistory(`🚀 启动批量模拟: ${config.batchSize}个任务 (${config.priority}优先级)`);
+      
+      // 创建基础模板数据，避免重复创建相同数据
+      const baseSimulatorTemplate = {
+        id: "test-simulator-template",
+        name: "批量测试模拟器模板",
+        details: "用于批量模式测试的模拟器数据模板",
+        statisticId: "test-statistic-template",
+        updatedByAccountId: null,
+        createdByAccountId: null,
+        statistic: {
+          id: "test-statistic-template",
+          updatedAt: new Date(),
+          createdAt: new Date(),
+          usageTimestamps: [],
+          viewTimestamps: [],
+        },
+        campA: [
+          {
+            id: "team-a-template",
+            name: "测试队伍A",
+            gems: [],
+            members: [
+              {
+                id: "player-a-template",
+                name: "测试玩家A",
+                sequence: 0,
+                type: "player",
+                playerId: "test-player-a",
+                partnerId: null,
+                mercenaryId: null,
+                mobId: null,
+                mobDifficultyFlag: "normal",
+                actions: [],
+                teamId: "team-a-template",
+              }
+            ]
+          }
+        ],
+        campB: [
+          {
+            id: "team-b-template",
+            name: "测试队伍B",
+            gems: [],
+            members: [
+              {
+                id: "enemy-b-template",
+                name: "测试敌人B",
+                sequence: 0,
+                type: "mob",
+                playerId: null,
+                partnerId: null,
+                mercenaryId: null,
+                mobId: "test-mob-b",
+                mobDifficultyFlag: "normal",
+                actions: [],
+                teamId: "team-b-template",
+              }
+            ]
+          }
+        ]
+      };
+
+      // 批量创建任务，使用浅拷贝提高性能
+      const tasks = Array.from({ length: config.batchSize }, (_, i) => {
+        // 使用对象展开和最小化的修改来创建唯一任务
+        const taskData = {
+          ...baseSimulatorTemplate,
+          id: `test-simulator-batch-${i}`,
+          name: `批量测试模拟器 ${i + 1}`,
+          statisticId: `test-statistic-batch-${i}`,
+          statistic: {
+            ...baseSimulatorTemplate.statistic,
+            id: `test-statistic-batch-${i}`
+          }
+        };
+
+        return {
+          type: 'start_simulation' as const,
+          payload: taskData as any,
+          priority: config.priority
+        };
       });
-    });
 
-    return players;
-  };
+      // 记录批次开始
+      setBatchResults(prev => [...prev, {
+        batchId,
+        completed: 0,
+        total: config.batchSize,
+        successRate: 0,
+        avgProcessingTime: 0,
+        errors: [],
+        startTime: Date.now()
+      }]);
 
-  // 发送玩家技能指令
-  const castSkill = async (playerId: string, skillId: string) => {
-    if (!props.isSimulationActive) return;
-
-    setIsControlling(true);
-    try {
-      // 这里需要扩展模拟器线程池以支持玩家控制
-      // 目前使用模拟的方式
-      console.log(`玩家 ${playerId} 使用技能 ${skillId}`);
+      // 执行批量任务
+      const results = await props.pool.executeBatch(tasks);
       
-      const skill = AVAILABLE_SKILLS.find(s => s.id === skillId);
-      const action = `使用技能: ${skill?.name || skillId}`;
+      // 更新最终结果
+      setBatchResults(prev => prev.map(r => 
+        r.batchId === batchId 
+          ? { ...r, completed: results.length, endTime: Date.now() }
+          : r
+      ));
       
-      setControlHistory(prev => [
-        `[${new Date().toLocaleTimeString()}] ${action}`,
-        ...prev.slice(0, 9)
-      ]);
-
-      // 模拟发送控制指令到Worker
-      await new Promise(resolve => setTimeout(resolve, 100));
+      addToHistory(`✅ 批量模拟调度完成: ${results.length}个任务已提交`);
       
-    } catch (error) {
-      console.error('技能释放失败:', error);
+    } catch (error: any) {
+      addToHistory(`❌ 批量模拟失败: ${error.message}`);
+      console.error('批量模拟执行错误:', error);
     } finally {
-      setIsControlling(false);
+      // 确保状态正确重置
+      setIsExecutingBatch(false);
     }
   };
 
-  // 发送移动指令
-  const movePlayer = async (playerId: string, x: number, y: number) => {
-    if (!props.isSimulationActive) return;
-
-    setIsControlling(true);
-    try {
-      console.log(`玩家 ${playerId} 移动到 (${x}, ${y})`);
-      
-      const action = `移动到: (${x}, ${y})`;
-      setControlHistory(prev => [
-        `[${new Date().toLocaleTimeString()}] ${action}`,
-        ...prev.slice(0, 9)
-      ]);
-
-      // 模拟发送控制指令到Worker
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-    } catch (error) {
-      console.error('移动指令失败:', error);
-    } finally {
-      setIsControlling(false);
-    }
+  // 清理结果数据
+  const clearResults = () => {
+    setBatchResults([]);
+    setOperationHistory([]);
+    addToHistory('🧹 清理历史数据');
   };
 
-  // 停止当前动作
-  const stopAction = async (playerId: string) => {
-    if (!props.isSimulationActive) return;
-
-    setIsControlling(true);
-    try {
-      console.log(`玩家 ${playerId} 停止当前动作`);
-      
-      setControlHistory(prev => [
-        `[${new Date().toLocaleTimeString()}] 停止动作`,
-        ...prev.slice(0, 9)
-      ]);
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-    } catch (error) {
-      console.error('停止指令失败:', error);
-    } finally {
-      setIsControlling(false);
-    }
+  // 更新批量配置
+  const updateBatchSize = (size: number) => {
+    setBatchConfig(prev => ({ ...prev, batchSize: Math.max(1, Math.min(1000, size)) }));
   };
 
-  // 获取选中玩家的详细信息
-  const getSelectedPlayerInfo = (): PlayerState | null => {
-    const playerId = selectedPlayer();
-    if (!playerId) return null;
-
-    return getControllablePlayers().find(p => p.id === playerId) || null;
+  const updatePriority = (priority: 'high' | 'medium' | 'low') => {
+    setBatchConfig(prev => ({ ...prev, priority }));
   };
 
   return (
     <div class="space-y-6">
-      {/* 玩家控制面板标题 */}
+      {/* 批量模拟控制面板 */}
       <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
         <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
-          🎮 玩家控制器
+          📊 批量模拟控制器
         </h2>
         
         <Show 
@@ -282,201 +271,200 @@ export function PlayerController(props: PlayerControllerProps) {
           fallback={
             <div class="rounded-lg bg-gray-50 p-4 text-center dark:bg-gray-700">
               <p class="text-gray-600 dark:text-gray-400">
-                请先启动战斗模拟以使用玩家控制功能
+                请先启动批量模拟以使用批量计算功能
               </p>
             </div>
           }
         >
-          {/* 战斗信息 */}
-          <Show when={currentSnapshot()}>
-            <div class="mb-4 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  当前帧: {currentSnapshot()?.frame || 0}
-                </span>
-                <Show when={currentSnapshot()?.battleStatus?.isEnded}>
-                  <span class="text-sm font-medium text-red-600">
-                    {currentSnapshot()?.battleStatus?.reason}
-                  </span>
-                </Show>
-              </div>
-            </div>
-          </Show>
-
-          {/* 玩家选择 */}
+          {/* Worker池状态 */}
           <div class="mb-6">
-            <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">选择玩家</h3>
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <For each={getControllablePlayers()}>
-                {(player) => (
-                  <div 
-                    onClick={() => setSelectedPlayer(player.id)}
-                    class={`cursor-pointer rounded-lg border-2 p-3 transition-colors ${
-                      selectedPlayer() === player.id
-                        ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20'
-                        : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-600 dark:bg-gray-700'
-                    }`}
-                  >
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <p class="font-medium text-gray-900 dark:text-white">
-                          {player.name}
-                        </p>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                          状态: {player.state}
-                        </p>
-                      </div>
-                      <div class="text-right">
-                        <div class="text-xs text-gray-600 dark:text-gray-400">
-                          HP: {player.currentHp}/{player.maxHp}
-                        </div>
-                        <div class="text-xs text-gray-600 dark:text-gray-400">
-                          MP: {player.currentMp}/{player.maxMp}
-                        </div>
-                      </div>
-                    </div>
+            <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">Worker池状态</h3>
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                <p class="text-xs text-blue-600 dark:text-blue-400">活跃Workers</p>
+                <p class="text-lg font-bold text-blue-700 dark:text-blue-300">
+                  {poolMetrics().activeWorkers}/{poolMetrics().totalWorkers}
+                </p>
+              </div>
+              <div class="rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                <p class="text-xs text-green-600 dark:text-green-400">队列等待</p>
+                <p class="text-lg font-bold text-green-700 dark:text-green-300">
+                  {poolMetrics().queueLength}
+                </p>
+              </div>
+              <div class="rounded-lg bg-yellow-50 p-3 dark:bg-yellow-900/20">
+                <p class="text-xs text-yellow-600 dark:text-yellow-400">正在处理</p>
+                <p class="text-lg font-bold text-yellow-700 dark:text-yellow-300">
+                  {poolMetrics().pendingTasks}
+                </p>
+              </div>
+              
+              {/* 批量执行状态显示 */}
+              <Show when={poolMetrics().batchExecution?.isExecuting} fallback={
+                <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p class="text-xs text-blue-600 dark:text-blue-400">当前批次</p>
+                  <p class="text-lg font-bold text-blue-700 dark:text-blue-300">
+                    {poolMetrics().queueLength + poolMetrics().pendingTasks}
+                  </p>
+                </div>
+              }>
+                <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p class="text-xs text-blue-600 dark:text-blue-400">
+                    批次进度 ({poolMetrics().batchExecution?.currentBatchIndex}/{poolMetrics().batchExecution?.totalBatches})
+                  </p>
+                  <p class="text-lg font-bold text-blue-700 dark:text-blue-300">
+                    {poolMetrics().batchExecution?.completedTasks}/{poolMetrics().batchExecution?.totalTasks}
+                  </p>
+                  <div class="mt-1 h-1 bg-blue-200 rounded-full dark:bg-blue-800">
+                    <div 
+                      class="h-1 bg-blue-500 rounded-full transition-all duration-300"
+                      style={{ width: `${poolMetrics().batchExecution?.progress || 0}%` }}
+                    ></div>
                   </div>
-                )}
-              </For>
+                </div>
+              </Show>
+              
+              <div class="rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
+                <p class="text-xs text-purple-600 dark:text-purple-400">历史完成</p>
+                <p class="text-lg font-bold text-purple-700 dark:text-purple-300">
+                  {poolMetrics().workerMetrics.reduce((sum, w) => sum + w.tasksCompleted, 0)}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* 控制面板 */}
-          <Show when={selectedPlayer()}>
-            <div class="space-y-4">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
-                控制 {getSelectedPlayerInfo()?.name}
-              </h3>
-
-              {/* 技能控制 */}
-              <div class="rounded-lg border p-4 dark:border-gray-600">
-                <h4 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-                  技能释放
-                </h4>
+          {/* 批量配置 */}
+          <div class="mb-6">
+            <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">批量模拟配置</h3>
+            <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 
-                <div class="mb-3">
-                  <select 
-                    value={selectedSkill()}
-                    onChange={(e) => setSelectedSkill(e.target.value)}
-                    class="w-full rounded border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                {/* 批量大小 */}
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    批量大小
+                  </label>
+                  <input
+                    type="number"
+                    value={batchConfig().batchSize}
+                    onInput={(e) => updateBatchSize(parseInt(e.target.value) || 50)}
+                    class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    min="1"
+                    max="1000"
+                  />
+                  <p class="mt-1 text-xs text-gray-500">1-1000个模拟任务</p>
+                </div>
+
+                {/* 优先级 */}
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    任务优先级
+                  </label>
+                  <select
+                    value={batchConfig().priority}
+                    onChange={(e) => updatePriority(e.target.value as any)}
+                    class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
                   >
-                    <For each={AVAILABLE_SKILLS}>
-                      {(skill) => (
-                        <option value={skill.id}>
-                          {skill.name} (MP:{skill.mpCost}, CD:{skill.cooldown}ms)
-                        </option>
-                      )}
-                    </For>
+                    <option value="high">高优先级</option>
+                    <option value="medium">中优先级</option>
+                    <option value="low">低优先级</option>
                   </select>
                 </div>
 
+                {/* 描述 */}
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    描述信息
+                  </label>
+                  <input
+                    type="text"
+                    value={batchConfig().description || ''}
+                    onInput={(e) => setBatchConfig(prev => ({ ...prev, description: e.target.value }))}
+                    class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    placeholder="可选描述..."
+                  />
+                </div>
+              </div>
+
+              <div class="mt-4 flex space-x-3">
                 <Button
-                  onClick={() => castSkill(selectedPlayer()!, selectedSkill())}
-                  disabled={isControlling() || !getSelectedPlayerInfo()?.canAct}
-                  class="w-full rounded bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:opacity-50"
+                  onClick={startBatchSimulation}
+                  disabled={isExecutingBatch() || poolMetrics().queueLength > 100}
+                  class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
                 >
-                  {isControlling() ? '执行中...' : '释放技能'}
+                  {isExecutingBatch() ? '🔄 执行中...' : '🚀 启动批量模拟'}
+                </Button>
+                <Button
+                  onClick={clearResults}
+                  class="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+                >
+                  🧹 清理结果
                 </Button>
               </div>
-
-              {/* 移动控制 */}
-              <div class="rounded-lg border p-4 dark:border-gray-600">
-                <h4 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-                  移动控制
-                </h4>
-                
-                <div class="mb-3 grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-xs text-gray-600 dark:text-gray-400">X 坐标</label>
-                    <input
-                      type="number"
-                      value={moveTarget().x}
-                      onInput={(e) => setMoveTarget(prev => ({ ...prev, x: parseInt(e.target.value) || 0 }))}
-                      class="w-full rounded border px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      min="0"
-                      max="800"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-600 dark:text-gray-400">Y 坐标</label>
-                    <input
-                      type="number"
-                      value={moveTarget().y}
-                      onInput={(e) => setMoveTarget(prev => ({ ...prev, y: parseInt(e.target.value) || 0 }))}
-                      class="w-full rounded border px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      min="0"
-                      max="600"
-                    />
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                  <Button
-                    onClick={() => movePlayer(selectedPlayer()!, moveTarget().x, moveTarget().y)}
-                    disabled={isControlling() || !getSelectedPlayerInfo()?.canAct}
-                    class="rounded bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
-                  >
-                    移动
-                  </Button>
-                  <Button
-                    onClick={() => stopAction(selectedPlayer()!)}
-                    disabled={isControlling()}
-                    class="rounded bg-gray-500 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:opacity-50"
-                  >
-                    停止
-                  </Button>
-                </div>
-              </div>
-
-              {/* 玩家状态显示 */}
-              <Show when={getSelectedPlayerInfo()}>
-                {(playerInfo) => (
-                  <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                    <h4 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                      当前状态
-                    </h4>
-                    <div class="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <span class="text-gray-600 dark:text-gray-400">位置:</span>
-                        <span class="ml-1 font-mono">
-                          ({playerInfo().position.x}, {playerInfo().position.y})
-                        </span>
-                      </div>
-                      <div>
-                        <span class="text-gray-600 dark:text-gray-400">状态:</span>
-                        <span class="ml-1">{playerInfo().state}</span>
-                      </div>
-                      <div>
-                        <span class="text-gray-600 dark:text-gray-400">可行动:</span>
-                        <span class={`ml-1 ${playerInfo().canAct ? 'text-green-600' : 'text-red-600'}`}>
-                          {playerInfo().canAct ? '是' : '否'}
-                        </span>
-                      </div>
-                      <div>
-                        <span class="text-gray-600 dark:text-gray-400">激活:</span>
-                        <span class={`ml-1 ${playerInfo().isActive ? 'text-green-600' : 'text-red-600'}`}>
-                          {playerInfo().isActive ? '是' : '否'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Show>
             </div>
-          </Show>
+          </div>
         </Show>
       </div>
 
-      {/* 控制历史 */}
-      <Show when={controlHistory().length > 0}>
+      {/* 批量结果统计 */}
+      <Show when={batchResults().length > 0}>
         <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-          <h3 class="mb-4 font-semibold text-gray-900 dark:text-white">
-            控制历史
-          </h3>
-          <div class="max-h-32 overflow-y-auto rounded border bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
-            <For each={controlHistory()}>
+          <h3 class="mb-4 font-semibold text-gray-900 dark:text-white">批量模拟结果</h3>
+          <div class="space-y-3">
+            <For each={batchResults()}>
+              {(result) => (
+                <div class="rounded-lg border bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
+                  <div class="flex items-center justify-between mb-2">
+                    <div>
+                      <h4 class="font-medium text-gray-900 dark:text-white">
+                        批次 {result.batchId}
+                        {result.endTime && (
+                          <span class="ml-2 text-xs text-green-600">已完成</span>
+                        )}
+                      </h4>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">
+                        进度: {result.completed}/{result.total} | 
+                        成功率: {result.successRate.toFixed(1)}% | 
+                        平均用时: {result.avgProcessingTime.toFixed(0)}ms
+                      </p>
+                      {result.endTime && (
+                        <p class="text-xs text-gray-500">
+                          总耗时: {((result.endTime - result.startTime) / 1000).toFixed(1)}秒
+                        </p>
+                      )}
+                    </div>
+                    <div class="text-right">
+                      <div class="h-2 w-32 rounded-full bg-gray-200 dark:bg-gray-600">
+                        <div 
+                          class="h-2 rounded-full bg-blue-500 transition-all duration-300"
+                          style={{ width: `${(result.completed / result.total) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 错误信息 */}
+                  <Show when={result.errors.length > 0}>
+                    <div class="mt-2 text-xs text-red-600 dark:text-red-400">
+                      错误: {result.errors.slice(0, 3).join(', ')}
+                      {result.errors.length > 3 && ` (还有${result.errors.length - 3}个)`}
+                    </div>
+                  </Show>
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
+
+      {/* 操作历史 */}
+      <Show when={operationHistory().length > 0}>
+        <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+          <h3 class="mb-4 font-semibold text-gray-900 dark:text-white">操作历史</h3>
+          <div class="max-h-40 overflow-y-auto rounded border bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+            <For each={operationHistory()}>
               {(entry) => (
-                <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">
+                <div class="text-xs text-gray-600 dark:text-gray-400 font-mono border-b border-gray-200 dark:border-gray-600 pb-1 mb-1 last:border-b-0">
                   {entry}
                 </div>
               )}

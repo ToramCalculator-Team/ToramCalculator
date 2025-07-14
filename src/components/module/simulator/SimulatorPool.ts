@@ -279,6 +279,16 @@ export interface PoolHealthMetrics {
     avgProcessingTime: number;
     lastActive: number;
   }>;
+  // 批量执行状态
+  batchExecution?: {
+    isExecuting: boolean;
+    totalTasks: number;
+    submittedTasks: number;
+    completedTasks: number;
+    currentBatchIndex: number;
+    totalBatches: number;
+    progress: number; // 完成百分比
+  };
 }
 
 // 模拟结果
@@ -330,6 +340,16 @@ export class EnhancedSimulatorPool extends EventEmitter {
   private cleanupInterval?: NodeJS.Timeout;
   private monitorInterval?: NodeJS.Timeout;
   private accepting = true;
+
+  // 批量执行状态跟踪
+  private batchExecutionState = {
+    isExecuting: false,
+    totalTasks: 0,
+    submittedTasks: 0,
+    completedTasks: 0,
+    currentBatchIndex: 0,
+    totalBatches: 0
+  };
 
   constructor(config: SimulationConfig = {}) {
     super();
@@ -408,9 +428,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
     // 设置专用通信通道
     worker.postMessage({ type: 'init', port: channel.port1 }, [channel.port1]);
     
-    // 设置消息处理
+    // 设置消息处理 - 监听MessageChannel端口用于任务相关消息
     channel.port2.onmessage = (event) => {
       this.handleWorkerMessage(wrapper, event);
+    };
+
+    // 监听Worker直接消息用于系统消息（如worker_ready）
+    worker.onmessage = (event) => {
+      this.handleWorkerDirectMessage(wrapper, event);
     };
 
     // 错误处理
@@ -424,7 +449,24 @@ export class EnhancedSimulatorPool extends EventEmitter {
   }
 
   /**
-   * 处理Worker返回的消息
+   * 处理Worker直接消息（系统消息）
+   * 
+   * @param worker Worker包装器
+   * @param event 消息事件
+   */
+  private handleWorkerDirectMessage(worker: WorkerWrapper, event: MessageEvent): void {
+    // 处理系统消息（如worker_ready）
+    if (event.data && event.data.type === 'worker_ready') {
+      console.log(`✅ Worker ${worker.id} is ready`);
+      return;
+    }
+
+    // 其他系统消息可以在这里处理
+    console.log(`🔧 Worker ${worker.id} direct message:`, event.data);
+  }
+
+  /**
+   * 处理Worker返回的消息（通过MessageChannel）
    * 
    * 这是任务完成处理的核心方法：
    * 1. 解析Worker返回的结果
@@ -786,17 +828,61 @@ export class EnhancedSimulatorPool extends EventEmitter {
       priority?: SimulationTask['priority'];
     }>
   ): Promise<SimulationResult[]> {
-    // 简化为并行执行，不使用批处理
-    return Promise.all(tasks.map(task => 
-      this.executeTask(task.type, task.payload, task.priority)
-    ));
+    // 初始化批量执行状态
+    const batchSize = Math.min(this.config.maxWorkers * 2, 20);
+    const totalBatches = Math.ceil(tasks.length / batchSize);
+    
+    this.batchExecutionState = {
+      isExecuting: true,
+      totalTasks: tasks.length,
+      submittedTasks: 0,
+      completedTasks: 0,
+      currentBatchIndex: 0,
+      totalBatches
+    };
+
+    console.log(`🚀 开始批量执行: ${tasks.length}个任务，分${totalBatches}批，每批${batchSize}个`);
+
+    const results: SimulationResult[] = [];
+    
+    try {
+      for (let i = 0; i < tasks.length; i += batchSize) {
+        const batch = tasks.slice(i, i + batchSize);
+        this.batchExecutionState.currentBatchIndex = Math.floor(i / batchSize) + 1;
+        this.batchExecutionState.submittedTasks = Math.min(i + batchSize, tasks.length);
+        
+        console.log(`📦 处理批次 ${this.batchExecutionState.currentBatchIndex}/${totalBatches}，提交${batch.length}个任务`);
+
+        const batchResults = await Promise.all(
+          batch.map(async (task) => {
+            const result = await this.executeTask(task.type, task.payload, task.priority);
+            this.batchExecutionState.completedTasks++;
+            return result;
+          })
+        );
+        results.push(...batchResults);
+        
+        console.log(`✅ 批次 ${this.batchExecutionState.currentBatchIndex} 完成，总进度: ${this.batchExecutionState.completedTasks}/${tasks.length}`);
+        
+        // 小延迟，让Worker有时间处理
+        if (i + batchSize < tasks.length) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+    } finally {
+      // 重置批量执行状态
+      this.batchExecutionState.isExecuting = false;
+      console.log(`🎉 批量执行完成: ${results.length}/${tasks.length}个任务`);
+    }
+    
+    return results;
   }
 
   /**
    * 获取池状态
    */
   getStatus(): PoolHealthMetrics {
-    return {
+    const baseMetrics = {
       activeWorkers: this.workers.filter(w => w.busy).length,
       totalWorkers: this.workers.length,
       queueLength: this.taskQueue.size(),
@@ -809,6 +895,23 @@ export class EnhancedSimulatorPool extends EventEmitter {
         lastActive: w.metrics.lastActive
       }))
     };
+
+    // 如果正在执行批量任务，添加批量执行状态
+    if (this.batchExecutionState.isExecuting) {
+      const progress = this.batchExecutionState.totalTasks > 0 
+        ? (this.batchExecutionState.completedTasks / this.batchExecutionState.totalTasks) * 100 
+        : 0;
+
+      return {
+        ...baseMetrics,
+        batchExecution: {
+          ...this.batchExecutionState,
+          progress: Math.round(progress * 100) / 100 // 保留2位小数
+        }
+      };
+    }
+
+    return baseMetrics;
   }
 
   /**
