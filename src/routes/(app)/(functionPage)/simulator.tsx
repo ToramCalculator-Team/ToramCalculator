@@ -4,12 +4,12 @@ import { Button } from "~/components/controls/button";
 import { EnhancedSimulatorPool } from "~/components/module/simulator/SimulatorPool";
 import { PlayerController } from "~/components/module/simulator/PlayerController";
 import { RealtimePlayerController } from "~/components/module/simulator/RealtimePlayerController";
-import { 
-  RealtimeSimulatorManager, 
-  RealtimeSimulatorState, 
+import {
+  RealtimeSimulatorManager,
+  RealtimeSimulatorState,
   PauseReason,
   type RealtimeCallbacks,
-  type PauseInfo
+  type PauseInfo,
 } from "~/components/module/simulator/RealtimeSimulatorManager";
 import { store } from "~/store";
 
@@ -168,7 +168,7 @@ export default function SimulatorPage() {
   const [realtimeManager, setRealtimeManager] = createSignal<RealtimeSimulatorManager | null>(null);
   const [realtimeState, setRealtimeState] = createSignal<RealtimeSimulatorState>(RealtimeSimulatorState.IDLE);
   const [error, setError] = createSignal<string | null>(null);
-  
+
   // 批量计算模式的状态
   const [isSimulationActive, setIsSimulationActive] = createSignal(false);
 
@@ -230,50 +230,50 @@ export default function SimulatorPage() {
           console.log(`🎬 实时帧更新: Frame ${data.frame}`);
           // 帧更新将由RealtimePlayerController处理
         },
-        
+
         onStateChange: (state, data) => {
           console.log(`🔄 实时状态变更: ${state}`, data);
           setRealtimeState(state);
         },
-        
+
         onPlayerActionResult: (result) => {
           console.log(`🎮 玩家操作结果:`, result);
           // 操作结果将由RealtimePlayerController处理
         },
-        
+
         onError: (error) => {
-          console.error('❌ 实时模拟器错误:', error);
+          console.error("❌ 实时模拟器错误:", error);
           setError(error);
         },
-        
+
         onPauseRequest: (reason: PauseReason, pauseInfo: PauseInfo) => {
           console.log(`⏸️ 模拟器请求暂停: ${reason}`, pauseInfo);
           // 暂停请求将由RealtimePlayerController处理
         },
-        
+
         onAutoResumeCountdown: (remainingTime: number, pauseInfo: PauseInfo) => {
           console.log(`🕒 自动恢复倒计时: ${remainingTime}ms`, pauseInfo);
           // 倒计时将由RealtimePlayerController处理
         },
-        
+
         onPlayerIdleDetected: (playerId: string, idleTime: number) => {
           console.log(`😴 检测到玩家空闲: ${playerId}, ${idleTime}ms`);
           // 空闲检测将由RealtimePlayerController处理
-        }
+        },
       };
 
       // 配置暂停/恢复参数
       const pauseResumeConfig = {
-        playerIdleThreshold: 30000,     // 30秒空闲阈值
-        autoResumeDelay: 3000,          // 3秒自动恢复延迟
-        enableAutoResume: true,         // 启用自动恢复
-        enableIdleDetection: true,      // 启用空闲检测
-        idleCheckInterval: 5000,        // 5秒检测间隔
+        playerIdleThreshold: 30000, // 30秒空闲阈值
+        autoResumeDelay: 3000, // 3秒自动恢复延迟
+        enableAutoResume: true, // 启用自动恢复
+        enableIdleDetection: true, // 启用空闲检测
+        idleCheckInterval: 5000, // 5秒检测间隔
       };
 
       // 创建单Worker实时管理器
       const newManager = new RealtimeSimulatorManager(callbacks, pauseResumeConfig);
-      
+
       // 创建测试数据用于实时模式
       const testSimulatorData = {
         id: "test-simulator-1",
@@ -310,7 +310,7 @@ export default function SimulatorPage() {
                 // 状态相关字段会在Worker中初始化
               },
               {
-                id: "player-2", 
+                id: "player-2",
                 name: "测试玩家2",
                 sequence: 1,
                 type: "player",
@@ -322,14 +322,14 @@ export default function SimulatorPage() {
                 weaponType: "magic",
                 subWeaponType: "none",
                 bodyArmorType: "light",
-              }
-            ]
-          }
+              },
+            ],
+          },
         ],
         campB: [
           {
             id: "team-b-1",
-            name: "敌方队伍", 
+            name: "敌方队伍",
             members: [
               {
                 id: "enemy-1",
@@ -344,19 +344,18 @@ export default function SimulatorPage() {
                 weaponType: "claw",
                 subWeaponType: "none",
                 bodyArmorType: "none",
-              }
-            ]
-          }
-        ]
+              },
+            ],
+          },
+        ],
       };
-      
+
       // 初始化manager并传入测试数据
       await newManager.initialize(testSimulatorData as any);
-      
+
       setRealtimeManager(newManager);
-      
+
       console.log("✅ 实时操作模式初始化完成");
-      
     } catch (err: any) {
       console.error("❌ 实时操作模式初始化失败:", err);
       setError(err.message || "初始化失败");
@@ -371,21 +370,21 @@ export default function SimulatorPage() {
     // 清理现有资源
     const currentPool = pool();
     const currentManager = realtimeManager();
-    
+
     if (currentPool) {
       await currentPool.shutdown();
     }
-    
+
     if (currentManager) {
       await currentManager.destroy();
     }
-    
+
     setSelectedMode(null);
     setPool(null);
     setRealtimeManager(null);
     setRealtimeState(RealtimeSimulatorState.IDLE);
     setError(null);
-    
+
     // 重置批量计算模式状态
     setIsSimulationActive(false);
   };
@@ -396,12 +395,12 @@ export default function SimulatorPage() {
   onCleanup(async () => {
     const currentPool = pool();
     const currentManager = realtimeManager();
-    
+
     if (currentPool) {
       await currentPool.shutdown();
       console.log("Worker池已清理");
     }
-    
+
     if (currentManager) {
       await currentManager.destroy();
       console.log("实时管理器已清理");
@@ -417,7 +416,7 @@ export default function SimulatorPage() {
       <Show
         when={!pool() && !realtimeManager()}
         fallback={
-          <div>
+          <div class="flex h-full w-full flex-1 flex-col overflow-y-auto">
             {/* 显示对应模式的界面 */}
             <div class="mb-6 flex items-center justify-between">
               <div class="flex items-center space-x-3">
@@ -425,25 +424,28 @@ export default function SimulatorPage() {
                   {selectedMode() === SimulatorMode.BATCH ? "批量计算模式" : "实时操作模式"}
                 </h2>
                 <Show when={selectedMode() === SimulatorMode.REALTIME}>
-                  <div class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    realtimeState() === RealtimeSimulatorState.RUNNING 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : realtimeState() === RealtimeSimulatorState.WAITING_FOR_INPUT ||
-                        realtimeState() === RealtimeSimulatorState.PAUSED ||
-                        realtimeState() === RealtimeSimulatorState.AUTO_PAUSED
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      : realtimeState() === RealtimeSimulatorState.ERROR
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                  }`}>
-                    {realtimeState() === RealtimeSimulatorState.RUNNING && '🟢'}
+                  <div
+                    class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      realtimeState() === RealtimeSimulatorState.RUNNING
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                        : realtimeState() === RealtimeSimulatorState.WAITING_FOR_INPUT ||
+                            realtimeState() === RealtimeSimulatorState.PAUSED ||
+                            realtimeState() === RealtimeSimulatorState.AUTO_PAUSED
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : realtimeState() === RealtimeSimulatorState.ERROR
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                    }`}
+                  >
+                    {realtimeState() === RealtimeSimulatorState.RUNNING && "🟢"}
                     {(realtimeState() === RealtimeSimulatorState.WAITING_FOR_INPUT ||
                       realtimeState() === RealtimeSimulatorState.PAUSED ||
-                      realtimeState() === RealtimeSimulatorState.AUTO_PAUSED) && '⏸️'}
-                    {realtimeState() === RealtimeSimulatorState.ERROR && '❌'}
-                    {realtimeState() === RealtimeSimulatorState.IDLE && '💤'}
-                    {realtimeState() === RealtimeSimulatorState.INITIALIZING && '🔄'}
-                    {realtimeState() === RealtimeSimulatorState.DESTROYED && '💥'}
+                      realtimeState() === RealtimeSimulatorState.AUTO_PAUSED) &&
+                      "⏸️"}
+                    {realtimeState() === RealtimeSimulatorState.ERROR && "❌"}
+                    {realtimeState() === RealtimeSimulatorState.IDLE && "💤"}
+                    {realtimeState() === RealtimeSimulatorState.INITIALIZING && "🔄"}
+                    {realtimeState() === RealtimeSimulatorState.DESTROYED && "💥"}
                     <span class="ml-1">{realtimeState()}</span>
                   </div>
                 </Show>
@@ -453,69 +455,17 @@ export default function SimulatorPage() {
               </Button>
             </div>
 
-            <Show when={selectedMode() === SimulatorMode.REALTIME && realtimeManager()}>
-              {/* 实时模式界面 - 使用RealtimePlayerController */}
-              <RealtimePlayerController manager={realtimeManager()!} />
-            </Show>
+            <div class="flex h-full w-full flex-1 flex-col overflow-y-auto">
+              <Show when={selectedMode() === SimulatorMode.REALTIME && realtimeManager()}>
+                {/* 实时模式界面 - 使用RealtimePlayerController */}
+                <RealtimePlayerController manager={realtimeManager()!} />
+              </Show>
 
-            <Show when={selectedMode() === SimulatorMode.BATCH && pool()}>
-              {/* 批量计算模式界面 */}
-              <div class="space-y-6">
-                {/* 批量模拟状态概览 */}
-                <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                  <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-                    ⚡ 批量模拟状态概览
-                  </h3>
-
-                  {/* 模拟状态显示 */}
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700">
-                      <p class="text-sm text-gray-600 dark:text-gray-400">Worker池状态</p>
-                      <p class="font-medium text-gray-900 dark:text-white">
-                        {pool()?.getStatus().activeWorkers || 0}/{pool()?.getStatus().totalWorkers || 0} Workers
-                      </p>
-                    </div>
-                    
-                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700">
-                      <p class="text-sm text-gray-600 dark:text-gray-400">模拟状态</p>
-                      <p class={`font-medium ${
-                        isSimulationActive() 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {isSimulationActive() ? '🟢 运行中' : '⭕ 空闲'}
-                      </p>
-                    </div>
-                    
-                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700">
-                      <p class="text-sm text-gray-600 dark:text-gray-400">队列长度</p>
-                      <p class="font-medium text-gray-900 dark:text-white">
-                        {pool()?.getStatus().queueLength || 0}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 批量模拟功能说明 */}
-                  <div class="mt-4 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
-                    <h4 class="mb-2 font-medium text-blue-900 dark:text-blue-200">
-                      📋 批量计算模式特性
-                    </h4>
-                    <ul class="space-y-1 text-sm text-blue-700 dark:text-blue-300">
-                      <li>• 🔄 多Worker并行处理，最大化计算性能</li>
-                      <li>• 📊 适合大量数据对比和统计分析</li>
-                      <li>• ⚡ 批量任务队列管理和负载均衡</li>
-                      <li>• 📈 实时进度监控和结果汇总</li>
-                    </ul>
-                  </div>
-                </div>
-
+              <Show when={selectedMode() === SimulatorMode.BATCH && pool()}>
                 {/* 集成PlayerController */}
-                <PlayerController 
-                  pool={pool()!} 
-                  isSimulationActive={isSimulationActive()}
-                />
-              </div>
-            </Show>
+                <PlayerController pool={pool()!} isSimulationActive={isSimulationActive()} />
+              </Show>
+            </div>
           </div>
         }
       >

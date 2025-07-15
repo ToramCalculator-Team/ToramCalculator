@@ -5,6 +5,8 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { characterSubRelations } from "./character";
 import { DataType } from "./untils";
 
+export type MercenaryWithRelations = Awaited<ReturnType<typeof findMercenaryById>>;
+
 export interface Mercenary extends DataType<mercenary> {
   MainTable: Awaited<ReturnType<typeof findMercenarys>>[number];
   MainForm: mercenary;

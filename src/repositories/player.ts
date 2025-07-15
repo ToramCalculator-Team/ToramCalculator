@@ -5,6 +5,8 @@ import { characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
 
+export type PlayerWithRelations = Awaited<ReturnType<typeof findPlayerById>>;
+
 export interface Player extends DataType<player> {
   MainTable: Awaited<ReturnType<typeof findPlayers>>[number];
   MainForm: player;

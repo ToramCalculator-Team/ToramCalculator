@@ -7,6 +7,8 @@ import { createId } from "@paralleldrive/cuid2";
 import { drop_itemSchema, mobSchema, statisticSchema, zoneSchema } from "../../db/generated/zod/index";
 import { z, ZodRawShape } from "zod";
 
+export type MobWithRelations = Awaited<ReturnType<typeof findMobById>>;
+
 export interface Mob extends DataType<mob> {
   MainTable: Awaited<ReturnType<typeof findMobs>>[number];
   MainForm: mob;
