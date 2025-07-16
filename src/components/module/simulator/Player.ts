@@ -8,7 +8,18 @@
  * 4. 玩家特有的状态管理
  */
 
-import { AttrData, AttributeInfluence, Member, ModifiersData, TargetType, ValueType, type MemberBaseStats, type MemberEvent } from "./Member";
+import {
+  AttrData,
+  AttributeInfluence,
+  Member,
+  ModifiersData,
+  TargetType,
+  ValueType,
+  type MemberBaseStats,
+  type MemberEvent,
+  type MemberContext,
+} from "./Member";
+import { setup, assign } from "xstate";
 import type { MemberWithRelations } from "~/repositories/member";
 import { isPlayerMember } from "./Member";
 import type { CharacterWithRelations } from "~/repositories/character";
@@ -219,9 +230,6 @@ export class Player extends Member {
 
   /** 玩家属性Map */
   private playerAttrMap: Map<PlayerAttrEnum, AttrData> = new Map();
-
-  /** 玩家选中的目标 */
-  private playerTarget: Member | null = null;
 
   /** 技能冷却状态Map */
   private skillCooldowns: Map<string, { cooldown: number; currentCooldown: number }> = new Map();
@@ -748,6 +756,324 @@ export class Player extends Member {
   }
 
   // ==================== 受保护的方法 ====================
+
+  /**
+   * 创建Player专用状态机
+   * 基于PlayerMachine.ts设计，实现Player特有的状态管理
+   */
+  protected createStateMachine(initialState: {
+    position?: { x: number; y: number };
+    currentHp?: number;
+    currentMp?: number;
+  }) {
+    return setup({
+      types: {
+        context: {} as MemberContext,
+        events: {} as
+          | { type: "cast_end" } // 前摇结束
+          | { type: "controlled" } // 受到控制
+          | { type: "move_command" } // 移动指令
+          | { type: "charge_end" } // 蓄力结束
+          | { type: "hp_zero" } // HP小于等于0
+          | { type: "stop_move" } // 停止移动指令
+          | { type: "control_end" } // 控制时间结束
+          | { type: "revive_ready" } // 复活倒计时清零
+          | { type: "skill_press" } // 按下技能
+          | { type: "check_availability" } // 判断可用性
+          | { type: "skill_animation_end" } // 技能动作结束
+          | { type: "spawn" }
+          | { type: "death" }
+          | { type: "damage"; data: { damage: number; damageType: string; sourceId?: string } }
+          | { type: "heal"; data: { heal: number; sourceId?: string } }
+          | { type: "skill_start"; data: { skillId: string; targetId?: string } }
+          | { type: "skill_end" }
+          | { type: "move"; data: { position: { x: number; y: number } } }
+          | { type: "status_effect"; data: { effect: string; duration: number } }
+          | { type: "update"; timestamp: number }
+          | { type: "custom"; data: Record<string, any> },
+      },
+      actions: {
+        // 根据角色配置初始化玩家状态
+        initializePlayerState: assign({
+          stats: ({ context }) => this.playerAttrMap,
+          isAlive: true,
+          isActive: true,
+          statusEffects: [],
+          eventQueue: [],
+          lastUpdateTimestamp: 0,
+          extraData: {},
+        }),
+
+        // 技能相关事件
+        onSkillStart: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 技能开始事件`);
+          this.handleSkillStart(event as MemberEvent);
+        },
+
+        onCastStart: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 前摇开始事件`);
+        },
+
+        onCastEnd: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 前摇结束事件`);
+        },
+
+        onSkillEffect: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 技能效果事件`);
+        },
+
+        onSkillAnimationEnd: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 技能动画结束事件`);
+          this.handleSkillEnd(event as MemberEvent);
+        },
+
+        onChargeStart: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 开始蓄力事件`);
+        },
+
+        onChargeEnd: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 蓄力结束事件`);
+        },
+
+        // 处理死亡
+        handleDeath: assign({
+          isAlive: false,
+          isActive: false,
+        }),
+
+        // 重置HP/MP并清除状态效果
+        resetHpMpAndStatus: assign({
+          stats: ({ context }) => {
+            // 重置HP/MP到初始值
+            this.setPlayerAttr(PlayerAttrEnum.HP, TargetType.baseValue, this.getPlayerAttr(PlayerAttrEnum.MAX_HP), "revive");
+            this.setPlayerAttr(PlayerAttrEnum.MP, TargetType.baseValue, this.getPlayerAttr(PlayerAttrEnum.MAX_MP), "revive");
+            return this.playerAttrMap;
+          },
+          isAlive: true,
+          isActive: true,
+          statusEffects: [],
+        }),
+
+        // 记录事件
+        logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+        },
+      },
+      guards: {
+        // 检查是否有后续连击步骤
+        hasNextCombo: ({ context, event }: { context: MemberContext; event: any }) => {
+          // 检查是否有后续连击步骤
+          // 可以根据实际连击逻辑实现
+          return false; // 暂时返回false，可以根据实际逻辑调整
+        },
+
+        // 检查当前技能是否有蓄力动作
+        hasChargeAction: ({ context, event }: { context: MemberContext; event: any }) => {
+          // 检查当前技能是否有蓄力动作
+          // 可以根据技能配置确定
+          return false; // 暂时返回false，可以根据实际逻辑调整
+        },
+
+        // 检查当前技能没有蓄力动作
+        hasNoChargeAction: ({ context, event }: { context: MemberContext; event: any }) => {
+          // 检查当前技能没有蓄力动作
+          return true; // 暂时返回true，可以根据实际逻辑调整
+        },
+
+        // 检查技能是否可用（冷却、MP等）
+        isSkillAvailable: ({ context, event }: { context: MemberContext; event: any }) => {
+          // 检查技能是否可用（冷却、MP等）
+          return this.isActive();
+        },
+
+        // 技能不可用，输出警告
+        skillNotAvailable: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.warn(`🎮 [${context.memberData.name}] 技能不可用`);
+          return true;
+        },
+
+        // 检查玩家是否死亡
+        isDead: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) <= 0,
+
+        // 检查玩家是否存活
+        isAlive: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) > 0,
+      },
+    }).createMachine({
+      id: `Player_${this.id}`,
+      context: {
+        memberData: this.memberData,
+        stats: this.playerAttrMap,
+        isAlive: true,
+        isActive: true,
+        statusEffects: [],
+        eventQueue: [],
+        lastUpdateTimestamp: 0,
+        extraData: {},
+      },
+      initial: "alive",
+      entry: {
+        type: "initializePlayerState",
+      },
+      states: {
+        alive: {
+          initial: "operational",
+          on: {
+            hp_zero: {
+              target: "dead",
+              actions: ["handleDeath", "logEvent"],
+            },
+            damage: {
+              actions: ["logEvent"],
+            },
+            heal: {
+              actions: ["logEvent"],
+            },
+            move: {
+              actions: ["logEvent"],
+            },
+            skill_start: {
+              actions: ["logEvent"],
+            },
+            skill_end: {
+              actions: ["logEvent"],
+            },
+            status_effect: {
+              actions: ["logEvent"],
+            },
+            update: {
+              actions: ["logEvent"],
+            },
+            custom: {
+              actions: ["logEvent"],
+            },
+          },
+          description: "玩家存活状态，此时可操作且可影响上下文",
+          states: {
+            operational: {
+              initial: "idle",
+              on: {
+                controlled: {
+                  target: "control_abnormal",
+                },
+              },
+              description: "可响应输入操作",
+              states: {
+                idle: {
+                  on: {
+                    move_command: {
+                      target: "moving",
+                    },
+                    skill_press: {
+                      target: "skill_casting",
+                    },
+                  },
+                },
+                moving: {
+                  on: {
+                    stop_move: {
+                      target: "idle",
+                    },
+                  },
+                },
+                skill_casting: {
+                  initial: "skill_init",
+                  states: {
+                    skill_init: {
+                      on: {
+                        check_availability: [
+                          {
+                            target: "pre_cast",
+                            guard: "isSkillAvailable",
+                          },
+                          {
+                            target: "#Player_alive.operational.idle",
+                            guard: "skillNotAvailable",
+                          },
+                        ],
+                      },
+                      entry: {
+                        type: "onSkillStart",
+                      },
+                    },
+                    pre_cast: {
+                      on: {
+                        cast_end: [
+                          {
+                            target: "charge",
+                            guard: "hasChargeAction",
+                          },
+                          {
+                            target: "skill_effect",
+                            guard: "hasNoChargeAction",
+                          },
+                        ],
+                      },
+                      entry: {
+                        type: "onCastStart",
+                      },
+                      exit: {
+                        type: "onCastEnd",
+                      },
+                    },
+                    skill_effect: {
+                      on: {
+                        skill_animation_end: [
+                          {
+                            target: "skill_init",
+                            guard: "hasNextCombo",
+                          },
+                          {
+                            target: "#Player_alive.operational.idle",
+                          },
+                        ],
+                      },
+                      entry: {
+                        type: "onSkillEffect",
+                      },
+                      exit: {
+                        type: "onSkillAnimationEnd",
+                      },
+                    },
+                    charge: {
+                      on: {
+                        charge_end: {
+                          target: "skill_effect",
+                        },
+                      },
+                      entry: {
+                        type: "onChargeStart",
+                      },
+                      exit: {
+                        type: "onChargeEnd",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            control_abnormal: {
+              on: {
+                control_end: {
+                  target: "#Player_alive.operational.idle",
+                },
+              },
+            },
+          },
+        },
+        dead: {
+          on: {
+            revive_ready: {
+              target: "#Player_alive.operational",
+              actions: {
+                type: "resetHpMpAndStatus",
+              },
+            },
+          },
+          description: "不可操作，中断当前行为，且移出上下文",
+        },
+      },
+    });
+  }
 
   /**
    * 计算玩家基础属性

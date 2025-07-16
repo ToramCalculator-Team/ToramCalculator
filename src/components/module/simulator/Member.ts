@@ -15,6 +15,7 @@ import type { PlayerWithRelations } from "~/repositories/player";
 import type { MercenaryWithRelations } from "~/repositories/mercenary";
 import type { MobWithRelations } from "~/repositories/mob";
 import { MEMBER_TYPE, type MemberType } from "~/../db/enums";
+import Player from "./Player";
 
 // ============================== 类型定义 ==============================
 
@@ -126,7 +127,7 @@ export interface MemberContext {
   /** 成员基础数据（来自数据库） */
   memberData: MemberWithRelations;
   /** 成员基础属性 */
-  stats: MemberBaseStats;
+  stats:  Map<Number, AttrData>;
   /** 是否存活 */
   isAlive: boolean;
   /** 是否可行动 */
@@ -329,25 +330,25 @@ export abstract class Member {
   // ==================== 抽象方法 ====================
 
   /**
-   * 计算成员基础属性
-   * 子类必须实现此方法来根据具体类型计算属性
-   *
-   * @param memberData 成员数据
-   * @param initialState 初始状态
-   * @returns 计算后的基础属性
-   */
-  protected abstract calculateBaseStats(
-    memberData: MemberWithRelations,
-    initialState: { currentHp?: number; currentMp?: number },
-  ): MemberBaseStats;
-
-  /**
    * 处理成员特定事件
    * 子类可以重写此方法来处理特定类型的事件
    *
    * @param event 事件对象
    */
   protected abstract handleSpecificEvent(event: MemberEvent): void;
+
+  /**
+   * 创建状态机
+   * 子类必须实现此方法来创建特定类型的状态机
+   *
+   * @param initialState 初始状态
+   * @returns 状态机配置
+   */
+  protected abstract createStateMachine(initialState: {
+    position?: { x: number; y: number };
+    currentHp?: number;
+    currentMp?: number;
+  }): any;
 
   // ==================== 公共接口 ====================
 
@@ -516,185 +517,6 @@ export abstract class Member {
   // ==================== 受保护的方法 ====================
 
   /**
-   * 创建XState状态机
-   *
-   * @param initialState 初始状态配置
-   * @returns 状态机配置
-   */
-  protected createStateMachine(initialState: {
-    position?: { x: number; y: number };
-    currentHp?: number;
-    currentMp?: number;
-  }) {
-    // 计算基础属性
-    const baseStats = this.calculateBaseStats(this.memberData, initialState);
-
-    return setup({
-      types: {
-        context: {} as MemberContext,
-        events: {} as
-          | { type: "spawn" }
-          | { type: "death" }
-          | { type: "damage"; data: { damage: number; damageType: string; sourceId?: string } }
-          | { type: "heal"; data: { heal: number; sourceId?: string } }
-          | { type: "skill_start"; data: { skillId: string; targetId?: string } }
-          | { type: "skill_end" }
-          | { type: "move"; data: { position: { x: number; y: number } } }
-          | { type: "status_effect"; data: { effect: string; duration: number } }
-          | { type: "update"; timestamp: number }
-          | { type: "custom"; data: Record<string, any> },
-      },
-      actions: {
-        // 初始化成员状态
-        initializeMember: assign({
-          stats: ({ context }) => baseStats,
-          isAlive: true,
-          isActive: true,
-          statusEffects: [],
-          eventQueue: [],
-          lastUpdateTimestamp: 0,
-          extraData: {},
-        }),
-
-        // 处理伤害
-        handleDamage: assign({
-          stats: ({ context, event }) => {
-            if (event.type !== "damage") return context.stats;
-
-            const { damage } = (event as any).data || {};
-            const newHp = Math.max(0, context.stats.currentHp - damage);
-
-            return {
-              ...context.stats,
-              currentHp: newHp,
-            };
-          },
-        }),
-
-        // 处理治疗
-        handleHeal: assign({
-          stats: ({ context, event }) => {
-            if (event.type !== "heal") return context.stats;
-
-            const { heal } = (event as any).data || {};
-            const newHp = Math.min(context.stats.maxHp, context.stats.currentHp + heal);
-
-            return {
-              ...context.stats,
-              currentHp: newHp,
-            };
-          },
-        }),
-
-        // 处理移动
-        handleMove: assign({
-          stats: ({ context, event }) => {
-            if (event.type !== "move") return context.stats;
-
-            return {
-              ...context.stats,
-              position: (event as any).data?.position || context.stats.position,
-            };
-          },
-        }),
-
-        // 处理死亡
-        handleDeath: assign({
-          isAlive: false,
-          isActive: false,
-        }),
-
-        // 记录事件
-        logEvent: ({ context, event }) => {
-          console.log(`🎭 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
-        },
-      },
-      guards: {
-        // 检查是否死亡
-        isDead: ({ context }) => context.stats.currentHp <= 0,
-
-        // 检查是否存活
-        isAlive: ({ context }) => context.stats.currentHp > 0,
-      },
-    }).createMachine({
-      id: `Member_${this.id}`,
-      context: {
-        memberData: this.memberData,
-        stats: baseStats,
-        isAlive: true,
-        isActive: true,
-        statusEffects: [],
-        eventQueue: [],
-        lastUpdateTimestamp: 0,
-        extraData: {},
-      },
-      initial: "alive",
-      entry: {
-        type: "initializeMember",
-      },
-      states: {
-        alive: {
-          initial: "active",
-          on: {
-            death: {
-              target: "dead",
-              actions: ["handleDeath", "logEvent"],
-            },
-            damage: [
-              {
-                target: "dead",
-                guard: "isDead",
-                actions: ["handleDamage", "handleDeath", "logEvent"],
-              },
-              {
-                actions: ["handleDamage", "logEvent"],
-              },
-            ],
-            heal: {
-              actions: ["handleHeal", "logEvent"],
-            },
-            move: {
-              actions: ["handleMove", "logEvent"],
-            },
-            skill_start: {
-              actions: ["logEvent"],
-            },
-            skill_end: {
-              actions: ["logEvent"],
-            },
-            status_effect: {
-              actions: ["logEvent"],
-            },
-            update: {
-              actions: ["logEvent"],
-            },
-            custom: {
-              actions: ["logEvent"],
-            },
-          },
-          states: {
-            active: {
-              description: "成员可行动状态",
-            },
-            stunned: {
-              description: "成员被击晕状态",
-            },
-            casting: {
-              description: "成员施法状态",
-            },
-          },
-        },
-        dead: {
-          description: "成员死亡状态",
-          on: {
-            // 可以添加复活相关事件
-          },
-        },
-      },
-    });
-  }
-
-  /**
    * 处理单个事件
    *
    * @param event 要处理的事件
@@ -740,15 +562,19 @@ export abstract class Member {
   }
 }
 
-// ============================== 工厂函数 ==============================
+// ============================== 成员创建工具 ==============================
 
 /**
- * 创建成员实例的工厂函数
+ * 创建成员实例的工具函数
  * 根据成员类型创建对应的成员实例
+ * 
+ * 注意：建议直接使用具体的类构造函数，而不是此工厂函数
+ * 例如：new Player(memberData, initialState)
  *
  * @param memberData 成员数据
  * @param initialState 初始状态
  * @returns 成员实例
+ * @deprecated 建议直接使用具体的类构造函数
  */
 export function createMember(
   memberData: MemberWithRelations,
@@ -762,83 +588,17 @@ export function createMember(
   switch (memberData.type) {
     case "Player":
       // 导入Player类并创建实例
-      const { Player } = require("./Player");
       return new Player(memberData, initialState);
 
     case "Mob":
-      // TODO: 创建Mob类实例
-      // const { Mob } = require("./Mob");
-      // return new Mob(memberData, initialState);
-      break;
 
     case "Mercenary":
-      // TODO: 创建Mercenary类实例
-      // const { Mercenary } = require("./Mercenary");
-      // return new Mercenary(memberData, initialState);
-      break;
 
     case "Partner":
-      // TODO: 创建Partner类实例
-      // const { Partner } = require("./Partner");
-      // return new Partner(memberData, initialState);
-      break;
 
     default:
       throw new Error(`不支持的成员类型: ${memberData.type}`);
   }
-
-  // 如果所有类型都不匹配，返回默认实现
-  return new (class extends Member {
-    protected calculateBaseStats(
-      memberData: MemberWithRelations,
-      initialState: { currentHp?: number; currentMp?: number },
-    ): MemberBaseStats {
-      // 默认属性计算逻辑
-      let maxHp = 1000;
-      let maxMp = 100;
-
-      // 根据成员类型计算属性
-      if (isPlayerMember(memberData)) {
-        // 玩家角色：根据角色属性计算
-        const character = memberData.player.character;
-        if (character) {
-          maxHp = character.vit * 10 + character.str * 5;
-          maxMp = character.int * 8;
-        }
-      } else if (isMobMember(memberData)) {
-        // 怪物：使用怪物的基础生命值
-        maxHp = memberData.mob.maxhp;
-        maxMp = 100;
-      } else if (isMercenaryMember(memberData)) {
-        // 佣兵：使用默认值
-        maxHp = 800;
-        maxMp = 80;
-      } else if (isPartnerMember(memberData)) {
-        // 伙伴：使用默认值
-        maxHp = 600;
-        maxMp = 60;
-      }
-
-      return {
-        maxHp,
-        currentHp: initialState.currentHp ?? maxHp,
-        maxMp,
-        currentMp: initialState.currentMp ?? maxMp,
-        physicalAtk: 100,
-        magicalAtk: 50,
-        physicalDef: 50,
-        magicalDef: 50,
-        aspd: 1.0,
-        mspd: 1.0,
-        position: { x: 0, y: 0 },
-      };
-    }
-
-    protected handleSpecificEvent(event: MemberEvent): void {
-      // 默认事件处理逻辑
-      console.log(`🎭 [${this.getName()}] 处理特定事件: ${event.type}`);
-    }
-  })(memberData, initialState);
 }
 
 // ============================== 导出 ==============================
