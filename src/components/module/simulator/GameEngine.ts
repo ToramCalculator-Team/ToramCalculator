@@ -21,6 +21,7 @@ import type { CharacterWithRelations } from "~/repositories/character";
 import type { MercenaryWithRelations } from "~/repositories/mercenary";
 import type { MobWithRelations } from "~/repositories/mob";
 import type { PlayerWithRelations } from "~/repositories/player";
+import { createMember, type Member } from "./Member";
 
 // ============================== 核心数据类型定义 ==============================
 
@@ -32,7 +33,7 @@ interface BattleEvent {
   /** 事件唯一标识符 */
   id: string;
   /** 事件类型 */
-  type: BattleEventType;
+  type: string;
   /** 事件发生的时间戳（帧数） */
   timestamp: number;
   /** 事件源成员ID */
@@ -99,9 +100,11 @@ function isPartnerMember(
 
 /**
  * 战斗中的成员状态接口
- * 基于数据库member表，但添加了战斗相关的临时状态
+ * 基于Member类，但添加了战斗相关的临时状态
  */
-interface BattleMemberState extends MemberWithRelations {
+interface BattleMemberState {
+  /** 成员实例 */
+  member: Member;
   /** 是否存活 */
   isAlive: boolean;
   /** 是否可行动 */
@@ -118,11 +121,17 @@ interface BattleMemberState extends MemberWithRelations {
  * 战斗中的队伍状态接口
  * 基于数据库team表，但添加了战斗相关的临时状态
  */
-interface BattleTeamState extends TeamWithRelations {
+interface BattleTeamState {
+  /** 队伍ID */
+  id: string;
+  /** 队伍名称 */
+  name: string;
   /** 队伍中的所有成员 */
   members: BattleMemberState[];
   /** 队伍是否还有存活成员 */
   hasAliveMembers: boolean;
+  /** 宝石列表 */
+  gems: string[];
 }
 
 /**
@@ -201,7 +210,7 @@ export class GameEngine {
   // ==================== 事件处理器 ====================
 
   /** 事件类型到处理器函数的映射 */
-  private eventHandlers: Map<BattleEventType, Array<(event: BattleEvent, engine: GameEngine) => void>> = new Map();
+  private eventHandlers: Map<string, Array<(event: BattleEvent, engine: GameEngine) => void>> = new Map();
 
   // ==================== 性能统计 ====================
 
@@ -297,16 +306,17 @@ export class GameEngine {
       return;
     }
 
-    // 根据成员类型确定基础属性
-    const { baseHp, baseMp } = this.calculateBaseStats(memberData);
+    // 创建成员实例
+    const member = createMember(memberData, initialState);
+    const stats = member.getStats();
 
     const memberState: BattleMemberState = {
-      ...memberData,
+      member,
       isAlive: true,
       isActive: true,
-      currentHp: initialState.currentHp ?? baseHp,
-      currentMp: initialState.currentMp ?? baseMp,
-      position: initialState.position || { x: 0, y: 0 },
+      currentHp: stats.currentHp,
+      currentMp: stats.currentMp,
+      position: stats.position,
     };
 
     team.members.push(memberState);
@@ -327,43 +337,10 @@ export class GameEngine {
       },
     });
 
-    console.log(`👤 添加成员: ${camp.name} -> ${team.name} -> ${memberState.name} (${memberData.type})`);
+    console.log(`👤 添加成员: ${camp.name} -> ${team.name} -> ${member.getName()} (${memberData.type})`);
   }
 
-  /**
-   * 根据成员类型计算基础属性
-   *
-   * @param member 成员数据
-   * @returns 基础生命值和魔法值
-   */
-  private calculateBaseStats(member: MemberWithRelations): { baseHp: number; baseMp: number } {
-    let baseHp = 1000;
-    let baseMp = 100;
 
-    // 根据成员类型计算属性
-    if (isPlayerMember(member)) {
-      // 玩家角色：根据角色属性计算生命值和魔法值
-      const character = member.player.character;
-      if (character) {
-        baseHp = character.vit * 10 + character.str * 5; // 体力影响生命值，力量影响生命值
-        baseMp = character.int * 8; // 智力影响魔法值
-      }
-    } else if (isMobMember(member)) {
-      // 怪物：使用怪物的基础生命值
-      baseHp = member.mob.maxhp;
-      baseMp = 100; // 怪物默认魔法值
-    } else if (isMercenaryMember(member)) {
-      // 佣兵：使用默认值
-      baseHp = 800;
-      baseMp = 80;
-    } else if (isPartnerMember(member)) {
-      // 伙伴：使用默认值
-      baseHp = 600;
-      baseMp = 60;
-    }
-
-    return { baseHp, baseMp };
-  }
 
   /**
    * 获取所有成员（扁平化）
@@ -376,7 +353,7 @@ export class GameEngine {
     for (const camp of this.camps.values()) {
       for (const team of camp.teams.values()) {
         for (const member of team.members) {
-          allMembers.set(member.id, member);
+          allMembers.set(member.member.getId(), member);
         }
       }
     }
@@ -393,7 +370,7 @@ export class GameEngine {
   findMember(memberId: string): { member: BattleMemberState; camp: BattleCampState; team: BattleTeamState } | null {
     for (const camp of this.camps.values()) {
       for (const team of camp.teams.values()) {
-        const member = team.members.find((m) => m.id === memberId);
+        const member = team.members.find((m) => m.member.getId() === memberId);
         if (member) {
           return { member, camp, team };
         }
@@ -563,7 +540,7 @@ export class GameEngine {
       const memberInfo = this.findMember(event.sourceId!);
       if (memberInfo) {
         console.log(
-          `👤 角色生成: ${memberInfo.member.name} (${event.data?.campId} -> ${event.data?.teamId}) - 类型: ${event.data?.memberType}`,
+          `👤 角色生成: ${memberInfo.member.member.getName()} (${event.data?.campId} -> ${event.data?.teamId}) - 类型: ${event.data?.memberType}`,
         );
       }
     });
@@ -578,7 +555,7 @@ export class GameEngine {
         // 更新队伍和阵营的存活状态
         this.updateAliveStatus(memberInfo.camp, memberInfo.team);
 
-        console.log(`💀 角色死亡: ${memberInfo.member.name} (${memberInfo.camp.name} -> ${memberInfo.team.name})`);
+        console.log(`💀 角色死亡: ${memberInfo.member.member.getName()} (${memberInfo.camp.name} -> ${memberInfo.team.name})`);
       }
     });
 
@@ -586,7 +563,7 @@ export class GameEngine {
     this.on("skill_start", (event, engine) => {
       const memberInfo = this.findMember(event.sourceId!);
       if (memberInfo) {
-        console.log(`🎯 技能开始: ${memberInfo.member.name} -> ${event.data?.skillId}`);
+        console.log(`🎯 技能开始: ${memberInfo.member.member.getName()} -> ${event.data?.skillId}`);
       }
     });
 
@@ -596,7 +573,7 @@ export class GameEngine {
       const targetInfo = this.findMember(event.targetId!);
 
       if (sourceInfo && targetInfo) {
-        console.log(`✨ 技能效果: ${sourceInfo.member.name} -> ${targetInfo.member.name}`);
+        console.log(`✨ 技能效果: ${sourceInfo.member.member.getName()} -> ${targetInfo.member.member.getName()}`);
 
         // 处理伤害
         if (event.data?.damage) {

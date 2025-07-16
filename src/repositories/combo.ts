@@ -1,7 +1,10 @@
 import { Expression, ExpressionBuilder, Transaction } from "kysely";
 import { getDB } from "./database";
 import { DB, combo } from "../../db/generated/kysely/kyesely";
-import {DataType } from "./untils";
+import { DataType } from "./untils";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+
+export type ComboWithRelations = Awaited<ReturnType<typeof findComboById>>;
 
 export interface Combo extends DataType<combo> {
   MainTable: Awaited<ReturnType<typeof findCombos>>[number];
@@ -9,7 +12,17 @@ export interface Combo extends DataType<combo> {
 }
 
 export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expression<string>) {
-  return [];
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("combo_step")
+        .whereRef("combo_step.comboId", "=", "combo.id")
+        .selectAll("combo_step")
+        // .select((subEb) => combo_stepSubRelations(subEb, subEb.val("combo_step.id"))),
+    )
+      .$notNull()
+      .as("steps"),
+  ];
 }
 
 export async function findComboById(id: string) {

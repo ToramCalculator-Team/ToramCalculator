@@ -9,6 +9,7 @@ import { playerArmorSubRelations } from "./playerArmor";
 import { playerOptionSubRelations } from "./playerOption";
 import { playerSpecialSubRelations } from "./playerSpecial";
 import { DataType } from "./untils";
+import { character_skillSubRelations } from "./characterSkill";
 
 export type CharacterWithRelations = Awaited<ReturnType<typeof findCharacterById>>;
 
@@ -29,6 +30,15 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
     )
       .$notNull()
       .as("combos"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("character_skill")
+        .whereRef("character_skill.characterId", "=", "character.id")
+        .selectAll("character_skill")
+        .select((subEb) => character_skillSubRelations(subEb, subEb.val("character_skill.id"))),
+    )
+      .$notNull()
+      .as("skills"),
     jsonObjectFrom(
       eb
         .selectFrom("player_weapon")

@@ -551,7 +551,7 @@ createRoot((dispose) => {
   }
 
   // 数值的作用位置
-  const enum OriginType {
+  const enum TargetType {
     baseValue,
     staticConstant,
     staticPercentage,
@@ -607,10 +607,10 @@ createRoot((dispose) => {
           sourceName: CharacterAttrType | "SYSTEM";
           source: CharacterAttrEnum | "SYSTEM";
         }[];
-    relation: {
+        influences: {
       name: CharacterAttrType;
-      formula: number | string;
-      originType: OriginType;
+      targetType: TargetType;
+      computation: () => number;
     }[];
   }
 
@@ -726,7 +726,7 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.PHYSICAL_ATK,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
 
     // 动画缩减
@@ -735,7 +735,7 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.MSPD,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
 
     // 咏唱缩减
@@ -744,7 +744,7 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.CSRD,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
 
     //
@@ -754,11 +754,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.MAINWEAPON_ATK,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
-          name: "WEAPON_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          name: "WEAPON_ATK", // 将影响的目标属性
+          targetType: TargetType.baseValue, // 作用的位置
+          computation: () => d("MAINWEAPON_ATK"), // 作用的值
         },
       ],
     });
@@ -768,11 +768,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.SUBWEAPON_ATK,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "WEAPON_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("SUBWEAPON_ATK"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -782,20 +782,16 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.WEAPON_ATK,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].weaAtk_Patk_Convert
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("WEAPON_ATK") * MainWeaponAbiT[character.weapon.template.type as MainHandType].weaAtk_Patk_Convert,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].weaAtk_Matk_Convert
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("WEAPON_ATK") * MainWeaponAbiT[character.weapon.template.type as MainHandType].weaAtk_Matk_Convert,
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -804,16 +800,16 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.BODYARMOR_DEF,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_DEF",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("BODYARMOR_DEF"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_DEF",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("BODYARMOR_DEF"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -822,11 +818,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.ASPD,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "MSPD",
-          formula: "max(0, floor((thisCharacter.ASPD - 1000) / 180))",
-          originType: OriginType.staticConstant,
+          computation: () => Math.max(0, Math.floor((d("ASPD") - 1000) / 180)),
+          targetType: TargetType.staticConstant,
         },
       ],
     });
@@ -835,11 +831,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.CSPD,
       baseValue: [],
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "CSRD",
-          formula: "min(50 + floor((thisCharacter.CSPD - 1000) / 180), floor(thisCharacter.CSPD / 20))",
-          originType: OriginType.staticConstant,
+          computation: () => Math.min(50 + Math.floor((d("CSPD") - 1000) / 180), Math.floor(d("CSPD") / 20)),
+          targetType: TargetType.staticConstant,
         },
       ],
     });
@@ -854,7 +850,7 @@ createRoot((dispose) => {
         },
       ],
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
     characterMap.set(CharacterAttrEnum.MAGICAL_CRITICAL_DAMAGE, {
       type: ValueType.user,
@@ -867,7 +863,7 @@ createRoot((dispose) => {
         },
       ],
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
 
     // 基础属性
@@ -876,46 +872,46 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.LV,
       baseValue: character.lv,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "ASPD",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "CSPD",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "HP",
-          formula: 127 / 17,
-          originType: OriginType.baseValue,
+          computation: () => d("LV") * 127 / 17,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MP",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "ACCURACY",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
         {
           name: "DODGE",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("LV"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -924,39 +920,31 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.STR,
       baseValue: character.str,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.pAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("STR") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.str.pAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.mAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("STR") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.str.mAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_STABILITY",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.pStabC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("STR") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.str.pStabC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "ASPD",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.str.aspdC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("STR") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.str.aspdC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_CRITICAL_DAMAGE",
-          formula: d("STR") >= d("AGI") ? 0.2 : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("STR")*(d("STR") >= d("AGI") ? 0.2 : 0),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -965,39 +953,31 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.INT,
       baseValue: character.int,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "MP",
-          formula: 0.1,
-          originType: OriginType.baseValue,
+          computation: () => d("INT") * 0.1,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.pAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("INT") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.int.pAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.mAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("INT") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.int.mAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "ASPD",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.aspdC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("INT") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.int.aspdC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_STABILITY",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.int.pStabC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("INT") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.int.pStabC,
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1006,11 +986,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.VIT,
       baseValue: character.vit,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "HP",
-          formula: d("LV") / 3,
-          originType: OriginType.baseValue,
+          computation: () => d("VIT") * d("LV") / 3,
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1019,44 +999,36 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.AGI,
       baseValue: character.agi,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.pAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.agi.pAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.mAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.agi.mAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "ASPD",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.aspdC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.agi.aspdC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_STABILITY",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.agi.pStabC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.agi.pStabC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "CSPD",
-          formula: 1.16,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * 1.16,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_CRITICAL_DAMAGE",
-          formula: d("AGI") > d("STR") ? 0.1 : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("AGI") * (d("AGI") > d("STR") ? 0.1 : 0),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1065,39 +1037,31 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.DEX,
       baseValue: character.dex,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "PHYSICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.pAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("DEX") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.dex.pAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "MAGICAL_ATK",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.mAtkC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("DEX") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.dex.mAtkC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "ASPD",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.aspdC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("DEX") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.dex.aspdC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "PHYSICAL_STABILITY",
-          formula: isMainHandType(character.weapon.template.type)
-            ? MainWeaponAbiT[character.weapon.template.type].abi_Attr_Convert.dex.pStabC
-            : 0,
-          originType: OriginType.baseValue,
+          computation: () => d("DEX") * MainWeaponAbiT[character.weapon.template.type as MainHandType].abi_Attr_Convert.dex.pStabC,
+          targetType: TargetType.baseValue,
         },
         {
           name: "CSPD",
-          formula: 2.94,
-          originType: OriginType.baseValue,
+          computation: () => d("DEX") * 2.94,
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1106,39 +1070,39 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.LUK,
       baseValue: character.personalityType === "Luk" ? character.personalityValue : 0, 
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
     characterMap.set(CharacterAttrEnum.TEC, {
       type: ValueType.user,
       name: CharacterAttrEnum.TEC,
       baseValue: character.personalityType === "Tec" ? character.personalityValue : 0, 
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
     characterMap.set(CharacterAttrEnum.MEN, {
       type: ValueType.user,
       name: CharacterAttrEnum.MEN,
       baseValue: character.personalityType === "Men" ? character.personalityValue : 0, 
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
     characterMap.set(CharacterAttrEnum.CRI, {
       type: ValueType.user,
       name: CharacterAttrEnum.CRI,
       baseValue: character.personalityType === "Cri" ? character.personalityValue : 0, 
       modifiers: DefaultModifiersData,
-      relation: [],
+      influences: [],
     });
     characterMap.set(CharacterAttrEnum.MAINWEAPON_BASE_VALUE, {
       type: ValueType.user,
       name: CharacterAttrEnum.MAINWEAPON_BASE_VALUE,
       baseValue: (character.weapon.baseAbi ?? character.weapon.template.baseAbi) + character.weapon.extraAbi,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "MAINWEAPON_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("MAINWEAPON_BASE_VALUE"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1147,11 +1111,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.SUBWEAPON_BASE_VALUE,
       baseValue: (character.subWeapon.baseAbi ?? character.subWeapon.template.baseAbi) + character.subWeapon.extraAbi,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "SUBWEAPON_ATK",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("SUBWEAPON_BASE_VALUE"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
@@ -1160,11 +1124,11 @@ createRoot((dispose) => {
       name: CharacterAttrEnum.BODYARMOR_BASE_VALUE,
       baseValue: (character.armor.baseDef ?? character.armor.template.baseDef) + character.armor.extraAbi,
       modifiers: DefaultModifiersData,
-      relation: [
+      influences: [
         {
           name: "BODYARMOR_DEF",
-          formula: 1,
-          originType: OriginType.baseValue,
+          computation: () => d("BODYARMOR_BASE_VALUE"),
+          targetType: TargetType.baseValue,
         },
       ],
     });
