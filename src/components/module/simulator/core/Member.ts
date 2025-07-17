@@ -154,7 +154,7 @@ export interface MemberEvent {
   /** 事件时间戳 */
   timestamp: number;
   /** 事件数据 */
-  data?: Record<string, any>;
+  data: Record<string, any>;
 }
 
 /**
@@ -559,6 +559,365 @@ export abstract class Member {
     this.actor.stop();
     this.eventQueue = [];
     console.log(`🗑️ 销毁成员: ${this.getName()}`);
+  }
+
+  // ==================== 引擎标准接口 ====================
+
+  /**
+   * 获取状态机引用
+   * 供引擎和MessageRouter使用
+   * 
+   * @returns 状态机实例
+   */
+  getFSM(): any {
+    return this.actor;
+  }
+
+  /**
+   * 检查是否可以接受输入
+   * 供MessageRouter验证消息是否可以被处理
+   * 
+   * @returns 是否可以接受输入
+   */
+  canAcceptInput(): boolean {
+    const state = this.getCurrentState();
+    return this.isAlive() && this.isActive() && state.value !== "stunned" && state.value !== "casting";
+  }
+
+  /**
+   * 处理技能开始事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onSkillStart(data: any): void {
+    const event: MemberEvent = {
+      id: `skill_start_${Date.now()}_${Math.random()}`,
+      type: "skill_start",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理技能释放事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onSkillCast(data: any): void {
+    const event: MemberEvent = {
+      id: `skill_cast_${Date.now()}_${Math.random()}`,
+      type: "skill_cast",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理技能效果事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onSkillEffect(data: any): void {
+    const event: MemberEvent = {
+      id: `skill_effect_${Date.now()}_${Math.random()}`,
+      type: "skill_effect",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理技能结束事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onSkillEnd(data: any): void {
+    const event: MemberEvent = {
+      id: `skill_end_${Date.now()}_${Math.random()}`,
+      type: "skill_end",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理移动事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onMove(data: any): void {
+    const event: MemberEvent = {
+      id: `move_${Date.now()}_${Math.random()}`,
+      type: "move",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理伤害事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onDamage(data: any): void {
+    const event: MemberEvent = {
+      id: `damage_${Date.now()}_${Math.random()}`,
+      type: "damage",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理治疗事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onHeal(data: any): void {
+    const event: MemberEvent = {
+      id: `heal_${Date.now()}_${Math.random()}`,
+      type: "heal",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理Buff添加事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onBuffAdd(data: any): void {
+    const event: MemberEvent = {
+      id: `buff_add_${Date.now()}_${Math.random()}`,
+      type: "buff_add",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理Buff移除事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onBuffRemove(data: any): void {
+    const event: MemberEvent = {
+      id: `buff_remove_${Date.now()}_${Math.random()}`,
+      type: "buff_remove",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理死亡事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onDeath(data: any): void {
+    const event: MemberEvent = {
+      id: `death_${Date.now()}_${Math.random()}`,
+      type: "death",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 处理自定义事件
+   * 供FrameLoop调用
+   * 
+   * @param data 事件数据
+   */
+  onCustomEvent(data: any): void {
+    const event: MemberEvent = {
+      id: `custom_${Date.now()}_${Math.random()}`,
+      type: "custom",
+      timestamp: this.lastUpdateTimestamp,
+      data
+    };
+    this.addEvent(event);
+  }
+
+  /**
+   * 设置目标
+   * 供引擎和控制器使用
+   * 
+   * @param target 目标成员
+   */
+  setTarget(target: Member | null): void {
+    this.target = target;
+    if (target) {
+      console.log(`🎯 ${this.getName()} 设置目标: ${target.getName()}`);
+    } else {
+      console.log(`🎯 ${this.getName()} 清除目标`);
+    }
+  }
+
+  /**
+   * 获取目标
+   * 
+   * @returns 当前目标
+   */
+  getTarget(): Member | null {
+    return this.target;
+  }
+
+  /**
+   * 检查是否有目标
+   * 
+   * @returns 是否有目标
+   */
+  hasTarget(): boolean {
+    return this.target !== null;
+  }
+
+  /**
+   * 获取目标距离
+   * 
+   * @returns 与目标的距离，如果没有目标则返回Infinity
+   */
+  getTargetDistance(): number {
+    if (!this.target) {
+      return Infinity;
+    }
+
+    const myPos = this.getStats().position;
+    const targetPos = this.target.getStats().position;
+    
+    const dx = myPos.x - targetPos.x;
+    const dy = myPos.y - targetPos.y;
+    
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * 检查是否在目标范围内
+   * 
+   * @param range 范围
+   * @returns 是否在范围内
+   */
+  isInTargetRange(range: number): boolean {
+    return this.getTargetDistance() <= range;
+  }
+
+  /**
+   * 获取朝向目标的方向
+   * 
+   * @returns 方向角度（弧度），如果没有目标则返回0
+   */
+  getTargetDirection(): number {
+    if (!this.target) {
+      return 0;
+    }
+
+    const myPos = this.getStats().position;
+    const targetPos = this.target.getStats().position;
+    
+    const dx = targetPos.x - myPos.x;
+    const dy = targetPos.y - myPos.y;
+    
+    return Math.atan2(dy, dx);
+  }
+
+  /**
+   * 面向目标
+   * 调整朝向以面向目标
+   */
+  faceTarget(): void {
+    if (this.target) {
+      const direction = this.getTargetDirection();
+      // 这里可以添加朝向调整的逻辑
+      console.log(`🔄 ${this.getName()} 面向目标: ${this.target.getName()}`);
+    }
+  }
+
+  /**
+   * 获取成员状态摘要
+   * 供引擎快照使用
+   * 
+   * @returns 状态摘要
+   */
+  getStateSummary(): {
+    id: string;
+    name: string;
+    type: string;
+    isAlive: boolean;
+    isActive: boolean;
+    currentHp: number;
+    maxHp: number;
+    currentMp: number;
+    maxMp: number;
+    position: { x: number; y: number };
+    state: string;
+    targetId?: string;
+  } {
+    const stats = this.getStats();
+    const state = this.getCurrentState();
+    
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      type: this.getType(),
+      isAlive: this.isAlive(),
+      isActive: this.isActive(),
+      currentHp: stats.currentHp,
+      maxHp: stats.maxHp,
+      currentMp: stats.currentMp,
+      maxMp: stats.maxMp,
+      position: stats.position,
+      state: state.value,
+      targetId: this.target?.getId(),
+    };
+  }
+
+  /**
+   * 获取成员详细信息
+   * 供调试和分析使用
+   * 
+   * @returns 详细信息
+   */
+  getDetailedInfo(): {
+    id: string;
+    name: string;
+    type: string;
+    stats: MemberBaseStats;
+    state: any;
+    target: string | null;
+    eventQueueSize: number;
+    lastUpdate: number;
+  } {
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      type: this.getType(),
+      stats: this.getStats(),
+      state: this.getCurrentState(),
+      target: this.target?.getName() || null,
+      eventQueueSize: this.eventQueue.length,
+      lastUpdate: this.lastUpdateTimestamp,
+    };
   }
 }
 

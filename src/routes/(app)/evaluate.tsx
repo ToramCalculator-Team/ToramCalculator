@@ -1,8 +1,8 @@
 import { onMount, onCleanup, createSignal, Show, For, createEffect } from "solid-js";
 import { RealtimePlayerController } from "~/components/module/simulator/RealtimePlayerController";
 import { RealtimeSimulatorManager } from "~/components/module/simulator/RealtimeSimulatorManager";
-import { GameEngine } from "~/components/module/simulator/GameEngine";
-import { Player } from "~/components/module/simulator/Player";
+import { GameEngine } from "~/components/module/simulator/core/GameEngine";
+import { Player } from "~/components/module/simulator/core/Player";
 import { Motion } from "solid-motionone";
 import { store } from "~/store";
 import { Button } from "~/components/controls/button";

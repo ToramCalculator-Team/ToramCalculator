@@ -26,36 +26,7 @@ import type { CharacterWithRelations } from "~/repositories/character";
 import type { CharacterSkillWithRelations } from "~/repositories/characterSkill";
 import type { PlayerWithRelations } from "~/repositories/player";
 
-// 数据库类型导入
 import type {
-  character,
-  player_weapon,
-  player_armor,
-  player_option,
-  player_special,
-  character_skill,
-  skill,
-  player_pet,
-  avatar,
-} from "~/../db/generated/kysely/kyesely";
-
-// 枚举类型导入
-import {
-  MODIFIER_TYPE,
-  MAIN_WEAPON_TYPE,
-  MEMBER_TYPE,
-  CHARACTER_PERSONALITY_TYPE,
-  PARTNER_SKILL_TYPE,
-  COMBO_STEP_TYPE,
-  AVATAR_TYPE,
-} from "~/../db/enums";
-import type {
-  MainWeaponType,
-  MemberType,
-  CharacterPersonalityType,
-  PartnerSkillType,
-  ComboStepType,
-  AvatarType,
   MainHandType,
 } from "~/../db/enums";
 import { ComboWithRelations } from "~/repositories/combo";
