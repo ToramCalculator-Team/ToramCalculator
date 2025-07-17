@@ -135,7 +135,7 @@ export class FrameLoop {
    * 构造函数
    * 
    * @param memberRegistry 成员注册表
-   * @param eventQueue 事件队列
+   * @param eventQueue 事件队列引用
    * @param config 帧循环配置
    */
   constructor(
@@ -382,7 +382,7 @@ export class FrameLoop {
     const eventsProcessed = this.processEvents();
 
     // 更新所有成员
-    const membersUpdated = this.updateMembers();
+    const membersUpdated = this.updateMembers(timestamp);
 
     // 记录帧信息
     const frameInfo: FrameInfo = {
@@ -502,21 +502,17 @@ export class FrameLoop {
   /**
    * 更新所有成员
    * 
+   * @param timestamp 当前时间戳
    * @returns 更新的成员数量
    */
-  private updateMembers(): number {
+  private updateMembers(timestamp: number): number {
     const members = this.memberRegistry.getAllMembers();
     let updatedCount = 0;
 
     for (const member of members) {
       try {
-        // 更新成员状态
-        member.update();
-        
-        // 推进状态机
-        if (member.getFSM()) {
-          member.getFSM().update();
-        }
+        // 更新成员状态（包括状态机更新）
+        member.update(timestamp);
         
         updatedCount++;
       } catch (error) {

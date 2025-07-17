@@ -16,6 +16,7 @@
 import { MemberRegistry } from "./MemberRegistry";
 import { Member } from "./Member";
 import type { MemberEvent } from "./Member";
+import { Logger } from "~/utils/logger";
 
 // ============================== 类型定义 ==============================
 
@@ -136,30 +137,39 @@ export class MessageRouter {
 
       // 将消息发送到成员的FSM
       // FSM负责根据消息生成事件并写入事件队列
-      const fsmResult = await targetMember.getFSM().send({
-        type: message.type,
-        data: message.data,
-        timestamp: message.timestamp
-      });
+      try {
+        targetMember.getFSM().send({
+          type: message.type,
+          data: message.data,
+          timestamp: message.timestamp
+        });
 
-      // 更新统计
-      if (fsmResult.success) {
+        // 更新统计
         this.stats.successfulMessages++;
-      } else {
-        this.stats.failedMessages++;
-      }
 
-      console.log(`📮 分发消息: ${message.type} -> ${targetMember.getName()} - ${fsmResult.success ? '成功' : '失败'}`);
-      
-      return {
-        success: fsmResult.success,
-        message: fsmResult.message || `消息已分发到 ${targetMember.getName()}`,
-        error: fsmResult.error
-      };
+        Logger.info(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
+        
+        return {
+          success: true,
+          message: `消息已分发到 ${targetMember.getName()}`,
+          error: undefined
+        };
+      } catch (fsmError: any) {
+        // 更新统计
+        this.stats.failedMessages++;
+
+        Logger.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`);
+        
+        return {
+          success: false,
+          message: `FSM处理失败: ${targetMember.getName()}`,
+          error: fsmError.message
+        };
+      }
 
     } catch (error: any) {
       this.stats.failedMessages++;
-      console.error("❌ 分发消息时发生错误:", error);
+      Logger.error("MessageRouter: 分发消息时发生错误:", error);
       
       return {
         success: false,

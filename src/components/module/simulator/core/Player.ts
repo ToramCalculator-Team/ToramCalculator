@@ -30,6 +30,7 @@ import type {
   MainHandType,
 } from "~/../db/enums";
 import { ComboWithRelations } from "~/repositories/combo";
+import { createActor } from "xstate";
 
 // ============================== 角色属性系统类型定义 ==============================
 
@@ -562,6 +563,7 @@ export class Player extends Member {
       throw new Error("Player类只能用于玩家类型的成员");
     }
 
+    // 调用父类构造函数
     super(memberData, initialState);
 
     // 设置角色数据
@@ -572,6 +574,10 @@ export class Player extends Member {
 
     // 初始化玩家属性Map
     this.initializePlayerAttrMap(memberData);
+
+    // 重新初始化状态机（此时playerAttrMap已经准备好）
+    this.actor = createActor(this.createStateMachine(initialState));
+    this.actor.start();
 
     console.log(`🎮 已创建玩家: ${memberData.name}`);
   }
@@ -694,7 +700,7 @@ export class Player extends Member {
   getPlayerAttrSnapshot(): Readonly<Record<string, Readonly<AttrData>>> {
     const snapshot: Record<string, AttrData> = {};
 
-    for (const [attrName, attr] of this.playerAttrMap) {
+    for (const [attrName, attr] of this.playerAttrMap.entries()) {
       // 使用结构化克隆确保真正的深拷贝
       snapshot[attrName] = structuredClone(attr);
     }
@@ -737,6 +743,8 @@ export class Player extends Member {
     currentHp?: number;
     currentMp?: number;
   }) {
+    const machineId = `Player_${this.id}`;
+    
     return setup({
       types: {
         context: {} as MemberContext,
@@ -827,7 +835,7 @@ export class Player extends Member {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          // console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
         },
       },
       guards: {
@@ -870,10 +878,10 @@ export class Player extends Member {
         isAlive: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) > 0,
       },
     }).createMachine({
-      id: `Player_${this.id}`,
+      id: machineId,
       context: {
         memberData: this.memberData,
-        stats: this.playerAttrMap,
+        stats: new Map(), // 使用空的Map作为初始值
         isAlive: true,
         isActive: true,
         statusEffects: [],
@@ -957,7 +965,7 @@ export class Player extends Member {
                             guard: "isSkillAvailable",
                           },
                           {
-                            target: "#Player_alive.operational.idle",
+                            target: `#${machineId}.alive.operational.idle`,
                             guard: "skillNotAvailable",
                           },
                         ],
@@ -994,7 +1002,7 @@ export class Player extends Member {
                             guard: "hasNextCombo",
                           },
                           {
-                            target: "#Player_alive.operational.idle",
+                            target: `#${machineId}.alive.operational.idle`,
                           },
                         ],
                       },
@@ -1025,7 +1033,7 @@ export class Player extends Member {
             control_abnormal: {
               on: {
                 control_end: {
-                  target: "#Player_alive.operational.idle",
+                  target: `#${machineId}.alive.operational.idle`,
                 },
               },
             },
@@ -1034,7 +1042,7 @@ export class Player extends Member {
         dead: {
           on: {
             revive_ready: {
-              target: "#Player_alive.operational",
+              target: `#${machineId}.alive.operational`,
               actions: {
                 type: "resetHpMpAndStatus",
               },
@@ -1137,6 +1145,8 @@ export class Player extends Member {
 
     const character = memberData.player.character;
     if (!character) return;
+
+    console.log("character", character);
 
     // 获取武器类型
     const weaponType = character.weapon.template.type;

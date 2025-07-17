@@ -18,7 +18,6 @@ import { createSignal } from "solid-js";
 import type { TeamWithRelations } from "~/repositories/team";
 import type { MemberWithRelations } from "~/repositories/member";
 import type { SimulatorWithRelations } from "~/repositories/simulator";
-import { Member, createMember } from "./Member";
 import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop } from "./FrameLoop";
@@ -26,6 +25,10 @@ import { EventQueue } from "./EventQueue";
 import type { IntentMessage, MessageProcessResult } from "./MessageRouter";
 import type { FrameLoopState, FrameInfo } from "./FrameLoop";
 import type { QueueEvent, EventPriority } from "./EventQueue";
+import { Member } from "./Member";
+import Player from "./Player";
+import Mob from "./Mob";
+import { Logger } from "~/utils/logger";
 
 // ============================== 类型定义 ==============================
 
@@ -187,11 +190,11 @@ export class GameEngine {
     this.messageRouter = new MessageRouter(this.memberRegistry);
     this.frameLoop = new FrameLoop(
       this.memberRegistry, 
-      this.eventQueue.getEventsToProcess.bind(this.eventQueue),
+      [],
       this.config.frameLoopConfig
     );
 
-    console.log("⚙️ 游戏引擎初始化完成");
+    Logger.info("GameEngine: 初始化完成");
   }
 
   // ==================== 公共接口 ====================
@@ -201,7 +204,7 @@ export class GameEngine {
    */
   start(): void {
     if (this.state === "running") {
-      console.warn("⚠️ 引擎已在运行中");
+      Logger.warn("GameEngine: 引擎已在运行中");
       return;
     }
 
@@ -212,7 +215,7 @@ export class GameEngine {
     // 启动帧循环
     this.frameLoop.start();
 
-    console.log("🚀 游戏引擎已启动");
+    Logger.info("GameEngine: 引擎已启动");
   }
 
   /**
@@ -220,7 +223,7 @@ export class GameEngine {
    */
   stop(): void {
     if (this.state === "stopped") {
-      console.warn("⚠️ 引擎已停止");
+      Logger.warn("GameEngine: 引擎已停止");
       return;
     }
 
@@ -229,7 +232,7 @@ export class GameEngine {
     // 停止帧循环
     this.frameLoop.stop();
 
-    console.log("🛑 游戏引擎已停止");
+    Logger.info("GameEngine: 引擎已停止");
   }
 
   /**
@@ -237,7 +240,7 @@ export class GameEngine {
    */
   pause(): void {
     if (this.state === "paused") {
-      console.warn("⚠️ 引擎已暂停");
+      Logger.warn("GameEngine: 引擎已暂停");
       return;
     }
 
@@ -246,7 +249,7 @@ export class GameEngine {
     // 暂停帧循环
     this.frameLoop.pause();
 
-    console.log("⏸️ 游戏引擎已暂停");
+    Logger.info("GameEngine: 引擎已暂停");
   }
 
   /**
@@ -254,7 +257,7 @@ export class GameEngine {
    */
   resume(): void {
     if (this.state === "running") {
-      console.warn("⚠️ 引擎已在运行中");
+      Logger.warn("GameEngine: 引擎已在运行中");
       return;
     }
 
@@ -263,7 +266,7 @@ export class GameEngine {
     // 恢复帧循环
     this.frameLoop.resume();
 
-    console.log("▶️ 游戏引擎已恢复");
+    Logger.info("GameEngine: 引擎已恢复");
   }
 
   /**
@@ -271,7 +274,7 @@ export class GameEngine {
    */
   step(): void {
     if (this.state === "running") {
-      console.warn("⚠️ 引擎正在运行，无法单步执行");
+      Logger.warn("GameEngine: 引擎正在运行，无法单步执行");
       return;
     }
 
@@ -285,7 +288,7 @@ export class GameEngine {
    * @param campName 阵营名称
    */
   addCamp(campId: string, campName?: string): void {
-    console.log(`🏰 添加阵营: ${campId} - ${campName || '未命名'}`);
+    Logger.debug(`GameEngine: 添加阵营: ${campId} - ${campName || '未命名'}`);
   }
 
   /**
@@ -296,7 +299,7 @@ export class GameEngine {
    * @param teamName 队伍名称
    */
   addTeam(campId: string, teamData: TeamWithRelations, teamName?: string): void {
-    console.log(`👥 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
+    Logger.debug(`GameEngine: 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
   }
 
   /**
@@ -317,21 +320,35 @@ export class GameEngine {
       position?: { x: number; y: number };
     } = {},
   ): void {
+    Logger.debug(`GameEngine: addMember: campId=${campId}, teamId=${teamId}, memberData=`, memberData, ', initialState=', initialState);
     try {
-      // 创建成员实例
-      const member = createMember(memberData, initialState);
+      // 根据成员类型创建对应的实例
+      let member: Member;
+      
+      switch (memberData.type) {
+        case "Player":
+          member = new Player(memberData, initialState);
+          break;
+        case "Mob":
+          member = new Mob(memberData, initialState);
+          break;
+        case "Mercenary":
+        case "Partner":
+        default:
+          throw new Error(`不支持的成员类型: ${memberData.type}`);
+      }
 
       // 注册到成员注册表
       const success = this.memberRegistry.registerMember(member, campId, teamId);
 
       if (success) {
-        console.log(`👤 添加成员: ${member.getName()} (${member.getType()}) -> ${campId}/${teamId}`);
+        Logger.info(`GameEngine: 添加成员: ${member.getName()} (${member.getType()}) -> ${campId}/${teamId}`);
       } else {
-        console.error("❌ 添加成员失败:", memberData.id);
+        Logger.error("GameEngine: 添加成员失败:", memberData.id);
       }
 
     } catch (error) {
-      console.error("❌ 创建成员失败:", error);
+      Logger.error("GameEngine: 创建成员失败:", error);
     }
   }
 
@@ -393,7 +410,7 @@ export class GameEngine {
   }
 
   /**
-   * 获取所有成员
+   * 获取所有成员（内部使用）
    * 
    * @returns 成员数组
    */
@@ -402,13 +419,99 @@ export class GameEngine {
   }
 
   /**
-   * 查找成员
+   * 查找成员（内部使用）
    * 
    * @param memberId 成员ID
    * @returns 成员实例
    */
   findMember(memberId: string): Member | null {
     return this.memberRegistry.getMember(memberId);
+  }
+
+  // ==================== 外部数据访问接口 ====================
+
+  /**
+   * 获取成员数据（外部使用 - 序列化）
+   * 
+   * @param memberId 成员ID
+   * @returns 成员数据，如果不存在则返回null
+   */
+  getMemberData(memberId: string): any | null {
+    const member = this.memberRegistry.getMember(memberId);
+    if (!member) {
+      return null;
+    }
+
+    const entry = this.memberRegistry.getMemberEntry(memberId);
+    return {
+      id: member.getId(),
+      name: member.getName(),
+      type: member.getType(),
+      campId: entry?.campId || "",
+      teamId: entry?.teamId || "",
+      isAlive: member.isAlive(),
+      isActive: member.isActive(),
+      stats: member.getStats(),
+      state: member.getCurrentState()
+    };
+  }
+
+  /**
+   * 获取所有成员数据（外部使用 - 序列化）
+   * 
+   * @returns 所有成员数据数组
+   */
+  getAllMemberData(): any[] {
+    const members = this.memberRegistry.getAllMembers();
+    return members.map(member => member.serialize());
+  }
+
+  /**
+   * 按阵营获取成员数据（外部使用 - 序列化）
+   * 
+   * @param campId 阵营ID
+   * @returns 指定阵营的成员数据数组
+   */
+  getMembersByCamp(campId: string): any[] {
+    const members = this.memberRegistry.getMembersByCamp(campId);
+    return members.map(member => {
+      const entry = this.memberRegistry.getMemberEntry(member.getId());
+      return {
+        id: member.getId(),
+        name: member.getName(),
+        type: member.getType(),
+        campId: entry?.campId || "",
+        teamId: entry?.teamId || "",
+        isAlive: member.isAlive(),
+        isActive: member.isActive(),
+        stats: member.getStats(),
+        state: member.getCurrentState()
+      };
+    });
+  }
+
+  /**
+   * 按队伍获取成员数据（外部使用 - 序列化）
+   * 
+   * @param teamId 队伍ID
+   * @returns 指定队伍的成员数据数组
+   */
+  getMembersByTeam(teamId: string): any[] {
+    const members = this.memberRegistry.getMembersByTeam(teamId);
+    return members.map(member => {
+      const entry = this.memberRegistry.getMemberEntry(member.getId());
+      return {
+        id: member.getId(),
+        name: member.getName(),
+        type: member.getType(),
+        campId: entry?.campId || "",
+        teamId: entry?.teamId || "",
+        isAlive: member.isAlive(),
+        isActive: member.isActive(),
+        stats: member.getStats(),
+        state: member.getCurrentState()
+      };
+    });
   }
 
   /**

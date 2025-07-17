@@ -4,6 +4,8 @@ import { DB, member } from "../../db/generated/kysely/kyesely";
 import { playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
+import { mercenarySubRelations } from "./mercenary";
+import { mobSubRelations } from "./mob";
 
 export type MemberWithRelations = Awaited<ReturnType<typeof findMemberById>>;
 
@@ -21,13 +23,27 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
         .selectAll("player")
         .select((subEb) => playerSubRelations(subEb, subEb.val(id))),
     ).as("player"),
-    jsonObjectFrom(eb.selectFrom("mercenary").whereRef("id", "=", "member.mercenaryId").selectAll("mercenary")).as(
-      "mercenary",
-    ),
-    jsonObjectFrom(eb.selectFrom("mercenary").whereRef("id", "=", "member.partnerId").selectAll("mercenary")).as(
-      "partner",
-    ),
-    jsonObjectFrom(eb.selectFrom("mob").whereRef("id", "=", "member.mobId").selectAll("mob")).as("mob"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("mercenary")
+        .whereRef("id", "=", "member.mercenaryId")
+        .selectAll("mercenary")
+        .select((subEb) => mercenarySubRelations(subEb)),
+    ).as("mercenary"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("mercenary")
+        .whereRef("id", "=", "member.partnerId")
+        .selectAll("mercenary")
+        .select((subEb) => mercenarySubRelations(subEb)),
+    ).as("partner"),
+    jsonObjectFrom(
+      eb
+        .selectFrom("mob")
+        .whereRef("id", "=", "member.mobId")
+        .selectAll("mob")
+        .select((subEb) => mobSubRelations(subEb, subEb.val(id))),
+    ).as("mob"),
   ];
 }
 

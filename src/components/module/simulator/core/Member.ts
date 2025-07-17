@@ -15,7 +15,7 @@ import type { PlayerWithRelations } from "~/repositories/player";
 import type { MercenaryWithRelations } from "~/repositories/mercenary";
 import type { MobWithRelations } from "~/repositories/mob";
 import { MEMBER_TYPE, type MemberType } from "~/../db/enums";
-import Player from "./Player";
+import { Logger } from "~/utils/logger";
 
 // ============================== 类型定义 ==============================
 
@@ -212,30 +212,36 @@ export function isPartnerMember(
 
 // ============================== 成员基类 ==============================
 
-/**
- * 成员基类
- * 提供基于XState的状态机管理和事件队列处理
- */
-export abstract class Member {
-  // ==================== 核心属性 ====================
+  /**
+   * 成员基类
+   * 提供基于XState的状态机管理和事件队列处理
+   */
+  export abstract class Member {
+    // ==================== 核心属性 ====================
 
-  /** 成员唯一标识符 */
-  protected readonly id: string;
+    /** 成员唯一标识符 */
+    protected readonly id: string;
 
-  /** 成员类型 */
-  protected readonly type: MemberType;
+    /** 成员类型 */
+    protected readonly type: MemberType;
 
-  /** 成员目标 */
-  protected target: Member | null = null;
+    /** 成员目标 */
+    protected target: Member | null = null;
 
-  /** XState状态机实例 */
-  protected actor: any;
+    /** XState状态机实例 */
+    protected actor: any;
 
-  /** 事件队列 */
-  protected eventQueue: MemberEvent[] = [];
+    /** 事件队列 */
+    protected eventQueue: MemberEvent[] = [];
 
-  /** 最后更新时间戳 */
-  protected lastUpdateTimestamp: number = 0;
+    /** 最后更新时间戳 */
+    protected lastUpdateTimestamp: number = 0;
+
+    /** 阵营ID */
+    protected campId: string | undefined;
+
+    /** 队伍ID */
+    protected teamId: string;
 
   // ==================== 静态参数统计方法 ====================
 
@@ -317,6 +323,7 @@ export abstract class Member {
   ) {
     this.id = memberData.id;
     this.type = memberData.type;
+    this.teamId = memberData.teamId;
 
     // 创建状态机实例
     this.actor = createActor(this.createStateMachine(initialState));
@@ -324,7 +331,7 @@ export abstract class Member {
     // 启动状态机
     this.actor.start();
 
-    console.log(`🎭 创建成员: ${memberData.name} (${this.type})`);
+    Logger.info(`Member: 创建成员: ${memberData.name} (${this.type})`);
   }
 
   // ==================== 抽象方法 ====================
@@ -408,7 +415,7 @@ export abstract class Member {
    */
   addEvent(event: MemberEvent): void {
     this.eventQueue.push(event);
-    console.log(`📝 添加事件到队列: ${this.getName()} -> ${event.type}`);
+    Logger.debug(`Member: 添加事件到队列: ${this.getName()} -> ${event.type}`);
   }
 
   /**
@@ -558,7 +565,7 @@ export abstract class Member {
   destroy(): void {
     this.actor.stop();
     this.eventQueue = [];
-    console.log(`🗑️ 销毁成员: ${this.getName()}`);
+    Logger.info(`Member: 销毁成员: ${this.getName()}`);
   }
 
   // ==================== 引擎标准接口 ====================
@@ -769,9 +776,9 @@ export abstract class Member {
   setTarget(target: Member | null): void {
     this.target = target;
     if (target) {
-      console.log(`🎯 ${this.getName()} 设置目标: ${target.getName()}`);
+      Logger.debug(`Member: ${this.getName()} 设置目标: ${target.getName()}`);
     } else {
-      console.log(`🎯 ${this.getName()} 清除目标`);
+      Logger.debug(`Member: ${this.getName()} 清除目标`);
     }
   }
 
@@ -782,6 +789,16 @@ export abstract class Member {
    */
   getTarget(): Member | null {
     return this.target;
+  }
+
+  /**
+   * 设置阵营ID
+   * 供GameEngine调用
+   * 
+   * @param campId 阵营ID
+   */
+  setCampId(campId: string): void {
+    this.campId = campId;
   }
 
   /**
@@ -849,7 +866,7 @@ export abstract class Member {
     if (this.target) {
       const direction = this.getTargetDirection();
       // 这里可以添加朝向调整的逻辑
-      console.log(`🔄 ${this.getName()} 面向目标: ${this.target.getName()}`);
+      Logger.debug(`Member: ${this.getName()} 面向目标: ${this.target.getName()}`);
     }
   }
 
@@ -919,44 +936,44 @@ export abstract class Member {
       lastUpdate: this.lastUpdateTimestamp,
     };
   }
-}
 
-// ============================== 成员创建工具 ==============================
-
-/**
- * 创建成员实例的工具函数
- * 根据成员类型创建对应的成员实例
- * 
- * 注意：建议直接使用具体的类构造函数，而不是此工厂函数
- * 例如：new Player(memberData, initialState)
- *
- * @param memberData 成员数据
- * @param initialState 初始状态
- * @returns 成员实例
- * @deprecated 建议直接使用具体的类构造函数
- */
-export function createMember(
-  memberData: MemberWithRelations,
-  initialState: {
-    position?: { x: number; y: number };
-    currentHp?: number;
-    currentMp?: number;
-  } = {},
-): Member {
-  // 根据成员类型创建对应的子类实例
-  switch (memberData.type) {
-    case "Player":
-      // 导入Player类并创建实例
-      return new Player(memberData, initialState);
-
-    case "Mob":
-
-    case "Mercenary":
-
-    case "Partner":
-
-    default:
-      throw new Error(`不支持的成员类型: ${memberData.type}`);
+  /**
+   * 序列化成员数据为可传输的纯数据对象
+   * 用于Worker与主线程之间的数据传输
+   * 只包含可序列化的数据，不包含方法、状态机实例等
+   */
+  serialize(): {
+    id: string;
+    name: string;
+    type: string;
+    isAlive: boolean;
+    isActive: boolean;
+    currentHp: number;
+    maxHp: number;
+    currentMp: number;
+    maxMp: number;
+    position: { x: number; y: number };
+    state: string;
+    targetId?: string;
+    teamId: string;
+    campId?: string;
+  } {
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      type: this.getType(),
+      isAlive: this.isAlive(),
+      isActive: this.isActive(),
+      currentHp: this.getStats().currentHp,
+      maxHp: this.getStats().maxHp,
+      currentMp: this.getStats().currentMp,
+      maxMp: this.getStats().maxMp,
+      position: this.getStats().position,
+      state: this.getCurrentState().value || 'unknown',
+      targetId: this.target?.getId(),
+      teamId: this.teamId,
+      campId: this.campId,
+    };
   }
 }
 

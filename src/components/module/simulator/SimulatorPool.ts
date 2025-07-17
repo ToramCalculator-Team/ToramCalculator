@@ -1,6 +1,8 @@
 import { createId } from '@paralleldrive/cuid2';
-import { SimulatorWithRelations } from "~/repositories/simulator";
+import type { SimulatorWithRelations } from '~/repositories/simulator';
+import type { IntentMessage } from './core/MessageRouter';
 import simulationWorker from './Simulation.worker?worker&url';
+import { Logger } from '~/utils/logger';
 
 /**
  * 事件发射器 - 基于Node.js ThreadPool的EventEmitter思路
@@ -351,13 +353,15 @@ export class EnhancedSimulatorPool extends EventEmitter {
     totalBatches: 0
   };
 
+  private workersInitialized = false;
+
   constructor(config: SimulationConfig = {}) {
     super();
     this.validateConfig(config);
 
     // 合并用户配置和默认配置
     this.config = {
-      maxWorkers: config.maxWorkers || Math.min(navigator.hardwareConcurrency || 4, 8),
+      maxWorkers: config.maxWorkers || 1, // 默认启动1个worker，可手动控制
       taskTimeout: config.taskTimeout || 30000,
       idleTimeout: config.idleTimeout || 300000,
       enableBatching: config.enableBatching || true,
@@ -373,10 +377,12 @@ export class EnhancedSimulatorPool extends EventEmitter {
     // 我们使用Worker池本身来控制并发，而不是额外的信号量
     // this.semaphore = new Semaphore(this.config.maxWorkers);
     
-    // 初始化核心组件
-    this.initializeWorkers();      // 创建Worker池
-    this.startCleanupProcess();    // 启动资源清理进程
-    this.startMonitoring();        // 启动性能监控
+    // 启动资源清理进程和性能监控（不依赖worker）
+    this.startCleanupProcess();
+    this.startMonitoring();
+    
+    // 延迟初始化worker，只在第一次使用时创建
+    this.workersInitialized = false;
   }
 
   private validateConfig(config: SimulationConfig): void {
@@ -394,6 +400,13 @@ export class EnhancedSimulatorPool extends EventEmitter {
     
     if (config.maxQueueSize !== undefined && (config.maxQueueSize < 1 || !Number.isInteger(config.maxQueueSize))) {
       throw new Error('Invalid maxQueueSize: must be a positive integer');
+    }
+  }
+
+  private ensureWorkersInitialized(): void {
+    if (!this.workersInitialized) {
+      this.initializeWorkers();
+      this.workersInitialized = true;
     }
   }
 
@@ -440,7 +453,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
     // 错误处理
     worker.onerror = (error) => {
-      console.error(`Worker ${wrapper.id} error:`, error);
+      Logger.error(`Worker ${wrapper.id} error:`, error);
       this.handleWorkerError(wrapper, error);
     };
 
@@ -457,12 +470,12 @@ export class EnhancedSimulatorPool extends EventEmitter {
   private handleWorkerDirectMessage(worker: WorkerWrapper, event: MessageEvent): void {
     // 处理系统消息（如worker_ready）
     if (event.data && event.data.type === 'worker_ready') {
-      console.log(`✅ Worker ${worker.id} is ready`);
+      Logger.info(`Worker ${worker.id} is ready`);
       return;
     }
 
     // 其他系统消息可以在这里处理
-    console.log(`🔧 Worker ${worker.id} direct message:`, event.data);
+    Logger.debug(`Worker ${worker.id} direct message:`, event.data);
   }
 
   /**
@@ -615,6 +628,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
     simulatorData: SimulatorWithRelations,
     priority: SimulationTask['priority'] = 'high'
   ): Promise<SimulationResult> {
+    this.ensureWorkersInitialized();
     return await this.executeTask('start_simulation', simulatorData, priority);
   }
 
@@ -905,13 +919,155 @@ export class EnhancedSimulatorPool extends EventEmitter {
       return {
         ...baseMetrics,
         batchExecution: {
-          ...this.batchExecutionState,
-          progress: Math.round(progress * 100) / 100 // 保留2位小数
+          isExecuting: true,
+          progress: Math.round(progress),
+          completedTasks: this.batchExecutionState.completedTasks,
+          totalTasks: this.batchExecutionState.totalTasks,
+          submittedTasks: this.batchExecutionState.submittedTasks,
+          currentBatchIndex: this.batchExecutionState.currentBatchIndex,
+          totalBatches: this.batchExecutionState.totalBatches
         }
       };
     }
 
-    return baseMetrics;
+    return {
+      ...baseMetrics,
+      batchExecution: {
+        isExecuting: false,
+        progress: 0,
+        completedTasks: 0,
+        totalTasks: 0,
+        submittedTasks: 0,
+        currentBatchIndex: 0,
+        totalBatches: 0
+      }
+    };
+  }
+
+  // ==================== 控制器功能 ====================
+
+  /**
+   * 获取成员数据
+   * 控制器通过此方法获取当前模拟的成员信息
+   */
+  async getMembers(): Promise<any[]> {
+    try {
+      this.ensureWorkersInitialized();
+      
+      // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
+      const availableWorker = this.workers.find(w => w.worker && w.port);
+      if (!availableWorker) {
+        Logger.warn('SimulatorPool: 没有找到可用的worker');
+        return [];
+      }
+
+      // console.log(`🔍 [SimulatorPool] 使用worker ${availableWorker.id} 获取成员数据`);
+
+      // 发送获取成员数据的请求
+      const taskId = createId();
+      const result = await new Promise<{ success: boolean; data?: any; error?: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Get members timeout'));
+        }, 5000);
+
+        // 通过MessagePort发送获取成员数据的消息
+        availableWorker.port.postMessage({
+          type: 'get_members',
+          taskId
+        });
+
+        // 监听响应
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data && event.data.taskId === taskId) {
+            clearTimeout(timeout);
+            availableWorker.port.removeEventListener('message', handleMessage);
+            // 兼容worker返回格式
+            if (event.data.error) {
+              resolve({ success: false, error: event.data.error });
+            } else {
+              resolve(event.data.result || { success: false, error: 'No result data' });
+            }
+          }
+        };
+
+        availableWorker.port.addEventListener('message', handleMessage);
+      });
+
+      if (result.success) {
+        Logger.debug(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员`);
+        return result.data || [];
+      } else {
+        Logger.error(`SimulatorPool: 获取成员数据失败: ${result.error}`);
+        return [];
+      }
+    } catch (error) {
+      Logger.error('SimulatorPool: 获取成员数据异常:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 发送意图消息
+   * 控制器通过此方法向Worker发送意图消息
+   */
+  async sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.ensureWorkersInitialized();
+      
+      // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
+      const availableWorker = this.workers.find(w => w.worker && w.port);
+      if (!availableWorker) {
+        Logger.warn('SimulatorPool: 没有找到可用的worker');
+        return { success: false, error: 'No available worker' };
+      }
+
+      Logger.debug(`SimulatorPool: 使用worker ${availableWorker.id} 发送意图消息`);
+      Logger.debug(`SimulatorPool: 意图数据:`, intent);
+
+      // 发送意图消息
+      const taskId = createId();
+      const result = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Send intent timeout'));
+        }, 5000);
+
+        // 通过MessagePort发送意图消息
+        const message = {
+          type: 'send_intent',
+          taskId,
+          data: intent
+        };
+        Logger.debug(`SimulatorPool: 发送消息:`, message);
+        availableWorker.port.postMessage(message);
+
+        // 监听响应
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data && event.data.taskId === taskId) {
+            clearTimeout(timeout);
+            availableWorker.port.removeEventListener('message', handleMessage);
+            // 兼容worker返回格式
+            if (event.data.error) {
+              resolve({ success: false, error: event.data.error });
+            } else {
+              resolve(event.data.result || { success: false, error: 'No result data' });
+            }
+          }
+        };
+
+        availableWorker.port.addEventListener('message', handleMessage);
+      });
+
+      if (result.success) {
+        Logger.info(`SimulatorPool: 成功发送意图消息`);
+      } else {
+        Logger.error(`SimulatorPool: 发送意图消息失败: ${result.error}`);
+      }
+
+      return result;
+    } catch (error) {
+      Logger.error('SimulatorPool: 发送意图消息异常:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 
   /**
@@ -999,12 +1155,22 @@ export class EnhancedSimulatorPool extends EventEmitter {
   }
 }
 
-// 单例模式 - 专注于战斗模拟
+// 多线程模式 - 用于批量计算和并行处理
 export const enhancedSimulatorPool = new EnhancedSimulatorPool({
-  maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 减少Worker数量
+  maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 多Worker用于并行计算
   taskTimeout: 60000, // 增加超时时间，战斗模拟可能需要更长时间
   enableBatching: false, // 战斗模拟通常不需要批处理
   maxRetries: 2, // 减少重试次数
   maxQueueSize: 100, // 减少队列大小
   monitorInterval: 10000 // 增加监控间隔
+});
+
+// 单线程模式 - 专门用于实时模拟控制器
+export const realtimeSimulatorPool = new EnhancedSimulatorPool({
+  maxWorkers: 1, // 单Worker用于实时模拟
+  taskTimeout: 30000, // 实时模拟需要更快的响应
+  enableBatching: false, // 实时模拟不需要批处理
+  maxRetries: 1, // 实时模拟减少重试次数
+  maxQueueSize: 10, // 实时模拟减少队列大小
+  monitorInterval: 5000 // 实时模拟更频繁的监控
 }); 
