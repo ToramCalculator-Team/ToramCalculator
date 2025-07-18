@@ -12,6 +12,9 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 - 📈 数据可视化展示
 - 🔗 配置分享功能
 - 📚 内置游戏 Wiki 库
+- 🎯 实时战斗模拟器
+- 🔄 工作流编辑器
+- 🎨 3D 场景渲染
 
 ### 🌐 项目地址
 
@@ -20,20 +23,24 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 ## 🏗️ 技术架构
 
 ### 1. UI 层 (Presentation Layer)
-- **技术栈**: SolidJS, Tailwind CSS, Babylon.js, Editor.js, TanStack
-- **职责**: 用户界面展示、交互处理、动画效果
+- **技术栈**: SolidJS, Tailwind CSS, Babylon.js, Editor.js, TanStack, OverlayScrollbars
+- **职责**: 用户界面展示、交互处理、动画效果、3D渲染
 
 ### 2. 应用逻辑层 (Application Layer)
-- **技术栈**: XState
-- **职责**: 核心业务逻辑、状态管理、模拟器计算
+- **技术栈**: XState, SolidJS Primitives
+- **职责**: 核心业务逻辑、状态管理、模拟器计算、工作流管理
 
-### 3. 数据层 (Data Layer)
+### 3. 模拟器引擎层 (Simulator Engine Layer)
+- **技术栈**: Web Workers, XState, 事件驱动架构
+- **职责**: 战斗模拟、帧循环、事件队列、状态机管理
+
+### 4. 数据层 (Data Layer)
 - **技术栈**: pgLite, kysely, ElectricSQL, PostgreSQL, zod
 - **职责**: 数据访问、存储管理、数据同步、数据验证
 
-### 4. 基础设施层 (Infrastructure Layer)
-- **技术栈**: cuid2, jose, js-cookie
-- **职责**: ID 生成、JWT 处理、Cookie 管理、Web Workers、WASM
+### 5. 基础设施层 (Infrastructure Layer)
+- **技术栈**: cuid2, jose, js-cookie, comlink, mathjs
+- **职责**: ID 生成、JWT 处理、Cookie 管理、Web Workers、WASM、数学计算
 
 ## 📁 项目结构
 
@@ -45,11 +52,20 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 ├── public/              # 静态资源
 ├── src/                 # 应用逻辑源代码
 │   ├── components/      # 页面组件
+│   │   ├── module/      # 功能模块
+│   │   │   ├── simulator/    # 模拟器模块
+│   │   │   │   ├── core/     # 模拟器核心引擎
+│   │   │   │   ├── handlers/ # 事件处理器
+│   │   │   │   └── test/     # 测试文件
+│   │   │   ├── flowEditor/   # 工作流编辑器
+│   │   │   └── nodeEditor/   # 节点编辑器
+│   │   └── ...          # 其他组件
 │   ├── lib/            # 工具函数库
 │   ├── locales/        # 国际化文件
 │   ├── repositories/   # 数据库交互方法
 │   ├── routes/         # 应用路由
 │   ├── styles/         # 样式文件
+│   ├── utils/          # 工具函数
 │   └── worker/         # 工作线程
 └── test/               # 测试文件
 ```
@@ -80,6 +96,19 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 - 🐳 Docker
 - 📦 Node.js >= 20
 - 🔧 pnpm >= 9.15.2
+- ⚡ tsx (全局安装)
+
+### 全局安装 tsx
+
+在开始开发之前，需要全局安装 tsx：
+
+```bash
+# 使用 npm
+npm install -g tsx
+
+# 或使用 pnpm
+pnpm add -g tsx
+```
 
 ### 初始化流程
 
@@ -131,6 +160,15 @@ pnpm dev
 - 所有枚举类型定义在 `db/enums.ts`
 - 使用 `generator.js` 将枚举注入到数据库架构
 - 生成的类型定义在 `db/dataEnums.ts`
+
+### 模拟器架构
+
+项目包含一个完整的战斗模拟器系统：
+
+- **核心引擎**: 事件驱动架构，支持实时和批量模拟
+- **状态机**: 基于 XState 的角色状态管理
+- **工作流编辑器**: 可视化的工作流设计工具
+- **3D 渲染**: 基于 Babylon.js 的战斗场景渲染
 
 ### 开发命令
 
