@@ -69,27 +69,27 @@ class ChunkManifestReader {
     manifest?: any;
     error?: string;
   }> {
-    Logger.info("开始读取chunk清单...");
+    console.log("开始读取chunk清单...");
 
     try {
       // 直接读取 chunk-manifest.json
       const manifestResp = await fetch('/chunk-manifest.json');
       if (!manifestResp.ok) {
-        Logger.warn("无法获取chunk-manifest.json");
+        console.warn("无法获取chunk-manifest.json");
         return { success: false, error: "无法获取chunk清单" };
       }
 
       const manifest = await manifestResp.json();
       
       // 打印chunk清单信息到控制台
-      Logger.info("📦 Chunk清单读取成功", {
+      console.log("📦 Chunk清单读取成功", {
         version: manifest.version,
         buildTime: manifest.buildTime,
         totalChunks: Object.keys(manifest.bundleInfo || {}).length
       });
 
       // 打印详细的chunk分类信息
-      Logger.info("📊 Chunk分类统计:", {
+      console.log("📊 Chunk分类统计:", {
         core: manifest.chunks?.core?.length || 0,
         routes: Object.keys(manifest.chunks?.routes || {}).length,
         features: Object.keys(manifest.chunks?.features || {}).length,
@@ -104,7 +104,7 @@ class ChunkManifestReader {
 
       // 打印核心chunks
       if (manifest.chunks?.core?.length > 0) {
-        Logger.info("🔧 核心Chunks:", manifest.chunks.core.map((chunk: any) => ({
+        console.log("🔧 核心Chunks:", manifest.chunks.core.map((chunk: any) => ({
           fileName: chunk.fileName,
           size: chunk.size,
           isEntry: chunk.isEntry
@@ -113,33 +113,33 @@ class ChunkManifestReader {
 
       // 打印路由chunks
       if (manifest.chunks?.routes) {
-        Logger.info("🛣️ 路由Chunks:");
+        console.log("🛣️ 路由Chunks:");
         for (const [routeName, chunks] of Object.entries(manifest.chunks.routes)) {
-          Logger.info(`  ${routeName}:`, (chunks as any[]).map((chunk: any) => chunk.fileName));
+          console.log(`  ${routeName}:`, (chunks as any[]).map((chunk: any) => chunk.fileName));
         }
       }
 
       // 打印功能chunks
       if (manifest.chunks?.features) {
-        Logger.info("⚙️ 功能Chunks:");
+        console.log("⚙️ 功能Chunks:");
         for (const [featureName, chunks] of Object.entries(manifest.chunks.features)) {
-          Logger.info(`  ${featureName}:`, (chunks as any[]).map((chunk: any) => chunk.fileName));
+          console.log(`  ${featureName}:`, (chunks as any[]).map((chunk: any) => chunk.fileName));
         }
       }
 
       // 打印Worker chunks
       if (manifest.chunks?.workers?.length > 0) {
-        Logger.info("👷 Worker Chunks:", manifest.chunks.workers.map((chunk: any) => chunk.fileName));
+        console.log("👷 Worker Chunks:", manifest.chunks.workers.map((chunk: any) => chunk.fileName));
       }
 
       // 打印Vendor chunks
       if (manifest.chunks?.vendors?.length > 0) {
-        Logger.info("📚 Vendor Chunks:", manifest.chunks.vendors.map((chunk: any) => chunk.fileName));
+        console.log("📚 Vendor Chunks:", manifest.chunks.vendors.map((chunk: any) => chunk.fileName));
       }
 
       // 打印资源文件
       if (manifest.assets) {
-        Logger.info("🎨 资源文件:", {
+        console.log("🎨 资源文件:", {
           images: manifest.assets.images?.slice(0, 5) || [], // 只显示前5个
           fonts: manifest.assets.fonts?.slice(0, 5) || [],
           others: manifest.assets.others?.slice(0, 5) || []
@@ -147,11 +147,11 @@ class ChunkManifestReader {
       }
 
       // 打印完整的bundle信息（用于调试）
-      Logger.info("📋 完整Bundle信息:", manifest.bundleInfo);
+      console.log("📋 完整Bundle信息:", manifest.bundleInfo);
 
       return { success: true, manifest };
     } catch (error) {
-      Logger.error("读取chunk清单失败:", error);
+      console.error("读取chunk清单失败:", error);
       return { success: false, error: String(error) };
     }
   }
@@ -196,11 +196,11 @@ class ChunkManifestReader {
           currentManifestString = JSON.stringify(manifest);
         }
       } catch (e) {
-        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+        console.warn("无法获取当前manifest缓存，将重新加载", e);
       }
       
       if (currentManifestString !== manifestString) {
-        Logger.info("检测到chunk清单版本变化", {
+        console.log("检测到chunk清单版本变化", {
           oldVersion: currentManifestString ? "已缓存" : "无缓存",
           newVersion: manifest.buildTime || "未知",
         });
@@ -209,7 +209,7 @@ class ChunkManifestReader {
 
       return { hasChanged: false, manifest };
     } catch (error) {
-      Logger.warn("检查chunk清单版本失败:", error);
+      console.warn("检查chunk清单版本失败:", error);
       return { hasChanged: false };
     }
   }
@@ -264,10 +264,10 @@ export class CacheManager {
    */
   async cacheAllResources(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过缓存所有资源（开发模式）");
+      console.log("[DEV] 跳过缓存所有资源（开发模式）");
       return;
     }
-    Logger.info("开始智能缓存所有资源...");
+    console.log("开始智能缓存所有资源...");
 
     try {
       // 读取chunk清单
@@ -283,7 +283,7 @@ export class CacheManager {
         currentManifestString = JSON.stringify(manifest);
           }
         } catch (e) {
-          Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+          console.warn("无法获取当前manifest缓存，将重新加载", e);
         }
 
         // 缓存核心资源（HTML、manifest、关键JS）
@@ -301,12 +301,12 @@ export class CacheManager {
           const resp = await fetch(manifestPath);
           if (resp.ok) {
             coreResources.push(manifestPath);
-            Logger.info(`已加入核心缓存: ${manifestPath}`);
+            console.log(`已加入核心缓存: ${manifestPath}`);
           } else {
-            Logger.warn(`manifest文件未找到: ${manifestPath}`);
+            console.warn(`manifest文件未找到: ${manifestPath}`);
           }
         } catch (e) {
-          Logger.warn(`manifest文件请求异常: /chunk-manifest.json`, e);
+          console.warn(`manifest文件请求异常: /chunk-manifest.json`, e);
         }
 
         await this.cacheCoreResources(coreResources);
@@ -326,17 +326,17 @@ export class CacheManager {
         }
         await this.cacheAssetResources(assetResources);
 
-        Logger.info("分层缓存完成", {
+        console.log("分层缓存完成", {
           core: coreResources.length,
           assets: assetResources.length
         });
       } else {
-        Logger.warn("无法加载chunk清单，跳过缓存");
+        console.warn("无法加载chunk清单，跳过缓存");
       }
 
-      Logger.info("智能缓存完成");
+      console.log("智能缓存完成");
     } catch (error) {
-      Logger.error("智能缓存失败:", error);
+      console.error("智能缓存失败:", error);
       throw error;
     }
   }
@@ -357,15 +357,15 @@ export class CacheManager {
    */
   private async cacheCoreResources(resources: string[]): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过核心资源缓存（开发模式）");
+      console.log("[DEV] 跳过核心资源缓存（开发模式）");
       return;
     }
     if (resources.length === 0) {
-      Logger.warn("没有发现核心资源");
+      console.warn("没有发现核心资源");
       return;
     }
 
-    Logger.info(`开始缓存 ${resources.length} 个核心资源...`);
+    console.log(`开始缓存 ${resources.length} 个核心资源...`);
 
     try {
       const cache = await caches.open(CACHE_STRATEGIES.CORE);
@@ -378,24 +378,24 @@ export class CacheManager {
           if (response.ok) {
             await cache.put(resource, response);
             cachedResources.push(resource);
-            Logger.info(`核心资源缓存成功: ${resource}`);
+            console.log(`核心资源缓存成功: ${resource}`);
           } else {
             failedResources.push(resource);
-            Logger.warn(`核心资源缓存失败: ${resource}`, { status: response.status });
+            console.warn(`核心资源缓存失败: ${resource}`, { status: response.status });
           }
         } catch (error) {
           failedResources.push(resource);
-          Logger.error(`核心资源缓存异常: ${resource}`, error);
+          console.error(`核心资源缓存异常: ${resource}`, error);
         }
       }
 
-      Logger.info("核心资源缓存完成", {
+      console.log("核心资源缓存完成", {
         success: cachedResources.length,
         failed: failedResources.length,
         total: resources.length,
       });
     } catch (error) {
-      Logger.error("核心资源缓存失败:", error);
+      console.error("核心资源缓存失败:", error);
     }
   }
 
@@ -415,15 +415,15 @@ export class CacheManager {
    */
   private async cacheAssetResources(resources: string[]): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过构建资源缓存（开发模式）");
+      console.log("[DEV] 跳过构建资源缓存（开发模式）");
       return;
     }
     if (resources.length === 0) {
-      Logger.warn("没有发现构建资源");
+      console.warn("没有发现构建资源");
       return;
     }
 
-    Logger.info(`开始缓存 ${resources.length} 个构建资源...`);
+    console.log(`开始缓存 ${resources.length} 个构建资源...`);
 
     try {
       const cache = await caches.open(CACHE_STRATEGIES.ASSETS);
@@ -442,14 +442,14 @@ export class CacheManager {
           if (response.ok) {
                 await cache.put(resource, response);
                 cachedResources.push(resource);
-                Logger.debug(`构建资源缓存成功: ${resource}`);
+                console.log(`构建资源缓存成功: ${resource}`);
           } else {
                 failedResources.push(resource);
-                Logger.warn(`构建资源缓存失败: ${resource}`, { status: response.status });
+                console.warn(`构建资源缓存失败: ${resource}`, { status: response.status });
           }
         } catch (error) {
               failedResources.push(resource);
-              Logger.error(`构建资源缓存异常: ${resource}`, error);
+              console.error(`构建资源缓存异常: ${resource}`, error);
             }
           })
         );
@@ -460,13 +460,13 @@ export class CacheManager {
         }
       }
 
-      Logger.info("构建资源缓存完成", {
+      console.log("构建资源缓存完成", {
         success: cachedResources.length,
         failed: failedResources.length,
         total: resources.length,
       });
     } catch (error) {
-      Logger.error("构建资源缓存失败:", error);
+      console.error("构建资源缓存失败:", error);
     }
   }
 
@@ -485,15 +485,15 @@ export class CacheManager {
    */
   async checkAndUpdateCache(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过缓存版本检查（开发模式）");
+      console.log("[DEV] 跳过缓存版本检查（开发模式）");
       return;
     }
-    Logger.info("检查缓存版本...");
+    console.log("检查缓存版本...");
 
     const { hasChanged, manifest } = await ChunkManifestReader.checkChunkManifestVersion();
     
     if (hasChanged) {
-      Logger.info("检测到版本变化，开始更新缓存...");
+      console.log("检测到版本变化，开始更新缓存...");
 
       // 更新当前manifest版本
       let currentManifestString: string | null = null;
@@ -504,7 +504,7 @@ export class CacheManager {
         currentManifestString = JSON.stringify(manifest);
         }
       } catch (e) {
-        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+        console.warn("无法获取当前manifest缓存，将重新加载", e);
       }
       
       // 清理旧缓存
@@ -513,9 +513,9 @@ export class CacheManager {
       // 重新缓存所有资源
       await this.cacheAllResources();
       
-      Logger.info("缓存更新完成");
+      console.log("缓存更新完成");
     } else {
-      Logger.info("缓存版本一致，无需更新");
+      console.log("缓存版本一致，无需更新");
     }
   }
 
@@ -524,7 +524,7 @@ export class CacheManager {
    */
   public async clearOldCaches(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过清理旧缓存（开发模式）");
+      console.log("[DEV] 跳过清理旧缓存（开发模式）");
       return;
     }
     try {
@@ -534,7 +534,7 @@ export class CacheManager {
       const oldCaches = cacheNames.filter((name) => !Object.values(CACHE_STRATEGIES).includes(name as any));
 
       if (oldCaches.length > 0) {
-        Logger.info(`清理 ${oldCaches.length} 个旧版本缓存:`, oldCaches);
+        console.log(`清理 ${oldCaches.length} 个旧版本缓存:`, oldCaches);
         await Promise.all(oldCaches.map((name) => caches.delete(name)));
       }
 
@@ -547,7 +547,7 @@ export class CacheManager {
           currentManifestString = JSON.stringify(manifest);
         }
       } catch (e) {
-        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+        console.warn("无法获取当前manifest缓存，将重新加载", e);
       }
 
       if (currentManifestString) {
@@ -597,17 +597,17 @@ export class CacheManager {
             
             if (!validResources.has(pathname) && !this.isSpecialResource(pathname)) {
               await cache.delete(request);
-              Logger.debug(`清理过期资源: ${pathname}`);
+              console.log(`清理过期资源: ${pathname}`);
             }
           }
         }
 
-        Logger.info("基于manifest的缓存清理完成", {
+        console.log("基于manifest的缓存清理完成", {
           validResources: validResources.size
         });
       }
     } catch (error) {
-      Logger.error("清理旧缓存失败:", error);
+      console.error("清理旧缓存失败:", error);
     }
   }
 
@@ -629,7 +629,7 @@ export class CacheManager {
    */
   async getCacheStatus(): Promise<CacheStatus> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过缓存状态获取（开发模式）");
+      console.log("[DEV] 跳过缓存状态获取（开发模式）");
       return {
         core: false,
         assets: new Map<string, boolean>(),
@@ -639,7 +639,7 @@ export class CacheManager {
         lastUpdate: new Date().toISOString(),
       };
     }
-    Logger.debug("获取缓存状态...");
+    console.log("获取缓存状态...");
 
     const status: CacheStatus = {
       core: false,
@@ -664,10 +664,10 @@ export class CacheManager {
         status.assets.set(assetName, true);
       }
 
-      Logger.info("缓存状态获取完成", status);
+      console.log("缓存状态获取完成", status);
       return status;
     } catch (error) {
-      Logger.error("获取缓存状态失败:", error);
+      console.error("获取缓存状态失败:", error);
       return status;
     }
   }
@@ -685,22 +685,22 @@ class PeriodicCheckManager {
    */
   startPeriodicCheck(): void {
     if (!PERIODIC_CHECK_CONFIG.ENABLED) {
-      Logger.info("定期检查已禁用");
+      console.log("定期检查已禁用");
       return;
     }
 
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 开发模式：跳过定期检查");
+      console.log("[DEV] 开发模式：跳过定期检查");
       return;
     }
 
     if (this.isRunning) {
-      Logger.warn("定期检查已在运行中");
+      console.warn("定期检查已在运行中");
       return;
     }
 
     this.isRunning = true;
-    Logger.info("🔄 启动定期缓存检查", {
+    console.log("🔄 启动定期缓存检查", {
       interval: `${currentCheckInterval / 1000 / 60}分钟`,
       config: PERIODIC_CHECK_CONFIG
     });
@@ -717,7 +717,7 @@ class PeriodicCheckManager {
       periodicCheckTimer = null;
     }
     this.isRunning = false;
-    Logger.info("⏹️ 停止定期缓存检查");
+    console.log("⏹️ 停止定期缓存检查");
   }
 
   /**
@@ -730,7 +730,7 @@ class PeriodicCheckManager {
     const timeSinceLastCheck = Date.now() - lastCheckTime;
     const delay = Math.max(0, currentCheckInterval - timeSinceLastCheck);
 
-    Logger.debug(`📅 安排下次检查: ${delay / 1000}秒后`);
+    console.log(`📅 安排下次检查: ${delay / 1000}秒后`);
 
     periodicCheckTimer = setTimeout(async () => {
       await this.performCheck();
@@ -744,7 +744,7 @@ class PeriodicCheckManager {
   private async performCheck(): Promise<void> {
     if (!this.isRunning) return;
 
-    Logger.info("🔍 执行定期缓存检查...");
+    console.log("🔍 执行定期缓存检查...");
     lastCheckTime = Date.now();
 
     try {
@@ -752,7 +752,7 @@ class PeriodicCheckManager {
       
       // 检查成功，重置失败计数和间隔
       if (consecutiveFailures > 0) {
-        Logger.info("✅ 定期检查成功，重置失败计数", {
+        console.log("✅ 定期检查成功，重置失败计数", {
           previousFailures: consecutiveFailures,
           previousInterval: `${currentCheckInterval / 1000 / 60}分钟`
         });
@@ -770,7 +770,7 @@ class PeriodicCheckManager {
 
     } catch (error) {
       consecutiveFailures++;
-      Logger.error("❌ 定期检查失败", {
+      console.error("❌ 定期检查失败", {
         consecutiveFailures,
         error: String(error)
       });
@@ -803,7 +803,7 @@ class PeriodicCheckManager {
       Math.min(newInterval, PERIODIC_CHECK_CONFIG.MAX_INTERVAL)
     );
 
-    Logger.warn("⏰ 应用退避策略", {
+    console.warn("⏰ 应用退避策略", {
       consecutiveFailures,
       newInterval: `${currentCheckInterval / 1000 / 60}分钟`,
       maxBackoff: `${PERIODIC_CHECK_CONFIG.MAX_BACKOFF / 1000 / 60}分钟`
@@ -815,11 +815,11 @@ class PeriodicCheckManager {
    */
   async performImmediateCheck(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 开发模式：跳过立即检查");
+      console.log("[DEV] 开发模式：跳过立即检查");
       return;
     }
 
-    Logger.info("⚡ 执行立即缓存检查...");
+    console.log("⚡ 执行立即缓存检查...");
     await this.performCheck();
   }
 
@@ -856,7 +856,7 @@ class PeriodicCheckManager {
         });
       })
       .catch((error: any) => {
-        Logger.error("通知客户端失败:", error);
+        console.error("通知客户端失败:", error);
       });
   }
 }
@@ -891,18 +891,18 @@ class RequestInterceptor {
           const cache = await caches.open(CACHE_STRATEGIES.CORE);
           const cached = await cache.match(event.request);
           if (cached) {
-            Logger.info(`离线命中 manifest: ${pathname}`);
+            console.log(`离线命中 manifest: ${pathname}`);
             return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               await cache.put(event.request, networkResponse.clone());
-              Logger.info(`网络缓存 manifest: ${pathname}`);
+              console.log(`网络缓存 manifest: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            Logger.warn(`manifest 离线且无缓存: ${pathname}`);
+            console.warn(`manifest 离线且无缓存: ${pathname}`);
             return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
           }
         })()
@@ -915,7 +915,7 @@ class RequestInterceptor {
       event.respondWith(
         caches.match(event.request).then(async (response) => {
           if (response) {
-            Logger.info(`离线命中主文档: ${pathname}`);
+            console.log(`离线命中主文档: ${pathname}`);
             return response;
           }
           try {
@@ -923,11 +923,11 @@ class RequestInterceptor {
             if (networkResponse.ok) {
               const cache = await caches.open(CACHE_STRATEGIES.CORE);
               await cache.put(event.request, networkResponse.clone());
-              Logger.info(`网络缓存主文档: ${pathname}`);
+              console.log(`网络缓存主文档: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            Logger.warn(`主文档离线且无缓存: ${pathname}`);
+            console.warn(`主文档离线且无缓存: ${pathname}`);
             return new Response('<!DOCTYPE html><title>离线</title><h1>离线不可用</h1>', { status: 200, headers: { 'Content-Type': 'text/html' } });
           }
         })
@@ -959,7 +959,7 @@ class RequestInterceptor {
     // 只在缓存命中时记录请求处理
     if (cacheResult && cacheResult.includes("缓存命中")) {
     const shortPath = this.getShortPath(pathname);
-    Logger.info(
+    console.log(
       pathname,
         `${event.request.method} ${shortPath} -> ${strategy} (${cacheResult})`,
       event.request.url,
@@ -979,7 +979,7 @@ class RequestInterceptor {
         currentManifestString = JSON.stringify(manifest);
       }
     } catch (e) {
-      Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+      console.warn("无法获取当前manifest缓存，将重新加载", e);
     }
 
     if (!currentManifestString) {
@@ -1035,7 +1035,7 @@ class RequestInterceptor {
 
       // 如果是manifest中的chunk，动态缓存
       if (chunkInfo) {
-        Logger.debug(`发现manifest chunk: ${chunkType} - ${chunkInfo.fileName}`);
+        console.log(`发现manifest chunk: ${chunkType} - ${chunkInfo.fileName}`);
         
         // 检查是否已缓存
         const cache = await caches.open(CACHE_STRATEGIES.ASSETS);
@@ -1047,15 +1047,15 @@ class RequestInterceptor {
             const response = await fetch(event.request);
             if (response.ok) {
               await cache.put(event.request, response.clone());
-              Logger.info(`动态缓存 ${chunkType} chunk: ${chunkInfo.fileName}`);
+              console.log(`动态缓存 ${chunkType} chunk: ${chunkInfo.fileName}`);
             }
           } catch (error) {
-            Logger.warn(`动态缓存 ${chunkType} chunk失败: ${chunkInfo.fileName}`, error);
+            console.warn(`动态缓存 ${chunkType} chunk失败: ${chunkInfo.fileName}`, error);
           }
         }
       }
     } catch (error) {
-      Logger.warn("检查manifest chunk失败:", error);
+      console.warn("检查manifest chunk失败:", error);
     }
   }
 
@@ -1155,7 +1155,7 @@ class RequestInterceptor {
           }
           return networkResponse;
         } catch (error) {
-          Logger.warn("网络请求失败，尝试从缓存获取", { url: event.request.url, error });
+          console.warn("网络请求失败，尝试从缓存获取", { url: event.request.url, error });
           
           const cachedResponse = await caches.match(event.request);
           if (cachedResponse) {
@@ -1163,7 +1163,7 @@ class RequestInterceptor {
             return cachedResponse;
           }
           
-          Logger.error("网络和缓存都不可用", { url: event.request.url });
+          console.error("网络和缓存都不可用", { url: event.request.url });
           throw error;
         }
       }),
@@ -1186,56 +1186,56 @@ class MessageHandler {
   async handleMessage(event: ExtendableMessageEvent): Promise<void> {
     const message: SWMessage = event.data;
 
-    Logger.info("收到客户端消息:", message);
+    console.log("收到客户端消息:", message);
 
     switch (message.type) {
       case "CHECK_CACHE_VERSION":
-        Logger.info("检查缓存版本指令");
+        console.log("检查缓存版本指令");
         event.waitUntil(this.handleCheckCacheVersion());
         break;
 
       case "CACHE_STATUS_REQUEST":
-        Logger.info("缓存状态请求");
+        console.log("缓存状态请求");
         event.waitUntil(this.handleCacheStatusRequest(event));
         break;
 
       case "FORCE_UPDATE":
-        Logger.info("强制更新缓存指令");
+        console.log("强制更新缓存指令");
         event.waitUntil(this.handleForceUpdate());
         break;
 
       case "CLEAR_CACHE":
-        Logger.info("清理缓存指令");
+        console.log("清理缓存指令");
         event.waitUntil(this.handleClearCache());
         break;
 
       case "START_PERIODIC_CHECK":
-        Logger.info("启动定期检查指令");
+        console.log("启动定期检查指令");
         event.waitUntil(this.handleStartPeriodicCheck());
         break;
 
       case "STOP_PERIODIC_CHECK":
-        Logger.info("停止定期检查指令");
+        console.log("停止定期检查指令");
         event.waitUntil(this.handleStopPeriodicCheck());
         break;
 
       case "IMMEDIATE_CHECK":
-        Logger.info("立即检查指令");
+        console.log("立即检查指令");
         event.waitUntil(this.handleImmediateCheck());
         break;
 
       case "GET_CHECK_STATUS":
-        Logger.info("获取检查状态指令");
+        console.log("获取检查状态指令");
         event.waitUntil(this.handleGetCheckStatus(event));
         break;
 
       case "SET_CONFIG":
-        Logger.info("收到主线程配置变更指令", message.data);
+        console.log("收到主线程配置变更指令", message.data);
         this.handleSetConfig(message.data);
         break;
 
       default:
-        Logger.warn("未知消息类型:", message.type);
+        console.warn("未知消息类型:", message.type);
     }
   }
 
@@ -1244,14 +1244,14 @@ class MessageHandler {
    */
   private async handleCheckCacheVersion(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过缓存版本检查（开发模式）");
+      console.log("[DEV] 跳过缓存版本检查（开发模式）");
       return;
     }
     try {
       await this.cacheManager.checkAndUpdateCache();
       this.notifyClients("CACHE_UPDATED", { timestamp: new Date().toISOString() });
     } catch (error) {
-      Logger.error("缓存版本检查失败:", error);
+      console.error("缓存版本检查失败:", error);
     }
   }
 
@@ -1260,14 +1260,14 @@ class MessageHandler {
    */
   private async handleCacheStatusRequest(event: ExtendableMessageEvent): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过缓存状态请求（开发模式）");
+      console.log("[DEV] 跳过缓存状态请求（开发模式）");
       return;
     }
     try {
       const status = await this.cacheManager.getCacheStatus();
       this.notifyClient(event.source, "CACHE_STATUS", status);
     } catch (error) {
-      Logger.error("获取缓存状态失败:", error);
+      console.error("获取缓存状态失败:", error);
     }
   }
 
@@ -1276,14 +1276,14 @@ class MessageHandler {
    */
   private async handleForceUpdate(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过强制更新（开发模式）");
+      console.log("[DEV] 跳过强制更新（开发模式）");
       return;
     }
     try {
       await this.cacheManager.cacheAllResources();
       this.notifyClients("FORCE_UPDATE_COMPLETED", { timestamp: new Date().toISOString() });
     } catch (error) {
-      Logger.error("强制更新失败:", error);
+      console.error("强制更新失败:", error);
     }
   }
 
@@ -1292,7 +1292,7 @@ class MessageHandler {
    */
   private async handleClearCache(): Promise<void> {
     if (isDevelopmentMode()) {
-      Logger.info("[DEV] 跳过清理缓存（开发模式）");
+      console.log("[DEV] 跳过清理缓存（开发模式）");
       return;
     }
     try {
@@ -1306,11 +1306,11 @@ class MessageHandler {
           currentManifestString = JSON.stringify(manifest);
         }
       } catch (e) {
-        Logger.warn("无法获取当前manifest缓存，将重新加载", e);
+        console.warn("无法获取当前manifest缓存，将重新加载", e);
       }
       this.notifyClients("CACHE_CLEARED", { timestamp: new Date().toISOString() });
     } catch (error) {
-      Logger.error("清理缓存失败:", error);
+      console.error("清理缓存失败:", error);
     }
   }
 
@@ -1323,19 +1323,19 @@ class MessageHandler {
       // 动态应用配置
       if (typeof config.periodicCheckEnabled === 'boolean') {
         PERIODIC_CHECK_CONFIG.ENABLED = config.periodicCheckEnabled;
-        Logger.info("[SW][CONFIG] 已应用定期检查开关:", config.periodicCheckEnabled);
+        console.log("[SW][CONFIG] 已应用定期检查开关:", config.periodicCheckEnabled);
       }
       if (typeof config.periodicCheckInterval === 'number') {
         PERIODIC_CHECK_CONFIG.INTERVAL = config.periodicCheckInterval;
-        Logger.info("[SW][CONFIG] 已应用定期检查间隔:", config.periodicCheckInterval);
+        console.log("[SW][CONFIG] 已应用定期检查间隔:", config.periodicCheckInterval);
       }
       if (typeof config.cacheStrategy === 'string') {
         // 这里只做日志，实际策略应用需在缓存逻辑中实现
-        Logger.info("[SW][CONFIG] 已应用缓存策略:", config.cacheStrategy);
+        console.log("[SW][CONFIG] 已应用缓存策略:", config.cacheStrategy);
       }
       // 可扩展更多配置项
     } catch (err) {
-      Logger.error("[SW][CONFIG] 应用配置失败:", err);
+      console.error("[SW][CONFIG] 应用配置失败:", err);
     }
   }
 
@@ -1353,7 +1353,7 @@ class MessageHandler {
         });
       })
       .catch((error: any) => {
-        Logger.error("通知客户端失败:", error);
+        console.error("通知客户端失败:", error);
       });
   }
 
@@ -1377,7 +1377,7 @@ class MessageHandler {
         status: this.periodicCheckManager.getCheckStatus()
       });
     } catch (error) {
-      Logger.error("启动定期检查失败:", error);
+      console.error("启动定期检查失败:", error);
     }
   }
 
@@ -1391,7 +1391,7 @@ class MessageHandler {
         timestamp: new Date().toISOString() 
       });
     } catch (error) {
-      Logger.error("停止定期检查失败:", error);
+      console.error("停止定期检查失败:", error);
     }
   }
 
@@ -1402,7 +1402,7 @@ class MessageHandler {
     try {
       await this.periodicCheckManager.performImmediateCheck();
     } catch (error) {
-      Logger.error("立即检查失败:", error);
+      console.error("立即检查失败:", error);
     }
   }
 
@@ -1414,7 +1414,7 @@ class MessageHandler {
       const status = this.periodicCheckManager.getCheckStatus();
       this.notifyClient(event.source, "CHECK_STATUS", status);
     } catch (error) {
-      Logger.error("获取检查状态失败:", error);
+      console.error("获取检查状态失败:", error);
     }
   }
 }
@@ -1423,11 +1423,11 @@ class MessageHandler {
  * 🚀 Service Worker 主逻辑
  */
 (async (worker: ServiceWorkerGlobalScope) => {
-  Logger.info("🚀 智能离线优先 Service Worker 启动");
+  console.log("🚀 智能离线优先 Service Worker 启动");
   
   // 确定运行模式
   // IS_DEVELOPMENT_MODE = determineDevelopmentMode(); // This line is removed as per the new_code
-  Logger.info(`🔧 运行模式: ${IS_DEVELOPMENT_MODE ? "开发模式" : "生产模式"}`);
+  console.log(`🔧 运行模式: ${IS_DEVELOPMENT_MODE ? "开发模式" : "生产模式"}`);
 
   const cacheManager = CacheManager.getInstance();
   const requestInterceptor = new RequestInterceptor();
@@ -1436,23 +1436,23 @@ class MessageHandler {
 
   // 安装事件 - 智能缓存资源
   worker.addEventListener("install", (event) => {
-    Logger.info("📦 Service Worker 安装中...");
+    console.log("📦 Service Worker 安装中...");
     event.waitUntil(
       (async () => {
         try {
           if (isDevelopmentMode()) {
-            Logger.info("🔧 开发模式：跳过资源缓存，保持热重载能力");
+            console.log("🔧 开发模式：跳过资源缓存，保持热重载能力");
             await worker.skipWaiting();
-            Logger.info("✅ Service Worker 安装完成（开发模式）");
+            console.log("✅ Service Worker 安装完成（开发模式）");
             return;
           }
 
           // 智能缓存所有资源
           await cacheManager.cacheAllResources();
           await worker.skipWaiting();
-          Logger.info("✅ Service Worker 安装完成");
+          console.log("✅ Service Worker 安装完成");
         } catch (error) {
-          Logger.error("❌ Service Worker 安装失败:", error);
+          console.error("❌ Service Worker 安装失败:", error);
         }
       })(),
     );
@@ -1460,26 +1460,26 @@ class MessageHandler {
 
   // 激活事件 - 清理旧缓存，接管客户端
   worker.addEventListener("activate", (event) => {
-    Logger.info("🔄 Service Worker 激活中...");
+    console.log("🔄 Service Worker 激活中...");
     event.waitUntil(
       (async () => {
         try {
           if (isDevelopmentMode()) {
-            Logger.info("🔧 开发模式：跳过缓存清理");
+            console.log("🔧 开发模式：跳过缓存清理");
             await worker.clients.claim();
-            Logger.info("✅ Service Worker 激活完成（开发模式）");
+            console.log("✅ Service Worker 激活完成（开发模式）");
             return;
           }
 
           // 清理旧缓存
           await cacheManager.clearOldCaches();
           await worker.clients.claim();
-          Logger.info("✅ Service Worker 激活完成，已接管所有客户端");
+          console.log("✅ Service Worker 激活完成，已接管所有客户端");
 
           // 启动定期检查
           periodicCheckManager.startPeriodicCheck();
         } catch (error) {
-          Logger.error("❌ Service Worker 激活失败:", error);
+          console.error("❌ Service Worker 激活失败:", error);
         }
       })(),
     );
@@ -1506,18 +1506,18 @@ class MessageHandler {
           const cache = await caches.open(CACHE_STRATEGIES.CORE);
           const cached = await cache.match(event.request);
           if (cached) {
-            Logger.info(`离线命中 manifest: ${url.pathname}`);
+            console.log(`离线命中 manifest: ${url.pathname}`);
             return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               await cache.put(event.request, networkResponse.clone());
-              Logger.info(`网络缓存 manifest: ${url.pathname}`);
+              console.log(`网络缓存 manifest: ${url.pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            Logger.warn(`manifest 离线且无缓存: ${url.pathname}`);
+            console.warn(`manifest 离线且无缓存: ${url.pathname}`);
             return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
           }
         })()
@@ -1530,7 +1530,7 @@ class MessageHandler {
       event.respondWith(
         caches.match(event.request).then(async (response) => {
           if (response) {
-            Logger.info(`离线命中主文档: ${url.pathname}`);
+            console.log(`离线命中主文档: ${url.pathname}`);
             return response;
           }
           try {
@@ -1538,11 +1538,11 @@ class MessageHandler {
             if (networkResponse.ok) {
               const cache = await caches.open(CACHE_STRATEGIES.CORE);
               await cache.put(event.request, networkResponse.clone());
-              Logger.info(`网络缓存主文档: ${url.pathname}`);
+              console.log(`网络缓存主文档: ${url.pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            Logger.warn(`主文档离线且无缓存: ${url.pathname}`);
+            console.warn(`主文档离线且无缓存: ${url.pathname}`);
             return new Response('<!DOCTYPE html><title>离线</title><h1>离线不可用</h1>', { status: 200, headers: { 'Content-Type': 'text/html' } });
           }
         })
@@ -1555,10 +1555,10 @@ class MessageHandler {
       event.respondWith(
         caches.match('/').then((response) => {
           if (response) {
-            Logger.info(`App Shell 离线命中: /`);
+            console.log(`App Shell 离线命中: /`);
             return response;
           } else {
-            Logger.warn(`App Shell 离线未命中: /`);
+            console.warn(`App Shell 离线未命中: /`);
             return fetch(event.request);
           }
         })
@@ -1577,13 +1577,13 @@ class MessageHandler {
 
   // 错误处理
   worker.addEventListener("error", (event) => {
-    Logger.error("❌ Service Worker 错误:", event.error);
+    console.error("❌ Service Worker 错误:", event.error);
   });
 
   // 未处理的 Promise 拒绝
   worker.addEventListener("unhandledrejection", (event) => {
-    Logger.error("❌ 未处理的 Promise 拒绝:", event.reason);
+    console.error("❌ 未处理的 Promise 拒绝:", event.reason);
   });
 
-  Logger.info("🎉 智能离线优先 Service Worker 初始化完成，等待事件...");
+  console.log("🎉 智能离线优先 Service Worker 初始化完成，等待事件...");
 })(self as any);

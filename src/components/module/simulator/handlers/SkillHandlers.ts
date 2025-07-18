@@ -28,7 +28,7 @@ export class SkillStartHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能开始事件: ${payload.skillId}`, payload);
+      console.log(`处理技能开始事件: ${payload.skillId}`, payload);
       
       // TODO: 实现技能开始逻辑
       // 1. 检查技能可用性
@@ -60,7 +60,7 @@ export class SkillPrepareHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能前摇事件: ${payload.skillId}`, payload);
+      console.log(`处理技能前摇事件: ${payload.skillId}`, payload);
       
       // TODO: 实现前摇逻辑
       // 1. 锁定角色控制
@@ -91,7 +91,7 @@ export class SkillChargeHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能蓄力事件: ${payload.skillId}`, payload);
+      console.log(`处理技能蓄力事件: ${payload.skillId}`, payload);
       
       // TODO: 实现蓄力逻辑
       // 1. 允许闪躲操作
@@ -122,7 +122,7 @@ export class SkillEffectHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能效果事件: ${payload.skillId}`, payload);
+      console.log(`处理技能效果事件: ${payload.skillId}`, payload);
       
       const newEvents: BaseEvent[] = [];
       
@@ -180,7 +180,7 @@ export class SkillEndHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能结束事件: ${payload.skillId}`, payload);
+      console.log(`处理技能结束事件: ${payload.skillId}`, payload);
       
       // TODO: 实现技能结束逻辑
       // 1. 恢复角色控制
@@ -211,7 +211,7 @@ export class SkillCastHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理技能释放事件: ${event.id}`, payload);
+      console.log(`处理技能释放事件: ${event.id}`, payload);
       
       // TODO: 实现具体的技能释放处理逻辑
       

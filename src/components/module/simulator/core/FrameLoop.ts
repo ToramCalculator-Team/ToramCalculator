@@ -186,7 +186,7 @@ export class FrameLoop {
     // 根据目标帧率计算帧间隔
     this.config.frameInterval = 1000 / this.config.targetFPS;
 
-    Logger.debug("FrameLoop: 初始化完成", this.config);
+    console.log("FrameLoop: 初始化完成", this.config);
   }
 
   // ==================== 公共接口 ====================
@@ -196,7 +196,7 @@ export class FrameLoop {
    */
   start(): void {
     if (this.state === "running") {
-      Logger.warn("⚠️ 帧循环已在运行中");
+      console.warn("⚠️ 帧循环已在运行中");
       return;
     }
 
@@ -210,7 +210,7 @@ export class FrameLoop {
     // 重置性能统计
     this.resetPerformanceStats();
 
-    Logger.info(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS`);
+    console.log(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS`);
     this.scheduleNextFrame();
   }
 
@@ -219,7 +219,7 @@ export class FrameLoop {
    */
   stop(): void {
     if (this.state === "stopped") {
-      Logger.warn("⚠️ 帧循环已停止");
+      console.warn("⚠️ 帧循环已停止");
       return;
     }
 
@@ -233,7 +233,7 @@ export class FrameLoop {
     // 更新性能统计
     this.updatePerformanceStats();
 
-    Logger.info(`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`);
+    console.log(`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`);
   }
 
   /**
@@ -241,7 +241,7 @@ export class FrameLoop {
    */
   pause(): void {
     if (this.state !== "running") {
-      Logger.warn("⚠️ 帧循环未运行，无法暂停");
+      console.warn("⚠️ 帧循环未运行，无法暂停");
       return;
     }
 
@@ -252,7 +252,7 @@ export class FrameLoop {
       this.frameTimer = null;
     }
 
-    Logger.info("⏸️ 帧循环已暂停");
+    console.log("⏸️ 帧循环已暂停");
   }
 
   /**
@@ -260,14 +260,14 @@ export class FrameLoop {
    */
   resume(): void {
     if (this.state !== "paused") {
-      Logger.warn("⚠️ 帧循环未暂停，无法恢复");
+      console.warn("⚠️ 帧循环未暂停，无法恢复");
       return;
     }
 
     this.state = "running";
     this.lastFrameTime = performance.now();
     
-    Logger.info("▶️ 帧循环已恢复");
+    console.log("▶️ 帧循环已恢复");
     this.scheduleNextFrame();
   }
 
@@ -276,7 +276,7 @@ export class FrameLoop {
    */
   step(): void {
     if (this.state === "running") {
-      Logger.warn("⚠️ 帧循环正在运行，无法单步执行");
+      console.warn("⚠️ 帧循环正在运行，无法单步执行");
       return;
     }
 
@@ -285,7 +285,7 @@ export class FrameLoop {
     this.lastFrameTime = currentTime;
 
     this.processFrame(deltaTime);
-    Logger.info(`👆 单步执行完成 - 帧号: ${this.frameNumber}`);
+    console.log(`👆 单步执行完成 - 帧号: ${this.frameNumber}`);
   }
 
   /**
@@ -295,7 +295,7 @@ export class FrameLoop {
    */
   setTimeScale(scale: number): void {
     if (scale < 0) {
-      Logger.warn("⚠️ 时间倍率不能为负数");
+      console.warn("⚠️ 时间倍率不能为负数");
       return;
     }
 
@@ -308,7 +308,7 @@ export class FrameLoop {
       this.resume();
     }
 
-    Logger.info(`⏱️ 设置时间倍率: ${scale}x`);
+    console.log(`⏱️ 设置时间倍率: ${scale}x`);
   }
 
   /**
@@ -318,13 +318,13 @@ export class FrameLoop {
    */
   setTargetFPS(fps: number): void {
     if (fps <= 0 || fps > 1000) {
-      Logger.warn("⚠️ 无效的帧率设置:", fps);
+      console.warn("⚠️ 无效的帧率设置:", fps);
       return;
     }
 
     this.config.targetFPS = fps;
     this.config.frameInterval = 1000 / fps;
-    Logger.info(`⏱️ 目标帧率已更新: ${fps} FPS`);
+    console.log(`⏱️ 目标帧率已更新: ${fps} FPS`);
   }
 
   /**
@@ -335,7 +335,7 @@ export class FrameLoop {
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
     this.eventHandlers.set(eventType, handler);
-    Logger.debug(`📝 注册事件处理器: ${eventType}`);
+    console.log(`📝 注册事件处理器: ${eventType}`);
   }
 
   /**
@@ -345,7 +345,7 @@ export class FrameLoop {
    */
   unregisterEventHandler(eventType: string): void {
     this.eventHandlers.delete(eventType);
-    Logger.debug(`🗑️ 注销事件处理器: ${eventType}`);
+    console.log(`🗑️ 注销事件处理器: ${eventType}`);
   }
 
   /**
@@ -355,7 +355,7 @@ export class FrameLoop {
    */
   setEventQueue(eventQueue: EventQueue): void {
     this.eventQueue = eventQueue;
-    Logger.debug("🔗 设置事件队列");
+    console.log("🔗 设置事件队列");
   }
 
   /**
@@ -450,7 +450,7 @@ export class FrameLoop {
     if (this.config.enableFrameSkip && this.frameAccumulator > this.config.frameInterval * this.config.maxFrameSkip) {
       this.frameSkipCount++;
       this.frameAccumulator = this.config.frameInterval;
-      Logger.debug(`⏭️ 帧跳跃 - 跳过 ${this.config.maxFrameSkip} 帧`);
+      console.log(`⏭️ 帧跳跃 - 跳过 ${this.config.maxFrameSkip} 帧`);
     }
 
     // 处理帧
@@ -491,7 +491,7 @@ export class FrameLoop {
       this.recordFrameInfo(deltaTime, processingTime, eventsProcessed, membersUpdated);
 
     } catch (error) {
-      Logger.error("❌ 帧处理错误:", error);
+      console.error("❌ 帧处理错误:", error);
       // 可以选择停止帧循环或继续运行
     }
   }
@@ -523,7 +523,7 @@ export class FrameLoop {
           processedCount++;
         }
       } catch (error) {
-        Logger.error(`❌ 事件处理失败: ${event.id}`, error);
+        console.error(`❌ 事件处理失败: ${event.id}`, error);
         this.eventQueue.markAsProcessed(event.id);
       }
     }
@@ -547,13 +547,13 @@ export class FrameLoop {
     const handler = this.eventHandlers.get(event.type);
     
     if (!handler) {
-      Logger.warn(`⚠️ 未找到事件处理器: ${event.type}`);
+      console.warn(`⚠️ 未找到事件处理器: ${event.type}`);
       return false;
     }
 
     // 检查处理器是否能处理此事件
     if (!handler.canHandle(event)) {
-      Logger.debug(`⚠️ 事件处理器拒绝处理: ${event.type}`);
+      console.log(`⚠️ 事件处理器拒绝处理: ${event.type}`);
       return false;
     }
 
@@ -580,15 +580,15 @@ export class FrameLoop {
           }
         }
         
-        Logger.debug(`✅ 事件处理成功: ${event.type}`);
+        console.log(`✅ 事件处理成功: ${event.type}`);
         return true;
       } else {
-        Logger.warn(`⚠️ 事件处理失败: ${event.type} - ${result.error}`);
+        console.warn(`⚠️ 事件处理失败: ${event.type} - ${result.error}`);
         return false;
       }
 
     } catch (error) {
-      Logger.error(`❌ 事件处理异常: ${event.type}`, error);
+      console.error(`❌ 事件处理异常: ${event.type}`, error);
       return false;
     }
   }
@@ -608,7 +608,7 @@ export class FrameLoop {
     if (result instanceof Promise) {
       // 在帧循环中，我们不能等待异步操作
       // 记录警告并返回失败
-      Logger.warn(`⚠️ 事件处理器 ${event.type} 返回Promise，帧循环需要同步处理`);
+      console.warn(`⚠️ 事件处理器 ${event.type} 返回Promise，帧循环需要同步处理`);
       return {
         success: false,
         error: 'Async handler not supported in frame loop'
@@ -634,7 +634,7 @@ export class FrameLoop {
         this.updateMemberState(member, deltaTime);
         updatedCount++;
       } catch (error) {
-        Logger.error(`❌ 成员更新失败: ${member.getId()}`, error);
+        console.error(`❌ 成员更新失败: ${member.getId()}`, error);
       }
     }
 
@@ -668,7 +668,7 @@ export class FrameLoop {
             }
           });
         } catch (error) {
-          Logger.debug(`状态机更新失败: ${member.getId()}`, error);
+          console.log(`状态机更新失败: ${member.getId()}`, error);
         }
       }
     }

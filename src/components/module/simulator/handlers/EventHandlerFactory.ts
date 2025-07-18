@@ -90,7 +90,7 @@ export class EventHandlerFactory {
     handlers.set('skill_end', this.createSkillEndHandler());
     handlers.set('skill_cast', this.createSkillCastHandler());
 
-    Logger.debug(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
+    console.log(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
     return handlers;
   }
 
@@ -147,7 +147,7 @@ export class EventHandlerFactory {
         break;
 
       default:
-        Logger.warn(`EventHandlerFactory: 未知的处理器类型: ${handlerType}`);
+        console.warn(`EventHandlerFactory: 未知的处理器类型: ${handlerType}`);
         return null;
     }
 
@@ -164,7 +164,7 @@ export class EventHandlerFactory {
    */
   clearCache(): void {
     this.handlerCache.clear();
-    Logger.debug("EventHandlerFactory: 清理处理器缓存");
+    console.log("EventHandlerFactory: 清理处理器缓存");
   }
 
   // ==================== 私有方法 ====================

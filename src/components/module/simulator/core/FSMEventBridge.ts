@@ -113,7 +113,7 @@ export class FSMEventBridge {
     // 初始化默认转换规则
     this.initializeDefaultRules();
 
-    Logger.debug("FSMEventBridge: 初始化完成", this.config);
+    console.log("FSMEventBridge: 初始化完成", this.config);
   }
 
   // ==================== 公共接口 ====================
@@ -125,7 +125,7 @@ export class FSMEventBridge {
    */
   setEventQueue(eventQueue: EventQueue): void {
     this.eventQueue = eventQueue;
-    Logger.debug("FSMEventBridge: 设置事件队列");
+    console.log("FSMEventBridge: 设置事件队列");
   }
 
   /**
@@ -138,7 +138,7 @@ export class FSMEventBridge {
    */
   processFSMEvent(fsmEvent: FSMEvent, currentFrame: number): boolean {
     if (!this.eventQueue) {
-      Logger.warn("FSMEventBridge: 事件队列未设置");
+      console.warn("FSMEventBridge: 事件队列未设置");
       return false;
     }
 
@@ -156,12 +156,12 @@ export class FSMEventBridge {
           if (success) {
             this.stats.successfulTransforms++;
             if (this.config.enableDebugLog) {
-              Logger.debug(`FSMEventBridge: 默认转换成功: ${fsmEvent.type}`, fsmEvent);
+              console.log(`FSMEventBridge: 默认转换成功: ${fsmEvent.type}`, fsmEvent);
             }
           }
           return success;
         } else {
-          Logger.warn(`FSMEventBridge: 无法转换事件: ${fsmEvent.type}`, fsmEvent);
+          console.warn(`FSMEventBridge: 无法转换事件: ${fsmEvent.type}`, fsmEvent);
           this.stats.failedTransforms++;
           return false;
         }
@@ -172,7 +172,7 @@ export class FSMEventBridge {
       
       if (!transformedEvents) {
         if (this.config.enableDebugLog) {
-          Logger.debug(`FSMEventBridge: 规则 ${matchedRule.name} 返回null，跳过事件`);
+          console.log(`FSMEventBridge: 规则 ${matchedRule.name} 返回null，跳过事件`);
         }
         return true;
       }
@@ -195,18 +195,18 @@ export class FSMEventBridge {
         this.stats.rulesMatched.set(matchedRule.name, currentCount + 1);
         
         if (this.config.enableDebugLog) {
-          Logger.debug(`FSMEventBridge: 规则 ${matchedRule.name} 转换成功: ${events.length} 个事件`);
+          console.log(`FSMEventBridge: 规则 ${matchedRule.name} 转换成功: ${events.length} 个事件`);
         }
       } else {
         this.stats.failedTransforms++;
-        Logger.warn(`FSMEventBridge: 规则 ${matchedRule.name} 部分失败: ${successCount}/${events.length}`);
+        console.warn(`FSMEventBridge: 规则 ${matchedRule.name} 部分失败: ${successCount}/${events.length}`);
       }
 
       return allSuccess;
 
     } catch (error) {
       this.stats.failedTransforms++;
-      Logger.error("FSMEventBridge: 处理FSM事件异常:", error);
+      console.error("FSMEventBridge: 处理FSM事件异常:", error);
       return false;
     }
   }
@@ -249,7 +249,7 @@ export class FSMEventBridge {
     }
 
     this.transformRules.splice(insertIndex, 0, rule);
-    Logger.debug(`FSMEventBridge: 注册转换规则: ${rule.name} (优先级: ${priority})`);
+    console.log(`FSMEventBridge: 注册转换规则: ${rule.name} (优先级: ${priority})`);
   }
 
   /**
@@ -261,7 +261,7 @@ export class FSMEventBridge {
     const index = this.transformRules.findIndex(rule => rule.name === ruleName);
     if (index !== -1) {
       this.transformRules.splice(index, 1);
-      Logger.debug(`FSMEventBridge: 注销转换规则: ${ruleName}`);
+      console.log(`FSMEventBridge: 注销转换规则: ${ruleName}`);
     }
   }
 
@@ -336,7 +336,7 @@ export class FSMEventBridge {
           return rule;
         }
       } catch (error) {
-        Logger.error(`FSMEventBridge: 规则 ${rule.name} 匹配检查异常:`, error);
+        console.error(`FSMEventBridge: 规则 ${rule.name} 匹配检查异常:`, error);
       }
     }
     return null;
@@ -368,7 +368,7 @@ export class FSMEventBridge {
         actionId: fsmEvent.actionId
       };
     } catch (error) {
-      Logger.error("FSMEventBridge: 创建默认事件失败:", error);
+      console.error("FSMEventBridge: 创建默认事件失败:", error);
       return null;
     }
   }
@@ -433,7 +433,7 @@ export class FSMEventBridge {
       }
     });
 
-    Logger.debug("FSMEventBridge: 默认转换规则初始化完成");
+    console.log("FSMEventBridge: 默认转换规则初始化完成");
   }
 
   /**
@@ -540,7 +540,7 @@ export class FSMEventBridge {
     });
 
     if (this.config.enableDebugLog) {
-      Logger.debug(`FSMEventBridge: 生成技能生命周期事件: ${events.length} 个阶段`, {
+      console.log(`FSMEventBridge: 生成技能生命周期事件: ${events.length} 个阶段`, {
         skillId: skillData.skillId,
         memberId,
         phases: events.map(e => e.type)

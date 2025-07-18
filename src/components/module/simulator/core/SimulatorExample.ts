@@ -29,7 +29,7 @@ class ExampleSkillDamageHandler implements EventHandler {
   async execute(event: BaseEvent, context: ExecutionContext): Promise<EventResult> {
     const { memberId, targetId, damage, skillName } = event.payload as any;
     
-    Logger.info(`⚔️ ${skillName} 造成伤害: ${damage} (${memberId} -> ${targetId})`);
+    console.log(`⚔️ ${skillName} 造成伤害: ${damage} (${memberId} -> ${targetId})`);
     
     // 模拟伤害处理
     // 这里会实际修改目标的HP
@@ -77,7 +77,7 @@ class ExampleBuffTickHandler implements EventHandler {
   async execute(event: BaseEvent, context: ExecutionContext): Promise<EventResult> {
     const { memberId, buffType, tickDamage, remainingTicks } = event.payload as any;
     
-    Logger.info(`🔥 ${buffType} 持续效果: ${tickDamage} 伤害 (剩余 ${remainingTicks} 次)`);
+    console.log(`🔥 ${buffType} 持续效果: ${tickDamage} 伤害 (剩余 ${remainingTicks} 次)`);
     
     const newEvents: BaseEvent[] = [];
     
@@ -121,7 +121,7 @@ export class SimulatorExample {
   private isRunning = false;
 
   constructor() {
-    Logger.info("🚀 初始化模拟器示例");
+    console.log("🚀 初始化模拟器示例");
     
     // 1. 创建GameEngine（这会自动创建其他核心模块）
     this.gameEngine = new GameEngine({
@@ -136,7 +136,7 @@ export class SimulatorExample {
     // 3. 设置FSM事件桥接的自定义规则
     this.setupCustomTransformRules();
 
-    Logger.info("✅ 模拟器示例初始化完成");
+    console.log("✅ 模拟器示例初始化完成");
   }
 
   /**
@@ -144,11 +144,11 @@ export class SimulatorExample {
    */
   start(): void {
     if (this.isRunning) {
-      Logger.warn("模拟器已在运行");
+      console.warn("模拟器已在运行");
       return;
     }
 
-    Logger.info("🎮 启动模拟器");
+    console.log("🎮 启动模拟器");
     this.isRunning = true;
 
     // 启动游戏引擎
@@ -163,11 +163,11 @@ export class SimulatorExample {
    */
   stop(): void {
     if (!this.isRunning) {
-      Logger.warn("模拟器未运行");
+      console.warn("模拟器未运行");
       return;
     }
 
-    Logger.info("⏹️ 停止模拟器");
+    console.log("⏹️ 停止模拟器");
     this.isRunning = false;
 
     // 停止游戏引擎
@@ -203,7 +203,7 @@ export class SimulatorExample {
    * 模拟用户输入 - 释放技能
    */
   simulateSkillCast(memberId: string, skillId: string, targetId: string): void {
-    Logger.info(`👆 用户输入: ${memberId} 释放技能 ${skillId} 目标 ${targetId}`);
+    console.log(`👆 用户输入: ${memberId} 释放技能 ${skillId} 目标 ${targetId}`);
 
     // 1. 创建FSM事件（模拟状态机生成的事件）
     const fsmEvent = createSkillFSMEvent(
@@ -231,7 +231,7 @@ export class SimulatorExample {
    * 模拟应用Buff
    */
   simulateBuffApplication(memberId: string, buffType: string, duration: number): void {
-    Logger.info(`🔮 应用Buff: ${buffType} 持续 ${duration} 秒`);
+    console.log(`🔮 应用Buff: ${buffType} 持续 ${duration} 秒`);
 
     const fsmEvent = createFSMEvent(
       'buff_apply',
@@ -271,7 +271,7 @@ export class SimulatorExample {
     this.gameEngine.registerEventHandler('skill_damage', new ExampleSkillDamageHandler());
     this.gameEngine.registerEventHandler('buff_tick', new ExampleBuffTickHandler());
 
-    Logger.debug("注册自定义事件处理器完成");
+    console.log("注册自定义事件处理器完成");
   }
 
   /**
@@ -364,7 +364,7 @@ export class SimulatorExample {
       }
     });
 
-    Logger.debug("自定义转换规则设置完成");
+    console.log("自定义转换规则设置完成");
   }
 
   /**
@@ -374,7 +374,7 @@ export class SimulatorExample {
     // 延迟几帧后开始示例
     setTimeout(() => {
       if (this.isRunning) {
-        Logger.info("🎬 开始示例场景");
+        console.log("🎬 开始示例场景");
         
         // 场景1：玩家释放技能
         this.simulateSkillCast('player_1', 'fireball', 'monster_1');
@@ -400,7 +400,7 @@ export class SimulatorExample {
     // 这个方法展示了如何生成技能的完整生命周期事件
     // 实际实现中，这些事件会由FSM的Action自动生成
     
-    Logger.debug(`模拟技能阶段: ${skillId} (${memberId} -> ${targetId})`);
+    console.log(`模拟技能阶段: ${skillId} (${memberId} -> ${targetId})`);
     
     // 在实际实现中，这些事件会通过FSM事件桥接器自动生成
     // 这里只是为了演示完整的事件流

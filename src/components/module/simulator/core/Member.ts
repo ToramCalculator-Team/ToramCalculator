@@ -331,7 +331,7 @@ export function isPartnerMember(
     // 启动状态机
     this.actor.start();
 
-    Logger.info(`Member: 创建成员: ${memberData.name} (${this.type})`);
+    console.log(`Member: 创建成员: ${memberData.name} (${this.type})`);
   }
 
   // ==================== 抽象方法 ====================
@@ -415,7 +415,7 @@ export function isPartnerMember(
    */
   addEvent(event: MemberEvent): void {
     this.eventQueue.push(event);
-    Logger.debug(`Member: 添加事件到队列: ${this.getName()} -> ${event.type}`);
+    console.log(`Member: 添加事件到队列: ${this.getName()} -> ${event.type}`);
   }
 
   /**
@@ -565,7 +565,7 @@ export function isPartnerMember(
   destroy(): void {
     this.actor.stop();
     this.eventQueue = [];
-    Logger.info(`Member: 销毁成员: ${this.getName()}`);
+    console.log(`Member: 销毁成员: ${this.getName()}`);
   }
 
   // ==================== 引擎标准接口 ====================
@@ -776,9 +776,9 @@ export function isPartnerMember(
   setTarget(target: Member | null): void {
     this.target = target;
     if (target) {
-      Logger.debug(`Member: ${this.getName()} 设置目标: ${target.getName()}`);
+      console.log(`Member: ${this.getName()} 设置目标: ${target.getName()}`);
     } else {
-      Logger.debug(`Member: ${this.getName()} 清除目标`);
+      console.log(`Member: ${this.getName()} 清除目标`);
     }
   }
 
@@ -866,7 +866,7 @@ export function isPartnerMember(
     if (this.target) {
       const direction = this.getTargetDirection();
       // 这里可以添加朝向调整的逻辑
-      Logger.debug(`Member: ${this.getName()} 面向目标: ${this.target.getName()}`);
+      console.log(`Member: ${this.getName()} 面向目标: ${this.target.getName()}`);
     }
   }
 

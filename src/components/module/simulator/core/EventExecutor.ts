@@ -165,7 +165,7 @@ export class EventExecutor {
       };
 
     } catch (error) {
-      Logger.error("表达式计算失败:", error);
+      console.error("表达式计算失败:", error);
       return {
         value: 0,
         success: false,
@@ -185,7 +185,7 @@ export class EventExecutor {
   applyBuff(buffData: BuffData, target: any, context: ExpressionContext): BaseEvent[] {
     const events: BaseEvent[] = [];
 
-    Logger.debug(`应用Buff: ${buffData.name} 到 ${target.getId()}`);
+    console.log(`应用Buff: ${buffData.name} 到 ${target.getId()}`);
 
     // 生成Buff应用事件
     events.push({
@@ -250,7 +250,7 @@ export class EventExecutor {
   applyStatusEffect(effect: StatusEffect, target: any, context: ExpressionContext): BaseEvent[] {
     const events: BaseEvent[] = [];
 
-    Logger.debug(`应用状态效果: ${effect.type} 到 ${target.getId()}`);
+    console.log(`应用状态效果: ${effect.type} 到 ${target.getId()}`);
 
     // 生成状态效果应用事件
     events.push({
@@ -304,7 +304,7 @@ export class EventExecutor {
    */
   registerFunction(name: string, func: Function): void {
     this.expressionFunctions.set(name, func);
-    Logger.debug(`注册表达式函数: ${name}`);
+    console.log(`注册表达式函数: ${name}`);
   }
 
   // ==================== 私有方法 ====================
@@ -337,7 +337,7 @@ export class EventExecutor {
       return baseDamage * (1 - resistance / 100);
     });
 
-    Logger.debug("表达式函数库初始化完成");
+    console.log("表达式函数库初始化完成");
   }
 
   /**
@@ -394,7 +394,7 @@ export class EventExecutor {
       
       return safeEval(...Object.values(functionContext));
     } catch (error) {
-      Logger.warn(`表达式计算失败: ${expression}`, error);
+      console.warn(`表达式计算失败: ${expression}`, error);
       return 0;
     }
   }

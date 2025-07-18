@@ -60,7 +60,7 @@ export const swMachine = createMachine({
         CHECK_CACHE_VERSION: {
           target: 'checking',
           actions: [
-            () => { Logger.info('[SW][MACHINE] 收到 CHECK_CACHE_VERSION 事件'); },
+            () => { console.log('[SW][MACHINE] 收到 CHECK_CACHE_VERSION 事件'); },
             assign({
               isChecking: true,
               error: null,
@@ -70,7 +70,7 @@ export const swMachine = createMachine({
         FORCE_UPDATE: {
           target: 'updating',
           actions: [
-            () => { Logger.info('[SW][MACHINE] 收到 FORCE_UPDATE 事件'); },
+            () => { console.log('[SW][MACHINE] 收到 FORCE_UPDATE 事件'); },
             assign({
               isUpdating: true,
               error: null,
@@ -220,25 +220,25 @@ export const swMachine = createMachine({
 }, {
   actors: {
     checkCacheVersion: fromPromise(async () => {
-      Logger.info('[SW][ACTOR] 执行 checkCacheVersion (checkAndUpdateCache)');
+      console.log('[SW][ACTOR] 执行 checkCacheVersion (checkAndUpdateCache)');
       const cacheManager = CacheManager.getInstance();
       await cacheManager.checkAndUpdateCache();
       return { cacheStatus: await cacheManager.getCacheStatus() };
     }),
     forceUpdate: fromPromise(async () => {
-      Logger.info('[SW][ACTOR] 执行 forceUpdate (cacheAllResources)');
+      console.log('[SW][ACTOR] 执行 forceUpdate (cacheAllResources)');
       const cacheManager = CacheManager.getInstance();
       await cacheManager.cacheAllResources();
       return { cacheStatus: await cacheManager.getCacheStatus() };
     }),
     clearCache: fromPromise(async () => {
-      Logger.info('[SW][ACTOR] 执行 clearCache');
+      console.log('[SW][ACTOR] 执行 clearCache');
       const cacheManager = CacheManager.getInstance();
       await cacheManager.clearOldCaches();
       return { cacheStatus: await cacheManager.getCacheStatus() };
     }),
     periodicCheck: fromPromise(async () => {
-      Logger.info('[SW][ACTOR] 执行 periodicCheck (checkAndUpdateCache)');
+      console.log('[SW][ACTOR] 执行 periodicCheck (checkAndUpdateCache)');
       const cacheManager = CacheManager.getInstance();
       await cacheManager.checkAndUpdateCache();
       return { cacheStatus: await cacheManager.getCacheStatus() };

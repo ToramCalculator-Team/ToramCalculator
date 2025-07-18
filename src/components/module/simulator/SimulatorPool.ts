@@ -2,7 +2,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { SimulatorWithRelations } from '~/repositories/simulator';
 import type { IntentMessage } from './core/MessageRouter';
 import simulationWorker from './Simulation.worker?worker&url';
-import { Logger } from '~/utils/logger';
+// import { Logger } from '~/utils/logger';
 
 /**
  * 事件发射器 - 基于Node.js ThreadPool的EventEmitter思路
@@ -453,7 +453,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
     // 错误处理
     worker.onerror = (error) => {
-      Logger.error(`Worker ${wrapper.id} error:`, error);
+      console.error(`Worker ${wrapper.id} error:`, error);
       this.handleWorkerError(wrapper, error);
     };
 
@@ -470,12 +470,12 @@ export class EnhancedSimulatorPool extends EventEmitter {
   private handleWorkerDirectMessage(worker: WorkerWrapper, event: MessageEvent): void {
     // 处理系统消息（如worker_ready）
     if (event.data && event.data.type === 'worker_ready') {
-      Logger.info(`Worker ${worker.id} is ready`);
+      console.log(`Worker ${worker.id} is ready`);
       return;
     }
 
     // 其他系统消息可以在这里处理
-    Logger.debug(`Worker ${worker.id} direct message:`, event.data);
+    console.log(`Worker ${worker.id} direct message:`, event.data);
   }
 
   /**
@@ -957,7 +957,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
       // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
       const availableWorker = this.workers.find(w => w.worker && w.port);
       if (!availableWorker) {
-        Logger.warn('SimulatorPool: 没有找到可用的worker');
+        console.warn('SimulatorPool: 没有找到可用的worker');
         return [];
       }
 
@@ -994,14 +994,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
       });
 
       if (result.success) {
-        Logger.debug(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员`);
+        // console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员`);
         return result.data || [];
       } else {
-        Logger.error(`SimulatorPool: 获取成员数据失败: ${result.error}`);
+        console.error(`SimulatorPool: 获取成员数据失败: ${result.error}`);
         return [];
       }
     } catch (error) {
-      Logger.error('SimulatorPool: 获取成员数据异常:', error);
+      console.error('SimulatorPool: 获取成员数据异常:', error);
       return [];
     }
   }
@@ -1017,12 +1017,12 @@ export class EnhancedSimulatorPool extends EventEmitter {
       // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
       const availableWorker = this.workers.find(w => w.worker && w.port);
       if (!availableWorker) {
-        Logger.warn('SimulatorPool: 没有找到可用的worker');
+        console.warn('SimulatorPool: 没有找到可用的worker');
         return { success: false, error: 'No available worker' };
       }
 
-      Logger.debug(`SimulatorPool: 使用worker ${availableWorker.id} 发送意图消息`);
-      Logger.debug(`SimulatorPool: 意图数据:`, intent);
+      console.log(`SimulatorPool: 使用worker ${availableWorker.id} 发送意图消息`);
+      console.log(`SimulatorPool: 意图数据:`, intent);
 
       // 发送意图消息
       const taskId = createId();
@@ -1037,7 +1037,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
           taskId,
           data: intent
         };
-        Logger.debug(`SimulatorPool: 发送消息:`, message);
+        console.log(`SimulatorPool: 发送消息:`, message);
         availableWorker.port.postMessage(message);
 
         // 监听响应
@@ -1058,14 +1058,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
       });
 
       if (result.success) {
-        Logger.info(`SimulatorPool: 成功发送意图消息`);
+        console.log(`SimulatorPool: 成功发送意图消息`);
       } else {
-        Logger.error(`SimulatorPool: 发送意图消息失败: ${result.error}`);
+        console.error(`SimulatorPool: 发送意图消息失败: ${result.error}`);
       }
 
       return result;
     } catch (error) {
-      Logger.error('SimulatorPool: 发送意图消息异常:', error);
+      console.error('SimulatorPool: 发送意图消息异常:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

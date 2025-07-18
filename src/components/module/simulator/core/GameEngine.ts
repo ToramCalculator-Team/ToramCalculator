@@ -218,7 +218,7 @@ export class GameEngine {
     // 初始化默认事件处理器
     this.initializeDefaultEventHandlers();
 
-    Logger.info("GameEngine: 初始化完成");
+    console.log("GameEngine: 初始化完成");
   }
 
   // ==================== 公共接口 ====================
@@ -228,7 +228,7 @@ export class GameEngine {
    */
   start(): void {
     if (this.state === "running") {
-      Logger.warn("GameEngine: 引擎已在运行中");
+      console.warn("GameEngine: 引擎已在运行中");
       return;
     }
 
@@ -239,7 +239,7 @@ export class GameEngine {
     // 启动帧循环
     this.frameLoop.start();
 
-    Logger.info("GameEngine: 引擎已启动");
+    console.log("GameEngine: 引擎已启动");
   }
 
   /**
@@ -247,7 +247,7 @@ export class GameEngine {
    */
   stop(): void {
     if (this.state === "stopped") {
-      Logger.warn("GameEngine: 引擎已停止");
+      console.warn("GameEngine: 引擎已停止");
       return;
     }
 
@@ -256,7 +256,7 @@ export class GameEngine {
     // 停止帧循环
     this.frameLoop.stop();
 
-    Logger.info("GameEngine: 引擎已停止");
+    console.log("GameEngine: 引擎已停止");
   }
 
   /**
@@ -264,7 +264,7 @@ export class GameEngine {
    */
   pause(): void {
     if (this.state === "paused") {
-      Logger.warn("GameEngine: 引擎已暂停");
+      console.warn("GameEngine: 引擎已暂停");
       return;
     }
 
@@ -273,7 +273,7 @@ export class GameEngine {
     // 暂停帧循环
     this.frameLoop.pause();
 
-    Logger.info("GameEngine: 引擎已暂停");
+    console.log("GameEngine: 引擎已暂停");
   }
 
   /**
@@ -281,7 +281,7 @@ export class GameEngine {
    */
   resume(): void {
     if (this.state === "running") {
-      Logger.warn("GameEngine: 引擎已在运行中");
+      console.warn("GameEngine: 引擎已在运行中");
       return;
     }
 
@@ -290,7 +290,7 @@ export class GameEngine {
     // 恢复帧循环
     this.frameLoop.resume();
 
-    Logger.info("GameEngine: 引擎已恢复");
+    console.log("GameEngine: 引擎已恢复");
   }
 
   /**
@@ -298,7 +298,7 @@ export class GameEngine {
    */
   step(): void {
     if (this.state === "running") {
-      Logger.warn("GameEngine: 引擎正在运行，无法单步执行");
+      console.warn("GameEngine: 引擎正在运行，无法单步执行");
       return;
     }
 
@@ -312,7 +312,7 @@ export class GameEngine {
    * @param campName 阵营名称
    */
   addCamp(campId: string, campName?: string): void {
-    Logger.debug(`GameEngine: 添加阵营: ${campId} - ${campName || '未命名'}`);
+    console.log(`GameEngine: 添加阵营: ${campId} - ${campName || '未命名'}`);
   }
 
   /**
@@ -323,7 +323,7 @@ export class GameEngine {
    * @param teamName 队伍名称
    */
   addTeam(campId: string, teamData: TeamWithRelations, teamName?: string): void {
-    Logger.debug(`GameEngine: 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
+    console.log(`GameEngine: 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
   }
 
   /**
@@ -413,7 +413,7 @@ export class GameEngine {
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
     this.frameLoop.registerEventHandler(eventType, handler);
-    Logger.debug(`GameEngine: 注册事件处理器: ${eventType}`);
+    console.log(`GameEngine: 注册事件处理器: ${eventType}`);
   }
 
   /**
@@ -678,7 +678,7 @@ export class GameEngine {
       this.registerEventHandler(eventType, handler);
     }
     
-    Logger.debug('GameEngine: 默认事件处理器初始化完成');
+    console.log('GameEngine: 默认事件处理器初始化完成');
   }
 }
 

@@ -11,7 +11,7 @@
 import { createSignal, createEffect, onCleanup, createResource, Show } from 'solid-js';
 import { realtimeSimulatorPool } from './SimulatorPool';
 import type { IntentMessage } from './core/MessageRouter';
-import { Logger } from '~/utils/logger';
+// import { Logger } from '~/utils/logger';
 import type { SimulatorWithRelations } from '~/repositories/simulator';
 import { CharacterWithRelations, findCharacterById } from '~/repositories/character';
 import { findMobById } from '~/repositories/mob';
@@ -60,12 +60,12 @@ export default function RealtimeController() {
       const memberData = await realtimeSimulatorPool.getMembers();
       
       // 添加调试日志
-      Logger.debug('RealtimeController: 获取到成员数据:', memberData.length, '个成员');
+      // console.log('RealtimeController: 获取到成员数据:', memberData.length, '个成员');
       
       // 简化更新逻辑，直接更新数据
       setMembers(memberData);
     } catch (error) {
-      Logger.error('RealtimeController: 获取成员数据失败:', error);
+      console.error('RealtimeController: 获取成员数据失败:', error);
     }
   };
 
@@ -324,7 +324,7 @@ export default function RealtimeController() {
         ...intent
       };
 
-      Logger.debug('RealtimeController: 准备发送意图消息:', message);
+      console.log('RealtimeController: 准备发送意图消息:', message);
       addLog(`📤 发送意图: ${intent.type} -> ${targetMember.name}`);
       
       // 通过SimulatorPool发送意图消息
@@ -337,7 +337,7 @@ export default function RealtimeController() {
       }
       
     } catch (error) {
-      Logger.error('RealtimeController: 发送意图异常:', error);
+      console.error('RealtimeController: 发送意图异常:', error);
       addLog(`❌ 发送意图失败: ${error}`);
     }
   };
@@ -435,7 +435,7 @@ export default function RealtimeController() {
   return (
     <div class="flex flex-col gap-4 h-full">
       {/* 上半部分：日志显示区域 */}
-      <div class="flex-1 flex flex-col p-4">
+      <div class="flex-1 flex flex-col p-4 overflow-y-auto">
         <div class="flex items-center justify-between ">
           <h2 class="text-lg font-semibold text-main-text-color">实时模拟控制器</h2>
           <div class="flex items-center gap-3 text-sm text-main-text-color">

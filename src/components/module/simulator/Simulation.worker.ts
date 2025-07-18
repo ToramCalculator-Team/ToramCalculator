@@ -33,13 +33,13 @@ self.onmessage = async (event: MessageEvent) => {
                 case 'start_simulation':
                   // 初始化战斗数据
                   const simulatorData: SimulatorWithRelations = portData;
-                  Logger.info('Worker: 启动模拟，数据:', simulatorData);
+                  console.log('Worker: 启动模拟，数据:', simulatorData);
                   // 添加阵营A
                   gameEngine.addCamp('campA', '阵营A');
                   simulatorData.campA.forEach((team, index) => {
                     gameEngine.addTeam('campA', team, `队伍${index + 1}`);
                     team.members.forEach(member => {
-                      Logger.debug(`Worker: 添加成员 campA team${index + 1}:`, member);
+                      console.log(`Worker: 添加成员 campA team${index + 1}:`, member);
                       gameEngine.addMember('campA', team.id, member as any, {
                         currentHp: 1000,
                         currentMp: 100,
@@ -53,7 +53,7 @@ self.onmessage = async (event: MessageEvent) => {
                   simulatorData.campB.forEach((team, index) => {
                     gameEngine.addTeam('campB', team, `队伍${index + 1}`);
                     team.members.forEach(member => {
-                      Logger.debug(`Worker: 添加成员 campB team${index + 1}:`, member);
+                      console.log(`Worker: 添加成员 campB team${index + 1}:`, member);
                       gameEngine.addMember('campB', team.id, member as any, {
                         currentHp: 1000,
                         currentMp: 100,
@@ -66,7 +66,7 @@ self.onmessage = async (event: MessageEvent) => {
                   gameEngine.start();
                   // 打印成员总数
                   const allMembers = gameEngine.getAllMemberData();
-                  Logger.info(`Worker: 模拟启动完成，总成员数: ${allMembers.length}`);
+                  console.log(`Worker: 模拟启动完成，总成员数: ${allMembers.length}`);
                   portResult = { success: true };
                   break;
                   
@@ -106,26 +106,26 @@ self.onmessage = async (event: MessageEvent) => {
                     // console.log(`👹 [Worker] 返回成员数据: ${members.length} 个成员`);
                   } catch (error) {
                     portResult = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-                    Logger.error(`Worker: 获取成员数据失败:`, error);
+                    console.error(`Worker: 获取成员数据失败:`, error);
                   }
                   break;
                   
                 case 'send_intent':
                   // 处理意图消息
                   const intent = portData;
-                  Logger.debug(`Worker: 收到意图消息:`, intent);
+                  console.log(`Worker: 收到意图消息:`, intent);
                   if (intent && intent.type) {
                     try {
                       const result = await gameEngine.processIntent(intent);
                       portResult = { success: result.success, error: result.error };
-                      Logger.info(`Worker: 处理意图消息成功: ${intent.type}`);
+                      console.log(`Worker: 处理意图消息成功: ${intent.type}`);
                     } catch (error) {
                       portResult = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-                      Logger.error(`Worker: 处理意图消息失败:`, error);
+                      console.error(`Worker: 处理意图消息失败:`, error);
                     }
                   } else {
                     portResult = { success: false, error: 'Invalid intent data' };
-                    Logger.error(`Worker: 意图数据无效:`, intent);
+                    console.error(`Worker: 意图数据无效:`, intent);
                   }
                   break;
                   

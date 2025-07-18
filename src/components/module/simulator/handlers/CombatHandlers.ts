@@ -35,7 +35,7 @@ export class MemberDamageHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理伤害事件: ${event.id}`, payload);
+      console.log(`处理伤害事件: ${event.id}`, payload);
       
       // 获取目标和施法者
       const target = this.memberRegistry.getMember(payload.targetId);
@@ -61,7 +61,7 @@ export class MemberDamageHandler implements EventHandler {
       const damageResult = this.eventExecutor.executeExpression(damageExpression, expressionContext);
       
       if (!damageResult.success) {
-        Logger.warn(`伤害计算失败: ${damageExpression}`, damageResult.error);
+        console.warn(`伤害计算失败: ${damageExpression}`, damageResult.error);
         return {
           success: false,
           error: damageResult.error
@@ -75,7 +75,7 @@ export class MemberDamageHandler implements EventHandler {
         target.takeDamage(finalDamage);
       }
 
-      Logger.info(`${target.getName()} 受到 ${finalDamage} 点伤害`);
+      console.log(`${target.getName()} 受到 ${finalDamage} 点伤害`);
       
       return {
         success: true,
@@ -105,7 +105,7 @@ export class MemberHealHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理治疗事件: ${event.id}`, payload);
+      console.log(`处理治疗事件: ${event.id}`, payload);
       
       // TODO: 实现具体的治疗处理逻辑
       
@@ -133,7 +133,7 @@ export class MemberDeathHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理死亡事件: ${event.id}`, payload);
+      console.log(`处理死亡事件: ${event.id}`, payload);
       
       // TODO: 实现具体的死亡处理逻辑
       
@@ -161,7 +161,7 @@ export class BuffApplyHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理Buff应用事件: ${event.id}`, payload);
+      console.log(`处理Buff应用事件: ${event.id}`, payload);
       
       // TODO: 实现具体的Buff应用处理逻辑
       
@@ -189,7 +189,7 @@ export class BuffRemoveHandler implements EventHandler {
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
-      Logger.debug(`处理Buff移除事件: ${event.id}`, payload);
+      console.log(`处理Buff移除事件: ${event.id}`, payload);
       
       // TODO: 实现具体的Buff移除处理逻辑
       

@@ -147,7 +147,7 @@ export class MessageRouter {
         // 更新统计
         this.stats.successfulMessages++;
 
-        Logger.info(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
+        console.log(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
         
         return {
           success: true,
@@ -158,7 +158,7 @@ export class MessageRouter {
         // 更新统计
         this.stats.failedMessages++;
 
-        Logger.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`);
+        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`);
         
         return {
           success: false,
@@ -169,7 +169,7 @@ export class MessageRouter {
 
     } catch (error: any) {
       this.stats.failedMessages++;
-      Logger.error("MessageRouter: 分发消息时发生错误:", error);
+      console.error("MessageRouter: 分发消息时发生错误:", error);
       
       return {
         success: false,
