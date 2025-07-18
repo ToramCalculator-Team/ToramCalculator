@@ -354,6 +354,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
   };
 
   private workersInitialized = false;
+  private workersReady = new Set<string>(); // 跟踪哪些worker已经准备好
 
   constructor(config: SimulationConfig = {}) {
     super();
@@ -471,6 +472,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
     // 处理系统消息（如worker_ready）
     if (event.data && event.data.type === 'worker_ready') {
       console.log(`Worker ${worker.id} is ready`);
+      this.workersReady.add(worker.id); // 标记worker为已准备好
       return;
     }
 
@@ -575,6 +577,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
     const index = this.workers.indexOf(worker);
     if (index !== -1) {
       this.workers.splice(index, 1);
+      this.workersReady.delete(worker.id); // 清理ready状态
       
       if (this.accepting) {
         const newWorker = this.createWorker();
@@ -588,6 +591,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
     const index = this.workers.indexOf(worker);
     if (index !== -1) {
       this.workers.splice(index, 1);
+      this.workersReady.delete(worker.id); // 清理ready状态
       try {
         worker.worker.terminate();
       } catch (error) {
@@ -1071,6 +1075,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
   }
 
   /**
+   * 检查worker是否已准备好
+   * @returns 是否已准备好
+   */
+  isReady(): boolean {
+    return this.workersInitialized && this.workers.length > 0 && this.workersReady.size > 0;
+  }
+
+  /**
    * 开始监控
    */
   private startMonitoring(): void {
@@ -1149,6 +1161,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
     }));
 
     this.workers.length = 0;
+    this.workersReady.clear(); // 清理所有ready状态
     this.taskMap.clear();
     
     this.emit('shutdown');

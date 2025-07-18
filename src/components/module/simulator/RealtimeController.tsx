@@ -26,6 +26,7 @@ interface ControllerState {
   currentFrame: number;
   memberCount: number;
   selectedMemberId: string | null;
+  isWorkerReady: boolean; // 新增：worker准备状态
 }
 
 // ============================== 组件实现 ==============================
@@ -38,7 +39,8 @@ export default function RealtimeController() {
     isPaused: false,
     currentFrame: 0,
     memberCount: 0,
-    selectedMemberId: null
+    selectedMemberId: null,
+    isWorkerReady: false // 初始状态为未准备好
   });
 
 
@@ -81,12 +83,24 @@ export default function RealtimeController() {
 
     realtimeSimulatorPool.on('metrics', handleMetrics);
 
-    // 每500毫秒更新一次成员数据
-    const memberUpdateInterval = setInterval(updateMembers, 500);
+    // 检查worker准备状态
+    const checkWorkerReady = () => {
+      const isReady = realtimeSimulatorPool.isReady();
+      setState(prev => ({ ...prev, isWorkerReady: isReady }));
+    };
+
+    // 初始检查
+    checkWorkerReady();
+
+    // 每500毫秒更新一次成员数据和worker状态
+    const updateInterval = setInterval(() => {
+      updateMembers();
+      checkWorkerReady();
+    }, 500);
 
     onCleanup(() => {
       realtimeSimulatorPool.off('metrics', handleMetrics);
-      clearInterval(memberUpdateInterval);
+      clearInterval(updateInterval);
     });
   });
 
@@ -240,6 +254,12 @@ export default function RealtimeController() {
    */
   const sendIntent = async (intent: Omit<IntentMessage, 'id' | 'timestamp'>) => {
     // ==================== 控制器逻辑判断 ====================
+    
+    // 0. Worker准备状态检查
+    if (!state().isWorkerReady) {
+      addLog('⚠️ Worker未准备好，无法发送意图');
+      return;
+    }
     
     // 1. 模拟状态检查
     if (!state().isRunning || state().isPaused) {
@@ -440,6 +460,11 @@ export default function RealtimeController() {
           <h2 class="text-lg font-semibold text-main-text-color">实时模拟控制器</h2>
           <div class="flex items-center gap-3 text-sm text-main-text-color">
             <div class="flex items-center gap-1">
+              <div class={`w-2 h-2 rounded-full ${state().isWorkerReady ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+              <span>{state().isWorkerReady ? 'Worker就绪' : 'Worker初始化中'}</span>
+            </div>
+            <span class="text-dividing-color">|</span>
+            <div class="flex items-center gap-1">
               <div class={`w-2 h-2 rounded-full ${state().isRunning ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span>{state().isRunning ? '运行中' : '已停止'}</span>
             </div>
@@ -466,7 +491,7 @@ export default function RealtimeController() {
         <div class="flex gap-2 mb-4">
           <Button 
             onClick={startSimulation}
-            disabled={state().isRunning}
+            disabled={!state().isWorkerReady || state().isRunning}
             level="primary"
             size="sm"
           >
@@ -474,7 +499,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={stopSimulation}
-            disabled={!state().isRunning}
+            disabled={!state().isWorkerReady || !state().isRunning}
             level="secondary"
             size="sm"
           >
@@ -482,7 +507,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={pauseSimulation}
-            disabled={!state().isRunning || state().isPaused}
+            disabled={!state().isWorkerReady || !state().isRunning || state().isPaused}
             level="default"
             size="sm"
           >
@@ -490,7 +515,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={resumeSimulation}
-            disabled={!state().isRunning || !state().isPaused}
+            disabled={!state().isWorkerReady || !state().isRunning || !state().isPaused}
             level="default"
             size="sm"
           >
@@ -530,7 +555,7 @@ export default function RealtimeController() {
         <div class="grid grid-cols-8 gap-2">
           <Button 
             onClick={() => castSkill('skill_1')}
-            disabled={!state().selectedMemberId}
+            disabled={!state().isWorkerReady || !state().selectedMemberId}
             level="primary"
             size="lg"
             class="aspect-square"
@@ -539,7 +564,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={() => castSkill('skill_2')}
-            disabled={!state().selectedMemberId}
+            disabled={!state().isWorkerReady || !state().selectedMemberId}
             level="primary"
             size="lg"
             class="aspect-square"
@@ -548,7 +573,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={() => move(100, 100)}
-            disabled={!state().selectedMemberId}
+            disabled={!state().isWorkerReady || !state().selectedMemberId}
             level="secondary"
             size="lg"
             class="aspect-square"
@@ -557,7 +582,7 @@ export default function RealtimeController() {
           </Button>
           <Button 
             onClick={stopAction}
-            disabled={!state().selectedMemberId}
+            disabled={!state().isWorkerReady || !state().selectedMemberId}
             level="default"
             size="lg"
             class="aspect-square"
