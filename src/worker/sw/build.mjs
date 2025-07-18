@@ -5,9 +5,9 @@ await build({
   bundle: true,
   minify: true,
   platform: 'browser',
-  outfile: 'public/sw.js',
+  outfile: 'public/service.worker.js',
   format: 'esm',
   target: ['es2020'],
 });
 
-console.log('✅ Service Worker 已输出到 public/sw.js'); 
+console.log('✅ Service Worker 已输出到 public/service.worker.js'); 

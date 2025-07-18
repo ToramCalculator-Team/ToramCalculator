@@ -868,109 +868,18 @@ class RequestInterceptor {
   private cacheManager = CacheManager.getInstance();
 
   /**
-   * 处理 fetch 请求
+   * 处理 fetch 请求（已废弃，现在统一在主事件监听器中处理）
    */
-  async handleFetch(event: FetchEvent): Promise<void> {
-    const url = new URL(event.request.url);
-    const pathname = url.pathname;
-
-    // 开发模式下不拦截请求
-    if (isDevelopmentMode()) {
-      return;
-    }
-
-    // 只处理同源GET请求
-    if (url.origin !== location.origin || event.request.method !== "GET") {
-      return;
-    }
-
-    // manifest 文件缓存优先
-    if (pathname === "/chunk-manifest.json") {
-      event.respondWith(
-        (async () => {
-          const cache = await caches.open(CACHE_STRATEGIES.CORE);
-          const cached = await cache.match(event.request);
-          if (cached) {
-            console.log(`离线命中 manifest: ${pathname}`);
-            return cached;
-          }
-          try {
-            const networkResponse = await fetch(event.request);
-            if (networkResponse.ok) {
-              await cache.put(event.request, networkResponse.clone());
-              console.log(`网络缓存 manifest: ${pathname}`);
-            }
-            return networkResponse;
-          } catch (error) {
-            console.warn(`manifest 离线且无缓存: ${pathname}`);
-            return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
-          }
-        })()
-      );
-      return;
-    }
-
-    // 主文档缓存优先
-    if (pathname === "/" || pathname === "/index.html") {
-      event.respondWith(
-        caches.match(event.request).then(async (response) => {
-          if (response) {
-            console.log(`离线命中主文档: ${pathname}`);
-            return response;
-          }
-          try {
-            const networkResponse = await fetch(event.request);
-            if (networkResponse.ok) {
-              const cache = await caches.open(CACHE_STRATEGIES.CORE);
-              await cache.put(event.request, networkResponse.clone());
-              console.log(`网络缓存主文档: ${pathname}`);
-            }
-            return networkResponse;
-          } catch (error) {
-            console.warn(`主文档离线且无缓存: ${pathname}`);
-            return new Response('<!DOCTYPE html><title>离线</title><h1>离线不可用</h1>', { status: 200, headers: { 'Content-Type': 'text/html' } });
-          }
-        })
-      );
-      return;
-    }
-
-    // 检查是否为manifest中的chunk，如果是则动态缓存
-    await this.checkAndCacheManifestChunk(event, pathname);
-
-    // 根据资源类型选择缓存策略
-    let strategy = "网络优先";
-    let cacheResult = "";
-
-    if (this.isCoreResource(pathname)) {
-      strategy = "核心资源缓存优先";
-      cacheResult = await this.cacheOrNetwork(event, CACHE_STRATEGIES.CORE);
-    } else if (this.isAssetResource(pathname)) {
-      strategy = "构建资源缓存优先";
-      cacheResult = await this.cacheOrNetwork(event, CACHE_STRATEGIES.ASSETS);
-    } else if (this.isPageResource(pathname)) {
-      strategy = "页面缓存优先";
-      cacheResult = await this.cacheOrNetwork(event, CACHE_STRATEGIES.PAGES);
-    } else {
-      // 其他资源使用网络优先
-      event.respondWith(fetch(event.request));
-    }
-
-    // 只在缓存命中时记录请求处理
-    if (cacheResult && cacheResult.includes("缓存命中")) {
-    const shortPath = this.getShortPath(pathname);
-    console.log(
-      pathname,
-        `${event.request.method} ${shortPath} -> ${strategy} (${cacheResult})`,
-      event.request.url,
-    );
-    }
+  async handleFetch(event: FetchEvent): Promise<Response> {
+    // 这个方法已经不再使用，所有fetch处理都统一在主事件监听器中
+    // 保留方法签名以避免编译错误
+    return fetch(event.request);
   }
 
   /**
    * 检查并缓存manifest中的chunk
    */
-  private async checkAndCacheManifestChunk(event: FetchEvent, pathname: string): Promise<void> {
+  public async checkAndCacheManifestChunk(event: FetchEvent, pathname: string): Promise<void> {
     let currentManifestString: string | null = null;
     try {
       const manifestResp = await fetch('/chunk-manifest.json');
@@ -1062,7 +971,7 @@ class RequestInterceptor {
   /**
    * 判断是否为核心资源
    */
-  private isCoreResource(pathname: string): boolean {
+  public isCoreResource(pathname: string): boolean {
     const corePatterns = [
       "/",
       "/manifest.json",
@@ -1074,7 +983,7 @@ class RequestInterceptor {
   /**
    * 判断是否为构建资源
    */
-  private isAssetResource(pathname: string): boolean {
+  public isAssetResource(pathname: string): boolean {
     const assetPatterns = [
       "/_build/assets/",
       ".js",
@@ -1095,7 +1004,7 @@ class RequestInterceptor {
   /**
    * 判断是否为页面资源
    */
-  private isPageResource(pathname: string): boolean {
+  public isPageResource(pathname: string): boolean {
     // 页面路由：不包含文件扩展名且不是API路径
     return !pathname.includes('.') && !pathname.startsWith('/api/') && pathname !== '/';
   }
@@ -1131,45 +1040,34 @@ class RequestInterceptor {
   /**
    * 缓存优先策略
    */
-  private async cacheOrNetwork(event: FetchEvent, cacheStrategy: string): Promise<string> {
+  public async cacheOrNetwork(event: FetchEvent, cacheStrategy: string): Promise<Response> {
     if (isDevelopmentMode()) {
-      return "开发模式跳过缓存";
+      return fetch(event.request);
     }
-    let cacheResult = "";
 
-    event.respondWith(
-      caches.match(event.request).then(async (response) => {
-        if (response) {
-          cacheResult = "缓存命中";
-          return response;
-        }
+    const cached = await caches.match(event.request);
+    if (cached) {
+      return cached;
+    }
 
-        cacheResult = "缓存未命中，从网络获取";
-
-        try {
-          const networkResponse = await fetch(event.request);
-          if (networkResponse.ok) {
-            const cache = await caches.open(cacheStrategy);
-            await cache.put(event.request, networkResponse.clone());
-            cacheResult = "已缓存网络响应";
-          }
-          return networkResponse;
-        } catch (error) {
-          console.warn("网络请求失败，尝试从缓存获取", { url: event.request.url, error });
-          
-          const cachedResponse = await caches.match(event.request);
-          if (cachedResponse) {
-            cacheResult = "从缓存获取成功";
-            return cachedResponse;
-          }
-          
-          console.error("网络和缓存都不可用", { url: event.request.url });
-          throw error;
-        }
-      }),
-    );
-
-    return cacheResult;
+    try {
+      const networkResponse = await fetch(event.request);
+      if (networkResponse.ok) {
+        const cache = await caches.open(cacheStrategy);
+        await cache.put(event.request, networkResponse.clone());
+      }
+      return networkResponse;
+    } catch (error) {
+      console.warn("网络请求失败，尝试从缓存获取", { url: event.request.url, error });
+      
+      const cachedResponse = await caches.match(event.request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      
+      console.error("网络和缓存都不可用", { url: event.request.url });
+      throw error;
+    }
   }
 }
 
@@ -1434,6 +1332,26 @@ class MessageHandler {
   const messageHandler = new MessageHandler();
   const periodicCheckManager = new PeriodicCheckManager();
 
+  /**
+   * 处理其他资源类型的缓存策略
+   */
+  async function handleOtherResources(event: FetchEvent, pathname: string): Promise<Response> {
+    // 检查是否为manifest中的chunk，如果是则动态缓存
+    await requestInterceptor.checkAndCacheManifestChunk(event, pathname);
+
+    // 根据资源类型选择缓存策略
+    if (requestInterceptor.isCoreResource(pathname)) {
+      return await requestInterceptor.cacheOrNetwork(event, CACHE_STRATEGIES.CORE);
+    } else if (requestInterceptor.isAssetResource(pathname)) {
+      return await requestInterceptor.cacheOrNetwork(event, CACHE_STRATEGIES.ASSETS);
+    } else if (requestInterceptor.isPageResource(pathname)) {
+      return await requestInterceptor.cacheOrNetwork(event, CACHE_STRATEGIES.PAGES);
+    } else {
+      // 其他资源使用网络优先
+      return fetch(event.request);
+    }
+  }
+
   // 安装事件 - 智能缓存资源
   worker.addEventListener("install", (event) => {
     console.log("📦 Service Worker 安装中...");
@@ -1499,75 +1417,69 @@ class MessageHandler {
       return;
     }
 
-    // manifest 文件缓存优先
-    if (url.pathname === "/chunk-manifest.json") {
-      event.respondWith(
-        (async () => {
+    // 统一处理所有请求，避免多次调用respondWith
+    event.respondWith(
+      (async () => {
+        const pathname = url.pathname;
+
+        // manifest 文件缓存优先
+        if (pathname === "/chunk-manifest.json") {
           const cache = await caches.open(CACHE_STRATEGIES.CORE);
           const cached = await cache.match(event.request);
           if (cached) {
-            console.log(`离线命中 manifest: ${url.pathname}`);
+            console.log(`离线命中 manifest: ${pathname}`);
             return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               await cache.put(event.request, networkResponse.clone());
-              console.log(`网络缓存 manifest: ${url.pathname}`);
+              console.log(`网络缓存 manifest: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            console.warn(`manifest 离线且无缓存: ${url.pathname}`);
+            console.warn(`manifest 离线且无缓存: ${pathname}`);
             return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
           }
-        })()
-      );
-      return;
-    }
+        }
 
-    // 主文档缓存优先
-    if (url.pathname === "/" || url.pathname === "/index.html") {
-      event.respondWith(
-        caches.match(event.request).then(async (response) => {
-          if (response) {
-            console.log(`离线命中主文档: ${url.pathname}`);
-            return response;
+        // 主文档缓存优先
+        if (pathname === "/" || pathname === "/index.html") {
+          const cached = await caches.match(event.request);
+          if (cached) {
+            console.log(`离线命中主文档: ${pathname}`);
+            return cached;
           }
           try {
             const networkResponse = await fetch(event.request);
             if (networkResponse.ok) {
               const cache = await caches.open(CACHE_STRATEGIES.CORE);
               await cache.put(event.request, networkResponse.clone());
-              console.log(`网络缓存主文档: ${url.pathname}`);
+              console.log(`网络缓存主文档: ${pathname}`);
             }
             return networkResponse;
           } catch (error) {
-            console.warn(`主文档离线且无缓存: ${url.pathname}`);
+            console.warn(`主文档离线且无缓存: ${pathname}`);
             return new Response('<!DOCTYPE html><title>离线</title><h1>离线不可用</h1>', { status: 200, headers: { 'Content-Type': 'text/html' } });
           }
-        })
-      );
-      return;
-    }
+        }
 
-    // 页面路由兜底（App Shell）
-    if (!url.pathname.includes('.') && !url.pathname.startsWith('/api/') && url.pathname !== '/') {
-      event.respondWith(
-        caches.match('/').then((response) => {
-          if (response) {
+        // 页面路由兜底（App Shell）
+        if (!pathname.includes('.') && !pathname.startsWith('/api/') && pathname !== '/') {
+          const cached = await caches.match('/');
+          if (cached) {
             console.log(`App Shell 离线命中: /`);
-            return response;
+            return cached;
           } else {
             console.warn(`App Shell 离线未命中: /`);
             return fetch(event.request);
           }
-        })
-      );
-      return;
-    }
+        }
 
-    // 其他资源类型走原有逻辑
-    requestInterceptor.handleFetch(event);
+        // 其他资源类型使用缓存策略
+        return await handleOtherResources(event, pathname);
+      })()
+    );
   });
 
   // 消息处理 - 与客户端通信
