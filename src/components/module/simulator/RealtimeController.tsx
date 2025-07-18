@@ -90,7 +90,7 @@ export default function RealtimeController() {
         const stats = statsResult.data;
         setState(prev => ({
           ...prev,
-          isRunning: stats.state === 'running',
+          isRunning: stats.state === 'running' || stats.state === 'paused',
           isPaused: stats.state === 'paused',
           currentFrame: stats.currentFrame,
           memberCount: stats.memberCount
