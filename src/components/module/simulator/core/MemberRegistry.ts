@@ -77,7 +77,6 @@ export class MemberRegistry {
   ): Member | null {
     try {
       let member: Member;
-      console.log("==============", memberData)
 
       // 根据成员类型创建相应的实例
       switch (memberData.type) {
