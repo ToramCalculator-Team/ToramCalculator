@@ -12,7 +12,7 @@
  * - 扩展性：易于添加新的处理器类型
  */
 
-import { Logger } from "~/utils/logger";
+
 import type { EventHandler } from "../core/EventQueue";
 import type { EventExecutor } from "../core/EventExecutor";
 import type { MemberRegistry } from "../core/MemberRegistry";

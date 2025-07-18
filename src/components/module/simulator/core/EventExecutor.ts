@@ -14,7 +14,7 @@
  * - 安全性：限制表达式执行范围
  */
 
-import { Logger } from "~/utils/logger";
+
 import { createId } from '@paralleldrive/cuid2';
 import type { BaseEvent } from "./EventQueue";
 

@@ -12,7 +12,7 @@
  * - 效果链：支持技能效果的事件链式处理
  */
 
-import { Logger } from "~/utils/logger";
+
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 
 // ============================== 技能事件处理器 ==============================

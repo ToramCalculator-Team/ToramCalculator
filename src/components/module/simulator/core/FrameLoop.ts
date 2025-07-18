@@ -17,7 +17,7 @@
 import { MemberRegistry } from "./MemberRegistry";
 import { Member } from "./Member";
 import type { EventQueue, QueueEvent, BaseEvent, EventHandler, ExecutionContext, EventResult } from "./EventQueue";
-import { Logger } from "~/utils/logger";
+
 
 // ============================== 类型定义 ==============================
 

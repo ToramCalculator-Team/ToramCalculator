@@ -14,9 +14,6 @@
  */
 
 import { MemberRegistry } from "./MemberRegistry";
-import { Member } from "./Member";
-import type { MemberEvent } from "./Member";
-import { Logger } from "~/utils/logger";
 
 // ============================== 类型定义 ==============================
 

@@ -14,10 +14,8 @@
  * - 生命周期管理：管理引擎的启动、运行、停止
  */
 
-import { createSignal } from "solid-js";
 import type { TeamWithRelations } from "~/repositories/team";
 import type { MemberWithRelations } from "~/repositories/member";
-import type { SimulatorWithRelations } from "~/repositories/simulator";
 import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop } from "./FrameLoop";
@@ -26,12 +24,10 @@ import { FSMEventBridge } from "./FSMEventBridge";
 import { EventExecutor } from "./EventExecutor";
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult } from "./MessageRouter";
-import type { FrameLoopState, FrameInfo } from "./FrameLoop";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult } from "./EventQueue";
 import type { FSMEvent } from "./FSMEventBridge";
-import type { ExpressionContext } from "./EventExecutor";
 // 容器不直接依赖具体成员类型
-import { Logger } from "~/utils/logger";
+
 
 // ============================== 类型定义 ==============================
 

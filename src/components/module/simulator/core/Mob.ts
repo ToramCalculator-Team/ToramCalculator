@@ -653,8 +653,6 @@ export class Mob extends Member {
     const mob = memberData.mob;
     if (!mob) return;
 
-    console.log("mob", mob);
-
     // 辅助函数：获取属性值
     const d = (attrName: MobAttrEnum): number => {
       const attr = this.mobAttrMap.get(attrName);

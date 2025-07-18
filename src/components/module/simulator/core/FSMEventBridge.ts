@@ -14,7 +14,7 @@
 
 import { createId } from '@paralleldrive/cuid2';
 import type { EventQueue, BaseEvent } from "./EventQueue";
-import { Logger } from "~/utils/logger";
+
 
 // ============================== 类型定义 ==============================
 

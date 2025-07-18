@@ -12,7 +12,7 @@
  * - 可测试：处理器逻辑独立，便于单元测试
  */
 
-import { Logger } from "~/utils/logger";
+
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
 import type { MemberRegistry } from "../core/MemberRegistry";

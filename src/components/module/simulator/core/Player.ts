@@ -1146,8 +1146,6 @@ export class Player extends Member {
     const character = memberData.player.character;
     if (!character) return;
 
-    console.log("character", character);
-
     // 获取武器类型
     const weaponType = character.weapon.template.type;
     const weaponAbiT = Player.MainWeaponAbiT[weaponType as MainHandType];
