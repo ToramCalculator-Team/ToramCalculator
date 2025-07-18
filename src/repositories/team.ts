@@ -3,6 +3,9 @@ import { getDB } from "./database";
 import { DB, team } from "../../db/generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { DataType } from "./untils";
+import { playerSubRelations } from "./player";
+import { mercenarySubRelations } from "./mercenary";
+import { memberSubRelations } from "./member";
 
 export type TeamWithRelations = Awaited<ReturnType<typeof findTeamById>>;
 
@@ -12,7 +15,15 @@ export interface Team extends DataType<team> {
 }
 
 export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expression<string>) {
-  return [jsonArrayFrom(eb.selectFrom("member").whereRef("member.teamId", "=", id).selectAll("member")).as("members")];
+  return [
+    jsonArrayFrom(
+      eb
+        .selectFrom("member")
+        .whereRef("member.teamId", "=", id)
+        .selectAll("member")
+        .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
+    ).as("members"),
+  ];
 }
 
 export async function findTeamById(id: string) {

@@ -154,7 +154,7 @@ export default function RealtimeController() {
       }
       
       // 这里需要一个示例数据，实际使用时应该从props传入
-      const mockSimulatorData = {
+      const mockSimulatorData: SimulatorWithRelations = {
         id: 'mock-simulator',
         name: '测试模拟器',
         details: '测试用模拟器',
@@ -172,7 +172,7 @@ export default function RealtimeController() {
           {
             id: 'team-a-1',
             name: '队伍A-1',
-            simulatorId: 'mock-simulator',
+            gems: [],
             members: [
               {
                 id: 'player-1',
@@ -181,14 +181,22 @@ export default function RealtimeController() {
                 teamId: 'team-a-1',
                 player: {
                   id: 'player-1',
-                  memberId: 'player-1',
-                  characterId: 'defaultCharacterId',
-                  character: characterData
+                  character: characterData,
+                  name: '',
+                  useIn: '',
+                  accountId: ''
                 },
                 mercenary: null,
                 mob: null,
-                partner: null
-              } as any
+                partner: null,
+                sequence: 0,
+                playerId: null,
+                partnerId: null,
+                mercenaryId: null,
+                mobId: null,
+                mobDifficultyFlag: 'Easy',
+                actions: undefined
+              }
             ]
           }
         ],
@@ -196,24 +204,31 @@ export default function RealtimeController() {
           {
             id: 'team-b-1',
             name: '队伍B-1',
-            simulatorId: 'mock-simulator',
+            gems: [],
             members: [
               {
                 id: 'mob-1',
                 name: '怪物1',
                 type: 'Mob',
                 teamId: 'team-b-1',
+                playerId: 'player-1',
+                sequence: 0,
                 player: null,
                 mercenary: null,
                 mob: mobData,
-                partner: null
-              } as any
+                partner: null,
+                actions: [],
+                partnerId: null,
+                mercenaryId: null,
+                mobId: null,
+                mobDifficultyFlag: 'Easy'
+              }
             ]
           }
         ]
       };
       
-      const result = await realtimeSimulatorPool.startSimulation(mockSimulatorData as any);
+      const result = await realtimeSimulatorPool.startSimulation(mockSimulatorData);
       
       if (result.success) {
         setState(prev => ({ ...prev, isRunning: true, isPaused: false }));
