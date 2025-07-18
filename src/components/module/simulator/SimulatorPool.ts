@@ -2,7 +2,6 @@ import { createId } from '@paralleldrive/cuid2';
 import type { SimulatorWithRelations } from '~/repositories/simulator';
 import type { IntentMessage } from './core/MessageRouter';
 import simulationWorker from './Simulation.worker?worker&url';
-// import { Logger } from '~/utils/logger';
 
 /**
  * 事件发射器 - 基于Node.js ThreadPool的EventEmitter思路
@@ -1007,6 +1006,62 @@ export class EnhancedSimulatorPool extends EventEmitter {
     } catch (error) {
       console.error('SimulatorPool: 获取成员数据异常:', error);
       return [];
+    }
+  }
+
+  /**
+   * 获取引擎状态
+   * 控制器通过此方法获取当前引擎的状态信息
+   */
+  async getEngineStats(): Promise<{ 
+    success: boolean; 
+    data?: { 
+      state: string; 
+      currentFrame: number; 
+      memberCount: number; 
+      runTime: number; 
+    }; 
+    error?: string 
+  }> {
+    try {
+      this.ensureWorkersInitialized();
+      
+      const availableWorker = this.workers.find(w => w.worker && w.port);
+      if (!availableWorker) {
+        console.warn('SimulatorPool: 没有找到可用的worker');
+        return { success: false, error: 'No available worker' };
+      }
+
+      const taskId = createId();
+      const result = await new Promise<{ success: boolean; data?: any; error?: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Get engine stats timeout'));
+        }, 5000);
+
+        availableWorker.port.postMessage({
+          type: 'get_stats',
+          taskId
+        });
+
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data && event.data.taskId === taskId) {
+            clearTimeout(timeout);
+            availableWorker.port.removeEventListener('message', handleMessage);
+            if (event.data.error) {
+              resolve({ success: false, error: event.data.error });
+            } else {
+              resolve(event.data.result || { success: false, error: 'No result data' });
+            }
+          }
+        };
+
+        availableWorker.port.addEventListener('message', handleMessage);
+      });
+
+      return result;
+    } catch (error) {
+      console.error('SimulatorPool: 获取引擎状态异常:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

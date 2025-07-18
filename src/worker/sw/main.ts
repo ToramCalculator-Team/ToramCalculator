@@ -17,7 +17,7 @@
  * 维护：架构师/全栈/工具开发
  */
 
-import { Logger } from '~/utils/logger';
+
 import { VERSION, PERIODIC_CHECK_CONFIG, CACHE_STRATEGIES } from './config';
 import type { SWMessage, CacheStatus } from './types';
 

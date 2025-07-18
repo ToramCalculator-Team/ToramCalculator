@@ -17,7 +17,7 @@
 
 import { createMachine, assign, fromPromise } from 'xstate';
 import type { SWContext } from './types';
-import { Logger } from '~/utils/logger';
+
 import { CacheManager } from './main';
 import { PERIODIC_CHECK_CONFIG } from './config';
 

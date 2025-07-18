@@ -5,8 +5,6 @@
 
 import { GameEngine } from './core/GameEngine';
 import type { SimulatorWithRelations } from '~/repositories/simulator';
-import type { IntentMessage, MessageProcessResult } from './core/MessageRouter';
-import { Logger } from '~/utils/logger';
 
 // 创建GameEngine实例
 const gameEngine = new GameEngine();
@@ -66,7 +64,9 @@ self.onmessage = async (event: MessageEvent) => {
                   gameEngine.start();
                   // 打印成员总数
                   const allMembers = gameEngine.getAllMemberData();
-                  console.log(`Worker: 模拟启动完成，总成员数: ${allMembers.length}`);
+                  
+                  // 调试：检查引擎状态
+                  const engineStats = gameEngine.getStats();
                   portResult = { success: true };
                   break;
                   
@@ -95,7 +95,8 @@ self.onmessage = async (event: MessageEvent) => {
                   break;
                   
                 case 'get_stats':
-                  portResult = gameEngine.getStats();
+                  const stats = gameEngine.getStats();
+                  portResult = { success: true, data: stats };
                   break;
                   
                 case 'get_members':
@@ -167,6 +168,3 @@ self.onmessage = async (event: MessageEvent) => {
     });
   }
 };
-
-// 通知主线程Worker已准备就绪
-self.postMessage({ type: 'worker_ready' });

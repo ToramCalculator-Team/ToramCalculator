@@ -11,7 +11,7 @@
 import { createSignal, createEffect, onCleanup, createResource, Show } from 'solid-js';
 import { realtimeSimulatorPool } from './SimulatorPool';
 import type { IntentMessage } from './core/MessageRouter';
-// import { Logger } from '~/utils/logger';
+// 
 import type { SimulatorWithRelations } from '~/repositories/simulator';
 import { CharacterWithRelations, findCharacterById } from '~/repositories/character';
 import { findMobById } from '~/repositories/mob';
@@ -71,17 +71,45 @@ export default function RealtimeController() {
     }
   };
 
-  createEffect(() => {
-    // 监听SimulatorPool状态变化
-    const handleMetrics = (metrics: any) => {
-      setState(prev => ({
-        ...prev,
-        currentFrame: metrics.currentFrame || 0,
-        memberCount: metrics.memberCount || 0
+  // 获取引擎状态
+  const updateEngineStatus = async () => {
+    if (!realtimeSimulatorPool.isReady()) return;
+    
+    try {
+      // 获取成员数据（包含成员数量）
+      const members = await realtimeSimulatorPool.getMembers();
+      setState(prev => ({ 
+        ...prev, 
+        memberCount: members.length 
       }));
-    };
 
-    realtimeSimulatorPool.on('metrics', handleMetrics);
+      // 通过SimulatorPool获取引擎状态
+      const statsResult = await realtimeSimulatorPool.getEngineStats();
+      if (statsResult.success && statsResult.data) {
+        const stats = statsResult.data;
+        setState(prev => ({
+          ...prev,
+          isRunning: stats.state === 'running',
+          isPaused: stats.state === 'paused',
+          currentFrame: stats.currentFrame,
+          memberCount: stats.memberCount
+        }));
+      }
+    } catch (error) {
+      console.error('RealtimeController: 获取引擎状态失败:', error);
+    }
+  };
+
+  createEffect(() => {
+    // 主动触发worker初始化
+    const triggerWorkerInit = async () => {
+      try {
+        // 通过调用一个简单的方法来触发worker初始化
+        await realtimeSimulatorPool.getMembers();
+      } catch (error) {
+        console.error('RealtimeController: 触发worker初始化失败:', error);
+      }
+    };
 
     // 检查worker准备状态
     const checkWorkerReady = () => {
@@ -89,17 +117,19 @@ export default function RealtimeController() {
       setState(prev => ({ ...prev, isWorkerReady: isReady }));
     };
 
+    // 初始触发worker初始化
+    triggerWorkerInit();
+
     // 初始检查
     checkWorkerReady();
 
-    // 每500毫秒更新一次成员数据和worker状态
+    // 每500毫秒更新一次状态
     const updateInterval = setInterval(() => {
-      updateMembers();
       checkWorkerReady();
+      updateEngineStatus();
     }, 500);
 
     onCleanup(() => {
-      realtimeSimulatorPool.off('metrics', handleMetrics);
       clearInterval(updateInterval);
     });
   });
@@ -178,8 +208,10 @@ export default function RealtimeController() {
       if (result.success) {
         setState(prev => ({ ...prev, isRunning: true, isPaused: false }));
         addLog('✅ 模拟启动成功');
-        // 立即执行一次成员数据更新
-        updateMembers();
+        // 立即更新状态
+        setTimeout(() => {
+          updateEngineStatus();
+        }, 100); // 稍微延迟，确保worker有足够时间处理
       } else {
         addLog(`❌ 模拟启动失败: ${result.error}`);
       }
