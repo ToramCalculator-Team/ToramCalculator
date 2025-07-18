@@ -14,7 +14,10 @@
  */
 
 import { Member } from "./Member";
+import Mob from "./Mob";
+import { Player } from "./Player";
 import type { MemberType } from "~/../db/enums";
+import type { MemberWithRelations } from "~/repositories/member";
 
 // ============================== 类型定义 ==============================
 
@@ -52,6 +55,64 @@ export class MemberRegistry {
   private members: Map<string, MemberRegistryEntry> = new Map();
 
   // ==================== 公共接口 ====================
+
+  /**
+   * 创建并注册新成员
+   * 
+   * @param memberData 成员数据库数据
+   * @param campId 阵营ID
+   * @param teamId 队伍ID
+   * @param initialState 初始状态配置
+   * @returns 创建的成员实例，失败则返回null
+   */
+  createAndRegister(
+    memberData: MemberWithRelations, 
+    campId: string, 
+    teamId: string,
+    initialState: {
+      position?: { x: number; y: number };
+      currentHp?: number;
+      currentMp?: number;
+    } = {}
+  ): Member | null {
+    try {
+      let member: Member;
+      console.log("==============", memberData)
+
+      // 根据成员类型创建相应的实例
+      switch (memberData.type) {
+        case "Player":
+          member = new Player(memberData, initialState);
+          break;
+        case "Mob":
+          member = new Mob(memberData, initialState);
+          break;
+        // case "Mercenary":
+        //   member = new Mercenary(memberData, initialState);
+        //   break;
+        // case "Partner":
+        //   member = new Partner(memberData, initialState);
+        //   break;
+        default:
+          console.error(`❌ 不支持的成员类型: ${memberData.type}`);
+          return null;
+      }
+
+      // 注册成员
+      const success = this.registerMember(member, campId, teamId);
+      if (success) {
+        console.log(`✅ 创建并注册成员成功: ${member.getName()} (${member.getType()})`);
+        return member;
+      } else {
+        // 如果注册失败，清理创建的成员
+        member.destroy();
+        return null;
+      }
+    } catch (error) {
+      console.error("❌ 创建并注册成员失败:", error);
+      return null;
+    }
+  }
 
   /**
    * 注册新成员

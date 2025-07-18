@@ -22,12 +22,15 @@ import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
+import { FSMEventBridge } from "./FSMEventBridge";
+import { EventExecutor } from "./EventExecutor";
+import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult } from "./MessageRouter";
 import type { FrameLoopState, FrameInfo } from "./FrameLoop";
-import type { QueueEvent, EventPriority } from "./EventQueue";
-import { Member } from "./Member";
-import Player from "./Player";
-import Mob from "./Mob";
+import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult } from "./EventQueue";
+import type { FSMEvent } from "./FSMEventBridge";
+import type { ExpressionContext } from "./EventExecutor";
+// 容器不直接依赖具体成员类型
 import { Logger } from "~/utils/logger";
 
 // ============================== 类型定义 ==============================
@@ -136,6 +139,15 @@ export class GameEngine {
   /** 帧循环 - 推进时间和调度事件 */
   private frameLoop: FrameLoop;
 
+  /** FSM事件桥接器 - 连接XState和EventQueue */
+  private fsmEventBridge: FSMEventBridge;
+
+  /** 事件执行器 - 处理复杂效果计算 */
+  private eventExecutor: EventExecutor;
+
+  /** 事件处理器工厂 - 创建和管理事件处理器 */
+  private eventHandlerFactory: EventHandlerFactory;
+
   // ==================== 引擎状态 ====================
 
   /** 引擎状态 */
@@ -190,9 +202,21 @@ export class GameEngine {
     this.messageRouter = new MessageRouter(this.memberRegistry);
     this.frameLoop = new FrameLoop(
       this.memberRegistry, 
-      [],
+      this.eventQueue,
       this.config.frameLoopConfig
     );
+
+    // 初始化FSM事件桥接器
+    this.fsmEventBridge = new FSMEventBridge(this.eventQueue);
+
+    // 初始化事件执行器
+    this.eventExecutor = new EventExecutor(this.config.frameLoopConfig.enablePerformanceMonitoring);
+
+    // 初始化事件处理器工厂
+    this.eventHandlerFactory = new EventHandlerFactory(this.eventExecutor, this.memberRegistry);
+
+    // 初始化默认事件处理器
+    this.initializeDefaultEventHandlers();
 
     Logger.info("GameEngine: 初始化完成");
   }
@@ -303,7 +327,7 @@ export class GameEngine {
   }
 
   /**
-   * 添加成员
+   * 添加成员（委托给 MemberRegistry）
    * 
    * @param campId 阵营ID
    * @param teamId 队伍ID
@@ -320,36 +344,8 @@ export class GameEngine {
       position?: { x: number; y: number };
     } = {},
   ): void {
-    Logger.debug(`GameEngine: addMember: campId=${campId}, teamId=${teamId}, memberData=`, memberData, ', initialState=', initialState);
-    try {
-      // 根据成员类型创建对应的实例
-      let member: Member;
-      
-      switch (memberData.type) {
-        case "Player":
-          member = new Player(memberData, initialState);
-          break;
-        case "Mob":
-          member = new Mob(memberData, initialState);
-          break;
-        case "Mercenary":
-        case "Partner":
-        default:
-          throw new Error(`不支持的成员类型: ${memberData.type}`);
-      }
-
-      // 注册到成员注册表
-      const success = this.memberRegistry.registerMember(member, campId, teamId);
-
-      if (success) {
-        Logger.info(`GameEngine: 添加成员: ${member.getName()} (${member.getType()}) -> ${campId}/${teamId}`);
-      } else {
-        Logger.error("GameEngine: 添加成员失败:", memberData.id);
-      }
-
-    } catch (error) {
-      Logger.error("GameEngine: 创建成员失败:", error);
-    }
+    // 容器只负责委托，不处理具体创建逻辑
+    this.memberRegistry.createAndRegister(memberData, campId, teamId, initialState);
   }
 
   /**
@@ -401,7 +397,7 @@ export class GameEngine {
    * @param priority 事件优先级
    * @returns 插入是否成功
    */
-  insertEvent(event: any, priority: EventPriority = "normal"): boolean {
+  insertEvent(event: BaseEvent, priority: EventPriority = "normal"): boolean {
     const success = this.eventQueue.insert(event, priority);
     if (success) {
       this.stats.totalEventsProcessed++;
@@ -410,21 +406,51 @@ export class GameEngine {
   }
 
   /**
-   * 获取所有成员（内部使用）
+   * 注册事件处理器
+   * 
+   * @param eventType 事件类型
+   * @param handler 事件处理器
+   */
+  registerEventHandler(eventType: string, handler: EventHandler): void {
+    this.frameLoop.registerEventHandler(eventType, handler);
+    Logger.debug(`GameEngine: 注册事件处理器: ${eventType}`);
+  }
+
+  /**
+   * 处理FSM事件
+   * 
+   * @param fsmEvent FSM事件
+   * @returns 处理是否成功
+   */
+  processFSMEvent(fsmEvent: FSMEvent): boolean {
+    return this.fsmEventBridge.processFSMEvent(fsmEvent, this.frameLoop.getFrameNumber());
+  }
+
+  /**
+   * 获取FSM事件桥接器
+   * 
+   * @returns FSM事件桥接器实例
+   */
+  getFSMEventBridge(): FSMEventBridge {
+    return this.fsmEventBridge;
+  }
+
+  /**
+   * 获取所有成员（委托给 MemberRegistry）
    * 
    * @returns 成员数组
    */
-  getAllMembers(): Member[] {
+  getAllMembers(): any[] {
     return this.memberRegistry.getAllMembers();
   }
 
   /**
-   * 查找成员（内部使用）
+   * 查找成员（委托给 MemberRegistry）
    * 
    * @param memberId 成员ID
    * @returns 成员实例
    */
-  findMember(memberId: string): Member | null {
+  findMember(memberId: string): any | null {
     return this.memberRegistry.getMember(memberId);
   }
 
@@ -538,9 +564,9 @@ export class GameEngine {
         state: member.getFSM()?.getState() || null,
       })),
       battleStatus: {
-        isEnded: this.shouldTerminate(),
-        winner: this.getWinner(),
-        reason: this.getTerminationReason(),
+        isEnded: false, // 容器不判断战斗状态，由外部查询决定
+        winner: undefined,
+        reason: undefined,
       }
     };
   }
@@ -620,6 +646,9 @@ export class GameEngine {
     // 清理事件队列
     this.eventQueue.clear();
 
+    // 重置FSM事件桥接器统计
+    this.fsmEventBridge.resetStats();
+
     // 重置统计
     this.stats = {
       totalSnapshots: 0,
@@ -631,84 +660,25 @@ export class GameEngine {
   }
 
   // ==================== 私有方法 ====================
+  
+  // 容器模式：不包含业务逻辑方法
+  // 战斗状态判断由外部系统负责
+
+  // ==================== 私有初始化方法 ====================
 
   /**
-   * 检查是否应该终止战斗
-   * 
-   * @returns 是否应该终止
+   * 初始化默认事件处理器
    */
-  private shouldTerminate(): boolean {
-    const members = this.memberRegistry.getAllMembers();
+  private initializeDefaultEventHandlers(): void {
+    // 使用工厂创建所有默认处理器
+    const handlers = this.eventHandlerFactory.createDefaultHandlers();
     
-    // 检查是否有存活成员
-    const aliveMembers = members.filter(member => member.isAlive());
+    // 注册所有处理器
+    for (const [eventType, handler] of handlers) {
+      this.registerEventHandler(eventType, handler);
+    }
     
-    if (aliveMembers.length === 0) {
-      return true;
-    }
-
-    // 检查是否超过最大模拟时间
-    const currentFrame = this.frameLoop.getFrameNumber();
-    const maxFrames = this.config.maxSimulationTime * this.config.targetFPS;
-    
-    if (currentFrame >= maxFrames) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * 获取胜利者
-   * 
-   * @returns 胜利阵营ID
-   */
-  private getWinner(): string | undefined {
-    const members = this.memberRegistry.getAllMembers();
-    
-    // 按阵营分组存活成员
-    const campAMembers = members.filter(member => {
-      const entry = this.memberRegistry.getMemberEntry(member.getId());
-      return entry?.campId === "campA" && member.isAlive();
-    });
-
-    const campBMembers = members.filter(member => {
-      const entry = this.memberRegistry.getMemberEntry(member.getId());
-      return entry?.campId === "campB" && member.isAlive();
-    });
-
-    if (campAMembers.length > 0 && campBMembers.length === 0) {
-      return "campA";
-    }
-
-    if (campBMembers.length > 0 && campAMembers.length === 0) {
-      return "campB";
-    }
-
-    return undefined;
-  }
-
-  /**
-   * 获取终止原因
-   * 
-   * @returns 终止原因
-   */
-  private getTerminationReason(): string | undefined {
-    const members = this.memberRegistry.getAllMembers();
-    const aliveMembers = members.filter(member => member.isAlive());
-    
-    if (aliveMembers.length === 0) {
-      return "所有成员已死亡";
-    }
-
-    const currentFrame = this.frameLoop.getFrameNumber();
-    const maxFrames = this.config.maxSimulationTime * this.config.targetFPS;
-    
-    if (currentFrame >= maxFrames) {
-      return "达到最大模拟时间";
-    }
-
-    return undefined;
+    Logger.debug('GameEngine: 默认事件处理器初始化完成');
   }
 }
 

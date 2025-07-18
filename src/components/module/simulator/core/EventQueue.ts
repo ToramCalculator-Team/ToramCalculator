@@ -14,6 +14,7 @@
  */
 
 import type { MemberEvent } from "./Member";
+import { createId } from '@paralleldrive/cuid2';
 
 // ============================== 类型定义 ==============================
 
@@ -27,18 +28,74 @@ export type EventPriority =
   | "low";       // 低优先级（如动画、音效）
 
 /**
- * 队列事件接口
- * 扩展MemberEvent，添加优先级和队列管理信息
+ * 基础事件接口 - 最小化假设，支持扩展
  */
-export interface QueueEvent extends MemberEvent {
+export interface BaseEvent {
+  /** 事件ID */
+  id: string;
+  /** 执行帧号 */
+  executeFrame: number;
   /** 事件优先级 */
   priority: EventPriority;
+  /** 事件类型 */
+  type: string;
+  /** 事件数据（完全开放） */
+  payload?: unknown;
+  /** 事件来源（用于中断清理） */
+  source?: string;
+  /** 关联的行为ID（用于中断清理） */
+  actionId?: string;
+}
+
+/**
+ * 队列事件接口
+ * 扩展BaseEvent，添加队列管理信息
+ */
+export interface QueueEvent extends BaseEvent {
   /** 队列插入时间 */
   queueTime: number;
   /** 是否已处理 */
   processed: boolean;
   /** 处理时间戳 */
   processedTime?: number;
+}
+
+/**
+ * 事件处理器接口 - 可插拔的事件处理
+ */
+export interface EventHandler {
+  /** 检查是否能处理此事件 */
+  canHandle(event: BaseEvent): boolean;
+  /** 执行事件处理 - 支持同步和异步 */
+  execute(event: BaseEvent, context: ExecutionContext): EventResult | Promise<EventResult>;
+}
+
+/**
+ * 事件执行上下文接口
+ */
+export interface ExecutionContext {
+  /** 当前帧号 */
+  currentFrame: number;
+  /** 时间倍率（用于变速播放） */
+  timeScale: number;
+  /** 引擎状态 */
+  engineState?: any;
+  /** 其他上下文数据 */
+  [key: string]: any;
+}
+
+/**
+ * 事件执行结果接口
+ */
+export interface EventResult {
+  /** 执行是否成功 */
+  success: boolean;
+  /** 错误信息 */
+  error?: string;
+  /** 执行结果数据 */
+  data?: any;
+  /** 生成的新事件（支持事件链） */
+  newEvents?: BaseEvent[];
 }
 
 /**
@@ -149,11 +206,11 @@ export class EventQueue {
   /**
    * 插入事件到队列
    * 
-   * @param event 事件对象
-   * @param priority 事件优先级
+   * @param event 事件对象（可以是BaseEvent或MemberEvent）
+   * @param priority 事件优先级（如果event没有指定）
    * @returns 插入是否成功
    */
-  insert(event: MemberEvent, priority: EventPriority = "normal"): boolean {
+  insert(event: BaseEvent | MemberEvent, priority: EventPriority = "normal"): boolean {
     try {
       // 检查队列大小限制
       if (this.events.length >= this.config.maxQueueSize) {
@@ -162,22 +219,24 @@ export class EventQueue {
         return false;
       }
 
+      // 标准化事件格式
+      const baseEvent: BaseEvent = this.normalizeEvent(event, priority);
+      
       const queueEvent: QueueEvent = {
-        ...event,
-        priority,
+        ...baseEvent,
         queueTime: performance.now(),
         processed: false
       };
 
-      // 插入到主队列（按时间戳排序）
-      this.insertSorted(this.events, queueEvent, (a, b) => a.timestamp - b.timestamp);
+      // 插入到主队列（按执行帧号排序）
+      this.insertSorted(this.events, queueEvent, (a, b) => a.executeFrame - b.executeFrame);
 
       // 如果启用优先级排序，也插入到优先级队列
       if (this.config.enablePrioritySort) {
         this.insertSorted(this.priorityQueue, queueEvent, (a, b) => {
           const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
           const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-          return priorityDiff !== 0 ? priorityDiff : a.timestamp - b.timestamp;
+          return priorityDiff !== 0 ? priorityDiff : a.executeFrame - b.executeFrame;
         });
       }
 
@@ -200,7 +259,7 @@ export class EventQueue {
    * @param priority 事件优先级
    * @returns 成功插入的事件数量
    */
-  insertBatch(events: MemberEvent[], priority: EventPriority = "normal"): number {
+  insertBatch(events: (BaseEvent | MemberEvent)[], priority: EventPriority = "normal"): number {
     let successCount = 0;
 
     for (const event of events) {
@@ -213,13 +272,13 @@ export class EventQueue {
   }
 
   /**
-   * 获取当前时间需要执行的事件
+   * 获取当前帧需要执行的事件
    * 
-   * @param currentTime 当前时间戳
+   * @param currentFrame 当前帧号
    * @param maxEvents 最大获取事件数
    * @returns 需要执行的事件数组
    */
-  getEventsToProcess(currentTime: number, maxEvents: number = 100): QueueEvent[] {
+  getEventsToProcess(currentFrame: number, maxEvents: number = 100): QueueEvent[] {
     const eventsToProcess: QueueEvent[] = [];
     const queue = this.config.enablePrioritySort ? this.priorityQueue : this.events;
 
@@ -227,7 +286,7 @@ export class EventQueue {
     for (let i = 0; i < queue.length && eventsToProcess.length < maxEvents; i++) {
       const event = queue[i];
       
-      if (!event.processed && event.timestamp <= currentTime) {
+      if (!event.processed && event.executeFrame <= currentFrame) {
         eventsToProcess.push(event);
       }
     }
@@ -406,27 +465,27 @@ export class EventQueue {
   }
 
   /**
-   * 获取队列中最早的事件时间戳
+   * 获取队列中最早的事件帧号
    * 
-   * @returns 最早时间戳，如果队列为空则返回Infinity
+   * @returns 最早帧号，如果队列为空则返回Infinity
    */
-  getEarliestEventTime(): number {
+  getEarliestEventFrame(): number {
     if (this.events.length === 0) {
       return Infinity;
     }
-    return this.events[0].timestamp;
+    return this.events[0].executeFrame;
   }
 
   /**
-   * 获取队列中最晚的事件时间戳
+   * 获取队列中最晚的事件帧号
    * 
-   * @returns 最晚时间戳，如果队列为空则返回-Infinity
+   * @returns 最晚帧号，如果队列为空则返回-Infinity
    */
-  getLatestEventTime(): number {
+  getLatestEventFrame(): number {
     if (this.events.length === 0) {
       return -Infinity;
     }
-    return this.events[this.events.length - 1].timestamp;
+    return this.events[this.events.length - 1].executeFrame;
   }
 
   /**
@@ -468,7 +527,102 @@ export class EventQueue {
     return true;
   }
 
+  /**
+   * 根据来源清除事件（用于中断清理）
+   * 
+   * @param source 事件来源
+   * @returns 清除的事件数量
+   */
+  clearEventsBySource(source: string): number {
+    const originalSize = this.events.length;
+    
+    // 清理主队列
+    this.events = this.events.filter(event => event.source !== source);
+    
+    // 清理优先级队列
+    if (this.config.enablePrioritySort) {
+      this.priorityQueue = this.priorityQueue.filter(event => event.source !== source);
+    }
+
+    const cleanedCount = originalSize - this.events.length;
+    this.stats.currentSize = this.events.length;
+
+    if (cleanedCount > 0) {
+      console.log(`🧹 清理了来源为 ${source} 的 ${cleanedCount} 个事件`);
+    }
+
+    return cleanedCount;
+  }
+
+  /**
+   * 根据行为ID清除事件（用于中断清理）
+   * 
+   * @param actionId 行为ID
+   * @returns 清除的事件数量
+   */
+  clearEventsByAction(actionId: string): number {
+    const originalSize = this.events.length;
+    
+    // 清理主队列
+    this.events = this.events.filter(event => event.actionId !== actionId);
+    
+    // 清理优先级队列
+    if (this.config.enablePrioritySort) {
+      this.priorityQueue = this.priorityQueue.filter(event => event.actionId !== actionId);
+    }
+
+    const cleanedCount = originalSize - this.events.length;
+    this.stats.currentSize = this.events.length;
+
+    if (cleanedCount > 0) {
+      console.log(`🧹 清理了行为 ${actionId} 的 ${cleanedCount} 个事件`);
+    }
+
+    return cleanedCount;
+  }
+
   // ==================== 私有方法 ====================
+
+  /**
+   * 标准化事件格式
+   * 将MemberEvent转换为BaseEvent格式
+   * 
+   * @param event 输入事件
+   * @param priority 默认优先级
+   * @returns 标准化的BaseEvent
+   */
+  private normalizeEvent(event: BaseEvent | MemberEvent, priority: EventPriority): BaseEvent {
+    // 如果已经是BaseEvent格式，直接返回
+    if ('executeFrame' in event && 'priority' in event) {
+      return event as BaseEvent;
+    }
+
+    // 将MemberEvent转换为BaseEvent
+    const memberEvent = event as MemberEvent;
+    return {
+      id: memberEvent.id || createId(),
+      executeFrame: this.timestampToFrame(memberEvent.timestamp || performance.now()),
+      priority: priority,
+      type: memberEvent.type,
+      payload: memberEvent.data || {},
+      source: 'member',
+      actionId: undefined
+    };
+  }
+
+  /**
+   * 时间戳转换为帧号（假设60fps）
+   * 
+   * @param timestamp 时间戳
+   * @returns 帧号
+   */
+  private timestampToFrame(timestamp: number): number {
+    // 这里需要引擎提供当前帧号和时间的对应关系
+    // 暂时使用简单的转换逻辑
+    const currentTime = performance.now();
+    const frameDelta = Math.floor((timestamp - currentTime) / (1000 / 60));
+    return Math.max(0, frameDelta);
+  }
 
   /**
    * 插入排序（保持数组有序）
