@@ -78,6 +78,7 @@ export default function RealtimeController() {
     try {
       // 获取成员数据（包含成员数量）
       const members = await realtimeSimulatorPool.getMembers();
+      setMembers(members); // 更新成员列表
       setState(prev => ({ 
         ...prev, 
         memberCount: members.length 
@@ -143,6 +144,15 @@ export default function RealtimeController() {
     try {
       addLog('🚀 启动模拟...');
       
+      // 等待角色和怪物数据加载完成
+      const characterData = character();
+      const mobData = mob();
+      
+      if (!characterData || !mobData) {
+        addLog('⚠️ 角色或怪物数据未加载完成，请稍后再试');
+        return;
+      }
+      
       // 这里需要一个示例数据，实际使用时应该从props传入
       const mockSimulatorData = {
         id: 'mock-simulator',
@@ -173,7 +183,7 @@ export default function RealtimeController() {
                   id: 'player-1',
                   memberId: 'player-1',
                   characterId: 'defaultCharacterId',
-                  character: character()
+                  character: characterData
                 },
                 mercenary: null,
                 mob: null,
@@ -195,7 +205,7 @@ export default function RealtimeController() {
                 teamId: 'team-b-1',
                 player: null,
                 mercenary: null,
-                mob: mob(),
+                mob: mobData,
                 partner: null
               } as any
             ]
