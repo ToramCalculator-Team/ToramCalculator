@@ -5,32 +5,90 @@
 
 import { GameEngine } from './core/GameEngine';
 import type { SimulatorWithRelations } from '~/repositories/simulator';
+import type { IntentMessage } from './core/MessageRouter';
+import type { MemberSerializeData } from './core/Member';
+import type { EngineStats } from './core/GameEngine';
+
+// ==================== 消息类型定义 ====================
+
+/**
+ * 主线程到Worker的消息类型
+ */
+interface MainThreadMessage {
+  taskId?: string;
+  type: 'init';
+  data?: any;
+  port?: MessagePort;
+}
+
+/**
+ * MessageChannel端口消息类型
+ */
+interface PortMessage {
+  taskId: string;
+  type: 
+    | 'start_simulation'
+    | 'stop_simulation'
+    | 'pause_simulation'
+    | 'resume_simulation'
+    | 'process_intent'
+    | 'get_snapshot'
+    | 'get_stats'
+    | 'get_members'
+    | 'send_intent';
+  data?: SimulatorWithRelations | IntentMessage;
+}
+
+/**
+ * Worker响应消息类型
+ */
+interface WorkerResponse {
+  taskId: string;
+  result?: {
+    success: boolean;
+    data?: MemberSerializeData[] | EngineStats | { success: boolean; message: string; error?: string } | any;
+    error?: string;
+  } | null;
+  error?: string | null;
+}
+
+/**
+ * Worker系统消息类型
+ */
+interface WorkerSystemMessage {
+  type: 'worker_ready' | 'error';
+  error?: string;
+}
 
 // 创建GameEngine实例
 const gameEngine = new GameEngine();
 
 // 处理主线程消息
-self.onmessage = async (event: MessageEvent) => {
+self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
   const { taskId, type, data, port } = event.data;
   
   try {
-    let result: any;
+    let result: WorkerSystemMessage;
     
     switch (type) {
       case 'init':
         // 初始化Worker，设置MessageChannel
         if (port) {
           // 设置MessageChannel端口用于任务通信
-          port.onmessage = async (portEvent: MessageEvent) => {
+          port.onmessage = async (portEvent: MessageEvent<PortMessage>) => {
             const { taskId: portTaskId, type: portType, data: portData } = portEvent.data;
             
             try {
-              let portResult: any;
+              let portResult: {
+                success: boolean;
+                data?: MemberSerializeData[] | EngineStats | { success: boolean; message: string; error?: string } | any;
+                error?: string;
+              };
               
               switch (portType) {
                 case 'start_simulation':
                   // 初始化战斗数据
-                  const simulatorData: SimulatorWithRelations = portData;
+                  const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
                   console.log('Worker: 启动模拟，数据:', simulatorData);
                   // 添加阵营A
                   gameEngine.addCamp('campA', '阵营A');
@@ -87,11 +145,12 @@ self.onmessage = async (event: MessageEvent) => {
                   break;
                   
                 case 'process_intent':
-                  portResult = await gameEngine.processIntent(portData);
+                  portResult = await gameEngine.processIntent(portData as IntentMessage);
                   break;
                   
                 case 'get_snapshot':
-                  portResult = gameEngine.getCurrentSnapshot();
+                  const snapshot = gameEngine.getCurrentSnapshot();
+                  portResult = { success: true, data: snapshot };
                   break;
                   
                 case 'get_stats':
@@ -113,7 +172,7 @@ self.onmessage = async (event: MessageEvent) => {
                   
                 case 'send_intent':
                   // 处理意图消息
-                  const intent = portData;
+                  const intent = portData as IntentMessage;
                   console.log(`Worker: 收到意图消息:`, intent);
                   if (intent && intent.type) {
                     try {
@@ -135,25 +194,28 @@ self.onmessage = async (event: MessageEvent) => {
               }
               
               // 返回结果给SimulatorPool
-              port.postMessage({
+              const response: WorkerResponse = {
                 taskId: portTaskId,
                 result: portResult,
                 error: null
-              });
+              };
+              port.postMessage(response);
               
             } catch (error) {
               // 返回错误给SimulatorPool
-              port.postMessage({
+              const errorResponse: WorkerResponse = {
                 taskId: portTaskId,
                 result: null,
                 error: error instanceof Error ? error.message : String(error)
-              });
+              };
+              port.postMessage(errorResponse);
             }
           };
         }
         
         // 通知主线程Worker已准备就绪
-        self.postMessage({ type: 'worker_ready' });
+        const readyMessage: WorkerSystemMessage = { type: 'worker_ready' };
+        self.postMessage(readyMessage);
         return;
         
       default:
@@ -162,9 +224,10 @@ self.onmessage = async (event: MessageEvent) => {
     
   } catch (error) {
     // 返回错误给主线程
-    self.postMessage({
+    const errorMessage: WorkerSystemMessage = {
       type: 'error',
       error: error instanceof Error ? error.message : String(error)
-    });
+    };
+    self.postMessage(errorMessage);
   }
 };

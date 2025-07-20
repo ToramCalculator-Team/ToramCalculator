@@ -18,14 +18,15 @@ import type { TeamWithRelations } from "~/repositories/team";
 import type { MemberWithRelations } from "~/repositories/member";
 import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
-import { FrameLoop } from "./FrameLoop";
+import { FrameLoop, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
 import { FSMEventBridge } from "./FSMEventBridge";
 import { EventExecutor } from "./EventExecutor";
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
-import type { IntentMessage, MessageProcessResult } from "./MessageRouter";
-import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult } from "./EventQueue";
+import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
+import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
 import type { FSMEvent } from "./FSMEventBridge";
+import { MemberSerializeData } from "./Member";
 // 容器不直接依赖具体成员类型
 
 
@@ -79,11 +80,11 @@ export interface EngineStats {
   /** 成员数量 */
   memberCount: number;
   /** 事件队列统计 */
-  eventQueueStats: any;
+  eventQueueStats: QueueStats;
   /** 帧循环统计 */
-  frameLoopStats: any;
+  frameLoopStats: PerformanceStats;
   /** 消息路由统计 */
-  messageRouterStats: any;
+  messageRouterStats: MessageRouterStats;
 }
 
 /**
@@ -243,7 +244,7 @@ export class GameEngine {
    */
   stop(): void {
     if (this.state === "stopped") {
-      console.warn("GameEngine: 引擎已停止");
+      console.log("GameEngine: 引擎已停止");
       return;
     }
 
@@ -483,9 +484,10 @@ export class GameEngine {
    * 
    * @returns 所有成员数据数组
    */
-  getAllMemberData(): any[] {
+  getAllMemberData(): MemberSerializeData[] {
     const members = this.memberRegistry.getAllMembers();
-    return members.map(member => member.serialize());
+    const memberData = members.map(member => member.serialize());
+    return memberData;
   }
 
   /**
@@ -494,7 +496,7 @@ export class GameEngine {
    * @param campId 阵营ID
    * @returns 指定阵营的成员数据数组
    */
-  getMembersByCamp(campId: string): any[] {
+  getMembersByCamp(campId: string): MemberSerializeData[] {
     const members = this.memberRegistry.getMembersByCamp(campId);
     return members.map(member => {
       const entry = this.memberRegistry.getMemberEntry(member.getId());
@@ -507,7 +509,12 @@ export class GameEngine {
         isAlive: member.isAlive(),
         isActive: member.isActive(),
         stats: member.getStats(),
-        state: member.getCurrentState()
+        state: member.getCurrentState(),
+        currentHp: member.getStats().currentHp,
+        maxHp: member.getStats().maxHp,
+        currentMp: member.getStats().currentMp,
+        maxMp: member.getStats().maxMp,
+        position: member.getStats().position,
       };
     });
   }
@@ -518,7 +525,7 @@ export class GameEngine {
    * @param teamId 队伍ID
    * @returns 指定队伍的成员数据数组
    */
-  getMembersByTeam(teamId: string): any[] {
+  getMembersByTeam(teamId: string): MemberSerializeData[] {
     const members = this.memberRegistry.getMembersByTeam(teamId);
     return members.map(member => {
       const entry = this.memberRegistry.getMemberEntry(member.getId());
@@ -531,7 +538,12 @@ export class GameEngine {
         isAlive: member.isAlive(),
         isActive: member.isActive(),
         stats: member.getStats(),
-        state: member.getCurrentState()
+        state: member.getCurrentState(),
+        currentHp: member.getStats().currentHp,
+        maxHp: member.getStats().maxHp,
+        currentMp: member.getStats().currentMp,
+        maxMp: member.getStats().maxMp,
+        position: member.getStats().position,
       };
     });
   }

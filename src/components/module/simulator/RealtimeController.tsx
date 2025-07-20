@@ -17,6 +17,7 @@ import { CharacterWithRelations, findCharacterById } from '~/repositories/charac
 import { findMobById } from '~/repositories/mob';
 import { Button } from '~/components/controls/button';
 import { Select } from '~/components/controls/select';
+import { MemberSerializeData } from './core/Member';
 
 // ============================== 类型定义 ==============================
 
@@ -45,7 +46,7 @@ export default function RealtimeController() {
 
 
 
-  const [members, setMembers] = createSignal<any[]>([]);
+  const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
     const [logs, setLogs] = createSignal<string[]>([]);
     const [character, { refetch: refetchCharacter }] = createResource(async () => {
       return findCharacterById("defaultCharacterId")
@@ -53,23 +54,6 @@ export default function RealtimeController() {
     const [mob, { refetch: refetchMob }] = createResource(async () => {
       return findMobById("defaultMobId")
     });
-
-  // ==================== 生命周期 ====================
-
-  // 定期获取成员数据
-  const updateMembers = async () => {
-    try {
-      const memberData = await realtimeSimulatorPool.getMembers();
-      
-      // 添加调试日志
-      // console.log('RealtimeController: 获取到成员数据:', memberData.length, '个成员');
-      
-      // 简化更新逻辑，直接更新数据
-      setMembers(memberData);
-    } catch (error) {
-      console.error('RealtimeController: 获取成员数据失败:', error);
-    }
-  };
 
   // 获取引擎状态
   const updateEngineStatus = async () => {
@@ -358,8 +342,7 @@ export default function RealtimeController() {
       }
 
       // 技能可用性检查（这里可以添加更复杂的逻辑）
-      const memberStats = targetMember.stats;
-      if (memberStats && memberStats.mp < 50) { // 示例：魔法值检查
+      if (targetMember.currentMp < 50) { // 示例：魔法值检查
         addLog(`⚠️ 魔法值不足，无法释放技能: ${skillId}`);
         return;
       }
@@ -382,9 +365,9 @@ export default function RealtimeController() {
       }
 
       // 移动范围检查（这里可以添加更复杂的逻辑）
-      const currentPosition = targetMember.stats?.position || { x: 0, y: 0 };
+      const currentPosition = targetMember.position;
       const distance = Math.sqrt(Math.pow(x - currentPosition.x, 2) + Math.pow(y - currentPosition.y, 2));
-      const maxMoveDistance = 100; // 示例：最大移动距离
+      const maxMoveDistance = 1000; // 示例：最大移动距离
       
       if (distance > maxMoveDistance) {
         addLog(`⚠️ 移动距离超出限制: ${distance.toFixed(1)} > ${maxMoveDistance}`);
@@ -512,7 +495,7 @@ export default function RealtimeController() {
   return (
     <div class="flex flex-col gap-4 h-full">
       {/* 上半部分：日志显示区域 */}
-      <div class="flex-1 flex flex-col p-4 overflow-y-auto">
+      <div class="flex-1 flex flex-col p-4 overflow-y-auto gap-4">
         <div class="flex items-center justify-between ">
           <h2 class="text-lg font-semibold text-main-text-color">实时模拟控制器</h2>
           <div class="flex items-center gap-3 text-sm text-main-text-color">

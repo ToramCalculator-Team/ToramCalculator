@@ -17,6 +17,18 @@ import { MemberRegistry } from "./MemberRegistry";
 
 // ============================== 类型定义 ==============================
 
+
+/**
+ * 消息路由统计接口 - 对应MessageRouter.getStats()的返回类型
+ */
+export interface MessageRouterStats {
+  totalMessagesProcessed: number;
+  successfulMessages: number;
+  failedMessages: number;
+  lastProcessedTimestamp: number;
+  successRate: string;
+}
+
 /**
  * 意图消息接口
  * 外部控制器发送的意图指令
@@ -198,7 +210,7 @@ export class MessageRouter {
    * 
    * @returns 统计信息
    */
-  getStats() {
+  getStats(): MessageRouterStats {
     return {
       ...this.stats,
       successRate: this.stats.totalMessagesProcessed > 0 

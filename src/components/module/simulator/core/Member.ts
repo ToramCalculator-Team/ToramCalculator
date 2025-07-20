@@ -9,15 +9,34 @@
  * 5. 与GameEngine集成的事件系统
  */
 
-import { setup, createActor, assign, fromPromise, fromCallback } from "xstate";
+import { setup, createActor, assign, fromPromise, fromCallback, type ActorLogic, Actor, Snapshot } from "xstate";
 import type { MemberWithRelations } from "~/repositories/member";
-import type { PlayerWithRelations } from "~/repositories/player";
+import type { CharacterWithRelations } from "~/repositories/character";
 import type { MercenaryWithRelations } from "~/repositories/mercenary";
 import type { MobWithRelations } from "~/repositories/mob";
 import { MEMBER_TYPE, type MemberType } from "~/../db/enums";
 
-
 // ============================== 类型定义 ==============================
+
+/**
+ * 成员数据接口 - 对应Member.serialize()的返回类型
+ */
+export interface MemberSerializeData {
+  id: string;
+  name: string;
+  type: string;
+  isAlive: boolean;
+  isActive: boolean;
+  currentHp: number;
+  maxHp: number;
+  currentMp: number;
+  maxMp: number;
+  position: { x: number; y: number };
+  state: string;
+  targetId?: string;
+  teamId: string;
+  campId?: string;
+}
 
 /**
  * 属性值类型枚举
@@ -127,7 +146,7 @@ export interface MemberContext {
   /** 成员基础数据（来自数据库） */
   memberData: MemberWithRelations;
   /** 成员基础属性 */
-  stats:  Map<Number, AttrData>;
+  stats: Map<Number, AttrData>;
   /** 是否存活 */
   isAlive: boolean;
   /** 是否可行动 */
@@ -140,6 +159,8 @@ export interface MemberContext {
   lastUpdateTimestamp: number;
   /** 额外数据 */
   extraData: Record<string, any>;
+  /** 位置坐标 */
+  position: { x: number; y: number };
 }
 
 /**
@@ -161,16 +182,28 @@ export interface MemberEvent {
  * 成员事件类型枚举
  */
 export type MemberEventType =
-  | "spawn" // 生成事件
-  | "death" // 死亡事件
-  | "damage" // 受到伤害
-  | "heal" // 治疗事件
-  | "skill_start" // 技能开始
-  | "skill_end" // 技能结束
-  | "move" // 移动事件
-  | "status_effect" // 状态效果
-  | "update" // 更新事件
-  | "custom"; // 自定义事件
+  | { type: "spawn" } // 生成事件
+  | { type: "death" } // 死亡事件
+  | { type: "damage"; damage: number; damageType: string; sourceId?: string } // 受到伤害
+  | { type: "heal"; heal: number; sourceId?: string } // 治疗事件
+  | { type: "skill_start"; skillId: string; targetId?: string } // 技能开始
+  | { type: "skill_end" } // 技能结束
+  | { type: "move"; position: { x: number; y: number } } // 移动事件
+  | { type: "status_effect"; effect: string; duration: number } // 状态效果
+  | { type: "update" } // 更新事件
+  | { type: "custom"; data: Record<string, any> }; // 自定义事件
+
+/**
+ * 成员状态机类型
+ * 基于 XState Actor 类型，包含所有必需的方法和属性
+ */
+export type MemberStateMachine = Actor<MemberActorLogic>;
+
+/**
+ * 成员状态机逻辑类型
+ * 符合 XState ActorLogic 接口要求
+ */
+export type MemberActorLogic = ActorLogic<Snapshot<MemberContext>, MemberEventType>;
 
 // ============================== 类型守卫函数 ==============================
 
@@ -212,36 +245,36 @@ export function isPartnerMember(
 
 // ============================== 成员基类 ==============================
 
-  /**
-   * 成员基类
-   * 提供基于XState的状态机管理和事件队列处理
-   */
-  export abstract class Member {
-    // ==================== 核心属性 ====================
+/**
+ * 成员基类
+ * 提供基于XState的状态机管理和事件队列处理
+ */
+export abstract class Member {
+  // ==================== 核心属性 ====================
 
-    /** 成员唯一标识符 */
-    protected readonly id: string;
+  /** 成员唯一标识符 */
+  protected readonly id: string;
 
-    /** 成员类型 */
-    protected readonly type: MemberType;
+  /** 成员类型 */
+  protected readonly type: MemberType;
 
-    /** 成员目标 */
-    protected target: Member | null = null;
+  /** 成员目标 */
+  protected target: Member | null = null;
 
-    /** XState状态机实例 */
-    protected actor: any;
+  /** XState状态机实例 */
+  protected actor: MemberStateMachine;
 
-    /** 事件队列 */
-    protected eventQueue: MemberEvent[] = [];
+  /** 事件队列 */
+  protected eventQueue: MemberEvent[] = [];
 
-    /** 最后更新时间戳 */
-    protected lastUpdateTimestamp: number = 0;
+  /** 最后更新时间戳 */
+  protected lastUpdateTimestamp: number = 0;
 
-    /** 阵营ID */
-    protected campId: string | undefined;
+  /** 阵营ID */
+  protected campId: string | undefined;
 
-    /** 队伍ID */
-    protected teamId: string;
+  /** 队伍ID */
+  protected teamId: string;
 
   // ==================== 静态参数统计方法 ====================
 
@@ -326,7 +359,7 @@ export function isPartnerMember(
     this.teamId = memberData.teamId;
 
     // 创建状态机实例
-    this.actor = createActor(this.createStateMachine(initialState));
+    this.actor = createActor(this.createActorLogic(initialState));
 
     // 启动状态机
     this.actor.start();
@@ -345,17 +378,85 @@ export function isPartnerMember(
   protected abstract handleSpecificEvent(event: MemberEvent): void;
 
   /**
-   * 创建状态机
-   * 子类必须实现此方法来创建特定类型的状态机
+   * 创建状态机逻辑
+   * 子类必须实现此方法来创建特定的状态机逻辑
    *
-   * @param initialState 初始状态
-   * @returns 状态机配置
+   * @param initialState 初始状态配置
+   * @returns 状态机逻辑
    */
-  protected abstract createStateMachine(initialState: {
+  protected abstract createActorLogic(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): any;
+  }): MemberActorLogic;
+
+  /**
+   * 将属性Map转换为基础属性
+   * 通用实现，通过AttrData的name属性进行映射
+   * @param statsMap 属性Map
+   * @returns MemberBaseStats对象
+   */
+  protected convertMapToStats(statsMap: Map<Number, AttrData>): MemberBaseStats {
+    // 获取当前状态机上下文中的位置信息
+    const currentState = this.getCurrentState();
+    const position = currentState?.context?.position || { x: 0, y: 0 };
+
+    // 初始化基础属性对象
+    const baseStats: MemberBaseStats = {
+      maxHp: 1000,
+      currentHp: 1000,
+      maxMp: 100,
+      currentMp: 100,
+      physicalAtk: 100,
+      magicalAtk: 100,
+      physicalDef: 50,
+      magicalDef: 50,
+      aspd: 1.0,
+      mspd: 100,
+      position,
+    };
+
+    // 遍历属性Map，根据name属性进行映射
+    for (const [_, attrData] of statsMap) {
+      const value = Member.dynamicTotalValue(attrData);
+      const name = attrData.name.toLowerCase();
+
+      // 根据name进行简单映射
+      if (name.includes('max_hp') || name.includes('maxhp')) {
+        baseStats.maxHp = value;
+      } else if (name.includes('hp') && !name.includes('max')) {
+        baseStats.currentHp = value;
+      } else if (name.includes('max_mp') || name.includes('maxmp')) {
+        baseStats.maxMp = value;
+      } else if (name.includes('mp') && !name.includes('max')) {
+        baseStats.currentMp = value;
+      } else if (name.includes('physical_atk') || name.includes('patk')) {
+        baseStats.physicalAtk = value;
+      } else if (name.includes('magical_atk') || name.includes('matk')) {
+        baseStats.magicalAtk = value;
+      } else if (name.includes('physical_def') || name.includes('pdef')) {
+        baseStats.physicalDef = value;
+      } else if (name.includes('magical_def') || name.includes('mdef')) {
+        baseStats.magicalDef = value;
+      } else if (name.includes('aspd')) {
+        baseStats.aspd = value;
+      } else if (name.includes('mspd')) {
+        baseStats.mspd = value;
+      }
+    }
+
+    // 确保当前HP不超过最大HP
+    if (baseStats.currentHp > baseStats.maxHp) {
+      baseStats.currentHp = baseStats.maxHp;
+    }
+
+    // 确保当前MP不超过最大MP
+    if (baseStats.currentMp > baseStats.maxMp) {
+      baseStats.currentMp = baseStats.maxMp;
+    }
+
+    return baseStats;
+  }
 
   // ==================== 公共接口 ====================
 
@@ -383,29 +484,131 @@ export function isPartnerMember(
   /**
    * 获取当前状态
    */
-  getCurrentState(): any {
-    return this.actor.getSnapshot();
+  getCurrentState(): { value: string; context: MemberContext } {
+    try {
+      if (!this.actor) {
+        return { value: 'unknown', context: this.getDefaultContext() };
+      }
+      const snapshot = this.actor.getSnapshot();
+      return snapshot || { value: 'unknown', context: this.getDefaultContext() };
+    } catch (error) {
+      console.error(`Member: ${this.getName()} 获取当前状态时发生错误:`, error);
+      return { value: 'error', context: this.getDefaultContext() };
+    }
+  }
+
+  /**
+   * 获取默认上下文
+   */
+  private getDefaultContext(): MemberContext {
+    return {
+      memberData: this.memberData,
+      stats: new Map(),
+      isAlive: true,
+      isActive: true,
+      statusEffects: [],
+      eventQueue: [],
+      lastUpdateTimestamp: 0,
+      extraData: {},
+      position: { x: 0, y: 0 },
+    };
   }
 
   /**
    * 获取成员属性
+   * 添加安全检查，确保不会返回undefined
    */
   getStats(): MemberBaseStats {
-    return this.actor.getSnapshot().context.stats;
+    try {
+      // 检查actor是否存在
+      if (!this.actor) {
+        console.warn(`Member: ${this.getName()} actor未初始化`);
+        return this.getDefaultStats();
+      }
+
+      // 获取快照
+      const snapshot = this.actor.getSnapshot();
+      if (!snapshot) {
+        console.warn(`Member: ${this.getName()} 无法获取状态机快照`);
+        return this.getDefaultStats();
+      }
+
+      // 检查context是否存在
+      if (!snapshot.context) {
+        console.warn(`Member: ${this.getName()} 状态机上下文未初始化`);
+        return this.getDefaultStats();
+      }
+
+      // 检查stats是否存在
+      if (!snapshot.context.stats) {
+        console.warn(`Member: ${this.getName()} 属性未初始化`);
+        return this.getDefaultStats();
+      }
+
+      // 如果stats是Map类型，需要转换为MemberBaseStats
+      if (snapshot.context.stats instanceof Map) {
+        return this.convertMapToStats(snapshot.context.stats);
+      }
+
+      // 如果已经是MemberBaseStats类型，直接返回
+      if (typeof snapshot.context.stats === 'object' && snapshot.context.stats !== null) {
+        return snapshot.context.stats as MemberBaseStats;
+      }
+
+      console.warn(`Member: ${this.getName()} 属性格式异常`);
+      return this.getDefaultStats();
+    } catch (error) {
+      console.error(`Member: ${this.getName()} 获取属性时发生错误:`, error);
+      return this.getDefaultStats();
+    }
+  }
+
+  /**
+   * 获取默认属性值
+   * 当无法获取实际属性时提供默认值
+   */
+  private getDefaultStats(): MemberBaseStats {
+    return {
+      maxHp: 1000,
+      currentHp: 1000,
+      maxMp: 100,
+      currentMp: 100,
+      physicalAtk: 100,
+      magicalAtk: 100,
+      physicalDef: 50,
+      magicalDef: 50,
+      aspd: 1.0,
+      mspd: 100,
+      position: { x: 0, y: 0 }
+    };
   }
 
   /**
    * 检查是否存活
    */
   isAlive(): boolean {
-    return this.actor.getSnapshot().context.isAlive;
+    try {
+      if (!this.actor) return true;
+      const snapshot = this.actor.getSnapshot();
+      return snapshot?.context?.isAlive ?? true;
+    } catch (error) {
+      console.error(`Member: ${this.getName()} 检查存活状态时发生错误:`, error);
+      return true;
+    }
   }
 
   /**
    * 检查是否可行动
    */
   isActive(): boolean {
-    return this.actor.getSnapshot().context.isActive;
+    try {
+      if (!this.actor) return true;
+      const snapshot = this.actor.getSnapshot();
+      return snapshot?.context?.isActive ?? true;
+    } catch (error) {
+      console.error(`Member: ${this.getName()} 检查活动状态时发生错误:`, error);
+      return true;
+    }
   }
 
   /**
@@ -447,7 +650,7 @@ export function isPartnerMember(
     this.processEventQueue(currentTimestamp);
 
     // 发送更新事件到状态机
-    this.actor.send({ type: "update", timestamp: currentTimestamp });
+    this.actor.send({ type: "update" });
 
     // 调用子类特定的更新逻辑
     this.onUpdate(currentTimestamp);
@@ -529,8 +732,11 @@ export function isPartnerMember(
    * @param event 要处理的事件
    */
   protected processEvent(event: MemberEvent): void {
-    // 发送事件到状态机
-    this.actor.send(event);
+    // 发送事件到状态机，转换为 XState 事件格式
+    this.actor.send({
+      type: event.type,
+      ...event.data
+    });
 
     // 调用子类特定的处理逻辑
     this.handleSpecificEvent(event);
@@ -571,19 +777,16 @@ export function isPartnerMember(
   // ==================== 引擎标准接口 ====================
 
   /**
-   * 获取状态机引用
-   * 供引擎和MessageRouter使用
-   * 
-   * @returns 状态机实例
+   * 获取状态机实例
    */
-  getFSM(): any {
+  getFSM(): MemberStateMachine {
     return this.actor;
   }
 
   /**
    * 检查是否可以接受输入
    * 供MessageRouter验证消息是否可以被处理
-   * 
+   *
    * @returns 是否可以接受输入
    */
   canAcceptInput(): boolean {
@@ -594,7 +797,7 @@ export function isPartnerMember(
   /**
    * 处理技能开始事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onSkillStart(data: any): void {
@@ -602,7 +805,7 @@ export function isPartnerMember(
       id: `skill_start_${Date.now()}_${Math.random()}`,
       type: "skill_start",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -610,7 +813,7 @@ export function isPartnerMember(
   /**
    * 处理技能释放事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onSkillCast(data: any): void {
@@ -618,7 +821,7 @@ export function isPartnerMember(
       id: `skill_cast_${Date.now()}_${Math.random()}`,
       type: "skill_cast",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -626,7 +829,7 @@ export function isPartnerMember(
   /**
    * 处理技能效果事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onSkillEffect(data: any): void {
@@ -634,7 +837,7 @@ export function isPartnerMember(
       id: `skill_effect_${Date.now()}_${Math.random()}`,
       type: "skill_effect",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -642,7 +845,7 @@ export function isPartnerMember(
   /**
    * 处理技能结束事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onSkillEnd(data: any): void {
@@ -650,7 +853,7 @@ export function isPartnerMember(
       id: `skill_end_${Date.now()}_${Math.random()}`,
       type: "skill_end",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -658,7 +861,7 @@ export function isPartnerMember(
   /**
    * 处理移动事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onMove(data: any): void {
@@ -666,7 +869,7 @@ export function isPartnerMember(
       id: `move_${Date.now()}_${Math.random()}`,
       type: "move",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -674,7 +877,7 @@ export function isPartnerMember(
   /**
    * 处理伤害事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onDamage(data: any): void {
@@ -682,7 +885,7 @@ export function isPartnerMember(
       id: `damage_${Date.now()}_${Math.random()}`,
       type: "damage",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -690,7 +893,7 @@ export function isPartnerMember(
   /**
    * 处理治疗事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onHeal(data: any): void {
@@ -698,7 +901,7 @@ export function isPartnerMember(
       id: `heal_${Date.now()}_${Math.random()}`,
       type: "heal",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -706,7 +909,7 @@ export function isPartnerMember(
   /**
    * 处理Buff添加事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onBuffAdd(data: any): void {
@@ -714,7 +917,7 @@ export function isPartnerMember(
       id: `buff_add_${Date.now()}_${Math.random()}`,
       type: "buff_add",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -722,7 +925,7 @@ export function isPartnerMember(
   /**
    * 处理Buff移除事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onBuffRemove(data: any): void {
@@ -730,7 +933,7 @@ export function isPartnerMember(
       id: `buff_remove_${Date.now()}_${Math.random()}`,
       type: "buff_remove",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -738,7 +941,7 @@ export function isPartnerMember(
   /**
    * 处理死亡事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onDeath(data: any): void {
@@ -746,7 +949,7 @@ export function isPartnerMember(
       id: `death_${Date.now()}_${Math.random()}`,
       type: "death",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -754,7 +957,7 @@ export function isPartnerMember(
   /**
    * 处理自定义事件
    * 供FrameLoop调用
-   * 
+   *
    * @param data 事件数据
    */
   onCustomEvent(data: any): void {
@@ -762,7 +965,7 @@ export function isPartnerMember(
       id: `custom_${Date.now()}_${Math.random()}`,
       type: "custom",
       timestamp: this.lastUpdateTimestamp,
-      data
+      data,
     };
     this.addEvent(event);
   }
@@ -770,7 +973,7 @@ export function isPartnerMember(
   /**
    * 设置目标
    * 供引擎和控制器使用
-   * 
+   *
    * @param target 目标成员
    */
   setTarget(target: Member | null): void {
@@ -784,7 +987,7 @@ export function isPartnerMember(
 
   /**
    * 获取目标
-   * 
+   *
    * @returns 当前目标
    */
   getTarget(): Member | null {
@@ -794,7 +997,7 @@ export function isPartnerMember(
   /**
    * 设置阵营ID
    * 供GameEngine调用
-   * 
+   *
    * @param campId 阵营ID
    */
   setCampId(campId: string): void {
@@ -803,7 +1006,7 @@ export function isPartnerMember(
 
   /**
    * 检查是否有目标
-   * 
+   *
    * @returns 是否有目标
    */
   hasTarget(): boolean {
@@ -812,7 +1015,7 @@ export function isPartnerMember(
 
   /**
    * 获取目标距离
-   * 
+   *
    * @returns 与目标的距离，如果没有目标则返回Infinity
    */
   getTargetDistance(): number {
@@ -822,16 +1025,16 @@ export function isPartnerMember(
 
     const myPos = this.getStats().position;
     const targetPos = this.target.getStats().position;
-    
+
     const dx = myPos.x - targetPos.x;
     const dy = myPos.y - targetPos.y;
-    
+
     return Math.sqrt(dx * dx + dy * dy);
   }
 
   /**
    * 检查是否在目标范围内
-   * 
+   *
    * @param range 范围
    * @returns 是否在范围内
    */
@@ -841,7 +1044,7 @@ export function isPartnerMember(
 
   /**
    * 获取朝向目标的方向
-   * 
+   *
    * @returns 方向角度（弧度），如果没有目标则返回0
    */
   getTargetDirection(): number {
@@ -851,10 +1054,10 @@ export function isPartnerMember(
 
     const myPos = this.getStats().position;
     const targetPos = this.target.getStats().position;
-    
+
     const dx = targetPos.x - myPos.x;
     const dy = targetPos.y - myPos.y;
-    
+
     return Math.atan2(dy, dx);
   }
 
@@ -873,7 +1076,7 @@ export function isPartnerMember(
   /**
    * 获取成员状态摘要
    * 供引擎快照使用
-   * 
+   *
    * @returns 状态摘要
    */
   getStateSummary(): {
@@ -892,7 +1095,7 @@ export function isPartnerMember(
   } {
     const stats = this.getStats();
     const state = this.getCurrentState();
-    
+
     return {
       id: this.getId(),
       name: this.getName(),
@@ -912,7 +1115,7 @@ export function isPartnerMember(
   /**
    * 获取成员详细信息
    * 供调试和分析使用
-   * 
+   *
    * @returns 详细信息
    */
   getDetailedInfo(): {
@@ -942,23 +1145,8 @@ export function isPartnerMember(
    * 用于Worker与主线程之间的数据传输
    * 只包含可序列化的数据，不包含方法、状态机实例等
    */
-  serialize(): {
-    id: string;
-    name: string;
-    type: string;
-    isAlive: boolean;
-    isActive: boolean;
-    currentHp: number;
-    maxHp: number;
-    currentMp: number;
-    maxMp: number;
-    position: { x: number; y: number };
-    state: string;
-    targetId?: string;
-    teamId: string;
-    campId?: string;
-  } {
-    return {
+  serialize(): MemberSerializeData {
+    const serializeData: MemberSerializeData = {
       id: this.getId(),
       name: this.getName(),
       type: this.getType(),
@@ -969,11 +1157,12 @@ export function isPartnerMember(
       currentMp: this.getStats().currentMp,
       maxMp: this.getStats().maxMp,
       position: this.getStats().position,
-      state: this.getCurrentState().value || 'unknown',
+      state: this.getCurrentState().value || "unknown",
       targetId: this.target?.getId(),
       teamId: this.teamId,
       campId: this.campId,
     };
+    return serializeData;
   }
 }
 

@@ -18,6 +18,7 @@ import {
   type MemberBaseStats,
   type MemberEvent,
   type MemberContext,
+  type MemberActorLogic,
 } from "./Member";
 import { setup, assign } from "xstate";
 import type { MemberWithRelations } from "~/repositories/member";
@@ -576,7 +577,7 @@ export class Player extends Member {
     this.initializePlayerAttrMap(memberData);
 
     // 重新初始化状态机（此时playerAttrMap已经准备好）
-    this.actor = createActor(this.createStateMachine(initialState));
+    this.actor = createActor(this.createActorLogic(initialState));
     this.actor.start();
 
     console.log(`🎮 已创建玩家: ${memberData.name}`);
@@ -738,11 +739,11 @@ export class Player extends Member {
    * 创建Player专用状态机
    * 基于PlayerMachine.ts设计，实现Player特有的状态管理
    */
-  protected createStateMachine(initialState: {
+  protected createActorLogic(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }) {
+  }): MemberActorLogic {
     const machineId = `Player_${this.id}`;
     
     return setup({
@@ -781,6 +782,7 @@ export class Player extends Member {
           eventQueue: [],
           lastUpdateTimestamp: 0,
           extraData: {},
+          position: ({ context }) => context.position,
         }),
 
         // 技能相关事件
@@ -888,6 +890,7 @@ export class Player extends Member {
         eventQueue: [],
         lastUpdateTimestamp: 0,
         extraData: {},
+        position: initialState.position || { x: 0, y: 0 },
       },
       initial: "alive",
       entry: {
@@ -1290,6 +1293,54 @@ export class Player extends Member {
   private updatePlayerState(currentTimestamp: number): void {
     // 玩家特有状态更新逻辑
     // 例如：自动回复、状态效果处理等
+  }
+
+  /**
+   * 将属性Map转换为基础属性
+   * Player的简化实现，直接通过PlayerAttrEnum数值映射
+   */
+  protected convertMapToStats(statsMap: Map<Number, AttrData>): MemberBaseStats {
+    const currentState = this.getCurrentState();
+    const position = currentState?.context?.position || { x: 0, y: 0 };
+
+    const baseStats: MemberBaseStats = {
+      maxHp: 1000,
+      currentHp: 1000,
+      maxMp: 100,
+      currentMp: 100,
+      physicalAtk: 100,
+      magicalAtk: 100,
+      physicalDef: 50,
+      magicalDef: 50,
+      aspd: 1.0,
+      mspd: 100,
+      position,
+    };
+
+    // 直接通过PlayerAttrEnum数值映射
+    const maxHp = statsMap.get(PlayerAttrEnum.MAX_HP); // MAX_HP
+    const currentHp = statsMap.get(PlayerAttrEnum.HP); // HP
+    const maxMp = statsMap.get(PlayerAttrEnum.MAX_MP); // MAX_MP
+    const currentMp = statsMap.get(PlayerAttrEnum.MP); // MP
+    const physicalAtk = statsMap.get(PlayerAttrEnum.PHYSICAL_ATK); // PHYSICAL_ATK
+    const magicalAtk = statsMap.get(PlayerAttrEnum.MAGICAL_ATK); // MAGICAL_ATK
+    const physicalDef = statsMap.get(PlayerAttrEnum.PHYSICAL_DEF); // PHYSICAL_DEF
+    const magicalDef = statsMap.get(PlayerAttrEnum.MAGICAL_DEF); // MAGICAL_DEF
+    const aspd = statsMap.get(PlayerAttrEnum.ASPD); // ASPD
+    const mspd = statsMap.get(PlayerAttrEnum.MSPD); // MSPD
+
+    if (maxHp) baseStats.maxHp = Member.dynamicTotalValue(maxHp);
+    if (currentHp) baseStats.currentHp = Member.dynamicTotalValue(currentHp);
+    if (maxMp) baseStats.maxMp = Member.dynamicTotalValue(maxMp);
+    if (currentMp) baseStats.currentMp = Member.dynamicTotalValue(currentMp);
+    if (physicalAtk) baseStats.physicalAtk = Member.dynamicTotalValue(physicalAtk);
+    if (magicalAtk) baseStats.magicalAtk = Member.dynamicTotalValue(magicalAtk);
+    if (physicalDef) baseStats.physicalDef = Member.dynamicTotalValue(physicalDef);
+    if (magicalDef) baseStats.magicalDef = Member.dynamicTotalValue(magicalDef);
+    if (aspd) baseStats.aspd = Member.dynamicTotalValue(aspd);
+    if (mspd) baseStats.mspd = Member.dynamicTotalValue(mspd);
+
+    return baseStats;
   }
 }
 
