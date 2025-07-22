@@ -1,5 +1,5 @@
 import { APIEvent } from "@solidjs/start/server";
-import { SimulatorExample } from "~/components/module/simulator/core/SimulatorExample";
+import { SimulatorExample } from "~/components/features/simulator/core/SimulatorExample";
 
 // 全局模拟器实例（在生产环境中应该使用更好的状态管理）
 let globalSimulator: SimulatorExample | null = null;

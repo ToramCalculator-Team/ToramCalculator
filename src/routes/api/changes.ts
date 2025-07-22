@@ -1,9 +1,9 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getCookie } from "vinxi/http";
 import { jwtVerify } from "jose";
-import { getDB } from "~/repositories/database";
-import { findUserById } from "~/repositories/user";
-import { getPrimaryKeys } from "~/repositories/untils";
+import { getDB } from "../../../db/repositories/database";
+import { findUserById } from "../../../db/repositories/user";
+import { getPrimaryKeys } from "../../../db/repositories/untils";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");

@@ -2,9 +2,9 @@ import { SignJWT } from "jose";
 import type { APIEvent } from "@solidjs/start/server";
 import { setCookie } from "vinxi/http";
 import { createId } from "@paralleldrive/cuid2";
-import { createUser, findUserByEmail } from "~/repositories/user";
+import { createUser, findUserByEmail } from "../../../../db/repositories/user";
 import bcrypt from "bcrypt";
-import { getDB } from "~/repositories/database";
+import { getDB } from "../../../../db/repositories/database";
 
 export async function POST(event: APIEvent) {
   try {

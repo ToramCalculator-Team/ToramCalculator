@@ -1,4 +1,4 @@
-import { DB } from "./kysely/kyesely";
+import { DB } from "./generated/kysely/kyesely";
 
 export const defaultData: DB = {
   _armorTocrystal: {
@@ -219,6 +219,7 @@ export const defaultData: DB = {
     mobDifficultyFlag: "Normal",
     actions: undefined,
     teamId: "",
+    type: "Mob"
   },
   mercenary: {
     type: "Tank",
@@ -288,6 +289,7 @@ export const defaultData: DB = {
     refinement: 0,
     modifiers: [],
     masterId: "",
+    baseDef: 0
   },
   player_option: {
     id: "",

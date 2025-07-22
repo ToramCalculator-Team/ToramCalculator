@@ -1,26 +1,26 @@
 import { Show, type ParentProps, createEffect, onMount, createSignal, on } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
-import { MediaProvider } from "~/contexts/Media-component";
-import { RandomBallBackground } from "~/components/module/randomBg";
-import { Setting } from "~/components/module/setting";
-import { BabylonBg } from "~/components/module/babylonBg";
+import { MediaProvider } from "~/lib/contexts/Media-component";
+import { RandomBallBackground } from "~/components/ui/templete/randomBg";
+import { Setting } from "~/components/features/setting";
+import { BabylonBg } from "~/components/ui/templete/babylonBg";
 import hotkeys from "hotkeys-js";
-import { findMobs } from "~/repositories/mob";
-import { findSkills } from "~/repositories/skill";
-import { findCrystals } from "~/repositories/crystal";
-import { findItems } from "~/repositories/item";
-import { findActivities } from "~/repositories/activity";
-import { findAddresses } from "~/repositories/address";
-import { findArmors } from "~/repositories/armor";
-import { findConsumables } from "~/repositories/consumable";
-import { findNpcs } from "~/repositories/npc";
-import { findZones } from "~/repositories/zone";
-import { findMaterials } from "~/repositories/material";
-import { findTasks } from "~/repositories/task";
-import { findWeapons } from "~/repositories/weapon";
-import { findOptions } from "~/repositories/optEquip";
-import { findSpecials } from "~/repositories/speEquip";
+import { findMobs } from "../../db/repositories/mob";
+import { findSkills } from "../../db/repositories/skill";
+import { findCrystals } from "../../db/repositories/crystal";
+import { findItems } from "../../db/repositories/item";
+import { findActivities } from "../../db/repositories/activity";
+import { findAddresses } from "../../db/repositories/address";
+import { findArmors } from "../../db/repositories/armor";
+import { findConsumables } from "../../db/repositories/consumable";
+import { findNpcs } from "../../db/repositories/npc";
+import { findZones } from "../../db/repositories/zone";
+import { findMaterials } from "../../db/repositories/material";
+import { findTasks } from "../../db/repositories/task";
+import { findWeapons } from "../../db/repositories/weapon";
+import { findOptions } from "../../db/repositories/optEquip";
+import { findSpecials } from "../../db/repositories/speEquip";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
