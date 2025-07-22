@@ -119,6 +119,7 @@ export default function Repl() {
             onQueryChangeHandler={(newQuery) => {
               setQueryData(newQuery);
               console.log(JSON.stringify(newQuery, null, 2));
+              console.log(JSON.stringify(queryData(), null, 2));
             }}
           />
           <pre>{JSON.stringify(queryData(), null, 2)}</pre>
