@@ -204,7 +204,7 @@ export const PET_TYPE = [
   "PhysicalAttack",
   "MagicAttack",
   "PhysicalDefense",
-  "MagicDefensem",
+  "MagicDefense",
   "Avoidance",
   "Hit",
   "SkillsEnhancement",

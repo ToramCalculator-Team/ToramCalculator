@@ -14,8 +14,8 @@ import {
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import * as _ from "lodash-es";
-import { useMachine } from '@xstate/solid';
-import { indexPageMachine } from '../../machines/indexPageMachine';
+import { useMachine } from "@xstate/solid";
+import { indexPageMachine } from "../../machines/indexPageMachine";
 
 import { getDictionary } from "~/locales/i18n";
 import * as Icon from "~/components/icon";
@@ -66,7 +66,7 @@ export default function IndexPage() {
   >([
     {
       onClick: () => {
-        navigate("repl");
+        navigate("queryBuilder");
       },
       icon: <Icon.Line.Basketball />,
     },
@@ -174,31 +174,31 @@ export default function IndexPage() {
 
   // 事件分发函数
   const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
-    send({ type: 'SEARCH_INPUT_CHANGE', value: e.target.value });
+    send({ type: "SEARCH_INPUT_CHANGE", value: e.target.value });
   };
-  
+
   const handleSearch = () => {
-    send({ type: 'SEARCH_SUBMIT' });
+    send({ type: "SEARCH_SUBMIT" });
   };
-  
+
   const handleClearSearch = () => {
-    send({ type: 'SEARCH_CLEAR' });
+    send({ type: "SEARCH_CLEAR" });
   };
-  
+
   const handleToggleSearchResults = () => {
-    send({ type: 'TOGGLE_SEARCH_RESULTS' });
+    send({ type: "TOGGLE_SEARCH_RESULTS" });
   };
-  
+
   const handleOpenLoginDialog = () => {
-    send({ type: 'OPEN_LOGIN_DIALOG' });
+    send({ type: "OPEN_LOGIN_DIALOG" });
   };
-  
+
   const handleCloseLoginDialog = () => {
-    send({ type: 'CLOSE_LOGIN_DIALOG' });
+    send({ type: "CLOSE_LOGIN_DIALOG" });
   };
-  
+
   const handleToggleAnimation = () => {
-    send({ type: 'TOGGLE_ANIMATION' });
+    send({ type: "TOGGLE_ANIMATION" });
   };
 
   // 问候语计算方法
@@ -274,7 +274,7 @@ export default function IndexPage() {
     const handlePopState = (): void => {
       // 如果当前在搜索结果状态，后退时关闭搜索
       if (context().searchResultOpened) {
-        send({ type: 'TOGGLE_SEARCH_RESULTS' });
+        send({ type: "TOGGLE_SEARCH_RESULTS" });
       }
     };
 
@@ -366,7 +366,9 @@ export default function IndexPage() {
           >
             <div
               class={`BackButton m-0 hidden w-full flex-none self-start landscape:m-0 landscape:flex landscape:w-60 ${
-                context().searchResultOpened ? `pointer-events-auto mt-3 opacity-100` : `pointer-events-none -mt-12 opacity-0`
+                context().searchResultOpened
+                  ? `pointer-events-auto mt-3 opacity-100`
+                  : `pointer-events-none -mt-12 opacity-0`
               }`}
             >
               <Button
@@ -486,27 +488,27 @@ export default function IndexPage() {
                               return (
                                 <Show when={groupResultValue.length > 0}>
                                   <div class={`ResultGroup flex flex-col gap-[2px]`}>
-                                                                           <Motion.button
-                                                                                  onClick={() => {
-                                           const newResultListState = [...context().resultListState];
-                                           newResultListState[groupIndex()] = !newResultListState[groupIndex()];
-                                           send({ type: 'UPDATE_RESULT_LIST_STATE', resultListState: newResultListState });
-                                         }}
-                                       class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${context().resultListState[groupIndex()] ? "" : ""} rounded px-3 py-4`}
+                                    <Motion.button
+                                      onClick={() => {
+                                        const newResultListState = [...context().resultListState];
+                                        newResultListState[groupIndex()] = !newResultListState[groupIndex()];
+                                        send({ type: "UPDATE_RESULT_LIST_STATE", resultListState: newResultListState });
+                                      }}
+                                      class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${context().resultListState[groupIndex()] ? "" : ""} rounded px-3 py-4`}
                                       animate={{
                                         opacity: [0, 1],
                                         transform: ["translateY(30px)", "translateY(0)"],
                                       }}
-                                                                              transition={{
-                                          duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                          delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
-                                        }}
-                                      >
-                                        <Icon.Line.Basketball />
-                                        <span class="w-full text-left font-bold">
-                                          {dictionary().db[groupType].selfName} [{groupResultValue.length}]
-                                        </span>
-                                        {context().resultListState[groupIndex()] ? (
+                                      transition={{
+                                        duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                                        delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+                                      }}
+                                    >
+                                      <Icon.Line.Basketball />
+                                      <span class="w-full text-left font-bold">
+                                        {dictionary().db[groupType].selfName} [{groupResultValue.length}]
+                                      </span>
+                                      {context().resultListState[groupIndex()] ? (
                                         <Icon.Line.Left class="rotate-[360deg]" />
                                       ) : (
                                         <Icon.Line.Left class="rotate-[270deg]" />
@@ -524,11 +526,11 @@ export default function IndexPage() {
                                               }}
                                               transition={{
                                                 duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                                                                                  delay: store.settings.userInterface.isAnimationEnabled
-                                                    ? index() < 15
-                                                      ? groupIndex() * 0.3 + index() * 0.07
-                                                      : 0
-                                                    : 0,
+                                                delay: store.settings.userInterface.isAnimationEnabled
+                                                  ? index() < 15
+                                                    ? groupIndex() * 0.3 + index() * 0.07
+                                                    : 0
+                                                  : 0,
                                               }}
                                               onClick={async () => {
                                                 // 设置卡片类型和ID
@@ -618,7 +620,7 @@ export default function IndexPage() {
                       1: "1st",
                       2: "2nd",
                       3: "3rd",
-                                         }[1 + (index() % 3)];
+                    }[1 + (index() % 3)];
 
                     return (
                       <Presence exitBeforeEnter>
@@ -637,7 +639,7 @@ export default function IndexPage() {
                             }}
                             transition={{
                               duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                                                             delay: index() * 0.05,
+                              delay: index() * 0.05,
                             }}
                           >
                             <Button
@@ -805,7 +807,7 @@ export default function IndexPage() {
         </Presence>
       </Portal>
       <Filing />
-             <LoginDialog state={() => context().loginDialogIsOpen} setState={() => handleCloseLoginDialog()} />
+      <LoginDialog state={() => context().loginDialogIsOpen} setState={() => handleCloseLoginDialog()} />
     </MetaProvider>
   );
 }
