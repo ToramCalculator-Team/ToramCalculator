@@ -2,9 +2,9 @@ import { Show, type ParentProps, createEffect, onMount, createSignal, on } from 
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { MediaProvider } from "~/lib/contexts/Media-component";
-import { RandomBallBackground } from "~/components/ui/templete/randomBg";
+import { RandomBallBackground } from "~/components/effects/randomBg";
 import { Setting } from "~/components/features/setting";
-import { BabylonBg } from "~/components/ui/templete/babylonBg";
+import { BabylonBg } from "~/components/effects/babylonBg";
 import hotkeys from "hotkeys-js";
 import { findMobs } from "../../db/repositories/mob";
 import { findSkills } from "../../db/repositories/skill";

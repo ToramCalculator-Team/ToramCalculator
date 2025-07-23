@@ -7,7 +7,7 @@
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
-import { LoadingBar } from "~/components/ui/control/loadingBar";
+import { LoadingBar } from "~/components/controls/loadingBar";
 import { store } from "~/store";
 import { Material } from "@babylonjs/core/Materials/material";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";

@@ -15,8 +15,8 @@ import type { IntentMessage } from './core/MessageRouter';
 import type { SimulatorWithRelations } from '../../../../db/repositories/simulator';
 import { CharacterWithRelations, findCharacterById } from '../../../../db/repositories/character';
 import { findMobById } from '../../../../db/repositories/mob';
-import { Button } from '~/components/ui/control/button';
-import { Select } from '~/components/ui/control/select';
+import { Button } from '~/components/controls/button';
+import { Select } from '~/components/controls/select';
 import { MemberSerializeData } from './core/Member';
 
 // ============================== 类型定义 ==============================

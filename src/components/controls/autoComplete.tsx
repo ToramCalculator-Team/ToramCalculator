@@ -44,8 +44,8 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import * as Icon from "~/components/icon";
-import { ObjRender } from "../templete/objRender";
+import Icons from "~/components/icons/index";
+import { ObjRender } from "../dataDisplay/objRender";
 
 interface AutocompleteProps<T extends Record<string, unknown>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
@@ -175,7 +175,7 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
                       setDetailVisible(!detailVisible());
                     }}
                   >
-                    <Icon.Line.InfoCircle />
+                    <Icons.Outline.InfoCircle />
                   </div>
                   <Show when={detailVisible()}>
                     <div class="DetailInfo bg-primary-color absolute top-0 right-0 h-fit w-full rounded">

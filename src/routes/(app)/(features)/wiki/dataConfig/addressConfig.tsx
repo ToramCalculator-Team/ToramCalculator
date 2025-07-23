@@ -5,23 +5,23 @@ import { addressSchema, zoneSchema } from "../../../../../../db/generated/zod/in
 import { address, DB, zone } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "../../../../../../db/repositories/database";
-import { ObjRender } from "~/components/ui/templete/objRender";
-import { Input } from "~/components/ui/control/input";
-import { Autocomplete } from "~/components/ui/control/autoComplete";
+import { ObjRender } from "~/components/dataDisplay/objRender";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "../../../../../../db/defaultData";
-import { CardSection } from "~/components/layout/cardSection";
+import { CardSection } from "~/components/dataDisplay/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { Button } from "~/components/ui/control/button";
-import { Select } from "~/components/ui/control/select";
+import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "../../../../../../db/repositories/statistic";
 import { store } from "~/store";
-import * as Icon from "~/components/icon";
-import { VirtualTable } from "~/components/features/virtualTable";
+import Icons from "~/components/icons/index";
+import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { LoadingBar } from "~/components/ui/control/loadingBar";
+import { LoadingBar } from "~/components/controls/loadingBar";
 import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
@@ -441,9 +441,9 @@ const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => 
                               }}
                             >
                               {expandedAddresses().has(address.id) ? (
-                                <Icon.Line.Left class="rotate-90" />
+                                <Icons.Outline.Left class="rotate-90" />
                               ) : (
-                                <Icon.Line.Left class="rotate-270" />
+                                <Icons.Outline.Left class="rotate-270" />
                               )}
                             </Button>
                           )}

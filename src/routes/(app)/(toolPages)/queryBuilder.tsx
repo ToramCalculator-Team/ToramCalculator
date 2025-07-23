@@ -5,7 +5,7 @@ import { store } from "~/store";
 
 // 导入所有生成的字段规则
 import * as QueryBuilderRules from "../../../../db/generated/queryBuilderRules";
-import { Select } from "~/components/ui/control/select";
+import { Select } from "~/components/controls/select";
 import { uniqueId } from "lodash-es";
 
 export default function Repl() {

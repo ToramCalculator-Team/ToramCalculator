@@ -30,14 +30,14 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 
 import { setStore, store } from "~/store";
-import { Button } from "../ui/control/button";
+import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/lib/contexts/Media";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { getCommonPinningStyles } from "~/lib/utils/table";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Table as TanStackTable } from "@tanstack/solid-table";
-import { LoadingBar } from "../ui/control/loadingBar";
+import { LoadingBar } from "../controls/loadingBar";
 
 export function VirtualTable<T extends Record<string, unknown>>(props: {
   measure?: {

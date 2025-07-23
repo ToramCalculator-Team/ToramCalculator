@@ -18,9 +18,10 @@ import { useMachine } from "@xstate/solid";
 import { indexPageMachine } from "./indexPageMachine";
 
 import { getDictionary } from "~/locales/i18n";
-import * as Icon from "~/components/icon";
-import { Button } from "~/components/ui/control/button";
-import { Filing } from "~/components/ui/templete/filing";
+import Icons from "~/components/icons/index";
+import { Button } from "~/components/controls/button";
+import { Filing } from "~/components/features/filing";
+import { Card } from "~/components/containers/card";
 
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -29,12 +30,11 @@ import { dictionary } from "~/locales/type";
 import { DB } from "../../../../db/generated/kysely/kyesely";
 import { MediaContext } from "~/lib/contexts/Media";
 import { setStore, store } from "~/store";
-import { LoginDialog } from "~/components/ui/templete/loginDialog";
-import { LoadingBar } from "~/components/ui/control/loadingBar";
+import { LoginDialog } from "~/components/features/loginDialog";
+import { LoadingBar } from "~/components/controls/loadingBar";
 import { Portal } from "solid-js/web";
 import { DBDataConfig } from "../(features)/wiki/dataConfig/dataConfig";
 import { searchAllTables } from "~/routes/(app)/(index)/search";
-import { Decorate } from "~/components/icon";
 import { setWikiStore, wikiStore } from "../(features)/wiki/store";
 import { getCardDatas } from "~/lib/utils/cardDataCache";
 
@@ -68,22 +68,22 @@ export default function IndexPage() {
       onClick: () => {
         navigate("queryBuilder");
       },
-      icon: <Icon.Line.Basketball />,
+      icon: <Icons.Outline.Basketball />,
     },
     {
       onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
-      icon: <Icon.Line.Light />,
+      icon: <Icons.Outline.Light />,
     },
     {
       onClick: () => setStore("settingsDialogState", !store.settingsDialogState),
-      icon: <Icon.Line.Settings />,
+      icon: <Icons.Outline.Settings />,
     },
   ]);
 
   type CustomMenuConfig = {
     groupType: "wiki" | "appPages";
     title: keyof dictionary["db"] | keyof dictionary["ui"]["nav"];
-    icon: keyof typeof Icon.Filled;
+    icon: keyof typeof Icons.Filled;
   };
 
   // 自定义首页导航配置
@@ -344,7 +344,7 @@ export default function IndexPage() {
                   class={`LogoBox mb-2 cursor-pointer self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
                   onClick={handleOpenLoginDialog}
                 >
-                  <Icon.LogoText class="h-12 landscape:h-auto" />
+                  <Icons.Brand.LogoText class="h-12 landscape:h-auto" />
                 </div>
                 <h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
                   {getGreetings() + ",  " + userName()}
@@ -376,7 +376,7 @@ export default function IndexPage() {
                 onClick={handleClearSearch}
                 class="w-full outline-hidden focus-within:outline-hidden"
               >
-                <Icon.Line.Back />
+                <Icons.Outline.Back />
                 <span class="w-full text-left">{dictionary().ui.actions.back}</span>
               </Button>
             </div>
@@ -404,7 +404,7 @@ export default function IndexPage() {
                 onClick={handleSearch}
                 tabindex={1}
               >
-                <Icon.Line.Search />
+                <Icons.Outline.Search />
               </Button>
             </div>
             <div class="hidden w-60 flex-none landscape:flex"></div>
@@ -504,14 +504,14 @@ export default function IndexPage() {
                                         delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
                                       }}
                                     >
-                                      <Icon.Line.Basketball />
+                                      <Icons.Outline.Basketball />
                                       <span class="w-full text-left font-bold">
                                         {dictionary().db[groupType].selfName} [{groupResultValue.length}]
                                       </span>
                                       {context().resultListState[groupIndex()] ? (
-                                        <Icon.Line.Left class="rotate-[360deg]" />
+                                        <Icons.Outline.Left class="rotate-[360deg]" />
                                       ) : (
-                                        <Icon.Line.Left class="rotate-[270deg]" />
+                                        <Icons.Outline.Left class="rotate-[270deg]" />
                                       )}
                                     </Motion.button>
                                     <div class="Content flex flex-col gap-1">
@@ -615,7 +615,7 @@ export default function IndexPage() {
               >
                 <For each={customMenuConfig().top}>
                   {(menuItem, index) => {
-                    const IconComponent = Icon.Filled[menuItem.icon];
+                    const IconComponent = Icons.Filled[menuItem.icon];
                     const brandColor = {
                       1: "1st",
                       2: "2nd",
@@ -682,123 +682,25 @@ export default function IndexPage() {
               <Index each={cachedCardDatas()}>
                 {(cardData, index) => {
                   return (
-                    <Show when={cachedCardDatas()!.length - index < 5}>
-                      <Motion.div
-                        animate={{
-                          transform: [`rotate(0deg)`, `rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`],
-                          opacity: [0, 1],
+                    <Card
+                      display={cachedCardDatas()!.length - index < 5}
+                      title={
+                        cardData() && "name" in cardData()
+                          ? (cardData()["name"] as string)
+                          : dictionary().db[wikiStore.cardGroup[index]?.type as keyof DB].selfName
+                      }
+                      index={index}
+                      total={cachedCardDatas()!.length}
+                    >
+                      <Show when={wikiStore.cardGroup[index]?.type}>
+                        {(type) => {
+                          return DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
+                            dic: dictionary(),
+                            data: cardData(),
+                          });
                         }}
-                        exit={{
-                          transform: [`rotate(${(cachedCardDatas()!.length - index - 1) * 2}deg)`, `rotate(0deg)`],
-                          opacity: [1, 0],
-                        }}
-                        transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                        class="DialogBox drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          "z-index": `${index}`,
-                        }}
-                      >
-                        <Show when={wikiStore.cardGroup[index]?.type}>
-                          {(type) => {
-                            return (
-                              <>
-                                <div class="DialogTitle drop-shadow-dividing-color absolute -top-3 z-10 flex items-center drop-shadow-xl">
-                                  <svg
-                                    width="30"
-                                    height="48"
-                                    viewBox="0 0 30 48"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path
-                                      d="M13.8958 -6.07406e-07L-1.04907e-06 24L13.8958 48L29 48L29 -1.26763e-06L13.8958 -6.07406e-07Z"
-                                      fill="rgb(var(--primary))"
-                                    />
-                                    <path d="M19 6.99999L9 24L19 41L29 41L29 6.99999L19 6.99999Z" fill="currentColor" />
-                                    <path
-                                      d="M29.5 3.49999L29.5 44.5L16.2109 44.5L16.0664 44.249L4.56641 24.249L4.42285 24L4.56641 23.751L16.0664 3.75097L16.2109 3.49999L29.5 3.49999Z"
-                                      stroke="currentColor"
-                                      stroke-opacity="0.55"
-                                    />
-                                  </svg>
-
-                                  <div class="bg-primary-color z-10 -mx-[1px] py-[3px]">
-                                    <div class="border-boundary-color border-y py-[3px]">
-                                      <h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">
-                                        {cardData() && "name" in cardData()
-                                          ? (cardData()["name"] as string)
-                                          : dictionary().db[type()].selfName}
-                                      </h1>
-                                    </div>
-                                  </div>
-                                  <svg
-                                    width="30"
-                                    height="48"
-                                    viewBox="0 0 30 48"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path
-                                      d="M16.1042 -6.07406e-07L30 24L16.1042 48L0.999998 48L1 -1.26763e-06L16.1042 -6.07406e-07Z"
-                                      fill="rgb(var(--primary))"
-                                    />
-                                    <path
-                                      d="M0.500063 3.49999L0.500061 44.5L13.7891 44.5L13.9337 44.249L25.4337 24.249L25.5772 24L25.4337 23.751L13.9337 3.75097L13.7891 3.49999L0.500063 3.49999Z"
-                                      stroke="currentColor"
-                                      stroke-opacity="0.55"
-                                    />
-                                    <path
-                                      d="M11 6.99999L21 24L11 41L1.00003 41L1.00003 6.99999L11 6.99999Z"
-                                      fill="currentColor"
-                                    />
-                                  </svg>
-                                </div>
-                                <div class="Content flex h-full w-full justify-center overflow-hidden">
-                                  <div class="Left z-10 flex flex-none flex-col">
-                                    <Decorate class="" />
-                                    <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
-                                    <Decorate class="-scale-y-100" />
-                                  </div>
-                                  <div class="Center -mx-10 flex w-full flex-1 flex-col items-center">
-                                    <div
-                                      class="Divider bg-boundary-color mt-1 h-[1px] w-full rounded-full"
-                                      style={{
-                                        width: "calc(100% - 80px)",
-                                      }}
-                                    ></div>
-
-                                    <OverlayScrollbarsComponent
-                                      element="div"
-                                      options={{ scrollbars: { autoHide: "scroll" } }}
-                                      class="border-primary-color h-full w-full flex-1 rounded border-8"
-                                    >
-                                      <div class="Childern mx-3 my-6 flex flex-col gap-3">
-                                        {DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
-                                          dic: dictionary(),
-                                          data: cardData(),
-                                        })}
-                                      </div>
-                                    </OverlayScrollbarsComponent>
-                                    <div
-                                      class="Divider bg-boundary-color mb-1 h-[1px] w-full rounded-full"
-                                      style={{
-                                        width: "calc(100% - 80px)",
-                                      }}
-                                    ></div>
-                                  </div>
-                                  <div class="Right z-10 flex flex-none -scale-x-100 flex-col">
-                                    <Decorate />
-                                    <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
-                                    <Decorate class="-scale-y-100" />
-                                  </div>
-                                </div>
-                              </>
-                            );
-                          }}
-                        </Show>
-                      </Motion.div>
-                    </Show>
+                      </Show>
+                    </Card>
                   );
                 }}
               </Index>

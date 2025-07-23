@@ -2,8 +2,8 @@ import { createEffect, createMemo, createSignal, For, JSX, onMount } from "solid
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { useNavigate } from "@solidjs/router";
-import * as Icon from "~/components/icon";
-import { Button  } from "~/components/ui/control/button";
+import Icons from "~/components/icons/index";
+import { Button  } from "~/components/controls/button";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -19,11 +19,11 @@ export default function ProfilePage() {
   >([
     {
       onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
-      icon: <Icon.Line.Light />,
+      icon: <Icons.Outline.Light />,
     },
     {
       onClick: () => setStore("settingsDialogState", !store.settingsDialogState),
-      icon: <Icon.Line.Settings />,
+      icon: <Icons.Outline.Settings />,
     },
   ]);
 

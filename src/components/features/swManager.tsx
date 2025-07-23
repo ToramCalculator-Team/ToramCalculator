@@ -1,11 +1,11 @@
 import { createEffect, createSignal, onCleanup, onMount, createMemo, Show } from "solid-js";
-import { Button } from "~/components/ui/control/button";
-import { CheckBox } from "~/components/ui/control/checkBox";
-import { Toggle } from "~/components/ui/control/toggle";
+import { Button } from "~/components/controls/button";
+import { CheckBox } from "~/components/controls/checkBox";
+import { Toggle } from "~/components/controls/toggle";
 import * as swClient from "~/worker/sw/client";
 import { getDictionary } from "~/locales/i18n";
 import { store, setStore } from "~/store";
-import * as Icon from "~/components/icon";
+import Icons from "~/components/icons/index";
 import type { SWContext } from "~/worker/sw/types";
 
 // 默认安全的 SWContext，避免 undefined 访问
@@ -155,7 +155,7 @@ export const ServiceWorkerManager = () => {
     <div class="ServiceWorkerManager flex flex-col gap-4">
       <div class="Header">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Icon.Line.CloudUpload />
+          <Icons.Outline.CloudUpload />
           Service Worker 管理
         </h3>
         <p class="text-sm text-gray-600">
@@ -208,7 +208,7 @@ export const ServiceWorkerManager = () => {
               <strong>错误:</strong> {error()}
             </div>
             <Button size="sm" onClick={handleClearError}>
-              <Icon.Line.Close />
+              <Icons.Outline.Close />
             </Button>
           </div>
         </div>

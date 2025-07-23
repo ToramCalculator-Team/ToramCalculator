@@ -1,5 +1,5 @@
 import { For, JSX } from "solid-js";
-import * as Icon from "~/components/icon";
+import Icons from "~/components/icons/index";
 import { AnyFieldApi, FieldState } from "@tanstack/solid-form";
 import { EnumFieldDetail } from "~/locales/type";
 
@@ -25,7 +25,7 @@ export function EnumSelect<T extends Record<string, string>>(props: EnumSelectPr
               for={props.field.name + option}
               class={`flex cursor-pointer items-center gap-1 rounded border-2 px-3 py-2 hover:opacity-100 ${props.value === option ? "border-accent-color bg-area-color" : "border-dividing-color opacity-50"}`}
             >
-              {props.iconMap ? props.iconMap[option] : <Icon.Filled.Basketball />}
+              {props.iconMap ? props.iconMap[option] : <Icons.Filled.Basketball />}
               {props.dic[option]}
               <input
                 id={props.field.name + option}

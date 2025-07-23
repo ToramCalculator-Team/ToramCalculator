@@ -23,7 +23,7 @@ import {
   task_collect_require,
   task_reward,
 } from "../../../../../../db/generated/kysely/kyesely";
-import { CardSection } from "~/components/layout/cardSection";
+import { CardSection } from "~/components/dataDisplay/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "../../../../../../db/repositories/database";
 import { setWikiStore } from "../store";
@@ -43,13 +43,13 @@ import {
 } from "../../../../../../db/generated/zod/index";
 import { z } from "zod";
 import { defaultData } from "../../../../../../db/defaultData";
-import { Input } from "~/components/ui/control/input";
+import { Input } from "~/components/controls/input";
 import { AnyFieldApi, AnyFormApi, createForm, FormApi, SolidFormApi } from "@tanstack/solid-form";
 import { fieldInfo, renderField } from "../utils";
-import { Button } from "~/components/ui/control/button";
-import { Toggle } from "~/components/ui/control/toggle";
-import { Autocomplete } from "~/components/ui/control/autoComplete";
-import { Select } from "~/components/ui/control/select";
+import { Button } from "~/components/controls/button";
+import { Toggle } from "~/components/controls/toggle";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { Select } from "~/components/controls/select";
 import { omit, pick } from "lodash-es";
 import { arrayDiff, getSpriteIcon, TextScroll } from "./utils";
 

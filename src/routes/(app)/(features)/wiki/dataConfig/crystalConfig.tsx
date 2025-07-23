@@ -4,11 +4,11 @@ import { dataDisplayConfig } from "./dataConfig";
 import { crystalSchema, itemSchema } from "../../../../../../db/generated/zod/index";
 import { DB, item, crystal } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "../../../../../../db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
-import { Button } from "~/components/ui/control/button";
+import { Button } from "~/components/controls/button";
 import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 import {
@@ -24,14 +24,14 @@ import {
   ItemWithSubObjectForm,
 } from "./item";
 import z from "zod";
-import { Input } from "~/components/ui/control/input";
-import { Autocomplete } from "~/components/ui/control/autoComplete";
-import { CardSection } from "~/components/layout/cardSection";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
+import { CardSection } from "~/components/dataDisplay/cardSection";
 import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
-import { EnumSelect } from "~/components/ui/control/enumSelect";
+import { EnumSelect } from "~/components/controls/enumSelect";
 import { CrystalType } from "../../../../../../db/generated/kysely/enums";
-import { Select } from "~/components/ui/control/select";
+import { Select } from "~/components/controls/select";
 
 type CrystalWithRelated = crystal & {
   front: (crystal & item)[];

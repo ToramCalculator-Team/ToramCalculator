@@ -4,12 +4,12 @@ import { dataDisplayConfig } from "./dataConfig";
 import { weaponSchema } from "../../../../../../db/generated/zod/index";
 import { DB, item, weapon } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "../../../../../../db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
-import { Button } from "~/components/ui/control/button";
-import * as Icon from "~/components/icon";
+import { Button } from "~/components/controls/button";
+import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
@@ -23,10 +23,10 @@ import {
   itemWithRelatedSchema,
   ItemWithSubObjectForm,
 } from "./item";
-import { Input } from "~/components/ui/control/input";
-import { Select } from "~/components/ui/control/select";
+import { Input } from "~/components/controls/input";
+import { Select } from "~/components/controls/select";
 import { ElementType, WeaponType } from "../../../../../../db/generated/kysely/enums";
-import { EnumSelect } from "~/components/ui/control/enumSelect";
+import { EnumSelect } from "~/components/controls/enumSelect";
 import pick from "lodash-es/pick";
 
 type WeaponWithRelated = weapon & {};
@@ -164,13 +164,13 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
                               options={weaponSchema.shape[fieldKey].options}
                               dic={dic.db.weapon.fields[fieldKey].enumMap}
                               iconMap={{
-                                Water: <Icon.Element.Water class="h-6 w-6" />,
-                                Fire: <Icon.Element.Fire class="h-6 w-6" />,
-                                Earth: <Icon.Element.Earth class="h-6 w-6" />,
-                                Wind: <Icon.Element.Wind class="h-6 w-6" />,
-                                Light: <Icon.Element.Light class="h-6 w-6" />,
-                                Dark: <Icon.Element.Dark class="h-6 w-6" />,
-                                Normal: <Icon.Element.NoElement class="h-6 w-6" />,
+                                Water: <Icons.Game.ElementWater class="h-6 w-6" />,
+                                Fire: <Icons.Game.ElementFire class="h-6 w-6" />,
+                                Earth: <Icons.Game.ElementEarth class="h-6 w-6" />,
+                                Wind: <Icons.Game.ElementWind class="h-6 w-6" />,
+                                Light: <Icons.Game.ElementLight class="h-6 w-6" />,
+                                Dark: <Icons.Game.ElementDark class="h-6 w-6" />,
+                                Normal: <Icons.Game.ElementNoElement class="h-6 w-6" />,
                               }}
                               field={{
                                 id: field().name,
@@ -241,7 +241,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
             <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
-                icon={<Icon.Line.Trash />}
+                icon={<Icons.Outline.Trash />}
                 onclick={async () => {
                   const db = await getDB();
                   await db.transaction().execute(async (trx) => {
@@ -253,7 +253,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
               />
               <Button
                 class="w-fit"
-                icon={<Icon.Line.Edit />}
+                icon={<Icons.Outline.Edit />}
                 onclick={() => {
                   // 关闭当前卡片
                   setWikiStore("cardGroup", (pre) => pre.slice(0, -1));

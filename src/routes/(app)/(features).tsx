@@ -3,10 +3,10 @@ import { createMemo, For, onMount, ParentProps, Show, useContext } from "solid-j
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { A, useLocation, useNavigate } from "@solidjs/router";
-import * as Icon from "~/components/icon";
+import Icons from "~/components/icons/index";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
-import { Button  } from "~/components/ui/control/button";
+import { Button  } from "~/components/controls/button";
 import { MediaContext } from "~/lib/contexts/Media";
 import { DB } from "~/../db/generated/kysely/kyesely";
 
@@ -100,7 +100,7 @@ const Nav = () => {
       class={`Nav lg:landscape:bg-area-color flex w-dvw items-center py-2 landscape:h-dvh landscape:w-24 landscape:flex-col landscape:gap-2 landscape:py-5 lg:landscape:gap-8`}
     >
       <a href={"/"} class="Home group hidden landscape:block" tabIndex={1}>
-        <Icon.Line.Logo />
+        <Icons.Outline.Logo />
       </a>
       <OverlayScrollbarsComponent
         element="div"
@@ -112,7 +112,7 @@ const Nav = () => {
           <NavBtn
             config={{
               btnName: dictionary().ui.nav.home,
-              icon: <Icon.Line.Home />,
+              icon: <Icons.Outline.Home />,
               url: "/",
             }}
             active={active}
@@ -121,7 +121,7 @@ const Nav = () => {
           <NavBtn
             config={{
               btnName: dictionary().db.mob.selfName,
-              icon: <Icon.Line.Calendar />,
+              icon: <Icons.Outline.Calendar />,
               url: "/wiki/mob",
             }}
             active={active}
@@ -131,7 +131,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().db.mob.selfName,
-                icon: <Icon.Line.Calendar />,
+                icon: <Icons.Outline.Calendar />,
                 url: "/wiki/mob",
               }}
               active={active}
@@ -140,7 +140,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().db.skill.selfName,
-                icon: <Icon.Line.Basketball />,
+                icon: <Icons.Outline.Basketball />,
                 url: "/wiki/skill",
               }}
               active={active}
@@ -148,7 +148,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().db.weapon.selfName,
-                icon: <Icon.Line.Category2 />,
+                icon: <Icons.Outline.Category2 />,
                 url: "/wiki/weapon",
               }}
               active={active}
@@ -156,7 +156,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().db.crystal.selfName,
-                icon: <Icon.Line.Box2 />,
+                icon: <Icons.Outline.Box2 />,
                 url: "/wiki/crystal",
               }}
               active={active}
@@ -164,7 +164,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().db.player_pet.selfName,
-                icon: <Icon.Line.Money />,
+                icon: <Icons.Outline.Money />,
                 url: "/wiki/player_pet",
               }}
               active={active}
@@ -185,7 +185,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().ui.nav.character,
-                icon: <Icon.Line.Gamepad />,
+                icon: <Icons.Outline.Gamepad />,
                 url: "/character/defaultCharacterId",
               }}
               active={active}
@@ -194,7 +194,7 @@ const Nav = () => {
             <NavBtn
               config={{
                 btnName: dictionary().ui.nav.simulator,
-                icon: <Icon.Line.Filter />,
+                icon: <Icons.Outline.Filter />,
                 url: "/simulator/defaultSimulatorId",
               }}
               active={active}
@@ -209,12 +209,12 @@ const Nav = () => {
           class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
           onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
         >
-          <Icon.Line.Light />
+          <Icons.Outline.Light />
         </Button> */}
         <NavBtn
           config={{
             btnName: dictionary().ui.nav.profile,
-            icon: <Icon.Line.User />,
+            icon: <Icons.Outline.User />,
             url: "/profile",
           }}
           active={active}
@@ -225,7 +225,7 @@ const Nav = () => {
           class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
           onClick={() => setStore("settingsDialogState", true)}
         >
-          <Icon.Line.Settings />
+          <Icons.Outline.Settings />
         </Button>
       </div>
     </Motion.div>

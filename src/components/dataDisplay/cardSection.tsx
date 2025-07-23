@@ -1,5 +1,5 @@
 import { For, JSX, Show } from "solid-js";
-import { Button } from "~/components/ui/control/button";
+import { Button } from "~/components/controls/button";
 
 interface CardSectionProps<T> {
   title: string;

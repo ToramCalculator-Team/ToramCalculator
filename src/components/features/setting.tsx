@@ -1,10 +1,10 @@
-import { Input, type InputComponentType } from "~/components/ui/control/input";
-import * as Icon from "~/components/icon";
+import { Input, type InputComponentType } from "~/components/controls/input";
+import Icons from "~/components/icons/index";
 import { getDictionary } from "~/locales/i18n";
-import { Button } from "~/components/ui/control/button";
-import { CheckBox } from "~/components/ui/control/checkBox";
-import { Toggle } from "~/components/ui/control/toggle";
-import { Radio } from "~/components/ui/control/radio";
+import { Button } from "~/components/controls/button";
+import { CheckBox } from "~/components/controls/checkBox";
+import { Toggle } from "~/components/controls/toggle";
+import { Radio } from "~/components/controls/radio";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { For, type JSX, Show, createMemo, createResource, createSignal } from "solid-js";
 import { getActStore, setStore, store } from "~/store";
@@ -96,7 +96,7 @@ export const Setting = () => {
           class={`SettingBox bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
         >
           <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => setStore("settingsDialogState", false)}>
-            <Icon.Line.Close />
+            <Icons.Outline.Close />
           </Button>
           <div
             class={`SettingForm flex h-dvh w-full flex-1 flex-col gap-3 rounded p-6 lg:max-w-(--breakpoint-2xl) lg:p-3`}
@@ -107,31 +107,31 @@ export const Setting = () => {
             <div class="FormContent flex flex-1 flex-row items-start gap-3 overflow-hidden">
               <div class="Nav hidden w-fit min-w-60 flex-col gap-2 rounded lg:flex">
                 <Button level="quaternary" active>
-                  <Icon.Line.Laptop />
+                  <Icons.Outline.Laptop />
                   <span class="w-full text-left">{dictionary().ui.settings.userInterface.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.Location />
+                  <Icons.Outline.Location />
                   <span class="w-full text-left">{dictionary().ui.settings.language.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.CloudUpload />
+                  <Icons.Outline.CloudUpload />
                   <span class="w-full text-left">{dictionary().ui.settings.statusAndSync.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.ColorPalette />
+                  <Icons.Outline.ColorPalette />
                   <span class="w-full text-left">{dictionary().ui.settings.privacy.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.VolumeDown />
+                  <Icons.Outline.VolumeDown />
                   <span class="w-full text-left">{dictionary().ui.settings.messages.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.Flag />
+                  <Icons.Outline.Flag />
                   <span class="w-full text-left">{dictionary().ui.settings.about.title}</span>
                 </Button>
                 <Button level="quaternary">
-                  <Icon.Line.CloudUpload />
+                  <Icons.Outline.CloudUpload />
                   <span class="w-full text-left">Service Worker</span>
                 </Button>
               </div>

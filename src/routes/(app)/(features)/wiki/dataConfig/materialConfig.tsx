@@ -4,12 +4,12 @@ import { dataDisplayConfig } from "./dataConfig";
 import { materialSchema } from "../../../../../../db/generated/zod/index";
 import { DB, item, material } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "../../../../../../db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
-import { Button } from "~/components/ui/control/button";
-import * as Icon from "~/components/icon";
+import { Button } from "~/components/controls/button";
+import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
@@ -25,8 +25,8 @@ import {
   itemWithRelatedSchema,
   ItemWithSubObjectForm,
 } from "./item";
-import { Input } from "~/components/ui/control/input";
-import { Select } from "~/components/ui/control/select";
+import { Input } from "~/components/controls/input";
+import { Select } from "~/components/controls/select";
 import { MaterialType } from "../../../../../../db/generated/kysely/enums";
 import pick from "lodash-es/pick";
 import { CardSharedSection } from "./utils";

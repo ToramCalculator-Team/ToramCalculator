@@ -4,12 +4,12 @@ import { dataDisplayConfig } from "./dataConfig";
 import { specialSchema } from "../../../../../../db/generated/zod/index";
 import { DB, item, special } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "../../../../../../db/defaultData";
 import { renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
-import { Button } from "~/components/ui/control/button";
-import * as Icon from "~/components/icon";
+import { Button } from "~/components/controls/button";
+import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
@@ -176,7 +176,7 @@ export const SpecialDataConfig: dataDisplayConfig<
             <div class="FunGroup flex gap-1">
               <Button
                 class="w-fit"
-                icon={<Icon.Line.Trash />}
+                icon={<Icons.Outline.Trash />}
                 onclick={async () => {
                   const db = await getDB();
                   await db.transaction().execute(async (trx) => {
@@ -188,7 +188,7 @@ export const SpecialDataConfig: dataDisplayConfig<
               />
               <Button
                 class="w-fit"
-                icon={<Icon.Line.Edit />}
+                icon={<Icons.Outline.Edit />}
                 onclick={() => {
                   // 关闭当前卡片
                   setWikiStore("cardGroup", (pre) => pre.slice(0, -1));

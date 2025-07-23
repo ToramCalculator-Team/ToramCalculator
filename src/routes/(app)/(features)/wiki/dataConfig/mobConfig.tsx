@@ -1,14 +1,14 @@
 import { For, Show, Index, Accessor, createResource, createSignal } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
-import * as Icon from "~/components/icon";
+import Icons from "~/components/icons/index";
 import { drop_itemSchema, mobSchema, zoneSchema } from "../../../../../../db/generated/zod/index";
-import { Input } from "~/components/ui/control/input";
+import { Input } from "~/components/controls/input";
 import { z } from "zod";
 import { DB, drop_item, mob, zone } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { getDB } from "../../../../../../db/repositories/database";
-import { Select } from "~/components/ui/control/select";
+import { Select } from "~/components/controls/select";
 import { MOB_DIFFICULTY_FLAG } from "../../../../../../db/schema/enums";
 import {
   ItemType,
@@ -19,15 +19,15 @@ import {
   BossPartBreakRewardType,
 } from "../../../../../../db/generated/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
-import { CardSection } from "~/components/layout/cardSection";
+import { CardSection } from "~/components/dataDisplay/cardSection";
 import { defaultData } from "../../../../../../db/defaultData";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { Autocomplete } from "~/components/ui/control/autoComplete";
+import { Autocomplete } from "~/components/controls/autoComplete";
 import { createForm, Field } from "@tanstack/solid-form";
-import { Button } from "~/components/ui/control/button";
-import { EnumSelect } from "~/components/ui/control/enumSelect";
+import { Button } from "~/components/controls/button";
+import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
-import { Toggle } from "~/components/ui/control/toggle";
+import { Toggle } from "~/components/controls/toggle";
 import { createStatistic } from "../../../../../../db/repositories/statistic";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
@@ -368,13 +368,13 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                           options={MobWithRelatedSchema.shape[fieldKey].options}
                           dic={dic.db.mob.fields[fieldKey].enumMap}
                           iconMap={{
-                            Water: <Icon.Element.Water class="h-6 w-6" />,
-                            Fire: <Icon.Element.Fire class="h-6 w-6" />,
-                            Earth: <Icon.Element.Earth class="h-6 w-6" />,
-                            Wind: <Icon.Element.Wind class="h-6 w-6" />,
-                            Light: <Icon.Element.Light class="h-6 w-6" />,
-                            Dark: <Icon.Element.Dark class="h-6 w-6" />,
-                            Normal: <Icon.Element.NoElement class="h-6 w-6" />,
+                            Water: <Icons.Game.ElementWater class="h-6 w-6" />,
+                            Fire: <Icons.Game.ElementFire class="h-6 w-6" />,
+                            Earth: <Icons.Game.ElementEarth class="h-6 w-6" />,
+                            Wind: <Icons.Game.ElementWind class="h-6 w-6" />,
+                            Light: <Icons.Game.ElementLight class="h-6 w-6" />,
+                            Dark: <Icons.Game.ElementDark class="h-6 w-6" />,
+                            Normal: <Icons.Game.ElementNoElement class="h-6 w-6" />,
                           }}
                           field={{
                             id: field().name,
@@ -852,13 +852,13 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
     tdGenerator: {
       initialElement: (props) =>
         ({
-          Water: <Icon.Element.Water class="h-12 w-12" />,
-          Fire: <Icon.Element.Fire class="h-12 w-12" />,
-          Earth: <Icon.Element.Earth class="h-12 w-12" />,
-          Wind: <Icon.Element.Wind class="h-12 w-12" />,
-          Light: <Icon.Element.Light class="h-12 w-12" />,
-          Dark: <Icon.Element.Dark class="h-12 w-12" />,
-          Normal: <Icon.Element.NoElement class="h-12 w-12" />,
+          Water: <Icons.Game.ElementWater class="h-12 w-12" />,
+          Fire: <Icons.Game.ElementFire class="h-12 w-12" />,
+          Earth: <Icons.Game.ElementEarth class="h-12 w-12" />,
+          Wind: <Icons.Game.ElementWind class="h-12 w-12" />,
+          Light: <Icons.Game.ElementLight class="h-12 w-12" />,
+          Dark: <Icons.Game.ElementDark class="h-12 w-12" />,
+          Normal: <Icons.Game.ElementNoElement class="h-12 w-12" />,
         })[props.cell.getValue<ElementType>()],
       name: (props) => (
         <div class="text-accent-color flex flex-col gap-1">
@@ -914,22 +914,22 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
                   onClick={handleSelect}
                 >
                   <div class="text-accent-color flex gap-1">
-                    <Icon.Filled.Star
+                    <Icons.Filled.Star
                       class={
                         ["Normal", "Hard", "Lunatic", "Ultimate"].includes(option.value)
                           ? "fill-brand-color-1st!"
                           : "fill-none!"
                       }
                     />
-                    <Icon.Filled.Star
+                    <Icons.Filled.Star
                       class={
                         ["Hard", "Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-2nd!" : "fill-none!"
                       }
                     />
-                    <Icon.Filled.Star
+                    <Icons.Filled.Star
                       class={["Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-3rd!" : "fill-none!"}
                     />
-                    <Icon.Filled.Star
+                    <Icons.Filled.Star
                       class={["Ultimate"].includes(option.value) ? "fill-brand-color-4th!" : "fill-none!"}
                     />
                   </div>

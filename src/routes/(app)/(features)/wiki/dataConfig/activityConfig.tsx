@@ -5,14 +5,14 @@ import { activitySchema, zoneSchema } from "../../../../../../db/generated/zod/i
 import { activity, DB, zone } from "../../../../../../db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "../../../../../../db/repositories/database";
-import { ObjRender } from "~/components/ui/templete/objRender";
+import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "../../../../../../db/defaultData";
-import { CardSection } from "~/components/layout/cardSection";
+import { CardSection } from "~/components/dataDisplay/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { Button } from "~/components/ui/control/button";
+import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
-import * as Icon from "~/components/icon";
+import Icons from "~/components/icons/index";
 import { store } from "~/store";
 import { createStatistic } from "../../../../../../db/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
@@ -20,8 +20,8 @@ import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
-import { Input } from "~/components/ui/control/input";
-import { Autocomplete } from "~/components/ui/control/autoComplete";
+import { Input } from "~/components/controls/input";
+import { Autocomplete } from "~/components/controls/autoComplete";
 
 type ActivityWithRelated = activity & {
   zones: zone[];

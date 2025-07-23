@@ -1,10 +1,10 @@
 import { AnyFieldApi, DeepKeys, DeepValue, Field } from "@tanstack/solid-form";
 import { For } from "solid-js";
 import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod";
-import { Button } from "~/components/ui/control/button";
-import { EnumSelect } from "~/components/ui/control/enumSelect";
-import { Input } from "~/components/ui/control/input";
-import { Toggle } from "~/components/ui/control/toggle";
+import { Button } from "~/components/controls/button";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { Input } from "~/components/controls/input";
+import { Toggle } from "~/components/controls/toggle";
 import { NodeEditor } from "~/components/features/nodeEditor";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 

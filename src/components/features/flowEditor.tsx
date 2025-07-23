@@ -15,9 +15,9 @@ import {
   ToolboxConfiguration,
   ValidatorConfiguration,
 } from "sequential-workflow-designer";
-import {Button} from "../ui/control/button";
-import { Input, InputComponentType } from "../ui/control/input";
-import * as Icon from "~/components/icon";
+import {Button} from "../controls/button";
+import { Input, InputComponentType } from "../controls/input";
+import Icons from "~/components/icons/index";
 import { wrapDefinition } from "./flowEditor/WrappedDefinition";
 import { RootEditorWrapperContext, useRootEditor } from "./flowEditor/RootEditorWrapper";
 import { StepEditorWrapperContext, useStepEditor } from "./flowEditor/StepEditorWrapper";
@@ -680,7 +680,7 @@ export default function FlowEditor(props: FlowEditorProps) {
             <Button
               level="primary"
               disabled={designer()?.isReadonly()}
-              icon={<Icon.Line.Gamepad />}
+              icon={<Icons.Outline.Gamepad />}
               onClick={() => {
                 SM?.start();
                 designer()?.setIsReadonly(true);

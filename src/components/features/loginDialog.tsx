@@ -1,4 +1,4 @@
-import { Button  } from "~/components/ui/control/button";
+import { Button  } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
@@ -7,10 +7,10 @@ import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Accessor, createEffect, createMemo, createSignal, on, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
-import * as Icon from "~/components/icon";
-import { Input } from "../control/input";
+import Icons from "~/components/icons/index";
+import { Input } from "../controls/input";
 import { z } from "zod";
-import { findAccountById } from "../../../../db/repositories/account";
+import { findAccountById } from "../../../db/repositories/account";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =

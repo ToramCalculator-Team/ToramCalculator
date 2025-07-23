@@ -4,8 +4,8 @@ import { getPrimaryKeys } from "../../../../../../db/repositories/untils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
 import { store } from "~/store";
-import { Button } from "~/components/ui/control/button";
-import * as Icon from "~/components/icon";
+import { Button } from "~/components/controls/button";
+import Icons from "~/components/icons/index";
 import { getDB } from "../../../../../../db/repositories/database";
 import { setWikiStore } from "../store";
 import sprites from "~/../public/app-image/sprites.json";
@@ -80,7 +80,7 @@ export const CardSharedSection = <T extends object>(props: {
         <div class="FunGroup flex gap-1">
           <Button
             class="w-fit"
-            icon={<Icon.Line.Trash />}
+            icon={<Icons.Outline.Trash />}
             onclick={async () => {
               const db = await getDB();
               await db.transaction().execute(async (trx) => {
@@ -92,7 +92,7 @@ export const CardSharedSection = <T extends object>(props: {
           />
           <Button
             class="w-fit"
-            icon={<Icon.Line.Edit />}
+            icon={<Icons.Outline.Edit />}
             onclick={() => {
               // 关闭当前卡片
               setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
@@ -155,14 +155,14 @@ export const getSpriteIcon = (iconName: string, size?: number) => {
   //     case "world":
   //     case "zone":
   //     default:
-  //       return <Icon.Line.Gamepad />;
+  //       return <Icons.Outline.Gamepad />;
   //   }
   // }
   // 不区分大小写查找
   const backgroundImage = sprites.find((sprite) => sprite.name.toLowerCase() === iconName.toLowerCase());
 
   return (
-    <Show when={backgroundImage} fallback={<Icon.Line.Gamepad />}>
+    <Show when={backgroundImage} fallback={<Icons.Outline.Gamepad />}>
       {(backgroundImage) => {
         // 获取图片收缩比例
         const scaleX = size ? size / backgroundImage().width : 1;
