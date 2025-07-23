@@ -18,19 +18,19 @@ import {
   type MemberBaseStats,
   type MemberEvent,
   type MemberContext,
-  type MemberActorLogic,
+  MemberStateMachine,
+  MemberEventType,
+  MemberActor,
 } from "./Member";
 import { setup, assign } from "xstate";
-import type { MemberWithRelations } from "../../../../../db/repositories/member";
+import type { MemberWithRelations } from "@db/repositories/member";
 import { isPlayerMember } from "./Member";
-import type { CharacterWithRelations } from "../../../../../db/repositories/character";
-import type { CharacterSkillWithRelations } from "../../../../../db/repositories/characterSkill";
-import type { PlayerWithRelations } from "../../../../../db/repositories/player";
+import type { CharacterWithRelations } from "@db/repositories/character";
+import type { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
+import type { PlayerWithRelations } from "~/../db/repositories/player";
 
-import type {
-  MainHandType,
-} from "../../../../../db/schema/enums";
-import { ComboWithRelations } from "../../../../../db/repositories/combo";
+import type { MainHandType } from "~/../db/schema/enums";
+import { ComboWithRelations } from "~/../db/repositories/combo";
 import { createActor } from "xstate";
 
 // ============================== 角色属性系统类型定义 ==============================
@@ -174,6 +174,24 @@ enum PlayerAttrEnum {
 type PlayerAttrType = keyof typeof PlayerAttrEnum;
 
 /**
+ * Player特有的事件类型
+ * 扩展MemberEventType，包含Player特有的状态机事件
+ */
+type PlayerEventType = MemberEventType
+  | { type: "cast_end", data: { skillId: string } } // 前摇结束
+  | { type: "controlled", data: { skillId: string } } // 受到控制
+  | { type: "move_command", data: { position: { x: number; y: number } } } // 移动指令
+  | { type: "charge_end", data: { skillId: string } } // 蓄力结束
+  | { type: "hp_zero", data: { skillId: string } } // HP小于等于0
+  | { type: "stop_move", data: { skillId: string } } // 停止移动指令
+  | { type: "control_end", data: { skillId: string } } // 控制时间结束
+  | { type: "revive_ready", data: { skillId: string } } // 复活倒计时清零
+  | { type: "skill_press", data: { skillId: string } } // 按下技能
+  | { type: "check_availability", data: { skillId: string } } // 判断可用性
+  | { type: "skill_animation_end", data: { skillId: string } } // 技能动作结束
+  | { type: "update"; timestamp: number }; // 更新事件（带时间戳）
+
+/**
  * 武器能力转换表类型
  */
 interface WeaponAbiConvert {
@@ -194,6 +212,8 @@ interface WeaponAbiConvert {
  * 实现玩家特有的属性和行为
  */
 export class Player extends Member {
+  // 重写actor属性类型以支持Player特有的事件
+  protected actor: MemberActor<PlayerEventType>;
   // ==================== 玩家特有属性 ====================
 
   /** 玩家角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
@@ -743,34 +763,13 @@ export class Player extends Member {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): MemberActorLogic {
+  }): MemberStateMachine<PlayerEventType> {
     const machineId = `Player_${this.id}`;
-    
+
     return setup({
       types: {
         context: {} as MemberContext,
-        events: {} as
-          | { type: "cast_end" } // 前摇结束
-          | { type: "controlled" } // 受到控制
-          | { type: "move_command" } // 移动指令
-          | { type: "charge_end" } // 蓄力结束
-          | { type: "hp_zero" } // HP小于等于0
-          | { type: "stop_move" } // 停止移动指令
-          | { type: "control_end" } // 控制时间结束
-          | { type: "revive_ready" } // 复活倒计时清零
-          | { type: "skill_press" } // 按下技能
-          | { type: "check_availability" } // 判断可用性
-          | { type: "skill_animation_end" } // 技能动作结束
-          | { type: "spawn" }
-          | { type: "death" }
-          | { type: "damage"; data: { damage: number; damageType: string; sourceId?: string } }
-          | { type: "heal"; data: { heal: number; sourceId?: string } }
-          | { type: "skill_start"; data: { skillId: string; targetId?: string } }
-          | { type: "skill_end" }
-          | { type: "move"; data: { position: { x: number; y: number } } }
-          | { type: "status_effect"; data: { effect: string; duration: number } }
-          | { type: "update"; timestamp: number }
-          | { type: "custom"; data: Record<string, any> },
+        events: {} as PlayerEventType,
       },
       actions: {
         // 根据角色配置初始化玩家状态
@@ -826,8 +825,18 @@ export class Player extends Member {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setPlayerAttr(PlayerAttrEnum.HP, TargetType.baseValue, this.getPlayerAttr(PlayerAttrEnum.MAX_HP), "revive");
-            this.setPlayerAttr(PlayerAttrEnum.MP, TargetType.baseValue, this.getPlayerAttr(PlayerAttrEnum.MAX_MP), "revive");
+            this.setPlayerAttr(
+              PlayerAttrEnum.HP,
+              TargetType.baseValue,
+              this.getPlayerAttr(PlayerAttrEnum.MAX_HP),
+              "revive",
+            );
+            this.setPlayerAttr(
+              PlayerAttrEnum.MP,
+              TargetType.baseValue,
+              this.getPlayerAttr(PlayerAttrEnum.MAX_MP),
+              "revive",
+            );
             return this.playerAttrMap;
           },
           isAlive: true,
@@ -874,10 +883,12 @@ export class Player extends Member {
         },
 
         // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) <= 0,
+        isDead: ({ context }: { context: MemberContext }) =>
+          Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) <= 0,
 
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) > 0,
+        isAlive: ({ context }: { context: MemberContext }) =>
+          Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) > 0,
       },
     }).createMachine({
       id: machineId,

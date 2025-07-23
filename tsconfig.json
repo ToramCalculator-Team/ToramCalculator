@@ -13,7 +13,8 @@
     "types": ["vinxi/types/client", "node"],
     "isolatedModules": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@db/*": ["./db/*"]
     }
   }
 }

@@ -28,13 +28,13 @@ export async function POST(event: APIEvent) {
   const body = await event.request.json();
 
   const user = await findUserById(jwtUser.sub);
-
-  console.log("用户:" + user.name + " 变更数据,body:", body);
   
   // 权限判断
   if (!user) {
     return new Response("未认证用户", { status: 401 });
   }
+
+  console.log("用户:" + user.name + " 变更数据,body:", body);
 
   // 示例权限判断（可选）
   // if (user.role !== "admin") {

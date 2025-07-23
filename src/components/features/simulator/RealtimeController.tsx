@@ -13,8 +13,8 @@ import { realtimeSimulatorPool } from './SimulatorPool';
 import type { IntentMessage } from './core/MessageRouter';
 // 
 import type { SimulatorWithRelations } from '../../../../db/repositories/simulator';
-import { CharacterWithRelations, findCharacterById } from '../../../../db/repositories/character';
-import { findMobById } from '../../../../db/repositories/mob';
+import { CharacterWithRelations, findCharacterById, findCharacterWithRelations } from '../../../../db/repositories/character';
+import { findMobById, findMobWithRelations } from '../../../../db/repositories/mob';
 import { Button } from '~/components/controls/button';
 import { Select } from '~/components/controls/select';
 import { MemberSerializeData } from './core/Member';
@@ -49,10 +49,10 @@ export default function RealtimeController() {
   const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
     const [logs, setLogs] = createSignal<string[]>([]);
     const [character, { refetch: refetchCharacter }] = createResource(async () => {
-      return findCharacterById("defaultCharacterId")
+      return findCharacterWithRelations("defaultCharacterId")
     });
     const [mob, { refetch: refetchMob }] = createResource(async () => {
-      return findMobById("defaultMobId")
+      return findMobWithRelations("defaultMobId")
     });
 
   // 获取引擎状态

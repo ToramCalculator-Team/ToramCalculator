@@ -4,7 +4,7 @@ import { DB, character } from "../generated/kysely/kyesely";
 import { createStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { comboSubRelations } from "./combo";
-import { playerWeponSubRelations } from "./playerWeapon";
+import { playerWeaponSubRelations } from "./playerWeapon";
 import { playerArmorSubRelations } from "./playerArmor";
 import { playerOptionSubRelations } from "./playerOption";
 import { playerSpecialSubRelations } from "./playerSpecial";
@@ -44,7 +44,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .selectFrom("player_weapon")
         .whereRef("id", "=", "character.weaponId")
         .selectAll("player_weapon")
-        .select((eb) => playerWeponSubRelations(eb, eb.val("character.weaponId"))),
+        .select((eb) => playerWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
       .$notNull()
       .as("weapon"),
@@ -53,7 +53,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .selectFrom("player_weapon")
         .whereRef("id", "=", "character.subWeaponId")
         .selectAll("player_weapon")
-        .select((eb) => playerWeponSubRelations(eb, eb.val("character.weaponId"))),
+        .select((eb) => playerWeaponSubRelations(eb, eb.val("character.weaponId"))),
     )
       .$notNull()
       .as("subWeapon"),

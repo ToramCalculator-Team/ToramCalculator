@@ -335,7 +335,7 @@ export class FrameLoop {
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
     this.eventHandlers.set(eventType, handler);
-    console.log(`📝 注册事件处理器: ${eventType}`);
+    // console.log(`📝 注册事件处理器: ${eventType}`);
   }
 
   /**

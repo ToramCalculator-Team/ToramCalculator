@@ -9,7 +9,18 @@
  * 5. 与GameEngine集成的事件系统
  */
 
-import { setup, createActor, assign, fromPromise, fromCallback, type ActorLogic, Actor, Snapshot } from "xstate";
+import {
+  setup,
+  createActor,
+  assign,
+  fromPromise,
+  fromCallback,
+  type Actor,
+  Snapshot,
+  type NonReducibleUnknown,
+  type EventObject,
+  type StateMachine,
+} from "xstate";
 import type { MemberWithRelations } from "../../../../../db/repositories/member";
 import type { CharacterWithRelations } from "../../../../../db/repositories/character";
 import type { MercenaryWithRelations } from "../../../../../db/repositories/mercenary";
@@ -32,7 +43,7 @@ export interface MemberSerializeData {
   currentMp: number;
   maxMp: number;
   position: { x: number; y: number };
-  state: string;
+  state: { value: string; context: MemberContext };
   targetId?: string;
   teamId: string;
   campId?: string;
@@ -180,6 +191,7 @@ export interface MemberEvent {
 
 /**
  * 成员事件类型枚举
+ * 基础事件类型，所有成员类型都支持的事件
  */
 export type MemberEventType =
   | { type: "spawn" } // 生成事件
@@ -191,19 +203,43 @@ export type MemberEventType =
   | { type: "move"; position: { x: number; y: number } } // 移动事件
   | { type: "status_effect"; effect: string; duration: number } // 状态效果
   | { type: "update" } // 更新事件
-  | { type: "custom"; data: Record<string, any> }; // 自定义事件
+  | { type: string; data: Record<string, any> }; // 自定义事件
+
+/**
+ * 扩展事件类型
+ * 允许子类添加额外的事件类型
+ * 确保所有事件都满足EventObject的约束（必须有type属性）
+ */
+export type ExtendedEventType = MemberEventType | { type: string; [key: string]: any };
 
 /**
  * 成员状态机类型
- * 基于 XState Actor 类型，包含所有必需的方法和属性
+ * 基于 XState StateMachine 类型，提供完整的类型推断
+ * 使用泛型参数允许子类扩展事件类型
  */
-export type MemberStateMachine = Actor<MemberActorLogic>;
+export type MemberStateMachine<TEvent extends ExtendedEventType = MemberEventType> = StateMachine<
+  MemberContext, // TContext - 状态机上下文
+  TEvent, // TEvent - 事件类型（可扩展）
+  Record<string, any>, // TChildren - 子状态机
+  any, // TActor - Actor配置
+  any, // TAction - 动作配置
+  any, // TGuard - 守卫配置
+  string, // TDelay - 延迟配置
+  string, // TStateValue - 状态值
+  string, // TTag - 标签
+  NonReducibleUnknown, // TInput - 输入类型
+  MemberContext, // TOutput - 输出类型（当状态机完成时）
+  EventObject, // TEmitted - 发出的事件类型
+  any, // TMeta - 元数据
+  any // TStateSchema - 状态模式
+>;
 
 /**
- * 成员状态机逻辑类型
- * 符合 XState ActorLogic 接口要求
+ * 成员Actor类型
+ * 基于 XState Actor 类型，提供完整的类型推断
+ * 使用泛型参数允许子类扩展事件类型
  */
-export type MemberActorLogic = ActorLogic<Snapshot<MemberContext>, MemberEventType>;
+export type MemberActor<TEvent extends ExtendedEventType = MemberEventType> = Actor<MemberStateMachine<TEvent>>;
 
 // ============================== 类型守卫函数 ==============================
 
@@ -262,7 +298,7 @@ export abstract class Member {
   protected target: Member | null = null;
 
   /** XState状态机实例 */
-  protected actor: MemberStateMachine;
+  protected actor: MemberActor;
 
   /** 事件队列 */
   protected eventQueue: MemberEvent[] = [];
@@ -359,7 +395,9 @@ export abstract class Member {
     this.teamId = memberData.teamId;
 
     // 创建状态机实例
-    this.actor = createActor(this.createActorLogic(initialState));
+    this.actor = createActor(this.createActorLogic(initialState), {
+      input: initialState,
+    });
 
     // 启动状态机
     this.actor.start();
@@ -378,17 +416,17 @@ export abstract class Member {
   protected abstract handleSpecificEvent(event: MemberEvent): void;
 
   /**
-   * 创建状态机逻辑
-   * 子类必须实现此方法来创建特定的状态机逻辑
+   * 创建状态机
+   * 子类必须实现此方法来创建特定的状态机
    *
    * @param initialState 初始状态配置
-   * @returns 状态机逻辑
+   * @returns 状态机
    */
   protected abstract createActorLogic(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): MemberActorLogic;
+  }): MemberStateMachine<any>;
 
   /**
    * 将属性Map转换为基础属性
@@ -422,25 +460,25 @@ export abstract class Member {
       const name = attrData.name.toLowerCase();
 
       // 根据name进行简单映射
-      if (name.includes('max_hp') || name.includes('maxhp')) {
+      if (name.includes("max_hp") || name.includes("maxhp")) {
         baseStats.maxHp = value;
-      } else if (name.includes('hp') && !name.includes('max')) {
+      } else if (name.includes("hp") && !name.includes("max")) {
         baseStats.currentHp = value;
-      } else if (name.includes('max_mp') || name.includes('maxmp')) {
+      } else if (name.includes("max_mp") || name.includes("maxmp")) {
         baseStats.maxMp = value;
-      } else if (name.includes('mp') && !name.includes('max')) {
+      } else if (name.includes("mp") && !name.includes("max")) {
         baseStats.currentMp = value;
-      } else if (name.includes('physical_atk') || name.includes('patk')) {
+      } else if (name.includes("physical_atk") || name.includes("patk")) {
         baseStats.physicalAtk = value;
-      } else if (name.includes('magical_atk') || name.includes('matk')) {
+      } else if (name.includes("magical_atk") || name.includes("matk")) {
         baseStats.magicalAtk = value;
-      } else if (name.includes('physical_def') || name.includes('pdef')) {
+      } else if (name.includes("physical_def") || name.includes("pdef")) {
         baseStats.physicalDef = value;
-      } else if (name.includes('magical_def') || name.includes('mdef')) {
+      } else if (name.includes("magical_def") || name.includes("mdef")) {
         baseStats.magicalDef = value;
-      } else if (name.includes('aspd')) {
+      } else if (name.includes("aspd")) {
         baseStats.aspd = value;
-      } else if (name.includes('mspd')) {
+      } else if (name.includes("mspd")) {
         baseStats.mspd = value;
       }
     }
@@ -485,16 +523,15 @@ export abstract class Member {
    * 获取当前状态
    */
   getCurrentState(): { value: string; context: MemberContext } {
-    try {
-      if (!this.actor) {
-        return { value: 'unknown', context: this.getDefaultContext() };
-      }
-      const snapshot = this.actor.getSnapshot();
-      return snapshot || { value: 'unknown', context: this.getDefaultContext() };
-    } catch (error) {
-      console.error(`Member: ${this.getName()} 获取当前状态时发生错误:`, error);
-      return { value: 'error', context: this.getDefaultContext() };
+    const snapshot = this.actor.getSnapshot();
+    // XState v5的Snapshot结构不同，需要正确访问状态和上下文
+    if (snapshot.status === "active") {
+      return {
+        value: "active",
+        context: snapshot.context || this.getDefaultContext(),
+      };
     }
+    return { value: snapshot.status, context: this.getDefaultContext() };
   }
 
   /**
@@ -533,26 +570,23 @@ export abstract class Member {
         return this.getDefaultStats();
       }
 
-      // 检查context是否存在
-      if (!snapshot.context) {
-        console.warn(`Member: ${this.getName()} 状态机上下文未初始化`);
-        return this.getDefaultStats();
-      }
+      // XState v5的Snapshot结构不同，需要正确处理
+      if (snapshot.status === "active" && snapshot.context) {
+        // 检查stats是否存在
+        if (!snapshot.context.stats) {
+          console.warn(`Member: ${this.getName()} 属性未初始化`);
+          return this.getDefaultStats();
+        }
 
-      // 检查stats是否存在
-      if (!snapshot.context.stats) {
-        console.warn(`Member: ${this.getName()} 属性未初始化`);
-        return this.getDefaultStats();
-      }
+        // 如果stats是Map类型，需要转换为MemberBaseStats
+        if (snapshot.context.stats instanceof Map) {
+          return this.convertMapToStats(snapshot.context.stats);
+        }
 
-      // 如果stats是Map类型，需要转换为MemberBaseStats
-      if (snapshot.context.stats instanceof Map) {
-        return this.convertMapToStats(snapshot.context.stats);
-      }
-
-      // 如果已经是MemberBaseStats类型，直接返回
-      if (typeof snapshot.context.stats === 'object' && snapshot.context.stats !== null) {
-        return snapshot.context.stats as MemberBaseStats;
+        // 如果已经是MemberBaseStats类型，直接返回
+        if (typeof snapshot.context.stats === "object" && snapshot.context.stats !== null) {
+          return snapshot.context.stats as MemberBaseStats;
+        }
       }
 
       console.warn(`Member: ${this.getName()} 属性格式异常`);
@@ -579,7 +613,7 @@ export abstract class Member {
       magicalDef: 50,
       aspd: 1.0,
       mspd: 100,
-      position: { x: 0, y: 0 }
+      position: { x: 0, y: 0 },
     };
   }
 
@@ -590,7 +624,7 @@ export abstract class Member {
     try {
       if (!this.actor) return true;
       const snapshot = this.actor.getSnapshot();
-      return snapshot?.context?.isAlive ?? true;
+      return snapshot.status === "active" && snapshot.context ? snapshot.context.isAlive : true;
     } catch (error) {
       console.error(`Member: ${this.getName()} 检查存活状态时发生错误:`, error);
       return true;
@@ -604,7 +638,7 @@ export abstract class Member {
     try {
       if (!this.actor) return true;
       const snapshot = this.actor.getSnapshot();
-      return snapshot?.context?.isActive ?? true;
+      return snapshot.status === "active" && snapshot.context ? snapshot.context.isActive : true;
     } catch (error) {
       console.error(`Member: ${this.getName()} 检查活动状态时发生错误:`, error);
       return true;
@@ -734,8 +768,8 @@ export abstract class Member {
   protected processEvent(event: MemberEvent): void {
     // 发送事件到状态机，转换为 XState 事件格式
     this.actor.send({
-      type: event.type,
-      ...event.data
+      type: event.type as any,
+      ...event.data,
     });
 
     // 调用子类特定的处理逻辑
@@ -779,7 +813,7 @@ export abstract class Member {
   /**
    * 获取状态机实例
    */
-  getFSM(): MemberStateMachine {
+  getFSM(): MemberActor {
     return this.actor;
   }
 
@@ -1157,7 +1191,7 @@ export abstract class Member {
       currentMp: this.getStats().currentMp,
       maxMp: this.getStats().maxMp,
       position: this.getStats().position,
-      state: this.getCurrentState().value || "unknown",
+      state: this.getCurrentState(),
       targetId: this.target?.getId(),
       teamId: this.teamId,
       campId: this.campId,

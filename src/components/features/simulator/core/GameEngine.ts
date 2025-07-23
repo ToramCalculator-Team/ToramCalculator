@@ -26,7 +26,8 @@ import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
 import type { FSMEvent } from "./FSMEventBridge";
-import { MemberSerializeData } from "./Member";
+import { MemberContext, MemberSerializeData } from "./Member";
+import { Snapshot } from "xstate";
 // 容器不直接依赖具体成员类型
 
 
@@ -105,7 +106,7 @@ export interface BattleSnapshot {
     isAlive: boolean;
     isActive: boolean;
     stats: any;
-    state: any;
+    snapshot: Snapshot<MemberContext>;
   }>;
   /** 战斗状态 */
   battleStatus: {
@@ -410,7 +411,7 @@ export class GameEngine {
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
     this.frameLoop.registerEventHandler(eventType, handler);
-    console.log(`GameEngine: 注册事件处理器: ${eventType}`);
+    // console.log(`GameEngine: 注册事件处理器: ${eventType}`);
   }
 
   /**
@@ -569,7 +570,7 @@ export class GameEngine {
         isAlive: member.isAlive(),
         isActive: member.isActive(),
         stats: member.getStats(),
-        state: member.getFSM()?.getState() || null,
+        snapshot: member.getFSM().getSnapshot(),
       })),
       battleStatus: {
         isEnded: false, // 容器不判断战斗状态，由外部查询决定
