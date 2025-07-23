@@ -1,36 +1,63 @@
-import { Transaction } from "kysely";
+import { Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, image } from "../generated/kysely/kyesely";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
-export interface Image extends DataType<image> {}
+// 1. 类型定义
+export type Image = Selectable<image>;
+export type ImageInsert = Insertable<image>;
+export type ImageUpdate = Updateable<image>;
 
-export async function findImageById(id: string) {
+// 2. 基础 CRUD 方法
+export async function findImageById(id: string): Promise<Image | null> {
   const db = await getDB();
-  return await db.selectFrom("image").where("id", "=", id).selectAll().executeTakeFirstOrThrow();
+  return await db
+    .selectFrom("image")
+    .where("id", "=", id)
+    .selectAll()
+    .executeTakeFirst() || null;
 }
 
-export async function findImages() {
+export async function findImages(): Promise<Image[]> {
   const db = await getDB();
-  return await db.selectFrom("image").selectAll().execute();
+  return await db
+    .selectFrom("image")
+    .selectAll()
+    .execute();
 }
 
-export async function updateImage(id: string, updateWith: Image["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("image").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function insertImage(trx: Transaction<DB>, data: ImageInsert): Promise<Image> {
+  return await trx
+    .insertInto("image")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
-export async function insertImage(trx: Transaction<DB>, newImage: Image["Insert"]) {
-  const db = await getDB();
-  return await db.insertInto("image").values(newImage).returningAll().executeTakeFirst();
+export async function createImage(trx: Transaction<DB>, data: ImageInsert): Promise<Image> {
+  return await trx
+    .insertInto("image")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
-export async function createImage(newImage: Image["Insert"]) {
-  const db = await getDB();
-  return await db.insertInto("image").values(newImage).returningAll().executeTakeFirst();
+export async function updateImage(trx: Transaction<DB>, id: string, data: ImageUpdate): Promise<Image> {
+  return await trx
+    .updateTable("image")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
-export async function deleteImage(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("image").where("id", "=", id).returningAll().executeTakeFirst();
+export async function deleteImage(trx: Transaction<DB>, id: string): Promise<Image | null> {
+  return await trx
+    .deleteFrom("image")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
 }

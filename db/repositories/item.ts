@@ -1,6 +1,5 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { DataType } from "./untils";
 import { DB, item } from "../generated/kysely/kyesely";
 import { ItemType } from "../generated/kysely/enums";
 import { getDB } from "./database";
@@ -8,11 +7,14 @@ import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
 
-export interface Item extends DataType<item> {
-  MainTable: Awaited<ReturnType<typeof findItems>>[number];
-  Card: Awaited<ReturnType<typeof findItemById>>;
-}
+// 1. 类型定义
+export type Item = Selectable<item>;
+export type ItemInsert = Insertable<item>;
+export type ItemUpdate = Updateable<item>;
+// 关联查询类型
+export type ItemWithRelations = Awaited<ReturnType<typeof findItemWithRelations>>;
 
+// 2. 关联查询定义
 export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
   return [
     jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
@@ -50,39 +52,40 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
   ];
 }
 
-export async function findItemById(id: string, type: ItemType) {
+// 3. 基础 CRUD 方法
+export async function findItemById(id: string): Promise<Item | null> {
   const db = await getDB();
-  return await db.selectFrom("item").where("id", "=", id).selectAll("item").executeTakeFirstOrThrow();
+  return await db
+    .selectFrom("item")
+    .where("id", "=", id)
+    .selectAll("item")
+    .executeTakeFirst() || null;
 }
 
-export async function findItems(params: { type: item["itemType"] }) {
+export async function findItems(params: { type: item["itemType"] }): Promise<Item[]> {
   const db = await getDB();
   return await db
     .selectFrom("item")
     .where("itemType", "=", params.type)
     .selectAll("item")
-    .select((eb) => itemSubRelations(eb, eb.ref("item.id")))
     .execute();
 }
 
-export async function updateItem(id: string, updateWith: Item["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("item").set(updateWith).where("item.id", "=", id).returningAll().executeTakeFirst();
+export async function insertItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
+  return await trx
+    .insertInto("item")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
-export async function insertItem(trx: Transaction<DB>, newItem: Item["Insert"]) {
-  const db = await getDB();
-  const item = await trx.insertInto("item").values(newItem).returningAll().executeTakeFirstOrThrow();
-  return item;
-}
-
-export async function createItem(trx: Transaction<DB>, newItem: Item["Insert"]) {
+export async function createItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
   const statistic = await createStatistic(trx);
   const item = await trx
     .insertInto("item")
     .values({
-      ...newItem,
-      id: createId(),
+      ...data,
+      id: data.id || createId(),
       statisticId: statistic.id,
       createdByAccountId: store.session.user.account?.id,
       updatedByAccountId: store.session.user.account?.id,
@@ -92,7 +95,30 @@ export async function createItem(trx: Transaction<DB>, newItem: Item["Insert"]) 
   return item;
 }
 
-export async function deleteItem(id: string) {
+export async function updateItem(trx: Transaction<DB>, id: string, data: ItemUpdate): Promise<Item> {
+  return await trx
+    .updateTable("item")
+    .set(data)
+    .where("item.id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteItem(trx: Transaction<DB>, id: string): Promise<Item | null> {
+  return await trx
+    .deleteFrom("item")
+    .where("item.id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findItemWithRelations(id: string) {
   const db = await getDB();
-  return await db.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .selectFrom("item")
+    .where("id", "=", id)
+    .selectAll("item")
+    .select((eb) => itemSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }

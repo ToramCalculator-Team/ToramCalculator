@@ -1,19 +1,20 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, member } from "../generated/kysely/kyesely";
 import { playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 import { mercenarySubRelations } from "./mercenary";
 import { mobSubRelations } from "./mob";
 
-export type MemberWithRelations = Awaited<ReturnType<typeof findMemberById>>;
+// 1. 类型定义
+export type Member = Selectable<member>;
+export type MemberInsert = Insertable<member>;
+export type MemberUpdate = Updateable<member>;
+// 关联查询类型
+export type MemberWithRelations = Awaited<ReturnType<typeof findMemberWithRelations>>;
 
-export interface Member extends DataType<member> {
-  MainTable: Awaited<ReturnType<typeof findMembers>>[number];
-  MainForm: Awaited<ReturnType<typeof findMemberById>>;
-}
-
+// 2. 关联查询定义
 export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
   return [
     jsonObjectFrom(
@@ -47,7 +48,62 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
   ];
 }
 
-export async function findMemberById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findMemberById(id: string): Promise<Member | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("member")
+    .where("id", "=", id)
+    .selectAll("member")
+    .executeTakeFirst() || null;
+}
+
+export async function findMembers(): Promise<Member[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("member")
+    .selectAll("member")
+    .execute();
+}
+
+export async function insertMember(trx: Transaction<DB>, data: MemberInsert): Promise<Member> {
+  return await trx
+    .insertInto("member")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createMember(trx: Transaction<DB>, data: MemberInsert): Promise<Member> {
+  return await trx
+    .insertInto("member")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateMember(trx: Transaction<DB>, id: string, data: MemberUpdate): Promise<Member> {
+  return await trx
+    .updateTable("member")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteMember(trx: Transaction<DB>, id: string): Promise<Member | null> {
+  return await trx
+    .deleteFrom("member")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findMemberWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("member")
@@ -55,34 +111,4 @@ export async function findMemberById(id: string) {
     .selectAll("member")
     .select((eb) => memberSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findMembers() {
-  const db = await getDB();
-  return await db.selectFrom("member").selectAll("member").execute();
-}
-
-export async function updateMember(id: string, updateWith: Member["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("member").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function createMember(newMember: Member["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const member = await trx
-      .insertInto("member")
-      .values({
-        ...newMember,
-        // characterId: character.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return member;
-  });
-}
-
-export async function deleteMember(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("member").where("id", "=", id).returningAll().executeTakeFirst();
 }

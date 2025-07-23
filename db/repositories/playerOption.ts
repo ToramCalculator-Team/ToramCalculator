@@ -1,15 +1,18 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, player_option } from "../generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { createId } from "@paralleldrive/cuid2";
 import { crystalSubRelations } from "./crystal";
-import { DataType } from "./untils";
 
-export interface PlayerOption extends DataType<player_option> {
-  MainTable: Awaited<ReturnType<typeof findPlayerOptions>>[number];
-  MainForm: player_option;
-}
+// 1. 类型定义
+export type PlayerOption = Selectable<player_option>;
+export type PlayerOptionInsert = Insertable<player_option>;
+export type PlayerOptionUpdate = Updateable<player_option>;
+// 关联查询类型
+export type PlayerOptionWithRelations = Awaited<ReturnType<typeof findPlayerOptionWithRelations>>;
 
+// 2. 关联查询定义
 export function playerOptionSubRelations(eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) {
   return [
     jsonArrayFrom(
@@ -22,14 +25,75 @@ export function playerOptionSubRelations(eb: ExpressionBuilder<DB, "player_optio
         .selectAll(["item", "crystal"]),
     ).as("crystalList"),
     jsonObjectFrom(
-      eb.selectFrom("special").whereRef("special.itemId", "=", "player_option.templateId").selectAll("special"),
+      eb
+        .selectFrom("special")
+        .whereRef("special.itemId", "=", "player_option.templateId")
+        .selectAll("special"),
     )
       .$notNull()
       .as("template"),
   ];
 }
 
-export async function findPlayerOptionById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findPlayerOptionById(id: string): Promise<PlayerOption | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("player_option")
+    .where("id", "=", id)
+    .selectAll("player_option")
+    .executeTakeFirst() || null;
+}
+
+export async function findPlayerOptions(): Promise<PlayerOption[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("player_option")
+    .selectAll("player_option")
+    .execute();
+}
+
+export async function insertPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert): Promise<PlayerOption> {
+  return await trx
+    .insertInto("player_option")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert): Promise<PlayerOption> {
+  // 注意：createPlayerOption 内部自己处理事务，所以我们需要在外部事务中直接插入
+  const playerOption = await trx
+    .insertInto("player_option")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  
+  return playerOption;
+}
+
+export async function updatePlayerOption(trx: Transaction<DB>, id: string, data: PlayerOptionUpdate): Promise<PlayerOption> {
+  return await trx
+    .updateTable("player_option")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deletePlayerOption(trx: Transaction<DB>, id: string): Promise<PlayerOption | null> {
+  return await trx
+    .deleteFrom("player_option")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findPlayerOptionWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("player_option")
@@ -37,40 +101,4 @@ export async function findPlayerOptionById(id: string) {
     .selectAll("player_option")
     .select((eb) => playerOptionSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findPlayerOptions() {
-  const db = await getDB();
-  return await db.selectFrom("player_option").selectAll("player_option").execute();
-}
-
-export async function updatePlayerOption(id: string, updateWith: PlayerOption["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("player_option").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function insertPlayerOption(trx: Transaction<DB>, newOption: PlayerOption["Insert"]) {
-  const player_option = await trx
-    .insertInto("player_option")
-    .values(newOption)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  return player_option;
-}
-
-export async function createPlayerOption(newOption: PlayerOption["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const player_option = await trx
-      .insertInto("player_option")
-      .values(newOption)
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return player_option;
-  });
-}
-
-export async function deletePlayerOption(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("player_option").where("id", "=", id).returningAll().executeTakeFirst();
 }

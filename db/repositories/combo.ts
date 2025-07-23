@@ -1,16 +1,17 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, combo } from "../generated/kysely/kyesely";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 
-export type ComboWithRelations = Awaited<ReturnType<typeof findComboById>>;
+// 1. 类型定义
+export type Combo = Selectable<combo>;
+export type ComboInsert = Insertable<combo>;
+export type ComboUpdate = Updateable<combo>;
+// 关联查询类型
+export type ComboWithRelations = Awaited<ReturnType<typeof findComboWithRelations>>;
 
-export interface Combo extends DataType<combo> {
-  MainTable: Awaited<ReturnType<typeof findCombos>>[number];
-  MainForm: combo;
-}
-
+// 2. 关联查询定义
 export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expression<string>) {
   return [
     jsonArrayFrom(
@@ -25,7 +26,62 @@ export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expres
   ];
 }
 
-export async function findComboById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findComboById(id: string): Promise<Combo | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("combo")
+    .where("id", "=", id)
+    .selectAll("combo")
+    .executeTakeFirst() || null;
+}
+
+export async function findCombos(): Promise<Combo[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("combo")
+    .selectAll("combo")
+    .execute();
+}
+
+export async function insertCombo(trx: Transaction<DB>, data: ComboInsert): Promise<Combo> {
+  return await trx
+    .insertInto("combo")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createCombo(trx: Transaction<DB>, data: ComboInsert): Promise<Combo> {
+  return await trx
+    .insertInto("combo")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateCombo(trx: Transaction<DB>, id: string, data: ComboUpdate): Promise<Combo> {
+  return await trx
+    .updateTable("combo")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteCombo(trx: Transaction<DB>, id: string): Promise<Combo | null> {
+  return await trx
+    .deleteFrom("combo")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findComboWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("combo")
@@ -33,31 +89,4 @@ export async function findComboById(id: string) {
     .selectAll("combo")
     .select((eb) => comboSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findCombos() {
-  const db = await getDB();
-  return await db.selectFrom("combo").selectAll("combo").execute();
-}
-
-export async function updateCombo(id: string, updateWith: Combo["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("combo").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function insertCombo(trx: Transaction<DB>, newCombo: Combo["Insert"]) {
-  return await trx.insertInto("combo").values(newCombo).returningAll().executeTakeFirstOrThrow();
-}
-
-export async function createCombo(newCombo: Combo["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const combo = await trx.insertInto("combo").values(newCombo).returningAll().executeTakeFirstOrThrow();
-    return combo;
-  });
-}
-
-export async function deleteCombo(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("combo").where("id", "=", id).returningAll().executeTakeFirst();
 }

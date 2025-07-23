@@ -1,4 +1,4 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, character } from "../generated/kysely/kyesely";
 import { createStatistic, statisticSubRelations } from "./statistic";
@@ -8,17 +8,17 @@ import { playerWeponSubRelations } from "./playerWeapon";
 import { playerArmorSubRelations } from "./playerArmor";
 import { playerOptionSubRelations } from "./playerOption";
 import { playerSpecialSubRelations } from "./playerSpecial";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 import { character_skillSubRelations } from "./characterSkill";
 
-export type CharacterWithRelations = Awaited<ReturnType<typeof findCharacterById>>;
+// 1. 类型定义
+export type Character = Selectable<character>;
+export type CharacterInsert = Insertable<character>;
+export type CharacterUpdate = Updateable<character>;
+// 关联查询类型
+export type CharacterWithRelations = Awaited<ReturnType<typeof findCharacterWithRelations>>;
 
-export interface Character extends DataType<character> {
-  MainTable: Awaited<ReturnType<typeof findCharacters>>[number];
-  MainForm: character;
-  Card: Awaited<ReturnType<typeof findCharacterById>>;
-}
-
+// 2. 关联查询定义
 export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {
   return [
     jsonArrayFrom(
@@ -96,7 +96,65 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
   ];
 }
 
-export async function findCharacterById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findCharacterById(id: string): Promise<Character | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("character")
+    .where("id", "=", id)
+    .selectAll("character")
+    .executeTakeFirst() || null;
+}
+
+export async function findCharacters(): Promise<Character[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("character")
+    .selectAll("character")
+    .execute();
+}
+
+export async function insertCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
+  return await trx
+    .insertInto("character")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
+  const statistic = await createStatistic(trx);
+  const character = await trx
+    .insertInto("character")
+    .values({
+      ...data,
+      id: data.id || createId(),
+      statisticId: statistic.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return character;
+}
+
+export async function updateCharacter(trx: Transaction<DB>, id: string, data: CharacterUpdate): Promise<Character> {
+  return await trx
+    .updateTable("character")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteCharacter(trx: Transaction<DB>, id: string): Promise<Character | null> {
+  return await trx
+    .deleteFrom("character")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findCharacterWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("character")
@@ -104,48 +162,4 @@ export async function findCharacterById(id: string) {
     .selectAll("character")
     .select((eb) => characterSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findCharacters() {
-  const db = await getDB();
-  return await db.selectFrom("character").selectAll("character").execute();
-}
-
-export async function updateCharacter(id: string, updateWith: Character["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("character").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function insertCharacter(trx: Transaction<DB>, newCharacter: Character["Insert"]) {
-  const statistic = await createStatistic(trx);
-  const character = await trx
-    .insertInto("character")
-    .values({
-      ...newCharacter,
-      statisticId: statistic.id,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  return { ...character, statistic };
-}
-
-export async function createCharacter(newCharacter: Character["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const statistic = await createStatistic(trx);
-    const character = await trx
-      .insertInto("character")
-      .values({
-        ...newCharacter,
-        statisticId: statistic.id,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return { ...character, statistic };
-  });
-}
-
-export async function deleteCharacter(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("character").where("id", "=", id).returningAll().executeTakeFirst();
 }

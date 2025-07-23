@@ -1,6 +1,5 @@
-import { Selectable, Insertable, Updateable, Kysely, Transaction, sql } from "kysely";
+import { Transaction, sql } from "kysely";
 import { DB } from "../generated/kysely/kyesely";
-import { store } from "~/store";
 
 /**
  * 根据指定的属性类型映射来调整类型
@@ -33,18 +32,6 @@ export type ConvertToAllString<T> = T extends Date | Date[] | Array<object> | nu
       }
     : string;
 
-/**
- * 生成通用数据类型
- *
- * @param T 原始类型
- * @returns 转换后的类型
- */
-export interface DataType<T> {
-  [key: string]: any;
-  Select: Selectable<T>;
-  Insert: Insertable<T>;
-  Update: Updateable<T>;
-}
 
 /**
  * 根据对象类型生成各类UI需要的字典类型

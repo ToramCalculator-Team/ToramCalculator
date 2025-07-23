@@ -1,33 +1,64 @@
 import { getDB } from "./database";
-import { activity } from "../generated/kysely/kyesely";
+import { activity, DB } from "../generated/kysely/kyesely";
+import { Selectable, Insertable, Updateable } from "kysely";
 import { createId } from "@paralleldrive/cuid2";
-import { DataType } from "./untils";
+import { Transaction } from "kysely";
 
-export interface Activity extends DataType<activity> {
-  MainTable: Awaited<ReturnType<typeof findActivities>>[number];
+// 1. 类型定义
+export type Activity = Selectable<activity>;
+export type ActivityInsert = Insertable<activity>;
+export type ActivityUpdate = Updateable<activity>;
+
+// 2. 基础 CRUD 方法
+export async function findActivityById(id: string): Promise<Activity | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("activity")
+    .where("id", "=", id)
+    .selectAll()
+    .executeTakeFirst() || null;
 }
 
-export const findActivities = async () => {
+export async function findActivities(): Promise<Activity[]> {
   const db = await getDB();
-  return await db.selectFrom("activity").selectAll().execute();
-};
+  return await db
+    .selectFrom("activity")
+    .selectAll()
+    .execute();
+}
 
-export const findActivityById = async (id: string) => {
-  const db = await getDB();
-  const activity = await db.selectFrom("activity").where("id", "=", id).selectAll().executeTakeFirst();
-  if (!activity) {
-    throw new Error(`Activity with id ${id} not found`);
-  }
-  return activity;
-};
+export async function insertActivity(trx: Transaction<DB>, data: ActivityInsert): Promise<Activity> {
+  return await trx
+    .insertInto("activity")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
 
-export const createActivity = async (trx: any, data: Omit<Activity, "id">) => {
+export async function createActivity(trx: Transaction<DB>, data: ActivityInsert): Promise<Activity> {
   return await trx
     .insertInto("activity")
     .values({
       ...data,
-      id: createId(),
+      id: data.id || createId(),
     })
     .returningAll()
     .executeTakeFirstOrThrow();
-};
+}
+
+export async function updateActivity(trx: Transaction<DB>, id: string, data: ActivityUpdate): Promise<Activity> {
+  return await trx
+    .updateTable("activity")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteActivity(trx: Transaction<DB>, id: string): Promise<Activity | null> {
+  return await trx
+    .deleteFrom("activity")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}

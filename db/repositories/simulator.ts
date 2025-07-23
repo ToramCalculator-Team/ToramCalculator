@@ -1,18 +1,19 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, simulator } from "../generated/kysely/kyesely";
 import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { teamSubRelations } from "./team";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
-export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorById>>;
+// 1. 类型定义
+export type Simulator = Selectable<simulator>;
+export type SimulatorInsert = Insertable<simulator>;
+export type SimulatorUpdate = Updateable<simulator>;
+// 关联查询类型
+export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorWithRelations>>;
 
-export interface Simulator extends DataType<simulator> {
-  MainTable: Awaited<ReturnType<typeof findSimulators>>[number];
-  MainForm: Awaited<ReturnType<typeof findSimulatorById>>;
-}
-
+// 2. 关联查询定义
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
   return [
     jsonObjectFrom(
@@ -47,7 +48,65 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
   ];
 }
 
-export async function findSimulatorById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findSimulatorById(id: string): Promise<Simulator | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("simulator")
+    .where("id", "=", id)
+    .selectAll("simulator")
+    .executeTakeFirst() || null;
+}
+
+export async function findSimulators(): Promise<Simulator[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("simulator")
+    .selectAll("simulator")
+    .execute();
+}
+
+export async function insertSimulator(trx: Transaction<DB>, data: SimulatorInsert): Promise<Simulator> {
+  return await trx
+    .insertInto("simulator")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createSimulator(trx: Transaction<DB>, data: SimulatorInsert): Promise<Simulator> {
+  // 注意：createSimulator 内部自己处理事务，所以我们需要在外部事务中直接插入
+  const simulator = await trx
+    .insertInto("simulator")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  
+  return simulator;
+}
+
+export async function updateSimulator(trx: Transaction<DB>, id: string, data: SimulatorUpdate): Promise<Simulator> {
+  return await trx
+    .updateTable("simulator")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteSimulator(trx: Transaction<DB>, id: string): Promise<Simulator | null> {
+  return await trx
+    .deleteFrom("simulator")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findSimulatorWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("simulator")
@@ -55,33 +114,4 @@ export async function findSimulatorById(id: string) {
     .selectAll("simulator")
     .select((eb) => simulatorSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findSimulators() {
-  const db = await getDB();
-  const res = await db
-    .selectFrom("simulator")
-    .selectAll("simulator")
-    .select((eb) => simulatorSubRelations(eb, eb.val("simulator.id")))
-    .execute();
-  console.log("findSimulators", res);
-  return res;
-}
-
-export async function updateSimulator(id: string, updateWith: Simulator["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("simulator").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function createSimulator(newSimulator: Simulator["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const simulator = await trx.insertInto("simulator").values(newSimulator).returningAll().executeTakeFirstOrThrow();
-    return simulator;
-  });
-}
-
-export async function deleteSimulator(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("simulator").where("id", "=", id).returningAll().executeTakeFirst();
 }

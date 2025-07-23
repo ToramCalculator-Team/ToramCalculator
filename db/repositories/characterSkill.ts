@@ -1,17 +1,18 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, character_skill } from "../generated/kysely/kyesely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import {DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 import { skillSubRelations } from "./skill";
 
-export type CharacterSkillWithRelations = Awaited<ReturnType<typeof findCharacterSkillById>>;
+// 1. 类型定义
+export type CharacterSkill = Selectable<character_skill>;
+export type CharacterSkillInsert = Insertable<character_skill>;
+export type CharacterSkillUpdate = Updateable<character_skill>;
+// 关联查询类型
+export type CharacterSkillWithRelations = Awaited<ReturnType<typeof findCharacterSkillWithRelations>>;
 
-export interface CharacterSkill extends DataType<character_skill> {
-  MainTable: Awaited<ReturnType<typeof findCharacterSkills>>[number];
-  MainForm: character_skill;
-}
-
+// 2. 关联查询定义
 export function character_skillSubRelations(eb: ExpressionBuilder<DB, "character_skill">, id: Expression<string>) {
   return [
     jsonObjectFrom(
@@ -24,7 +25,62 @@ export function character_skillSubRelations(eb: ExpressionBuilder<DB, "character
   ];
 }
 
-export async function findCharacterSkillById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findCharacterSkillById(id: string): Promise<CharacterSkill | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("character_skill")
+    .where("id", "=", id)
+    .selectAll("character_skill")
+    .executeTakeFirst() || null;
+}
+
+export async function findCharacterSkills(): Promise<CharacterSkill[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("character_skill")
+    .selectAll("character_skill")
+    .execute();
+}
+
+export async function insertCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert): Promise<CharacterSkill> {
+  return await trx
+    .insertInto("character_skill")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert): Promise<CharacterSkill> {
+  return await trx
+    .insertInto("character_skill")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateCharacterSkill(trx: Transaction<DB>, id: string, data: CharacterSkillUpdate): Promise<CharacterSkill> {
+  return await trx
+    .updateTable("character_skill")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteCharacterSkill(trx: Transaction<DB>, id: string): Promise<CharacterSkill | null> {
+  return await trx
+    .deleteFrom("character_skill")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findCharacterSkillWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("character_skill")
@@ -32,23 +88,4 @@ export async function findCharacterSkillById(id: string) {
     .selectAll("character_skill")
     .select((eb) => character_skillSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findCharacterSkills() {
-  const db = await getDB();
-  return await db.selectFrom("character_skill").selectAll("character_skill").execute();
-}
-
-export async function updateCharacterSkill(id: string, updateWith: CharacterSkill["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("character_skill").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function deleteCharacterSkill(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("character_skill").where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function insertCharacterSkill(trx: Transaction<DB>, insertWith: CharacterSkill["Insert"]) {
-  return await trx.insertInto("character_skill").values(insertWith).returningAll().executeTakeFirst();
 }

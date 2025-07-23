@@ -1,17 +1,20 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, player_weapon } from "../generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { weaponSubRelations } from "./weapon";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
-export interface PlayerWeapon extends DataType<player_weapon> {
-  MainTable: Awaited<ReturnType<typeof findPlayerWeapons>>[number];
-  MainForm: player_weapon;
-}
+// 1. 类型定义
+export type PlayerWeapon = Selectable<player_weapon>;
+export type PlayerWeaponInsert = Insertable<player_weapon>;
+export type PlayerWeaponUpdate = Updateable<player_weapon>;
+// 关联查询类型
+export type PlayerWeaponWithRelations = Awaited<ReturnType<typeof findPlayerWeaponWithRelations>>;
 
-export function playerWeponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
+// 2. 关联查询定义
+export function playerWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
   return [
     jsonArrayFrom(
       eb
@@ -35,43 +38,70 @@ export function playerWeponSubRelations(eb: ExpressionBuilder<DB, "player_weapon
   ];
 }
 
-export async function findPlayerWeaponById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findPlayerWeaponById(id: string): Promise<PlayerWeapon | null> {
   const db = await getDB();
   return await db
     .selectFrom("player_weapon")
     .where("id", "=", id)
     .selectAll("player_weapon")
-    .select((eb) => playerWeponSubRelations(eb, eb.val(id)))
+    .executeTakeFirst() || null;
+}
+
+export async function findPlayerWeapons(): Promise<PlayerWeapon[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("player_weapon")
+    .selectAll("player_weapon")
+    .execute();
+}
+
+export async function insertPlayerWeapon(trx: Transaction<DB>, data: PlayerWeaponInsert): Promise<PlayerWeapon> {
+  return await trx
+    .insertInto("player_weapon")
+    .values(data)
+    .returningAll()
     .executeTakeFirstOrThrow();
 }
 
-export async function findPlayerWeapons() {
-  const db = await getDB();
-  return await db.selectFrom("player_weapon").selectAll("player_weapon").execute();
+export async function createPlayerWeapon(trx: Transaction<DB>, data: PlayerWeaponInsert): Promise<PlayerWeapon> {
+  // 注意：createPlayerWeapon 内部自己处理事务，所以我们需要在外部事务中直接插入
+  const player_weapon = await trx
+    .insertInto("player_weapon")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  
+  return player_weapon;
 }
 
-export async function updatePlayerWeapon(id: string, updateWith: PlayerWeapon["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("player_weapon").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
+export async function updatePlayerWeapon(trx: Transaction<DB>, id: string, data: PlayerWeaponUpdate): Promise<PlayerWeapon> {
+  return await trx
+    .updateTable("player_weapon")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
 }
 
-export async function insertPlayerWeapon(trx: Transaction<DB>, newWeapon: PlayerWeapon["Insert"]) {
-  return await trx.insertInto("player_weapon").values(newWeapon).returningAll().executeTakeFirstOrThrow();
+export async function deletePlayerWeapon(trx: Transaction<DB>, id: string): Promise<PlayerWeapon | null> {
+  return await trx
+    .deleteFrom("player_weapon")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
 }
 
-export async function createPlayerWeapon(newWeapon: PlayerWeapon["Insert"]) {
+// 4. 特殊查询方法
+export async function findPlayerWeaponWithRelations(id: string) {
   const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const player_weapon = await trx
-      .insertInto("player_weapon")
-      .values(newWeapon)
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return player_weapon;
-  });
-}
-
-export async function deletePlayerWeapon(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("player_weapon").where("id", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .selectFrom("player_weapon")
+    .where("id", "=", id)
+    .selectAll("player_weapon")
+    .select((eb) => playerWeaponSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
 }

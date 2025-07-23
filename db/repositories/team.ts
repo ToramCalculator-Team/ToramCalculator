@@ -1,19 +1,20 @@
-import { Expression, ExpressionBuilder } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, team } from "../generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 import { playerSubRelations } from "./player";
 import { mercenarySubRelations } from "./mercenary";
 import { memberSubRelations } from "./member";
 
-export type TeamWithRelations = Awaited<ReturnType<typeof findTeamById>>;
+// 1. 类型定义
+export type Team = Selectable<team>;
+export type TeamInsert = Insertable<team>;
+export type TeamUpdate = Updateable<team>;
+// 关联查询类型
+export type TeamWithRelations = Awaited<ReturnType<typeof findTeamWithRelations>>;
 
-export interface Team extends DataType<team> {
-  MainTable: Awaited<ReturnType<typeof findTeams>>[number];
-  MainForm: team;
-}
-
+// 2. 关联查询定义
 export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expression<string>) {
   return [
     jsonArrayFrom(
@@ -26,7 +27,65 @@ export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expressi
   ];
 }
 
-export async function findTeamById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findTeamById(id: string): Promise<Team | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("team")
+    .where("id", "=", id)
+    .selectAll("team")
+    .executeTakeFirst() || null;
+}
+
+export async function findTeams(): Promise<Team[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("team")
+    .selectAll("team")
+    .execute();
+}
+
+export async function insertTeam(trx: Transaction<DB>, data: TeamInsert): Promise<Team> {
+  return await trx
+    .insertInto("team")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createTeam(trx: Transaction<DB>, data: TeamInsert): Promise<Team> {
+  // 注意：createTeam 内部自己处理事务，所以我们需要在外部事务中直接插入
+  const team = await trx
+    .insertInto("team")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  
+  return team;
+}
+
+export async function updateTeam(trx: Transaction<DB>, id: string, data: TeamUpdate): Promise<Team> {
+  return await trx
+    .updateTable("team")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteTeam(trx: Transaction<DB>, id: string): Promise<Team | null> {
+  return await trx
+    .deleteFrom("team")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findTeamWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("team")
@@ -34,31 +93,4 @@ export async function findTeamById(id: string) {
     .selectAll("team")
     .select((eb) => teamSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findTeams() {
-  const db = await getDB();
-  return await db
-    .selectFrom("team")
-    .selectAll("team")
-    .select((eb) => teamSubRelations(eb, eb.val("team.id")))
-    .execute();
-}
-
-export async function updateTeam(id: string, updateWith: Team["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("team").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function createTeam(newTeam: Team["Insert"]) {
-  const db = await getDB();
-  return await db.transaction().execute(async (trx) => {
-    const team = await trx.insertInto("team").values(newTeam).returningAll().executeTakeFirstOrThrow();
-    return team;
-  });
-}
-
-export async function deleteTeam(id: string) {
-  const db = await getDB();
-  return await db.deleteFrom("team").where("id", "=", id).returningAll().executeTakeFirst();
 }

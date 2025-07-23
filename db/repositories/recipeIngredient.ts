@@ -1,20 +1,87 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, recipe_ingredient } from "../generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { DataType } from "./untils";
+import { createId } from "@paralleldrive/cuid2";
 
-export interface RecipeIngredient extends DataType<recipe_ingredient> {}
+// 1. 类型定义
+export type RecipeIngredient = Selectable<recipe_ingredient>;
+export type RecipeIngredientInsert = Insertable<recipe_ingredient>;
+export type RecipeIngredientUpdate = Updateable<recipe_ingredient>;
+// 关联查询类型
+export type RecipeIngredientWithRelations = Awaited<ReturnType<typeof findRecipeIngredientWithRelations>>;
 
+// 2. 关联查询定义
 export function recipeIngredientSubRelations(eb: ExpressionBuilder<DB, "recipe_ingredient">, id: Expression<string>) {
   return [
     jsonArrayFrom(
-      eb.selectFrom("recipe_ingredient").where("recipe_ingredient.recipeId", "=", id).selectAll("recipe_ingredient"),
+      eb
+        .selectFrom("recipe_ingredient")
+        .where("recipe_ingredient.recipeId", "=", id)
+        .selectAll("recipe_ingredient"),
     ).as("recipeEntries"),
   ];
 }
 
-export async function findRecipeIngredientById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findRecipeIngredientById(id: string): Promise<RecipeIngredient | null> {
+  const db = await getDB();
+  return await db
+    .selectFrom("recipe_ingredient")
+    .where("id", "=", id)
+    .selectAll("recipe_ingredient")
+    .executeTakeFirst() || null;
+}
+
+export async function findRecipeIngredients(): Promise<RecipeIngredient[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("recipe_ingredient")
+    .selectAll("recipe_ingredient")
+    .execute();
+}
+
+export async function insertRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert): Promise<RecipeIngredient> {
+  return await trx
+    .insertInto("recipe_ingredient")
+    .values(data)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function createRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert): Promise<RecipeIngredient> {
+  // 注意：createRecipeIngredient 内部自己处理事务，所以我们需要在外部事务中直接插入
+  const recipeIngredient = await trx
+    .insertInto("recipe_ingredient")
+    .values({
+      ...data,
+      id: data.id || createId(),
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  
+  return recipeIngredient;
+}
+
+export async function updateRecipeIngredient(trx: Transaction<DB>, id: string, data: RecipeIngredientUpdate): Promise<RecipeIngredient> {
+  return await trx
+    .updateTable("recipe_ingredient")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteRecipeIngredient(trx: Transaction<DB>, id: string): Promise<RecipeIngredient | null> {
+  return await trx
+    .deleteFrom("recipe_ingredient")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findRecipeIngredientWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("recipe_ingredient")
@@ -22,37 +89,4 @@ export async function findRecipeIngredientById(id: string) {
     .selectAll("recipe_ingredient")
     .select((eb) => recipeIngredientSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-}
-
-export async function findRecipeIngredients() {
-  const db = await getDB();
-  return await db.selectFrom("recipe_ingredient").selectAll("recipe_ingredient").execute();
-}
-
-export async function updateRecipeIngredient(id: string, updateWith: RecipeIngredient["Update"]) {
-  const db = await getDB();
-  return await db
-    .updateTable("recipe_ingredient")
-    .set(updateWith)
-    .where("recipe_ingredient.id", "=", id)
-    .returningAll()
-    .executeTakeFirst();
-}
-
-export async function insertRecipeIngredient(trx: Transaction<DB>, newRecipe: RecipeIngredient["Insert"]) {
-  const recipeIngredient = await trx
-    .insertInto("recipe_ingredient")
-    .values(newRecipe)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  return recipeIngredient;
-}
-
-export async function deleteRecipeIngredient(id: string) {
-  const db = await getDB();
-  return await db
-    .deleteFrom("recipe_ingredient")
-    .where("recipe_ingredient.id", "=", id)
-    .returningAll()
-    .executeTakeFirst();
 }

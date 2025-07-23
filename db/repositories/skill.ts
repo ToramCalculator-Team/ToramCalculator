@@ -1,18 +1,19 @@
-import { Expression, ExpressionBuilder, Transaction } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, skill } from "../generated/kysely/kyesely";
 import { insertStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { skillEffectSubRelations } from "./skillEffect";
-import { DataType } from "./untils";
 import { createId } from "@paralleldrive/cuid2";
 
-export interface Skill extends DataType<skill> {
-  MainTable: Awaited<ReturnType<typeof findSkills>>[number];
-  MainForm: skill;
-  Card: Awaited<ReturnType<typeof findSkillById>>;
-}
+// 1. 类型定义
+export type Skill = Selectable<skill>;
+export type SkillInsert = Insertable<skill>;
+export type SkillUpdate = Updateable<skill>;
+// 关联查询类型
+export type SkillWithRelations = Awaited<ReturnType<typeof findSkillWithRelations>>;
 
+// 2. 关联查询定义
 export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {
   return [
     jsonObjectFrom(
@@ -34,37 +35,30 @@ export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expres
   ];
 }
 
-export async function findSkillById(id: string) {
+// 3. 基础 CRUD 方法
+export async function findSkillById(id: string): Promise<Skill | null> {
   const db = await getDB();
   return await db
     .selectFrom("skill")
     .where("id", "=", id)
     .selectAll("skill")
-    // .select((eb) => skillSubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
+    .executeTakeFirst() || null;
 }
 
-export async function findSkillsLike(searchString: string) {
+export async function findSkills(): Promise<Skill[]> {
   const db = await getDB();
-  return await db.selectFrom("skill").where("name", "like", `%${searchString}%`).selectAll("skill").execute();
+  return await db
+    .selectFrom("skill")
+    .selectAll("skill")
+    .execute();
 }
 
-export async function findSkills() {
-  const db = await getDB();
-  return await db.selectFrom("skill").selectAll("skill").execute();
-}
-
-export async function updateSkill(id: string, updateWith: Skill["Update"]) {
-  const db = await getDB();
-  return await db.updateTable("skill").set(updateWith).where("id", "=", id).returningAll().executeTakeFirst();
-}
-
-export async function insertSkill(trx: Transaction<DB>, newSkill: Skill["Insert"]) {
+export async function insertSkill(trx: Transaction<DB>, data: SkillInsert): Promise<Skill> {
   const statistic = await insertStatistic(trx);
   const skill = await trx
     .insertInto("skill")
     .values({
-      ...newSkill,
+      ...data,
       statisticId: statistic.id,
     })
     .returningAll()
@@ -73,7 +67,8 @@ export async function insertSkill(trx: Transaction<DB>, newSkill: Skill["Insert"
   return skill;
 }
 
-export async function createSkill(trx: Transaction<DB>, newSkill: Skill["Insert"]) {
+export async function createSkill(trx: Transaction<DB>, data: SkillInsert): Promise<Skill> {
+  // 注意：createSkill 内部自己处理事务，所以我们需要在外部事务中直接插入
   const statistic = await trx
     .insertInto("statistic")
     .values({
@@ -85,19 +80,53 @@ export async function createSkill(trx: Transaction<DB>, newSkill: Skill["Insert"
     })
     .returningAll()
     .executeTakeFirstOrThrow();
+  
   const skill = await trx
     .insertInto("skill")
     .values({
-      ...newSkill,
-      id: createId(),
+      ...data,
+      id: data.id || createId(),
       statisticId: statistic.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
+  
   return skill;
 }
 
-export async function deleteSkill(id: string) {
+export async function updateSkill(trx: Transaction<DB>, id: string, data: SkillUpdate): Promise<Skill> {
+  return await trx
+    .updateTable("skill")
+    .set(data)
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteSkill(trx: Transaction<DB>, id: string): Promise<Skill | null> {
+  return await trx
+    .deleteFrom("skill")
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst() || null;
+}
+
+// 4. 特殊查询方法
+export async function findSkillWithRelations(id: string) {
   const db = await getDB();
-  return await db.deleteFrom("skill").where("id", "=", id).returningAll().executeTakeFirst();
+  return await db
+    .selectFrom("skill")
+    .where("id", "=", id)
+    .selectAll("skill")
+    .select((eb) => skillSubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}
+
+export async function findSkillsLike(searchString: string): Promise<Skill[]> {
+  const db = await getDB();
+  return await db
+    .selectFrom("skill")
+    .where("name", "like", `%${searchString}%`)
+    .selectAll("skill")
+    .execute();
 }
