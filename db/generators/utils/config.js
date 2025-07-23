@@ -16,27 +16,27 @@ const __dirname = path.dirname(__filename);
  */
 export const PATHS = {
   // 输入文件
-  enums: path.join(__dirname, "../enums.ts"),
-  baseSchema: path.join(__dirname, "../baseSchema.prisma"),
+  enums: path.join(__dirname, "../../schema/enums.ts"),
+  baseSchema: path.join(__dirname, "../../schema/baseSchema.prisma"),
 
   // 生成的文件
   serverDB: {
-    sql: path.join(__dirname, "../generated/serverDB/init.sql"),
-    tempSchema: path.join(__dirname, "../temp_server_schema.prisma"),
+    sql: path.join(__dirname, "../../generated/serverDB/init.sql"),
+    tempSchema: path.join(__dirname, "../../temp_server_schema.prisma"),
   },
   clientDB: {
-    sql: path.join(__dirname, "../generated/clientDB/init.sql"),
-    tempSchema: path.join(__dirname, "../temp_client_schema.prisma"),
+    sql: path.join(__dirname, "../../generated/clientDB/init.sql"),
+    tempSchema: path.join(__dirname, "../../temp_client_schema.prisma"),
   },
   zod: {
-    schemas: path.join(__dirname, "../generated/zod/index.ts"),
+    schemas: path.join(__dirname, "../../generated/zod/index.ts"),
   },
   kysely: {
-    types: path.join(__dirname, "../generated/kysely/kyesely.ts"),
-    enums: path.join(__dirname, "../generated/kysely/enums.ts"),
+    types: path.join(__dirname, "../../generated/kysely/kyesely.ts"),
+    enums: path.join(__dirname, "../../generated/kysely/enums.ts"),
   },
   queryBuilder: {
-    rules: path.join(__dirname, "../generated/queryBuilderRules.ts"),
+    rules: path.join(__dirname, "../../generated/queryBuilderRules.ts"),
   },
 };
 

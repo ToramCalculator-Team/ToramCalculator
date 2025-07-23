@@ -30,14 +30,6 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 使用导入的配置和工具函数，删除重复定义
-
-// 使用导入的 COMMON_OPERATORS 和 TypeConverter，删除重复定义
-
-// 使用导入的 SchemaParser 类，删除重复定义
-
-// 使用导入的 EnumProcessor 类，删除重复定义
-
 /**
  * SQL 生成器
  * 负责生成数据库初始化 SQL 脚本
@@ -525,7 +517,7 @@ EXECUTE FUNCTION changes_notify_trigger();
    * 生成 Kysely 类型
    */
   static generateKyselyTypes() {
-    CommandUtils.execCommand("prisma generate --schema=db/temp_client_schema.prisma --generator=kysely");
+    CommandUtils.execCommand(`prisma generate --schema=${PATHS.clientDB.tempSchema} --generator=kysely`);
   }
 
   /**
@@ -905,13 +897,13 @@ async function main() {
     LogUtils.logStep("SQL生成", "生成 SQL");
     SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.getEnumDefinitions());
 
-    // 3. 生成 Zod schemas
-    LogUtils.logStep("Zod生成", "生成 Zod schemas");
-    ZodGenerator.generate();
-
-    // 4. 生成 Kysely 类型
+    // 3. 生成 Kysely 类型
     LogUtils.logStep("Kysely生成", "生成 Kysely 类型");
     SQLGenerator.generateKyselyTypes();
+
+    // 4. 生成 Zod schemas (移到Kysely类型生成之后)
+    LogUtils.logStep("Zod生成", "生成 Zod schemas");
+    ZodGenerator.generate();
 
     // 5. 生成 QueryBuilder 规则
     LogUtils.logStep("QueryBuilder生成", "生成 QueryBuilder 规则");

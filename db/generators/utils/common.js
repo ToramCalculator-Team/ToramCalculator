@@ -168,6 +168,17 @@ export const CommandUtils = {
    */
   execCommand: (command, options = {}) => {
     try {
+      // 检查是否包含重定向操作
+      const redirectMatch = command.match(/>\s*([^\s]+)/);
+      if (redirectMatch) {
+        const outputPath = redirectMatch[1];
+        // 确保输出目录存在
+        const outputDir = path.dirname(outputPath);
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+      }
+
       const defaultOptions = { 
         stdio: "inherit", 
         encoding: "utf-8",

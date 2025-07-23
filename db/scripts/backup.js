@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 加载环境变量
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 /**
  * 解析环境变量引用
@@ -72,10 +72,10 @@ const CONFIG = {
   PG_DBNAME: process.env.PG_DBNAME,
   
   // 备份目录
-  OUTPUT_DIR: path.join(__dirname, "./backups"),
+  OUTPUT_DIR: path.join(__dirname, "../backups"),
   
   // Docker Compose 配置
-  DOCKER_COMPOSE_FILE: path.join(__dirname, "../backend/docker-compose.yaml"),
+  DOCKER_COMPOSE_FILE: path.join(__dirname, "../../backend/docker-compose.yaml"),
 };
 
 /**

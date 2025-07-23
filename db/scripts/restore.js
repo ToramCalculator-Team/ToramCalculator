@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 加载环境变量
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 /**
  * 解析环境变量引用
@@ -72,7 +72,7 @@ const CONFIG = {
   PG_DBNAME: process.env.PG_DBNAME,
   
   // 备份目录
-  BACKUP_DIR: path.join(__dirname, "./backups"),
+  BACKUP_DIR: path.join(__dirname, "../backups"),
 };
 
 /**
