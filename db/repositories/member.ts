@@ -22,7 +22,7 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
         .selectFrom("player")
         .whereRef("id", "=", "member.playerId")
         .selectAll("player")
-        .select((subEb) => playerSubRelations(subEb, subEb.val(id))),
+        .select((subEb) => playerSubRelations(subEb, subEb.val("player.id"))),
     ).as("player"),
     jsonObjectFrom(
       eb
@@ -43,7 +43,7 @@ export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expr
         .selectFrom("mob")
         .whereRef("id", "=", "member.mobId")
         .selectAll("mob")
-        .select((subEb) => mobSubRelations(subEb, subEb.val(id))),
+        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
     ).as("mob"),
   ];
 }

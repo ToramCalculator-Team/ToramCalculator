@@ -189,11 +189,6 @@ createRoot((dispose) => {
   type MainHandType = (typeof MAIN_HAND_TYPE)[number];
   type SubHandType = (typeof SUB_HAND_TYPE)[number];
 
-  // 类型守卫函数
-  function isMainHandType(weaponType: string): weaponType is MainHandType {
-    return MAIN_HAND_TYPE.includes(weaponType as MainHandType);
-  }
-
   // 主武器的属性转换映射
   const MainWeaponAbiT: Record<
     MainHandType,
@@ -665,41 +660,6 @@ createRoot((dispose) => {
     }
     return floor(base * (1 + percentage / 100) + fixed);
   };
-
-  const fps = 60;
-
-  // 随机种子设置
-  const randomSeed: null | string = null;
-  // 向math中添加自定义方法
-  // 验证 `all` 是否为有效的 FactoryFunctionMap 对象
-  if (!all) {
-    throw new Error("all is undefined. Make sure you are importing it correctly.");
-  }
-
-  const math = create(all, {
-    epsilon: 1e-12,
-    matrix: "Matrix",
-    number: "number",
-    precision: 64,
-    predictable: false,
-    randomSeed: randomSeed,
-  });
-
-  type Scope = {
-    currentFrame: number;
-    team: CharacterAttrData[];
-  };
-
-  // 定义一个自定义节点转换函数
-  function replaceNode(node: MathNode) {
-    // 如果节点是AccessorNode，替换成FunctionNode dynamicTotalValue(SymbolNode)
-    if ("isAccessorNode" in node && node.isAccessorNode) {
-      return new math.FunctionNode(new math.SymbolNode("dynamicTotalValue"), [node]);
-    }
-    // 遍历节点的子节点并递归替换
-    return node.map(replaceNode);
-  }
-
   // 属性修改器数据缺省值
   const DefaultModifiersData: ModifiersData = {
     static: {

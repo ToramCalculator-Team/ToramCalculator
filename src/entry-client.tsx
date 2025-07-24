@@ -59,12 +59,12 @@ if ("serviceWorker" in navigator) {
   const isProduction = import.meta.env.MODE === 'production';
   const swUrl = isProduction ? '/service.worker.js' : serviceWorkerUrl;
   
-  console.log(`🔧 Service Worker 注册路径: ${swUrl} (${isProduction ? '生产环境' : '开发环境'})`);
+  // console.log(`🔧 Service Worker 注册路径: ${swUrl} (${isProduction ? '生产环境' : '开发环境'})`);
   
   navigator.serviceWorker.register(swUrl, {
     type: "module",
   }).then((registration) => {
-    console.log('✅ Service Worker 注册成功:', registration);
+    // console.log('✅ Service Worker 注册成功:', registration);
     
     // Service Worker 注册成功后，生产环境下检查缓存版本
     if (isProduction) {

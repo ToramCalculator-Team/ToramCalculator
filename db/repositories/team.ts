@@ -22,7 +22,7 @@ export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expressi
         .selectFrom("member")
         .whereRef("member.teamId", "=", id)
         .selectAll("member")
-        .select((subEb) => memberSubRelations(subEb, subEb.val(id))),
+        .select((subEb) => memberSubRelations(subEb, subEb.ref("member.id"))),
     ).as("members"),
   ];
 }

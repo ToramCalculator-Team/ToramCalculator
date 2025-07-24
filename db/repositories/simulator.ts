@@ -31,9 +31,8 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
         .innerJoin("team", "_campA.B", "team.id")
         .whereRef("_campA.A", "=", id)
         .selectAll("team")
-        .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
+        .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id"))),
     )
-      .$notNull()
       .as("campA"),
     jsonArrayFrom(
       eb
@@ -41,9 +40,8 @@ export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id
         .innerJoin("team", "_campB.B", "team.id")
         .whereRef("_campB.A", "=", id)
         .selectAll("team")
-        .select((subEb) => teamSubRelations(subEb, subEb.val(id))),
+        .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id"))),
     )
-      .$notNull()
       .as("campB"),
   ];
 }

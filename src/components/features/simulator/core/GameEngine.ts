@@ -69,6 +69,22 @@ export interface EngineConfig {
 }
 
 /**
+ * 引擎状态变化事件类型
+ */
+export interface EngineStateChangeEvent {
+  type: 'engine_state_update';
+  timestamp: number;
+  engineState: {
+    currentFrame: number;
+    currentTime: number;
+    eventQueue: any[];
+    members: MemberSerializeData[];
+    stats: EngineStats;
+    state: EngineState;
+  };
+}
+
+/**
  * 引擎统计信息接口
  */
 export interface EngineStats {
@@ -146,7 +162,10 @@ export class GameEngine {
   /** 事件处理器工厂 - 创建和管理事件处理器 */
   private eventHandlerFactory: EventHandlerFactory;
 
-  // ==================== 引擎状态 ====================
+  // ==================== 事件系统 ====================
+
+  /** 状态变化监听器列表 */
+  private stateChangeListeners: Array<(event: EngineStateChangeEvent) => void> = [];
 
   /** 引擎状态 */
   private state: EngineState = "initialized";
@@ -203,6 +222,14 @@ export class GameEngine {
       this.eventQueue,
       this.config.frameLoopConfig
     );
+
+    // 🔥 设置帧循环状态变化回调 - 简化为直接输出
+    this.frameLoop.setStateChangeCallback((event) => {
+      if (event.type === 'frame_update') {
+        // 直接输出引擎状态，不需要复杂的回调链
+        this.outputFrameState();
+      }
+    });
 
     // 初始化FSM事件桥接器
     this.fsmEventBridge = new FSMEventBridge(this.eventQueue);
@@ -343,7 +370,48 @@ export class GameEngine {
     } = {},
   ): void {
     // 容器只负责委托，不处理具体创建逻辑
-    this.memberRegistry.createAndRegister(memberData, campId, teamId, initialState);
+    const member = this.memberRegistry.createAndRegister(memberData, campId, teamId, initialState);
+    console.log('GameEngine: 添加成员:', member);
+  }
+
+  /**
+   * 添加状态变化监听器
+   */
+  onStateChange(listener: (event: EngineStateChangeEvent) => void): () => void {
+    this.stateChangeListeners.push(listener);
+    
+    // 返回取消订阅函数
+    return () => {
+      const index = this.stateChangeListeners.indexOf(listener);
+      if (index > -1) {
+        this.stateChangeListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * 输出当前帧状态 - 引擎的直接输出方法
+   */
+  private outputFrameState(): void {
+    // 直接通知所有监听器，不需要中间的回调层
+    this.stateChangeListeners.forEach(listener => {
+      try {
+        listener({
+          type: 'engine_state_update',
+          timestamp: Date.now(),
+          engineState: {
+            currentFrame: this.frameLoop.getFrameNumber(),
+            currentTime: Date.now(),
+            eventQueue: this.eventQueue.getEventsToProcess(this.frameLoop.getFrameNumber(), 100),
+            members: this.getAllMemberData(),
+            stats: this.getStats(),
+            state: this.getState()
+          }
+        });
+      } catch (error) {
+        console.error('GameEngine: 状态输出监听器执行失败:', error);
+      }
+    });
   }
 
   /**
@@ -397,9 +465,10 @@ export class GameEngine {
    */
   insertEvent(event: BaseEvent, priority: EventPriority = "normal"): boolean {
     const success = this.eventQueue.insert(event, priority);
-    if (success) {
-      this.stats.totalEventsProcessed++;
-    }
+    
+    // 🔥 移除事件插入时的状态更新，因为FrameLoop会在下一帧处理时统一发送
+    // 事件插入只是将事件加入队列，实际处理在processFrame中进行
+    
     return success;
   }
 

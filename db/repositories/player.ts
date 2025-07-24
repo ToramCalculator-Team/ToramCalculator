@@ -20,7 +20,7 @@ export function playerSubRelations(eb: ExpressionBuilder<DB, "player">, id: Expr
         .selectFrom("character")
         .whereRef("id", "=", "player.useIn")
         .selectAll("character")
-        .select((subEb) => characterSubRelations(subEb, subEb.val("character.id"))),
+        .select((subEb) => characterSubRelations(subEb, subEb.ref("character.id"))),
     )
       .$notNull()
       .as("character"),

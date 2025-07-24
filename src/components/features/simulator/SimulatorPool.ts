@@ -496,6 +496,18 @@ export class EnhancedSimulatorPool extends EventEmitter {
       return;
     }
 
+    // 🔥 关键：处理引擎状态变化事件
+    if (event.data && event.data.type === "engine_state_update") {
+      console.log(`Worker ${worker.id} 引擎状态变化:`, event.data.event);
+      
+      // 转发给池的事件监听器
+      this.emit("engine_state_update", {
+        workerId: worker.id,
+        event: event.data.event
+      });
+      return;
+    }
+
     // 其他系统消息可以在这里处理
     console.log(`Worker ${worker.id} direct message:`, event.data);
   }
@@ -977,20 +989,35 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
   /**
    * 获取成员数据
-   * 控制器通过此方法获取当前模拟的成员信息
+   * 控制器通过此方法获取指定或当前模拟的成员信息
+   * 
+   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
+   * @returns 成员数据数组
    */
-  async getMembers(): Promise<MemberSerializeData[]> {
+  async getMembers(workerId?: string): Promise<MemberSerializeData[]> {
     try {
       this.ensureWorkersInitialized();
 
-      // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
-      const availableWorker = this.workers.find((w) => w.worker && w.port);
-      if (!availableWorker) {
+      // 根据workerId查找指定的worker，或使用第一个可用的worker
+      let targetWorker: WorkerWrapper | undefined;
+      
+      if (workerId) {
+        // 查找指定的worker
+        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
+        if (!targetWorker) {
+          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
+          return [];
+        }
+      } else {
+        // 使用第一个可用的worker（保持向后兼容）
+        targetWorker = this.workers.find((w) => w.worker && w.port);
+        if (!targetWorker) {
         console.warn("SimulatorPool: 没有找到可用的worker");
         return [];
+        }
       }
 
-      // console.log(`🔍 [SimulatorPool] 使用worker ${availableWorker.id} 获取成员数据`);
+      console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取成员数据`);
 
       // 发送获取成员数据的请求
       const taskId = createId();
@@ -1004,7 +1031,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
         }, 5000);
 
         // 通过MessagePort发送获取成员数据的消息
-        availableWorker.port.postMessage({
+        targetWorker!.port.postMessage({
           type: "get_members",
           taskId,
         });
@@ -1013,7 +1040,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
         const handleMessage = (event: MessageEvent) => {
           if (event.data && event.data.taskId === taskId) {
             clearTimeout(timeout);
-            availableWorker.port.removeEventListener("message", handleMessage);
+            targetWorker!.port.removeEventListener("message", handleMessage);
             // 兼容worker返回格式
             if (event.data.error) {
               resolve({ success: false, error: event.data.error });
@@ -1023,14 +1050,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
           }
         };
 
-        availableWorker.port.addEventListener("message", handleMessage);
+        targetWorker!.port.addEventListener("message", handleMessage);
       });
 
       if (result.success) {
-        // console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员`);
+        console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员 (Worker: ${targetWorker.id})`);
         return result.data || [];
       } else {
-        console.error(`SimulatorPool: 获取成员数据失败: ${result.error}`);
+        console.error(`SimulatorPool: 获取成员数据失败: ${result.error} (Worker: ${targetWorker.id})`);
         return [];
       }
     } catch (error) {
@@ -1041,9 +1068,12 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
   /**
    * 获取引擎状态
-   * 控制器通过此方法获取当前引擎的状态信息
+   * 控制器通过此方法获取指定或当前引擎的状态信息
+   * 
+   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
+   * @returns 引擎状态信息
    */
-  async getEngineStats(): Promise<{
+  async getEngineStats(workerId?: string): Promise<{
     success: boolean;
     data?: EngineStats;
     error?: string;
@@ -1051,11 +1081,26 @@ export class EnhancedSimulatorPool extends EventEmitter {
     try {
       this.ensureWorkersInitialized();
 
-      const availableWorker = this.workers.find((w) => w.worker && w.port);
-      if (!availableWorker) {
+      // 根据workerId查找指定的worker，或使用第一个可用的worker
+      let targetWorker: WorkerWrapper | undefined;
+      
+      if (workerId) {
+        // 查找指定的worker
+        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
+        if (!targetWorker) {
+          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
+          return { success: false, error: `No worker found with ID: ${workerId}` };
+        }
+      } else {
+        // 使用第一个可用的worker（保持向后兼容）
+        targetWorker = this.workers.find((w) => w.worker && w.port);
+        if (!targetWorker) {
         console.warn("SimulatorPool: 没有找到可用的worker");
         return { success: false, error: "No available worker" };
+        }
       }
+
+      console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取引擎状态`);
 
       const taskId = createId();
       const result = await new Promise<{ 
@@ -1067,7 +1112,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
           reject(new Error("Get engine stats timeout"));
         }, 5000);
 
-        availableWorker.port.postMessage({
+        targetWorker!.port.postMessage({
           type: "get_stats",
           taskId,
         });
@@ -1075,7 +1120,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
         const handleMessage = (event: MessageEvent) => {
           if (event.data && event.data.taskId === taskId) {
             clearTimeout(timeout);
-            availableWorker.port.removeEventListener("message", handleMessage);
+            targetWorker!.port.removeEventListener("message", handleMessage);
             if (event.data.error) {
               resolve({ success: false, error: event.data.error });
             } else {
@@ -1084,7 +1129,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
           }
         };
 
-        availableWorker.port.addEventListener("message", handleMessage);
+        targetWorker!.port.addEventListener("message", handleMessage);
       });
 
       return result;
@@ -1096,20 +1141,36 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
   /**
    * 发送意图消息
-   * 控制器通过此方法向Worker发送意图消息
+   * 控制器通过此方法向指定或当前Worker发送意图消息
+   * 
+   * @param intent 意图消息
+   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
+   * @returns 发送结果
    */
-  async sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
+  async sendIntent(intent: IntentMessage, workerId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       this.ensureWorkersInitialized();
 
-      // 找到任何可用的worker（不一定是busy状态，因为模拟可能已经启动完成）
-      const availableWorker = this.workers.find((w) => w.worker && w.port);
-      if (!availableWorker) {
+      // 根据workerId查找指定的worker，或使用第一个可用的worker
+      let targetWorker: WorkerWrapper | undefined;
+      
+      if (workerId) {
+        // 查找指定的worker
+        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
+        if (!targetWorker) {
+          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
+          return { success: false, error: `No worker found with ID: ${workerId}` };
+        }
+      } else {
+        // 使用第一个可用的worker（保持向后兼容）
+        targetWorker = this.workers.find((w) => w.worker && w.port);
+        if (!targetWorker) {
         console.warn("SimulatorPool: 没有找到可用的worker");
         return { success: false, error: "No available worker" };
+        }
       }
 
-      console.log(`SimulatorPool: 使用worker ${availableWorker.id} 发送意图消息`);
+      console.log(`SimulatorPool: 使用worker ${targetWorker.id} 发送意图消息`);
       console.log(`SimulatorPool: 意图数据:`, intent);
 
       // 发送意图消息
@@ -1126,13 +1187,13 @@ export class EnhancedSimulatorPool extends EventEmitter {
           data: intent,
         };
         console.log(`SimulatorPool: 发送消息:`, message);
-        availableWorker.port.postMessage(message);
+        targetWorker!.port.postMessage(message);
 
         // 监听响应
         const handleMessage = (event: MessageEvent) => {
           if (event.data && event.data.taskId === taskId) {
             clearTimeout(timeout);
-            availableWorker.port.removeEventListener("message", handleMessage);
+            targetWorker!.port.removeEventListener("message", handleMessage);
             // 兼容worker返回格式
             if (event.data.error) {
               resolve({ success: false, error: event.data.error });
@@ -1142,13 +1203,13 @@ export class EnhancedSimulatorPool extends EventEmitter {
           }
         };
 
-        availableWorker.port.addEventListener("message", handleMessage);
+        targetWorker!.port.addEventListener("message", handleMessage);
       });
 
       if (result.success) {
-        console.log(`SimulatorPool: 成功发送意图消息`);
+        console.log(`SimulatorPool: 成功发送意图消息 (Worker: ${targetWorker.id})`);
       } else {
-        console.error(`SimulatorPool: 发送意图消息失败: ${result.error}`);
+        console.error(`SimulatorPool: 发送意图消息失败: ${result.error} (Worker: ${targetWorker.id})`);
       }
 
       return result;
@@ -1163,7 +1224,70 @@ export class EnhancedSimulatorPool extends EventEmitter {
    * @returns 是否已准备好
    */
   isReady(): boolean {
-    return this.workersInitialized && this.workers.length > 0 && this.workersReady.size > 0;
+    // 确保workers已初始化
+    this.ensureWorkersInitialized();
+    const isReady = this.workersInitialized && this.workers.length > 0 && this.workersReady.size > 0;
+    
+    // 调试信息
+    if (!isReady) {
+      console.log('SimulatorPool: Worker未就绪:', {
+        workersInitialized: this.workersInitialized,
+        workersLength: this.workers.length,
+        workersReadySize: this.workersReady.size,
+        workersReadyIds: Array.from(this.workersReady)
+      });
+    }
+    
+    return isReady;
+  }
+
+  /**
+   * 获取活跃的worker列表
+   * 返回当前正在运行模拟的worker信息
+   * 
+   * @returns 活跃worker信息数组
+   */
+  getActiveWorkers(): Array<{
+    id: string;
+    busy: boolean;
+    lastUsed: number;
+    tasksCompleted: number;
+    errors: number;
+  }> {
+    return this.workers.map(worker => ({
+      id: worker.id,
+      busy: worker.busy,
+      lastUsed: worker.lastUsed,
+      tasksCompleted: worker.metrics.tasksCompleted,
+      errors: worker.metrics.errors,
+    }));
+  }
+
+  /**
+   * 获取指定worker的详细信息
+   * 
+   * @param workerId worker ID
+   * @returns worker详细信息，如果不存在则返回null
+   */
+  getWorkerInfo(workerId: string): {
+    id: string;
+    busy: boolean;
+    lastUsed: number;
+    metrics: WorkerMetrics;
+    isReady: boolean;
+  } | null {
+    const worker = this.workers.find(w => w.id === workerId);
+    if (!worker) {
+      return null;
+    }
+
+    return {
+      id: worker.id,
+      busy: worker.busy,
+      lastUsed: worker.lastUsed,
+      metrics: worker.metrics,
+      isReady: this.workersReady.has(worker.id),
+    };
   }
 
   /**

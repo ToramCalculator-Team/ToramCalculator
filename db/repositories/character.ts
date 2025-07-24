@@ -53,7 +53,7 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
         .selectFrom("player_weapon")
         .whereRef("id", "=", "character.subWeaponId")
         .selectAll("player_weapon")
-        .select((eb) => playerWeaponSubRelations(eb, eb.val("character.weaponId"))),
+        .select((eb) => playerWeaponSubRelations(eb, eb.val("character.subWeaponId"))),
     )
       .$notNull()
       .as("subWeapon"),

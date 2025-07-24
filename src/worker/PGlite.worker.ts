@@ -163,6 +163,8 @@ worker({
     const mercenaryShape = await syncTable("mercenary", ["templateId"]);
     const memberShape = await syncTable("member", ["id"]);
     const teamShape = await syncTable("team", ["id"]);
+    const campASimulatorShape = await syncTable("_campA", ["A", "B"], `"_campA"`);
+    const campBSimulatorShape = await syncTable("_campB", ["A", "B"], `"_campB"`);
     const simulatorShape = await syncTable("simulator", ["id"]);
     // console.log("PGliteWorker初始化完成.....");
     console.log("已同步完成");

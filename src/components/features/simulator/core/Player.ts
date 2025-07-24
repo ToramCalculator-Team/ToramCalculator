@@ -600,7 +600,7 @@ export class Player extends Member {
     this.actor = createActor(this.createStateMachine(initialState));
     this.actor.start();
 
-    console.log(`🎮 已创建玩家: ${memberData.name}`);
+    console.log(`🎮 已创建玩家: ${memberData.name}，data:`, this);
   }
 
   // ==================== 公共接口 ====================

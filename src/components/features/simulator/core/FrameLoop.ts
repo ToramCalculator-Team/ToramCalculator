@@ -115,6 +115,9 @@ export class FrameLoop {
   /** 事件处理器注册表 */
   private eventHandlers: Map<string, EventHandler> = new Map();
 
+  /** 状态变化回调（用于通知GameEngine） */
+  private onStateChange?: (event: { type: string; data: any }) => void;
+
   /** 帧循环定时器ID */
   private frameTimer: number | null = null;
 
@@ -359,6 +362,15 @@ export class FrameLoop {
   }
 
   /**
+   * 设置状态变化回调
+   * 
+   * @param callback 状态变化回调函数
+   */
+  setStateChangeCallback(callback: (event: { type: string; data: any }) => void): void {
+    this.onStateChange = callback;
+  }
+
+  /**
    * 获取当前状态
    * 
    * @returns 当前帧循环状态
@@ -489,6 +501,20 @@ export class FrameLoop {
       // 3. 更新性能统计
       const processingTime = performance.now() - frameStartTime;
       this.recordFrameInfo(deltaTime, processingTime, eventsProcessed, membersUpdated);
+
+      // 🔥 帧处理完成，直接发送状态更新（不需要判断是否有变化）
+      if (this.onStateChange) {
+        this.onStateChange({
+          type: 'frame_update',
+          data: {
+            frameNumber: this.frameNumber,
+            eventsProcessed,
+            membersUpdated,
+            processingTime,
+            performanceStats: this.getPerformanceStats()
+          }
+        });
+      }
 
     } catch (error) {
       console.error("❌ 帧处理错误:", error);

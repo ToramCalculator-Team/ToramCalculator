@@ -56,12 +56,16 @@ interface WorkerResponse {
  * Worker系统消息类型
  */
 interface WorkerSystemMessage {
-  type: 'worker_ready' | 'error';
+  type: 'worker_ready' | 'error' | 'engine_state_update';
   error?: string;
+  event?: any; // 引擎状态变化事件
 }
 
 // 创建GameEngine实例
 const gameEngine = new GameEngine();
+
+// 🔥 关键：订阅引擎状态变化事件
+let engineStateSubscription: (() => void) | null = null;
 
 // 处理主线程消息
 self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
@@ -95,8 +99,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   simulatorData.campA.forEach((team, index) => {
                     gameEngine.addTeam('campA', team, `队伍${index + 1}`);
                     team.members.forEach(member => {
-                      console.log(`Worker: 添加成员 campA team${index + 1}:`, member);
-                      gameEngine.addMember('campA', team.id, member as any, {
+                      gameEngine.addMember('campA', team.id, member, {
                         currentHp: 1000,
                         currentMp: 100,
                         position: { x: 100 + index * 50, y: 100 }
@@ -109,7 +112,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   simulatorData.campB.forEach((team, index) => {
                     gameEngine.addTeam('campB', team, `队伍${index + 1}`);
                     team.members.forEach(member => {
-                      console.log(`Worker: 添加成员 campB team${index + 1}:`, member);
                       gameEngine.addMember('campB', team.id, member as any, {
                         currentHp: 1000,
                         currentMp: 100,
@@ -213,6 +215,16 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           };
         }
         
+        // 🔥 关键：设置引擎状态变化订阅
+        engineStateSubscription = gameEngine.onStateChange((event) => {
+          // 将引擎事件转发给主线程
+          const stateChangeMessage: WorkerSystemMessage = {
+            type: 'engine_state_update',
+            event: event
+          };
+          self.postMessage(stateChangeMessage);
+        });
+
         // 通知主线程Worker已准备就绪
         const readyMessage: WorkerSystemMessage = { type: 'worker_ready' };
         self.postMessage(readyMessage);
