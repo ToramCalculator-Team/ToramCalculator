@@ -1,16 +1,16 @@
 import { Transaction } from "kysely";
-import { DB } from "../../../../../../db/generated/kysely/kyesely";
-import { getPrimaryKeys } from "../../../../../../db/repositories/untils";
+import { DB } from "@db/generated/kysely/kyesely";
+import { getPrimaryKeys } from "@db/repositories/untils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
 import { store } from "~/store";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { setWikiStore } from "../store";
 import sprites from "~/../public/app-image/sprites.json";
 import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { Motion } from "solid-motionone";
 
 export const arrayDiff = async <T extends keyof DB>(props: {

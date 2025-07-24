@@ -1,11 +1,11 @@
 import { createSignal, For, onMount, Show } from "solid-js";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { optionSchema } from "../../../../../../db/generated/zod/index";
-import { DB, item, option } from "../../../../../../db/generated/kysely/kyesely";
+import { optionSchema } from "@db/generated/zod/index";
+import { DB, item, option } from "@db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";

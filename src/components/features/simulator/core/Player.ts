@@ -27,10 +27,10 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import { isPlayerMember } from "./Member";
 import type { CharacterWithRelations } from "@db/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
-import type { PlayerWithRelations } from "~/../db/repositories/player";
+import type { PlayerWithRelations } from "@db/repositories/player";
 
-import type { MainHandType } from "~/../db/schema/enums";
-import { ComboWithRelations } from "~/../db/repositories/combo";
+import type { MainHandType } from "@db/schema/enums";
+import { ComboWithRelations } from "@db/repositories/combo";
 import { createActor } from "xstate";
 
 // ============================== 角色属性系统类型定义 ==============================
@@ -213,7 +213,7 @@ interface WeaponAbiConvert {
  */
 export class Player extends Member {
   // 重写actor属性类型以支持Player特有的事件
-  protected actor: MemberActor<PlayerEventType>;
+  protected actor: MemberActor;
   // ==================== 玩家特有属性 ====================
 
   /** 玩家角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
@@ -597,7 +597,7 @@ export class Player extends Member {
     this.initializePlayerAttrMap(memberData);
 
     // 重新初始化状态机（此时playerAttrMap已经准备好）
-    this.actor = createActor(this.createActorLogic(initialState));
+    this.actor = createActor(this.createStateMachine(initialState));
     this.actor.start();
 
     console.log(`🎮 已创建玩家: ${memberData.name}`);
@@ -759,17 +759,18 @@ export class Player extends Member {
    * 创建Player专用状态机
    * 基于PlayerMachine.ts设计，实现Player特有的状态管理
    */
-  protected createActorLogic(initialState: {
+  protected createStateMachine(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): MemberStateMachine<PlayerEventType> {
+  }): MemberStateMachine {
     const machineId = `Player_${this.id}`;
 
     return setup({
       types: {
         context: {} as MemberContext,
         events: {} as PlayerEventType,
+        output: {} as MemberContext,
       },
       actions: {
         // 根据角色配置初始化玩家状态

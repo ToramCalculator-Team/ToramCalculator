@@ -1,15 +1,15 @@
 import { For, Show, Index, Accessor, createResource, createSignal } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import Icons from "~/components/icons/index";
-import { drop_itemSchema, mobSchema, zoneSchema } from "../../../../../../db/generated/zod/index";
+import { drop_itemSchema, mobSchema, zoneSchema } from "@db/generated/zod/index";
 import { Input } from "~/components/controls/input";
 import { z } from "zod";
-import { DB, drop_item, mob, zone } from "../../../../../../db/generated/kysely/kyesely";
+import { DB, drop_item, mob, zone } from "@db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { Select } from "~/components/controls/select";
-import { MOB_DIFFICULTY_FLAG } from "../../../../../../db/schema/enums";
+import { MOB_DIFFICULTY_FLAG } from "@db/schema/enums";
 import {
   ItemType,
   MobDifficultyFlag,
@@ -17,10 +17,10 @@ import {
   ElementType,
   BossPartType,
   BossPartBreakRewardType,
-} from "../../../../../../db/generated/kysely/enums";
+} from "@db/generated/kysely/enums";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { CardSection } from "~/components/dataDisplay/cardSection";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { createForm, Field } from "@tanstack/solid-form";
@@ -28,7 +28,7 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
-import { createStatistic } from "../../../../../../db/repositories/statistic";
+import { createStatistic } from "@db/repositories/statistic";
 import { store } from "~/store";
 import { setWikiStore } from "../store";
 import { dataDisplayConfig } from "./dataConfig";

@@ -14,8 +14,8 @@
  * - 生命周期管理：管理引擎的启动、运行、停止
  */
 
-import type { TeamWithRelations } from "../../../../../db/repositories/team";
-import type { MemberWithRelations } from "../../../../../db/repositories/member";
+import type { TeamWithRelations } from "@db/repositories/team";
+import type { MemberWithRelations } from "@db/repositories/member";
 import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, PerformanceStats } from "./FrameLoop";

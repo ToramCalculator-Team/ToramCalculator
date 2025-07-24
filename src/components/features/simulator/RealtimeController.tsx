@@ -12,9 +12,9 @@ import { createSignal, createEffect, onCleanup, createResource, Show } from 'sol
 import { realtimeSimulatorPool } from './SimulatorPool';
 import type { IntentMessage } from './core/MessageRouter';
 // 
-import type { SimulatorWithRelations } from '../../../../db/repositories/simulator';
-import { CharacterWithRelations, findCharacterById, findCharacterWithRelations } from '../../../../db/repositories/character';
-import { findMobById, findMobWithRelations } from '../../../../db/repositories/mob';
+import type { SimulatorWithRelations } from '@db/repositories/simulator';
+import { findCharacterWithRelations } from '@db/repositories/character';
+import { findMobWithRelations } from '@db/repositories/mob';
 import { Button } from '~/components/controls/button';
 import { Select } from '~/components/controls/select';
 import { MemberSerializeData } from './core/Member';

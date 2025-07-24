@@ -1,8 +1,8 @@
-import { Simulator } from "../../../../../db/repositories/simulator";
-import { Mob } from "../../../../../db/repositories/mob";
-import { CharacterSkillWithRelations } from "../../../../../db/repositories/characterSkill";
-import { defaultData } from "../../../../../db/defaultData";
-import { Member } from "../../../../../db/repositories/member";
+import { Simulator } from "@db/repositories/simulator";
+import { Mob } from "@db/repositories/mob";
+import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
+import { defaultData } from "@db/defaultData";
+import { Member } from "@db/repositories/member";
 
 const sszw: CharacterSkillWithRelations = {
   id: "",

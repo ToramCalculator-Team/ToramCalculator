@@ -1,4 +1,4 @@
-import { DB } from "../../../../../../db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kyesely";
 import { MobDataConfig } from "./mobConfig";
 import { ColumnDef, Cell, VisibilityState, OnChangeFn } from "@tanstack/solid-table";
 import { Accessor, JSX, Setter } from "solid-js";

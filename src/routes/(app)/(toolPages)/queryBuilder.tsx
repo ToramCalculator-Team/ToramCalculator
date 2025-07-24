@@ -4,7 +4,7 @@ import { getDictionary } from "~/locales/i18n";
 import { store } from "~/store";
 
 // 导入所有生成的字段规则
-import * as QueryBuilderRules from "../../../../db/generated/queryBuilderRules";
+import * as QueryBuilderRules from "@db/generated/queryBuilderRules";
 import { Select } from "~/components/controls/select";
 import { uniqueId } from "lodash-es";
 

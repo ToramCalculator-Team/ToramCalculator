@@ -6,21 +6,21 @@ import { RandomBallBackground } from "~/components/effects/randomBg";
 import { Setting } from "~/components/features/setting";
 import { BabylonBg } from "~/components/effects/babylonBg";
 import hotkeys from "hotkeys-js";
-import { findMobs } from "../../db/repositories/mob";
-import { findSkills } from "../../db/repositories/skill";
-import { findCrystals } from "../../db/repositories/crystal";
-import { findItems } from "../../db/repositories/item";
-import { findActivities } from "../../db/repositories/activity";
-import { findAddresses } from "../../db/repositories/address";
-import { findArmors } from "../../db/repositories/armor";
-import { findConsumables } from "../../db/repositories/consumable";
-import { findNpcs } from "../../db/repositories/npc";
-import { findZones } from "../../db/repositories/zone";
-import { findMaterials } from "../../db/repositories/material";
-import { findTasks } from "../../db/repositories/task";
-import { findWeapons } from "../../db/repositories/weapon";
-import { findOptions } from "../../db/repositories/optEquip";
-import { findSpecials } from "../../db/repositories/speEquip";
+import { findMobs } from "@db/repositories/mob";
+import { findSkills } from "@db/repositories/skill";
+import { findCrystals } from "@db/repositories/crystal";
+import { findItems } from "@db/repositories/item";
+import { findActivities } from "@db/repositories/activity";
+import { findAddresses } from "@db/repositories/address";
+import { findArmors } from "@db/repositories/armor";
+import { findConsumables } from "@db/repositories/consumable";
+import { findNpcs } from "@db/repositories/npc";
+import { findZones } from "@db/repositories/zone";
+import { findMaterials } from "@db/repositories/material";
+import { findTasks } from "@db/repositories/task";
+import { findWeapons } from "@db/repositories/weapon";
+import { findOptions } from "@db/repositories/optEquip";
+import { findSpecials } from "@db/repositories/speEquip";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键

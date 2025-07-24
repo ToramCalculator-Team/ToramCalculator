@@ -6,14 +6,14 @@ import {
   task_collect_requireSchema,
   task_kill_requirementSchema,
   task_rewardSchema,
-} from "../../../../../../db/generated/zod/index";
-import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "../../../../../../db/generated/kysely/kyesely";
+} from "@db/generated/zod/index";
+import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "@db/generated/kysely/kyesely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { CardSection } from "~/components/dataDisplay/cardSection";
 import { z } from "zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
@@ -21,8 +21,8 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { TaskRewardType } from "../../../../../../db/generated/kysely/enums";
-import { createStatistic } from "../../../../../../db/repositories/statistic";
+import { TaskRewardType } from "@db/generated/kysely/enums";
+import { createStatistic } from "@db/repositories/statistic";
 import { store } from "~/store";
 import Icons from "~/components/icons/index";
 import { setWikiStore } from "../store";

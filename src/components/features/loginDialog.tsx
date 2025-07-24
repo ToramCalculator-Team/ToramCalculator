@@ -10,7 +10,7 @@ import { Motion, Presence } from "solid-motionone";
 import Icons from "~/components/icons/index";
 import { Input } from "../controls/input";
 import { z } from "zod";
-import { findAccountById } from "../../../db/repositories/account";
+import { findAccountById } from "@db/repositories/account";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =

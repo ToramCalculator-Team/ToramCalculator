@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store";
-import { DB } from "~/../db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kyesely";
 import { VisibilityState } from "@tanstack/solid-table";
 import { createEffect, on } from "solid-js";
 

@@ -21,11 +21,11 @@ import {
   type EventObject,
   type StateMachine,
 } from "xstate";
-import type { MemberWithRelations } from "../../../../../db/repositories/member";
-import type { CharacterWithRelations } from "../../../../../db/repositories/character";
-import type { MercenaryWithRelations } from "../../../../../db/repositories/mercenary";
-import type { MobWithRelations } from "../../../../../db/repositories/mob";
-import { MEMBER_TYPE, type MemberType } from "../../../../../db/schema/enums";
+import type { MemberWithRelations } from "@db/repositories/member";
+import type { CharacterWithRelations } from "@db/repositories/character";
+import type { MercenaryWithRelations } from "@db/repositories/mercenary";
+import type { MobWithRelations } from "@db/repositories/mob";
+import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
 
 // ============================== 类型定义 ==============================
 
@@ -205,27 +205,21 @@ export type MemberEventType =
   | { type: "update" } // 更新事件
   | { type: string; data: Record<string, any> }; // 自定义事件
 
-/**
- * 扩展事件类型
- * 允许子类添加额外的事件类型
- * 确保所有事件都满足EventObject的约束（必须有type属性）
- */
-export type ExtendedEventType = MemberEventType | { type: string; [key: string]: any };
 
 /**
  * 成员状态机类型
  * 基于 XState StateMachine 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
  */
-export type MemberStateMachine<TEvent extends ExtendedEventType = MemberEventType> = StateMachine<
+export type MemberStateMachine = StateMachine<
   MemberContext, // TContext - 状态机上下文
-  TEvent, // TEvent - 事件类型（可扩展）
+  MemberEventType, // TEvent - 事件类型（可扩展）
   Record<string, any>, // TChildren - 子状态机
   any, // TActor - Actor配置
   any, // TAction - 动作配置
   any, // TGuard - 守卫配置
   string, // TDelay - 延迟配置
-  string, // TStateValue - 状态值
+  {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
   MemberContext, // TOutput - 输出类型（当状态机完成时）
@@ -239,7 +233,7 @@ export type MemberStateMachine<TEvent extends ExtendedEventType = MemberEventTyp
  * 基于 XState Actor 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
  */
-export type MemberActor<TEvent extends ExtendedEventType = MemberEventType> = Actor<MemberStateMachine<TEvent>>;
+export type MemberActor = Actor<MemberStateMachine>;
 
 // ============================== 类型守卫函数 ==============================
 
@@ -395,7 +389,7 @@ export abstract class Member {
     this.teamId = memberData.teamId;
 
     // 创建状态机实例
-    this.actor = createActor(this.createActorLogic(initialState), {
+    this.actor = createActor(this.createStateMachine(initialState), {
       input: initialState,
     });
 
@@ -422,11 +416,11 @@ export abstract class Member {
    * @param initialState 初始状态配置
    * @returns 状态机
    */
-  protected abstract createActorLogic(initialState: {
+  protected abstract createStateMachine(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): MemberStateMachine<any>;
+  }): MemberStateMachine;
 
   /**
    * 将属性Map转换为基础属性

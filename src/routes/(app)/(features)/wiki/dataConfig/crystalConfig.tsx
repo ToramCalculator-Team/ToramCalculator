@@ -1,11 +1,11 @@
 import { createResource, createSignal, For, Index, onMount, Show } from "solid-js";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { crystalSchema, itemSchema } from "../../../../../../db/generated/zod/index";
-import { DB, item, crystal } from "../../../../../../db/generated/kysely/kyesely";
+import { crystalSchema, itemSchema } from "@db/generated/zod/index";
+import { DB, item, crystal } from "@db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
@@ -30,7 +30,7 @@ import { CardSection } from "~/components/dataDisplay/cardSection";
 import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { CrystalType } from "../../../../../../db/generated/kysely/enums";
+import { CrystalType } from "@db/generated/kysely/enums";
 import { Select } from "~/components/controls/select";
 
 type CrystalWithRelated = crystal & {

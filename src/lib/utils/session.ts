@@ -1,5 +1,5 @@
 "use server";
-import { findUserByEmail, findUserById, User } from "../../../db/repositories/user";
+import { findUserByEmail, findUserById, User } from "@db/repositories/user";
 import { jwtVerify } from "jose";
 import { getCookie } from "vinxi/http";
 

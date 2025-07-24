@@ -11,7 +11,7 @@ import {
   Setter,
   Show,
 } from "solid-js";
-import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "../../../../../../db/generated/kysely/enums";
+import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "@db/generated/kysely/enums";
 import {
   DB,
   drop_item,
@@ -22,13 +22,13 @@ import {
   task,
   task_collect_require,
   task_reward,
-} from "../../../../../../db/generated/kysely/kyesely";
+} from "@db/generated/kysely/kyesely";
 import { CardSection } from "~/components/dataDisplay/cardSection";
 import { dictionary } from "~/locales/type";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { setWikiStore } from "../store";
 import { ExpressionBuilder, Transaction } from "kysely";
-import { createStatistic } from "../../../../../../db/repositories/statistic";
+import { createStatistic } from "@db/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
@@ -40,9 +40,9 @@ import {
   recipeSchema,
   task_collect_requireSchema,
   task_rewardSchema,
-} from "../../../../../../db/generated/zod/index";
+} from "@db/generated/zod/index";
 import { z } from "zod";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { Input } from "~/components/controls/input";
 import { AnyFieldApi, AnyFormApi, createForm, FormApi, SolidFormApi } from "@tanstack/solid-form";
 import { fieldInfo, renderField } from "../utils";

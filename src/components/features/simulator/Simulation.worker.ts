@@ -4,7 +4,7 @@
  */
 
 import { GameEngine } from './core/GameEngine';
-import type { SimulatorWithRelations } from '../../../../db/repositories/simulator';
+import type { SimulatorWithRelations } from '@db/repositories/simulator';
 import type { IntentMessage } from './core/MessageRouter';
 import type { MemberSerializeData } from './core/Member';
 import type { EngineStats } from './core/GameEngine';

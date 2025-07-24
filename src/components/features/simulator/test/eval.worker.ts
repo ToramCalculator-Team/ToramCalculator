@@ -1,6 +1,6 @@
-import { CharacterWithRelations, type Character } from "../../../../../db/repositories/character";
+import { CharacterWithRelations, type Character } from "@db/repositories/character";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { MAIN_HAND_TYPE, MAIN_WEAPON_TYPE, SUB_HAND_TYPE, SUB_WEAPON_TYPE } from "../../../../../db/schema/enums";
+import { MAIN_HAND_TYPE, MAIN_WEAPON_TYPE, SUB_HAND_TYPE, SUB_WEAPON_TYPE } from "@db/schema/enums";
 import { createRoot, createSignal, createEffect } from "solid-js";
 
 // solidjs的响应式系统

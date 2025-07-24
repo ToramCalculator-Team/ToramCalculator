@@ -21,9 +21,9 @@ import {
   type MemberActorLogic,
 } from "./Member";
 import { setup, assign } from "xstate";
-import type { MemberWithRelations } from "../../../../../db/repositories/member";
+import type { MemberWithRelations } from "@db/repositories/member";
 import { isMobMember } from "./Member";
-import type { MobWithRelations } from "../../../../../db/repositories/mob";
+import type { MobWithRelations } from "@db/repositories/mob";
 import { createActor } from "xstate";
 
 // ============================== 怪物属性系统类型定义 ==============================
@@ -141,7 +141,7 @@ export class Mob extends Member {
     this.initializeMobAttrMap(memberData);
 
     // 重新初始化状态机（此时mobAttrMap已经准备好）
-    this.actor = createActor(this.createActorLogic(initialState));
+    this.actor = createActor(this.createStateMachine(initialState));
     this.actor.start();
 
     console.log(`👹 已创建怪物: ${memberData.name}`);
@@ -267,7 +267,7 @@ export class Mob extends Member {
    * 创建Mob专用状态机
    * 基于MobMachine.ts设计，实现Mob特有的状态管理
    */
-  protected createActorLogic(initialState: {
+  protected createStateMachine(initialState: {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;

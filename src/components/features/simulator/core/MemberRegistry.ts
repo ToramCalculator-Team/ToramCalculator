@@ -16,8 +16,8 @@
 import { Member } from "./Member";
 import Mob from "./Mob";
 import { Player } from "./Player";
-import type { MemberType } from "../../../../../db/schema/enums";
-import type { MemberWithRelations } from "../../../../../db/repositories/member";
+import type { MemberType } from "@db/schema/enums";
+import type { MemberWithRelations } from "@db/repositories/member";
 
 // ============================== 类型定义 ==============================
 

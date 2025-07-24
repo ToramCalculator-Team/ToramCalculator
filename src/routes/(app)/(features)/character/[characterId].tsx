@@ -1,7 +1,7 @@
 import { useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createResource } from "solid-js";
-import { findCharacterWithRelations } from "../../../../../db/repositories/character";
+import { findCharacterWithRelations } from "@db/repositories/character";
 
 export default function CharactePage() {
   const params = useParams();

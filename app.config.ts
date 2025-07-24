@@ -2,13 +2,18 @@ import { defineConfig } from "@solidjs/start/config";
 import topLevelAwait from "vite-plugin-top-level-await";
 import tailwindcss from "@tailwindcss/vite";
 import { writeFileSync, copyFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
+import path, { join, dirname } from "path";
 
 export default defineConfig({
   // middleware: "src/middleware.ts",
   ssr: false,
   vite: {
     cacheDir: "",
+    resolve: {
+      alias: {
+        '@db': '/db',
+      }
+    },
     build: {
       sourcemap: true,
       // 启用Vite的manifest生成

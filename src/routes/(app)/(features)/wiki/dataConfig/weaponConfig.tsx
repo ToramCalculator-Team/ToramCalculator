@@ -1,11 +1,11 @@
 import { createSignal, For, onMount, Show } from "solid-js";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { weaponSchema } from "../../../../../../db/generated/zod/index";
-import { DB, item, weapon } from "../../../../../../db/generated/kysely/kyesely";
+import { weaponSchema } from "@db/generated/zod/index";
+import { DB, item, weapon } from "@db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
@@ -25,7 +25,7 @@ import {
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { ElementType, WeaponType } from "../../../../../../db/generated/kysely/enums";
+import { ElementType, WeaponType } from "@db/generated/kysely/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import pick from "lodash-es/pick";
 

@@ -1,11 +1,11 @@
 import { createSignal, For, onMount, Show } from "solid-js";
-import { getDB } from "../../../../../../db/repositories/database";
+import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
-import { materialSchema } from "../../../../../../db/generated/zod/index";
-import { DB, item, material } from "../../../../../../db/generated/kysely/kyesely";
+import { materialSchema } from "@db/generated/zod/index";
+import { DB, item, material } from "@db/generated/kysely/kyesely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
-import { defaultData } from "../../../../../../db/defaultData";
+import { defaultData } from "@db/defaultData";
 import { fieldInfo, renderField } from "../utils";
 import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
@@ -27,7 +27,7 @@ import {
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { MaterialType } from "../../../../../../db/generated/kysely/enums";
+import { MaterialType } from "@db/generated/kysely/enums";
 import pick from "lodash-es/pick";
 import { CardSharedSection } from "./utils";
 

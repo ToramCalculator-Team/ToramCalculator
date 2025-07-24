@@ -1,5 +1,5 @@
 import { type dictionary } from "../type";
-import * as Enums from "../../../db/schema/enums";
+import * as Enums from "@db/schema/enums";
 // 工具类型
 // ----------------------------------------------------------------
 
