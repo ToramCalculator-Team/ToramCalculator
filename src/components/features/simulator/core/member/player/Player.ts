@@ -21,10 +21,10 @@ import {
   MemberStateMachine,
   MemberEventType,
   MemberActor,
-} from "./Member";
+} from "../../Member";
 import { setup, assign } from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { isPlayerMember } from "./Member";
+import { isPlayerMember } from "../../Member";
 import type { CharacterWithRelations } from "@db/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 import type { PlayerWithRelations } from "@db/repositories/player";

@@ -18,11 +18,11 @@ import {
   type MemberBaseStats,
   type MemberEvent,
   type MemberContext,
-  type MemberActorLogic,
-} from "./Member";
+  MemberStateMachine,
+} from "../../Member";
 import { setup, assign } from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { isMobMember } from "./Member";
+import { isMobMember } from "../../Member";
 import type { MobWithRelations } from "@db/repositories/mob";
 import { createActor } from "xstate";
 
@@ -271,7 +271,7 @@ export class Mob extends Member {
     position?: { x: number; y: number };
     currentHp?: number;
     currentMp?: number;
-  }): MemberActorLogic {
+  }): MemberStateMachine {
     const machineId = `Mob_${this.id}`;
     
     return setup({

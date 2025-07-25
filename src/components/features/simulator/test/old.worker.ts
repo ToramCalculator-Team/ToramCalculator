@@ -1,24 +1,20 @@
-"use client";
 import * as _ from "lodash-es";
-import { type MainWeaponType, type SubWeaponType, type BodyArmorType, type $Enums } from "@prisma/client";
-import { type getDictionary } from "~/app/get-dictionary";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
-import { type Character } from "~/schema/character";
-import { type Monster } from "~/schema/monster";
-import { type SkillEffect } from "~/schema/skillEffect";
-import { type ModifiersList } from "~/schema/modifiersList";
+import { dictionary } from "~/locales/type";
+import { CharacterWithRelations } from "@db/repositories/character";
+import { MobWithRelations } from "@db/repositories/mob";
 
 const fps = 60;
 
 export type computeInput = {
   type: "start" | "stop";
   arg: {
-    dictionary: ReturnType<typeof getDictionary>;
+    dictionary: dictionary;
     team: {
-      config: Character;
+      config: CharacterWithRelations;
       actionQueue: tSkill[];
     }[];
-    monster: Monster;
+    monster: MobWithRelations;
   };
 };
 
@@ -230,43 +226,31 @@ math.import({
   // 应用于SkillData环境的函数--------------------------------
 });
 
-// 角色加成项收集
-export const characterModifierCollector = (character: Character): ModifiersList[] => {
+/* 角色加成项收集
+ * 遍历character中的所有属性，如果属性名为modifier
+ */
+export const characterModifierCollector = (character: CharacterWithRelations) => {
   console.log("开始收集角色配置中的加成项");
-  // 类型谓词函数，用于检查对象是否符合目标类型
-  function isTargetType(obj: unknown, _currentPath: string[]): obj is ModifiersList {
-    // 检查对象是否为目标类型
-    const isModifiersList =
-      typeof obj === "object" && obj !== null && "modifiers" in obj && typeof obj.modifiers === "object";
-    // console.log(
-    //   "当前路径：",
-    //   _currentPath.join("."),
-    //   "正在检查属性：",
-    //   obj,
-    //   "是否符合ModifiersList类型，结论：",
-    //   isModifiersList,
-    // );
-    return isModifiersList;
-  }
 
   // 递归收集对象中所有符合目标类型的属性
-  const result: ModifiersList[] = [];
+  const result: string[] = [];
 
   function recurse(value: unknown, currentPath: string[]): void {
-    if (isTargetType(value, currentPath)) {
+    if (currentPath[currentPath.length - 1] === "modifiers") {
       // console.log("收集到一个符合条件的对象：", value, "当前路径：", currentPath.join("."));
-      result.push(value);
-    }
-
-    if (_.isObject(value) && !_.isArray(value)) {
-      _.forOwn(value, (subValue, key) => {
-        recurse(subValue, [...currentPath, key]);
+      const modifiers = value as string[];
+      modifiers.forEach((modifier) => {
+        result.push(modifier);
       });
     }
 
     if (_.isArray(value)) {
       value.forEach((subValue, index) => {
         recurse(subValue, [...currentPath, index.toString()]);
+      });
+    } else if (_.isObject(value)) {
+      _.forOwn(value, (subValue, key) => {
+        recurse(subValue, [...currentPath, key]);
       });
     }
   }
@@ -276,7 +260,7 @@ export const characterModifierCollector = (character: Character): ModifiersList[
 };
 
 // 角色属性应用
-export const characterModifiersApplicator = (character: Character, characterData: CharacterData): void => {
+export const characterModifiersApplicator = (character: CharacterWithRelations, characterData: CharacterData): void => {
   const modifiersListArray = characterModifierCollector(character);
   console.log("目前已收集的加成项列表：", modifiersListArray);
   console.log("开始将已收集的加成项应用至角色配置中");
@@ -860,16 +844,16 @@ export class CharacterData {
     this.dex.baseValue = config.baseDex ?? 0;
 
     this.luk = new modifiers();
-    this.luk.baseValue = config.specialAbiType === "LUK" ? config.specialAbiValue ?? 0 : 0;
+    this.luk.baseValue = config.specialAbiType === "LUK" ? (config.specialAbiValue ?? 0) : 0;
 
     this.tec = new modifiers();
-    this.tec.baseValue = config.specialAbiType === "TEC" ? config.specialAbiValue ?? 0 : 0;
+    this.tec.baseValue = config.specialAbiType === "TEC" ? (config.specialAbiValue ?? 0) : 0;
 
     this.men = new modifiers();
-    this.men.baseValue = config.specialAbiType === "MEN" ? config.specialAbiValue ?? 0 : 0;
+    this.men.baseValue = config.specialAbiType === "MEN" ? (config.specialAbiValue ?? 0) : 0;
 
     this.cri = new modifiers();
-    this.cri.baseValue = config.specialAbiType === "CRI" ? config.specialAbiValue ?? 0 : 0;
+    this.cri.baseValue = config.specialAbiType === "CRI" ? (config.specialAbiValue ?? 0) : 0;
 
     // 二级属性
     this.mainWeaponAtk = new modifiers();
@@ -1872,7 +1856,7 @@ export const compute = (
         // 依据帧修改角色状态
         if (characterState.actionFrameIndex === characterState.skillData.skillDuration) {
           console.log("技能：", characterState.skillData.name, "结束");
-          if(characterState.actionIndex <= actionQueue.length) {
+          if (characterState.actionIndex <= actionQueue.length) {
             characterState.nextAction(actionQueue);
           } else {
             console.log(characterState.name + "行为序列结束");
@@ -1884,7 +1868,6 @@ export const compute = (
       } else {
         teamState.push(null);
       }
-      
     });
 
     const isAllMemberFree = teamData.every((member) => member.characterState.actionIndex >= member.actionQueue.length);
