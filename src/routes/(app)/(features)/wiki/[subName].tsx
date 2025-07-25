@@ -195,12 +195,8 @@ export default function WikiSubPage() {
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
               >
                 <div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-                  <h1
-                    onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
-                    class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal"
-                  >
+                  <h1 class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
                     {dictionary().db[wikiStore.type].selfName}
-                    <Icons.Outline.Swap />
                   </h1>
                   <input
                     id="DataSearchBox"
@@ -213,25 +209,37 @@ export default function WikiSubPage() {
                       });
                     }}
                   />
-                  <Button // 仅移动端显示
-                    size="sm"
-                    icon={<Icons.Outline.InfoCircle />}
-                    class="flex bg-transparent lg:hidden"
-                    onClick={() => {}}
-                  ></Button>
-                  <Show when={store.session.user.id}>
-                    <Button // 仅PC端显示
+                  <div class="FunctionGroup flex">
+                    <Button // 仅移动端显示
+                      size="sm"
                       icon={<Icons.Outline.CloudUpload />}
-                      class="hidden lg:flex"
+                      class="flex bg-transparent lg:hidden"
                       onClick={() => {
                         setWikiStore("form", {
                           isOpen: true,
                         });
                       }}
-                    >
-                      {dictionary().ui.actions.add}
-                    </Button>
-                  </Show>
+                    ></Button>
+                    <Button // 仅移动端显示
+                      size="sm"
+                      icon={<Icons.Outline.InfoCircle />}
+                      class="flex bg-transparent lg:hidden"
+                      onClick={() => {}}
+                    ></Button>
+                    <Show when={store.session.user.id}>
+                      <Button // 仅PC端显示
+                        icon={<Icons.Outline.CloudUpload />}
+                        class="hidden lg:flex"
+                        onClick={() => {
+                          setWikiStore("form", {
+                            isOpen: true,
+                          });
+                        }}
+                      >
+                        {dictionary().ui.actions.add}
+                      </Button>
+                    </Show>
+                  </div>
                 </div>
               </Motion.div>
             </Show>
@@ -401,12 +409,8 @@ export default function WikiSubPage() {
                   <Button
                     size="sm"
                     class="bg-transparent"
-                    icon={<Icons.Outline.CloudUpload />}
-                    onClick={() => {
-                      setWikiStore("form", {
-                        isOpen: true,
-                      });
-                    }}
+                    icon={<Icons.Outline.Swap />}
+                    onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
                   ></Button>
                 </Show>
                 <input

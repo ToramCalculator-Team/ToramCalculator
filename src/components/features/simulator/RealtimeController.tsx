@@ -31,6 +31,7 @@ interface ControllerState {
   memberCount: number;
   selectedMemberId: string | null;
   isWorkerReady: boolean;
+  isLogPanelOpen: boolean;
 }
 
 // ============================== 组件实现 ==============================
@@ -45,6 +46,7 @@ export default function RealtimeController() {
     memberCount: 0,
     selectedMemberId: null,
     isWorkerReady: false,
+    isLogPanelOpen: false,
   });
 
   const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
@@ -426,19 +428,6 @@ export default function RealtimeController() {
   };
 
   /**
-   * 刷新数据
-   */
-  const refreshData = async () => {
-    try {
-      addLog("🔄 刷新数据...");
-      await Promise.all([refetchSimulator(), refetchCharacter(), refetchMob()]);
-      addLog("✅ 数据刷新完成");
-    } catch (error) {
-      addLog(`❌ 数据刷新失败: ${error}`);
-    }
-  };
-
-  /**
    * 添加日志
    */
   const addLog = (message: string) => {
@@ -514,16 +503,11 @@ export default function RealtimeController() {
         <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
           {/* 顶部：状态显示 */}
           <div class="flex items-center justify-between">
-            <h2 class="text-main-text-color text-lg font-semibold">实时模拟控制器</h2>
-            <div class="text-main-text-color flex items-center gap-3 text-sm">
+            <h2 class="text-main-text-color text-lg font-semibold portrait:hidden">实时模拟控制器</h2>
+            <div class="text-main-text-color flex items-center gap-1 text-sm">
               <div class="flex items-center gap-1">
                 <div class={`h-2 w-2 rounded-full ${state().isWorkerReady ? "bg-green-500" : "bg-yellow-500"}`}></div>
                 <span>{state().isWorkerReady ? "Worker就绪" : "Worker初始化中"}</span>
-              </div>
-              <span class="text-dividing-color">|</span>
-              <div class="flex items-center gap-1">
-                <div class={`h-2 w-2 rounded-full ${state().isRunning ? "bg-green-500" : "bg-red-500"}`}></div>
-                <span>{state().isRunning ? "运行中" : "已停止"}</span>
               </div>
               <span class="text-dividing-color">|</span>
               <span>帧: {state().currentFrame}</span>
@@ -545,7 +529,7 @@ export default function RealtimeController() {
             <Show
               when={getAllMembersFromSimulator().length > 0}
               fallback={
-                <div class="flex h-fit flex-col gap-2 p-3 rounded bg-area-color">
+                <div class="bg-area-color flex h-fit flex-col gap-2 rounded p-3">
                   <h1 class="animate-pulse">正在加载成员数据...</h1>
                   <LoadingBar class="w-full" />
                 </div>
@@ -605,9 +589,6 @@ export default function RealtimeController() {
             >
               恢复
             </Button>
-            <Button onClick={refreshData} disabled={simulator.loading} level="default" size="sm">
-              刷新数据
-            </Button>
           </div>
 
           {/* 技能和操作按钮 - 类似手机游戏控制器 */}
@@ -651,15 +632,17 @@ export default function RealtimeController() {
           </div>
         </div>
       </div>
-      <div class="divider bg-dividing-color h-full w-1"></div>
-      {/* 右侧：日志显示 */}
-      <div class="flex h-full flex-1 basis-1/4 overflow-y-auto rounded-lg p-3">
-        <div class="text-main-text-color space-y-1 font-mono text-xs">
-          {logs().map((log) => (
-            <div class="border-dividing-color border-b py-1 last:border-b-0">{log}</div>
-          ))}
+      <Show when={state().isLogPanelOpen}>
+        <div class="divider bg-dividing-color h-full w-1"></div>
+        {/* 右侧：日志显示 */}
+        <div class="flex h-full flex-1 basis-1/4 overflow-y-auto rounded-lg p-3">
+          <div class="text-main-text-color space-y-1 font-mono text-xs">
+            {logs().map((log) => (
+              <div class="border-dividing-color border-b py-1 last:border-b-0">{log}</div>
+            ))}
+          </div>
         </div>
-      </div>
+      </Show>
     </div>
   );
 }
