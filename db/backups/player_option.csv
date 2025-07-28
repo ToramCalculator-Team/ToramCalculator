@@ -1,2 +1,2 @@
-id,name,extraAbi,templateId,refinement,masterId
-defaultPlayerOptionId,defaultPlayerOption,0,defaultOptionItemId,15,defaultPlayerId
+id,name,baseAbi,extraAbi,templateId,refinement,masterId
+defaultPlayerOptionId,defaultPlayerOption,0,0,defaultOptionItemId,15,defaultPlayerId

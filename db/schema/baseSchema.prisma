@@ -298,9 +298,10 @@ model mob {
 
 // 道具
 model item {
-    id       String @id
-    itemType String // Enum ITEM_TYPE
-    name     String
+    id             String @id
+    itemType       String // Enum ITEM_TYPE
+    itemSourceType String // Enum ITEM_SOURCE_TYPE
+    name           String
 
     dataSources String
     details     String?
@@ -399,7 +400,7 @@ model weapon {
 
 // 防具
 model armor {
-    baseDef         Int
+    baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
     colorA          Int
@@ -415,7 +416,7 @@ model armor {
 
 // 追加装备
 model option {
-    baseDef         Int
+    baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
     colorA          Int
@@ -431,7 +432,7 @@ model option {
 
 // 特殊装备
 model special {
-    baseDef         Int
+    baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
 
@@ -655,15 +656,17 @@ model player {
 model player_weapon {
     id String @id
 
-    name       String
-    baseAbi    Int // 当模板不存在时生效
-    stability  Int // 当模板不存在时生效
-    extraAbi   Int
-    template   weapon?   @relation(fields: [templateId], references: [itemId])
-    templateId String?
-    refinement Int
-    modifiers  String[]
-    crystals   crystal[]
+    name        String
+    type        String // Enum WEAPON_TYPE
+    elementType String // Enum ELEMENT_TYPE
+    baseAbi     Int
+    stability   Int
+    extraAbi    Int
+    template    weapon?   @relation(fields: [templateId], references: [itemId])
+    templateId  String?
+    refinement  Int
+    modifiers   String[]
+    crystals    crystal[]
 
     master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId String
@@ -677,7 +680,7 @@ model player_armor {
     id String @id
 
     name       String
-    baseDef    Int // 当模板不存在时生效
+    baseAbi    Int
     extraAbi   Int
     ability    String // Enum PLAYER_ARMOR_ABILITY_TYPE
     template   armor?    @relation(fields: [templateId], references: [itemId])
@@ -697,6 +700,7 @@ model player_option {
     id String @id
 
     name       String
+    baseAbi    Int
     extraAbi   Int
     template   option    @relation(fields: [templateId], references: [itemId])
     templateId String
@@ -714,6 +718,7 @@ model player_special {
     id String @id
 
     name       String
+    baseAbi    Int
     extraAbi   Int
     template   special   @relation(fields: [templateId], references: [itemId])
     templateId String

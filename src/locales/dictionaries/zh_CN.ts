@@ -217,7 +217,7 @@ const playerPetType: Record<Enums.PetType, string> = {
   PhysicalAttack: "物理攻击",
   MagicAttack: "魔法攻击",
   PhysicalDefense: "物理防御",
-  MagicDefensem: "魔法防御",
+  MagicDefense: "魔法防御",
   Avoidance: "回避",
   Hit: "命中",
   SkillsEnhancement: "技能增强",
@@ -452,7 +452,7 @@ const dictionary: dictionary = {
       //     },
       //     bodyArmor: {
       //       type: "身体装备类型",
-      //       baseDef: "身体装备基础防御力",
+      //       baseAbi: "身体装备基础防御力",
       //       refinement: "身体装备精炼值",
       //       selfName: "身体装备",
       //     },
@@ -984,7 +984,7 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "基础防御",
           tableFieldDescription: "防具的基础防御值",
           formFieldDescription: "请输入基础防御值",
@@ -1506,6 +1506,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "道具的创建者",
           formFieldDescription: "道具的创建者",
         },
+        itemSourceType: {
+          key: "道具来源",
+          tableFieldDescription: "道具的来源",
+          formFieldDescription: "道具的来源",
+          enumMap: {
+            Mob: "怪物",
+            Task: "任务",
+            BlacksmithShop: "铁匠铺",
+            Player: "玩家",
+          },
+        }
       },
       description: "",
     },
@@ -1603,6 +1614,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "成员的行为",
           formFieldDescription: "请输入成员的行为",
         },
+        type: {
+          key: "类型",
+          tableFieldDescription: "成员的类型",
+          formFieldDescription: "选择成员的类型",
+          enumMap: {
+            Player: "玩家",
+            Partner: "伙伴",
+            Mercenary: "佣兵",
+            Mob: "怪物",
+          },
+        }
       },
       description: "",
     },
@@ -1843,7 +1865,7 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加装备",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "基础防御",
           tableFieldDescription: "基础防御",
           formFieldDescription: "基础防御",
@@ -1915,7 +1937,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1991,6 +2013,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: "",
     },
@@ -2109,7 +2136,7 @@ const dictionary: dictionary = {
             PhysicalAttack: "",
             MagicAttack: "",
             PhysicalDefense: "",
-            MagicDefensem: "",
+            MagicDefense: "",
             Avoidance: "",
             Hit: "",
             SkillsEnhancement: "",
@@ -2167,6 +2194,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: "",
     },
@@ -2217,6 +2249,41 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
+        },
+        
+        type: {
+          key: "类型",
+          tableFieldDescription: "武器的类型",
+          formFieldDescription: "武器的类型",
+          enumMap: {
+            OneHandSword: "单手剑",
+            TwoHandSword: "双手剑",
+            Bow: "弓",
+            Bowgun: "弩",
+            Rod: "法杖",
+            Magictool: "魔导具",
+            Knuckle: "拳套",
+            Halberd: "旋风枪",
+            Katana: "拔刀剑",
+            Arrow: "箭矢",
+            ShortSword: "小刀",
+            NinjutsuScroll: "忍术卷轴",
+            Shield: "盾",
+          },
+        },
+        elementType: {
+          key: "元素类型",
+          tableFieldDescription: "武器的固有元素属性，即附魔时属性觉醒时耗费魔素较少的那个属性",
+          formFieldDescription: "武器的固有元素属性，即附魔时属性觉醒时耗费魔素较少的那个属性",
+          enumMap: {
+            Normal: "无属性",
+            Light: "光属性",
+            Dark: "暗属性",
+            Water: "水属性",
+            Fire: "火属性",
+            Earth: "地属性",
+            Wind: "风属性",
+          },
         },
       },
       description: "",
@@ -2571,7 +2638,7 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装备",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "基础防御",
           tableFieldDescription: "基础防御",
           formFieldDescription: "基础防御",

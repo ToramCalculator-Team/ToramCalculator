@@ -172,7 +172,7 @@ class DatabaseRestorer {
     try {
       utils.execPsql("SET session_replication_role = 'replica';");
     } catch (error) {
-      console.warn("⚠️ 禁用外键约束时出现警告（可能是正常的）");
+      throw error;
     }
   }
 
@@ -294,7 +294,7 @@ class DatabaseRestorer {
             child.on('error', reject);
           });
         } catch (error) {
-          console.warn(`⚠️ 导入表 ${table} 时出现警告（可能是正常的）`);
+          throw error;
           skippedCount++;
         }
       } else {
@@ -314,7 +314,7 @@ class DatabaseRestorer {
     try {
       utils.execPsql("SET session_replication_role = 'origin';");
     } catch (error) {
-      console.warn("⚠️ 恢复外键约束时出现警告（可能是正常的）");
+      throw error;
     }
   }
 
@@ -376,7 +376,7 @@ class DatabaseRestorer {
         utils.execPsql(sql);
         fixedCount++;
       } catch (error) {
-        console.warn(`⚠️ 修复表 ${table} 序列时出现警告（可能是正常的）`);
+        throw error;
         skippedCount++;
       }
     }

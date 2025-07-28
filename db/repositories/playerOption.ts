@@ -24,14 +24,6 @@ export function playerOptionSubRelations(eb: ExpressionBuilder<DB, "player_optio
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item", "crystal"]),
     ).as("crystalList"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("special")
-        .whereRef("special.itemId", "=", "player_option.templateId")
-        .selectAll("special"),
-    )
-      .$notNull()
-      .as("template"),
   ];
 }
 

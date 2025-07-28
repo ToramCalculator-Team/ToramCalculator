@@ -1082,7 +1082,7 @@ createRoot((dispose) => {
     characterMap.set(CharacterAttrEnum.BODYARMOR_BASE_VALUE, {
       type: ValueType.user,
       name: CharacterAttrEnum.BODYARMOR_BASE_VALUE,
-      baseValue: (character.armor.baseDef ?? character.armor.template.baseDef) + character.armor.extraAbi,
+      baseValue: (character.armor.baseAbi ?? character.armor.template.baseAbi) + character.armor.extraAbi,
       modifiers: DefaultModifiersData,
       influences: [
         {

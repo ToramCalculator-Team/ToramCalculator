@@ -25,16 +25,16 @@ export function playerWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapo
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item", "crystal"]),
     ).as("crystalList"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("item")
-        .innerJoin("weapon", "item.id", "weapon.itemId")
-        .whereRef("weapon.itemId", "=", "player_weapon.templateId")
-        .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
-        .selectAll("weapon"),
-    )
-      .$notNull()
-      .as("template"),
+    // jsonObjectFrom(
+    //   eb
+    //     .selectFrom("item")
+    //     .innerJoin("weapon", "item.id", "weapon.itemId")
+    //     .whereRef("weapon.itemId", "=", "player_weapon.templateId")
+    //     .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
+    //     .selectAll(["weapon", "item"]),
+    // )
+    //   .$notNull()
+    //   .as("template"),
   ];
 }
 

@@ -139,7 +139,7 @@ class HighPerformanceAttributeSystem {
           (this.config.subWeapon.baseAbi ?? this.config.subWeapon.template.baseAbi) + this.config.subWeapon.extraAbi
         );
       case CharacterAttrEnum.BODYARMOR_BASE_VALUE:
-        return (this.config.armor.baseDef ?? this.config.armor.template.baseDef) + this.config.armor.extraAbi;
+        return (this.config.armor.baseAbi ?? this.config.armor.template.baseAbi) + this.config.armor.extraAbi;
       
       // 系统数值
       case CharacterAttrEnum.WEAPON_MATK_CONVERSION_RATE:

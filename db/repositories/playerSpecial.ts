@@ -24,38 +24,24 @@ export function playerSpecialSubRelations(eb: ExpressionBuilder<DB, "player_spec
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item", "crystal"]),
     ).as("crystalList"),
-    jsonObjectFrom(
-      eb.selectFrom("special").whereRef("special.itemId", "=", "player_special.templateId").selectAll("special"),
-    )
-      .$notNull()
-      .as("template"),
   ];
 }
 
 // 3. 基础 CRUD 方法
 export async function findPlayerSpecialById(id: string): Promise<PlayerSpecial | null> {
   const db = await getDB();
-  return await db
-    .selectFrom("player_special")
-    .where("id", "=", id)
-    .selectAll("player_special")
-    .executeTakeFirst() || null;
+  return (
+    (await db.selectFrom("player_special").where("id", "=", id).selectAll("player_special").executeTakeFirst()) || null
+  );
 }
 
 export async function findPlayerSpecials(): Promise<PlayerSpecial[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("player_special")
-    .selectAll("player_special")
-    .execute();
+  return await db.selectFrom("player_special").selectAll("player_special").execute();
 }
 
 export async function insertPlayerSpecial(trx: Transaction<DB>, data: PlayerSpecialInsert): Promise<PlayerSpecial> {
-  return await trx
-    .insertInto("player_special")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("player_special").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createPlayerSpecial(trx: Transaction<DB>, data: PlayerSpecialInsert): Promise<PlayerSpecial> {
@@ -68,11 +54,15 @@ export async function createPlayerSpecial(trx: Transaction<DB>, data: PlayerSpec
     })
     .returningAll()
     .executeTakeFirstOrThrow();
-  
+
   return player_special;
 }
 
-export async function updatePlayerSpecial(trx: Transaction<DB>, id: string, data: PlayerSpecialUpdate): Promise<PlayerSpecial> {
+export async function updatePlayerSpecial(
+  trx: Transaction<DB>,
+  id: string,
+  data: PlayerSpecialUpdate,
+): Promise<PlayerSpecial> {
   return await trx
     .updateTable("player_special")
     .set(data)
@@ -82,11 +72,7 @@ export async function updatePlayerSpecial(trx: Transaction<DB>, id: string, data
 }
 
 export async function deletePlayerSpecial(trx: Transaction<DB>, id: string): Promise<PlayerSpecial | null> {
-  return await trx
-    .deleteFrom("player_special")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("player_special").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法

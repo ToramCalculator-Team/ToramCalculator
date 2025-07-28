@@ -224,7 +224,7 @@ class DatabaseBackup {
       const csvFile = path.join(CONFIG.OUTPUT_DIR, `${tableName}.csv`);
       utils.writeFile(csvFile, result);
     } catch (error) {
-      console.warn(`⚠️ 导出表 ${tableName} 时出现警告（可能是正常的）`);
+      throw error;
     }
   }
 
@@ -243,7 +243,7 @@ class DatabaseBackup {
       const csvFile = path.join(CONFIG.OUTPUT_DIR, `${tableName}.csv`);
       utils.writeFile(csvFile, result);
     } catch (error) {
-      console.warn(`⚠️ 导出表 ${tableName} 时出现警告（可能是正常的）`);
+      throw error;
     }
   }
 

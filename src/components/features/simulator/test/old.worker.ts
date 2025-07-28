@@ -741,7 +741,7 @@ export class CharacterData {
   };
   bodyArmor: {
     type: BodyArmorType;
-    baseDef: modifiers;
+    baseAbi: modifiers;
     refinement: number;
   };
   str: modifiers;
@@ -823,10 +823,10 @@ export class CharacterData {
 
     this.bodyArmor = {
       type: bodyArmorType,
-      baseDef: new modifiers(),
+      baseAbi: new modifiers(),
       refinement: config.bodyArmor?.refinement ?? 0,
     };
-    this.bodyArmor.baseDef.baseValue = config.bodyArmor?.baseDef ?? 0;
+    this.bodyArmor.baseAbi.baseValue = config.bodyArmor?.baseAbi ?? 0;
 
     this.str = new modifiers();
     this.str.baseValue = config.baseStr ?? 0;
@@ -1062,7 +1062,7 @@ export class CharacterData {
     this.weaponMatkT.relations = [this.mAtk];
     this.mainWeapon.baseAtk.relations = [this.mainWeaponAtk];
     this.subWeapon.baseAtk.relations = [this.subWeaponAtk];
-    this.bodyArmor.baseDef.relations = [];
+    this.bodyArmor.baseAbi.relations = [];
     this.str.relations = [this.pCd, this.pAtk, this.mAtk, this.pStab, this.aspd];
     this.int.relations = [this.maxMp, this.pAtk, this.mAtk, this.aspd, this.pStab];
     this.vit.relations = [this.maxHp];

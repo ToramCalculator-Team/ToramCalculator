@@ -1086,8 +1086,8 @@ export class Player extends Member {
     const magicalAtk = this.character.int * 1.0 + this.character.lv;
 
     // 计算防御力（简化计算）
-    const physicalDef = this.character.armor?.baseDef || 0;
-    const magicalDef = this.character.armor?.baseDef || 0;
+    const physicalDef = this.character.armor?.baseAbi || 0;
+    const magicalDef = this.character.armor?.baseAbi || 0;
 
     // 计算速度（简化计算）
     const aspd = 1000 + this.character.agi * 0.5;

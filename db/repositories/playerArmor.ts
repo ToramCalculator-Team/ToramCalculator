@@ -24,38 +24,24 @@ export function playerArmorSubRelations(eb: ExpressionBuilder<DB, "player_armor"
         .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
         .selectAll(["item", "crystal"]),
     ).as("crystalList"),
-    jsonObjectFrom(
-      eb.selectFrom("special").whereRef("special.itemId", "=", "player_armor.templateId").selectAll("special"),
-    )
-      .$notNull()
-      .as("template"),
   ];
 }
 
 // 3. 基础 CRUD 方法
 export async function findPlayerArmorById(id: string): Promise<PlayerArmor | null> {
   const db = await getDB();
-  return await db
-    .selectFrom("player_armor")
-    .where("id", "=", id)
-    .selectAll("player_armor")
-    .executeTakeFirst() || null;
+  return (
+    (await db.selectFrom("player_armor").where("id", "=", id).selectAll("player_armor").executeTakeFirst()) || null
+  );
 }
 
 export async function findPlayerArmors(): Promise<PlayerArmor[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("player_armor")
-    .selectAll("player_armor")
-    .execute();
+  return await db.selectFrom("player_armor").selectAll("player_armor").execute();
 }
 
 export async function insertPlayerArmor(trx: Transaction<DB>, data: PlayerArmorInsert): Promise<PlayerArmor> {
-  return await trx
-    .insertInto("player_armor")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("player_armor").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createPlayerArmor(trx: Transaction<DB>, data: PlayerArmorInsert): Promise<PlayerArmor> {
@@ -68,25 +54,20 @@ export async function createPlayerArmor(trx: Transaction<DB>, data: PlayerArmorI
     })
     .returningAll()
     .executeTakeFirstOrThrow();
-  
+
   return player_armor;
 }
 
-export async function updatePlayerArmor(trx: Transaction<DB>, id: string, data: PlayerArmorUpdate): Promise<PlayerArmor> {
-  return await trx
-    .updateTable("player_armor")
-    .set(data)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+export async function updatePlayerArmor(
+  trx: Transaction<DB>,
+  id: string,
+  data: PlayerArmorUpdate,
+): Promise<PlayerArmor> {
+  return await trx.updateTable("player_armor").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deletePlayerArmor(trx: Transaction<DB>, id: string): Promise<PlayerArmor | null> {
-  return await trx
-    .deleteFrom("player_armor")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("player_armor").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法

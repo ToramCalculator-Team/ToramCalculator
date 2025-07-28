@@ -95,7 +95,7 @@ export const searchAllTables = Performance.monitor('search_all_tables', async (s
     armor: {
       table: "armor",
       fields: ["itemId"],
-      selectFields: ["itemId", "baseDef", "modifiers"] as const,
+      selectFields: ["itemId", "baseAbi", "modifiers"] as const,
       isArrayField: false,
       isEnumField: false,
       joinWith: "item"
@@ -127,7 +127,7 @@ export const searchAllTables = Performance.monitor('search_all_tables', async (s
     option: {
       table: "option",
       fields: ["itemId"],
-      selectFields: ["itemId", "baseDef", "modifiers"] as const,
+      selectFields: ["itemId", "baseAbi", "modifiers"] as const,
       isArrayField: false,
       isEnumField: false,
       joinWith: "item"
@@ -135,7 +135,7 @@ export const searchAllTables = Performance.monitor('search_all_tables', async (s
     special: {
       table: "special",
       fields: ["itemId"],
-      selectFields: ["itemId", "baseDef", "modifiers"] as const,
+      selectFields: ["itemId", "baseAbi", "modifiers"] as const,
       isArrayField: false,
       isEnumField: false,
       joinWith: "item"

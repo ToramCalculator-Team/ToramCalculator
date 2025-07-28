@@ -217,7 +217,7 @@ const playerPetType: Record<Enums.PetType, string> = {
   PhysicalAttack: "物理攻撃",
   MagicAttack: "魔法攻撃",
   PhysicalDefense: "物理防御",
-  MagicDefensem: "魔法防御",
+  MagicDefense: "魔法防御",
   Avoidance: "回避",
   Hit: "命中",
   SkillsEnhancement: "スキル強化",
@@ -455,7 +455,7 @@ const dictionary: dictionary = {
       //   bodyArmor: {
       //     selfName: "ボディアーマー",
       //     type: "ボディアーマータイプ",
-      //     baseDef: "ボディアーマー基礎防御力",
+      //     baseAbi: "ボディアーマー基礎防御力",
       //     refinement: "ボディアーマー精錬値",
       //   },
       //   str: "力",
@@ -989,7 +989,7 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1510,6 +1510,17 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        itemSourceType: {
+          key: "アイテムソースタイプ",
+          tableFieldDescription: "アイテムのソースタイプ",
+          formFieldDescription: "アイテムのソースタイプ",
+          enumMap: {
+            Mob: "モンスター",
+            Task: "任務",
+            BlacksmithShop: "鐵匠鋪",
+            Player: "プレイヤー",
+          },
         }
       },
       description: ""
@@ -1607,7 +1618,18 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
-        }
+        },
+        type: {
+          key: "タイプ",
+          tableFieldDescription: "メンバーのタイプ",
+          formFieldDescription: "メンバーのタイプ",
+          enumMap: {
+            Player: "プレイヤー",
+            Partner: "パートナー",
+            Mercenary: "傭兵",
+            Mob: "モンスター",
+          },
+        },
       },
       description: ""
     },
@@ -1844,7 +1866,7 @@ const dictionary: dictionary = {
     option: {
       selfName: "オプション装備",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1916,7 +1938,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1988,6 +2010,11 @@ const dictionary: dictionary = {
           formFieldDescription: ""
         },
         masterId: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -2110,7 +2137,7 @@ const dictionary: dictionary = {
             PhysicalAttack: "",
             MagicAttack: "",
             PhysicalDefense: "",
-            MagicDefensem: "",
+            MagicDefense: "",
             Avoidance: "",
             Hit: "",
             SkillsEnhancement: "",
@@ -2167,6 +2194,11 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: ""
@@ -2218,6 +2250,40 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        type: {
+          key: "タイプ",
+          tableFieldDescription: "武器のタイプ",
+          formFieldDescription: "武器のタイプ",
+          enumMap: {
+            OneHandSword: "単手剣",
+            TwoHandSword: "両手剣",
+            Bow: "弓",
+            Bowgun: "弩",
+            Rod: "法杖",
+            Magictool: "魔導具",
+            Knuckle: "拳套",
+            Halberd: "旋風槍",
+            Katana: "拔刀剣",
+            Arrow: "矢",
+            ShortSword: "短剣",
+            NinjutsuScroll: "忍術巻軸",
+            Shield: "盾",
+          },
+        },
+        elementType: {
+          key: "元素タイプ",
+          tableFieldDescription: "武器の元素タイプ",
+          formFieldDescription: "武器の元素タイプ",
+          enumMap: {
+            Normal: "普通",
+            Light: "光",
+            Dark: "暗",
+            Water: "水",
+            Fire: "火",
+            Earth: "地",
+            Wind: "風",
+          },
         }
       },
       description: ""
@@ -2618,7 +2684,7 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装備",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""

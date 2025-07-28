@@ -518,7 +518,7 @@ export const test: {
             colorA: 0,
             colorB: 0,
             colorC: 0,
-            baseDef: 0
+            baseAbi: 0
           },
           enchantmentAttributes: {
             id: "",
@@ -578,7 +578,7 @@ export const test: {
             colorA: 0,
             colorB: 0,
             colorC: 0,
-            baseDef: 0
+            baseAbi: 0
           }
         },
         optEquipId: "",
@@ -618,7 +618,7 @@ export const test: {
               "maxMp + 300",
             ],
             itemId: "",
-            baseDef: 0
+            baseAbi: 0
           }
         },
         speEquipId: "",

@@ -104,7 +104,7 @@ export const defaultData: DB = {
     createdByAccountId: null
   },
   armor: {
-    baseDef: 0,
+    baseAbi: 0,
     modifiers: [],
     colorA: 0,
     colorB: 0,
@@ -201,6 +201,7 @@ export const defaultData: DB = {
     statisticId: "",
     updatedByAccountId: null,
     createdByAccountId: null,
+    itemSourceType: "Player"
   },
   material: {
     type: "Metal",
@@ -267,7 +268,7 @@ export const defaultData: DB = {
     createdByAccountId: null
   },
   option: {
-    baseDef: 0,
+    baseAbi: 0,
     modifiers: [],
     colorA: 0,
     colorB: 0,
@@ -289,7 +290,7 @@ export const defaultData: DB = {
     refinement: 0,
     modifiers: [],
     masterId: "",
-    baseDef: 0
+    baseAbi: 0
   },
   player_option: {
     id: "",
@@ -298,6 +299,7 @@ export const defaultData: DB = {
     templateId: "",
     refinement: 0,
     masterId: "",
+    baseAbi: 0
   },
   player_pet: {
     id: "",
@@ -327,6 +329,7 @@ export const defaultData: DB = {
     extraAbi: 0,
     templateId: "",
     masterId: "",
+    baseAbi: 0
   },
   player_weapon: {
     id: "",
@@ -338,6 +341,8 @@ export const defaultData: DB = {
     refinement: 0,
     modifiers: [],
     masterId: "",
+    type: "OneHandSword",
+    elementType: "Normal"
   },
   post: {
     id: "",
@@ -424,7 +429,7 @@ export const defaultData: DB = {
     belongToskillId: "",
   },
   special: {
-    baseDef: 0,
+    baseAbi: 0,
     modifiers: [],
     itemId: "",
   },

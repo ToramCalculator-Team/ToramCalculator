@@ -76,7 +76,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-      { accessorKey: "baseDef", cell: (info: any) => info.getValue(), size: 100 },
+      { accessorKey: "baseAbi", cell: (info: any) => info.getValue(), size: 100 },
     ],
     dictionary: (dic) => {
       return {
@@ -88,7 +88,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
       };
     },
     hiddenColumnDef: ["id", "itemId", "createdByAccountId", "updatedByAccountId", "statisticId"],
-    defaultSort: { id: "baseDef", desc: true },
+    defaultSort: { id: "baseAbi", desc: true },
     tdGenerator: {},
   },
   form: ({ data, dic }) => (
@@ -152,7 +152,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
           dataSchema: optionSchema.extend(itemWithRelatedSchema.shape),
           hiddenFields: ["itemId"],
           fieldGroupMap: {
-            基本信息: ["name", "baseDef"],
+            基本信息: ["name", "baseAbi"],
             其他属性: ["modifiers", "details", "dataSources"],
             颜色信息: ["colorA", "colorB", "colorC"],
           },

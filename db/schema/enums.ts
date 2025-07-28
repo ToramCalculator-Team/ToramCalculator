@@ -293,6 +293,10 @@ export const CONSUMABLE_TYPE = [
 ] as const;
 export type ConsumableType = (typeof CONSUMABLE_TYPE)[number];
 
+// 道具来源
+export const ITEM_SOURCE_TYPE = ["Mob", "Task", "BlacksmithShop","Player"] as const;
+export type ItemSourceType = (typeof ITEM_SOURCE_TYPE)[number];
+
 // 道具
 export const ITEM_TYPE = ["Weapon", "Armor", "Option", "Special", "Crystal", "Consumable", "Material"] as const;
 export type ItemType = (typeof ITEM_TYPE)[number];

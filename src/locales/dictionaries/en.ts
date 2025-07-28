@@ -218,7 +218,7 @@ const playerPetType: Record<Enums.PetType, string> = {
   PhysicalAttack: "Physical Attack",
   MagicAttack: "Magic Attack",
   PhysicalDefense: "Physical Defense",
-  MagicDefensem: "Magic Defense",
+  MagicDefense: "Magic Defense",
   Avoidance: "Avoidance",
   Hit: "Hit",
   SkillsEnhancement: "Skills Enhancement",
@@ -892,7 +892,7 @@ const dictionary: dictionary = {
     armor: {
       selfName: "Armor",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1414,6 +1414,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        itemSourceType: {
+          key: "Item Source Type",
+          tableFieldDescription: "The source of the item.",
+          formFieldDescription: "The source of the item.",
+          enumMap: {
+            Mob: "Mob",
+            Task: "Task",
+            BlacksmithShop: "Blacksmith Shop",
+            Player: "Player",
+          },
+        }
       },
       description: "",
     },
@@ -1511,6 +1522,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        type: {
+          key: "Type",
+          tableFieldDescription: "The type of the member.",
+          formFieldDescription: "The type of the member.",
+          enumMap: {
+            Player: "Player",
+            Partner: "Partner",
+            Mercenary: "Mercenary",
+            Mob: "Mob",
+          },
+        }
       },
       description: "",
     },
@@ -1762,7 +1784,7 @@ const dictionary: dictionary = {
     option: {
       selfName: "Option Equipment",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1834,7 +1856,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1910,6 +1932,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: "",
     },
@@ -2028,7 +2055,7 @@ const dictionary: dictionary = {
             PhysicalAttack: "",
             MagicAttack: "",
             PhysicalDefense: "",
-            MagicDefensem: "",
+            MagicDefense: "",
             Avoidance: "",
             Hit: "",
             SkillsEnhancement: "",
@@ -2086,6 +2113,11 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
+        baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        }
       },
       description: "",
     },
@@ -2136,6 +2168,40 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
+        },
+        type: {
+          key: "Type",
+          tableFieldDescription: "The type of the weapon.",
+          formFieldDescription: "The type of the weapon.",
+          enumMap: {
+            OneHandSword: "One Handed Sword",
+            TwoHandSword: "Two Handed Sword",
+            Bow: "Bow",
+            Bowgun: "Bowgun",
+            Rod: "Rod",
+            Magictool: "Magictool",
+            Knuckle: "Knuckle",
+            Halberd: "Halberd",
+            Katana: "Katana",
+            Arrow: "Arrow",
+            ShortSword: "Short Sword",
+            NinjutsuScroll: "Ninjutsu Scroll",
+            Shield: "Shield",
+          },
+        },
+        elementType: {
+          key: "Element Type",
+          tableFieldDescription: "The element type of the weapon.",
+          formFieldDescription: "The element type of the weapon.",
+          enumMap: {
+            Normal: "Normal",
+            Light: "Light",
+            Dark: "Dark",
+            Water: "Water",
+            Fire: "Fire",
+            Earth: "Earth",
+            Wind: "Wind",
+          },
         },
       },
       description: "",
@@ -2543,7 +2609,7 @@ const dictionary: dictionary = {
     special: {
       selfName: "Special Equipment",
       fields: {
-        baseDef: {
+        baseAbi: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
