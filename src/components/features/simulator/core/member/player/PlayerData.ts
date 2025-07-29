@@ -7,6 +7,17 @@ import { MainHandType, SubHandType } from "@db/schema/enums";
  * 命名说明：
  * XX基础值：指的是可被百分比加成和常数加成增幅的属性，比如基础智力（可被百分比智力加成和常数智力加成增幅）、
  *          基础武器攻击（可被百分比武器攻击加成和常数武器攻击加成增幅）
+ * 
+ * 物理相关：physical → p
+ * 魔法相关：magical → m
+ * 攻击相关：attack → atk
+ * 防御相关：defense → def
+ * 抗性相关：resistance → res
+ * 伤害相关：damage → dmg
+ * 减轻相关：reduce → red
+ * 增强相关：strongerAgainst → vs
+ * 转换率相关：conversionRate → conv
+ * 基础值相关：baseValue → base
  */
 
 // ============================== 玩家属性枚举 ==============================
@@ -32,89 +43,89 @@ export enum PlayerAttrEnum {
   mpRegen, // MP自然回复
   mpAtkRegen, // MP攻击回复
   // 单次伤害增幅
-  physicalAtk, // 物理攻击
-  magicalAtk, // 魔法攻击
+  pAtk, // 物理攻击
+  mAtk, // 魔法攻击
   weaponAtk, // 武器攻击
   unsheatheAtk, // 拔刀攻击
-  physicalPierce, // 物理贯穿
-    magicalPierce, // 魔法贯穿
-  physicalCriticalRate, // 暴击率
-  physicalCriticalDamage, // 暴击伤害
-  magicalCrtConversionRate, // 魔法暴击转化率
-  magicalCrtDamageConversionRate, // 魔法爆伤转化率
-  magicalCriticalRate, // 魔法暴击率
-  magicalCriticalDamage, // 魔法暴击伤害
-  shortRangeDamage, // 近距离威力
-  longRangeDamage, // 远距离威力
-  strongerAgainstNetural, // 对无属性增强
-  strongerAgainstLight, // 对光属性增强
-  strongerAgainstDark, // 对暗属性增强
-  strongerAgainstWater, // 对水属性增强
-  strongerAgainstFire, // 对火属性增强
-  strongerAgainstEarth, // 对地属性增强
-  strongerAgainstWind, // 对风属性增强
-  totalDamage, // 总伤害
-  finalDamage, // 最终伤害
-  physicalStability, // 稳定率
-  magicalStability, // 魔法稳定率
+  pPierce, // 物理贯穿
+  mPierce, // 魔法贯穿
+  pCritRate, // 物理暴击率
+  pCritDmg, // 物理暴击伤害
+  mCritConvRate, // 魔法暴击转化率
+  mCritDmgConvRate, // 魔法爆伤转化率
+  mCritRate, // 魔法暴击率
+  mCritDmg, // 魔法暴击伤害
+  shortRangeDmg, // 近距离威力
+  longRangeDmg, // 远距离威力
+  vsNeutral, // 对无属性增强
+  vsLight, // 对光属性增强
+  vsDark, // 对暗属性增强
+  vsWater, // 对水属性增强
+  vsFire, // 对火属性增强
+  vsEarth, // 对地属性增强
+  vsWind, // 对风属性增强
+  totalDmg, // 总伤害
+  finalDmg, // 最终伤害
+  pStab, // 物理稳定率
+  mStab, // 魔法稳定率
   accuracy, // 命中
-  additionalPhysics, // 物理追击
-  additionalMagic, // 魔法追击
+  pChase, // 物理追击
+  mChase, // 魔法追击
   anticipate, // 看穿
   guardBreak, // 破防
   reflect, // 反弹伤害
   absoluteAccuracy, // 绝对命中
-    atkUpStr, // 物理攻击提升（力量）
-  atkUpInt, // 物理攻击提升（智力）
-  atkUpVit, // 物理攻击提升（耐力）
-  atkUpAgi, // 物理攻击提升（敏捷）
-  atkUpDex, // 物理攻击提升（灵巧）
-  matkUpStr, // 魔法攻击提升（力量）
-  matkUpInt, // 魔法攻击提升（智力）
-  matkUpVit, // 魔法攻击提升（耐力）
-  matkUpAgi, // 魔法攻击提升（敏捷）
-  matkUpDex, // 魔法攻击提升（灵巧）
-  atkDownStr, // 物理攻击下降（力量）
-  atkDownInt, // 物理攻击下降（智力）
-  atkDownVit, // 物理攻击下降（耐力）
-  atkDownAgi, // 物理攻击下降（敏捷）
-  atkDownDex, // 物理攻击下降（灵巧）
-  matkDownStr, // 魔法攻击下降（力量）
-  matkDownInt, // 魔法攻击下降（智力）
-  matkDownVit, // 魔法攻击下降（耐力）
-  matkDownAgi, // 魔法攻击下降（敏捷）
-  matkDownDex, // 魔法攻击下降（灵巧）
+  pAtkUpStr, // 物理攻击提升（力量）
+  pAtkUpInt, // 物理攻击提升（智力）
+  pAtkUpVit, // 物理攻击提升（耐力）
+  pAtkUpAgi, // 物理攻击提升（敏捷）
+  pAtkUpDex, // 物理攻击提升（灵巧）
+  mAtkUpStr, // 魔法攻击提升（力量）
+  mAtkUpInt, // 魔法攻击提升（智力）
+  mAtkUpVit, // 魔法攻击提升（耐力）
+  mAtkUpAgi, // 魔法攻击提升（敏捷）
+  mAtkUpDex, // 魔法攻击提升（灵巧）
+  pAtkDownStr, // 物理攻击下降（力量）
+  pAtkDownInt, // 物理攻击下降（智力）
+  pAtkDownVit, // 物理攻击下降（耐力）
+  pAtkDownAgi, // 物理攻击下降（敏捷）
+  pAtkDownDex, // 物理攻击下降（灵巧）
+  mAtkDownStr, // 魔法攻击下降（力量）
+  mAtkDownInt, // 魔法攻击下降（智力）
+  mAtkDownVit, // 魔法攻击下降（耐力）
+  mAtkDownAgi, // 魔法攻击下降（敏捷）
+  mAtkDownDex, // 魔法攻击下降（灵巧）
   // 生存能力加成
   maxHp, // 最大HP
   bodyArmorDef, // 身体装备防御
-  physicalDef, // 物理防御
-  magicalDef, // 魔法防御
-  physicalResistance, // 物理抗性
-  magicalResistance, // 魔法抗性
-  neutralResistance, // 无属性抗性
-  lightResistance, // 光属性抗性
-  darkResistance, // 暗属性抗性
-  waterResistance, // 水属性抗性
-  fireResistance, // 火属性抗性
-  earthResistance, // 地属性抗性
-  windResistance, // 风属性抗性
+  pDef, // 物理防御
+  mDef, // 魔法防御
+  pRes, // 物理抗性
+  mRes, // 魔法抗性
+  neutralRes, // 无属性抗性
+  lightRes, // 光属性抗性
+  darkRes, // 暗属性抗性
+  waterRes, // 水属性抗性
+  fireRes, // 火属性抗性
+  earthRes, // 地属性抗性
+  windRes, // 风属性抗性
   dodge, // 回避
-  ailmentResistance, // 异常抗性
+  ailmentRes, // 异常抗性
   guardPower, // 格挡力
-  guardRechange, // 格挡回复
+  guardRecharge, // 格挡回复
   evasionRecharge, // 闪躲回复
-  physicalBarrier, // 物理屏障
-  magicalBarrier, // 魔法屏障
+  pBarrier, // 物理屏障
+  mBarrier, // 魔法屏障
   fractionalBarrier, // 百分比瓶屏障
   barrierCooldown, // 屏障回复速度
-  reduceDmgFloor, // 地面伤害减轻（地刺）
-  reduceDmgMeteor, // 陨石伤害减轻（天火）
-  reduceDmgPlayerEpicenter, // 范围伤害减轻（以玩家为中心的范围伤害）
-  reduceDmgFoeEpicenter, // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
-  reduceDmgBowling, // 贴地伤害减轻（剑气、风刃）
-  reduceDmgBullet, // 子弹伤害减轻（各种球）
-  reduceDmgStraightLine, // 直线伤害减轻（激光）
-  reduceDmgCharge, // 冲撞伤害减轻（怪物的位移技能）
+  redDmgFloor, // 地面伤害减轻（地刺）
+  redDmgMeteor, // 陨石伤害减轻（天火）
+  redDmgPlayerEpicenter, // 范围伤害减轻（以玩家为中心的范围伤害）
+  redDmgFoeEpicenter, // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
+  redDmgBowling, // 贴地伤害减轻（剑气、风刃）
+  redDmgBullet, // 子弹伤害减轻（各种球）
+  redDmgStraightLine, // 直线伤害减轻（激光）
+  redDmgCharge, // 冲撞伤害减轻（怪物的位移技能）
   absoluteDodge, // 绝对回避
   // 速度加成
   aspd, // 攻击速度
@@ -132,16 +143,16 @@ export enum PlayerAttrEnum {
   expRate, // 经验加成
   petExp, // 宠物经验
   itemCooldown, // 道具冷却
-  recoilDamage, // 反作用伤害
+  recoilDmg, // 反作用伤害
   gemPowderDrop, // 晶石粉末掉落
-  // 中间数值
-  weaponMatkConversionRate, // 主武器魔法攻击转换率
-  weaponAtkConversionRate, // 主武器物理攻击转换率
-  mainWeaponBaseValue, // 主武器基础值
+  // Player的其他属性扁平化
+  weaponMAtkConv, // 主武器魔法攻击转换率
+  weaponPAtkConv, // 主武器物理攻击转换率
+  mainWeaponBaseAtk, // 主武器基础值
   mainWeaponAtk, // 主武器攻击
-  subWeaponBaseValue, // 副武器基础值
+  subWeaponBaseAtk, // 副武器基础值
   subWeaponAtk, // 副武器攻击
-  bodyArmorBaseValue, // 防具基础值
+  bodyArmorBaseDef, // 防具基础值
 }
 export type PlayerAttrType = keyof typeof PlayerAttrEnum;
 export const PlayerAttrDic: Record<PlayerAttrType, string> = {
@@ -162,87 +173,87 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   hpRegen: "HP自然回复",
   mpRegen: "MP自然回复",
   mpAtkRegen: "MP攻击回复",
-  physicalAtk: "物理攻击",
-  magicalAtk: "魔法攻击",
+  pAtk: "物理攻击",
+  mAtk: "魔法攻击",
   weaponAtk: "武器攻击",
   unsheatheAtk: "拔刀攻击",
-  physicalPierce: "物理贯穿",
-  magicalPierce: "魔法贯穿",
-  physicalCriticalRate: "物理暴击率",
-  physicalCriticalDamage: "物理暴击伤害",
-  magicalCrtConversionRate: "魔法暴击转化率",
-  magicalCrtDamageConversionRate: "魔法爆伤转化率",
-  magicalCriticalRate: "魔法暴击率",
-  magicalCriticalDamage: "魔法暴击伤害",
-  shortRangeDamage: "近距离威力",
-  longRangeDamage: "远距离威力",
-  strongerAgainstNetural: "对无属性增强",
-  strongerAgainstLight: "对光属性增强",
-  strongerAgainstDark: "对暗属性增强",
-  strongerAgainstWater: "对水属性增强",
-  strongerAgainstFire: "对火属性增强",
-  strongerAgainstEarth: "对地属性增强",
-  strongerAgainstWind: "对风属性增强",
-  totalDamage: "总伤害",
-  finalDamage: "最终伤害",
-  physicalStability: "物理稳定率",
-  magicalStability: "魔法稳定率",
+  pPierce: "物理贯穿",
+  mPierce: "魔法贯穿",
+  pCritRate: "物理暴击率",
+  pCritDmg: "物理暴击伤害",
+  mCritConvRate: "魔法暴击转化率",
+  mCritDmgConvRate: "魔法爆伤转化率",
+  mCritRate: "魔法暴击率",
+  mCritDmg: "魔法暴击伤害",
+  shortRangeDmg: "近距离威力",
+  longRangeDmg: "远距离威力",
+  vsNeutral: "对无属性增强",
+  vsLight: "对光属性增强",
+  vsDark: "对暗属性增强",
+  vsWater: "对水属性增强",
+  vsFire: "对火属性增强",
+  vsEarth: "对地属性增强",
+  vsWind: "对风属性增强",
+  totalDmg: "总伤害",
+  finalDmg: "最终伤害",
+  pStab: "物理稳定率",
+  mStab: "魔法稳定率",
   accuracy: "命中",
-  additionalPhysics: "物理追击",
-  additionalMagic: "魔法追击",
+  pChase: "物理追击",
+  mChase: "魔法追击",
   anticipate: "看穿",
   guardBreak: "破防",
   reflect: "反弹伤害",
   absoluteAccuracy: "绝对命中",
-  atkUpStr: "物理攻击提升（力量）",
-  atkUpInt: "物理攻击提升（智力）",
-  atkUpVit: "物理攻击提升（耐力）",
-  atkUpAgi: "物理攻击提升（敏捷）",
-  atkUpDex: "物理攻击提升（灵巧）",
-  matkUpStr: "魔法攻击提升（力量）",
-  matkUpInt: "魔法攻击提升（智力）",
-  matkUpVit: "魔法攻击提升（耐力）",
-  matkUpAgi: "魔法攻击提升（敏捷）",
-  matkUpDex: "魔法攻击提升（灵巧）",
-  atkDownStr: "物理攻击下降（力量）",
-  atkDownInt: "物理攻击下降（智力）",
-  atkDownVit: "物理攻击下降（耐力）",
-  atkDownAgi: "物理攻击下降（敏捷）",
-  atkDownDex: "物理攻击下降（灵巧）",
-  matkDownStr: "魔法攻击下降（力量）",
-  matkDownInt: "魔法攻击下降（智力）",
-  matkDownVit: "魔法攻击下降（耐力）",
-  matkDownAgi: "魔法攻击下降（敏捷）",
-  matkDownDex: "魔法攻击下降（灵巧）",
+  pAtkUpStr: "物理攻击提升（力量）",
+  pAtkUpInt: "物理攻击提升（智力）",
+  pAtkUpVit: "物理攻击提升（耐力）",
+  pAtkUpAgi: "物理攻击提升（敏捷）",
+  pAtkUpDex: "物理攻击提升（灵巧）",
+  mAtkUpStr: "魔法攻击提升（力量）",
+  mAtkUpInt: "魔法攻击提升（智力）",
+  mAtkUpVit: "魔法攻击提升（耐力）",
+  mAtkUpAgi: "魔法攻击提升（敏捷）",
+  mAtkUpDex: "魔法攻击提升（灵巧）",
+  pAtkDownStr: "物理攻击下降（力量）",
+  pAtkDownInt: "物理攻击下降（智力）",
+  pAtkDownVit: "物理攻击下降（耐力）",
+  pAtkDownAgi: "物理攻击下降（敏捷）",
+  pAtkDownDex: "物理攻击下降（灵巧）",
+  mAtkDownStr: "魔法攻击下降（力量）",
+  mAtkDownInt: "魔法攻击下降（智力）",
+  mAtkDownVit: "魔法攻击下降（耐力）",
+  mAtkDownAgi: "魔法攻击下降（敏捷）",
+  mAtkDownDex: "魔法攻击下降（灵巧）",
   bodyArmorDef: "身体装备防御",
-  physicalDef: "物理防御",
-  magicalDef: "魔法防御",
-  physicalResistance: "物理抗性",
-  magicalResistance: "魔法抗性",
-  neutralResistance: "无属性抗性",
-  lightResistance: "光属性抗性",
-  darkResistance: "暗属性抗性",
-  waterResistance: "水属性抗性",
-  fireResistance: "火属性抗性",
-  earthResistance: "地属性抗性",
-  windResistance: "风属性抗性",
+  pDef: "物理防御",
+  mDef: "魔法防御",
+  pRes: "物理抗性",
+  mRes: "魔法抗性",
+  neutralRes: "无属性抗性",
+  lightRes: "光属性抗性",
+  darkRes: "暗属性抗性",
+  waterRes: "水属性抗性",
+  fireRes: "火属性抗性",
+  earthRes: "地属性抗性",
+  windRes: "风属性抗性",
   dodge: "回避",
-  ailmentResistance: "异常抗性",
+  ailmentRes: "异常抗性",
   guardPower: "格挡力",
-  guardRechange: "格挡回复",
+  guardRecharge: "格挡回复",
   evasionRecharge: "闪躲回复",
-  physicalBarrier: "物理屏障",
-  magicalBarrier: "魔法屏障",
+  pBarrier: "物理屏障",
+  mBarrier: "魔法屏障",
   fractionalBarrier: "百分比瓶屏障",
   barrierCooldown: "屏障回复速度",
-  reduceDmgFloor: "地面伤害减轻（地刺）",
-  reduceDmgMeteor: "陨石伤害减轻（天火）",
-  reduceDmgPlayerEpicenter: "范围伤害减轻（以玩家为中心的范围伤害）",
-  reduceDmgFoeEpicenter: "敌方周围伤害减轻（以怪物自身为中心的范围伤害）",
-  reduceDmgBowling: "贴地伤害减轻（剑气、风刃）",
-  reduceDmgBullet: "子弹伤害减轻（各种球）",
-  reduceDmgStraightLine: "直线伤害减轻（激光）",
-  reduceDmgCharge: "冲撞伤害减轻（怪物的位移技能）",
+  redDmgFloor: "地面伤害减轻（地刺）",
+  redDmgMeteor: "陨石伤害减轻（天火）",
+  redDmgPlayerEpicenter: "范围伤害减轻（以玩家为中心的范围伤害）",
+  redDmgFoeEpicenter: "敌方周围伤害减轻（以怪物自身为中心的范围伤害）",
+  redDmgBowling: "贴地伤害减轻（剑气、风刃）",
+  redDmgBullet: "子弹伤害减轻（各种球）",
+  redDmgStraightLine: "直线伤害减轻（激光）",
+  redDmgCharge: "冲撞伤害减轻（怪物的位移技能）",
   absoluteDodge: "绝对回避",
   aspd: "攻击速度",
   mspd: "行动速度",
@@ -258,15 +269,15 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   expRate: "经验加成",
   petExp: "宠物经验",
   itemCooldown: "道具冷却",
-  recoilDamage: "反作用伤害",
+  recoilDmg: "反作用伤害",
   gemPowderDrop: "晶石粉末掉落",
-  weaponMatkConversionRate: "主武器魔法攻击转换率",
-  weaponAtkConversionRate: "主武器物理攻击转换率",
-  mainWeaponBaseValue: "主武器基础值",
+  weaponMAtkConv: "主武器魔法攻击转换率",
+  weaponPAtkConv: "主武器物理攻击转换率",
+  mainWeaponBaseAtk: "主武器基础值",
   mainWeaponAtk: "主武器攻击",
-  subWeaponBaseValue: "副武器基础值",
+  subWeaponBaseAtk: "副武器基础值",
   subWeaponAtk: "副武器攻击",
-  bodyArmorBaseValue: "防具基础值",
+  bodyArmorBaseDef: "防具基础值",
 };
 export const PlayerAttrKeys = Object.keys(PlayerAttrDic) as PlayerAttrType[];
 
@@ -284,7 +295,10 @@ export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: st
   ["vit", { expression: "vit", isBase: true }],
   ["agi", { expression: "agi", isBase: true }],
   ["dex", { expression: "dex", isBase: true }],
-  ["luk", { expression: "luk", isBase: true }],
+  ["luk", { expression: "personalityType === 'Luk' ? luk : 0", isBase: true }],
+  ["tec", { expression: "personalityType === 'Tec' ? tec : 0", isBase: true }],
+  ["men", { expression: "personalityType === 'Men' ? men : 0", isBase: true }],
+  ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
 ]);
 
 /**

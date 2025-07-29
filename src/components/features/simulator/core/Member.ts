@@ -93,13 +93,13 @@ export interface MemberBaseStats {
   /** 当前魔法值 */
   currentMp: number;
   /** 物理攻击力 */
-  physicalAtk: number;
+  pAtk: number;
   /** 魔法攻击力 */
-  magicalAtk: number;
+  mAtk: number;
   /** 物理防御力 */
-  physicalDef: number;
+  pDef: number;
   /** 魔法防御力 */
-  magicalDef: number;
+  mDef: number;
   /** 攻击速度 */
   aspd: number;
   /** 移动速度 */
@@ -342,10 +342,10 @@ export abstract class Member {
       currentHp: reactiveStats.currentHp || reactiveStats.maxHp || 1000,
       maxMp: reactiveStats.maxMp || 100,
       currentMp: reactiveStats.currentMp || reactiveStats.maxMp || 100,
-      physicalAtk: reactiveStats.physicalAtk || reactiveStats.patk || 100,
-      magicalAtk: reactiveStats.magicalAtk || reactiveStats.matk || 100,
-      physicalDef: reactiveStats.physicalDef || reactiveStats.pdef || 50,
-      magicalDef: reactiveStats.magicalDef || reactiveStats.mdef || 50,
+      pAtk: reactiveStats.pAtk || reactiveStats.patk || 100,
+      mAtk: reactiveStats.mAtk || reactiveStats.matk || 100,
+      pDef: reactiveStats.pDef || reactiveStats.pdef || 50,
+      mDef: reactiveStats.mDef || reactiveStats.mdef || 50,
       aspd: reactiveStats.aspd || 1.0,
       mspd: reactiveStats.mspd || 100,
       position,
@@ -468,10 +468,10 @@ export abstract class Member {
       currentHp: 1000,
       maxMp: 100,
       currentMp: 100,
-      physicalAtk: 100,
-      magicalAtk: 100,
-      physicalDef: 50,
-      magicalDef: 50,
+      pAtk: 100,
+      mAtk: 100,
+      pDef: 50,
+      mDef: 50,
       aspd: 1.0,
       mspd: 100,
       position: { x: 0, y: 0 },
