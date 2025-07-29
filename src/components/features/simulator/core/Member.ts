@@ -77,48 +77,7 @@ export interface AttributeInfluence {
   computation: () => number; // 作用的值
 }
 
-/**
- * 属性修改器
- */
-export interface ModifiersData {
-  static: {
-    fixed: {
-      value: number;
-      origin: string;
-    }[];
-    percentage: {
-      value: number;
-      origin: string;
-    }[];
-  };
-  dynamic: {
-    fixed: {
-      value: number;
-      origin: string;
-    }[];
-    percentage: {
-      value: number;
-      origin: string;
-    }[];
-  };
-}
-
-/**
- * 玩家属性数据接口
- */
-export interface AttrData {
-  type: ValueType;
-  name: string;
-  baseValue:
-    | number
-    | Array<{
-        value: number;
-        sourceName: string;
-        source: string;
-      }>;
-  modifiers: ModifiersData;
-  influences: AttributeInfluence[];
-}
+  // 响应式系统已迁移到 ReactiveSystem.ts
 
 /**
  * 成员基础属性接口
@@ -152,12 +111,17 @@ export interface MemberBaseStats {
 /**
  * 成员状态机上下文接口
  * 定义状态机运行时的上下文数据
+ * 
+ * 设计原则：
+ * - 单一事实来源：stats 直接引用响应式系统的计算结果
+ * - 实时更新：状态机持有引用，自动获取最新值
+ * - 性能优化：避免重复计算，直接使用缓存结果
  */
 export interface MemberContext {
   /** 成员基础数据（来自数据库） */
   memberData: MemberWithRelations;
-  /** 成员基础属性 */
-  stats: Map<Number, AttrData>;
+  /** 成员基础属性 - 直接引用响应式系统的计算结果 */
+  stats: Record<string, number>;
   /** 是否存活 */
   isAlive: boolean;
   /** 是否可行动 */
@@ -306,67 +270,9 @@ export abstract class Member {
   /** 队伍ID */
   protected teamId: string;
 
-  // ==================== 静态参数统计方法 ====================
+  // ==================== 响应式系统集成 ====================
 
-  /** 计算属性基础值 */
-  static baseValue = (m: AttrData | undefined): number => {
-    if (!m) throw new Error("传入的属性无法计算");
-    if (typeof m.baseValue === "number") return m.baseValue;
-    let sum = 0;
-    for (let i = 0; i < m.baseValue.length; i++) {
-      sum += m.baseValue[i].value;
-    }
-    return sum;
-  };
-
-  /** 计算静态固定值 */
-  static staticFixedValue = (m: AttrData): number => {
-    const fixedArray = m.modifiers.static.fixed.map((mod) => mod.value);
-    return fixedArray.reduce((a, b) => a + b, 0);
-  };
-
-  /** 计算动态固定值 */
-  static dynamicFixedValue = (m: AttrData): number => {
-    let value = 0;
-    if (m.modifiers.dynamic?.fixed) {
-      const fixedArray = m.modifiers.dynamic.fixed.map((mod) => mod.value);
-      value = fixedArray.reduce((a, b) => a + b, 0) + this.staticFixedValue(m);
-    }
-    return value;
-  };
-
-  /** 计算静态百分比值 */
-  static staticPercentageValue = (m: AttrData): number => {
-    const percentageArray = m.modifiers.static.percentage.map((mod) => mod.value);
-    return percentageArray.reduce((a, b) => a + b, 0);
-  };
-
-  /** 计算动态百分比值 */
-  static dynamicPercentageValue = (m: AttrData): number => {
-    let value = 0;
-    if (m.modifiers.dynamic?.percentage) {
-      const percentageArray = m.modifiers.dynamic.percentage.map((mod) => mod.value);
-      value = percentageArray.reduce((a, b) => a + b, 0) + this.staticPercentageValue(m);
-    }
-    return value;
-  };
-
-  /** 计算静态总值 */
-  static staticTotalValue = (m: AttrData): number => {
-    const base = this.baseValue(m);
-    const fixed = this.staticFixedValue(m);
-    const percentage = this.staticPercentageValue(m);
-    return base * (1 + percentage / 100) + fixed;
-  };
-
-  /** 计算动态总值 */
-  static dynamicTotalValue = (m: AttrData | undefined): number => {
-    if (!m) throw new Error("传入的属性无法计算");
-    const base = this.baseValue(m);
-    const fixed = this.dynamicFixedValue(m);
-    const percentage = this.dynamicPercentageValue(m);
-    return Math.floor(base * (1 + percentage / 100) + fixed);
-  };
+  // 响应式系统已迁移到 ReactiveSystem.ts
 
   // ==================== 构造函数 ====================
 
@@ -392,9 +298,6 @@ export abstract class Member {
     this.actor = createActor(this.createStateMachine(initialState), {
       input: initialState,
     });
-
-    // 启动状态机
-    this.actor.start();
 
     console.log(`Member: 创建成员: ${memberData.name} (${this.type})`);
   }
@@ -423,59 +326,30 @@ export abstract class Member {
   }): MemberStateMachine;
 
   /**
-   * 将属性Map转换为基础属性
-   * 通用实现，通过AttrData的name属性进行映射
-   * @param statsMap 属性Map
+   * 将响应式系统的计算结果转换为基础属性
+   * 从 Record<string, number> 中提取 MemberBaseStats
+   * @param reactiveStats 响应式系统的计算结果
    * @returns MemberBaseStats对象
    */
-  protected convertMapToStats(statsMap: Map<Number, AttrData>): MemberBaseStats {
+  protected convertReactiveStatsToBaseStats(reactiveStats: Record<string, number>): MemberBaseStats {
     // 获取当前状态机上下文中的位置信息
     const currentState = this.getCurrentState();
     const position = currentState?.context?.position || { x: 0, y: 0 };
 
     // 初始化基础属性对象
     const baseStats: MemberBaseStats = {
-      maxHp: 1000,
-      currentHp: 1000,
-      maxMp: 100,
-      currentMp: 100,
-      physicalAtk: 100,
-      magicalAtk: 100,
-      physicalDef: 50,
-      magicalDef: 50,
-      aspd: 1.0,
-      mspd: 100,
+      maxHp: reactiveStats.maxHp || 1000,
+      currentHp: reactiveStats.currentHp || reactiveStats.maxHp || 1000,
+      maxMp: reactiveStats.maxMp || 100,
+      currentMp: reactiveStats.currentMp || reactiveStats.maxMp || 100,
+      physicalAtk: reactiveStats.physicalAtk || reactiveStats.patk || 100,
+      magicalAtk: reactiveStats.magicalAtk || reactiveStats.matk || 100,
+      physicalDef: reactiveStats.physicalDef || reactiveStats.pdef || 50,
+      magicalDef: reactiveStats.magicalDef || reactiveStats.mdef || 50,
+      aspd: reactiveStats.aspd || 1.0,
+      mspd: reactiveStats.mspd || 100,
       position,
     };
-
-    // 遍历属性Map，根据name属性进行映射
-    for (const [_, attrData] of statsMap) {
-      const value = Member.dynamicTotalValue(attrData);
-      const name = attrData.name.toLowerCase();
-
-      // 根据name进行简单映射
-      if (name.includes("max_hp") || name.includes("maxhp")) {
-        baseStats.maxHp = value;
-      } else if (name.includes("hp") && !name.includes("max")) {
-        baseStats.currentHp = value;
-      } else if (name.includes("max_mp") || name.includes("maxmp")) {
-        baseStats.maxMp = value;
-      } else if (name.includes("mp") && !name.includes("max")) {
-        baseStats.currentMp = value;
-      } else if (name.includes("physical_atk") || name.includes("patk")) {
-        baseStats.physicalAtk = value;
-      } else if (name.includes("magical_atk") || name.includes("matk")) {
-        baseStats.magicalAtk = value;
-      } else if (name.includes("physical_def") || name.includes("pdef")) {
-        baseStats.physicalDef = value;
-      } else if (name.includes("magical_def") || name.includes("mdef")) {
-        baseStats.magicalDef = value;
-      } else if (name.includes("aspd")) {
-        baseStats.aspd = value;
-      } else if (name.includes("mspd")) {
-        baseStats.mspd = value;
-      }
-    }
 
     // 确保当前HP不超过最大HP
     if (baseStats.currentHp > baseStats.maxHp) {
@@ -534,7 +408,7 @@ export abstract class Member {
   private getDefaultContext(): MemberContext {
     return {
       memberData: this.memberData,
-      stats: new Map(),
+      stats: {},
       isAlive: true,
       isActive: true,
       statusEffects: [],
@@ -547,7 +421,7 @@ export abstract class Member {
 
   /**
    * 获取成员属性
-   * 添加安全检查，确保不会返回undefined
+   * 从响应式系统的计算结果中提取基础属性
    */
   getStats(): MemberBaseStats {
     try {
@@ -572,15 +446,8 @@ export abstract class Member {
           return this.getDefaultStats();
         }
 
-        // 如果stats是Map类型，需要转换为MemberBaseStats
-        if (snapshot.context.stats instanceof Map) {
-          return this.convertMapToStats(snapshot.context.stats);
-        }
-
-        // 如果已经是MemberBaseStats类型，直接返回
-        if (typeof snapshot.context.stats === "object" && snapshot.context.stats !== null) {
-          return snapshot.context.stats as MemberBaseStats;
-        }
+        // 从响应式系统的计算结果中提取基础属性
+        return this.convertReactiveStatsToBaseStats(snapshot.context.stats);
       }
 
       console.warn(`Member: ${this.getName()} 属性格式异常`);

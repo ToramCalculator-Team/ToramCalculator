@@ -9,10 +9,8 @@
  */
 
 import {
-  AttrData,
   AttributeInfluence,
   Member,
-  ModifiersData,
   TargetType,
   ValueType,
   type MemberBaseStats,
@@ -32,178 +30,30 @@ import type { PlayerWithRelations } from "@db/repositories/player";
 import type { MainHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
 import { createActor } from "xstate";
+import { PlayerAttrKeys, PlayerAttrDic, PlayerAttrType } from "./PlayerData";
+import { ReactiveDataManager, ModifierSource, AttributeExpression } from "../ReactiveSystem";
+import { PlayerAttrExpressionsMap } from "./PlayerData";
 
 // ============================== 角色属性系统类型定义 ==============================
-
-/**
- * 玩家属性类型
- */
-enum PlayerAttrEnum {
-  LV, // 等级
-  // 能力值
-  STR, // 力量
-  INT, // 智力
-  VIT, // 耐力
-  AGI, // 敏捷
-  DEX, // 灵巧
-  LUK, // 幸运
-  TEC, // 技巧
-  MEN, // 异抗
-  CRI, // 暴击
-  // 基础属性
-  MAX_MP, // 最大MP
-  MP, // MP
-  AGGRO, // 仇恨值
-  WEAPON_RANGE, // 武器射程
-  HP_REGEN, // HP自然回复
-  MP_REGEN, // MP自然回复
-  MP_ATK_REGEN, // MP攻击回复
-  // 单次伤害增幅
-  PHYSICAL_ATK, // 物理攻击
-  MAGICAL_ATK, // 魔法攻击
-  WEAPON_ATK, // 武器攻击
-  UNSHEATHE_ATK, // 拔刀攻击
-  PHYSICAL_PIERCE, // 物理贯穿
-  MAGICAL_PIERCE, // 魔法贯穿
-  PHYSICAL_CRITICAL_RATE, // 暴击率
-  PHYSICAL_CRITICAL_DAMAGE, // 暴击伤害
-  MAGICAL_CRT_CONVERSION_RATE, // 魔法暴击转化率
-  MAGICAL_CRT_DAMAGE_CONVERSION_RATE, // 魔法爆伤转化率
-  MAGICAL_CRITICAL_RATE, // 魔法暴击率
-  MAGICAL_CRITICAL_DAMAGE, // 魔法暴击伤害
-  SHORT_RANGE_DAMAGE, // 近距离威力
-  LONG_RANGE_DAMAGE, // 远距离威力
-  STRONGER_AGAINST_NETURAL, // 对无属性增强
-  STRONGER_AGAINST_Light, // 对光属性增强
-  STRONGER_AGAINST_Dark, // 对暗属性增强
-  STRONGER_AGAINST_Water, // 对水属性增强
-  STRONGER_AGAINST_Fire, // 对火属性增强
-  STRONGER_AGAINST_Earth, // 对地属性增强
-  STRONGER_AGAINST_Wind, // 对风属性增强
-  TOTAL_DAMAGE, // 总伤害
-  FINAL_DAMAGE, // 最终伤害
-  PHYSICAL_STABILITY, // 稳定率
-  MAGIC_STABILITY, // 魔法稳定率
-  ACCURACY, // 命中
-  ADDITIONAL_PHYSICS, // 物理追击
-  ADDITIONAL_MAGIC, // 魔法追击
-  ANTICIPATE, // 看穿
-  GUARD_BREAK, // 破防
-  REFLECT, // 反弹伤害
-  ABSOLUTA_ACCURACY, // 绝对命中
-  ATK_UP_STR, // 物理攻击提升（力量）
-  ATK_UP_INT, // 物理攻击提升（智力）
-  ATK_UP_VIT, // 物理攻击提升（耐力）
-  ATK_UP_AGI, // 物理攻击提升（敏捷）
-  ATK_UP_DEX, // 物理攻击提升（灵巧）
-  MATK_UP_STR, // 魔法攻击提升（力量）
-  MATK_UP_INT, // 魔法攻击提升（智力）
-  MATK_UP_VIT, // 魔法攻击提升（耐力）
-  MATK_UP_AGI, // 魔法攻击提升（敏捷）
-  MATK_UP_DEX, // 魔法攻击提升（灵巧）
-  ATK_DOWN_STR, // 物理攻击下降（力量）
-  ATK_DOWN_INT, // 物理攻击下降（智力）
-  ATK_DOWN_VIT, // 物理攻击下降（耐力）
-  ATK_DOWN_AGI, // 物理攻击下降（敏捷）
-  ATK_DOWN_DEX, // 物理攻击下降（灵巧）
-  MATK_DOWN_STR, // 魔法攻击下降（力量）
-  MATK_DOWN_INT, // 魔法攻击下降（智力）
-  MATK_DOWN_VIT, // 魔法攻击下降（耐力）
-  MATK_DOWN_AGI, // 魔法攻击下降（敏捷）
-  MATK_DOWN_DEX, // 魔法攻击下降（灵巧）
-  // 生存能力加成
-  MAX_HP, // 最大HP
-  HP, // 当前HP
-  BODYARMOR_DEF, // 身体装备防御
-  PHYSICAL_DEF, // 物理防御
-  MAGICAL_DEF, // 魔法防御
-  PHYSICAL_RESISTANCE, // 物理抗性
-  MAGICAL_RESISTANCE, // 魔法抗性
-  NEUTRAL_RESISTANCE, // 无属性抗性
-  Light_RESISTANCE, // 光属性抗性
-  Dark_RESISTANCE, // 暗属性抗性
-  Water_RESISTANCE, // 水属性抗性
-  Fire_RESISTANCE, // 火属性抗性
-  Earth_RESISTANCE, // 地属性抗性
-  Wind_RESISTANCE, // 风属性抗性
-  DODGE, // 回避
-  AILMENT_RESISTANCE, // 异常抗性
-  GUARD_POWER, // 格挡力
-  GUARD_RECHANGE, // 格挡回复
-  EVASION_RECHARGE, // 闪躲回复
-  PHYSICAL_BARRIER, // 物理屏障
-  MAGICAL_BARRIER, // 魔法屏障
-  FRACTIONAL_BARRIER, // 百分比瓶屏障
-  BARRIER_COOLDOWN, // 屏障回复速度
-  REDUCE_DMG_FLOOR, // 地面伤害减轻（地刺）
-  REDUCE_DMG_METEOR, // 陨石伤害减轻（天火）
-  REDUCE_DMG_PLAYER_EPICENTER, // 范围伤害减轻（以玩家为中心的范围伤害）
-  REDUCE_DMG_FOE_EPICENTER, // 敌方周围伤害减轻（以怪物自身为中心的范围伤害）
-  REDUCE_DMG_BOWLING, // 贴地伤害减轻（剑气、风刃）
-  REDUCE_DMG_BULLET, // 子弹伤害减轻（各种球）
-  REDUCE_DMG_STRAIGHT_LINE, // 直线伤害减轻（激光）
-  REDUCE_DMG_CHARGE, // 冲撞伤害减轻（怪物的位移技能）
-  ABSOLUTE_DODGE, // 绝对回避
-  // 速度加成
-  ASPD, // 攻击速度
-  MSPD, // 行动速度
-  MSRD, // 动作缩减
-  CSPD, // 咏唱速度
-  CSRD, // 咏唱缩减
-  // 其他加成
-  DROP_RATE, // 掉宝率
-  REVIVE_TIME, // 复活时间
-  FLINCH_UNAVAILABLE, // 封印胆怯
-  TUMBLE_UNAVAILABLE, // 封印翻覆
-  STUN_UNAVAILABLE, // 封印昏厥
-  INVINCIBLE_AID, // 无敌急救
-  EXP_RATE, // 经验加成
-  PET_EXP, // 宠物经验
-  ITEM_COOLDOWN, // 道具冷却
-  RECOIL_DAMAGE, // 反作用伤害
-  GEM_POWDER_DROP, // 晶石粉末掉落
-  // 中间数值
-  WEAPON_MATK_CONVERSION_RATE, // 主武器魔法攻击转换率
-  WEAPON_ATK_CONVERSION_RATE, // 主武器物理攻击转换率
-  MAINWEAPON_BASE_VALUE, // 主武器基础值
-  MAINWEAPON_ATK, // 主武器攻击
-  SUBWEAPON_BASE_VALUE, // 副武器基础值
-  SUBWEAPON_ATK, // 副武器攻击
-  BODYARMOR_BASE_VALUE, // 防具基础值
-}
-type PlayerAttrType = keyof typeof PlayerAttrEnum;
 
 /**
  * Player特有的事件类型
  * 扩展MemberEventType，包含Player特有的状态机事件
  */
-type PlayerEventType = MemberEventType
-  | { type: "cast_end", data: { skillId: string } } // 前摇结束
-  | { type: "controlled", data: { skillId: string } } // 受到控制
-  | { type: "move_command", data: { position: { x: number; y: number } } } // 移动指令
-  | { type: "charge_end", data: { skillId: string } } // 蓄力结束
-  | { type: "hp_zero", data: { skillId: string } } // HP小于等于0
-  | { type: "stop_move", data: { skillId: string } } // 停止移动指令
-  | { type: "control_end", data: { skillId: string } } // 控制时间结束
-  | { type: "revive_ready", data: { skillId: string } } // 复活倒计时清零
-  | { type: "skill_press", data: { skillId: string } } // 按下技能
-  | { type: "check_availability", data: { skillId: string } } // 判断可用性
-  | { type: "skill_animation_end", data: { skillId: string } } // 技能动作结束
+type PlayerEventType =
+  | MemberEventType
+  | { type: "cast_end"; data: { skillId: string } } // 前摇结束
+  | { type: "controlled"; data: { skillId: string } } // 受到控制
+  | { type: "move_command"; data: { position: { x: number; y: number } } } // 移动指令
+  | { type: "charge_end"; data: { skillId: string } } // 蓄力结束
+  | { type: "hp_zero"; data: { skillId: string } } // HP小于等于0
+  | { type: "stop_move"; data: { skillId: string } } // 停止移动指令
+  | { type: "control_end"; data: { skillId: string } } // 控制时间结束
+  | { type: "revive_ready"; data: { skillId: string } } // 复活倒计时清零
+  | { type: "skill_press"; data: { skillId: string } } // 按下技能
+  | { type: "check_availability"; data: { skillId: string } } // 判断可用性
+  | { type: "skill_animation_end"; data: { skillId: string } } // 技能动作结束
   | { type: "update"; timestamp: number }; // 更新事件（带时间戳）
-
-/**
- * 武器能力转换表类型
- */
-interface WeaponAbiConvert {
-  weaAtk_Patk_Convert: number;
-  weaAtk_Matk_Convert: number;
-  abi_Attr_Convert: {
-    str: { pAtkC: number; mAtkC: number; pStabC: number; aspdC: number };
-    int: { pAtkC: number; mAtkC: number; pStabC: number; aspdC: number };
-    agi: { pAtkC: number; mAtkC: number; pStabC: number; aspdC: number };
-    dex: { pAtkC: number; mAtkC: number; pStabC: number; aspdC: number };
-  };
-}
 
 // ============================== Player类 ==============================
 
@@ -221,347 +71,11 @@ export class Player extends Member {
 
   // ==================== 玩家属性系统 ====================
 
-  /** 玩家属性Map */
-  private playerAttrMap: Map<PlayerAttrEnum, AttrData> = new Map();
+  /** 玩家响应式数据管理器 */
+  private reactiveDataManager: ReactiveDataManager<PlayerAttrType>;
 
   /** 技能冷却状态Map */
   private skillCooldowns: Map<string, { cooldown: number; currentCooldown: number }> = new Map();
-
-  /** 武器能力转换表 */
-  private static readonly MainWeaponAbiT: Record<
-    MainHandType,
-    {
-      baseHit: number;
-      baseAspd: number;
-      weaAtk_Matk_Convert: number;
-      weaAtk_Patk_Convert: number;
-      abi_Attr_Convert: Record<
-        "str" | "int" | "agi" | "dex",
-        { pAtkC: number; mAtkC: number; aspdC: number; pStabC: number }
-      >;
-    }
-  > = {
-    OneHandSword: {
-      baseHit: 0.25,
-      baseAspd: 100,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 2,
-          pStabC: 0.025,
-          aspdC: 0.2,
-          mAtkC: 0,
-        },
-        int: {
-          mAtkC: 3,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 4.2,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 2,
-          pStabC: 0.075,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    Katana: {
-      baseHit: 0.3,
-      baseAspd: 200,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 1.5,
-          pStabC: 0.075,
-          aspdC: 0.3,
-          mAtkC: 0,
-        },
-        int: {
-          mAtkC: 1.5,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 3.9,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 2.5,
-          pStabC: 0.025,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    TwoHandSword: {
-      baseHit: 0.15,
-      baseAspd: 50,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 3,
-          aspdC: 0.2,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        int: {
-          mAtkC: 3,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 2.2,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 1,
-          pStabC: 0.1,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    Bow: {
-      baseHit: 0.1,
-      baseAspd: 75,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 1,
-          pStabC: 0.05,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-        int: {
-          mAtkC: 3,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 3.1,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 3,
-          pStabC: 0.05,
-          aspdC: 0.2,
-          mAtkC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    Bowgun: {
-      baseHit: 0.05,
-      baseAspd: 100,
-      abi_Attr_Convert: {
-        str: {
-          pStabC: 0.05,
-          pAtkC: 0,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-        int: {
-          mAtkC: 3,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 2.2,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 4,
-          aspdC: 0.2,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    Rod: {
-      baseHit: 0.3,
-      baseAspd: 60,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 3,
-          pStabC: 0.05,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-        int: {
-          mAtkC: 4,
-          pAtkC: 1,
-          aspdC: 0.2,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 1.8,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          aspdC: 0.2,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 1,
-      weaAtk_Patk_Convert: 1,
-    },
-    Magictool: {
-      baseHit: 0.1,
-      baseAspd: 90,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 0,
-          mAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        int: {
-          mAtkC: 4,
-          pAtkC: 2,
-          aspdC: 0.2,
-          pStabC: 0,
-        },
-        agi: {
-          pAtkC: 2,
-          aspdC: 4,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pStabC: 0.1,
-          pAtkC: 0,
-          mAtkC: 1,
-          aspdC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 1,
-      weaAtk_Patk_Convert: 1,
-    },
-    Knuckle: {
-      baseHit: 0.1,
-      baseAspd: 120,
-      abi_Attr_Convert: {
-        str: {
-          aspdC: 0.1,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        int: {
-          mAtkC: 4,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          pAtkC: 2,
-          aspdC: 4.6,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 0.5,
-          pStabC: 0.025,
-          mAtkC: 0,
-          aspdC: 0.1,
-        },
-      },
-      weaAtk_Matk_Convert: 0.5,
-      weaAtk_Patk_Convert: 1,
-    },
-    Halberd: {
-      baseHit: 0.25,
-      baseAspd: 20,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 2.5,
-          pStabC: 0.05,
-          aspdC: 0.2,
-          mAtkC: 0,
-        },
-        int: {
-          mAtkC: 2,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 3.5,
-          pAtkC: 1.5,
-          mAtkC: 1,
-          pStabC: 0,
-        },
-        dex: {
-          pStabC: 0.05,
-          pAtkC: 0,
-          mAtkC: 0,
-          aspdC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-    None: {
-      baseHit: 50,
-      baseAspd: 1000,
-      abi_Attr_Convert: {
-        str: {
-          pAtkC: 1,
-          mAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        int: {
-          mAtkC: 3,
-          pAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-        agi: {
-          aspdC: 9.6,
-          pAtkC: 0,
-          mAtkC: 0,
-          pStabC: 0,
-        },
-        dex: {
-          pAtkC: 0,
-          mAtkC: 0,
-          aspdC: 0,
-          pStabC: 0,
-        },
-      },
-      weaAtk_Matk_Convert: 0,
-      weaAtk_Patk_Convert: 1,
-    },
-  };
 
   // ==================== 构造函数 ====================
 
@@ -593,14 +107,173 @@ export class Player extends Member {
       throw new Error("玩家角色数据缺失");
     }
 
-    // 初始化玩家属性Map
-    this.initializePlayerAttrMap(memberData);
+    // 初始化响应式数据管理器（传入表达式，单一事实来源）
+    this.reactiveDataManager = new ReactiveDataManager<PlayerAttrType>(
+      PlayerAttrKeys,
+      this.convertExpressionsToManagerFormat(),
+    );
 
-    // 重新初始化状态机（此时playerAttrMap已经准备好）
+    // 初始化玩家数据
+    this.initializePlayerData();
+
+    // 重新初始化状态机（此时reactiveDataManager已经准备好）
     this.actor = createActor(this.createStateMachine(initialState));
     this.actor.start();
 
     console.log(`🎮 已创建玩家: ${memberData.name}，data:`, this);
+  }
+
+  // ==================== 私有方法 ====================
+
+  /**
+   * 初始化玩家数据
+   */
+  private initializePlayerData(): void {
+    this.reactiveDataManager.setBaseValues({
+      lv: this.character.lv,
+      str: this.character.str,
+      int: this.character.int,
+      vit: this.character.vit,
+      agi: this.character.agi,
+      dex: this.character.dex,
+      luk: this.character.personalityType === "Luk" ? this.character.personalityValue : 0,
+      tec: this.character.personalityType === "Tec" ? this.character.personalityValue : 0,
+      men: this.character.personalityType === "Men" ? this.character.personalityValue : 0,
+      cri: this.character.personalityType === "Cri" ? this.character.personalityValue : 0,
+      maxHp: this.character.vit * 10 + 100,
+      maxMp: this.character.int * 5 + 50,
+      mainWeaponBaseValue: this.character.weapon.baseAbi,
+      mainWeaponAtk: this.character.weapon.baseAbi,
+      aggroRate: 0,
+      weaponRange: 0,
+      hpRegen: 0,
+      mpRegen: 0,
+      mpAtkRegen: 0,
+      physicalAtk: 0,
+      magicalAtk: 0,
+      weaponAtk: 0,
+      unsheatheAtk: 0,
+      physicalPierce: 0,
+      magicalPierce: 0,
+      physicalCriticalRate: 0,
+      physicalCriticalDamage: 0,
+      magicalCrtConversionRate: 0,
+      magicalCrtDamageConversionRate: 0,
+      magicalCriticalRate: 0,
+      magicalCriticalDamage: 0,
+      shortRangeDamage: 0,
+      longRangeDamage: 0,
+      strongerAgainstNetural: 0,
+      strongerAgainstLight: 0,
+      strongerAgainstDark: 0,
+      strongerAgainstWater: 0,
+      strongerAgainstFire: 0,
+      strongerAgainstEarth: 0,
+      strongerAgainstWind: 0,
+      totalDamage: 0,
+      finalDamage: 0,
+      physicalStability: 0,
+      magicalStability: 0,
+      accuracy: 0,
+      additionalPhysics: 0,
+      additionalMagic: 0,
+      anticipate: 0,
+      guardBreak: 0,
+      reflect: 0,
+      absoluteAccuracy: 0,
+      atkUpStr: 0,
+      atkUpInt: 0,
+      atkUpVit: 0,
+      atkUpAgi: 0,
+      atkUpDex: 0,
+      matkUpStr: 0,
+      matkUpInt: 0,
+      matkUpVit: 0,
+      matkUpAgi: 0,
+      matkUpDex: 0,
+      atkDownStr: 0,
+      atkDownInt: 0,
+      atkDownVit: 0,
+      atkDownAgi: 0,
+      atkDownDex: 0,
+      matkDownStr: 0,
+      matkDownInt: 0,
+      matkDownVit: 0,
+      matkDownAgi: 0,
+      matkDownDex: 0,
+      bodyArmorDef: 0,
+      physicalDef: 0,
+      magicalDef: 0,
+      physicalResistance: 0,
+      magicalResistance: 0,
+      neutralResistance: 0,
+      lightResistance: 0,
+      darkResistance: 0,
+      waterResistance: 0,
+      fireResistance: 0,
+      earthResistance: 0,
+      windResistance: 0,
+      dodge: 0,
+      ailmentResistance: 0,
+      guardPower: 0,
+      guardRechange: 0,
+      evasionRecharge: 0,
+      physicalBarrier: 0,
+      magicalBarrier: 0,
+      fractionalBarrier: 0,
+      barrierCooldown: 0,
+      reduceDmgFloor: 0,
+      reduceDmgMeteor: 0,
+      reduceDmgPlayerEpicenter: 0,
+      reduceDmgFoeEpicenter: 0,
+      reduceDmgBowling: 0,
+      reduceDmgBullet: 0,
+      reduceDmgStraightLine: 0,
+      reduceDmgCharge: 0,
+      absoluteDodge: 0,
+      aspd: 0,
+      mspd: 0,
+      msrd: 0,
+      cspd: 0,
+      csr: 0,
+      dropRate: 0,
+      reviveTime: 0,
+      flinchUnavailable: 0,
+      tumbleUnavailable: 0,
+      stunUnavailable: 0,
+      invincibleAid: 0,
+      expRate: 0,
+      petExp: 0,
+      itemCooldown: 0,
+      recoilDamage: 0,
+      gemPowderDrop: 0,
+      weaponMatkConversionRate: 0,
+      weaponAtkConversionRate: 0,
+      subWeaponBaseValue: 0,
+      subWeaponAtk: 0,
+      bodyArmorBaseValue: 0
+    });
+    // 解析角色配置中的修饰器
+    this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
+
+    console.log("✅ 玩家数据初始化完成");
+  }
+
+  /**
+   * 转换表达式格式以适配 ReactiveDataManager
+   * 将 PlayerAttrEnum 键转换为 PlayerAttrType 键
+   */
+  private convertExpressionsToManagerFormat(): Map<PlayerAttrType, AttributeExpression<PlayerAttrType>> {
+    const convertedExpressions = new Map<PlayerAttrType, AttributeExpression<PlayerAttrType>>();
+
+    for (const [attrName, expressionData] of PlayerAttrExpressionsMap) {
+      convertedExpressions.set(attrName, {
+        expression: expressionData.expression,
+        isBase: expressionData.isBase,
+      });
+    }
+
+    return convertedExpressions;
   }
 
   // ==================== 公共接口 ====================
@@ -669,67 +342,64 @@ export class Player extends Member {
   }
 
   /**
-   * 获取玩家属性Map中的属性值
+   * 获取玩家属性值
    *
    * @param attrName 属性名称
    * @returns 属性值
    */
-  getPlayerAttr(attrName: PlayerAttrEnum): number {
-    const attr = this.playerAttrMap.get(attrName);
-    if (!attr) throw new Error(`属性不存在: ${attrName}`);
-    return Member.dynamicTotalValue(attr);
+  getPlayerAttr(attrName: PlayerAttrType): number {
+    return this.reactiveDataManager.getValue(attrName);
   }
 
   /**
-   * 设置玩家属性Map中的属性值
+   * 设置玩家属性值
    *
    * @param attrName 属性名称
+   * @param targetType 目标类型
    * @param value 属性值
+   * @param origin 来源
    */
-  setPlayerAttr(attrName: PlayerAttrEnum, targetType: TargetType, value: number, origin: string): void {
-    const attr = this.playerAttrMap.get(attrName);
-    if (attr) {
-      switch (targetType) {
-        case TargetType.baseValue:
-          attr.baseValue = value;
-          break;
-        case TargetType.staticConstant:
-          attr.modifiers.static.fixed.push({ value, origin });
-          break;
-        case TargetType.staticPercentage:
-          attr.modifiers.static.percentage.push({ value, origin });
-          break;
-        case TargetType.dynamicConstant:
-          attr.modifiers.dynamic.fixed.push({ value, origin });
-          break;
-        case TargetType.dynamicPercentage:
-          attr.modifiers.dynamic.percentage.push({ value, origin });
-          break;
-      }
-      console.log(`🎮 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
-    } else {
-      throw new Error(`属性不存在: ${attrName}`);
+  setPlayerAttr(attrName: PlayerAttrType, targetType: TargetType, value: number, origin: string): void {
+    const source: ModifierSource = {
+      id: origin,
+      name: origin,
+      type: "system",
+    };
+
+    switch (targetType) {
+      case TargetType.baseValue:
+        this.reactiveDataManager.setBaseValue(attrName, value);
+        break;
+      case TargetType.staticConstant:
+        this.reactiveDataManager.addModifier(attrName, "staticFixed", value, source);
+        break;
+      case TargetType.staticPercentage:
+        this.reactiveDataManager.addModifier(attrName, "staticPercentage", value, source);
+        break;
+      case TargetType.dynamicConstant:
+        this.reactiveDataManager.addModifier(attrName, "dynamicFixed", value, source);
+        break;
+      case TargetType.dynamicPercentage:
+        this.reactiveDataManager.addModifier(attrName, "dynamicPercentage", value, source);
+        break;
     }
+    console.log(`🎮 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
   }
 
-  // 需要提升到Member中
   /**
-   * 获取玩家属性Map的快照
+   * 获取玩家属性快照
    *
-   * @returns 属性Map快照
+   * @returns 属性快照
    */
-  getPlayerAttrSnapshot(): Readonly<Record<string, Readonly<AttrData>>> {
-    const snapshot: Record<string, AttrData> = {};
+  getPlayerAttrSnapshot(): Readonly<Record<string, number>> {
+    return this.reactiveDataManager.getValues(PlayerAttrKeys);
+  }
 
-    for (const [attrName, attr] of this.playerAttrMap.entries()) {
-      // 使用结构化克隆确保真正的深拷贝
-      snapshot[attrName] = structuredClone(attr);
-    }
-
-    // 返回只读视图，防止意外修改
-    return Object.freeze(
-      Object.fromEntries(Object.entries(snapshot).map(([key, value]) => [key, Object.freeze(value)])),
-    ) as Readonly<Record<string, Readonly<AttrData>>>;
+  /**
+   * 获取响应式数据管理器（供状态机使用）
+   */
+  getReactiveDataManager(): ReactiveDataManager<PlayerAttrType> {
+    return this.reactiveDataManager;
   }
 
   /**
@@ -775,7 +445,7 @@ export class Player extends Member {
       actions: {
         // 根据角色配置初始化玩家状态
         initializePlayerState: assign({
-          stats: ({ context }) => this.playerAttrMap,
+          stats: ({ context }) => this.reactiveDataManager.getValues(PlayerAttrKeys),
           isAlive: true,
           isActive: true,
           statusEffects: [],
@@ -826,19 +496,9 @@ export class Player extends Member {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setPlayerAttr(
-              PlayerAttrEnum.HP,
-              TargetType.baseValue,
-              this.getPlayerAttr(PlayerAttrEnum.MAX_HP),
-              "revive",
-            );
-            this.setPlayerAttr(
-              PlayerAttrEnum.MP,
-              TargetType.baseValue,
-              this.getPlayerAttr(PlayerAttrEnum.MAX_MP),
-              "revive",
-            );
-            return this.playerAttrMap;
+            this.setPlayerAttr("maxHp", TargetType.baseValue, this.getPlayerAttr("maxHp"), "revive");
+            this.setPlayerAttr("maxMp", TargetType.baseValue, this.getPlayerAttr("maxMp"), "revive");
+            return this.reactiveDataManager.getValues(PlayerAttrKeys);
           },
           isAlive: true,
           isActive: true,
@@ -884,18 +544,16 @@ export class Player extends Member {
         },
 
         // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) =>
-          Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) <= 0,
+        isDead: ({ context }: { context: MemberContext }) => this.getPlayerAttr("maxHp") <= 0,
 
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) =>
-          Member.dynamicTotalValue(context.stats.get(PlayerAttrEnum.HP)) > 0,
+        isAlive: ({ context }: { context: MemberContext }) => this.getPlayerAttr("maxHp") > 0,
       },
     }).createMachine({
       id: machineId,
       context: {
         memberData: this.memberData,
-        stats: new Map(), // 使用空的Map作为初始值
+        stats: {}, // 使用空的Record作为初始值
         isAlive: true,
         isActive: true,
         statusEffects: [],
@@ -1151,99 +809,6 @@ export class Player extends Member {
   // ==================== 私有方法 ====================
 
   /**
-   * 初始化玩家属性Map
-   *
-   * @param memberData 成员数据
-   */
-  private initializePlayerAttrMap(memberData: MemberWithRelations): void {
-    if (!isPlayerMember(memberData)) return;
-
-    const character = memberData.player.character;
-    if (!character) return;
-
-    // 获取武器类型
-    const weaponType = character.weapon.template.type;
-    const weaponAbiT = Player.MainWeaponAbiT[weaponType as MainHandType];
-
-    // 辅助函数：获取属性值
-    const d = (attrName: PlayerAttrEnum): number => {
-      const attr = this.playerAttrMap.get(attrName);
-      if (!attr) throw new Error(`属性${attrName}不存在`);
-      return Member.dynamicTotalValue(attr);
-    };
-
-    // 默认修饰符数据
-    const DefaultModifiersData: ModifiersData = {
-      static: {
-        fixed: [],
-        percentage: [],
-      },
-      dynamic: {
-        fixed: [],
-        percentage: [],
-      },
-    };
-
-    // 定义基础属性（基于枚举）
-    for (const attrType of Object.values(PlayerAttrEnum)) {
-      if (typeof attrType === "number") {
-        this.playerAttrMap.set(attrType, {
-          type: ValueType.user,
-          name: PlayerAttrEnum[attrType],
-          baseValue: this.getBaseValueFromCharacter(attrType, character),
-          modifiers: DefaultModifiersData,
-          influences: this.getInfluencesForAttr(attrType, weaponAbiT, d),
-        });
-      }
-    }
-
-    console.log(`🎮 [${this.getName()}] 初始化玩家属性Map完成，共${this.playerAttrMap.size}个属性`);
-  }
-
-  /**
-   * 从角色数据获取基础值
-   */
-  private getBaseValueFromCharacter(attrType: PlayerAttrEnum, character: CharacterWithRelations): number {
-    switch (attrType) {
-      case PlayerAttrEnum.STR:
-        return character.str;
-      case PlayerAttrEnum.INT:
-        return character.int;
-      case PlayerAttrEnum.VIT:
-        return character.vit;
-      case PlayerAttrEnum.AGI:
-        return character.agi;
-      case PlayerAttrEnum.DEX:
-        return character.dex;
-      case PlayerAttrEnum.LUK:
-        return character.personalityType === "Luk" ? character.personalityValue : 0;
-      case PlayerAttrEnum.TEC:
-        return character.personalityType === "Tec" ? character.personalityValue : 0;
-      case PlayerAttrEnum.MEN:
-        return character.personalityType === "Men" ? character.personalityValue : 0;
-      case PlayerAttrEnum.CRI:
-        return character.personalityType === "Cri" ? character.personalityValue : 0;
-      case PlayerAttrEnum.LV:
-        return character.lv;
-      default:
-        return 0;
-    }
-  }
-
-  /**
-   * 获取属性的影响关系
-   */
-  private getInfluencesForAttr(
-    attrType: PlayerAttrEnum,
-    weaponAbiT: WeaponAbiConvert,
-    d: (attrName: PlayerAttrEnum) => number,
-  ): AttributeInfluence[] {
-    // 这里可以根据需要定义影响关系
-    // 暂时返回空数组
-    return [];
-  }
-
-  /**
    * 处理技能开始事件
    */
   private handleSkillStart(event: MemberEvent): void {
@@ -1311,49 +876,7 @@ export class Player extends Member {
    * 将属性Map转换为基础属性
    * Player的简化实现，直接通过PlayerAttrEnum数值映射
    */
-  protected convertMapToStats(statsMap: Map<Number, AttrData>): MemberBaseStats {
-    const currentState = this.getCurrentState();
-    const position = currentState?.context?.position || { x: 0, y: 0 };
-
-    const baseStats: MemberBaseStats = {
-      maxHp: 1000,
-      currentHp: 1000,
-      maxMp: 100,
-      currentMp: 100,
-      physicalAtk: 100,
-      magicalAtk: 100,
-      physicalDef: 50,
-      magicalDef: 50,
-      aspd: 1.0,
-      mspd: 100,
-      position,
-    };
-
-    // 直接通过PlayerAttrEnum数值映射
-    const maxHp = statsMap.get(PlayerAttrEnum.MAX_HP); // MAX_HP
-    const currentHp = statsMap.get(PlayerAttrEnum.HP); // HP
-    const maxMp = statsMap.get(PlayerAttrEnum.MAX_MP); // MAX_MP
-    const currentMp = statsMap.get(PlayerAttrEnum.MP); // MP
-    const physicalAtk = statsMap.get(PlayerAttrEnum.PHYSICAL_ATK); // PHYSICAL_ATK
-    const magicalAtk = statsMap.get(PlayerAttrEnum.MAGICAL_ATK); // MAGICAL_ATK
-    const physicalDef = statsMap.get(PlayerAttrEnum.PHYSICAL_DEF); // PHYSICAL_DEF
-    const magicalDef = statsMap.get(PlayerAttrEnum.MAGICAL_DEF); // MAGICAL_DEF
-    const aspd = statsMap.get(PlayerAttrEnum.ASPD); // ASPD
-    const mspd = statsMap.get(PlayerAttrEnum.MSPD); // MSPD
-
-    if (maxHp) baseStats.maxHp = Member.dynamicTotalValue(maxHp);
-    if (currentHp) baseStats.currentHp = Member.dynamicTotalValue(currentHp);
-    if (maxMp) baseStats.maxMp = Member.dynamicTotalValue(maxMp);
-    if (currentMp) baseStats.currentMp = Member.dynamicTotalValue(currentMp);
-    if (physicalAtk) baseStats.physicalAtk = Member.dynamicTotalValue(physicalAtk);
-    if (magicalAtk) baseStats.magicalAtk = Member.dynamicTotalValue(magicalAtk);
-    if (physicalDef) baseStats.physicalDef = Member.dynamicTotalValue(physicalDef);
-    if (magicalDef) baseStats.magicalDef = Member.dynamicTotalValue(magicalDef);
-    if (aspd) baseStats.aspd = Member.dynamicTotalValue(aspd);
-    if (mspd) baseStats.mspd = Member.dynamicTotalValue(mspd);
-
-    return baseStats;
-  }
+  // convertMapToStats 方法已移除，现在直接使用响应式系统
 }
 
 // ============================== 导出 ==============================

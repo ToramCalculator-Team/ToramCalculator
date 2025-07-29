@@ -1,16 +1,12 @@
 import { createSignal, onMount } from "solid-js";
-import { PlayerData } from "~/components/features/simulator/core/member/player/PlayerData";
+import { Player } from "~/components/features/simulator/core/member/player/Player";
 import { findCharacterWithRelations } from "@db/repositories/character";
-import { CharacterAttrEnum, CharacterAttrName } from "~/components/features/simulator/core/member/player/utils";
 import { findPlayerWithRelations } from "@db/repositories/player";
-import {
-  ATTRIBUTE_EXPRESSIONS,
-  getCachedDependencyGraph,
-  getCachedTopologicalOrder,
-} from "~/components/features/simulator/core/member/player/attributeExpressions";
+import { PlayerAttrEnum, PlayerAttrDic, PlayerAttrKeys, PlayerAttrExpressionsMap, PlayerAttrType } from "~/components/features/simulator/core/member/player/PlayerData";
+import { findMemberById, findMemberWithRelations } from "@db/repositories/member";
 
 export default function SimulatorTestPage() {
-  const [playerData, setPlayerData] = createSignal<PlayerData | null>(null);
+  const [player, setPlayer] = createSignal<Player | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [attributes, setAttributes] = createSignal<Record<string, number>>({});
@@ -19,30 +15,28 @@ export default function SimulatorTestPage() {
     try {
       setLoading(true);
 
-      // 1. 从数据库获取defaultPlayerId的Character数据
-      console.log("🔍 正在获取数据库中的Character数据...");
-      const player = await findPlayerWithRelations("defaultPlayerId");
-      console.log("📊 Character数据:", player);
+      // 1. 从数据库获取defaultPlayerId的Player数据
+      console.log("🔍 正在获取数据库中的Player数据...");
+      const memberData = await findMemberWithRelations("defaultMember1Id");
+      console.log("📊 Player数据:", memberData);
 
-      // 2. 创建PlayerData
-      console.log("🛠️ 创建PlayerData实例...");
-      const playerData = new PlayerData(player);
-      setPlayerData(playerData);
+      // 2. 创建Player实例
+      console.log("🛠️ 创建Player实例...");
+      const playerInstance = new Player(memberData);
+      setPlayer(playerInstance);
 
       // 3. 获取所有属性值
       console.log("🔢 计算所有属性值...");
       const attrValues: Record<string, number> = {};
 
       // 基础属性
-      Object.values(CharacterAttrEnum).forEach((attr) => {
-        if (typeof attr === "number") {
-          try {
-            const value = playerData.getValue(attr);
-            attrValues[attr.toString()] = value;
-          } catch (err) {
-            console.warn(`⚠️ 计算 ${CharacterAttrEnum[attr]} 时出错:`, err);
-            attrValues[attr.toString()] = 0;
-          }
+      Object.keys(PlayerAttrDic).forEach((attr) => {
+        try {
+          const value = playerInstance.getPlayerAttr(attr as PlayerAttrType);
+          attrValues[attr] = value;
+        } catch (err) {
+          console.warn(`⚠️ 计算 ${PlayerAttrDic[attr as PlayerAttrType]} 时出错:`, err);
+          attrValues[attr] = 0;
         }
       });
 
@@ -50,20 +44,20 @@ export default function SimulatorTestPage() {
 
       // 4. 测试依赖更新
       console.log("🔄 测试依赖更新...");
-      console.log("原始力量:", playerData.getValue(CharacterAttrEnum.STR));
-      console.log("原始物理攻击:", playerData.getValue(CharacterAttrEnum.PHYSICAL_ATK));
+      console.log("原始力量:", playerInstance.getPlayerAttr("str"));
+      console.log("原始最大HP:", playerInstance.getPlayerAttr("maxHp"));
 
-      // 修改力量，观察物理攻击是否自动更新
-      playerData.setBaseValue(CharacterAttrEnum.STR, 200);
+      // 修改力量，观察最大HP是否自动更新
+      playerInstance.setPlayerAttr("str", "baseValue" as any, 200, "test");
       console.log("修改力量为200后:");
-      console.log("新力量:", playerData.getValue(CharacterAttrEnum.STR));
-      console.log("新物理攻击:", playerData.getValue(CharacterAttrEnum.PHYSICAL_ATK));
+      console.log("新力量:", playerInstance.getPlayerAttr("str"));
+      console.log("新最大HP:", playerInstance.getPlayerAttr("maxHp"));
 
       // 5. 测试批量更新
       console.log("📦 测试批量更新...");
-      playerData.setBaseValue(CharacterAttrEnum.AGI, 150);
-      playerData.setBaseValue(CharacterAttrEnum.DEX, 180);
-      console.log("批量修改后攻击速度:", playerData.getValue(CharacterAttrEnum.ASPD));
+      playerInstance.setPlayerAttr("agi", "baseValue" as any, 150, "test");
+      playerInstance.setPlayerAttr("dex", "baseValue" as any, 180, "test");
+      console.log("批量修改后属性值已更新");
     } catch (err) {
       console.error("❌ 测试过程中出错:", err);
       setError(err instanceof Error ? err.message : String(err));
@@ -96,7 +90,7 @@ export default function SimulatorTestPage() {
           </div>
         )}
 
-        {playerData() && !loading() && (
+        {player() && !loading() && (
           <div class="space-y-6">
             <div class="rounded-lg bg-green-900 p-6">
               <h3 class="mb-2 font-bold text-green-400">✅ 系统创建成功</h3>
@@ -107,10 +101,9 @@ export default function SimulatorTestPage() {
               <h3 class="mb-4 text-xl font-bold text-yellow-400">📊 角色属性值</h3>
               <div class="flex flex-wrap">
                 {Object.entries(attributes()).map(([key, value]) => {
-                  const enumValue = parseInt(key);
-                  const attrName = CharacterAttrName[enumValue as CharacterAttrEnum] || key;
+                  const attrName = PlayerAttrDic[key as PlayerAttrType] || key;
                   return (
-                    <div class="flex basis-1/2 items-center gap-2 border-b border-dividing-color p-3">
+                    <div class="border-dividing-color flex basis-1/2 items-center gap-2 border-b p-3">
                       <span class="text-sm text-gray-300">{attrName}</span>
                       <span class="font-mono text-lg font-bold text-blue-400">
                         {typeof value === "number" ? value.toLocaleString() : String(value)}
@@ -137,87 +130,6 @@ export default function SimulatorTestPage() {
                 <div class="rounded-lg bg-gray-700 p-4">
                   <h4 class="mb-2 font-semibold text-green-400">✅ 复杂公式计算</h4>
                   <p class="text-sm text-gray-300">支持MathJS表达式计算，包括武器攻击、攻击速度等复杂公式</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-lg bg-gray-800 p-6">
-              <h3 class="mb-4 text-xl font-bold text-cyan-400">🔗 属性依赖关系详情</h3>
-
-              {/* 表达式列表 */}
-              <div class="mb-6">
-                <h4 class="mb-3 text-lg font-semibold text-cyan-300">📐 属性表达式定义</h4>
-                <div class="max-h-96 space-y-3 overflow-y-auto">
-                  {Object.entries(ATTRIBUTE_EXPRESSIONS).map(([attrStr, expression]) => {
-                    const attr = parseInt(attrStr) as CharacterAttrEnum;
-                    const attrName = CharacterAttrName[attr];
-                    return (
-                      <div class="rounded-lg border-l-4 border-cyan-500 bg-gray-700 p-3">
-                        <div class="mb-1 flex items-start justify-between">
-                          <span class="font-medium text-cyan-400">{attrName}</span>
-                          {expression.isBase && (
-                            <span class="rounded bg-green-600 px-2 py-1 text-xs text-green-100">基础属性</span>
-                          )}
-                        </div>
-
-                        <div class="rounded bg-gray-800 p-2 font-mono text-xs text-gray-400">
-                          {expression.expression}
-                        </div>
-                        {/* 不再显示手动定义的依赖，因为现在依赖关系是自动解析的 */}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 依赖关系图 */}
-              <div class="mb-6">
-                <h4 class="mb-3 text-lg font-semibold text-cyan-300">🎯 依赖关系网络</h4>
-                <div class="rounded-lg bg-gray-700 p-4">
-                                {(() => {
-                const dependencyGraph = getCachedDependencyGraph();
-                return (
-                  <div class="space-y-2">
-                    {Object.entries(dependencyGraph).map(([attrStr, deps]) => {
-                      const attr = parseInt(attrStr) as CharacterAttrEnum;
-                      const attrName = CharacterAttrName[attr];
-                      return (
-                        <div class="flex items-center space-x-2 text-sm">
-                          <span class="min-w-32 font-medium text-yellow-400">{attrName}</span>
-                          <span class="text-gray-400">←</span>
-                          <span class="text-blue-400">{deps.map((dep: CharacterAttrEnum) => CharacterAttrName[dep]).join(" + ")}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-                </div>
-              </div>
-
-              {/* 拓扑排序 */}
-              <div>
-                <h4 class="mb-3 text-lg font-semibold text-cyan-300">🔢 计算顺序（拓扑排序）</h4>
-                <div class="rounded-lg bg-gray-700 p-4">
-                  <div class="flex flex-wrap gap-2">
-                    {getCachedTopologicalOrder().map((attr: CharacterAttrEnum, index: number) => {
-                      const attrName = CharacterAttrName[attr];
-                      const isBase = ATTRIBUTE_EXPRESSIONS.get(attr)?.isBase;
-                      return (
-                        <div class="flex items-center space-x-1">
-                          <span
-                            class={`rounded px-3 py-1 text-sm font-medium ${
-                              isBase ? "bg-green-600 text-green-100" : "bg-blue-600 text-blue-100"
-                            }`}
-                          >
-                            {index + 1}. {attrName}
-                          </span>
-                          {index < getCachedTopologicalOrder().length - 1 && <span class="text-gray-400">→</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div class="mt-3 text-xs text-gray-400">绿色为基础属性，蓝色为计算属性。箭头表示计算顺序。</div>
                 </div>
               </div>
             </div>
