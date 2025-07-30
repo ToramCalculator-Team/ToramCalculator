@@ -7,7 +7,7 @@ import { MainHandType, SubHandType } from "@db/schema/enums";
  * 命名说明：
  * XX基础值：指的是可被百分比加成和常数加成增幅的属性，比如基础智力（可被百分比智力加成和常数智力加成增幅）、
  *          基础武器攻击（可被百分比武器攻击加成和常数武器攻击加成增幅）
- * 
+ *
  * 物理相关：physical → p
  * 魔法相关：magical → m
  * 攻击相关：attack → atk
@@ -20,12 +20,239 @@ import { MainHandType, SubHandType } from "@db/schema/enums";
  * 基础值相关：baseValue → base
  */
 
-// ============================== 玩家属性枚举 ==============================
-/*
- * 玩家属性是指的作为Member在引擎中需要缓存的计算属性，包括机体的静态配置，朝向等状态数据，
- * 这些属性主要是为了在引擎中给mathjs充当scope，并提高计算效率，避免每次计算都重新从机体配置计算
- */
-export enum PlayerAttrEnum {
+// ============================== 原始数据层类型 ==============================
+
+// 类型枚举
+export enum PlayerOriginAttrEnum {
+  None, // 无
+  bStr, // 力量
+  bInt, // 智力
+  bVit, // 耐力
+  bAgi, // 敏捷
+  bDex, // 灵巧
+  bStrRate, // 百分比力量
+  bIntRate, // 百分比智力
+  bVitRate, // 百分比耐力
+  bAgiRate, // 百分比敏捷
+  bDexRate, // 百分比灵巧
+  bMaxHp, // 最大HP
+  bMaxHpTo10,
+  bMaxHpRate, // 百分比最大HP
+  bMaxMp, // 最大MP
+  bEqAtk, // 武器攻击
+  bEqAtkRate, // 百分比武器攻击
+  bAtk, // 物理攻击
+  bAtkRate, // 百分比物理攻击
+  bMatk, // 魔法攻击
+  bMatkRate, // 百分比魔法攻击
+  bSta, // 物理稳定率
+  bHit, // 命中
+  bHitRate, // 百分比命中
+  bFlee, // 回避
+  bFleeRate, // 百分比回避
+  bDef, // 物理防御
+  bDefRate, // 百分比物理防御
+  bMdef, // 魔法防御
+  bMdefRate, // 百分比魔法防御
+  bAspd, // 攻击速度
+  bAspdRate, // 百分比攻击速度
+  bCspd, // 咏唱速度
+  bCspdRate, // 百分比咏唱速度
+  bHpRecovery, // HP自然回复
+  bHpRecoveryRate, // 百分比HP自然回复
+  bMpRecovery, // MP自然回复
+  bMpRecoveryRate, // 百分比MP自然回复
+  bAtkMpRecovery, // MP攻击回复
+  bAtkMpRecoveryRate, // 百分比MP攻击回复
+  bCritical, // 暴击
+  bCriticalRate, // 百分比暴击
+  bCriticalDmg, // 暴击伤害
+  bCriticalDmgRate, // 百分比暴击伤害
+  bAntiVirus, // 异常抗性
+  bGuard, // 格挡
+  bGuardPower, // 格挡力
+  bAvoid, // 回避
+  bRespawn, // 复活
+  bPowerResist, // 物理抗性
+  bMagicResist, // 魔法抗性
+  bPowerResistBreaker, // 物理抗性穿透 ？
+  bMagicResistBreaker, // 魔法抗性破除 ？
+  bFireKiller, // 对火属性增强
+  bAquaKiller, // 对水属性增强
+  bWindKiller, // 对风属性增强
+  bEarthKiller, // 对地属性增强
+  bLightKiller, // 对光属性增强
+  bDarkKiller, // 对暗属性增强
+  bNormalKiller, // 对无属性增强
+  bPowerSkillDmgRate, // 物理技能伤害增加百分比
+  bMagicSkillDmgRate, // 魔法技能伤害增加百分比
+  bHateRate, // 百分比仇恨值
+  bExpRate, // 经验加成
+  bDropRate, // 掉宝率
+  bElement, // 属性
+  bBladeLastDmgRate, // 刀剑技能伤害增加百分比 ？
+  bShootLastDmgRate, // 射击技能伤害增加百分比 ？
+  bMagicLastDmgRate, // 魔法技能伤害增加百分比 ？
+  bMarshallLastDmgRate, // 魔法技能伤害增加百分比 ？
+  bHandicapResist, // 封印抗性
+  bFireShield, // 火属性抗性
+  bAquaShield, // 水属性抗性
+  bWindShield, // 风属性抗性
+  bEarthShield, // 地属性抗性
+  bLightShield, // 光属性抗性
+  bDarkShield, // 暗属性抗性
+  bNormalShield, // 无属性抗性
+  bAntiVenomu, // 中毒
+  bAntiParaizu, // 麻痹
+  bAntiDark, // 黑暗
+  bAntiFire, // 着火
+  bAntiFreeze, // 冻结
+  bAntiBreak, // 破防
+  bAntiSlow, // 缓慢
+  bAntiStop, // 停止
+  bAntiFear, // 恐惧
+  bNinjutsuScrollLimit, // 仅限忍术卷轴
+  b1handLimit, // 仅限单手武器
+  b2handLimit, // 仅限双手武器
+  bBowLimit, // 仅限弓
+  bGunLimit, // 仅限枪
+  bRodLimit, // 仅限法杖
+  bMagictoolLimit, // 仅限魔法工具
+  bKnuckleLimit, // 仅限拳套
+  bMotionSpeed, // 行动速度
+  bLongRange, // 远距离威力
+  bAvoidDmgRate, // 回避伤害增加百分比 ？
+  bShortRange, // 近距离威力
+  bDualswordLimit, // 仅限双剑
+  bShieldLimit, // 仅限盾牌
+  bMaxMpTo10, 
+  bFirstAttack, // 先制攻击 ？
+  bFirstAttackRate, // 先制攻击增加百分比 ？
+  bMaxMpRate, // 最大MP增加百分比
+  bEventCheck, 
+  bPoleweaponLimit, // 仅限长枪
+  bKatanaLimit, // 仅限拔刀剑
+  bArrowLimit, // 仅限弓箭
+  bKnifeLimit, // 仅限小刀
+  bLightArmorLimit, // 仅限轻甲
+  bHeavyArmorLimit, // 仅限重甲
+  bSurroundingsResist, // 周围伤害减轻
+  bRangeResist, // 子弹伤害减轻
+  bLineResist, // 直线伤害减轻
+  bMoveAttackResist, 
+  bVerticalResist, // 垂直伤害减轻
+  bBreathResist, 
+  bTranslationResist, // 冲撞伤害减轻
+  bWallResist, 
+  bWiddResist, // 剑气伤害减轻 ？
+  bExplosionResist, // 爆炸伤害减轻
+  bBlackholeResist, // 黑洞伤害减轻
+  bGenericEffectID, // 通用效果ID
+  bAbsoluteHitRate, // 绝对命中
+  bAbsoluteFreeRate, // 绝对回避
+  bSelfDmgRate, // 自身伤害增加百分比
+  bItemHpEffectPlus, // 道具HP效果增加 ？
+  bItemEffectRate, // 道具效果增加百分比 ？
+  bItemDelay, // 道具延迟
+  bGuts, // 勇气
+  bSacrifice, // 牺牲
+  bHelpMaster, // 帮助主人
+  bAvoidbreaker, // 回避破除
+  bGuardbreaker, // 格挡破除
+  bBossKiller, // 对BOSS增强
+  bMagicStealRate, // 魔法偷取增加百分比
+  bMagicSteal, // 魔法偷取
+  bLifeStealRate, // 生命偷取增加百分比
+  bLifeSteal, // 生命偷取
+  bExpHpRecovery, // 经验HP恢复
+  bExpMpRecovery, // 经验MP恢复
+  bPhysicalPursuit, // 物理追击
+  bMagicPursuit, // 魔法追击
+  bDamageReflection, // 伤害反射
+  bHateUpSuppression, // 仇恨值增加抑制
+  bHateDownSuppression, // 仇恨值减少抑制
+  bPhysicalBarrier, // 物理屏障
+  bMagicBarrier, // 魔法屏障
+  bRateBarrier, // 百分比屏障
+  bBarrierSpeed, // 屏障回复速度
+  bGrantStopFlinch, // 封印翻覆
+  bGrantStopTumble, // 封印翻覆
+  bGrantStopStun, // 封印昏厥
+  bStrToAtk, // 力量转换为物理攻击
+  bIntToAtk, // 智力转换为物理攻击
+  bVitToAtk, // 耐力转换为物理攻击
+  bAgiToAtk, // 敏捷转换为物理攻击
+  bDexToAtk, // 灵巧转换为物理攻击
+  bStrToMAtk, // 力量转换为魔法攻击
+  bIntToMAtk, // 智力转换为魔法攻击
+  bVitToMAtk, // 耐力转换为魔法攻击
+  bAgiToMAtk, // 敏捷转换为魔法攻击
+  bDexToMAtk, // 灵巧转换为魔法攻击
+  bPetExpRate, // 宠物经验增加百分比
+  bGemDustDropRate, // 晶石粉末掉落增加百分比
+  bAvatarAtk, // 角色物理攻击
+  bAvatarMatk, // 角色魔法攻击
+  bAvatarHit, // 角色命中
+  bAvatarFlee, // 角色回避
+  bAvatarAspd, // 角色攻击速度
+  bAvatarCspd, // 角色咏唱速度
+  bAvatarHp, // 角色最大HP
+  bAvatarMp, // 角色最大MP
+  bAvatarRespawn, // 角色复活
+  bAvatarSkill, // 角色技能
+  bGemDropFixing, // 晶石掉落固定
+  bGemPlayerDown, // 晶石玩家减少
+  bGemMonsterUp, // 晶石怪物增加
+  bDamageLimit, // 伤害限制
+  hp_heal, // HP恢复
+  hp_healrate, // HP恢复增加百分比
+  hp_healmaximum, // HP恢复最大值
+  mp_heal, // MP恢复
+  mp_healrate, // MP恢复增加百分比
+  mp_healmaximum, // MP恢复最大值
+  anti_virus, // 抗病毒
+  protect_virus, // 保护病毒
+  runn_hp_heal, // 战斗时HP恢复
+  runn_mp_heal, // 战斗时MP恢复
+  runn_maxhp, // 战斗时最大HP
+  runn_maxmp, // 战斗时最大MP
+  runn_atk, // 战斗时物理攻击
+  runn_matk, // 战斗时魔法攻击
+  runn_def, // 战斗时物理防御
+  runn_mdef, // 战斗时魔法防御
+  runn_hit, // 战斗时命中
+  runn_flee, // 战斗时回避
+  runn_aspd, // 战斗时攻击速度
+  runn_cspd, // 战斗时咏唱速度
+  runn_atkelm, // 战斗时物理抗性
+  runn_defelm, // 战斗时魔法抗性
+  runn_antivirus, // 战斗时抗病毒
+  runn_osaisen, // 战斗时奥赛战
+  repeatwait, // 重复等待
+  startwait, // 开始等待
+  if_hp, // 如果HP
+  if_hprate, // 如果HP增加百分比
+  if_mp, // 如果MP
+  if_mprate, // 如果MP增加百分比
+  if_state, // 如果状态
+  delete_runn, // 删除战斗 ？
+  if_runnlast, // 如果战斗结束
+  succeed_itemid, // 成功物品ID
+  add_value, // 增加值
+  product_value, // 产品值
+  status_value, // 状态值
+  set_value, // 设置值
+  item_warp, // 物品传送
+  bRandomItemGet, // 随机物品获取
+  getSkilltree, // 获取技能树
+  item_forcedwarp, // 物品强制传送
+  foodPoisoning, // 食物中毒
+  runn_price, // 战斗价格
+}
+
+// ============================== 计算层类型 ==============================
+// 类型枚举
+export enum PlayerComputedAttrEnum {
   lv, // 等级
   str, // 力量
   int, // 智力
@@ -37,14 +264,27 @@ export enum PlayerAttrEnum {
   men, // 异抗
   cri, // 暴击
   maxMp, // 最大MP
-  aggroRate, // 仇恨值倍率
-  weaponRange, // 武器射程
   hpRegen, // HP自然回复
+  aggroRate, // 仇恨值倍率
+  mainWeaponRange, // 主武器射程
+  mainWeaponBaseAtk, // 主武器基础值
+  mainWeaponType, // 主武器类型
+  mainWeaponRef, // 主武器精炼
+  mainWeaponStability, // 主武器稳定性
+  mainWeaponAtk, // 主武器攻击
+  mainWeaponMatk, // 主武器魔法攻击
+  mainWeaponBaseAspd, // 主武器基础攻击速度
+  mainWeaponPStab, // 主武器物理稳定率
+  subWeaponRange, // 副武器射程
   mpRegen, // MP自然回复
   mpAtkRegen, // MP攻击回复
-  // 单次伤害增幅
+
+  
   pAtk, // 物理攻击
+
   mAtk, // 魔法攻击
+
+  // 单次伤害增幅
   weaponAtk, // 武器攻击
   unsheatheAtk, // 拔刀攻击
   pPierce, // 物理贯穿
@@ -69,8 +309,8 @@ export enum PlayerAttrEnum {
   pStab, // 物理稳定率
   mStab, // 魔法稳定率
   accuracy, // 命中
-  pChase, // 物理追击
-  mChase, // 魔法追击
+  pPursuit, // 物理追击
+  mPursuit, // 魔法追击
   anticipate, // 看穿
   guardBreak, // 破防
   reflect, // 反弹伤害
@@ -145,17 +385,11 @@ export enum PlayerAttrEnum {
   itemCooldown, // 道具冷却
   recoilDmg, // 反作用伤害
   gemPowderDrop, // 晶石粉末掉落
-  // Player的其他属性扁平化
-  weaponMAtkConv, // 主武器魔法攻击转换率
-  weaponPAtkConv, // 主武器物理攻击转换率
-  mainWeaponBaseAtk, // 主武器基础值
-  mainWeaponAtk, // 主武器攻击
-  subWeaponBaseAtk, // 副武器基础值
-  subWeaponAtk, // 副武器攻击
-  bodyArmorBaseDef, // 防具基础值
 }
-export type PlayerAttrType = keyof typeof PlayerAttrEnum;
-export const PlayerAttrDic: Record<PlayerAttrType, string> = {
+// 字符串类型
+export type PlayerComputedAttrType = keyof typeof PlayerComputedAttrEnum;
+// 调试用的字典
+export const PlayerComputedAttrDic: Record<PlayerComputedAttrType, string> = {
   lv: "等级",
   str: "力量",
   int: "智力",
@@ -199,8 +433,8 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   pStab: "物理稳定率",
   mStab: "魔法稳定率",
   accuracy: "命中",
-  pChase: "物理追击",
-  mChase: "魔法追击",
+  pPursuit: "物理追击",
+  mPursuit: "魔法追击",
   anticipate: "看穿",
   guardBreak: "破防",
   reflect: "反弹伤害",
@@ -279,16 +513,10 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   subWeaponAtk: "副武器攻击",
   bodyArmorBaseDef: "防具基础值",
 };
-export const PlayerAttrKeys = Object.keys(PlayerAttrDic) as PlayerAttrType[];
-
-// ============================== 属性表达式定义 ==============================
-
-/**
- * 属性表达式定义
- * 使用 MathJS 表达式作为单一事实来源
- * 表达式会自动解析依赖关系
- */
-export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: string; isBase?: boolean }>([
+// 字符串键列表
+export const PlayerComputedAttrKeys = Object.keys(PlayerComputedAttrDic) as PlayerComputedAttrType[];
+// 与原属数据层的映射关系
+export const PlayerComputedAttrExpressionsMap = new Map<PlayerComputedAttrType, { expression: string; isBase?: boolean }>([
   ["lv", { expression: "lv", isBase: true }],
   ["str", { expression: "str", isBase: true }],
   ["int", { expression: "int", isBase: true }],
@@ -301,9 +529,8 @@ export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: st
   ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
 ]);
 
-/**
- *
- */
+// ============================== 渲染层类型 ==============================
+
 const characterAttr = {
   abi: {
     str: "str",
@@ -357,6 +584,9 @@ const characterAttr = {
     },
   },
 };
+
+
+// ============================== 其他玩家数据 ==============================
 
 // 主武器的属性转换映射
 export const MainWeaponAbiT: Record<

@@ -1776,17 +1776,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "攻撃を受けた際に、この値に基づいてブロックするかどうかを判断します。",
           formFieldDescription: "攻撃を受けた際に、この値に基づいてブロックするかどうかを判断します。",
         },
-        normalAttackResistanceModifier: {
+        normalDefExp: {
           key: "通常ダメージ慣性変動率",
           tableFieldDescription: "ダメージを受けるたびに、通常慣性の変動値です。",
           formFieldDescription: "ダメージを受けるたびに、通常慣性の変動値です。",
         },
-        physicalAttackResistanceModifier: {
+        physicDefExp: {
           key: "物理ダメージ慣性変動率",
           tableFieldDescription: "ダメージを受けるたびに、物理慣性の変動値です。",
           formFieldDescription: "ダメージを受けるたびに、物理慣性の変動値です。",
         },
-        magicalAttackResistanceModifier: {
+        magicDefExp: {
           key: "魔法ダメージ慣性変動率",
           tableFieldDescription: "ダメージを受けるたびに、魔法慣性の変動値です。",
           formFieldDescription: "ダメージを受けるたびに、魔法慣性の変動値です。",

@@ -1775,17 +1775,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "受到攻擊時，會根據此值判斷是否格擋",
           formFieldDescription: "受到攻擊時，會根據此值判斷是否格擋",
         },
-        normalAttackResistanceModifier: {
+        normalDefExp: {
           key: "一般傷害慣性變動率",
           tableFieldDescription: "每次受到傷害時，一般慣性的變化值",
           formFieldDescription: "每次受到傷害時，一般慣性的變化值",
         },
-        physicalAttackResistanceModifier: {
+        physicDefExp: {
           key: "物理傷害慣性變動率",
           tableFieldDescription: "每次受到傷害時，物理慣性的變化值",
           formFieldDescription: "每次受到傷害時，物理慣性的變化值",
         },
-        magicalAttackResistanceModifier: {
+        magicDefExp: {
           key: "魔法傷害慣性變動率",
           tableFieldDescription: "每次受到傷害時，魔法慣性的變化值",
           formFieldDescription: "每次受到傷害時，魔法慣性的變化值",

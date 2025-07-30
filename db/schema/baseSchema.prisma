@@ -270,9 +270,9 @@ model mob {
     avoidance                        Int
     dodge                            Int
     block                            Int
-    normalAttackResistanceModifier   Int
-    physicalAttackResistanceModifier Int
-    magicalAttackResistanceModifier  Int
+    normalDefExp   Int
+    physicDefExp Int
+    magicDefExp  Int
     actions                          Json
 
     drops drop_item[]

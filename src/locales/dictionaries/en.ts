@@ -1694,17 +1694,17 @@ const dictionary: dictionary = {
           tableFieldDescription: "When attacked, this value determines whether the attack is blocked.",
           formFieldDescription: "When attacked, this value determines whether the attack is blocked.",
         },
-        normalAttackResistanceModifier: {
+        normalDefExp: {
           key: "Normal Damage Inertia Modifier",
           tableFieldDescription: "The change in normal inertia each time damage is taken.",
           formFieldDescription: "The change in normal inertia each time damage is taken.",
         },
-        physicalAttackResistanceModifier: {
+        physicDefExp: {
           key: "Physical Damage Inertia Modifier",
           tableFieldDescription: "The change in physical inertia each time damage is taken.",
           formFieldDescription: "The change in physical inertia each time damage is taken.",
         },
-        magicalAttackResistanceModifier: {
+        magicDefExp: {
           key: "Magical Damage Inertia Modifier",
           tableFieldDescription: "The change in magical inertia each time damage is taken.",
           formFieldDescription: "The change in magical inertia each time damage is taken.",
