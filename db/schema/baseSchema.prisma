@@ -253,27 +253,27 @@ model statistic {
 model mob {
     id String @id
 
-    name                             String
-    type                             String // Enum MOB_TYPE
-    captureable                      Boolean
-    baseLv                           Int
-    experience                       Int
-    partsExperience                  Int
-    initialElement                   String // Enum ELEMENT_TYPE
-    radius                           Int
-    maxhp                            Int
-    physicalDefense                  Int
-    physicalResistance               Int
-    magicalDefense                   Int
-    magicalResistance                Int
-    criticalResistance               Int
-    avoidance                        Int
-    dodge                            Int
-    block                            Int
-    normalDefExp   Int
-    physicDefExp Int
-    magicDefExp  Int
-    actions                          Json
+    name               String
+    type               String // Enum MOB_TYPE
+    captureable        Boolean
+    baseLv             Int
+    experience         Int
+    partsExperience    Int
+    initialElement     String // Enum ELEMENT_TYPE
+    radius             Int
+    maxhp              Int
+    physicalDefense    Int
+    physicalResistance Int
+    magicalDefense     Int
+    magicalResistance  Int
+    criticalResistance Int
+    avoidance          Int
+    dodge              Int
+    block              Int
+    normalDefExp       Int
+    physicDefExp       Int
+    magicDefExp        Int
+    actions            Json
 
     drops drop_item[]
 
@@ -611,7 +611,7 @@ model skill_effect {
 
     condition         String
     elementLogic      String
-    castingRange      Int
+    castingRange      String
     effectiveRange    Int
     motionFixed       String
     motionModified    String

@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount, useContext } from "solid-js";
+import { Accessor, createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount, Signal, useContext } from "solid-js";
 import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization, WorkspaceSvg } from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
@@ -6,6 +6,7 @@ import * as Ja from "blockly/msg/ja";
 import * as ZhTw from "blockly/msg/zh-hant";
 import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
+import "./gameAttributeBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
 
@@ -22,13 +23,14 @@ import { MediaContext } from "~/lib/contexts/Media";
 interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
   setData: (data: unknown) => void;
+  code: Accessor<string>;
+  setCode: (code: string) => void;
   state: unknown;
 }
 
 export function NodeEditor(props: NodeEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
-  const [code, setCode] = createSignal("");
   const [workerSpaceState, setWorkerSpaceState] = createSignal<Record<string, any>>({});
   const [workerSpace, setWorkerSpace] = createSignal<WorkspaceSvg>();
 
@@ -406,407 +408,469 @@ export function NodeEditor(props: NodeEditorProps) {
                 },
               ],
             },
+            // {
+            //   kind: "category",
+            //   name: "Text",
+            //   categorystyle: "text_category",
+            //   contents: [
+            //     {
+            //       type: "text",
+            //       kind: "block",
+            //       fields: {
+            //         TEXT: "",
+            //       },
+            //     },
+            //     {
+            //       type: "text_join",
+            //       kind: "block",
+            //     },
+            //     // {
+            //     //   type: "text_append",
+            //     //   kind: "block",
+            //     //   fields: {
+            //     //     name: "item",
+            //     //   },
+            //     //   inputs: {
+            //     //     TEXT: {
+            //     //       shadow: {
+            //     //         type: "text",
+            //     //         fields: {
+            //     //           TEXT: "",
+            //     //         },
+            //     //       },
+            //     //     },
+            //     //   },
+            //     // },
+            //     {
+            //       type: "text_length",
+            //       kind: "block",
+            //       inputs: {
+            //         VALUE: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_isEmpty",
+            //       kind: "block",
+            //       inputs: {
+            //         VALUE: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_indexOf",
+            //       kind: "block",
+            //       fields: {
+            //         END: "FIRST",
+            //       },
+            //       inputs: {
+            //         VALUE: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "text",
+            //               },
+            //             },
+            //           },
+            //         },
+            //         FIND: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_charAt",
+            //       kind: "block",
+            //       fields: {
+            //         WHERE: "FROM_START",
+            //       },
+            //       inputs: {
+            //         VALUE: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "text",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_getSubstring",
+            //       kind: "block",
+            //       fields: {
+            //         WHERE1: "FROM_START",
+            //         WHERE2: "FROM_START",
+            //       },
+            //       inputs: {
+            //         STRING: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "text",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_changeCase",
+            //       kind: "block",
+            //       fields: {
+            //         CASE: "UPPERCASE",
+            //       },
+            //       inputs: {
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_trim",
+            //       kind: "block",
+            //       fields: {
+            //         MODE: "BOTH",
+            //       },
+            //       inputs: {
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_count",
+            //       kind: "block",
+            //       inputs: {
+            //         SUB: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_replace",
+            //       kind: "block",
+            //       inputs: {
+            //         FROM: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //         TO: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_reverse",
+            //       kind: "block",
+            //       inputs: {
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_print",
+            //       kind: "block",
+            //       inputs: {
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "text_prompt_ext",
+            //       kind: "block",
+            //       fields: {
+            //         TYPE: "TEXT",
+            //       },
+            //       inputs: {
+            //         TEXT: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: "abc",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //   ],
+            // },
+            // {
+            //   kind: "category",
+            //   name: "Lists",
+            //   categorystyle: "list_category",
+            //   contents: [
+            //     {
+            //       type: "lists_create_with",
+            //       kind: "block",
+            //     },
+            //     {
+            //       type: "lists_create_with",
+            //       kind: "block",
+            //     },
+            //     {
+            //       type: "lists_repeat",
+            //       kind: "block",
+            //       inputs: {
+            //         NUM: {
+            //           shadow: {
+            //             type: "math_number",
+            //             fields: {
+            //               NUM: 5,
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_length",
+            //       kind: "block",
+            //     },
+            //     {
+            //       type: "lists_isEmpty",
+            //       kind: "block",
+            //     },
+            //     {
+            //       type: "lists_indexOf",
+            //       kind: "block",
+            //       fields: {
+            //         END: "FIRST",
+            //       },
+            //       inputs: {
+            //         VALUE: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "list",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_getIndex",
+            //       kind: "block",
+            //       fields: {
+            //         MODE: "GET",
+            //         WHERE: "FROM_START",
+            //       },
+            //       inputs: {
+            //         VALUE: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "list",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_setIndex",
+            //       kind: "block",
+            //       fields: {
+            //         MODE: "SET",
+            //         WHERE: "FROM_START",
+            //       },
+            //       inputs: {
+            //         LIST: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "list",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_getSublist",
+            //       kind: "block",
+            //       fields: {
+            //         WHERE1: "FROM_START",
+            //         WHERE2: "FROM_START",
+            //       },
+            //       inputs: {
+            //         LIST: {
+            //           block: {
+            //             type: "variables_get",
+            //             fields: {
+            //               VAR: {
+            //                 name: "list",
+            //               },
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_split",
+            //       kind: "block",
+            //       fields: {
+            //         MODE: "SPLIT",
+            //       },
+            //       inputs: {
+            //         DELIM: {
+            //           shadow: {
+            //             type: "text",
+            //             fields: {
+            //               TEXT: ",",
+            //             },
+            //           },
+            //         },
+            //       },
+            //     },
+            //     {
+            //       type: "lists_sort",
+            //       kind: "block",
+            //       fields: {
+            //         TYPE: "NUMERIC",
+            //         DIRECTION: "1",
+            //       },
+            //     },
+            //     {
+            //       type: "lists_reverse",
+            //       kind: "block",
+            //     },
+            //   ],
+            // },
             {
               kind: "category",
-              name: "Text",
-              categorystyle: "text_category",
+              name: "目标属性",
+              categorystyle: "logic_category",
               contents: [
                 {
-                  type: "text",
-                  kind: "block",
-                  fields: {
-                    TEXT: "",
-                  },
-                },
-                {
-                  type: "text_join",
+                  type: "target_hp_get",
                   kind: "block",
                 },
-                // {
-                //   type: "text_append",
-                //   kind: "block",
-                //   fields: {
-                //     name: "item",
-                //   },
-                //   inputs: {
-                //     TEXT: {
-                //       shadow: {
-                //         type: "text",
-                //         fields: {
-                //           TEXT: "",
-                //         },
-                //       },
-                //     },
-                //   },
-                // },
                 {
-                  type: "text_length",
+                  type: "target_hp_set",
                   kind: "block",
-                  inputs: {
-                    VALUE: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
                 },
                 {
-                  type: "text_isEmpty",
+                  type: "target_defense_get", 
                   kind: "block",
-                  inputs: {
-                    VALUE: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                  },
                 },
                 {
-                  type: "text_indexOf",
+                  type: "target_defense_set",
                   kind: "block",
-                  fields: {
-                    END: "FIRST",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "text",
-                          },
-                        },
-                      },
-                    },
-                    FIND: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
                 },
                 {
-                  type: "text_charAt",
+                  type: "target_attribute",
                   kind: "block",
-                  fields: {
-                    WHERE: "FROM_START",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "text",
-                          },
-                        },
-                      },
-                    },
-                  },
                 },
                 {
-                  type: "text_getSubstring",
+                  type: "target_attribute_set",
                   kind: "block",
-                  fields: {
-                    WHERE1: "FROM_START",
-                    WHERE2: "FROM_START",
-                  },
-                  inputs: {
-                    STRING: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "text",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_changeCase",
-                  kind: "block",
-                  fields: {
-                    CASE: "UPPERCASE",
-                  },
-                  inputs: {
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_trim",
-                  kind: "block",
-                  fields: {
-                    MODE: "BOTH",
-                  },
-                  inputs: {
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_count",
-                  kind: "block",
-                  inputs: {
-                    SUB: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_replace",
-                  kind: "block",
-                  inputs: {
-                    FROM: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                    TO: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_reverse",
-                  kind: "block",
-                  inputs: {
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_print",
-                  kind: "block",
-                  inputs: {
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_prompt_ext",
-                  kind: "block",
-                  fields: {
-                    TYPE: "TEXT",
-                  },
-                  inputs: {
-                    TEXT: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
                 },
               ],
             },
             {
               kind: "category",
-              name: "Lists",
-              categorystyle: "list_category",
+              name: "自身属性",
+              categorystyle: "math_category",
               contents: [
                 {
-                  type: "lists_create_with",
+                  type: "self_attack_get",
+                  kind: "block", 
+                },
+                {
+                  type: "self_attack_set",
                   kind: "block",
                 },
                 {
-                  type: "lists_create_with",
+                  type: "self_mp_get",
                   kind: "block",
                 },
                 {
-                  type: "lists_repeat",
-                  kind: "block",
-                  inputs: {
-                    NUM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 5,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_length",
+                  type: "self_mp_set",
                   kind: "block",
                 },
                 {
-                  type: "lists_isEmpty",
+                  type: "self_attribute",
                   kind: "block",
                 },
                 {
-                  type: "lists_indexOf",
-                  kind: "block",
-                  fields: {
-                    END: "FIRST",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_getIndex",
-                  kind: "block",
-                  fields: {
-                    MODE: "GET",
-                    WHERE: "FROM_START",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_setIndex",
-                  kind: "block",
-                  fields: {
-                    MODE: "SET",
-                    WHERE: "FROM_START",
-                  },
-                  inputs: {
-                    LIST: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_getSublist",
-                  kind: "block",
-                  fields: {
-                    WHERE1: "FROM_START",
-                    WHERE2: "FROM_START",
-                  },
-                  inputs: {
-                    LIST: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_split",
-                  kind: "block",
-                  fields: {
-                    MODE: "SPLIT",
-                  },
-                  inputs: {
-                    DELIM: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: ",",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_sort",
-                  kind: "block",
-                  fields: {
-                    TYPE: "NUMERIC",
-                    DIRECTION: "1",
-                  },
-                },
-                {
-                  type: "lists_reverse",
+                  type: "self_attribute_set",
                   kind: "block",
                 },
               ],
@@ -857,12 +921,12 @@ export function NodeEditor(props: NodeEditorProps) {
         });
         const data = props.data;
         serialization.workspaces.load(data ?? {}, workerSpace);
-        workerSpace.addChangeListener(() => setCode(javascriptGenerator.workspaceToCode(workerSpace)));
+        workerSpace.addChangeListener(() => props.setCode(javascriptGenerator.workspaceToCode(workerSpace)));
         // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
 
         // 当代码发生变化时
         createEffect((prevCode) => {
-          const curCode = code();
+          const curCode = props.code();
           if (curCode !== prevCode) {
             // console.log(curCode);
             props.setData(serialization.workspaces.save(workerSpace));

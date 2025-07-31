@@ -1,54 +1,30 @@
 /**
- * 优化的响应式系统核心实现
- *
+ * 嵌套结构响应式系统
+ * 
  * 特性：
- * - 双层架构：原始数据层 + 高性能计算层
- * - Map优化：专为MathJS优化的高性能Map作用域
- * - 智能缓存：只重算变化的属性，避免级联重复计算
- * - 依赖管理：自动依赖追踪和传播
- */
-
-/**
- * 鉴于MathJs使用Map性能更好，且Map对嵌套结构支持较差，除了将属性从配置映射到原始数据层这一步会涉及到嵌套结构以外，
- * 其他数据都扁平化用Map储存
- */
-
-/**
- * 实际上应该是三层数据，原始数据层，计算层，渲染层
- * 原始数据层：直接逆向游戏，结合BounsType和机体配置就可以获得
- * 计算层：需要逐步确认会用到哪些属性，然后渐进式添加
- * 渲染层：为了便于分析而设计的数据结构，
- * 计算层和渲染层都由原始数据层映射而来
+ * - 自动解析嵌套对象结构（如PlayerAttr）
+ * - 支持嵌套路径访问（如 mainWeapon.baseAtk）
+ * - 保持原有的响应式计算能力
+ * - 扁平化内部存储，但提供嵌套访问接口
  */
 
 import { create, all } from "mathjs";
+import type { ModifierSource, Modifier, AttributeExpression } from "../ReactiveSystem";
 
 // 创建 math 实例
 const math = create(all);
 
-// ============================== 通用接口定义 ==============================
+// ============================== 类型定义 ==============================
 
-export interface ModifierSource {
-  id: string;
-  name: string;
-  type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "system";
-}
+export type NestedPath = string[];
 
-export interface Modifier {
-  value: number;
-  source: ModifierSource;
-}
-
-export interface AttributeExpression<TAttr extends string> {
+export interface NestedAttributeExpression {
+  path: NestedPath;
   expression: string;
   isBase?: boolean;
 }
 
-/**
- * 响应式修饰符数据 - 嵌套结构设计
- * 分离原始数据和计算逻辑，提升可读性和维护性
- */
-export interface ReactiveModifierData<T extends string> {
+export interface NestedReactiveModifierData {
   // 原始数据层
   baseValue: Array<Modifier>;
   modifiers: {
@@ -64,33 +40,27 @@ export interface ReactiveModifierData<T extends string> {
 
   // 计算层
   computation: {
-    updateFunction?: (scope: Map<T, number>) => number;
-    dependencies: Set<T>; // 此属性依赖的其他属性
-    dependents: Set<T>; // 依赖此属性的其他属性
+    updateFunction?: (scope: Map<string, number>) => number;
+    dependencies: Set<string>; // 此属性依赖的其他属性（扁平化路径）
+    dependents: Set<string>; // 依赖此属性的其他属性（扁平化路径）
     isDirty: boolean; // 是否需要重新计算
     lastComputedValue?: number; // 缓存的计算结果
   };
 }
 
-export interface ComputeContext<T extends string> {
-  readonly mathScope: Map<T, number>;
-  readonly frame: number;
-  readonly timestamp: number;
-}
-
 // ============================== 依赖图管理 ==============================
 
-export class DependencyGraph<T extends string> {
-  private readonly dependencies = new Map<T, Set<T>>();
-  private readonly dependents = new Map<T, Set<T>>();
-  private sortedKeys: T[] = [];
+export class NestedDependencyGraph {
+  private readonly dependencies = new Map<string, Set<string>>();
+  private readonly dependents = new Map<string, Set<string>>();
+  private sortedKeys: string[] = [];
   private isTopologySorted = false;
 
   constructor() {
     // 初始化
   }
 
-  addDependency(dependent: T, dependency: T): void {
+  addDependency(dependent: string, dependency: string): void {
     // 确保依赖关系不指向自己
     if (dependent === dependency) {
       console.warn(`⚠️ 属性 ${dependent} 不能依赖自己`);
@@ -113,30 +83,30 @@ export class DependencyGraph<T extends string> {
     this.isTopologySorted = false;
   }
 
-  removeDependency(dependent: T, dependency: T): void {
+  removeDependency(dependent: string, dependency: string): void {
     this.dependencies.get(dependent)?.delete(dependency);
     this.dependents.get(dependency)?.delete(dependent);
     this.isTopologySorted = false;
   }
 
-  getDependencies(attr: T): Set<T> {
+  getDependencies(attr: string): Set<string> {
     return this.dependencies.get(attr) || new Set();
   }
 
-  getDependents(attr: T): Set<T> {
+  getDependents(attr: string): Set<string> {
     return this.dependents.get(attr) || new Set();
   }
 
-  getTopologicalOrder(): T[] {
+  getTopologicalOrder(): string[] {
     if (this.isTopologySorted) {
       return [...this.sortedKeys];
     }
 
-    const visited = new Set<T>();
-    const temp = new Set<T>();
-    const order: T[] = [];
+    const visited = new Set<string>();
+    const temp = new Set<string>();
+    const order: string[] = [];
 
-    const visit = (node: T) => {
+    const visit = (node: string) => {
       if (temp.has(node)) {
         throw new Error(`检测到循环依赖: ${node}`);
       }
@@ -155,7 +125,7 @@ export class DependencyGraph<T extends string> {
     };
 
     // 获取所有节点
-    const allNodes = new Set<T>();
+    const allNodes = new Set<string>();
     for (const [node] of this.dependencies) {
       allNodes.add(node);
     }
@@ -175,9 +145,9 @@ export class DependencyGraph<T extends string> {
     return order;
   }
 
-  getAffectedAttributes(changedAttr: T): Set<T> {
-    const affected = new Set<T>();
-    const queue: T[] = [changedAttr];
+  getAffectedAttributes(changedAttr: string): Set<string> {
+    const affected = new Set<string>();
+    const queue: string[] = [changedAttr];
 
     while (queue.length > 0) {
       const current = queue.shift()!;
@@ -203,9 +173,9 @@ export class DependencyGraph<T extends string> {
 
 // ============================== MathJS 作用域管理 ==============================
 
-export class MathScope<T extends string> {
+export class NestedMathScope {
   private readonly mathInstance: any;
-  private readonly scopeMap = new Map<T, number>();
+  private readonly scopeMap = new Map<string, number>();
   private readonly functionMap = new Map<string, (...args: any[]) => any>();
 
   constructor() {
@@ -214,15 +184,34 @@ export class MathScope<T extends string> {
   }
 
   private registerBuiltinFunctions(): void {
-    // 只注册自定义函数，避免与 MathJS 内置函数冲突
-    this.functionMap.set("dynamicTotalValue", (attrName: string) => {
-      // 这里需要从外部获取属性值，暂时返回0
-      console.warn("dynamicTotalValue 函数需要外部上下文");
-      return 0;
+    // 注册游戏相关的函数
+    this.functionMap.set("mainWeaponAbiT", (weaponType: string) => {
+      // 这里需要从外部获取武器类型数据，暂时返回模拟数据
+      return {
+        baseAspd: 100,
+        baseHitRate: 80,
+        patkC: 1.0,
+        matkC: 0.0,
+        abi_Attr_Convert: {
+          str: {
+            pAtkC: 1.0,
+            mAtkC: 0.0,
+            aspdC: 0.5,
+            pStabC: 0.3,
+          }
+        }
+      };
     });
 
-    this.functionMap.set("isMainWeaponType", (weaponType: string) => {
-      return weaponType === "main" ? 1 : 0;
+    this.functionMap.set("subWeaponModifier", (weaponType: string) => {
+      // 副武器修饰符，暂时返回模拟数据
+      return {
+        aspdM: 0.0,
+        pAtkM: 0.0,
+        mAtkM: 0.0,
+        pDefM: 0.0,
+        mDefM: 0.0,
+      };
     });
 
     // 将自定义函数注册到 MathJS 实例
@@ -231,17 +220,17 @@ export class MathScope<T extends string> {
     }
   }
 
-  setVariable(name: T, value: number): void {
+  setVariable(name: string, value: number): void {
     this.scopeMap.set(name, value);
   }
 
-  setVariables(variables: Map<T, number>): void {
+  setVariables(variables: Map<string, number>): void {
     for (const [name, value] of variables) {
       this.scopeMap.set(name, value);
     }
   }
 
-  getVariable(name: T): number | undefined {
+  getVariable(name: string): number | undefined {
     return this.scopeMap.get(name);
   }
 
@@ -260,7 +249,7 @@ export class MathScope<T extends string> {
     }
   }
 
-  getScopeMap(): ReadonlyMap<T, number> {
+  getScopeMap(): ReadonlyMap<string, number> {
     return this.scopeMap;
   }
 
@@ -279,31 +268,31 @@ export class MathScope<T extends string> {
 
 // ============================== 表达式解析工具 ==============================
 
-export class ExpressionParser<TAttr extends string> {
+export class NestedExpressionParser {
   private readonly mathInstance: any;
-  private readonly attrKeys: TAttr[];
+  private readonly availablePaths: Set<string>;
 
-  constructor(attrKeys: TAttr[]) {
+  constructor(availablePaths: Set<string>) {
     this.mathInstance = math.create(all);
-    this.attrKeys = attrKeys;
+    this.availablePaths = availablePaths;
   }
 
   /**
-   * 从表达式中提取依赖的属性
+   * 从表达式中提取依赖的属性路径
    */
-  extractDependenciesFromExpression(expression: string): TAttr[] {
+  extractDependenciesFromExpression(expression: string): string[] {
     try {
       const node = this.mathInstance.parse(expression);
-      const dependencies = new Set<TAttr>();
+      const dependencies = new Set<string>();
 
       // 遍历语法树，查找所有 SymbolNode
       node.traverse((node: any) => {
         if (node.type === "SymbolNode" && "name" in node) {
           const symbolName = String(node.name);
-          if (this.attrKeys.includes(symbolName as TAttr)) {
-            dependencies.add(symbolName as TAttr);
+          if (this.availablePaths.has(symbolName)) {
+            dependencies.add(symbolName);
           } else {
-            console.warn(`⚠️ 未找到属性: ${symbolName}`);
+            console.warn(`⚠️ 未找到属性路径: ${symbolName}`);
           }
         }
       });
@@ -314,46 +303,63 @@ export class ExpressionParser<TAttr extends string> {
       return [];
     }
   }
+}
 
+// ============================== 嵌套结构解析器 ==============================
+
+export class NestedStructureParser {
   /**
-   * 构建依赖图
+   * 解析嵌套对象结构，提取所有可能的路径和表达式
    */
-  buildDependencyGraph(expressions: Map<TAttr, AttributeExpression<TAttr>>): DependencyGraph<TAttr> {
-    const graph = new DependencyGraph<TAttr>();
+  static parseNestedStructure(
+    nestedObj: Record<string, any>, 
+    parentPath: NestedPath = []
+  ): { paths: Set<string>; expressions: Map<string, NestedAttributeExpression> } {
+    const paths = new Set<string>();
+    const expressions = new Map<string, NestedAttributeExpression>();
 
-    for (const [attr, expression] of expressions) {
-      if (expression.isBase) {
-        // 基础属性没有依赖
-        continue;
+    const traverse = (obj: any, currentPath: NestedPath) => {
+      for (const [key, value] of Object.entries(obj)) {
+        const newPath = [...currentPath, key];
+        const pathString = newPath.join('.');
+
+        if (typeof value === 'string') {
+          // 这是一个表达式
+          paths.add(pathString);
+          expressions.set(pathString, {
+            path: newPath,
+            expression: value,
+            isBase: false,
+          });
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // 这是一个嵌套对象，继续遍历
+          traverse(value, newPath);
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+          // 这是一个基础值
+          paths.add(pathString);
+          expressions.set(pathString, {
+            path: newPath,
+            expression: String(value),
+            isBase: true,
+          });
+        }
       }
+    };
 
-      const dependencies = this.extractDependenciesFromExpression(expression.expression);
-      for (const dep of dependencies) {
-        graph.addDependency(attr, dep);
-      }
-    }
-
-    return graph;
-  }
-
-  /**
-   * 获取拓扑排序
-   */
-  getTopologicalOrder(expressions: Map<TAttr, AttributeExpression<TAttr>>): TAttr[] {
-    const graph = this.buildDependencyGraph(expressions);
-    return graph.getTopologicalOrder();
+    traverse(nestedObj, parentPath);
+    return { paths, expressions };
   }
 }
 
-// ============================== 响应式数据管理器 ==============================
+// ============================== 嵌套响应式数据管理器 ==============================
 
-export class ReactiveDataManager<T extends string> {
-  private readonly attributes = new Map<T, ReactiveModifierData<T>>();
-  private readonly dependencyGraph = new DependencyGraph<T>();
-  private readonly mathScope = new MathScope<T>();
-  private readonly dirtySet = new Set<T>();
+export class NestedReactiveDataManager {
+  private readonly attributes = new Map<string, NestedReactiveModifierData>();
+  private readonly dependencyGraph = new NestedDependencyGraph();
+  private readonly mathScope = new NestedMathScope();
+  private readonly dirtySet = new Set<string>();
+  private readonly pathToAttribute = new Map<string, NestedReactiveModifierData>();
   private isUpdating = false;
-  private attrKeys: T[];
 
   // 性能统计
   private readonly stats = {
@@ -363,59 +369,77 @@ export class ReactiveDataManager<T extends string> {
     lastUpdateTime: 0,
   };
 
-  constructor(attrKeys: T[], expressions?: Map<T, AttributeExpression<T>>) {
-    this.attrKeys = attrKeys;
-    this.initializeDefaultAttributes(attrKeys);
-
-    if (expressions) {
-      this.setupExpressions(expressions);
-    }
+  constructor(nestedStructure: Record<string, any>) {
+    this.initializeFromNestedStructure(nestedStructure);
   }
 
-  private initializeDefaultAttributes(attrKeys: T[]): void {
-    // 为每个属性创建默认的响应式数据结构
-    for (const attrKey of attrKeys) {
-      this.attributes.set(attrKey, {
-        baseValue: [],
-        modifiers: {
-          static: {
-            fixed: [],
-            percentage: [],
-          },
-          dynamic: {
-            fixed: [],
-            percentage: [],
-          },
-        },
-        computation: {
-          dependencies: new Set(),
-          dependents: new Set(),
-          isDirty: true,
-        },
-      });
+  /**
+   * 从嵌套结构初始化
+   */
+  private initializeFromNestedStructure(nestedStructure: Record<string, any>): void {
+    const { paths, expressions } = NestedStructureParser.parseNestedStructure(nestedStructure);
+    
+    console.log(`🔍 解析嵌套结构，发现 ${paths.size} 个属性路径`);
+    console.log(`🔍 发现 ${expressions.size} 个表达式`);
+
+    // 为每个路径创建属性
+    for (const pathString of paths) {
+      this.createAttribute(pathString);
     }
+
+    // 设置表达式和依赖关系
+    this.setupExpressions(expressions);
+  }
+
+  /**
+   * 创建属性
+   */
+  private createAttribute(pathString: string): void {
+    const attributeData: NestedReactiveModifierData = {
+      baseValue: [],
+      modifiers: {
+        static: {
+          fixed: [],
+          percentage: [],
+        },
+        dynamic: {
+          fixed: [],
+          percentage: [],
+        },
+      },
+      computation: {
+        dependencies: new Set(),
+        dependents: new Set(),
+        isDirty: true,
+      },
+    };
+
+    this.attributes.set(pathString, attributeData);
+    this.pathToAttribute.set(pathString, attributeData);
   }
 
   /**
    * 设置属性表达式和依赖关系
-   * 单一事实来源：从表达式自动解析依赖并设置更新函数
    */
-  private setupExpressions(expressions: Map<T, AttributeExpression<T>>): void {
-    console.log("🔧 设置属性表达式和依赖关系...");
+  private setupExpressions(expressions: Map<string, NestedAttributeExpression>): void {
+    console.log("🔧 设置嵌套属性表达式和依赖关系...");
+
+    // 获取所有可用的路径
+    const availablePaths = new Set(this.attributes.keys());
 
     // 遍历所有属性表达式
-    for (const [attrName, expressionData] of expressions) {
+    for (const [pathString, expressionData] of expressions) {
       // 跳过基础属性和空表达式
       if (expressionData.isBase || !expressionData.expression) {
         continue;
       }
 
-      console.log(`📐 设置属性 ${attrName} 的表达式: ${expressionData.expression}`);
+      console.log(`📐 设置属性 ${pathString} 的表达式: ${expressionData.expression}`);
 
       // 为复杂属性设置更新函数
-      this.addAttribute(attrName, {
+      this.addAttribute(pathString, {
         computation: {
-          updateFunction: (scope: Map<T, number>) => {
+          updateFunction: (scope: Map<string, number>) => {
             try {
               // 将 scope 中的值设置到 MathScope 中
               for (const [key, value] of scope) {
@@ -426,7 +450,7 @@ export class ReactiveDataManager<T extends string> {
               const result = this.mathScope.evaluate(expressionData.expression);
               return result;
             } catch (error) {
-              console.error(`❌ 计算属性 ${attrName} 时出错:`, error);
+              console.error(`❌ 计算属性 ${pathString} 时出错:`, error);
               return 0;
             }
           },
@@ -437,13 +461,16 @@ export class ReactiveDataManager<T extends string> {
       });
 
       // 从表达式解析依赖关系
-      this.addDependenciesFromExpression(attrName, expressionData.expression);
+      this.addDependenciesFromExpression(pathString, expressionData.expression, availablePaths);
     }
 
-    console.log("✅ 属性表达式和依赖关系设置完成");
+    console.log("✅ 嵌套属性表达式和依赖关系设置完成");
   }
 
-  addAttribute(name: T, data: Partial<ReactiveModifierData<T>>): void {
+  /**
+   * 添加属性
+   */
+  addAttribute(name: string, data: Partial<NestedReactiveModifierData>): void {
     const existing = this.attributes.get(name);
     if (existing) {
       // 合并数据
@@ -472,7 +499,10 @@ export class ReactiveDataManager<T extends string> {
     }
   }
 
-  addDependency(dependent: T, dependency: T): void {
+  /**
+   * 添加依赖关系
+   */
+  addDependency(dependent: string, dependency: string): void {
     this.dependencyGraph.addDependency(dependent, dependency);
 
     // 更新属性数据中的依赖关系
@@ -488,10 +518,10 @@ export class ReactiveDataManager<T extends string> {
   /**
    * 从表达式自动构建依赖关系
    */
-  addDependenciesFromExpression(attrName: T, expression: string): void {
+  addDependenciesFromExpression(attrName: string, expression: string, availablePaths: Set<string>): void {
     try {
       // 解析表达式获取依赖
-      const parser = new ExpressionParser(this.attrKeys);
+      const parser = new NestedExpressionParser(availablePaths);
       const dependencies = parser.extractDependenciesFromExpression(expression);
 
       // 为每个依赖添加关系
@@ -499,16 +529,16 @@ export class ReactiveDataManager<T extends string> {
         this.addDependency(attrName, dep);
       }
 
-      console.log(
-        `🔗 [${attrName}] 从表达式解析得到依赖:`,
-        dependencies.map((d) => (this.attrKeys.includes(d) ? d : null)),
-      );
+      console.log(`🔗 [${attrName}] 从表达式解析得到依赖: ${dependencies.join(', ')}`);
     } catch (error) {
       console.warn(`❌ 解析表达式依赖失败 [${attrName}]: ${expression}`, error);
     }
   }
 
-  markDirty(attrName: T): void {
+  /**
+   * 标记属性为脏值
+   */
+  markDirty(attrName: string): void {
     if (!this.attributes.has(attrName)) {
       console.warn(`⚠️ 尝试标记不存在的属性为脏值: ${attrName}`);
       return;
@@ -523,8 +553,11 @@ export class ReactiveDataManager<T extends string> {
     }
   }
 
+  /**
+   * 添加修饰符
+   */
   addModifier(
-    attrName: T,
+    attrName: string,
     type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
     value: number,
     source: ModifierSource,
@@ -548,38 +581,32 @@ export class ReactiveDataManager<T extends string> {
     this.markDirty(attrName);
   }
 
-  removeModifier(attrName: T, sourceId: string): void {
+  /**
+   * 移除修饰符
+   */
+  removeModifier(attrName: string, sourceId: string): void {
     const attr = this.attributes.get(attrName);
     if (!attr) return;
 
     let removed = false;
 
-    // 检查 static.fixed
-    const staticFixedIndex = attr.modifiers.static.fixed.findIndex((mod) => mod.source.id === sourceId);
-    if (staticFixedIndex !== -1) {
-      attr.modifiers.static.fixed.splice(staticFixedIndex, 1);
-      removed = true;
-    }
+    // 检查所有修饰符类型
+    const modifierTypes = [
+      'static.fixed',
+      'static.percentage', 
+      'dynamic.fixed',
+      'dynamic.percentage'
+    ] as const;
 
-    // 检查 static.percentage
-    const staticPercentageIndex = attr.modifiers.static.percentage.findIndex((mod) => mod.source.id === sourceId);
-    if (staticPercentageIndex !== -1) {
-      attr.modifiers.static.percentage.splice(staticPercentageIndex, 1);
-      removed = true;
-    }
-
-    // 检查 dynamic.fixed
-    const dynamicFixedIndex = attr.modifiers.dynamic.fixed.findIndex((mod) => mod.source.id === sourceId);
-    if (dynamicFixedIndex !== -1) {
-      attr.modifiers.dynamic.fixed.splice(dynamicFixedIndex, 1);
-      removed = true;
-    }
-
-    // 检查 dynamic.percentage
-    const dynamicPercentageIndex = attr.modifiers.dynamic.percentage.findIndex((mod) => mod.source.id === sourceId);
-    if (dynamicPercentageIndex !== -1) {
-      attr.modifiers.dynamic.percentage.splice(dynamicPercentageIndex, 1);
-      removed = true;
+    for (const type of modifierTypes) {
+      const [category, modifierType] = type.split('.');
+      const index = attr.modifiers[category as keyof typeof attr.modifiers][modifierType as keyof any]
+        .findIndex((mod: Modifier) => mod.source.id === sourceId);
+      
+      if (index !== -1) {
+        attr.modifiers[category as keyof typeof attr.modifiers][modifierType as keyof any].splice(index, 1);
+        removed = true;
+      }
     }
 
     if (removed) {
@@ -587,7 +614,10 @@ export class ReactiveDataManager<T extends string> {
     }
   }
 
-  setBaseValue(attrName: T, value: Modifier): void {
+  /**
+   * 设置基础值
+   */
+  setBaseValue(attrName: string, value: Modifier): void {
     const attr = this.attributes.get(attrName);
     if (!attr) {
       console.warn(`⚠️ 尝试设置不存在的属性的基础值: ${attrName}`);
@@ -603,9 +633,8 @@ export class ReactiveDataManager<T extends string> {
 
   /**
    * 批量设置基础值
-   * 用于初始化时批量设置多个属性的基础值
    */
-  setBaseValues(values: Record<T, number>): void {
+  setBaseValues(values: Record<string, number>): void {
     const systemSource: ModifierSource = {
       id: "system",
       name: "系统",
@@ -618,12 +647,15 @@ export class ReactiveDataManager<T extends string> {
           value,
           source: systemSource
         };
-        this.setBaseValue(attrName as T, modifier);
+        this.setBaseValue(attrName, modifier);
       }
     }
   }
 
-  private computeAttributeValue(attrName: T): number {
+  /**
+   * 计算属性值
+   */
+  private computeAttributeValue(attrName: string): number {
     const attr = this.attributes.get(attrName);
     if (!attr) {
       console.warn(`⚠️ 尝试计算不存在的属性: ${attrName}`);
@@ -635,7 +667,7 @@ export class ReactiveDataManager<T extends string> {
     // 如果有自定义计算函数，使用它
     if (attr.computation.updateFunction) {
       try {
-        const scope = new Map<T, number>();
+        const scope = new Map<string, number>();
         for (const [key, value] of this.attributes) {
           // 避免递归调用 getValue，直接获取基础值或缓存值
           const targetAttr = this.attributes.get(key);
@@ -684,6 +716,9 @@ export class ReactiveDataManager<T extends string> {
     return Math.floor(base * (1 + totalPercentage / 100) + totalFixed);
   }
 
+  /**
+   * 更新脏值
+   */
   updateDirtyValues(): void {
     if (this.isUpdating) {
       console.warn("⚠️ 检测到递归更新，跳过");
@@ -739,10 +774,15 @@ export class ReactiveDataManager<T extends string> {
     }
   }
 
-  getValue(attrName: T): number {
-    const attr = this.attributes.get(attrName);
+  /**
+   * 获取属性值（支持嵌套路径）
+   */
+  getValue(path: NestedPath | string): number {
+    const pathString = Array.isArray(path) ? path.join('.') : path;
+    const attr = this.attributes.get(pathString);
+    
     if (!attr) {
-      console.warn(`⚠️ 尝试获取不存在的属性值: ${attrName}`);
+      console.warn(`⚠️ 尝试获取不存在的属性值: ${pathString}`);
       return 0;
     }
 
@@ -759,24 +799,73 @@ export class ReactiveDataManager<T extends string> {
 
     // 否则重新计算
     this.stats.cacheMisses++;
-    const value = this.computeAttributeValue(attrName);
+    const value = this.computeAttributeValue(pathString);
     attr.computation.lastComputedValue = value;
     attr.computation.isDirty = false;
     return value;
   }
 
-  getValues(attrNames: T[]): Record<T, number> {
-    const result: Record<T, number> = {} as Record<T, number>;
-    for (const attrName of attrNames) {
-      result[attrName] = this.getValue(attrName);
+  /**
+   * 设置属性值（支持嵌套路径）
+   */
+  setValue(path: NestedPath | string, value: number): void {
+    const pathString = Array.isArray(path) ? path.join('.') : path;
+    const attr = this.attributes.get(pathString);
+    
+    if (!attr) {
+      console.warn(`⚠️ 尝试设置不存在的属性值: ${pathString}`);
+      return;
+    }
+
+    // 设置基础值
+    const systemSource: ModifierSource = {
+      id: "direct_set",
+      name: "直接设置",
+      type: "system"
+    };
+
+    // 移除之前的直接设置值
+    attr.baseValue = attr.baseValue.filter(mod => mod.source.id !== "direct_set");
+    
+    // 添加新的值
+    attr.baseValue.push({
+      value,
+      source: systemSource
+    });
+
+    this.markDirty(pathString);
+  }
+
+  /**
+   * 获取多个属性值
+   */
+  getValues(paths: (NestedPath | string)[]): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const path of paths) {
+      const pathString = Array.isArray(path) ? path.join('.') : path;
+      result[pathString] = this.getValue(path);
     }
     return result;
   }
 
-  getMathScope(): MathScope<T> {
-    return this.mathScope;
+  /**
+   * 检查属性是否存在
+   */
+  hasAttribute(path: NestedPath | string): boolean {
+    const pathString = Array.isArray(path) ? path.join('.') : path;
+    return this.attributes.has(pathString);
   }
 
+  /**
+   * 获取所有属性路径
+   */
+  getAllPaths(): string[] {
+    return Array.from(this.attributes.keys());
+  }
+
+  /**
+   * 获取统计信息
+   */
   getStats() {
     return {
       ...this.stats,
@@ -785,6 +874,9 @@ export class ReactiveDataManager<T extends string> {
     };
   }
 
+  /**
+   * 重置统计信息
+   */
   resetStats(): void {
     this.stats.computations = 0;
     this.stats.cacheHits = 0;
@@ -793,139 +885,9 @@ export class ReactiveDataManager<T extends string> {
   }
 
   /**
-   * 解析修饰器表达式并添加到指定属性
+   * 获取MathScope
    */
-  parseAndAddModifier(attrName: T, expression: string, source: ModifierSource): void {
-    try {
-      // 解析表达式：target + value 或 target + value%
-      const match = expression.match(/^(.+?)\s*([+\-])\s*(.+)$/);
-      if (!match) {
-        console.warn(`⚠️ 无法解析修饰器表达式: ${expression}`);
-        return;
-      }
-
-      const targetStr = match[1].trim();
-      const operator = match[2];
-      const valueStr = match[3].trim();
-
-      // 检查目标属性是否存在
-      if (!this.attributes.has(attrName)) {
-        console.warn(`⚠️ 目标属性 ${attrName} 不存在`);
-        return;
-      }
-
-      // 判断是否为百分比修饰器
-      const isPercentage = valueStr.endsWith("%");
-      const cleanValueStr = isPercentage ? valueStr.slice(0, -1) : valueStr;
-
-      // 计算数值
-      let value: number;
-      try {
-        // 使用 MathJS 计算表达式值
-        const mathScope = this.getMathScope();
-        const scopeObject: Record<string, number> = {};
-        for (const [key, val] of mathScope.getScopeMap()) {
-          scopeObject[key] = val;
-        }
-        value = math.evaluate(cleanValueStr, scopeObject) as number;
-      } catch (error) {
-        console.warn(`⚠️ 无法计算修饰器值: ${cleanValueStr}`, error);
-        return;
-      }
-
-      // 根据运算符调整值
-      if (operator === "-") {
-        value = -value;
-      }
-
-      // 确定修饰器类型
-      const modifierType = isPercentage ? "staticPercentage" : "staticFixed";
-
-      // 添加修饰器
-      this.addModifier(attrName, modifierType, value, source);
-
-      console.log(
-        `✅ 成功添加修饰器: ${attrName} ${operator} ${value}${isPercentage ? "%" : ""} (来源: ${source.name})`,
-      );
-    } catch (error) {
-      console.error(`❌ 解析修饰器表达式失败: ${expression}`, error);
-    }
+  getMathScope(): NestedMathScope {
+    return this.mathScope;
   }
-
-  /**
-   * 批量解析修饰器表达式
-   * 从角色数据中收集所有 modifiers 字段并解析
-   */
-  parseModifiersFromCharacter(character: any, sourceName: string = "角色配置"): void {
-    const source: ModifierSource = {
-      id: sourceName,
-      name: sourceName,
-      type: "system",
-    };
-
-    // 递归收集所有 modifiers 字段
-    const modifiers: string[] = [];
-
-    const collectModifiers = (obj: unknown, path: string[] = []): void => {
-      if (Array.isArray(obj)) {
-        obj.forEach((item, index) => {
-          collectModifiers(item, [...path, index.toString()]);
-        });
-      } else if (obj && typeof obj === "object") {
-        Object.entries(obj as Record<string, unknown>).forEach(([key, value]) => {
-          if (key === "modifiers" && Array.isArray(value)) {
-            // 找到 modifiers 字段，收集所有字符串
-            (value as unknown[]).forEach((modifier: unknown) => {
-              if (typeof modifier === "string") {
-                modifiers.push(modifier);
-              } else if (modifier && typeof modifier === "object" && "formula" in modifier) {
-                modifiers.push((modifier as { formula: string }).formula);
-              }
-            });
-          } else {
-            collectModifiers(value, [...path, key]);
-          }
-        });
-      }
-    };
-
-    collectModifiers(character);
-
-    console.log(`🔍 收集到 ${modifiers.length} 个修饰器表达式:`, modifiers);
-
-    // 解析每个修饰器
-    modifiers.forEach((modifier) => {
-      // 尝试解析为 "属性名 + 值" 的格式
-      const match = modifier.match(/^(\w+)\s*([+\-])\s*(.+)$/);
-      if (match) {
-        const targetAttr = match[1].toLowerCase();
-        const operator = match[2];
-        const value = match[3];
-
-        // 尝试找到对应的属性枚举
-        const attrKey = this.findAttributeKeyByString(targetAttr);
-        if (attrKey) {
-          this.parseAndAddModifier(attrKey, `${targetAttr} ${operator} ${value}`, source);
-        } else {
-          console.warn(`⚠️ 未找到对应的属性: ${targetAttr}`);
-        }
-      }
-    });
-  }
-
-  /**
-   * 根据字符串查找对应的属性键
-   */
-  private findAttributeKeyByString(attrString: string): T | null {
-    const lowerAttrString = attrString.toLowerCase();
-
-    // 直接检查属性名和显示名
-    for (const attrKey of this.attrKeys) {
-      if (attrKey.toLowerCase() === lowerAttrString) {
-        return attrKey;
-      }
-    }
-
-    return null;
-  }
-}
+} 

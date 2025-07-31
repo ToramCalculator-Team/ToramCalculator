@@ -20,10 +20,10 @@ import { MainHandType, SubHandType } from "@db/schema/enums";
  * 基础值相关：baseValue → base
  */
 
-// ============================== 原始数据层类型 ==============================
+// ============================== 逆向出来的BounsType参考数据类型 ==============================
 
 // 类型枚举
-export enum PlayerOriginAttrEnum {
+export enum BounsTypeEnum {
   None, // 无
   bStr, // 力量
   bInt, // 智力
@@ -252,8 +252,10 @@ export enum PlayerOriginAttrEnum {
 
 // ============================== 计算层类型 ==============================
 // 类型枚举
-export enum PlayerComputedAttrEnum {
+export enum PlayerAttrEnum {
   lv, // 等级
+
+  // 基础能力值
   str, // 力量
   int, // 智力
   vit, // 耐力
@@ -263,22 +265,40 @@ export enum PlayerComputedAttrEnum {
   tec, // 技巧
   men, // 异抗
   cri, // 暴击
-  maxMp, // 最大MP
+
+  // Mp
+  maxMp, // MP上限
+  mpRegen, // MP自然回复
+  mpAtkRegen, // MP攻击回复
+
+  // Hp
+  maxHp, // HP上限
   hpRegen, // HP自然回复
-  aggroRate, // 仇恨值倍率
+
+  // 武器
   mainWeaponRange, // 主武器射程
   mainWeaponBaseAtk, // 主武器基础值
   mainWeaponType, // 主武器类型
   mainWeaponRef, // 主武器精炼
   mainWeaponStability, // 主武器稳定性
-  mainWeaponAtk, // 主武器攻击
-  mainWeaponMatk, // 主武器魔法攻击
-  mainWeaponBaseAspd, // 主武器基础攻击速度
-  mainWeaponPStab, // 主武器物理稳定率
   subWeaponRange, // 副武器射程
-  mpRegen, // MP自然回复
-  mpAtkRegen, // MP攻击回复
+  subWeaponType, // 副武器类型
+  subWeaponRef, // 副武器精炼
+  subWeaponStability, // 副武器稳定性
+  weaponPAtk, // 武器物理攻击
+  weaponMAtk, // 武器魔法攻击
+  
+  // 防具
+  armorType, // 身体装备类型
+  armorBaseAbi, // 身体装备基础值
+  armorRef, // 身体装备精炼
+  optionBaseAbi, // 追加装备基础值
+  optionRef, // 追加装备精炼
+  specialBaseAbi, // 特殊装备基础值
 
+  // 物理属性
+
+  aggroRate, // 仇恨值倍率
   
   pAtk, // 物理攻击
 
@@ -336,7 +356,6 @@ export enum PlayerComputedAttrEnum {
   mAtkDownAgi, // 魔法攻击下降（敏捷）
   mAtkDownDex, // 魔法攻击下降（灵巧）
   // 生存能力加成
-  maxHp, // 最大HP
   bodyArmorDef, // 身体装备防御
   pDef, // 物理防御
   mDef, // 魔法防御
@@ -387,9 +406,9 @@ export enum PlayerComputedAttrEnum {
   gemPowderDrop, // 晶石粉末掉落
 }
 // 字符串类型
-export type PlayerComputedAttrType = keyof typeof PlayerComputedAttrEnum;
+export type PlayerAttrType = keyof typeof PlayerAttrEnum;
 // 调试用的字典
-export const PlayerComputedAttrDic: Record<PlayerComputedAttrType, string> = {
+export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   lv: "等级",
   str: "力量",
   int: "智力",
@@ -514,9 +533,9 @@ export const PlayerComputedAttrDic: Record<PlayerComputedAttrType, string> = {
   bodyArmorBaseDef: "防具基础值",
 };
 // 字符串键列表
-export const PlayerComputedAttrKeys = Object.keys(PlayerComputedAttrDic) as PlayerComputedAttrType[];
+export const PlayerAttrKeys = Object.keys(PlayerAttrDic) as PlayerAttrType[];
 // 与原属数据层的映射关系
-export const PlayerComputedAttrExpressionsMap = new Map<PlayerComputedAttrType, { expression: string; isBase?: boolean }>([
+export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: string; isBase?: boolean }>([
   ["lv", { expression: "lv", isBase: true }],
   ["str", { expression: "str", isBase: true }],
   ["int", { expression: "int", isBase: true }],
@@ -529,9 +548,8 @@ export const PlayerComputedAttrExpressionsMap = new Map<PlayerComputedAttrType, 
   ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
 ]);
 
-// ============================== 渲染层类型 ==============================
-
-const characterAttr = {
+// 角色属性嵌套模型，核心结构
+const PlayerAttr = {
   abi: {
     str: "str",
     int: "int",

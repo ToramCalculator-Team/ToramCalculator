@@ -1,3 +1,4 @@
+.blocklyTooltipDiv,
 #blocklyDiv * {
   transition: transform 0s;
 }
@@ -27,9 +28,7 @@
   } */
 
   .blocklyBlockCanvas {
-    
   }
-  
 }
 
 .blocklyToolboxCategory {

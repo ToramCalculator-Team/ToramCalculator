@@ -22,7 +22,7 @@ import { store } from "~/store";
 import { createStatistic } from "@db/repositories/statistic";
 import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
-import { NodeEditor } from "~/components/features/nodeEditor";
+import { NodeEditor } from "~/components/features/blocklyEditor/nodeEditor";
 import { pick } from "lodash-es";
 import { arrayDiff } from "./utils";
 import { CardSharedSection } from "./utils";

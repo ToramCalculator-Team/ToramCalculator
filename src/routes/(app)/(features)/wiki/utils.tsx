@@ -5,7 +5,7 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
-import { NodeEditor } from "~/components/features/nodeEditor";
+import { NodeEditor } from "~/components/features/blocklyEditor/nodeEditor";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 简化后的表单字段
