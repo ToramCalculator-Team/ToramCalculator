@@ -95,7 +95,7 @@ function StatsRenderer(props: { data: any; path?: string[] }) {
             (value.modifiers?.dynamic?.percentage?.length > 0);
           
           return (
-            <div class="flex w-full flex-col gap-1 rounded-sm bg-transition-color-8 p-1">
+            <div class="flex w-full flex-col gap-1 rounded-sm bg-transition-color-8 p-1 border-b-accent-color border-1">
               <div class="w-full p-1 text-sm font-bold text-main-text-color">
                 {key}：
               </div>
@@ -192,7 +192,7 @@ function StatsRenderer(props: { data: any; path?: string[] }) {
       } else {
         // 渲染简单值
         return (
-          <div class="flex w-full flex-col gap-1 rounded-sm bg-transition-color-8 p-1">
+          <div class="flex w-full flex-col gap-1 rounded-sm bg-transition-color-8 p-1 border-b-1 border-dividing-color">
             <div class="w-full p-1 text-sm font-bold text-main-text-color">
               {key}：
             </div>
@@ -359,6 +359,7 @@ export default function MemberStatusPanel(props: MemberStatusPanelProps) {
           <div class="bg-area-color p-2">
             <h4 class="text-md text-main-text-color mb-3 font-semibold">属性信息</h4>
             <div class="space-y-2">
+              
               {stats().map((stat) => (
                 <div class="border-dividing-color flex items-center justify-between border-b py-1 last:border-b-0">
                   <span class="text-dividing-color text-sm">{stat.name}:</span>
@@ -393,9 +394,7 @@ export default function MemberStatusPanel(props: MemberStatusPanelProps) {
               <Show when={props.selectedMember?.state?.context?.stats}>
                 <div class="mt-3">
                   <h5 class="text-sm text-main-text-color mb-2 font-semibold">属性详情</h5>
-                  <div class="max-h-60 overflow-y-auto">
-                    <StatsRenderer data={props.selectedMember?.state?.context?.stats} />
-                  </div>
+                  <StatsRenderer data={props.selectedMember?.state?.context?.stats} />
                 </div>
               </Show>
             </div>
