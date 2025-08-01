@@ -31,8 +31,10 @@ import type { MainHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
 import { createActor } from "xstate";
 import { PlayerAttrKeys, PlayerAttrDic, PlayerAttrType } from "./PlayerData";
-import { ReactiveDataManager, ModifierSource, AttributeExpression } from "../ReactiveSystem";
+import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
 import { PlayerAttrExpressionsMap } from "./PlayerData";
+import { PlayerFSMEventBridge } from "../../fsmBridge/PlayerBridge";
+import type { EventQueue } from "../../EventQueue";
 
 // ============================== 角色属性系统类型定义 ==============================
 
@@ -72,7 +74,7 @@ export class Player extends Member {
   // ==================== 玩家属性系统 ====================
 
   /** 玩家响应式数据管理器 */
-  private reactiveDataManager: ReactiveDataManager<PlayerAttrType>;
+  private reactiveDataManager: ReactiveSystem<PlayerAttrType>;
 
   /** 技能冷却状态Map */
   private skillCooldowns: Map<string, { cooldown: number; currentCooldown: number }> = new Map();
@@ -83,10 +85,12 @@ export class Player extends Member {
    * 构造函数
    *
    * @param memberData 成员数据
+   * @param externalEventQueue 外部事件队列（可选）
    * @param initialState 初始状态
    */
   constructor(
     memberData: MemberWithRelations,
+    externalEventQueue?: EventQueue,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -98,17 +102,21 @@ export class Player extends Member {
       throw new Error("Player类只能用于玩家类型的成员");
     }
 
-    // 调用父类构造函数
-    super(memberData, initialState);
+    // 创建Player特有的FSM事件桥
+    const playerFSMBridge = new PlayerFSMEventBridge();
+
+    // 调用父类构造函数，注入FSM事件桥
+    super(memberData, playerFSMBridge, externalEventQueue, initialState);
 
     // 设置角色数据
     this.character = memberData.player.character;
     if (!this.character) {
       throw new Error("玩家角色数据缺失");
     }
-    
-    // 初始化响应式数据管理器（传入表达式，单一事实来源）
-    this.reactiveDataManager = new ReactiveDataManager<PlayerAttrType>(
+
+    // 初始化响应式数据管理器（使用TypedArray优化实现）
+    console.log("🚀 使用TypedArray优化的响应式系统");
+    this.reactiveDataManager = new ReactiveSystem<PlayerAttrType>(
       PlayerAttrKeys,
       this.convertExpressionsToManagerFormat(),
     );
@@ -143,15 +151,14 @@ export class Player extends Member {
       maxHp: this.character.vit * 10 + 100,
       maxMp: this.character.int * 5 + 50,
       mainWeaponBaseAtk: this.character.weapon.baseAbi,
-      mainWeaponAtk: this.character.weapon.baseAbi,
+      weaponAtk: this.character.weapon.baseAbi,
       aggroRate: 0,
-      weaponRange: 0,
+      mainWeaponRange: 0,
       hpRegen: 0,
       mpRegen: 0,
       mpAtkRegen: 0,
       pAtk: 0,
       mAtk: 0,
-      weaponAtk: 0,
       unsheatheAtk: 0,
       pPierce: 0,
       mPierce: 0,
@@ -175,8 +182,8 @@ export class Player extends Member {
       pStab: 0,
       mStab: 0,
       accuracy: 0,
-      pChase: 0,
-      mChase: 0,
+      pPursuit: 0,
+      mPursuit: 0,
       anticipate: 0,
       guardBreak: 0,
       reflect: 0,
@@ -247,11 +254,21 @@ export class Player extends Member {
       itemCooldown: 0,
       recoilDmg: 0,
       gemPowderDrop: 0,
-      weaponMAtkConv: 0,
-      weaponPAtkConv: 0,
-      subWeaponBaseAtk: 0,
-      subWeaponAtk: 0,
-      bodyArmorBaseDef: 0,
+      weaponMAtk: 0,
+      weaponPAtk: 0,
+      mainWeaponType: 0,
+      mainWeaponRef: 0,
+      mainWeaponStability: 0,
+      subWeaponRange: 0,
+      subWeaponType: 0,
+      subWeaponRef: 0,
+      subWeaponStability: 0,
+      armorType: 0,
+      armorBaseAbi: 0,
+      armorRef: 0,
+      optionBaseAbi: 0,
+      optionRef: 0,
+      specialBaseAbi: 0
     });
     // 解析角色配置中的修饰器
     this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
@@ -342,24 +359,24 @@ export class Player extends Member {
   }
 
   /**
-   * 获取玩家属性值
+   * 获取属性值
    *
    * @param attrName 属性名称
    * @returns 属性值
    */
-  getPlayerAttr(attrName: PlayerAttrType): number {
+  getAttributeValue(attrName: PlayerAttrType): number {
     return this.reactiveDataManager.getValue(attrName);
   }
 
   /**
-   * 设置玩家属性值
+   * 设置属性值
    *
    * @param attrName 属性名称
    * @param targetType 目标类型
    * @param value 属性值
    * @param origin 来源
    */
-  setPlayerAttr(attrName: PlayerAttrType, targetType: TargetType, value: number, origin: string): void {
+  setAttributeValue(attrName: PlayerAttrType, targetType: TargetType, value: number, origin: string): void {
     const source: ModifierSource = {
       id: origin,
       name: origin,
@@ -368,7 +385,10 @@ export class Player extends Member {
 
     switch (targetType) {
       case TargetType.baseValue:
-        this.reactiveDataManager.setBaseValue(attrName, value);
+        this.reactiveDataManager.setBaseValue(attrName, {
+          value,
+          source,
+        });
         break;
       case TargetType.staticConstant:
         this.reactiveDataManager.addModifier(attrName, "staticFixed", value, source);
@@ -387,18 +407,36 @@ export class Player extends Member {
   }
 
   /**
-   * 获取玩家属性快照
+   * 获取所有属性值
    *
-   * @returns 属性快照
+   * @returns 属性值快照
    */
-  getPlayerAttrSnapshot(): Readonly<Record<string, number>> {
+  getAllAttributeValues(): Readonly<Record<string, number>> {
     return this.reactiveDataManager.getValues(PlayerAttrKeys);
+  }
+
+  /**
+   * 添加属性修饰符
+   *
+   * @param attrName 属性名称
+   * @param type 修饰符类型
+   * @param value 修饰符值
+   * @param source 来源信息
+   */
+  addAttributeModifier(
+    attrName: PlayerAttrType,
+    type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
+    value: number,
+    source: ModifierSource,
+  ): void {
+    this.reactiveDataManager.addModifier(attrName, type, value, source);
+    console.log(`🎮 [${this.getName()}] 添加修饰符: ${attrName} ${type} +${value} (来源: ${source.name})`);
   }
 
   /**
    * 获取响应式数据管理器（供状态机使用）
    */
-  getReactiveDataManager(): ReactiveDataManager<PlayerAttrType> {
+  getReactiveDataManager(): ReactiveSystem<PlayerAttrType> {
     return this.reactiveDataManager;
   }
 
@@ -496,8 +534,8 @@ export class Player extends Member {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setPlayerAttr("maxHp", TargetType.baseValue, this.getPlayerAttr("maxHp"), "revive");
-            this.setPlayerAttr("maxMp", TargetType.baseValue, this.getPlayerAttr("maxMp"), "revive");
+            this.setAttributeValue("maxHp", TargetType.baseValue, this.getAttributeValue("maxHp"), "revive");
+            this.setAttributeValue("maxMp", TargetType.baseValue, this.getAttributeValue("maxMp"), "revive");
             return this.reactiveDataManager.getValues(PlayerAttrKeys);
           },
           isAlive: true,
@@ -544,10 +582,10 @@ export class Player extends Member {
         },
 
         // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) => this.getPlayerAttr("maxHp") <= 0,
+        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("maxHp") <= 0,
 
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) => this.getPlayerAttr("maxHp") > 0,
+        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("maxHp") > 0,
       },
     }).createMachine({
       id: machineId,

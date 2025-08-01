@@ -25,6 +25,8 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import { isMobMember } from "../../Member";
 import type { MobWithRelations } from "@db/repositories/mob";
 import { createActor } from "xstate";
+import { MobFSMEventBridge } from "../../fsmBridge/MobBridge";
+import type { EventQueue } from "../../EventQueue";
 
 // ============================== 怪物属性系统类型定义 ==============================
 
@@ -113,10 +115,12 @@ export class Mob extends Member {
    * 构造函数
    *
    * @param memberData 成员数据
+   * @param externalEventQueue 外部事件队列
    * @param initialState 初始状态
    */
   constructor(
     memberData: MemberWithRelations,
+    externalEventQueue?: EventQueue,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -128,8 +132,11 @@ export class Mob extends Member {
       throw new Error("Mob类只能用于怪物类型的成员");
     }
 
-    // 调用父类构造函数
-    super(memberData, initialState);
+    // 创建Mob特有的FSM事件桥
+    const mobFSMBridge = new MobFSMEventBridge();
+
+    // 调用父类构造函数，注入FSM事件桥
+    super(memberData, mobFSMBridge, externalEventQueue, initialState);
 
     // 设置怪物数据
     this.mobData = memberData.mob;

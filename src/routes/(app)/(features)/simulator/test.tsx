@@ -32,7 +32,7 @@ export default function SimulatorTestPage() {
       // 基础属性
       Object.keys(PlayerAttrDic).forEach((attr) => {
         try {
-          const value = playerInstance.getPlayerAttr(attr as PlayerAttrType);
+          const value = playerInstance.getAttributeValue(attr as PlayerAttrType);
           attrValues[attr] = value;
         } catch (err) {
           console.warn(`⚠️ 计算 ${PlayerAttrDic[attr as PlayerAttrType]} 时出错:`, err);
@@ -44,19 +44,19 @@ export default function SimulatorTestPage() {
 
       // 4. 测试依赖更新
       console.log("🔄 测试依赖更新...");
-      console.log("原始力量:", playerInstance.getPlayerAttr("str"));
-      console.log("原始最大HP:", playerInstance.getPlayerAttr("maxHp"));
+      console.log("原始力量:", playerInstance.getAttributeValue("str"));
+      console.log("原始最大HP:", playerInstance.getAttributeValue("maxHp"));
 
       // 修改力量，观察最大HP是否自动更新
-      playerInstance.setPlayerAttr("str", "baseValue" as any, 200, "test");
+      playerInstance.setAttributeValue("str", "baseValue" as any, 200, "test");
       console.log("修改力量为200后:");
-      console.log("新力量:", playerInstance.getPlayerAttr("str"));
-      console.log("新最大HP:", playerInstance.getPlayerAttr("maxHp"));
+      console.log("新力量:", playerInstance.getAttributeValue("str"));
+      console.log("新最大HP:", playerInstance.getAttributeValue("maxHp"));
 
       // 5. 测试批量更新
       console.log("📦 测试批量更新...");
-      playerInstance.setPlayerAttr("agi", "baseValue" as any, 150, "test");
-      playerInstance.setPlayerAttr("dex", "baseValue" as any, 180, "test");
+      playerInstance.setAttributeValue("agi", "baseValue" as any, 150, "test");
+      playerInstance.setAttributeValue("dex", "baseValue" as any, 180, "test");
       console.log("批量修改后属性值已更新");
     } catch (err) {
       console.error("❌ 测试过程中出错:", err);

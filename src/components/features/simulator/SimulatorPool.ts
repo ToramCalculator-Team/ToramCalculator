@@ -498,7 +498,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
 
     // 🔥 关键：处理引擎状态变化事件
     if (event.data && event.data.type === "engine_state_update") {
-      console.log(`Worker ${worker.id} 引擎状态变化:`, event.data.event);
+      // console.log(`Worker ${worker.id} 引擎状态变化:`, event.data.event);
       
       // 转发给池的事件监听器
       this.emit("engine_state_update", {

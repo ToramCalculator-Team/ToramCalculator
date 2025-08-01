@@ -26,6 +26,8 @@ import type { CharacterWithRelations } from "@db/repositories/character";
 import type { MercenaryWithRelations } from "@db/repositories/mercenary";
 import type { MobWithRelations } from "@db/repositories/mob";
 import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
+import type { FSMEventBridge, FSMEventInput, FSMTransformContext } from "./fsmBridge/BridgeInterface";
+import type { EventQueue } from "./EventQueue";
 
 // ============================== 类型定义 ==============================
 
@@ -270,6 +272,17 @@ export abstract class Member {
   /** 队伍ID */
   protected teamId: string;
 
+  // ==================== FSM事件桥集成 ====================
+
+  /** FSM事件桥接器 */
+  protected fsmBridge: FSMEventBridge;
+
+  /** 外部事件队列引用 */
+  protected externalEventQueue: EventQueue | null = null;
+
+  /** 当前帧号 */
+  protected currentFrame: number = 0;
+
   // ==================== 响应式系统集成 ====================
 
   // 响应式系统已迁移到 ReactiveSystem.ts
@@ -280,10 +293,14 @@ export abstract class Member {
    * 构造函数
    *
    * @param memberData 成员基础数据
+   * @param fsmBridge FSM事件桥接器（依赖注入）
+   * @param externalEventQueue 外部事件队列
    * @param initialState 初始状态配置
    */
   constructor(
     protected readonly memberData: MemberWithRelations,
+    fsmBridge: FSMEventBridge,
+    externalEventQueue?: EventQueue,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -294,12 +311,16 @@ export abstract class Member {
     this.type = memberData.type;
     this.teamId = memberData.teamId;
 
+    // 初始化FSM事件桥
+    this.fsmBridge = fsmBridge;
+    this.externalEventQueue = externalEventQueue || null;
+
     // 创建状态机实例
     this.actor = createActor(this.createStateMachine(initialState), {
       input: initialState,
     });
 
-    console.log(`Member: 创建成员: ${memberData.name} (${this.type})`);
+    console.log(`Member: 创建成员: ${memberData.name} (${this.type})，使用事件桥: ${fsmBridge.getName()}`);
   }
 
   // ==================== 抽象方法 ====================
@@ -618,6 +639,69 @@ export abstract class Member {
 
     this.addEvent(event);
   }
+
+  // ==================== FSM事件桥接方法 ====================
+
+  /**
+   * 设置当前帧号
+   * 用于FSM事件转换时的上下文
+   */
+  setCurrentFrame(frame: number): void {
+    this.currentFrame = frame;
+  }
+
+  /**
+   * 设置外部事件队列
+   * 用于将FSM事件转换后的EventQueue事件插入外部队列
+   */
+  setExternalEventQueue(eventQueue: EventQueue): void {
+    this.externalEventQueue = eventQueue;
+  }
+
+  /**
+   * 处理FSM事件
+   * 将XState的FSM事件转换为EventQueue事件
+   * 
+   * @param fsmEvent FSM事件输入
+   * @returns 是否成功处理
+   */
+  protected processFSMEvent(fsmEvent: FSMEventInput): boolean {
+    try {
+      // 构建转换上下文
+      const context: FSMTransformContext = {
+        currentFrame: this.currentFrame,
+        memberId: this.id,
+        memberType: this.type,
+        currentState: this.getCurrentState().value as string,
+        targetState: undefined // 可以根据需要扩展
+      };
+
+      // 使用FSM事件桥转换事件
+      const queueEvents = this.fsmBridge.transformFSMEvent(fsmEvent, context);
+      
+      if (!queueEvents) {
+        return true; // 事件被忽略，但不是错误
+      }
+
+      // 处理转换结果
+      const events = Array.isArray(queueEvents) ? queueEvents : [queueEvents];
+      
+      // 如果有外部事件队列，插入到外部队列
+      if (this.externalEventQueue) {
+        return events.every(event => this.externalEventQueue!.insert(event));
+      }
+
+      // 否则记录日志（未来可能扩展为其他处理方式）
+      console.log(`Member ${this.id}: FSM事件已转换，但未设置外部事件队列，生成了 ${events.length} 个事件`);
+      return true;
+
+    } catch (error) {
+      console.error(`Member ${this.id}: FSM事件处理失败:`, error);
+      return false;
+    }
+  }
+
+
 
   // ==================== 受保护的方法 ====================
 

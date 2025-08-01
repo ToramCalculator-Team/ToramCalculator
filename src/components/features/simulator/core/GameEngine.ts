@@ -20,12 +20,10 @@ import { MemberRegistry } from "./MemberRegistry";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
-import { FSMEventBridge } from "./FSMEventBridge";
 import { EventExecutor } from "./EventExecutor";
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
-import type { FSMEvent } from "./FSMEventBridge";
 import { MemberContext, MemberSerializeData } from "./Member";
 import { Snapshot } from "xstate";
 // 容器不直接依赖具体成员类型
@@ -153,8 +151,7 @@ export class GameEngine {
   /** 帧循环 - 推进时间和调度事件 */
   private frameLoop: FrameLoop;
 
-  /** FSM事件桥接器 - 连接XState和EventQueue */
-  private fsmEventBridge: FSMEventBridge;
+
 
   /** 事件执行器 - 处理复杂效果计算 */
   private eventExecutor: EventExecutor;
@@ -231,8 +228,7 @@ export class GameEngine {
       }
     });
 
-    // 初始化FSM事件桥接器
-    this.fsmEventBridge = new FSMEventBridge(this.eventQueue);
+
 
     // 初始化事件执行器
     this.eventExecutor = new EventExecutor(this.config.frameLoopConfig.enablePerformanceMonitoring);
@@ -483,24 +479,7 @@ export class GameEngine {
     // console.log(`GameEngine: 注册事件处理器: ${eventType}`);
   }
 
-  /**
-   * 处理FSM事件
-   * 
-   * @param fsmEvent FSM事件
-   * @returns 处理是否成功
-   */
-  processFSMEvent(fsmEvent: FSMEvent): boolean {
-    return this.fsmEventBridge.processFSMEvent(fsmEvent, this.frameLoop.getFrameNumber());
-  }
 
-  /**
-   * 获取FSM事件桥接器
-   * 
-   * @returns FSM事件桥接器实例
-   */
-  getFSMEventBridge(): FSMEventBridge {
-    return this.fsmEventBridge;
-  }
 
   /**
    * 获取所有成员（委托给 MemberRegistry）
@@ -724,8 +703,7 @@ export class GameEngine {
     // 清理事件队列
     this.eventQueue.clear();
 
-    // 重置FSM事件桥接器统计
-    this.fsmEventBridge.resetStats();
+
 
     // 重置统计
     this.stats = {

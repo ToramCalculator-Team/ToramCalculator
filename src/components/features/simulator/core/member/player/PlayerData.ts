@@ -422,7 +422,6 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   maxHp: "最大HP",
   maxMp: "最大MP",
   aggroRate: "仇恨值倍率",
-  weaponRange: "武器射程",
   hpRegen: "HP自然回复",
   mpRegen: "MP自然回复",
   mpAtkRegen: "MP攻击回复",
@@ -524,18 +523,29 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   itemCooldown: "道具冷却",
   recoilDmg: "反作用伤害",
   gemPowderDrop: "晶石粉末掉落",
-  weaponMAtkConv: "主武器魔法攻击转换率",
-  weaponPAtkConv: "主武器物理攻击转换率",
-  mainWeaponBaseAtk: "主武器基础值",
-  mainWeaponAtk: "主武器攻击",
-  subWeaponBaseAtk: "副武器基础值",
-  subWeaponAtk: "副武器攻击",
-  bodyArmorBaseDef: "防具基础值",
+  mainWeaponRange: "",
+  mainWeaponBaseAtk: "",
+  mainWeaponType: "",
+  mainWeaponRef: "",
+  mainWeaponStability: "",
+  subWeaponRange: "",
+  subWeaponType: "",
+  subWeaponRef: "",
+  subWeaponStability: "",
+  weaponPAtk: "",
+  weaponMAtk: "",
+  armorType: "",
+  armorBaseAbi: "",
+  armorRef: "",
+  optionBaseAbi: "",
+  optionRef: "",
+  specialBaseAbi: ""
 };
 // 字符串键列表
 export const PlayerAttrKeys = Object.keys(PlayerAttrDic) as PlayerAttrType[];
 // 与原属数据层的映射关系
 export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: string; isBase?: boolean }>([
+  // 基础属性
   ["lv", { expression: "lv", isBase: true }],
   ["str", { expression: "str", isBase: true }],
   ["int", { expression: "int", isBase: true }],
@@ -546,6 +556,32 @@ export const PlayerAttrExpressionsMap = new Map<PlayerAttrType, { expression: st
   ["tec", { expression: "personalityType === 'Tec' ? tec : 0", isBase: true }],
   ["men", { expression: "personalityType === 'Men' ? men : 0", isBase: true }],
   ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
+  
+  // 生命值和魔法值 
+  ["maxHp", { expression: "floor(93 + lv * (127 / 17 + vit / 3))" }],
+  ["maxMp", { expression: "floor(99 + lv + int / 10 + tec)" }],
+  
+  // 武器攻击力 (简化版本，暂时只使用主武器)
+  ["weaponAtk", { expression: "mainWeaponBaseAtk" }],
+  
+  // 物理攻击力 (根据old.worker.ts的计算逻辑)
+  ["pAtk", { expression: "lv + weaponAtk * 1 + str * 2 + int * 0 + agi * 0 + dex * 2" }],
+  
+  // 魔法攻击力
+  ["mAtk", { expression: "lv + weaponAtk * 0 + str * 0 + int * 3 + agi * 0 + dex * 0" }],
+  
+  // 物理暴击率和暴击伤害
+  ["pCritRate", { expression: "25 + cri / 5" }],
+  ["pCritDmg", { expression: "150 + floor(max(str / 5, (str + agi) / 10))" }],
+  
+  // 攻击速度 (简化版本)
+  ["aspd", { expression: "100 + lv + str * 0.2 + int * 0 + agi * 4.2 + dex * 0" }],
+  
+  // 施法速度
+  ["cspd", { expression: "dex * 2.94 + agi * 1.16" }],
+  
+  // 武器稳定性
+  ["pStab", { expression: "mainWeaponStability + floor(str * 0.025 + dex * 0.075)" }],
 ]);
 
 // 角色属性嵌套模型，核心结构

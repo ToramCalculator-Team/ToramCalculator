@@ -82,7 +82,7 @@ export class MemberDamageHandler implements EventHandler {
         data: {
           ...payload,
           actualDamage: finalDamage,
-          targetCurrentHp: target.getStats?.()?.hp || 0
+          targetCurrentHp: target.getStats?.()?.currentHp || 0
         }
       };
     } catch (error) {

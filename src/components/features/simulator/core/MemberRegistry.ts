@@ -81,10 +81,10 @@ export class MemberRegistry {
       // 根据成员类型创建相应的实例
       switch (memberData.type) {
         case "Player":
-          member = new Player(memberData, initialState);
+          member = new Player(memberData, undefined, initialState);
           break;
         case "Mob":
-          member = new Mob(memberData, initialState);
+          member = new Mob(memberData, undefined, initialState);
           break;
         // case "Mercenary":
         //   member = new Mercenary(memberData, initialState);
