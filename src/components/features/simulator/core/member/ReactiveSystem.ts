@@ -758,4 +758,133 @@ export class ReactiveSystem<T extends string> {
     
     return result;
   }
+
+  /**
+   * 输出响应式系统的依赖关系图
+   * 用于调试和理解属性之间的依赖关系
+   * 
+   * @param memberName 成员名称
+   * @param memberType 成员类型
+   */
+  outputDependencyGraph(memberName: string, memberType: string): void {
+    console.log(`\n📊 === ${memberType} 响应式系统依赖关系图 ===`);
+    console.log(`🏷️  成员: ${memberName} (${memberType})`);
+    console.log(`📦 属性总数: ${this.indexToKey.length}`);
+    
+    // 分类属性
+    const baseAttrs: string[] = [];
+    const computedAttrs: string[] = [];
+    const dependencyMap = new Map<string, string[]>();
+    
+    for (let i = 0; i < this.indexToKey.length; i++) {
+      const attrKey = this.indexToKey[i];
+      const isBase = BitFlags.has(this.flags, i, AttributeFlags.IS_BASE);
+      
+      if (isBase) {
+        baseAttrs.push(attrKey);
+      } else {
+        computedAttrs.push(attrKey);
+        // 获取该属性的依赖关系
+        const dependencies = Array.from(this.dependencyGraph.getDependencies(i));
+        const depNames = dependencies.map(depIndex => this.indexToKey[depIndex]);
+        dependencyMap.set(attrKey, depNames);
+      }
+    }
+    
+    // 获取当前所有属性值
+    const currentValues = this.getValues(this.indexToKey as T[]);
+    
+    // 输出基础属性
+    console.log(`\n🔹 基础属性 (${baseAttrs.length}):`);
+    baseAttrs.sort().forEach(attr => {
+      const value = currentValues[attr as T];
+      console.log(`  📌 ${attr}: ${value}`);
+    });
+    
+    // 输出计算属性及其依赖
+    console.log(`\n🔸 计算属性 (${computedAttrs.length}):`);
+    computedAttrs.sort().forEach(attr => {
+      const value = currentValues[attr as T];
+      const deps = dependencyMap.get(attr) || [];
+      
+      console.log(`  🧮 ${attr}: ${value}`);
+      if (deps.length > 0) {
+        console.log(`     🔗 依赖: ${deps.join(', ')}`);
+      }
+      console.log('');
+    });
+    
+    // 输出依赖关系统计
+    const totalDeps = Array.from(dependencyMap.values()).reduce((sum, deps) => sum + deps.length, 0);
+    const avgComplexity = computedAttrs.length > 0 ? (totalDeps / computedAttrs.length) : 0;
+    
+    console.log(`📈 依赖关系统计:`);
+    console.log(`   • 基础属性: ${baseAttrs.length}`);
+    console.log(`   • 计算属性: ${computedAttrs.length}`);
+    console.log(`   • 依赖关系: ${totalDeps}`);
+    console.log(`   • 复杂度: ${avgComplexity.toFixed(2)} (平均每个计算属性的依赖数)`);
+    
+    // 如果有循环依赖，输出警告
+    const hasCycles = this.detectCycles();
+    if (hasCycles.length > 0) {
+      console.log(`\n⚠️  检测到循环依赖:`);
+      hasCycles.forEach((cycle, index) => {
+        const cycleNames = cycle.map(idx => this.indexToKey[idx]);
+        console.log(`   ${index + 1}. ${cycleNames.join(' → ')} → ${cycleNames[0]}`);
+      });
+    }
+    
+    console.log(`\n🎯 === 依赖关系图输出完成 ===\n`);
+  }
+
+  /**
+   * 检测循环依赖
+   * 
+   * @returns 循环依赖的数组，每个循环依赖是一个属性索引数组
+   */
+  private detectCycles(): number[][] {
+    const cycles: number[][] = [];
+    const visited = new Set<number>();
+    const recursionStack = new Set<number>();
+    const path: number[] = [];
+
+    const dfs = (nodeIndex: number): boolean => {
+      if (recursionStack.has(nodeIndex)) {
+        // 找到循环，提取循环路径
+        const cycleStart = path.indexOf(nodeIndex);
+        if (cycleStart !== -1) {
+          cycles.push(path.slice(cycleStart));
+        }
+        return true;
+      }
+
+      if (visited.has(nodeIndex)) {
+        return false;
+      }
+
+      visited.add(nodeIndex);
+      recursionStack.add(nodeIndex);
+      path.push(nodeIndex);
+
+      // 遍历所有依赖
+      const dependencies = this.dependencyGraph.getDependencies(nodeIndex);
+      for (const dep of dependencies) {
+        if (dfs(dep)) {
+          return true;
+        }
+      }
+
+      recursionStack.delete(nodeIndex);
+      path.pop();
+      return false;
+    };
+
+    for (let i = 0; i < this.indexToKey.length; i++) {
+      if (!visited.has(i)) {
+        dfs(i);
+      }
+    }
+
+    return cycles;
+  }
 }

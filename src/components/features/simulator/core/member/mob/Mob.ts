@@ -1,81 +1,50 @@
 /**
  * 怪物成员类
  *
- * 继承自Member基类，实现怪物特有的功能：
- * 1. 基于怪物属性的详细计算
- * 2. AI行为系统集成
- * 3. 怪物特有的状态管理
- * 4. 基于MobMachine.ts的状态机逻辑
+ * 继承自Member基类，实现怪物特有的功能
  */
 
 import {
-  AttrData,
-  AttributeInfluence,
   Member,
-  ModifiersData,
   TargetType,
-  ValueType,
   type MemberBaseStats,
   type MemberEvent,
   type MemberContext,
   MemberStateMachine,
+  MemberEventType,
+  MemberActor,
 } from "../../Member";
 import { setup, assign } from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
 import { isMobMember } from "../../Member";
 import type { MobWithRelations } from "@db/repositories/mob";
+import { ComboWithRelations } from "@db/repositories/combo";
 import { createActor } from "xstate";
+import { MobAttrKeys, MobAttrDic, MobAttrType, MobAttrExpressionsMap } from "./MobData";
+import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
 import { MobFSMEventBridge } from "../../fsmBridge/MobBridge";
 import type { EventQueue } from "../../EventQueue";
 
-// ============================== 怪物属性系统类型定义 ==============================
+// ============================== 角色属性系统类型定义 ==============================
 
 /**
- * 怪物属性类型
+ * Mob特有的事件类型
+ * 扩展MemberEventType，包含Mob特有的状态机事件
  */
-enum MobAttrEnum {
-  // 基础属性
-  LV, // 等级
-  MAX_HP, // 最大HP
-  HP, // 当前HP
-  // 攻击属性
-  PHYSICAL_ATK, // 物理攻击
-  MAGICAL_ATK, // 魔法攻击
-  CRITICAL_RATE, // 暴击率
-  CRITICAL_DAMAGE, // 暴击伤害
-  STABILITY, // 稳定率
-  ACCURACY, // 命中
-  // 防御属性
-  PHYSICAL_DEF, // 物理防御
-  MAGICAL_DEF, // 魔法防御
-  PHYSICAL_RESISTANCE, // 物理抗性
-  MAGICAL_RESISTANCE, // 魔法抗性
-  NEUTRAL_RESISTANCE, // 无属性抗性
-  LIGHT_RESISTANCE, // 光属性抗性
-  DARK_RESISTANCE, // 暗属性抗性
-  WATER_RESISTANCE, // 水属性抗性
-  FIRE_RESISTANCE, // 火属性抗性
-  EARTH_RESISTANCE, // 地属性抗性
-  WIND_RESISTANCE, // 风属性抗性
-  // 生存能力
-  DODGE, // 回避
-  AILMENT_RESISTANCE, // 异常抗性
-  BASE_GUARD_POWER, // 基础格挡力
-  GUARD_POWER, // 格挡力
-  BASE_GUARD_RECHARGE, // 基础格挡回复
-  GUARD_RECHARGE, // 格挡回复
-  EVASION_RECHARGE, // 闪躲回复
-  // 速度属性
-  ASPD, // 攻击速度
-  CSPD, // 咏唱速度
-  MSPD, // 行动速度
-  // 其他属性
-  RADIUS, // 半径
-  CAPTUREABLE, // 是否可捕获
-  EXPERIENCE, // 经验值
-  PARTS_EXPERIENCE, // 部位经验值
-}
-type MobAttrType = keyof typeof MobAttrEnum;
+type MobEventType =
+  | MemberEventType
+  | { type: "cast_end"; data: { skillId: string } } // 前摇结束
+  | { type: "controlled"; data: { skillId: string } } // 受到控制
+  | { type: "move_command"; data: { position: { x: number; y: number } } } // 移动指令
+  | { type: "charge_end"; data: { skillId: string } } // 蓄力结束
+  | { type: "hp_zero"; data: { skillId: string } } // HP小于等于0
+  | { type: "stop_move"; data: { skillId: string } } // 停止移动指令
+  | { type: "control_end"; data: { skillId: string } } // 控制时间结束
+  | { type: "revive_ready"; data: { skillId: string } } // 复活倒计时清零
+  | { type: "skill_press"; data: { skillId: string } } // 按下技能
+  | { type: "check_availability"; data: { skillId: string } } // 判断可用性
+  | { type: "skill_animation_end"; data: { skillId: string } } // 技能动作结束
+  | { type: "update"; timestamp: number }; // 更新事件（带时间戳）
 
 // ============================== Mob类 ==============================
 
@@ -83,31 +52,16 @@ type MobAttrType = keyof typeof MobAttrEnum;
  * 怪物成员类
  * 实现怪物特有的属性和行为
  */
-export class Mob extends Member {
+export class Mob extends Member<MobAttrType> {
   // ==================== 怪物特有属性 ====================
 
-  /** 怪物数据（包含所有属性、技能、掉落等信息） */
-  private mobData: MobWithRelations;
+  /** 怪物角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
+  private mob: MobWithRelations;
 
   // ==================== 怪物属性系统 ====================
 
-  /** 怪物属性Map */
-  private mobAttrMap: Map<MobAttrEnum, AttrData> = new Map();
-
-  /** AI行为状态 */
-  private aiState: {
-    currentTarget: string | null;
-    lastActionTime: number;
-    actionCooldown: number;
-    patrolPoints: Array<{ x: number; y: number }>;
-    currentPatrolIndex: number;
-  } = {
-    currentTarget: null,
-    lastActionTime: 0,
-    actionCooldown: 1000, // 1秒冷却
-    patrolPoints: [],
-    currentPatrolIndex: 0,
-  };
+  /** 技能冷却状态Map */
+  private skillCooldowns: Map<string, { cooldown: number; currentCooldown: number }> = new Map();
 
   // ==================== 构造函数 ====================
 
@@ -115,7 +69,7 @@ export class Mob extends Member {
    * 构造函数
    *
    * @param memberData 成员数据
-   * @param externalEventQueue 外部事件队列
+   * @param externalEventQueue 外部事件队列（可选）
    * @param initialState 初始状态
    */
   constructor(
@@ -135,137 +89,258 @@ export class Mob extends Member {
     // 创建Mob特有的FSM事件桥
     const mobFSMBridge = new MobFSMEventBridge();
 
-    // 调用父类构造函数，注入FSM事件桥
-    super(memberData, mobFSMBridge, externalEventQueue, initialState);
+    // 创建响应式配置
+    const reactiveConfig = {
+      attrKeys: MobAttrKeys,
+      attrExpressions: MobAttrExpressionsMap,
+    };
 
-    // 设置怪物数据
-    this.mobData = memberData.mob;
-    if (!this.mobData) {
-      throw new Error("怪物数据缺失");
+    // 调用父类构造函数，注入FSM事件桥
+    super(memberData, mobFSMBridge, reactiveConfig, externalEventQueue, initialState);
+
+    // 设置角色数据
+    this.mob = memberData.mob;
+    if (!this.mob) {
+      throw new Error("怪物角色数据缺失");
     }
 
-    // 初始化怪物属性Map
-    this.initializeMobAttrMap(memberData);
+    // 初始化怪物数据（响应式系统已由基类初始化）
+    this.initializeMobData();
 
-    // 重新初始化状态机（此时mobAttrMap已经准备好）
-    this.actor = createActor(this.createStateMachine(initialState));
-    this.actor.start();
+    console.log(`🎮 已创建怪物: ${memberData.name}，data:`, this);
+  }
 
-    console.log(`👹 已创建怪物: ${memberData.name}`);
+  // ==================== 私有方法 ====================
+
+  /**
+   * 初始化怪物数据
+   */
+  private initializeMobData(): void {
+    this.reactiveDataManager.setBaseValues({
+      lv: 0,
+      captureable: 0,
+      experience: 0,
+      partsExperience: 0,
+      radius: 0,
+      dodge: 0,
+      maxHp: 0,
+      currentHp: 0,
+      pAtk: 0,
+      mAtk: 0,
+      pCritRate: 0,
+      pCritDmg: 0,
+      pStab: 0,
+      accuracy: 0,
+      pDef: 0,
+      mDef: 0,
+      pRes: 0,
+      mRes: 0,
+      neutralRes: 0,
+      lightRes: 0,
+      darkRes: 0,
+      waterRes: 0,
+      fireRes: 0,
+      earthRes: 0,
+      windRes: 0,
+      ailmentRes: 0,
+      guardPower: 0,
+      guardRecharge: 0,
+      evasionRecharge: 0,
+      aspd: 0,
+      cspd: 0,
+      mspd: 0
+    });
+    // 解析怪物配置中的修饰器（暂时注释掉，直到实现相应方法）
+    // this.reactiveDataManager.parseModifiersFromMob(this.mob, "怪物配置");
+
+    console.log("✅ 怪物数据初始化完成");
+  }
+
+  /**
+   * 获取怪物属性
+   * 直接从响应式系统获取计算结果
+   */
+  getStats(): Record<MobAttrType, number> {
+    return this.reactiveDataManager.getValues(MobAttrKeys);
+  }
+
+  // ==================== 基类抽象方法实现 ====================
+  /**
+   * 获取怪物默认属性值
+   * 可以覆盖基类的通用属性默认值
+   */
+  protected getDefaultAttrValues(): Record<string, number> {
+    return {
+      // 怪物特有的默认值
+      lv: 1,
+      captureable: 0,
+      experience: 0,
+      partsExperience: 0,
+      radius: 1,
+      dodge: 10,
+      pCritRate: 5,
+      pCritDmg: 150,
+      pStab: 75,
+      accuracy: 80,
+      ailmentRes: 0,
+      guardPower: 0,
+      guardRecharge: 0,
+      evasionRecharge: 0,
+      cspd: 100,
+      // 可以覆盖基类的通用属性
+      maxHp: 1500,  // 怪物血量比基类默认值更高
+      currentHp: 1500,
+      maxMp: 50,    // 怪物通常 MP 较低
+      currentMp: 50,
+      pAtk: 120,    // 怪物攻击力
+      mAtk: 80,     // 怪物魔攻较低
+      pDef: 60,     // 怪物防御
+      mDef: 40,     // 怪物魔防较低
+      mspd: 80,     // 怪物移动速度较慢
+    };
+  }
+
+  /**
+   * 转换表达式格式以适配 ReactiveDataManager
+   * 将 MobAttrEnum 键转换为 MobAttrType 键
+   */
+  private convertExpressionsToManagerFormat(): Map<MobAttrType, AttributeExpression<MobAttrType>> {
+    const convertedExpressions = new Map<MobAttrType, AttributeExpression<MobAttrType>>();
+
+    for (const [attrName, expressionData] of MobAttrExpressionsMap) {
+      convertedExpressions.set(attrName, {
+        expression: expressionData.expression,
+        isBase: expressionData.isBase,
+      });
+    }
+
+    return convertedExpressions;
   }
 
   // ==================== 公共接口 ====================
 
   /**
-   * 获取怪物数据
+   * 获取角色数据
    */
-  getMobData(): MobWithRelations {
-    return this.mobData;
+  getMob(): MobWithRelations {
+    return this.mob;
   }
 
   /**
-   * 获取怪物属性Map中的属性值
+   * 检查技能是否可用
+   */
+  isSkillAvailable(skillId: string): boolean {
+    const cooldownInfo = this.skillCooldowns.get(skillId);
+    if (!cooldownInfo) return false;
+
+    return cooldownInfo.currentCooldown <= 0 && this.isActive();
+  }
+
+  /**
+   * 使用技能
+   *
+   * @param skillId 技能ID
+   * @param targetId 目标ID
+   */
+  useSkill(skillId: string): boolean {
+    if (!this.isSkillAvailable(skillId)) {
+      console.warn(`🎮 [${this.getName()}] 技能不可用: ${skillId}`);
+      return false;
+    }
+
+    // 设置技能冷却
+    const cooldownInfo = this.skillCooldowns.get(skillId);
+    if (cooldownInfo) {
+      cooldownInfo.currentCooldown = cooldownInfo.cooldown;
+    }
+
+    // 调用父类的useSkill方法
+    super.useSkill(skillId);
+
+    console.log(`🎮 [${this.getName()}] 使用技能: ${skillId}`);
+    return true;
+  }
+
+  /**
+   * 获取属性值
    *
    * @param attrName 属性名称
    * @returns 属性值
    */
-  getMobAttr(attrName: MobAttrEnum): number {
-    const attr = this.mobAttrMap.get(attrName);
-    if (!attr) throw new Error(`属性不存在: ${attrName}`);
-    return Member.dynamicTotalValue(attr);
+  getAttributeValue(attrName: MobAttrType): number {
+    return this.reactiveDataManager.getValue(attrName);
   }
 
   /**
-   * 设置怪物属性Map中的属性值
+   * 设置属性值
    *
    * @param attrName 属性名称
+   * @param targetType 目标类型
    * @param value 属性值
+   * @param origin 来源
    */
-  setMobAttr(attrName: MobAttrEnum, targetType: TargetType, value: number, origin: string): void {
-    const attr = this.mobAttrMap.get(attrName);
-    if (attr) {
-      switch (targetType) {
-        case TargetType.baseValue:
-          attr.baseValue = value;
-          break;
-        case TargetType.staticConstant:
-          attr.modifiers.static.fixed.push({ value, origin });
-          break;
-        case TargetType.staticPercentage:
-          attr.modifiers.static.percentage.push({ value, origin });
-          break;
-        case TargetType.dynamicConstant:
-          attr.modifiers.dynamic.fixed.push({ value, origin });
-          break;
-        case TargetType.dynamicPercentage:
-          attr.modifiers.dynamic.percentage.push({ value, origin });
-          break;
-      }
-      console.log(`👹 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
-    } else {
-      throw new Error(`属性不存在: ${attrName}`);
+  setAttributeValue(attrName: MobAttrType, targetType: TargetType, value: number, origin: string): void {
+    const source: ModifierSource = {
+      id: origin,
+      name: origin,
+      type: "system",
+    };
+
+    switch (targetType) {
+      case TargetType.baseValue:
+        this.reactiveDataManager.setBaseValue(attrName, {
+          value,
+          source,
+        });
+        break;
+      case TargetType.staticConstant:
+        this.reactiveDataManager.addModifier(attrName, "staticFixed", value, source);
+        break;
+      case TargetType.staticPercentage:
+        this.reactiveDataManager.addModifier(attrName, "staticPercentage", value, source);
+        break;
+      case TargetType.dynamicConstant:
+        this.reactiveDataManager.addModifier(attrName, "dynamicFixed", value, source);
+        break;
+      case TargetType.dynamicPercentage:
+        this.reactiveDataManager.addModifier(attrName, "dynamicPercentage", value, source);
+        break;
     }
+    console.log(`🎮 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
   }
 
   /**
-   * 获取怪物属性Map的快照
+   * 获取所有属性值
    *
-   * @returns 属性Map快照
+   * @returns 属性值快照
    */
-  getMobAttrSnapshot(): Readonly<Record<string, Readonly<AttrData>>> {
-    const snapshot: Record<string, AttrData> = {};
-
-    for (const [attrName, attr] of this.mobAttrMap.entries()) {
-      // 使用结构化克隆确保真正的深拷贝
-      snapshot[attrName] = structuredClone(attr);
-    }
-
-    // 返回只读视图，防止意外修改
-    return Object.freeze(
-      Object.fromEntries(Object.entries(snapshot).map(([key, value]) => [key, Object.freeze(value)])),
-    ) as Readonly<Record<string, Readonly<AttrData>>>;
+  getAllAttributeValues(): Readonly<Record<string, number>> {
+    return this.reactiveDataManager.getValues(MobAttrKeys);
   }
 
   /**
-   * 设置AI目标
+   * 添加属性修饰符
+   *
+   * @param attrName 属性名称
+   * @param type 修饰符类型
+   * @param value 修饰符值
+   * @param source 来源信息
    */
-  setAITarget(targetId: string | null): void {
-    this.aiState.currentTarget = targetId;
-    console.log(`👹 [${this.getName()}] AI目标设置: ${targetId || "无"}`);
+  addAttributeModifier(
+    attrName: MobAttrType,
+    type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
+    value: number,
+    source: ModifierSource,
+  ): void {
+    this.reactiveDataManager.addModifier(attrName, type, value, source);
+    console.log(`🎮 [${this.getName()}] 添加修饰符: ${attrName} ${type} +${value} (来源: ${source.name})`);
   }
 
   /**
-   * 获取AI目标
+   * 获取响应式数据管理器（供状态机使用）
    */
-  getAITarget(): string | null {
-    return this.aiState.currentTarget;
-  }
-
-  /**
-   * 设置巡逻点
-   */
-  setPatrolPoints(points: Array<{ x: number; y: number }>): void {
-    this.aiState.patrolPoints = points;
-    this.aiState.currentPatrolIndex = 0;
-    console.log(`👹 [${this.getName()}] 设置巡逻点: ${points.length}个`);
-  }
-
-  /**
-   * 执行AI行为
-   */
-  executeAIBehavior(currentTimestamp: number): void {
-    if (currentTimestamp - this.aiState.lastActionTime < this.aiState.actionCooldown) {
-      return; // 还在冷却中
-    }
-
-    // 简单的AI逻辑：如果有目标就攻击，否则巡逻
-    if (this.aiState.currentTarget) {
-      this.executeAttackBehavior();
-    } else {
-      this.executePatrolBehavior();
-    }
-
-    this.aiState.lastActionTime = currentTimestamp;
+  getReactiveDataManager(): ReactiveSystem<MobAttrType> {
+    return this.reactiveDataManager;
   }
 
   // ==================== 受保护的方法 ====================
@@ -280,36 +355,17 @@ export class Mob extends Member {
     currentMp?: number;
   }): MemberStateMachine {
     const machineId = `Mob_${this.id}`;
-    
+
     return setup({
       types: {
         context: {} as MemberContext,
-        events: {} as
-          | { type: "cast_end" } // 前摇结束
-          | { type: "controlled" } // 受到控制
-          | { type: "move_command" } // 移动指令
-          | { type: "charge_end" } // 蓄力结束
-          | { type: "hp_zero" } // HP小于等于0
-          | { type: "stop_move" } // 停止移动指令
-          | { type: "control_end" } // 控制时间结束
-          | { type: "skill_press" } // 按下技能
-          | { type: "check_availability" } // 判断可用性
-          | { type: "skill_animation_end" } // 技能动作结束
-          | { type: "spawn" }
-          | { type: "death" }
-          | { type: "damage"; data: { damage: number; damageType: string; sourceId?: string } }
-          | { type: "heal"; data: { heal: number; sourceId?: string } }
-          | { type: "skill_start"; data: { skillId: string; targetId?: string } }
-          | { type: "skill_end" }
-          | { type: "move"; data: { position: { x: number; y: number } } }
-          | { type: "status_effect"; data: { effect: string; duration: number } }
-          | { type: "update"; timestamp: number }
-          | { type: "custom"; data: Record<string, any> },
+        events: {} as MobEventType,
+        output: {} as MemberContext,
       },
       actions: {
         // 根据怪物配置初始化状态
         initializeMobState: assign({
-          stats: ({ context }) => this.mobAttrMap,
+          stats: ({ context }) => this.getStats(),
           isAlive: true,
           isActive: true,
           statusEffects: [],
@@ -322,7 +378,7 @@ export class Mob extends Member {
         // 技能相关事件
         onSkillStart: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`👹 [${context.memberData.name}] 技能开始事件`);
-          this.handleSkillStart(event as MemberEvent);
+          this.onSkillStart(event as MemberEvent);
         },
 
         onCastStart: ({ context, event }: { context: MemberContext; event: any }) => {
@@ -339,7 +395,7 @@ export class Mob extends Member {
 
         onSkillAnimationEnd: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`👹 [${context.memberData.name}] 技能动画结束事件`);
-          this.handleSkillEnd(event as MemberEvent);
+          this.onSkillEnd(event as MemberEvent);
         },
 
         onChargeStart: ({ context, event }: { context: MemberContext; event: any }) => {
@@ -358,7 +414,7 @@ export class Mob extends Member {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-        //   console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          //   console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
         },
       },
       guards: {
@@ -393,16 +449,16 @@ export class Mob extends Member {
         },
 
         // 检查怪物是否死亡
-        isDead: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(MobAttrEnum.HP)) <= 0,
+        isDead: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.currentHp || 0) <= 0,
 
         // 检查怪物是否存活
-        isAlive: ({ context }: { context: MemberContext }) => Member.dynamicTotalValue(context.stats.get(MobAttrEnum.HP)) > 0,
+        isAlive: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.currentHp || 0) > 0,
       },
     }).createMachine({
       id: machineId,
       context: {
         memberData: this.memberData,
-        stats: new Map(), // 使用空的Map作为初始值
+        stats: {} as Record<MobAttrType, number>, // 使用空的Record作为初始值
         isAlive: true,
         isActive: true,
         statusEffects: [],
@@ -569,105 +625,16 @@ export class Mob extends Member {
   }
 
   /**
-   * 计算怪物基础属性
-   * 实现抽象方法，计算怪物特有的属性
-   */
-  protected calculateBaseStats(
-    memberData: MemberWithRelations,
-    initialState: { currentHp?: number; currentMp?: number; position?: { x: number; y: number } },
-  ): MemberBaseStats {
-    if (!isMobMember(memberData)) {
-      throw new Error("成员数据不是怪物类型");
-    }
-
-    const mob = memberData.mob;
-
-    // 基于怪物数据计算基础属性
-    const maxHp = mob.maxhp;
-    const maxMp = 0; // 怪物通常没有MP
-
-    // 计算攻击力（基于怪物等级和类型）
-    const physicalAtk = mob.baseLv * 10; // 简化计算
-    const magicalAtk = mob.baseLv * 5; // 简化计算
-
-    // 计算防御力
-    const physicalDef = mob.physicalDefense;
-    const magicalDef = mob.magicalDefense;
-
-    // 计算速度（简化计算）
-    const aspd = 1000; // 基础攻击速度
-    const mspd = 1000; // 基础移动速度
-
-    return {
-      maxHp,
-      currentHp: initialState.currentHp ?? maxHp,
-      maxMp,
-      currentMp: initialState.currentMp ?? maxMp,
-      physicalAtk,
-      magicalAtk,
-      physicalDef,
-      magicalDef,
-      aspd,
-      mspd,
-      position: initialState.position || { x: 0, y: 0 },
-    };
-  }
-
-  /**
-   * 将属性Map转换为基础属性
-   * Mob的简化实现，直接通过MobAttrEnum数值映射
-   */
-  protected convertMapToStats(statsMap: Map<Number, AttrData>): MemberBaseStats {
-    const currentState = this.getCurrentState();
-    const position = currentState?.context?.position || { x: 0, y: 0 };
-
-    const baseStats: MemberBaseStats = {
-      maxHp: 1000,
-      currentHp: 1000,
-      maxMp: 0, // 怪物通常没有MP
-      currentMp: 0,
-      physicalAtk: 100,
-      magicalAtk: 100,
-      physicalDef: 50,
-      magicalDef: 50,
-      aspd: 1.0,
-      mspd: 100,
-      position,
-    };
-
-    // 直接通过MobAttrEnum数值映射
-    const maxHp = statsMap.get(1); // MAX_HP
-    const currentHp = statsMap.get(2); // HP
-    const physicalAtk = statsMap.get(3); // PHYSICAL_ATK
-    const magicalAtk = statsMap.get(4); // MAGICAL_ATK
-    const physicalDef = statsMap.get(9); // PHYSICAL_DEF
-    const magicalDef = statsMap.get(10); // MAGICAL_DEF
-    const aspd = statsMap.get(27); // ASPD
-    const mspd = statsMap.get(29); // MSPD
-
-    if (maxHp) baseStats.maxHp = Member.dynamicTotalValue(maxHp);
-    if (currentHp) baseStats.currentHp = Member.dynamicTotalValue(currentHp);
-    if (physicalAtk) baseStats.physicalAtk = Member.dynamicTotalValue(physicalAtk);
-    if (magicalAtk) baseStats.magicalAtk = Member.dynamicTotalValue(magicalAtk);
-    if (physicalDef) baseStats.physicalDef = Member.dynamicTotalValue(physicalDef);
-    if (magicalDef) baseStats.magicalDef = Member.dynamicTotalValue(magicalDef);
-    if (aspd) baseStats.aspd = Member.dynamicTotalValue(aspd);
-    if (mspd) baseStats.mspd = Member.dynamicTotalValue(mspd);
-
-    return baseStats;
-  }
-
-  /**
    * 处理怪物特定事件
    * 实现抽象方法，处理怪物特有的事件
    */
   protected handleSpecificEvent(event: MemberEvent): void {
     switch (event.type) {
       case "skill_start":
-        this.handleSkillStart(event);
+        this.onSkillStart(event);
         break;
       case "skill_end":
-        this.handleSkillEnd(event);
+        this.onSkillEnd(event);
         break;
       case "damage":
         this.handleDamage(event);
@@ -677,137 +644,12 @@ export class Mob extends Member {
         break;
       default:
         // 默认事件处理逻辑
-        console.log(`👹 [${this.getName()}] 处理特定事件: ${event.type}`);
+        console.log(`🎮 [${this.getName()}] 处理特定事件: ${event.type}`);
         break;
     }
   }
 
-  /**
-   * 更新回调
-   * 重写父类方法，添加怪物特有的更新逻辑
-   */
-  protected onUpdate(currentTimestamp: number): void {
-    // 执行AI行为
-    this.executeAIBehavior(currentTimestamp);
-
-    // 更新怪物特有状态
-    this.updateMobState(currentTimestamp);
-  }
-
   // ==================== 私有方法 ====================
-
-  /**
-   * 初始化怪物属性Map
-   *
-   * @param memberData 成员数据
-   */
-  private initializeMobAttrMap(memberData: MemberWithRelations): void {
-    if (!isMobMember(memberData)) return;
-
-    const mob = memberData.mob;
-    if (!mob) return;
-
-    // 辅助函数：获取属性值
-    const d = (attrName: MobAttrEnum): number => {
-      const attr = this.mobAttrMap.get(attrName);
-      if (!attr) throw new Error(`属性${attrName}不存在`);
-      return Member.dynamicTotalValue(attr);
-    };
-
-    // 默认修饰符数据
-    const DefaultModifiersData: ModifiersData = {
-      static: {
-        fixed: [],
-        percentage: [],
-      },
-      dynamic: {
-        fixed: [],
-        percentage: [],
-      },
-    };
-
-    // 定义基础属性（基于枚举）
-    for (const attrType of Object.values(MobAttrEnum)) {
-      if (typeof attrType === "number") {
-        this.mobAttrMap.set(attrType, {
-          type: ValueType.user,
-          name: MobAttrEnum[attrType],
-          baseValue: this.getBaseValueFromMob(attrType, mob),
-          modifiers: DefaultModifiersData,
-          influences: this.getInfluencesForAttr(attrType, d),
-        });
-      }
-    }
-
-    console.log(`👹 [${this.getName()}] 初始化怪物属性Map完成，共${this.mobAttrMap.size}个属性`);
-  }
-
-  /**
-   * 从怪物数据获取基础值
-   */
-  private getBaseValueFromMob(attrType: MobAttrEnum, mob: MobWithRelations): number {
-    switch (attrType) {
-      case MobAttrEnum.LV:
-        return mob.baseLv;
-      case MobAttrEnum.MAX_HP:
-        return mob.maxhp;
-      case MobAttrEnum.HP:
-        return mob.maxhp;
-      case MobAttrEnum.PHYSICAL_ATK:
-        return mob.baseLv * 10; // 简化计算
-      case MobAttrEnum.MAGICAL_ATK:
-        return mob.baseLv * 5; // 简化计算
-      case MobAttrEnum.PHYSICAL_DEF:
-        return mob.physicalDefense;
-      case MobAttrEnum.MAGICAL_DEF:
-        return mob.magicalDefense;
-      case MobAttrEnum.PHYSICAL_RESISTANCE:
-        return mob.physicalResistance;
-      case MobAttrEnum.MAGICAL_RESISTANCE:
-        return mob.magicalResistance;
-      case MobAttrEnum.DODGE:
-        return mob.dodge;
-      case MobAttrEnum.RADIUS:
-        return mob.radius;
-      case MobAttrEnum.CAPTUREABLE:
-        return mob.captureable ? 1 : 0;
-      case MobAttrEnum.EXPERIENCE:
-        return mob.experience;
-      case MobAttrEnum.PARTS_EXPERIENCE:
-        return mob.partsExperience;
-      default:
-        return 0;
-    }
-  }
-
-  /**
-   * 获取属性的影响关系
-   */
-  private getInfluencesForAttr(
-    attrType: MobAttrEnum,
-    d: (attrName: MobAttrEnum) => number,
-  ): AttributeInfluence[] {
-    // 这里可以根据需要定义影响关系
-    // 暂时返回空数组
-    return [];
-  }
-
-  /**
-   * 处理技能开始事件
-   */
-  private handleSkillStart(event: MemberEvent): void {
-    const skillId = event.data?.skillId;
-    if (skillId) {
-      console.log(`👹 [${this.getName()}] 技能开始: ${skillId}`);
-    }
-  }
-
-  /**
-   * 处理技能结束事件
-   */
-  private handleSkillEnd(event: MemberEvent): void {
-    console.log(`👹 [${this.getName()}] 技能结束`);
-  }
 
   /**
    * 处理伤害事件
@@ -816,7 +658,7 @@ export class Mob extends Member {
     const damage = event.data?.damage || 0;
     const damageType = event.data?.damageType || "physical";
 
-    console.log(`👹 [${this.getName()}] 受到${damageType}伤害: ${damage}`);
+    console.log(`🎮 [${this.getName()}] 受到${damageType}伤害: ${damage}`);
   }
 
   /**
@@ -825,33 +667,7 @@ export class Mob extends Member {
   private handleHeal(event: MemberEvent): void {
     const heal = event.data?.heal || 0;
 
-    console.log(`👹 [${this.getName()}] 受到治疗: ${heal}`);
-  }
-
-  /**
-   * 执行攻击行为
-   */
-  private executeAttackBehavior(): void {
-    // 简单的攻击逻辑
-    console.log(`👹 [${this.getName()}] 执行攻击行为，目标: ${this.aiState.currentTarget}`);
-    
-    // 这里可以添加更复杂的攻击逻辑
-    // 例如：选择技能、计算伤害、应用效果等
-  }
-
-  /**
-   * 执行巡逻行为
-   */
-  private executePatrolBehavior(): void {
-    if (this.aiState.patrolPoints.length === 0) {
-      return; // 没有巡逻点
-    }
-
-    const currentPoint = this.aiState.patrolPoints[this.aiState.currentPatrolIndex];
-    console.log(`👹 [${this.getName()}] 巡逻到点: (${currentPoint.x}, ${currentPoint.y})`);
-
-    // 移动到下一个巡逻点
-    this.aiState.currentPatrolIndex = (this.aiState.currentPatrolIndex + 1) % this.aiState.patrolPoints.length;
+    console.log(`🎮 [${this.getName()}] 受到治疗: ${heal}`);
   }
 
   /**
@@ -861,8 +677,14 @@ export class Mob extends Member {
     // 怪物特有状态更新逻辑
     // 例如：自动回复、状态效果处理等
   }
+
+  /**
+   * 将属性Map转换为基础属性
+   * Mob的简化实现，直接通过MobAttrEnum数值映射
+   */
+  // convertMapToStats 方法已移除，现在直接使用响应式系统
 }
 
 // ============================== 导出 ==============================
 
-export default Mob; 
+export default Mob;

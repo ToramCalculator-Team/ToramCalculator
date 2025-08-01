@@ -559,11 +559,11 @@ export class GameEngine {
         isActive: member.isActive(),
         stats: member.getStats(),
         state: member.getCurrentState(),
-        currentHp: member.getStats().currentHp,
-        maxHp: member.getStats().maxHp,
-        currentMp: member.getStats().currentMp,
-        maxMp: member.getStats().maxMp,
-        position: member.getStats().position,
+        currentHp: member.getCurrentHp(),
+        maxHp: member.getMaxHp(),
+        currentMp: member.getCurrentMp(),
+        maxMp: member.getMaxMp(),
+        position: member.getPosition(),
       };
     });
   }
@@ -588,11 +588,11 @@ export class GameEngine {
         isActive: member.isActive(),
         stats: member.getStats(),
         state: member.getCurrentState(),
-        currentHp: member.getStats().currentHp,
-        maxHp: member.getStats().maxHp,
-        currentMp: member.getStats().currentMp,
-        maxMp: member.getStats().maxMp,
-        position: member.getStats().position,
+        currentHp: member.getCurrentHp(),
+        maxHp: member.getMaxHp(),
+        currentMp: member.getCurrentMp(),
+        maxMp: member.getMaxMp(),
+        position: member.getPosition(),
       };
     });
   }

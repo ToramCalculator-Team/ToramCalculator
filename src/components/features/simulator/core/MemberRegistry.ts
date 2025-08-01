@@ -14,7 +14,7 @@
  */
 
 import { Member } from "./Member";
-import Mob from "./member/mob/Mob";
+import { Mob } from "./member/mob/Mob";
 import { Player } from "./member/player/Player";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";

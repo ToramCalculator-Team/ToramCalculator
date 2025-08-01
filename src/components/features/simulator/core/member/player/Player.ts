@@ -25,9 +25,8 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import { isPlayerMember } from "../../Member";
 import type { CharacterWithRelations } from "@db/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
-import type { PlayerWithRelations } from "@db/repositories/player";
 
-import type { MainHandType } from "@db/schema/enums";
+import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
 import { createActor } from "xstate";
 import { PlayerAttrKeys, PlayerAttrDic, PlayerAttrType } from "./PlayerData";
@@ -63,18 +62,13 @@ type PlayerEventType =
  * 玩家成员类
  * 实现玩家特有的属性和行为
  */
-export class Player extends Member {
-  // 重写actor属性类型以支持Player特有的事件
-  protected actor: MemberActor;
+export class Player extends Member<PlayerAttrType> {
   // ==================== 玩家特有属性 ====================
 
   /** 玩家角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
   private character: CharacterWithRelations;
 
   // ==================== 玩家属性系统 ====================
-
-  /** 玩家响应式数据管理器 */
-  private reactiveDataManager: ReactiveSystem<PlayerAttrType>;
 
   /** 技能冷却状态Map */
   private skillCooldowns: Map<string, { cooldown: number; currentCooldown: number }> = new Map();
@@ -105,28 +99,29 @@ export class Player extends Member {
     // 创建Player特有的FSM事件桥
     const playerFSMBridge = new PlayerFSMEventBridge();
 
-    // 调用父类构造函数，注入FSM事件桥
-    super(memberData, playerFSMBridge, externalEventQueue, initialState);
-
-    // 设置角色数据
-    this.character = memberData.player.character;
-    if (!this.character) {
+    // 获取角色数据
+    const character = memberData.player.character;
+    if (!character) {
       throw new Error("玩家角色数据缺失");
     }
 
-    // 初始化响应式数据管理器（使用TypedArray优化实现）
-    console.log("🚀 使用TypedArray优化的响应式系统");
-    this.reactiveDataManager = new ReactiveSystem<PlayerAttrType>(
-      PlayerAttrKeys,
-      this.convertExpressionsToManagerFormat(),
-    );
+    // 创建响应式配置
+    const reactiveConfig = {
+      attrKeys: PlayerAttrKeys,
+      attrExpressions: PlayerAttrExpressionsMap({
+        mainWeaponType: character.weapon.type as MainHandType,
+        subWeaponType: character.subWeapon.type as SubHandType,
+      }),
+    };
 
-    // 初始化玩家数据
+    // 调用父类构造函数，注入FSM事件桥和响应式配置
+    super(memberData, playerFSMBridge, reactiveConfig, externalEventQueue, initialState);
+
+    // 设置角色数据
+    this.character = character;
+
+    // 初始化玩家数据（响应式系统已由基类初始化）
     this.initializePlayerData();
-
-    // 重新初始化状态机（此时reactiveDataManager已经准备好）
-    this.actor = createActor(this.createStateMachine(initialState));
-    this.actor.start();
 
     console.log(`🎮 已创建玩家: ${memberData.name}，data:`, this);
   }
@@ -149,7 +144,9 @@ export class Player extends Member {
       men: this.character.personalityType === "Men" ? this.character.personalityValue : 0,
       cri: this.character.personalityType === "Cri" ? this.character.personalityValue : 0,
       maxHp: this.character.vit * 10 + 100,
+      currentHp: this.character.vit * 10 + 100,
       maxMp: this.character.int * 5 + 50,
+      currentMp: this.character.int * 5 + 50,
       mainWeaponBaseAtk: this.character.weapon.baseAbi,
       weaponAtk: this.character.weapon.baseAbi,
       aggroRate: 0,
@@ -268,7 +265,7 @@ export class Player extends Member {
       armorRef: 0,
       optionBaseAbi: 0,
       optionRef: 0,
-      specialBaseAbi: 0
+      specialBaseAbi: 0,
     });
     // 解析角色配置中的修饰器
     this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
@@ -277,20 +274,41 @@ export class Player extends Member {
   }
 
   /**
-   * 转换表达式格式以适配 ReactiveDataManager
-   * 将 PlayerAttrEnum 键转换为 PlayerAttrType 键
+   * 获取玩家属性
+   * 直接从响应式系统获取计算结果
    */
-  private convertExpressionsToManagerFormat(): Map<PlayerAttrType, AttributeExpression<PlayerAttrType>> {
-    const convertedExpressions = new Map<PlayerAttrType, AttributeExpression<PlayerAttrType>>();
+  getStats(): Record<PlayerAttrType, number> {
+    return this.reactiveDataManager.getValues(PlayerAttrKeys);
+  }
 
-    for (const [attrName, expressionData] of PlayerAttrExpressionsMap) {
-      convertedExpressions.set(attrName, {
-        expression: expressionData.expression,
-        isBase: expressionData.isBase,
-      });
-    }
+  // ==================== 基类抽象方法实现 ====================
 
-    return convertedExpressions;
+  /**
+   * 获取玩家属性键数组
+   */
+
+  /**
+   * 获取玩家属性表达式映射
+   */
+  /**
+   * 获取玩家默认属性值
+   * 可以覆盖基类的通用属性默认值
+   */
+  protected getDefaultAttrValues(): Record<string, number> {
+    return {
+      // 玩家特有的默认值，可以覆盖基类
+      lv: 1,
+      str: 10,
+      int: 10,
+      vit: 10,
+      agi: 10,
+      dex: 10,
+      // 可以覆盖基类的通用属性
+      maxHp: 2000, // 玩家比基类默认值更高
+      maxMp: 200, // 玩家比基类默认值更高
+      pAtk: 150, // 玩家初始攻击力更高
+      mAtk: 120, // 玩家初始魔攻更高
+    };
   }
 
   // ==================== 公共接口 ====================
@@ -763,45 +781,6 @@ export class Player extends Member {
         },
       },
     });
-  }
-
-  /**
-   * 计算玩家基础属性
-   * 实现抽象方法，计算玩家特有的属性
-   */
-  protected calculateBaseStats(
-    memberData: MemberWithRelations,
-    initialState: { currentHp?: number; currentMp?: number; position?: { x: number; y: number } },
-  ): MemberBaseStats {
-    // 基于角色数据计算基础属性
-    const maxHp = (this.character.vit * this.character.lv) / 3;
-    const maxMp = this.character.int * 0.1;
-
-    // 计算攻击力（简化计算）
-    const pAtk = this.character.str * 1.0 + this.character.lv;
-    const mAtk = this.character.int * 1.0 + this.character.lv;
-
-    // 计算防御力（简化计算）
-    const pDef = this.character.armor?.baseAbi || 0;
-    const mDef = this.character.armor?.baseAbi || 0;
-
-    // 计算速度（简化计算）
-    const aspd = 1000 + this.character.agi * 0.5;
-    const mspd = 1000;
-
-    return {
-      maxHp,
-      currentHp: initialState.currentHp ?? maxHp,
-      maxMp,
-      currentMp: initialState.currentMp ?? maxMp,
-      pAtk,
-      mAtk,
-      pDef,
-      mDef,
-      aspd,
-      mspd,
-      position: initialState.position || { x: 0, y: 0 },
-    };
   }
 
   /**

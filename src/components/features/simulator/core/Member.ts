@@ -9,32 +9,58 @@
  * 5. 与GameEngine集成的事件系统
  */
 
-import {
-  setup,
-  createActor,
-  assign,
-  fromPromise,
-  fromCallback,
-  type Actor,
-  Snapshot,
-  type NonReducibleUnknown,
-  type EventObject,
-  type StateMachine,
-} from "xstate";
+import { createActor, type Actor, type NonReducibleUnknown, type EventObject, type StateMachine } from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
-import type { CharacterWithRelations } from "@db/repositories/character";
-import type { MercenaryWithRelations } from "@db/repositories/mercenary";
-import type { MobWithRelations } from "@db/repositories/mob";
-import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
+import { type MemberType } from "@db/schema/enums";
 import type { FSMEventBridge, FSMEventInput, FSMTransformContext } from "./fsmBridge/BridgeInterface";
 import type { EventQueue } from "./EventQueue";
+import { ReactiveSystem, type AttributeExpression } from "./member/ReactiveSystem";
 
 // ============================== 类型定义 ==============================
 
 /**
- * 成员数据接口 - 对应Member.serialize()的返回类型
+ * 通用属性类型 - 所有成员共有的属性
+ * 包括生命值、魔法值、位置等基础属性
  */
-export interface MemberSerializeData {
+export type CommonAttrType = 
+  | 'currentHp'    // 当前生命值
+  | 'maxHp'        // 最大生命值
+  | 'currentMp'    // 当前魔法值
+  | 'maxMp'        // 最大魔法值
+  | 'positionX'    // X坐标
+  | 'positionY'    // Y坐标
+  | 'mspd'         // 移动速度
+  | 'pAtk'         // 物理攻击力
+  | 'mAtk'         // 魔法攻击力
+  | 'pDef'         // 物理防御力
+  | 'mDef';        // 魔法防御力
+
+/**
+ * 通用属性的默认表达式映射
+ * 定义通用属性的计算表达式和依赖关系
+ */
+export const CommonAttrExpressions = new Map<CommonAttrType, AttributeExpression<CommonAttrType>>([
+  // 基础属性（无依赖）
+  ['maxHp', { expression: 'maxHp', isBase: true }],
+  ['maxMp', { expression: 'maxMp', isBase: true }],
+  ['positionX', { expression: 'positionX', isBase: true }],
+  ['positionY', { expression: 'positionY', isBase: true }],
+  ['pAtk', { expression: 'pAtk', isBase: true }],
+  ['mAtk', { expression: 'mAtk', isBase: true }],
+  ['pDef', { expression: 'pDef', isBase: true }],
+  ['mDef', { expression: 'mDef', isBase: true }],
+  
+  // 计算属性（有依赖）
+  ['currentHp', { expression: 'min(currentHp, maxHp)', isBase: false }],
+  ['currentMp', { expression: 'min(currentMp, maxMp)', isBase: false }],
+]);
+
+/**
+ * 成员数据接口 - 对应Member.serialize()的返回类型
+ * 
+ * @template TAttrKey 属性键的字符串联合类型，与 MemberContext 保持一致
+ */
+export interface MemberSerializeData<TAttrKey extends string = string> {
   id: string;
   name: string;
   type: string;
@@ -45,7 +71,7 @@ export interface MemberSerializeData {
   currentMp: number;
   maxMp: number;
   position: { x: number; y: number };
-  state: { value: string; context: MemberContext };
+  state: { value: string; context: MemberContext<TAttrKey> };
   targetId?: string;
   teamId: string;
   campId?: string;
@@ -79,7 +105,7 @@ export interface AttributeInfluence {
   computation: () => number; // 作用的值
 }
 
-  // 响应式系统已迁移到 ReactiveSystem.ts
+// 响应式系统已迁移到 ReactiveSystem.ts
 
 /**
  * 成员基础属性接口
@@ -113,17 +139,20 @@ export interface MemberBaseStats {
 /**
  * 成员状态机上下文接口
  * 定义状态机运行时的上下文数据
- * 
+ *
  * 设计原则：
  * - 单一事实来源：stats 直接引用响应式系统的计算结果
  * - 实时更新：状态机持有引用，自动获取最新值
  * - 性能优化：避免重复计算，直接使用缓存结果
+ * - 类型安全：通过泛型 TAttrKey 确保 stats 的类型安全
+ *
+ * @template TAttrKey 属性键的字符串联合类型，对应响应式系统的属性键
  */
-export interface MemberContext {
+export interface MemberContext<TAttrKey extends string = string> {
   /** 成员基础数据（来自数据库） */
   memberData: MemberWithRelations;
-  /** 成员基础属性 - 直接引用响应式系统的计算结果 */
-  stats: Record<string, number>;
+  /** 成员基础属性 - 直接引用响应式系统的计算结果，类型安全 */
+  stats: Record<TAttrKey, number>;
   /** 是否存活 */
   isAlive: boolean;
   /** 是否可行动 */
@@ -171,14 +200,15 @@ export type MemberEventType =
   | { type: "update" } // 更新事件
   | { type: string; data: Record<string, any> }; // 自定义事件
 
-
 /**
  * 成员状态机类型
  * 基于 XState StateMachine 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
+ * 
+ * @template TAttrKey 属性键的字符串联合类型
  */
-export type MemberStateMachine = StateMachine<
-  MemberContext, // TContext - 状态机上下文
+export type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
+  MemberContext<TAttrKey>, // TContext - 状态机上下文
   MemberEventType, // TEvent - 事件类型（可扩展）
   Record<string, any>, // TChildren - 子状态机
   any, // TActor - Actor配置
@@ -188,7 +218,7 @@ export type MemberStateMachine = StateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  MemberContext, // TOutput - 输出类型（当状态机完成时）
+  MemberContext<TAttrKey>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -198,8 +228,10 @@ export type MemberStateMachine = StateMachine<
  * 成员Actor类型
  * 基于 XState Actor 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
+ * 
+ * @template TAttrKey 属性键的字符串联合类型
  */
-export type MemberActor = Actor<MemberStateMachine>;
+export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
 
 // ============================== 类型守卫函数 ==============================
 
@@ -244,8 +276,10 @@ export function isPartnerMember(
 /**
  * 成员基类
  * 提供基于XState的状态机管理和事件队列处理
+ * 
+ * @template TAttrKey 属性键的字符串联合类型，用于类型安全的属性访问
  */
-export abstract class Member {
+export abstract class Member<TAttrKey extends string = string> {
   // ==================== 核心属性 ====================
 
   /** 成员唯一标识符 */
@@ -258,7 +292,7 @@ export abstract class Member {
   protected target: Member | null = null;
 
   /** XState状态机实例 */
-  protected actor: MemberActor;
+  protected actor: MemberActor<TAttrKey>;
 
   /** 事件队列 */
   protected eventQueue: MemberEvent[] = [];
@@ -271,6 +305,9 @@ export abstract class Member {
 
   /** 队伍ID */
   protected teamId: string;
+
+  /** 响应式数据管理器 - 统一管理所有属性计算 */
+  protected reactiveDataManager!: ReactiveSystem<TAttrKey>;
 
   // ==================== FSM事件桥集成 ====================
 
@@ -285,7 +322,13 @@ export abstract class Member {
 
   // ==================== 响应式系统集成 ====================
 
-  // 响应式系统已迁移到 ReactiveSystem.ts
+  protected reactiveConfig: {
+    attrKeys: TAttrKey[];
+    attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
+  } = {
+    attrKeys: [],
+    attrExpressions: new Map(),
+  };
 
   // ==================== 构造函数 ====================
 
@@ -300,6 +343,10 @@ export abstract class Member {
   constructor(
     protected readonly memberData: MemberWithRelations,
     fsmBridge: FSMEventBridge,
+    reactiveConfig: {
+      attrKeys: TAttrKey[];
+      attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
+    },
     externalEventQueue?: EventQueue,
     initialState: {
       position?: { x: number; y: number };
@@ -314,6 +361,12 @@ export abstract class Member {
     // 初始化FSM事件桥
     this.fsmBridge = fsmBridge;
     this.externalEventQueue = externalEventQueue || null;
+
+    // 初始化响应式配置
+    this.reactiveConfig = reactiveConfig;
+
+    // 初始化响应式数据管理器
+    this.initializeReactiveSystem(initialState, reactiveConfig);
 
     // 创建状态机实例
     this.actor = createActor(this.createStateMachine(initialState), {
@@ -334,6 +387,22 @@ export abstract class Member {
   protected abstract handleSpecificEvent(event: MemberEvent): void;
 
   /**
+   * 获取子类特有的属性键数组
+   * 子类可以重写此方法来提供属性键配置，默认返回空数组
+   */
+  protected getAttrKeys(): TAttrKey[] {
+    return this.reactiveConfig.attrKeys;
+  }
+
+  /**
+   * 获取子类特有的属性表达式映射
+   * 子类可以重写此方法来提供属性计算表达式，默认返回空映射
+   */
+  protected getAttrExpressions(): Map<TAttrKey, AttributeExpression<TAttrKey>> {
+    return this.reactiveConfig.attrExpressions;
+  }
+
+  /**
    * 创建状态机
    * 子类必须实现此方法来创建特定的状态机
    *
@@ -346,44 +415,7 @@ export abstract class Member {
     currentMp?: number;
   }): MemberStateMachine;
 
-  /**
-   * 将响应式系统的计算结果转换为基础属性
-   * 从 Record<string, number> 中提取 MemberBaseStats
-   * @param reactiveStats 响应式系统的计算结果
-   * @returns MemberBaseStats对象
-   */
-  protected convertReactiveStatsToBaseStats(reactiveStats: Record<string, number>): MemberBaseStats {
-    // 获取当前状态机上下文中的位置信息
-    const currentState = this.getCurrentState();
-    const position = currentState?.context?.position || { x: 0, y: 0 };
 
-    // 初始化基础属性对象
-    const baseStats: MemberBaseStats = {
-      maxHp: reactiveStats.maxHp || 1000,
-      currentHp: reactiveStats.currentHp || reactiveStats.maxHp || 1000,
-      maxMp: reactiveStats.maxMp || 100,
-      currentMp: reactiveStats.currentMp || reactiveStats.maxMp || 100,
-      pAtk: reactiveStats.pAtk || reactiveStats.patk || 100,
-      mAtk: reactiveStats.mAtk || reactiveStats.matk || 100,
-      pDef: reactiveStats.pDef || reactiveStats.pdef || 50,
-      mDef: reactiveStats.mDef || reactiveStats.mdef || 50,
-      aspd: reactiveStats.aspd || 1.0,
-      mspd: reactiveStats.mspd || 100,
-      position,
-    };
-
-    // 确保当前HP不超过最大HP
-    if (baseStats.currentHp > baseStats.maxHp) {
-      baseStats.currentHp = baseStats.maxHp;
-    }
-
-    // 确保当前MP不超过最大MP
-    if (baseStats.currentMp > baseStats.maxMp) {
-      baseStats.currentMp = baseStats.maxMp;
-    }
-
-    return baseStats;
-  }
 
   // ==================== 公共接口 ====================
 
@@ -411,16 +443,33 @@ export abstract class Member {
   /**
    * 获取当前状态
    */
-  getCurrentState(): { value: string; context: MemberContext } {
+  getCurrentState(): { value: string; context: MemberContext<TAttrKey> } {
     const snapshot = this.actor.getSnapshot();
-    // XState v5的Snapshot结构不同，需要正确访问状态和上下文
+    
+    // 构建基于响应式系统的上下文
+    const reactiveContext: MemberContext<TAttrKey> = {
+      memberData: this.memberData,
+      stats: this.getStats(), // 直接从响应式系统获取最新属性
+      isAlive: this.isAlive(),
+      isActive: this.isActive(),
+      statusEffects: [],
+      eventQueue: [],
+      lastUpdateTimestamp: Date.now(),
+      extraData: {},
+      position: this.getPosition(),
+    };
+    
+    // XState v5的Snapshot结构不同，需要正确访问状态
     if (snapshot.status === "active") {
       return {
         value: "active",
-        context: snapshot.context || this.getDefaultContext(),
+        context: reactiveContext,
       };
     }
-    return { value: snapshot.status, context: this.getDefaultContext() };
+    return { 
+      value: snapshot.status, 
+      context: reactiveContext 
+    };
   }
 
   /**
@@ -442,62 +491,54 @@ export abstract class Member {
 
   /**
    * 获取成员属性
-   * 从响应式系统的计算结果中提取基础属性
+   * 直接从响应式系统获取计算结果，子类实现具体逻辑
    */
-  getStats(): MemberBaseStats {
-    try {
-      // 检查actor是否存在
-      if (!this.actor) {
-        console.warn(`Member: ${this.getName()} actor未初始化`);
-        return this.getDefaultStats();
-      }
+  abstract getStats(): Record<TAttrKey, number>;
 
-      // 获取快照
-      const snapshot = this.actor.getSnapshot();
-      if (!snapshot) {
-        console.warn(`Member: ${this.getName()} 无法获取状态机快照`);
-        return this.getDefaultStats();
-      }
-
-      // XState v5的Snapshot结构不同，需要正确处理
-      if (snapshot.status === "active" && snapshot.context) {
-        // 检查stats是否存在
-        if (!snapshot.context.stats) {
-          console.warn(`Member: ${this.getName()} 属性未初始化`);
-          return this.getDefaultStats();
-        }
-
-        // 从响应式系统的计算结果中提取基础属性
-        return this.convertReactiveStatsToBaseStats(snapshot.context.stats);
-      }
-
-      console.warn(`Member: ${this.getName()} 属性格式异常`);
-      return this.getDefaultStats();
-    } catch (error) {
-      console.error(`Member: ${this.getName()} 获取属性时发生错误:`, error);
-      return this.getDefaultStats();
-    }
+  /**
+   * 获取当前生命值
+   */
+  getCurrentHp(): number {
+    const stats = this.getStats();
+    return (stats as any).currentHp || (stats as any).hp || 0;
   }
 
   /**
-   * 获取默认属性值
-   * 当无法获取实际属性时提供默认值
+   * 获取最大生命值
    */
-  private getDefaultStats(): MemberBaseStats {
+  getMaxHp(): number {
+    const stats = this.getStats();
+    return (stats as any).maxHp || (stats as any).MAX_HP || 0;
+  }
+
+  /**
+   * 获取当前魔法值
+   */
+  getCurrentMp(): number {
+    const stats = this.getStats();
+    return (stats as any).currentMp || (stats as any).mp || 0;
+  }
+
+  /**
+   * 获取最大魔法值
+   */
+  getMaxMp(): number {
+    const stats = this.getStats();
+    return (stats as any).maxMp || (stats as any).MAX_MP || 0;
+  }
+
+  /**
+   * 获取位置信息
+   */
+  getPosition(): { x: number; y: number } {
+    const stats = this.getStats();
     return {
-      maxHp: 1000,
-      currentHp: 1000,
-      maxMp: 100,
-      currentMp: 100,
-      pAtk: 100,
-      mAtk: 100,
-      pDef: 50,
-      mDef: 50,
-      aspd: 1.0,
-      mspd: 100,
-      position: { x: 0, y: 0 },
+      x: (stats as any).positionX || 0,
+      y: (stats as any).positionY || 0,
     };
   }
+
+
 
   /**
    * 检查是否存活
@@ -661,7 +702,7 @@ export abstract class Member {
   /**
    * 处理FSM事件
    * 将XState的FSM事件转换为EventQueue事件
-   * 
+   *
    * @param fsmEvent FSM事件输入
    * @returns 是否成功处理
    */
@@ -673,35 +714,32 @@ export abstract class Member {
         memberId: this.id,
         memberType: this.type,
         currentState: this.getCurrentState().value as string,
-        targetState: undefined // 可以根据需要扩展
+        targetState: undefined, // 可以根据需要扩展
       };
 
       // 使用FSM事件桥转换事件
       const queueEvents = this.fsmBridge.transformFSMEvent(fsmEvent, context);
-      
+
       if (!queueEvents) {
         return true; // 事件被忽略，但不是错误
       }
 
       // 处理转换结果
       const events = Array.isArray(queueEvents) ? queueEvents : [queueEvents];
-      
+
       // 如果有外部事件队列，插入到外部队列
       if (this.externalEventQueue) {
-        return events.every(event => this.externalEventQueue!.insert(event));
+        return events.every((event) => this.externalEventQueue!.insert(event));
       }
 
       // 否则记录日志（未来可能扩展为其他处理方式）
       console.log(`Member ${this.id}: FSM事件已转换，但未设置外部事件队列，生成了 ${events.length} 个事件`);
       return true;
-
     } catch (error) {
       console.error(`Member ${this.id}: FSM事件处理失败:`, error);
       return false;
     }
   }
-
-
 
   // ==================== 受保护的方法 ====================
 
@@ -740,7 +778,7 @@ export abstract class Member {
     const stats = this.getStats();
     const state = this.getCurrentState();
 
-    return `${this.getName()} (${this.type}) - HP: ${stats.currentHp}/${stats.maxHp} - 状态: ${state.value}`;
+    return `${this.getName()} (${this.type}) - HP: ${this.getCurrentHp()}/${this.getMaxHp()} - 状态: ${state.value}`;
   }
 
   /**
@@ -1002,8 +1040,8 @@ export abstract class Member {
       return Infinity;
     }
 
-    const myPos = this.getStats().position;
-    const targetPos = this.target.getStats().position;
+    const myPos = this.getPosition();
+    const targetPos = this.target.getPosition();
 
     const dx = myPos.x - targetPos.x;
     const dy = myPos.y - targetPos.y;
@@ -1031,8 +1069,8 @@ export abstract class Member {
       return 0;
     }
 
-    const myPos = this.getStats().position;
-    const targetPos = this.target.getStats().position;
+    const myPos = this.getPosition();
+    const targetPos = this.target.getPosition();
 
     const dx = targetPos.x - myPos.x;
     const dy = targetPos.y - myPos.y;
@@ -1081,11 +1119,11 @@ export abstract class Member {
       type: this.getType(),
       isAlive: this.isAlive(),
       isActive: this.isActive(),
-      currentHp: stats.currentHp,
-      maxHp: stats.maxHp,
-      currentMp: stats.currentMp,
-      maxMp: stats.maxMp,
-      position: stats.position,
+      currentHp: this.getCurrentHp(),
+      maxHp: this.getMaxHp(),
+      currentMp: this.getCurrentMp(),
+      maxMp: this.getMaxMp(),
+      position: this.getPosition(),
       state: state.value,
       targetId: this.target?.getId(),
     };
@@ -1101,7 +1139,7 @@ export abstract class Member {
     id: string;
     name: string;
     type: string;
-    stats: MemberBaseStats;
+    stats: Record<TAttrKey, number>;
     state: any;
     target: string | null;
     eventQueueSize: number;
@@ -1119,23 +1157,87 @@ export abstract class Member {
     };
   }
 
+  // ==================== 私有方法 ====================
+
+  /**
+   * 初始化响应式系统
+   * 合并通用默认属性和子类传入的属性
+   */
+  private initializeReactiveSystem(
+    initialState: {
+      position?: { x: number; y: number };
+      currentHp?: number;
+      currentMp?: number;
+    },
+    reactiveConfig?: {
+      attrKeys: TAttrKey[];
+      attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
+    },
+  ): void {
+    // 使用传入的配置或从子类获取
+    const attrKeys = reactiveConfig?.attrKeys || this.getAttrKeys();
+    const attrExpressions = reactiveConfig?.attrExpressions || this.getAttrExpressions();
+    
+    // 创建响应式系统
+    this.reactiveDataManager = new ReactiveSystem<TAttrKey>(attrKeys, attrExpressions);
+    
+    // 定义通用默认属性
+    const commonDefaults: Record<string, number> = {
+      currentHp: initialState.currentHp || 1000,
+      maxHp: 1000,
+      currentMp: initialState.currentMp || 100, 
+      maxMp: 100,
+      positionX: initialState.position?.x || 0,
+      positionY: initialState.position?.y || 0,
+      pAtk: 100,
+      mAtk: 100,
+      pDef: 50,
+      mDef: 50,
+      mspd: 100,
+    };
+    
+    // 获取子类默认值
+    const childDefaults = this.getDefaultAttrValues();
+    
+    // 合并：子类值覆盖通用值
+    const mergedDefaults = { ...commonDefaults, ...childDefaults };
+    
+    // 设置基础值
+    // this.reactiveDataManager.setBaseValues(mergedDefaults as Record<TAttrKey, number>);
+    
+    console.log(`✅ ReactiveSystem 初始化完成 - ${this.getName()}`);
+    
+    // 输出依赖关系图（由响应式系统自身处理）
+    // this.reactiveDataManager.outputDependencyGraph(this.getName(), this.getType());
+  }
+
+  /**
+   * 获取子类默认属性值
+   * 子类可以重写此方法来覆盖通用属性的默认值，默认返回空对象
+   */
+  protected getDefaultAttrValues(): Record<string, number> {
+    return {};
+  }
+
+
+
   /**
    * 序列化成员数据为可传输的纯数据对象
    * 用于Worker与主线程之间的数据传输
    * 只包含可序列化的数据，不包含方法、状态机实例等
    */
-  serialize(): MemberSerializeData {
-    const serializeData: MemberSerializeData = {
+  serialize(): MemberSerializeData<TAttrKey> {
+    const serializeData: MemberSerializeData<TAttrKey> = {
       id: this.getId(),
       name: this.getName(),
       type: this.getType(),
       isAlive: this.isAlive(),
       isActive: this.isActive(),
-      currentHp: this.getStats().currentHp,
-      maxHp: this.getStats().maxHp,
-      currentMp: this.getStats().currentMp,
-      maxMp: this.getStats().maxMp,
-      position: this.getStats().position,
+      currentHp: this.getCurrentHp(),
+      maxHp: this.getMaxHp(),
+      currentMp: this.getCurrentMp(),
+      maxMp: this.getMaxMp(),
+      position: this.getPosition(),
       state: this.getCurrentState(),
       targetId: this.target?.getId(),
       teamId: this.teamId,
