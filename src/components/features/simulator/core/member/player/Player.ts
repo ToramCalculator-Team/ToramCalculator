@@ -106,7 +106,7 @@ export class Player extends Member<PlayerAttrType> {
     }
 
     // 创建响应式配置
-    const reactiveConfig = {
+    const reactiveSystemConfig = {
       attrKeys: PlayerAttrKeys,
       attrExpressions: PlayerAttrExpressionsMap({
         mainWeaponType: character.weapon.type as MainHandType,
@@ -115,7 +115,7 @@ export class Player extends Member<PlayerAttrType> {
     };
 
     // 调用父类构造函数，注入FSM事件桥和响应式配置
-    super(memberData, playerFSMBridge, reactiveConfig, externalEventQueue, initialState);
+    super(memberData, playerFSMBridge, reactiveSystemConfig, externalEventQueue, initialState);
 
     // 设置角色数据
     this.character = character;

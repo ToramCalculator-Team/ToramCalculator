@@ -90,13 +90,13 @@ export class Mob extends Member<MobAttrType> {
     const mobFSMBridge = new MobFSMEventBridge();
 
     // 创建响应式配置
-    const reactiveConfig = {
+    const reactiveSystemConfig = {
       attrKeys: MobAttrKeys,
       attrExpressions: MobAttrExpressionsMap,
     };
 
     // 调用父类构造函数，注入FSM事件桥
-    super(memberData, mobFSMBridge, reactiveConfig, externalEventQueue, initialState);
+    super(memberData, mobFSMBridge, reactiveSystemConfig, externalEventQueue, initialState);
 
     // 设置角色数据
     this.mob = memberData.mob;

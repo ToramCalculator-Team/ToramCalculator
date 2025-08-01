@@ -322,7 +322,7 @@ export abstract class Member<TAttrKey extends string = string> {
 
   // ==================== 响应式系统集成 ====================
 
-  protected reactiveConfig: {
+  protected reactiveSystemConfig: {
     attrKeys: TAttrKey[];
     attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
   } = {
@@ -343,7 +343,7 @@ export abstract class Member<TAttrKey extends string = string> {
   constructor(
     protected readonly memberData: MemberWithRelations,
     fsmBridge: FSMEventBridge,
-    reactiveConfig: {
+    reactiveSystemConfig: {
       attrKeys: TAttrKey[];
       attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
     },
@@ -363,10 +363,10 @@ export abstract class Member<TAttrKey extends string = string> {
     this.externalEventQueue = externalEventQueue || null;
 
     // 初始化响应式配置
-    this.reactiveConfig = reactiveConfig;
+    this.reactiveSystemConfig = reactiveSystemConfig;
 
     // 初始化响应式数据管理器
-    this.initializeReactiveSystem(initialState, reactiveConfig);
+    this.initializeReactiveSystem(initialState, reactiveSystemConfig);
 
     // 创建状态机实例
     this.actor = createActor(this.createStateMachine(initialState), {
@@ -391,7 +391,7 @@ export abstract class Member<TAttrKey extends string = string> {
    * 子类可以重写此方法来提供属性键配置，默认返回空数组
    */
   protected getAttrKeys(): TAttrKey[] {
-    return this.reactiveConfig.attrKeys;
+    return this.reactiveSystemConfig.attrKeys;
   }
 
   /**
@@ -399,7 +399,7 @@ export abstract class Member<TAttrKey extends string = string> {
    * 子类可以重写此方法来提供属性计算表达式，默认返回空映射
    */
   protected getAttrExpressions(): Map<TAttrKey, AttributeExpression<TAttrKey>> {
-    return this.reactiveConfig.attrExpressions;
+    return this.reactiveSystemConfig.attrExpressions;
   }
 
   /**
@@ -1169,14 +1169,14 @@ export abstract class Member<TAttrKey extends string = string> {
       currentHp?: number;
       currentMp?: number;
     },
-    reactiveConfig?: {
+    reactiveSystemConfig?: {
       attrKeys: TAttrKey[];
       attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
     },
   ): void {
     // 使用传入的配置或从子类获取
-    const attrKeys = reactiveConfig?.attrKeys || this.getAttrKeys();
-    const attrExpressions = reactiveConfig?.attrExpressions || this.getAttrExpressions();
+    const attrKeys = reactiveSystemConfig?.attrKeys || this.getAttrKeys();
+    const attrExpressions = reactiveSystemConfig?.attrExpressions || this.getAttrExpressions();
     
     // 创建响应式系统
     this.reactiveDataManager = new ReactiveSystem<TAttrKey>(attrKeys, attrExpressions);
