@@ -114,36 +114,40 @@ export class Mob extends Member<MobAttrType> {
   private initializeMobData(): void {
     this.reactiveDataManager.setBaseValues({
       lv: this.mob.baseLv || 1,
-      captureable: this.mob.captureable ? 1 : 0,
-      experience: this.mob.experience || 0,
-      partsExperience: this.mob.partsExperience || 0,
-      radius: this.mob.radius || 1,
       hpMax: this.mob.maxhp || 1500,
       hpCurrent: this.mob.maxhp || 1500,
-      pAtk: 120, // Mob没有攻击力字段，使用默认值
-      mAtk: 80,
-      pCritRate: 5,
-      pCritDmg: 150,
-      pStab: 75,
-      accuracy: 80,
-      pDef: this.mob.physicalDefense || 60,
-      mDef: this.mob.magicalDefense || 40,
-      pRes: this.mob.physicalResistance || 0,
-      mRes: this.mob.magicalResistance || 0,
-      neutralRes: 0, // Mob没有元素抗性字段，使用默认值
-      lightRes: 0,
-      darkRes: 0,
-      waterRes: 0,
-      fireRes: 0,
-      earthRes: 0,
-      windRes: 0,
-      ailmentRes: 0,
-      guardPower: 0,
-      guardRecharge: 0,
-      evasionRecharge: 0,
-      aspd: 100, // Mob没有速度字段，使用默认值
-      cspd: 100,
-      mspd: 80
+      physicalAttack: 0,
+      physicalCriticalRate: 0,
+      physicalCriticalDamage: 0,
+      physicalCriticalStab: 0,
+      magicalAccuracy: 0,
+      magicalAttack: 0,
+      magicalCriticalRate: 0,
+      magicalCriticalDamage: 0,
+      magicalCriticalStab: 0,
+      magicalDefensePhysical: 0,
+      magicalDefenseMagical: 0,
+      magicalResistancePhysical: 0,
+      magicalResistanceMagical: 0,
+      magicalResistanceNeutral: 0,
+      magicalResistanceLight: 0,
+      magicalResistanceDark: 0,
+      magicalResistanceWater: 0,
+      magicalResistanceFire: 0,
+      magicalResistanceEarth: 0,
+      magicalResistanceWind: 0,
+      magicalSurvivalDodge: 0,
+      magicalSurvivalEvasionRecharge: 0,
+      magicalSurvivalAilmentResistance: 0,
+      magicalSurvivalGuardPower: 0,
+      magicalSurvivalGuardRecharge: 0,
+      magicalSpeedAttack: 0,
+      magicalSpeedCast: 0,
+      magicalSpeedMovement: 0,
+      magicalMiscRadius: 0,
+      magicalMiscCaptureable: 0,
+      magicalMiscExperience: 0,
+      magicalMiscPartsExperience: 0
     });
     // 解析怪物配置中的修饰器（暂时注释掉，直到实现相应方法）
     // this.reactiveDataManager.parseModifiersFromMob(this.mob, "怪物配置");
@@ -156,7 +160,7 @@ export class Mob extends Member<MobAttrType> {
    * 直接从响应式系统获取计算结果
    */
   getStats(): Record<MobAttrType, number> {
-    return this.reactiveDataManager.getValues(MobAttrKeys);
+    return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as MobAttrType[]);
   }
 
   // ==================== 基类抽象方法实现 ====================
@@ -291,7 +295,7 @@ export class Mob extends Member<MobAttrType> {
    * @returns 属性值快照
    */
   getAllAttributeValues(): Readonly<Record<string, number>> {
-    return this.reactiveDataManager.getValues(MobAttrKeys);
+    return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as MobAttrType[]);
   }
 
   /**
@@ -459,10 +463,10 @@ export class Mob extends Member<MobAttrType> {
         },
 
         // 检查怪物是否死亡
-        isDead: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.currentHp || 0) <= 0,
+        isDead: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.hpCurrent || 0) <= 0,
 
         // 检查怪物是否存活
-        isAlive: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.currentHp || 0) > 0,
+        isAlive: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.hpCurrent || 0) > 0,
       },
     }).createMachine({
       id: machineId,
