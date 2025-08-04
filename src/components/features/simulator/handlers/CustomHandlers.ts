@@ -73,32 +73,28 @@ export class CustomEventHandler implements EventHandler {
   /**
    * 处理属性修改
    */
-  private handleAttributeModification(member: any, payload: any, context: ExecutionContext): EventResult {
+  private handleAttributeModification(member: Member, payload: any, context: ExecutionContext): EventResult {
     try {
-      const { attribute, value, targetType = TargetType.baseValue } = payload;
+      const { attribute, value } = payload;
       
       console.log(`🔧 修改成员 ${member.getName()} 的属性: ${attribute} = ${value}`);
       
-      // 记录修改前的值
-      const oldValue = member.getAttributeValue(attribute);
+      // 使用Member提供的protected方法（通过类型断言访问）
+      const success = (member as any).setAttributeDirect(attribute, value, "custom_event_handler");
       
-      // 执行修改
-      member.setAttributeValue(attribute, targetType, value, "custom_event");
-      
-      // 验证修改结果
-      const newValue = member.getAttributeValue(attribute);
-      
-      console.log(`✅ 属性修改成功: ${attribute} ${oldValue} -> ${newValue}`);
-      
-      return {
-        success: true,
-        data: {
-          attribute,
-          oldValue,
-          newValue,
-          targetType
-        }
-      };
+      if (success) {
+        console.log(`✅ 属性修改成功: ${attribute} = ${value}`);
+        return {
+          success: true,
+          data: {
+            attribute,
+            value,
+            source: "custom_event_handler"
+          }
+        };
+      } else {
+        throw new Error(`属性修改失败: setAttributeDirect returned false`);
+      }
     } catch (error) {
       return {
         success: false,
@@ -119,7 +115,8 @@ export class CustomEventHandler implements EventHandler {
       // 准备脚本执行上下文
       const scriptContext: ExpressionContext = {
         member,
-        reactiveSystem: member.reactiveDataManager,
+        caster: member,
+        reactiveSystem: (member as any).reactiveDataManager,
         currentFrame: context.currentFrame
       };
       
@@ -145,7 +142,7 @@ export class CustomEventHandler implements EventHandler {
   /**
    * 处理组合操作（属性修改 + 脚本执行）
    */
-  private handleCombinedOperation(member: any, payload: any, context: ExecutionContext): EventResult {
+  private handleCombinedOperation(member: Member, payload: any, context: ExecutionContext): EventResult {
     try {
       const results: any[] = [];
       

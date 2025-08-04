@@ -11,6 +11,140 @@
 
 import JSExpressionIntegration from '../expression/JSExpressionIntegration';
 
+// ============================== Schema相关类型 ==============================
+
+/**
+ * Schema中单个属性的定义
+ */
+export interface SchemaAttribute {
+  displayName: string;
+  expression: string;
+  isBase?: boolean;
+}
+
+/**
+ * 嵌套Schema结构（任意深度）
+ */
+export type NestedSchema = {
+  [key: string]: SchemaAttribute | NestedSchema;
+};
+
+/**
+ * 扁平化后的Schema结果
+ */
+export interface FlattenedSchema<T extends string> {
+  attrKeys: T[];
+  expressions: Map<T, AttributeExpression<T>>;
+  displayNames: Map<T, string>;
+  dslMapping: Map<string, T>; // DSL路径 -> 扁平化键名的映射
+}
+
+// ============================== Schema工具类型 ==============================
+
+/**
+ * 从Schema生成属性键的联合类型
+ * 递归遍历Schema，将路径转换为小驼峰格式作为键
+ */
+
+// 路径转小驼峰（CamelCase）表示
+type JoinPath<T extends string[], Acc extends string = ''> = 
+  T extends [infer H extends string, ...infer R extends string[]]
+    ? JoinPath<R, `${Acc}${Capitalize<H>}`>
+    : Uncapitalize<Acc>; // 让首字母小写 => camelCase
+
+export type ExtractAttrPaths<
+  T extends NestedSchema,
+  Path extends string[] = []
+> = {
+  [K in keyof T]: T[K] extends SchemaAttribute
+    ? JoinPath<[...Path, K & string]>
+    : T[K] extends NestedSchema
+      ? ExtractAttrPaths<T[K], [...Path, K & string]>
+      : never;
+}[keyof T];
+
+/**
+ * 从Schema生成属性键的字符串联合类型
+ */
+export type SchemaToAttrType<T extends NestedSchema> = ExtractAttrPaths<T>;
+
+/**
+ * 从Schema生成完整的属性类型映射
+ * 包含所有属性键和对应的number类型
+ */
+export type SchemaToAttrRecord<T extends NestedSchema> = Record<SchemaToAttrType<T>, number>;
+
+// ============================== Schema工具函数 ==============================
+
+/**
+ * Schema扁平化工具类
+ */
+export class SchemaFlattener {
+/**
+ * 扁平化嵌套的Schema结构
+ */
+static flatten<T extends string>(schema: NestedSchema): FlattenedSchema<T> {
+  const attrKeys: T[] = [];
+  const expressions = new Map<T, AttributeExpression<T>>();
+  const displayNames = new Map<T, string>();
+  const dslMapping = new Map<string, T>();
+
+  // 小驼峰命名法
+  function camelCase(path: string): string {
+    return path.replace(/_([a-z])/g, (_, g) => g.toUpperCase())
+               .replace(/(?:^|\.)([a-z])/g, (_, g, i) => i === 0 ? g : g.toUpperCase());
+  }
+
+  function traverse(obj: NestedSchema, path: string[] = []): void {
+    for (const [key, value] of Object.entries(obj)) {
+      const currentPath = [...path, key];
+      const dslPath = currentPath.join('.');
+
+      if (SchemaFlattener.isSchemaAttribute(value)) {
+        // 使用路径转换成小驼峰作为属性 key
+        const attrKey = camelCase(currentPath.join('_')) as T;
+
+        attrKeys.push(attrKey);
+
+        expressions.set(attrKey, {
+          expression: value.expression,
+          isBase: value.isBase
+        });
+
+        displayNames.set(attrKey, value.displayName);
+        dslMapping.set(dslPath, attrKey);
+
+        console.log(`📋 扁平化属性: ${dslPath} -> ${attrKey} (${value.displayName})`);
+      } else {
+        traverse(value, currentPath);
+      }
+    }
+  }
+
+  traverse(schema);
+
+  console.log(`✅ Schema扁平化完成: ${attrKeys.length} 个属性`);
+  console.log(`🗺️ DSL映射条目: ${dslMapping.size} 个`);
+
+  return {
+    attrKeys,
+    expressions,
+    displayNames,
+    dslMapping
+  };
+}
+
+  /**
+   * 检查对象是否为SchemaAttribute
+   */
+  private static isSchemaAttribute(obj: any): obj is SchemaAttribute {
+    return obj && 
+           typeof obj === 'object' && 
+           typeof obj.displayName === 'string' && 
+           typeof obj.expression === 'string';
+  }
+}
+
 // ============================== 通用接口定义 ==============================
 
 export interface ModifierSource {
@@ -28,9 +162,6 @@ export interface AttributeExpression<TAttr extends string> {
   expression: string;
   isBase?: boolean;
 }
-
-// TODO: 暂时注释掉mathjs实例，等待JS解析器实现
-// const math = create(all);
 
 // ============================== 枚举和常量 ==============================
 
@@ -227,6 +358,12 @@ export class ReactiveSystem<T extends string> {
   private readonly keyToIndex: Map<T, number>;
   private readonly indexToKey: T[];
 
+  /** DSL路径映射（用于DSL支持） */
+  private readonly dslMapping: Map<string, T>;
+  
+  /** 显示名称映射（用于调试） */
+  private readonly displayNames: Map<T, string>;
+
   // ==================== 性能统计 ====================
 
   private readonly stats = {
@@ -239,7 +376,20 @@ export class ReactiveSystem<T extends string> {
 
   // ==================== 构造函数 ====================
 
-  constructor(attrKeys: T[], expressions?: Map<T, AttributeExpression<T>>) {
+  /**
+   * 构造函数 - 使用统一的Schema模式
+   * 
+   * @param schema 嵌套的Schema结构
+   */
+  constructor(schema: NestedSchema) {
+    console.log('🔧 使用Schema模式初始化ReactiveSystem');
+    
+    // 扁平化Schema
+    const flattened = SchemaFlattener.flatten<T>(schema);
+    const attrKeys = flattened.attrKeys;
+    const expressions = flattened.expressions;
+    const displayNames = flattened.displayNames;
+    const dslMapping = flattened.dslMapping;
     const keyCount = attrKeys.length;
 
     // 初始化核心数据结构
@@ -256,6 +406,9 @@ export class ReactiveSystem<T extends string> {
     // 初始化映射关系
     this.keyToIndex = new Map();
     this.indexToKey = attrKeys;
+    this.dslMapping = dslMapping;
+    this.displayNames = displayNames;
+    
     attrKeys.forEach((key, index) => {
       this.keyToIndex.set(key, index);
     });
@@ -270,14 +423,68 @@ export class ReactiveSystem<T extends string> {
     this.computationFunctions = new Map();
 
     console.log(`🚀 ReactiveSystem 初始化完成，属性数量: ${keyCount}`);
+    console.log(`🗺️ DSL映射支持: ${dslMapping.size} 个路径`);
 
     // 设置表达式
-    if (expressions) {
+    if (expressions.size > 0) {
       this.setupExpressions(expressions);
     }
 
     // 标记所有属性为脏值
     this.markAllDirty();
+  }
+
+  // ==================== DSL支持API ====================
+
+  /**
+   * 通过DSL路径获取属性值
+   * 
+   * @param dslPath DSL路径，如 "abi.str", "hp.max"
+   * @returns 属性值，如果路径不存在返回0
+   */
+  getValueByDSL(dslPath: string): number {
+    const attrKey = this.dslMapping.get(dslPath);
+    if (!attrKey) {
+      console.warn(`⚠️ DSL路径不存在: ${dslPath}`);
+      return 0;
+    }
+    return this.getValue(attrKey);
+  }
+
+  /**
+   * 通过DSL路径设置属性值
+   * 
+   * @param dslPath DSL路径，如 "abi.str", "hp.current"
+   * @param value 要设置的值
+   */
+  setValueByDSL(dslPath: string, value: number): void {
+    const attrKey = this.dslMapping.get(dslPath);
+    if (!attrKey) {
+      console.warn(`⚠️ DSL路径不存在: ${dslPath}`);
+      return;
+    }
+    this.setValue(attrKey, value);
+  }
+
+  /**
+   * 获取属性的显示名称
+   */
+  getDisplayName(attr: T): string {
+    return this.displayNames.get(attr) || attr;
+  }
+
+  /**
+   * 获取所有DSL路径映射
+   */
+  getDSLMapping(): Map<string, T> {
+    return new Map(this.dslMapping);
+  }
+
+  /**
+   * 检查DSL路径是否存在
+   */
+  hasDSLPath(dslPath: string): boolean {
+    return this.dslMapping.has(dslPath);
   }
 
   // ==================== 核心API（保持兼容） ====================

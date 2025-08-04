@@ -145,12 +145,10 @@ export class MessageRouter {
         };
       }
 
-      // 将消息发送到成员的FSM
-      // FSM负责根据消息生成事件并写入事件队列
+      // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
       try {
-        // 调试：检查FSM当前状态
-        const currentState = targetMember.getFSM().getSnapshot();
-        console.log(`🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`, currentState.value);
+        console.log(`🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`, 
+                   targetMember.getFSM().getSnapshot().value);
         console.log(`🔍 MessageRouter: 发送的事件:`, { type: message.type, data: message.data });
         
         targetMember.getFSM().send({
@@ -158,13 +156,10 @@ export class MessageRouter {
           data: message.data,
         });
 
-        // 调试：检查FSM状态是否有变化
         const newState = targetMember.getFSM().getSnapshot();
         console.log(`🔍 MessageRouter: 发送事件到FSM后，成员 ${targetMember.getName()} 新状态:`, newState.value);
 
-        // 更新统计
         this.stats.successfulMessages++;
-
         console.log(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
         
         return {
@@ -173,9 +168,7 @@ export class MessageRouter {
           error: undefined
         };
       } catch (fsmError: any) {
-        // 更新统计
         this.stats.failedMessages++;
-
         console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`, fsmError);
         
         return {

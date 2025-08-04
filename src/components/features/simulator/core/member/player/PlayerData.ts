@@ -1105,3 +1105,393 @@ export const SubWeaponModifier: Record<
     mDefM: 0,
   },
 };
+
+/**
+ * 统一的玩家属性Schema - 整合PlayerAttrEnum、PlayerAttrDic、PlayerAttrExpressionsMap
+ *
+ * 结构说明：
+ * - 每个属性包含 name(扁平化键名)、displayName(显示名称)、expression(计算表达式)、isBase(是否基础值)
+ * - 嵌套结构便于用户理解和DSL编写 (如 self.basic.str)
+ * - 自动扁平化为ReactiveSystem所需的键名 (如 "str")
+ */
+export const PlayerAttrSchema = (props: {
+  mainWeaponType: MainHandType,
+  subWeaponType: SubHandType,
+}) => ({
+  // ============================== 基础信息 ==============================
+  lv: {
+    displayName: "等级",
+    expression: "lv",
+    isBase: true,
+  },
+
+  // ============================== 基础能力值 ==============================
+  abi: {
+    str: {
+      displayName: "力量",
+      expression: "str",
+      isBase: true,
+    },
+    int: {
+      displayName: "智力",
+      expression: "int",
+      isBase: true,
+    },
+    vit: {
+      displayName: "体力",
+      expression: "vit",
+      isBase: true,
+    },
+    agi: {
+      displayName: "敏捷",
+      expression: "agi",
+      isBase: true,
+    },
+    dex: {
+      displayName: "灵巧",
+      expression: "dex",
+      isBase: true,
+    },
+    luk: {
+      displayName: "幸运",
+      expression: "personalityType === 'Luk' ? luk : 0",
+      isBase: true,
+    },
+    tec: {
+      displayName: "技巧",
+      expression: "personalityType === 'Tec' ? tec : 0",
+      isBase: true,
+    },
+    men: {
+      displayName: "异抗",
+      expression: "personalityType === 'Men' ? men : 0",
+      isBase: true,
+    },
+    cri: {
+      displayName: "暴击",
+      expression: "personalityType === 'Cri' ? cri : 0",
+      isBase: true,
+    },
+  },
+
+  // ============================== 生命值/魔法值 ==============================
+  hp: {
+    max: {
+      displayName: "最大HP",
+      expression: "Math.floor(93 + lv * (127 / 17 + vit / 3))",
+    },
+    current: {
+      displayName: "当前HP",
+      expression: "maxHp",
+      isBase: true,
+    },
+    regen: {
+      displayName: "HP自然回复",
+      expression: "0", // 默认值，可通过装备等修改
+      isBase: true,
+    },
+  },
+
+  mp: {
+    max: {
+      displayName: "最大MP",
+      expression: "Math.floor(99 + lv + int / 10 + tec)",
+    },
+    current: {
+      displayName: "当前MP",
+      expression: "maxMp",
+      isBase: true,
+    },
+    regen: {
+      displayName: "MP自然回复",
+      expression: "0",
+      isBase: true,
+    },
+    atkRegen: {
+      displayName: "MP攻击回复",
+      expression: "10 + maxMp / 10",
+    },
+  },
+
+  equip: {
+    // ============================== 武器系统 ==============================
+    weapon: {
+      main: {
+        range: {
+          displayName: "主武器射程",
+          expression: "mainWeaponRange",
+          isBase: true,
+        },
+        baseAtk: {
+          displayName: "主武器基础攻击",
+          expression: "mainWeaponBaseAtk",
+          isBase: true,
+        },
+        type: {
+          displayName: "主武器类型",
+          expression: "mainWeaponType",
+          isBase: true,
+        },
+        ref: {
+          displayName: "主武器精炼",
+          expression: "mainWeaponRef",
+          isBase: true,
+        },
+        stability: {
+          displayName: "主武器稳定性",
+          expression: "mainWeaponStability",
+          isBase: true,
+        },
+      },
+      sub: {
+        range: {
+          displayName: "副武器射程",
+          expression: "subWeaponRange",
+          isBase: true,
+        },
+        type: {
+          displayName: "副武器类型",
+          expression: "subWeaponType",
+          isBase: true,
+        },
+        ref: {
+          displayName: "副武器精炼",
+          expression: "subWeaponRef",
+          isBase: true,
+        },
+        stability: {
+          displayName: "副武器稳定性",
+          expression: "subWeaponStability",
+          isBase: true,
+        },
+      },
+      attack: {
+        physical: {
+          displayName: "武器物理攻击",
+          expression: "mainWeaponBaseAtk + mainWeaponRef + Math.pow(mainWeaponRef, 2)",
+        },
+        magical: {
+          displayName: "武器魔法攻击",
+          expression: "subWeaponRef",
+        },
+        total: {
+          displayName: "武器攻击",
+          expression: "weaponPAtk + weaponMAtk",
+        },
+      },
+    },
+
+    // ============================== 防具系统 ==============================
+    armor: {
+      type: {
+        displayName: "身体装备类型",
+        expression: "armorType",
+        isBase: true,
+      },
+      baseAbi: {
+        displayName: "身体装备基础值",
+        expression: "armorBaseAbi",
+        isBase: true,
+      },
+      ref: {
+        displayName: "身体装备精炼",
+        expression: "armorRef",
+        isBase: true,
+      },
+    },
+
+    additional: {
+      baseAbi: {
+        displayName: "追加装备基础值",
+        expression: "optionBaseAbi",
+        isBase: true,
+      },
+      ref: {
+        displayName: "追加装备精炼",
+        expression: "optionRef",
+        isBase: true,
+      },
+    },
+
+    special: {
+      baseAbi: {
+        displayName: "特殊装备基础值",
+        expression: "specialBaseAbi",
+        isBase: true,
+      },
+    },
+  },
+
+  aggro: {
+    displayName: "仇恨值倍率",
+    expression: "100",
+    isBase: true
+  },
+  physical: {
+    displayName: "物理攻击",
+    expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].patkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.pAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.pAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.pAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.pAtkC}`
+  },
+  magical: {
+    displayName: "魔法攻击",
+    expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].matkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.mAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.mAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.mAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.mAtkC}`
+  },
+  unsheathe: {
+    displayName: "拔刀攻击",
+    expression: "100",
+    isBase: true
+  },
+
+  pierce: {
+    physical: {
+      displayName: "物理贯穿",
+      expression: "0",
+      isBase: true
+    },
+    magical: {
+      displayName: "魔法贯穿",
+      expression: "0",
+      isBase: true
+    }
+  },
+  critical: {
+    physical: {
+      rate: {
+        displayName: "物理暴击率",
+        expression: "25 + cri / 5"
+      },
+      damage: {
+        displayName: "物理暴击伤害",
+        expression: "150 + Math.floor(Math.max(str / 5, (str + agi) / 10))"
+      }
+    },
+    magical: {
+      convRate: {
+        displayName: "魔法暴击转化率",
+        expression: "0",
+        isBase: true
+      },
+      dmgConvRate: {
+        displayName: "魔法爆伤转化率",
+        expression: "0",
+        isBase: true
+      },
+      rate: {
+        displayName: "魔法暴击率",
+        expression: "0",
+        isBase: true
+      },
+      damage: {
+        displayName: "魔法暴击伤害",
+        expression: "0",
+        isBase: true
+      }
+    }
+  },
+  range: {
+    short: {
+      displayName: "近距离威力",
+      expression: "0",
+      isBase: true
+    },
+    long: {
+      displayName: "远距离威力",
+      expression: "0",
+      isBase: true
+    }
+  },
+  element: {
+    neutral: {
+      displayName: "对无属性增强",
+      expression: "0",
+      isBase: true
+    },
+    light: {
+      displayName: "对光属性增强",
+      expression: "0",
+      isBase: true
+    },
+    dark: {
+      displayName: "对暗属性增强",
+      expression: "0",
+      isBase: true
+    },
+    water: {
+      displayName: "对水属性增强",
+      expression: "0",
+      isBase: true
+    },
+    fire: {
+      displayName: "对火属性增强",
+      expression: "0",
+      isBase: true
+    },
+    earth: {
+      displayName: "对地属性增强",
+      expression: "0",
+      isBase: true
+    },
+    wind: {
+      displayName: "对风属性增强",
+      expression: "0",
+      isBase: true
+    }
+  },
+  total: {
+    displayName: "总伤害",
+    expression: "100",
+    isBase: true
+  },
+  final: {
+    displayName: "最终伤害",
+    expression: "100",
+    isBase: true
+  },
+  stability: {
+    physical: {
+      displayName: "物理稳定率",
+      expression: "mainWeaponStability + Math.floor(str * 1.0)" // Placeholder
+    },
+    magical: {
+      displayName: "魔法稳定率",
+      expression: "0",
+      isBase: true
+    }
+  },
+  accuracy: {
+    displayName: "命中",
+    expression: "0",
+    isBase: true
+  },
+  pursuit: {
+    physical: {
+      displayName: "物理追击",
+      expression: "0",
+      isBase: true
+    },
+    magical: {
+      displayName: "魔法追击",
+      expression: "0",
+      isBase: true
+    }
+  },
+  anticipate: {
+    displayName: "看穿",
+    expression: "0",
+    isBase: true
+  },
+  guardBreak: {
+    displayName: "破防",
+    expression: "0",
+    isBase: true
+  },
+  reflect: {
+    displayName: "反弹伤害",
+    expression: "0",
+    isBase: true
+  },
+  absolute: {
+    displayName: "绝对命中",
+    expression: "0",
+    isBase: true
+  },
+});

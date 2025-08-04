@@ -64,11 +64,30 @@ export class JSExpressionProcessor {
     };
 
     try {
-      // 1. 语法解析检查
-      const ast = parse(code, { 
-        ecmaVersion: 5,  // Blockly生成ES5代码
-        sourceType: 'script'
-      });
+      // 1. 语法解析检查 - 处理包含return语句的代码
+      let ast: Program;
+      
+      if (code.includes('return')) {
+        // 如果代码包含return语句，将其包装在函数中进行验证
+        const wrappedCode = `function tempFunction() {\n${code}\n}`;
+        try {
+          ast = parse(wrappedCode, { 
+            ecmaVersion: 5,
+            sourceType: 'script'
+          });
+        } catch (wrapError) {
+          // 如果包装后仍然失败，说明代码确实有语法错误
+          result.isValid = false;
+          result.errors.push(`语法解析错误: ${wrapError.message}`);
+          return result;
+        }
+      } else {
+        // 普通代码直接解析
+        ast = parse(code, { 
+          ecmaVersion: 5,  // Blockly生成ES5代码
+          sourceType: 'script'
+        });
+      }
 
       // 2. 安全性检查
       this.checkSecurity(ast, result);

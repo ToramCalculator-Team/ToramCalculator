@@ -28,11 +28,9 @@ import type { CharacterSkillWithRelations } from "@db/repositories/characterSkil
 
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
-import { createActor } from "xstate";
-import { PlayerAttrKeys, PlayerAttrDic, PlayerAttrType } from "./PlayerData";
-import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
-import { PlayerAttrExpressionsMap } from "./PlayerData";
-import { PlayerFSMEventBridge } from "../../fsmBridge/PlayerBridge";
+import { PlayerAttrKeys, PlayerAttrSchema } from "./PlayerData";
+import { ModifierSource, ReactiveSystem, ExtractAttrPaths } from "../ReactiveSystem";
+
 import type GameEngine from "../../GameEngine";
 
 // ============================== 角色属性系统类型定义 ==============================
@@ -57,6 +55,8 @@ type PlayerEventType =
   | { type: "update"; timestamp: number }; // 更新事件（带时间戳）
 
 // ============================== Player类 ==============================
+
+type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
 /**
  * 玩家成员类
@@ -96,9 +96,6 @@ export class Player extends Member<PlayerAttrType> {
       throw new Error("Player类只能用于玩家类型的成员");
     }
 
-    // 创建Player特有的FSM事件桥
-    const playerFSMBridge = new PlayerFSMEventBridge();
-
     // 获取角色数据
     const character = memberData.player.character;
     if (!character) {
@@ -106,16 +103,13 @@ export class Player extends Member<PlayerAttrType> {
     }
 
     // 创建响应式配置
-    const reactiveSystemConfig = {
-      attrKeys: PlayerAttrKeys,
-      attrExpressions: PlayerAttrExpressionsMap({
-        mainWeaponType: character.weapon.type as MainHandType,
-        subWeaponType: character.subWeapon.type as SubHandType,
-      }),
-    };
+    const playerSchema =  PlayerAttrSchema({
+      mainWeaponType: character.weapon.type as MainHandType,
+      subWeaponType: character.subWeapon.type as SubHandType,
+    })
 
     // 调用父类构造函数，注入游戏引擎、FSM事件桥和响应式配置
-    super(memberData, engine, playerFSMBridge, reactiveSystemConfig, initialState);
+    super(memberData, engine, playerSchema, initialState);
 
     // 设置角色数据
     this.character = character;
@@ -134,138 +128,72 @@ export class Player extends Member<PlayerAttrType> {
   private initializePlayerData(): void {
     this.reactiveDataManager.setBaseValues({
       lv: this.character.lv,
-      str: this.character.str,
-      int: this.character.int,
-      vit: this.character.vit,
-      agi: this.character.agi,
-      dex: this.character.dex,
-      luk: this.character.personalityType === "Luk" ? this.character.personalityValue : 0,
-      tec: this.character.personalityType === "Tec" ? this.character.personalityValue : 0,
-      men: this.character.personalityType === "Men" ? this.character.personalityValue : 0,
-      cri: this.character.personalityType === "Cri" ? this.character.personalityValue : 0,
-      maxHp: this.character.vit * 10 + 100,
-      currentHp: this.character.vit * 10 + 100,
-      maxMp: this.character.int * 5 + 50,
-      currentMp: this.character.int * 5 + 50,
-      mainWeaponBaseAtk: this.character.weapon.baseAbi,
-      weaponAtk: this.character.weapon.baseAbi,
-      aggroRate: 0,
-      mainWeaponRange: 0,
-      hpRegen: 0,
-      mpRegen: 0,
-      mpAtkRegen: 0,
-      pAtk: 0,
-      mAtk: 0,
-      unsheatheAtk: 0,
-      pPierce: 0,
-      mPierce: 0,
-      pCritRate: 0,
-      pCritDmg: 0,
-      mCritConvRate: 0,
-      mCritDmgConvRate: 0,
-      mCritRate: 0,
-      mCritDmg: 0,
-      shortRangeDmg: 0,
-      longRangeDmg: 0,
-      vsNeutral: 0,
-      vsLight: 0,
-      vsDark: 0,
-      vsWater: 0,
-      vsFire: 0,
-      vsEarth: 0,
-      vsWind: 0,
-      totalDmg: 0,
-      finalDmg: 0,
-      pStab: 0,
-      mStab: 0,
+      aggro: 0,
+      physical: 0,
+      magical: 0,
+      unsheathe: 0,
+      total: 0,
+      final: 0,
       accuracy: 0,
-      pPursuit: 0,
-      mPursuit: 0,
       anticipate: 0,
       guardBreak: 0,
       reflect: 0,
-      absoluteAccuracy: 0,
-      pAtkUpStr: 0,
-      pAtkUpInt: 0,
-      pAtkUpVit: 0,
-      pAtkUpAgi: 0,
-      pAtkUpDex: 0,
-      mAtkUpStr: 0,
-      mAtkUpInt: 0,
-      mAtkUpVit: 0,
-      mAtkUpAgi: 0,
-      mAtkUpDex: 0,
-      pAtkDownStr: 0,
-      pAtkDownInt: 0,
-      pAtkDownVit: 0,
-      pAtkDownAgi: 0,
-      pAtkDownDex: 0,
-      mAtkDownStr: 0,
-      mAtkDownInt: 0,
-      mAtkDownVit: 0,
-      mAtkDownAgi: 0,
-      mAtkDownDex: 0,
-      bodyArmorDef: 0,
-      pDef: 0,
-      mDef: 0,
-      pRes: 0,
-      mRes: 0,
-      neutralRes: 0,
-      lightRes: 0,
-      darkRes: 0,
-      waterRes: 0,
-      fireRes: 0,
-      earthRes: 0,
-      windRes: 0,
-      dodge: 0,
-      ailmentRes: 0,
-      guardPower: 0,
-      guardRecharge: 0,
-      evasionRecharge: 0,
-      pBarrier: 0,
-      mBarrier: 0,
-      fractionalBarrier: 0,
-      barrierCooldown: 0,
-      redDmgFloor: 0,
-      redDmgMeteor: 0,
-      redDmgPlayerEpicenter: 0,
-      redDmgFoeEpicenter: 0,
-      redDmgBowling: 0,
-      redDmgBullet: 0,
-      redDmgStraightLine: 0,
-      redDmgCharge: 0,
-      absoluteDodge: 0,
-      aspd: 0,
-      mspd: 0,
-      msrd: 0,
-      cspd: 0,
-      csr: 0,
-      dropRate: 0,
-      reviveTime: 0,
-      flinchUnavailable: 0,
-      tumbleUnavailable: 0,
-      stunUnavailable: 0,
-      invincibleAid: 0,
-      expRate: 0,
-      petExp: 0,
-      itemCooldown: 0,
-      recoilDmg: 0,
-      gemPowderDrop: 0,
-      weaponMAtk: 0,
-      weaponPAtk: 0,
-      mainWeaponType: 0,
-      mainWeaponRef: 0,
-      mainWeaponStability: 0,
-      subWeaponRange: 0,
-      subWeaponType: 0,
-      subWeaponRef: 0,
-      subWeaponStability: 0,
-      armorType: 0,
-      armorBaseAbi: 0,
-      armorRef: 0,
-      optionBaseAbi: 0,
-      optionRef: 0,
-      specialBaseAbi: 0,
+      absolute: 0,
+      abiStr: 0,
+      abiInt: 0,
+      abiVit: 0,
+      abiAgi: 0,
+      abiDex: 0,
+      abiLuk: 0,
+      abiTec: 0,
+      abiMen: 0,
+      abiCri: 0,
+      hpMax: 0,
+      hpCurrent: 0,
+      hpRegen: 0,
+      mpMax: 0,
+      mpCurrent: 0,
+      mpRegen: 0,
+      mpAtkRegen: 0,
+      equipWeaponMainRange: 0,
+      equipWeaponMainStability: 0,
+      equipWeaponMainBaseAtk: 0,
+      equipWeaponMainType: 0,
+      equipWeaponMainRef: 0,
+      equipWeaponSubRange: 0,
+      equipWeaponSubStability: 0,
+      equipWeaponSubType: 0,
+      equipWeaponSubRef: 0,
+      equipWeaponAttackPhysical: 0,
+      equipWeaponAttackMagical: 0,
+      equipWeaponAttackTotal: 0,
+      equipArmorType: 0,
+      equipArmorRef: 0,
+      equipArmorBaseAbi: 0,
+      equipAdditionalRef: 0,
+      equipAdditionalBaseAbi: 0,
+      equipSpecialBaseAbi: 0,
+      piercePhysical: 0,
+      pierceMagical: 0,
+      criticalPhysicalRate: 0,
+      criticalPhysicalDamage: 0,
+      criticalMagicalRate: 0,
+      criticalMagicalDamage: 0,
+      criticalMagicalConvRate: 0,
+      criticalMagicalDmgConvRate: 0,
+      rangeShort: 0,
+      rangeLong: 0,
+      elementNeutral: 0,
+      elementLight: 0,
+      elementDark: 0,
+      elementWater: 0,
+      elementFire: 0,
+      elementEarth: 0,
+      elementWind: 0,
+      stabilityPhysical: 0,
+      stabilityMagical: 0,
+      pursuitPhysical: 0,
+      pursuitMagical: 0
     });
     // 解析角色配置中的修饰器
     this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
@@ -278,7 +206,7 @@ export class Player extends Member<PlayerAttrType> {
    * 直接从响应式系统获取计算结果
    */
   getStats(): Record<PlayerAttrType, number> {
-    return this.reactiveDataManager.getValues(PlayerAttrKeys);
+    return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
   }
 
   // ==================== 基类抽象方法实现 ====================
@@ -430,7 +358,7 @@ export class Player extends Member<PlayerAttrType> {
    * @returns 属性值快照
    */
   getAllAttributeValues(): Readonly<Record<string, number>> {
-    return this.reactiveDataManager.getValues(PlayerAttrKeys);
+    return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
   }
 
   /**
@@ -501,7 +429,7 @@ export class Player extends Member<PlayerAttrType> {
       actions: {
         // 根据角色配置初始化玩家状态
         initializePlayerState: assign({
-          stats: ({ context }) => this.reactiveDataManager.getValues(PlayerAttrKeys),
+          stats: ({ context }) => this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]),
           isAlive: true,
           isActive: true,
           statusEffects: [],
@@ -552,9 +480,9 @@ export class Player extends Member<PlayerAttrType> {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setAttributeValue("maxHp", TargetType.baseValue, this.getAttributeValue("maxHp"), "revive");
-            this.setAttributeValue("maxMp", TargetType.baseValue, this.getAttributeValue("maxMp"), "revive");
-            return this.reactiveDataManager.getValues(PlayerAttrKeys);
+            this.setAttributeValue("hpMax", TargetType.baseValue, this.getAttributeValue("hpMax"), "revive");
+            this.setAttributeValue("mpMax", TargetType.baseValue, this.getAttributeValue("mpMax"), "revive");
+            return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
           },
           isAlive: true,
           isActive: true,
@@ -566,37 +494,34 @@ export class Player extends Member<PlayerAttrType> {
           console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
         },
 
-        // 处理自定义事件（通过FSM桥生成EventQueue事件）
+        // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）
         processCustomEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          console.log(`🔄 [${context.memberData.name}] 通过FSM桥处理自定义事件:`, event.data);
+          console.log(`🔄 [${context.memberData.name}] FSM转换自定义事件到执行队列:`, event.data);
           
           try {
-            const fsmEvent = {
-              type: 'custom',
-              data: event.data,
-              source: 'fsm_action'
+            // FSM负责事件转换，不直接执行业务逻辑
+            const gameEvent = {
+              id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+              type: 'custom' as const,
+              priority: 'normal' as const,
+              executeFrame: this.engine.getFrameLoop().getFrameNumber() + 1, // 下一帧执行
+              payload: {
+                targetMemberId: this.id,
+                memberType: this.type,
+                action: event.data.action || 'execute',
+                scriptCode: event.data.scriptCode,
+                attribute: event.data.attribute,
+                value: event.data.value,
+                sourceEvent: 'fsm_custom',
+                timestamp: Date.now(),
+                ...event.data
+              },
+              source: 'player_fsm'
             };
             
-            const transformContext = {
-              currentFrame: this.engine.getFrameLoop().getFrameNumber(),
-              memberId: this.id,
-              memberType: this.type,
-              currentState: this.actor.getSnapshot().value as string
-            };
-            
-            // 使用FSM桥转换事件
-            const gameEvents = this.fsmBridge.transformFSMEvent(fsmEvent, transformContext);
-            
-            if (gameEvents) {
-              // 将转换后的事件插入到事件队列
-              const eventsArray = Array.isArray(gameEvents) ? gameEvents : [gameEvents];
-              eventsArray.forEach(gameEvent => {
-                this.engine.getEventQueue().insert(gameEvent);
-                console.log(`✅ [${context.memberData.name}] FSM事件已转换并加入队列:`, gameEvent.type);
-              });
-            } else {
-              console.log(`⚠️ [${context.memberData.name}] FSM桥跳过了该事件`);
-            }
+            // 插入到事件队列，由EventExecutor统一处理
+            this.engine.getEventQueue().insert(gameEvent);
+            console.log(`✅ [${context.memberData.name}] 自定义事件已转换并加入执行队列`);
             
           } catch (error) {
             console.error(`❌ [${context.memberData.name}] FSM事件转换失败:`, error);
@@ -637,10 +562,10 @@ export class Player extends Member<PlayerAttrType> {
         },
 
         // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("maxHp") <= 0,
+        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("hpMax") <= 0,
 
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("maxHp") > 0,
+        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("hpMax") > 0,
       },
     }).createMachine({
       id: machineId,

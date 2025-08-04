@@ -19,11 +19,9 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import { isMobMember } from "../../Member";
 import type { MobWithRelations } from "@db/repositories/mob";
 import { ComboWithRelations } from "@db/repositories/combo";
-import { createActor } from "xstate";
-import { MobAttrKeys, MobAttrDic, MobAttrType, MobAttrExpressionsMap } from "./MobData";
-import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
-import { MobFSMEventBridge } from "../../fsmBridge/MobBridge";
+import { ModifierSource, AttributeExpression, ReactiveSystem, ExtractAttrPaths } from "../ReactiveSystem";
 import type GameEngine from "../../GameEngine";
+import { MobAttrSchema } from "./MobData";
 
 // ============================== 角色属性系统类型定义 ==============================
 
@@ -47,6 +45,8 @@ type MobEventType =
   | { type: "update"; timestamp: number }; // 更新事件（带时间戳）
 
 // ============================== Mob类 ==============================
+
+type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
 /**
  * 怪物成员类
@@ -86,23 +86,19 @@ export class Mob extends Member<MobAttrType> {
       throw new Error("Mob类只能用于怪物类型的成员");
     }
 
-    // 创建Mob特有的FSM事件桥
-    const mobFSMBridge = new MobFSMEventBridge();
-
-    // 创建响应式配置
-    const reactiveSystemConfig = {
-      attrKeys: MobAttrKeys,
-      attrExpressions: MobAttrExpressionsMap,
-    };
-
-    // 调用父类构造函数，注入游戏引擎和FSM事件桥
-    super(memberData, engine, mobFSMBridge, reactiveSystemConfig, initialState);
-
-    // 设置角色数据
-    this.mob = memberData.mob;
-    if (!this.mob) {
+    // 获取怪物数据
+    const mob = memberData.mob;
+    if (!mob) {
       throw new Error("怪物角色数据缺失");
     }
+
+    const mobSchema = MobAttrSchema();
+
+    // 调用父类构造函数，注入游戏引擎和Schema
+    super(memberData, engine, mobSchema, initialState);
+
+    // 设置角色数据
+    this.mob = mob;
 
     // 初始化怪物数据（响应式系统已由基类初始化）
     this.initializeMobData();
@@ -117,25 +113,24 @@ export class Mob extends Member<MobAttrType> {
    */
   private initializeMobData(): void {
     this.reactiveDataManager.setBaseValues({
-      lv: 0,
-      captureable: 0,
-      experience: 0,
-      partsExperience: 0,
-      radius: 0,
-      dodge: 0,
-      maxHp: 0,
-      currentHp: 0,
-      pAtk: 0,
-      mAtk: 0,
-      pCritRate: 0,
-      pCritDmg: 0,
-      pStab: 0,
-      accuracy: 0,
-      pDef: 0,
-      mDef: 0,
-      pRes: 0,
-      mRes: 0,
-      neutralRes: 0,
+      lv: this.mob.baseLv || 1,
+      captureable: this.mob.captureable ? 1 : 0,
+      experience: this.mob.experience || 0,
+      partsExperience: this.mob.partsExperience || 0,
+      radius: this.mob.radius || 1,
+      hpMax: this.mob.maxhp || 1500,
+      hpCurrent: this.mob.maxhp || 1500,
+      pAtk: 120, // Mob没有攻击力字段，使用默认值
+      mAtk: 80,
+      pCritRate: 5,
+      pCritDmg: 150,
+      pStab: 75,
+      accuracy: 80,
+      pDef: this.mob.physicalDefense || 60,
+      mDef: this.mob.magicalDefense || 40,
+      pRes: this.mob.physicalResistance || 0,
+      mRes: this.mob.magicalResistance || 0,
+      neutralRes: 0, // Mob没有元素抗性字段，使用默认值
       lightRes: 0,
       darkRes: 0,
       waterRes: 0,
@@ -146,9 +141,9 @@ export class Mob extends Member<MobAttrType> {
       guardPower: 0,
       guardRecharge: 0,
       evasionRecharge: 0,
-      aspd: 0,
-      cspd: 0,
-      mspd: 0
+      aspd: 100, // Mob没有速度字段，使用默认值
+      cspd: 100,
+      mspd: 80
     });
     // 解析怪物配置中的修饰器（暂时注释掉，直到实现相应方法）
     // this.reactiveDataManager.parseModifiersFromMob(this.mob, "怪物配置");
@@ -190,31 +185,12 @@ export class Mob extends Member<MobAttrType> {
       // 可以覆盖基类的通用属性
       maxHp: 1500,  // 怪物血量比基类默认值更高
       currentHp: 1500,
-      maxMp: 50,    // 怪物通常 MP 较低
-      currentMp: 50,
       pAtk: 120,    // 怪物攻击力
       mAtk: 80,     // 怪物魔攻较低
       pDef: 60,     // 怪物防御
       mDef: 40,     // 怪物魔防较低
       mspd: 80,     // 怪物移动速度较慢
     };
-  }
-
-  /**
-   * 转换表达式格式以适配 ReactiveDataManager
-   * 将 MobAttrEnum 键转换为 MobAttrType 键
-   */
-  private convertExpressionsToManagerFormat(): Map<MobAttrType, AttributeExpression<MobAttrType>> {
-    const convertedExpressions = new Map<MobAttrType, AttributeExpression<MobAttrType>>();
-
-    for (const [attrName, expressionData] of MobAttrExpressionsMap) {
-      convertedExpressions.set(attrName, {
-        expression: expressionData.expression,
-        isBase: expressionData.isBase,
-      });
-    }
-
-    return convertedExpressions;
   }
 
   // ==================== 公共接口 ====================
@@ -414,7 +390,41 @@ export class Mob extends Member<MobAttrType> {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          //   console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+        },
+
+        // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）
+        processCustomEvent: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🔄 [${context.memberData.name}] FSM转换自定义事件到执行队列:`, event.data);
+          
+          try {
+            // FSM负责事件转换，不直接执行业务逻辑
+            const gameEvent = {
+              id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+              type: 'custom' as const,
+              priority: 'normal' as const,
+              executeFrame: this.engine.getFrameLoop().getFrameNumber() + 1, // 下一帧执行
+              payload: {
+                targetMemberId: this.id,
+                memberType: this.type,
+                action: event.data.action || 'execute',
+                scriptCode: event.data.scriptCode,
+                attribute: event.data.attribute,
+                value: event.data.value,
+                sourceEvent: 'fsm_custom',
+                timestamp: Date.now(),
+                ...event.data
+              },
+              source: 'mob_fsm'
+            };
+            
+            // 插入到事件队列，由EventExecutor统一处理
+            this.engine.getEventQueue().insert(gameEvent);
+            console.log(`✅ [${context.memberData.name}] 自定义事件已转换并加入执行队列`);
+            
+          } catch (error) {
+            console.error(`❌ [${context.memberData.name}] FSM事件转换失败:`, error);
+          }
         },
       },
       guards: {

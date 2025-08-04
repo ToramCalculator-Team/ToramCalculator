@@ -12,53 +12,61 @@
 import { createActor, type Actor, type NonReducibleUnknown, type EventObject, type StateMachine } from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
 import { type MemberType } from "@db/schema/enums";
-import type { FSMEventBridge, FSMEventInput, FSMTransformContext } from "./fsmBridge/BridgeInterface";
+
 import type { EventQueue } from "./EventQueue";
-import { ReactiveSystem, type AttributeExpression } from "./member/ReactiveSystem";
+import { 
+  ReactiveSystem, 
+  type AttributeExpression, 
+  type NestedSchema,
+  type SchemaAttribute 
+} from "./member/ReactiveSystem";
 import type GameEngine from "./GameEngine";
 
 // ============================== 类型定义 ==============================
-
-/**
- * 通用属性类型 - 所有成员共有的属性
- * 包括生命值、魔法值、位置等基础属性
- */
-export type CommonAttrType = 
-  | 'currentHp'    // 当前生命值
-  | 'maxHp'        // 最大生命值
-  | 'currentMp'    // 当前魔法值
-  | 'maxMp'        // 最大魔法值
-  | 'positionX'    // X坐标
-  | 'positionY'    // Y坐标
-  | 'mspd'         // 移动速度
-  | 'pAtk'         // 物理攻击力
-  | 'mAtk'         // 魔法攻击力
-  | 'pDef'         // 物理防御力
-  | 'mDef';        // 魔法防御力
-
 /**
  * 通用属性的默认表达式映射
  * 定义通用属性的计算表达式和依赖关系
  */
-export const CommonAttrExpressions = new Map<CommonAttrType, AttributeExpression<CommonAttrType>>([
-  // 基础属性（无依赖）
-  ['maxHp', { expression: 'maxHp', isBase: true }],
-  ['maxMp', { expression: 'maxMp', isBase: true }],
-  ['positionX', { expression: 'positionX', isBase: true }],
-  ['positionY', { expression: 'positionY', isBase: true }],
-  ['pAtk', { expression: 'pAtk', isBase: true }],
-  ['mAtk', { expression: 'mAtk', isBase: true }],
-  ['pDef', { expression: 'pDef', isBase: true }],
-  ['mDef', { expression: 'mDef', isBase: true }],
-  
-  // 计算属性（有依赖）
-  ['currentHp', { expression: 'min(currentHp, maxHp)', isBase: false }],
-  ['currentMp', { expression: 'min(currentMp, maxMp)', isBase: false }],
-]);
+export const CommonAttrSchema = {
+  lv: {
+    name: "lv",
+    expression: "lv",
+  },
+  abi: {
+    str: {
+      name: "str",
+      expression: "str",
+    },
+    int: {
+      name: "int",
+      expression: "int",
+    },
+  },
+  maxHp: {
+    name: "maxHp",
+    expression: "lv + 99 + str",
+  },
+  currentHp: {
+    name: "currentHp",
+    expression: "maxHp",
+  },
+  currentMp: {
+    name: "currentMp",
+    expression: "maxMp",
+  },
+  maxMp: {
+    name: "maxMp",
+    expression: "lv + 99 + int",
+  },
+  positionX: {
+    name: "positionX",
+    expression: "",
+  },
+};
 
 /**
  * 成员数据接口 - 对应Member.serialize()的返回类型
- * 
+ *
  * @template TAttrKey 属性键的字符串联合类型，与 MemberContext 保持一致
  */
 export interface MemberSerializeData<TAttrKey extends string = string> {
@@ -205,7 +213,7 @@ export type MemberEventType =
  * 成员状态机类型
  * 基于 XState StateMachine 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
- * 
+ *
  * @template TAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
@@ -229,7 +237,7 @@ export type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
  * 成员Actor类型
  * 基于 XState Actor 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
- * 
+ *
  * @template TAttrKey 属性键的字符串联合类型
  */
 export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
@@ -277,7 +285,7 @@ export function isPartnerMember(
 /**
  * 成员基类
  * 提供基于XState的状态机管理和事件队列处理
- * 
+ *
  * @template TAttrKey 属性键的字符串联合类型，用于类型安全的属性访问
  */
 export abstract class Member<TAttrKey extends string = string> {
@@ -310,26 +318,17 @@ export abstract class Member<TAttrKey extends string = string> {
   /** 响应式数据管理器 - 统一管理所有属性计算 */
   protected reactiveDataManager!: ReactiveSystem<TAttrKey>;
 
-  // ==================== FSM事件桥集成 ====================
+  // ==================== 游戏引擎集成 ====================
 
   /** 游戏引擎实例 - 提供所有核心服务的访问 */
   protected readonly engine: GameEngine;
-
-  /** FSM事件桥接器 */
-  protected fsmBridge: FSMEventBridge;
 
   /** 当前帧号 */
   protected currentFrame: number = 0;
 
   // ==================== 响应式系统集成 ====================
 
-  protected reactiveSystemConfig: {
-    attrKeys: TAttrKey[];
-    attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
-  } = {
-    attrKeys: [],
-    attrExpressions: new Map(),
-  };
+  protected attrSchema: NestedSchema = {};
 
   // ==================== 构造函数 ====================
 
@@ -338,18 +337,14 @@ export abstract class Member<TAttrKey extends string = string> {
    *
    * @param memberData 成员基础数据
    * @param engine 游戏引擎实例 - 提供所有核心服务访问
-   * @param fsmBridge FSM事件桥接器（依赖注入）
+
    * @param reactiveSystemConfig 响应式系统配置
    * @param initialState 初始状态配置
    */
   constructor(
     protected readonly memberData: MemberWithRelations,
     engine: GameEngine,
-    fsmBridge: FSMEventBridge,
-    reactiveSystemConfig: {
-      attrKeys: TAttrKey[];
-      attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
-    },
+    schema: NestedSchema,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -363,14 +358,10 @@ export abstract class Member<TAttrKey extends string = string> {
     // 注入游戏引擎 - 核心依赖
     this.engine = engine;
 
-    // 初始化FSM事件桥
-    this.fsmBridge = fsmBridge;
-
     // 初始化响应式配置
-    this.reactiveSystemConfig = reactiveSystemConfig;
+    this.attrSchema = schema;
 
-    // 初始化响应式数据管理器
-    this.initializeReactiveSystem(initialState, reactiveSystemConfig);
+    this.initializeReactiveSystemWithSchema(initialState, this.attrSchema);
 
     // 创建状态机实例
     this.actor = createActor(this.createStateMachine(initialState), {
@@ -380,7 +371,7 @@ export abstract class Member<TAttrKey extends string = string> {
     // 启动状态机
     this.actor.start();
 
-    console.log(`Member: 创建成员: ${memberData.name} (${this.type})，通过引擎访问服务，使用事件桥: ${fsmBridge.getName()}`);
+    console.log(`Member: 创建成员: ${memberData.name} (${this.type})，通过引擎访问服务`);
   }
 
   // ==================== 抽象方法 ====================
@@ -405,7 +396,6 @@ export abstract class Member<TAttrKey extends string = string> {
     currentHp?: number;
     currentMp?: number;
   }): MemberStateMachine;
-
 
   // ==================== 公共接口 ====================
 
@@ -435,7 +425,7 @@ export abstract class Member<TAttrKey extends string = string> {
    */
   getCurrentState(): { value: string; context: MemberContext<TAttrKey> } {
     const snapshot = this.actor.getSnapshot();
-    
+
     // 构建基于响应式系统的上下文
     const reactiveContext: MemberContext<TAttrKey> = {
       memberData: this.memberData,
@@ -448,7 +438,7 @@ export abstract class Member<TAttrKey extends string = string> {
       extraData: {},
       position: this.getPosition(),
     };
-    
+
     // XState v5的Snapshot结构不同，需要正确访问状态
     if (snapshot.status === "active") {
       return {
@@ -456,9 +446,9 @@ export abstract class Member<TAttrKey extends string = string> {
         context: reactiveContext,
       };
     }
-    return { 
-      value: snapshot.status, 
-      context: reactiveContext 
+    return {
+      value: snapshot.status,
+      context: reactiveContext,
     };
   }
 
@@ -527,8 +517,6 @@ export abstract class Member<TAttrKey extends string = string> {
       y: (stats as any).positionY || 0,
     };
   }
-
-
 
   /**
    * 检查是否存活
@@ -679,49 +667,6 @@ export abstract class Member<TAttrKey extends string = string> {
    */
   setCurrentFrame(frame: number): void {
     this.currentFrame = frame;
-  }
-
-  /**
-   * 调用事件桥处理FSM事件
-   * 将XState的FSM事件转换为EventQueue事件，并插入到（引擎）事件队列
-   *
-   * @param fsmEvent FSM事件输入
-   * @returns 是否成功处理
-   */
-  protected processFSMEvent(fsmEvent: FSMEventInput): boolean {
-    try {
-      // 构建转换上下文
-      const context: FSMTransformContext = {
-        currentFrame: this.currentFrame,
-        memberId: this.id,
-        memberType: this.type,
-        currentState: this.getCurrentState().value as string,
-        targetState: undefined, // 可以根据需要扩展
-      };
-
-      // 使用FSM事件桥转换事件
-      const queueEvents = this.fsmBridge.transformFSMEvent(fsmEvent, context);
-
-      if (!queueEvents) {
-        return true; // 事件被忽略，但不是错误
-      }
-
-      // 处理转换结果
-      const events = Array.isArray(queueEvents) ? queueEvents : [queueEvents];
-
-      // 如果有外部事件队列，插入到外部队列（引擎事件队列）
-      const engineEventQueue = this.engine.getEventQueue();
-      if (engineEventQueue) {
-        return events.every((event) => engineEventQueue.insert(event));
-      }
-
-      // 否则记录日志（未来可能扩展为其他处理方式）
-      console.log(`Member ${this.id}: FSM事件已转换，但未设置外部事件队列，生成了 ${events.length} 个事件`);
-      return true;
-    } catch (error) {
-      console.error(`Member ${this.id}: FSM事件处理失败:`, error);
-      return false;
-    }
   }
 
   // ==================== 受保护的方法 ====================
@@ -971,6 +916,21 @@ export abstract class Member<TAttrKey extends string = string> {
   }
 
   /**
+   * 直接修改属性 - 通用方法，供子类使用
+   * 绕过事件队列，直接操作ReactiveSystem
+   */
+  protected setAttributeDirect(attribute: TAttrKey, value: number, source: string = "direct_intent"): boolean {
+    try {
+      this.reactiveDataManager.setBaseValue(attribute, value);
+      console.log(`✅ [${this.getName()}] 直接修改属性: ${attribute} = ${value} (${source})`);
+      return true;
+    } catch (error) {
+      console.error(`❌ [${this.getName()}] 直接修改属性失败:`, error);
+      return false;
+    }
+  }
+
+  /**
    * 设置目标
    * 供引擎和控制器使用
    *
@@ -1143,32 +1103,40 @@ export abstract class Member<TAttrKey extends string = string> {
   // ==================== 私有方法 ====================
 
   /**
-   * 初始化响应式系统
-   * 合并通用默认属性和子类传入的属性
+   * 使用Schema初始化响应式系统（新方式）
    */
-  private initializeReactiveSystem(
+  private initializeReactiveSystemWithSchema(
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
       currentMp?: number;
     },
-    reactiveSystemConfig: {
-      attrKeys: TAttrKey[];
-      attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
-    },
+    schema: NestedSchema,
   ): void {
-    // 使用传入的配置或从子类获取
-    const attrKeys = reactiveSystemConfig.attrKeys;
-    const attrExpressions = reactiveSystemConfig.attrExpressions;
-    
-    // 创建响应式系统
-    this.reactiveDataManager = new ReactiveSystem<TAttrKey>(attrKeys, attrExpressions);
-    
+    console.log('🔧 使用Schema模式初始化成员响应式系统');
+
+    // 创建响应式系统 - 使用Schema模式
+    this.reactiveDataManager = new ReactiveSystem<TAttrKey>({ schema });
+
+    // 设置默认值
+    this.setCommonDefaultValues(initialState);
+
+    console.log(`✅ 成员 ${this.memberData.name} 响应式系统初始化完成（Schema模式）`);
+  }
+  
+  /**
+   * 设置通用默认值（两种模式共用）
+   */
+  private setCommonDefaultValues(initialState: {
+    position?: { x: number; y: number };
+    currentHp?: number;
+    currentMp?: number;
+  }): void {
     // 定义通用默认属性
     const commonDefaults: Record<string, number> = {
       currentHp: initialState.currentHp || 1000,
       maxHp: 1000,
-      currentMp: initialState.currentMp || 100, 
+      currentMp: initialState.currentMp || 100,
       maxMp: 100,
       positionX: initialState.position?.x || 0,
       positionY: initialState.position?.y || 0,
@@ -1178,20 +1146,17 @@ export abstract class Member<TAttrKey extends string = string> {
       mDef: 50,
       mspd: 100,
     };
-    
+
     // 获取子类默认值
     const childDefaults = this.getDefaultAttrValues();
-    
+
     // 合并：子类值覆盖通用值
     const mergedDefaults = { ...commonDefaults, ...childDefaults };
-    
-    // 设置基础值
+
+    // 设置基础值 - 这里注释掉，等待后续实现
     // this.reactiveDataManager.setBaseValues(mergedDefaults as Record<TAttrKey, number>);
-    
-    console.log(`✅ ReactiveSystem 初始化完成 - ${this.getName()}`);
-    
-    // 输出依赖关系图（由响应式系统自身处理）
-    // this.reactiveDataManager.outputDependencyGraph(this.getName(), this.getType());
+
+    console.log(`📊 已设置 ${Object.keys(mergedDefaults).length} 个默认属性值`);
   }
 
   /**
@@ -1201,8 +1166,6 @@ export abstract class Member<TAttrKey extends string = string> {
   protected getDefaultAttrValues(): Record<string, number> {
     return {};
   }
-
-
 
   /**
    * 序列化成员数据为可传输的纯数据对象

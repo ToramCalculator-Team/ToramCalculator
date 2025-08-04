@@ -88,8 +88,7 @@ export default function ReactivityValidationTestPage() {
           value: newValue,
           scriptCode: `
             // 安全的属性修改脚本
-            caster.setAttributeValue('${attrName}', 'baseValue', ${newValue}, 'test');
-            return { success: true, oldValue: ${oldValue}, newValue: ${newValue} };
+            '${attrName}' + ${newValue};
           `
         }
       });
@@ -134,10 +133,10 @@ export default function ReactivityValidationTestPage() {
         ${modifications.map(({ attr, value }) => `
         results.push({
           attr: '${attr}',
-          oldValue: caster.getAttributeValue('${attr}'),
+          oldValue: reactiveSystem.getValue('${attr}'),
           newValue: ${value}
         });
-        caster.setAttributeValue('${attr}', 'baseValue', ${value}, 'batch-test');
+        reactiveSystem.setBaseValue('${attr}', ${value});
         `).join('')}
         return { success: true, results };
       `;

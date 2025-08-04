@@ -103,3 +103,6 @@ export const MobAttrDic: Record<MobAttrType, string> = {
 export const MobAttrKeys = Object.keys(MobAttrDic) as MobAttrType[];
 // 与原属数据层的映射关系
 export const MobAttrExpressionsMap = new Map<MobAttrType, { expression: string; isBase?: boolean }>([]);
+
+export const MobAttrSchema = () => ({
+});
