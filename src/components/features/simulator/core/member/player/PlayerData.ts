@@ -125,11 +125,11 @@ export enum BounsTypeEnum {
   bShortRange, // 近距离威力
   bDualswordLimit, // 仅限双剑
   bShieldLimit, // 仅限盾牌
-  bMaxMpTo10, 
+  bMaxMpTo10,
   bFirstAttack, // 先制攻击 ？
   bFirstAttackRate, // 先制攻击增加百分比 ？
   bMaxMpRate, // 最大MP增加百分比
-  bEventCheck, 
+  bEventCheck,
   bPoleweaponLimit, // 仅限长枪
   bKatanaLimit, // 仅限拔刀剑
   bArrowLimit, // 仅限弓箭
@@ -139,11 +139,11 @@ export enum BounsTypeEnum {
   bSurroundingsResist, // 周围伤害减轻
   bRangeResist, // 子弹伤害减轻
   bLineResist, // 直线伤害减轻
-  bMoveAttackResist, 
+  bMoveAttackResist,
   bVerticalResist, // 垂直伤害减轻
-  bBreathResist, 
+  bBreathResist,
   bTranslationResist, // 冲撞伤害减轻
-  bWallResist, 
+  bWallResist,
   bWiddResist, // 剑气伤害减轻 ？
   bExplosionResist, // 爆炸伤害减轻
   bBlackholeResist, // 黑洞伤害减轻
@@ -289,7 +289,7 @@ export enum PlayerAttrEnum {
   subWeaponStability, // 副武器稳定性
   weaponPAtk, // 武器物理攻击
   weaponMAtk, // 武器魔法攻击
-  
+
   // 防具
   armorType, // 身体装备类型
   armorBaseAbi, // 身体装备基础值
@@ -301,7 +301,7 @@ export enum PlayerAttrEnum {
   // 物理属性
 
   aggroRate, // 仇恨值倍率
-  
+
   pAtk, // 物理攻击
 
   mAtk, // 魔法攻击
@@ -543,89 +543,99 @@ export const PlayerAttrDic: Record<PlayerAttrType, string> = {
   armorRef: "",
   optionBaseAbi: "",
   optionRef: "",
-  specialBaseAbi: ""
+  specialBaseAbi: "",
 };
 // 字符串键列表
 export const PlayerAttrKeys = Object.keys(PlayerAttrDic) as PlayerAttrType[];
 // 与原属数据层的映射关系
-export const PlayerAttrExpressionsMap = (props: {
-  mainWeaponType: MainHandType,
-  subWeaponType: SubHandType,
-}) => new Map<PlayerAttrType, { expression: string; isBase?: boolean }>([
-  // 基础属性
-  ["lv", { expression: "lv", isBase: true }],
-  ["str", { expression: "str", isBase: true }],
-  ["int", { expression: "int", isBase: true }],
-  ["vit", { expression: "vit", isBase: true }],
-  ["agi", { expression: "agi", isBase: true }],
-  ["dex", { expression: "dex", isBase: true }],
-  ["luk", { expression: "personalityType === 'Luk' ? luk : 0", isBase: true }],
-  ["tec", { expression: "personalityType === 'Tec' ? tec : 0", isBase: true }],
-  ["men", { expression: "personalityType === 'Men' ? men : 0", isBase: true }],
-  ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
-  
-  // 生命值和魔法值 
-  ["maxHp", { expression: "floor(93 + lv * (127 / 17 + vit / 3))" }],
-  ["maxMp", { expression: "floor(99 + lv + int / 10 + tec)" }],
-  ["currentHp", { expression: "maxHp", isBase: true }],
-  ["currentMp", { expression: "maxMp", isBase: true }],
-  
-  // 武器相关属性
-  ["mainWeaponBaseAtk", { expression: "mainWeaponBaseAtk", isBase: true }],
-  ["mainWeaponRef", { expression: "mainWeaponRef", isBase: true }],
-  ["mainWeaponStability", { expression: "mainWeaponStability", isBase: true }],
-  ["subWeaponRef", { expression: "subWeaponRef", isBase: true }],
-  ["subWeaponStability", { expression: "subWeaponStability", isBase: true }],
-  
-  // 武器攻击力计算 (根据old.worker.ts的逻辑)
-  ["weaponPAtk", { expression: "mainWeaponBaseAtk + mainWeaponRef + pow(mainWeaponRef, 2)" }],
-  ["weaponMAtk", { expression: "subWeaponRef" }],
-  ["weaponAtk", { expression: "weaponPAtk + weaponMAtk" }],
-  
-  // 物理攻击力 (根据old.worker.ts的计算逻辑)
-  ["pAtk", { 
-    expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].patkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.pAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.pAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.pAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.pAtkC}` 
-  }],
-  
-  // 魔法攻击力
-  ["mAtk", { 
-    expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].matkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.mAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.mAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.mAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.mAtkC}` 
-  }],
-  
-  // 攻击速度 (根据old.worker.ts的逻辑)
-  ["aspd", { 
-    expression: `${MainWeaponAbiT[props.mainWeaponType].baseAspd} + lv + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.aspdC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.aspdC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.aspdC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.aspdC}` 
-  }],
-  
-  // 施法速度
-  ["cspd", { expression: "dex * 2.94 + agi * 1.16" }],
-  
-  // 物理暴击率和暴击伤害
-  ["pCritRate", { expression: "25 + cri / 5" }],
-  ["pCritDmg", { expression: "150 + floor(max(str / 5, (str + agi) / 10))" }],
-  
-  // 武器稳定性 (根据old.worker.ts的逻辑)
-  ["pStab", { 
-    expression: `mainWeaponStability + floor(str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.pStabC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.pStabC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.pStabC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.pStabC})` 
-  }],
-  
-  // MP攻击回复
-  ["mpAtkRegen", { expression: "10 + maxMp / 10" }],
-  
-  // 其他基础属性 (初始值为0的跳过)
-  ["aggroRate", { expression: "100", isBase: true }],
-  ["unsheatheAtk", { expression: "100", isBase: true }],
-  ["totalDmg", { expression: "100", isBase: true }],
-  ["finalDmg", { expression: "100", isBase: true }],
-  
-  // 装备相关属性
-  ["armorType", { expression: "armorType", isBase: true }],
-  ["armorBaseAbi", { expression: "armorBaseAbi", isBase: true }],
-  ["armorRef", { expression: "armorRef", isBase: true }],
-  ["optionBaseAbi", { expression: "optionBaseAbi", isBase: true }],
-  ["optionRef", { expression: "optionRef", isBase: true }],
-  ["specialBaseAbi", { expression: "specialBaseAbi", isBase: true }],
-]);
+export const PlayerAttrExpressionsMap = (props: { mainWeaponType: MainHandType; subWeaponType: SubHandType }) =>
+  new Map<PlayerAttrType, { expression: string; isBase?: boolean }>([
+    // 基础属性
+    ["lv", { expression: "lv", isBase: true }],
+    ["str", { expression: "str", isBase: true }],
+    ["int", { expression: "int", isBase: true }],
+    ["vit", { expression: "vit", isBase: true }],
+    ["agi", { expression: "agi", isBase: true }],
+    ["dex", { expression: "dex", isBase: true }],
+    ["luk", { expression: "personalityType === 'Luk' ? luk : 0", isBase: true }],
+    ["tec", { expression: "personalityType === 'Tec' ? tec : 0", isBase: true }],
+    ["men", { expression: "personalityType === 'Men' ? men : 0", isBase: true }],
+    ["cri", { expression: "personalityType === 'Cri' ? cri : 0", isBase: true }],
+
+    // 生命值和魔法值
+    ["maxHp", { expression: "Math.floor(93 + lv * (127 / 17 + vit / 3))" }],
+    ["maxMp", { expression: "Math.floor(99 + lv + int / 10 + tec)" }],
+    ["currentHp", { expression: "maxHp", isBase: true }],
+    ["currentMp", { expression: "maxMp", isBase: true }],
+
+    // 武器相关属性
+    ["mainWeaponBaseAtk", { expression: "mainWeaponBaseAtk", isBase: true }],
+    ["mainWeaponRef", { expression: "mainWeaponRef", isBase: true }],
+    ["mainWeaponStability", { expression: "mainWeaponStability", isBase: true }],
+    ["subWeaponRef", { expression: "subWeaponRef", isBase: true }],
+    ["subWeaponStability", { expression: "subWeaponStability", isBase: true }],
+
+    // 武器攻击力计算 (根据old.worker.ts的逻辑)
+    ["weaponPAtk", { expression: "mainWeaponBaseAtk + mainWeaponRef + Math.pow(mainWeaponRef, 2)" }],
+    ["weaponMAtk", { expression: "subWeaponRef" }],
+    ["weaponAtk", { expression: "weaponPAtk + weaponMAtk" }],
+
+    // 物理攻击力 (根据old.worker.ts的计算逻辑)
+    [
+      "pAtk",
+      {
+        expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].patkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.pAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.pAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.pAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.pAtkC}`,
+      },
+    ],
+
+    // 魔法攻击力
+    [
+      "mAtk",
+      {
+        expression: `lv + weaponAtk * ${MainWeaponAbiT[props.mainWeaponType].matkC} + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.mAtkC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.mAtkC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.mAtkC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.mAtkC}`,
+      },
+    ],
+
+    // 攻击速度 (根据old.worker.ts的逻辑)
+    [
+      "aspd",
+      {
+        expression: `${MainWeaponAbiT[props.mainWeaponType].baseAspd} + lv + str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.aspdC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.aspdC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.aspdC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.aspdC}`,
+      },
+    ],
+
+    // 施法速度
+    ["cspd", { expression: "dex * 2.94 + agi * 1.16" }],
+
+    // 物理暴击率和暴击伤害
+    ["pCritRate", { expression: "25 + cri / 5" }],
+    ["pCritDmg", { expression: "150 + Math.floor(Math.max(str / 5, (str + agi) / 10))" }],
+
+    // 武器稳定性 (根据old.worker.ts的逻辑)
+    [
+      "pStab",
+      {
+        expression: `mainWeaponStability + Math.floor(str * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.str.pStabC} + int * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.int.pStabC} + agi * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.agi.pStabC} + dex * ${MainWeaponAbiT[props.mainWeaponType].abi_Attr_Convert.dex.pStabC})`,
+      },
+    ],
+
+    // MP攻击回复
+    ["mpAtkRegen", { expression: "10 + maxMp / 10" }],
+
+    // 其他基础属性 (初始值为0的跳过)
+    ["aggroRate", { expression: "100", isBase: true }],
+    ["unsheatheAtk", { expression: "100", isBase: true }],
+    ["totalDmg", { expression: "100", isBase: true }],
+    ["finalDmg", { expression: "100", isBase: true }],
+
+    // 装备相关属性
+    ["armorType", { expression: "armorType", isBase: true }],
+    ["armorBaseAbi", { expression: "armorBaseAbi", isBase: true }],
+    ["armorRef", { expression: "armorRef", isBase: true }],
+    ["optionBaseAbi", { expression: "optionBaseAbi", isBase: true }],
+    ["optionRef", { expression: "optionRef", isBase: true }],
+    ["specialBaseAbi", { expression: "specialBaseAbi", isBase: true }],
+  ]);
 
 // 角色属性嵌套模型，核心结构
 const PlayerAttr = {
@@ -681,7 +691,6 @@ const PlayerAttr = {
     },
   },
 };
-
 
 // ============================== 其他玩家数据 ==============================
 

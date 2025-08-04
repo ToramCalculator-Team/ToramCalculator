@@ -36,7 +36,8 @@ export type PlayerEventType =
   | { type: "revive_ready" }
   | { type: "skill_press"; skillId: string }
   | { type: "check_availability"; skillId: string }
-  | { type: "skill_animation_end"; skillId: string };
+  | { type: "skill_animation_end"; skillId: string }
+  | { type: "custom"; action: string; data?: any };
 
 
 // ============================== Player FSM事件桥接器 ==============================
@@ -66,7 +67,7 @@ export class PlayerFSMEventBridge implements StatefulFSMEventBridge {
     // Player特有事件类型
     'cast_end', 'controlled', 'move_command', 'charge_end', 'hp_zero',
     'stop_move', 'control_end', 'revive_ready', 'skill_press',
-    'check_availability', 'skill_animation_end'
+    'check_availability', 'skill_animation_end', 'custom'
   ]);
   // ==================== 接口实现 ====================
 
@@ -171,6 +172,9 @@ export class PlayerFSMEventBridge implements StatefulFSMEventBridge {
       
       case 'skill_animation_end':
         return this.transformSkillAnimationEndEvent(fsmEvent, context);
+      
+      case 'custom':
+        return this.transformCustomEvent(fsmEvent, context);
       
       default:
         // 对于通用事件，使用默认转换
@@ -438,6 +442,29 @@ export class PlayerFSMEventBridge implements StatefulFSMEventBridge {
     };
     
     return skillCastTimes[skillId] || 30; // 默认0.5秒前摇
+  }
+
+  /**
+   * 转换自定义事件
+   */
+  private transformCustomEvent(fsmEvent: FSMEventInput, context: FSMTransformContext): FSMTransformResult {
+    console.log(`🔄 PlayerFSMEventBridge: 转换自定义事件`, fsmEvent);
+    
+    return {
+      id: createId(),
+      type: 'custom',
+      priority: 'normal' as const,
+      executeFrame: context.currentFrame + (fsmEvent.delayFrames || 0),
+      payload: {
+        targetMemberId: context.memberId,
+        memberId: context.memberId,
+        action: fsmEvent.data?.action || 'unknown',
+        ...fsmEvent.data,
+        fsmSource: 'player_bridge',
+        originalEvent: fsmEvent.type
+      },
+      source: fsmEvent.source || 'player_fsm'
+    };
   }
 
   /**

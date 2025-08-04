@@ -13,7 +13,8 @@
  * - 类型安全：使用TypeScript确保消息类型正确
  */
 
-import { MemberRegistry } from "./MemberRegistry";
+import { MemberManager } from "./MemberManager";
+import type GameEngine from "./GameEngine";
 
 // ============================== 类型定义 ==============================
 
@@ -80,8 +81,8 @@ export interface MessageProcessResult {
 export class MessageRouter {
   // ==================== 私有属性 ====================
 
-  /** 成员注册表引用 */
-  private memberRegistry: MemberRegistry;
+  /** 游戏引擎引用 */
+  private engine: GameEngine;
 
   /** 消息处理统计 */
   private stats = {
@@ -96,10 +97,10 @@ export class MessageRouter {
   /**
    * 构造函数
    * 
-   * @param memberRegistry 成员注册表
+   * @param engine 游戏引擎实例
    */
-  constructor(memberRegistry: MemberRegistry) {
-    this.memberRegistry = memberRegistry;
+  constructor(engine: GameEngine) {
+    this.engine = engine;
   }
 
   // ==================== 公共接口 ====================
@@ -126,7 +127,7 @@ export class MessageRouter {
       }
 
       // 获取目标成员
-      const targetMember = this.memberRegistry.getMember(message.targetMemberId);
+      const targetMember = this.engine.getMemberManager().getMember(message.targetMemberId);
       if (!targetMember) {
         return {
           success: false,
@@ -147,11 +148,19 @@ export class MessageRouter {
       // 将消息发送到成员的FSM
       // FSM负责根据消息生成事件并写入事件队列
       try {
+        // 调试：检查FSM当前状态
+        const currentState = targetMember.getFSM().getSnapshot();
+        console.log(`🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`, currentState.value);
+        console.log(`🔍 MessageRouter: 发送的事件:`, { type: message.type, data: message.data });
+        
         targetMember.getFSM().send({
           type: message.type,
           data: message.data,
-          timestamp: message.timestamp
         });
+
+        // 调试：检查FSM状态是否有变化
+        const newState = targetMember.getFSM().getSnapshot();
+        console.log(`🔍 MessageRouter: 发送事件到FSM后，成员 ${targetMember.getName()} 新状态:`, newState.value);
 
         // 更新统计
         this.stats.successfulMessages++;
@@ -167,7 +176,7 @@ export class MessageRouter {
         // 更新统计
         this.stats.failedMessages++;
 
-        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`);
+        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`, fsmError);
         
         return {
           success: false,

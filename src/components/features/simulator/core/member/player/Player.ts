@@ -33,7 +33,7 @@ import { PlayerAttrKeys, PlayerAttrDic, PlayerAttrType } from "./PlayerData";
 import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
 import { PlayerAttrExpressionsMap } from "./PlayerData";
 import { PlayerFSMEventBridge } from "../../fsmBridge/PlayerBridge";
-import type { EventQueue } from "../../EventQueue";
+import type GameEngine from "../../GameEngine";
 
 // ============================== 角色属性系统类型定义 ==============================
 
@@ -79,12 +79,12 @@ export class Player extends Member<PlayerAttrType> {
    * 构造函数
    *
    * @param memberData 成员数据
-   * @param externalEventQueue 外部事件队列（可选）
+   * @param engine 游戏引擎实例
    * @param initialState 初始状态
    */
   constructor(
     memberData: MemberWithRelations,
-    externalEventQueue?: EventQueue,
+    engine: GameEngine,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -114,8 +114,8 @@ export class Player extends Member<PlayerAttrType> {
       }),
     };
 
-    // 调用父类构造函数，注入FSM事件桥和响应式配置
-    super(memberData, playerFSMBridge, reactiveSystemConfig, externalEventQueue, initialState);
+    // 调用父类构造函数，注入游戏引擎、FSM事件桥和响应式配置
+    super(memberData, engine, playerFSMBridge, reactiveSystemConfig, initialState);
 
     // 设置角色数据
     this.character = character;
@@ -123,7 +123,7 @@ export class Player extends Member<PlayerAttrType> {
     // 初始化玩家数据（响应式系统已由基类初始化）
     this.initializePlayerData();
 
-    console.log(`🎮 已创建玩家: ${memberData.name}，data:`, this);
+    console.log(`🎮 已创建玩家: ${memberData.name}`);
   }
 
   // ==================== 私有方法 ====================
@@ -563,7 +563,44 @@ export class Player extends Member<PlayerAttrType> {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          // console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+        },
+
+        // 处理自定义事件（通过FSM桥生成EventQueue事件）
+        processCustomEvent: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🔄 [${context.memberData.name}] 通过FSM桥处理自定义事件:`, event.data);
+          
+          try {
+            const fsmEvent = {
+              type: 'custom',
+              data: event.data,
+              source: 'fsm_action'
+            };
+            
+            const transformContext = {
+              currentFrame: this.engine.getFrameLoop().getFrameNumber(),
+              memberId: this.id,
+              memberType: this.type,
+              currentState: this.actor.getSnapshot().value as string
+            };
+            
+            // 使用FSM桥转换事件
+            const gameEvents = this.fsmBridge.transformFSMEvent(fsmEvent, transformContext);
+            
+            if (gameEvents) {
+              // 将转换后的事件插入到事件队列
+              const eventsArray = Array.isArray(gameEvents) ? gameEvents : [gameEvents];
+              eventsArray.forEach(gameEvent => {
+                this.engine.getEventQueue().insert(gameEvent);
+                console.log(`✅ [${context.memberData.name}] FSM事件已转换并加入队列:`, gameEvent.type);
+              });
+            } else {
+              console.log(`⚠️ [${context.memberData.name}] FSM桥跳过了该事件`);
+            }
+            
+          } catch (error) {
+            console.error(`❌ [${context.memberData.name}] FSM事件转换失败:`, error);
+          }
         },
       },
       guards: {
@@ -652,7 +689,7 @@ export class Player extends Member<PlayerAttrType> {
               actions: ["logEvent"],
             },
             custom: {
-              actions: ["logEvent"],
+              actions: ["processCustomEvent", "logEvent"],
             },
           },
           description: "玩家存活状态，此时可操作且可影响上下文",

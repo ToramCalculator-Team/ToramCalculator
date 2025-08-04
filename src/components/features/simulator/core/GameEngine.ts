@@ -3,7 +3,7 @@
  * 
  * 核心职责（根据架构文档）：
  * 1. 作为核心运行时容器，集成所有模块
- * 2. 协调MemberRegistry、MessageRouter、FrameLoop、EventQueue等模块
+ * 2. 协调memberManager、MessageRouter、FrameLoop、EventQueue等模块
  * 3. 提供统一的引擎接口
  * 4. 管理引擎生命周期
  * 
@@ -16,11 +16,11 @@
 
 import type { TeamWithRelations } from "@db/repositories/team";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { MemberRegistry } from "./MemberRegistry";
+import { MemberManager } from "./MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
-import { EventExecutor } from "./EventExecutor";
+
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
@@ -139,8 +139,8 @@ export interface BattleSnapshot {
 export class GameEngine {
   // ==================== 核心模块 ====================
 
-  /** 成员注册表 - 管理所有实体 */
-  private memberRegistry: MemberRegistry;
+  /** 成员管理器 - 管理所有成员的生命周期 */
+  private memberManager: MemberManager;
 
   /** 事件队列 - 管理时间片段事件 */
   private eventQueue: EventQueue;
@@ -153,8 +153,7 @@ export class GameEngine {
 
 
 
-  /** 事件执行器 - 处理复杂效果计算 */
-  private eventExecutor: EventExecutor;
+
 
   /** 事件处理器工厂 - 创建和管理事件处理器 */
   private eventHandlerFactory: EventHandlerFactory;
@@ -183,6 +182,73 @@ export class GameEngine {
     totalMessagesProcessed: 0,
   };
 
+  // ==================== 安全验证 ====================
+
+  /**
+   * 为测试环境启用GameEngine（仅用于测试）
+   * ⚠️ 警告：这会绕过安全检查，仅在测试中使用
+   */
+  static enableForTesting(): void {
+    (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true;
+    console.warn('⚠️ GameEngine测试模式已启用 - 仅用于测试环境！');
+  }
+
+  /**
+   * 禁用测试环境的GameEngine（恢复安全检查）
+   */
+  static disableForTesting(): void {
+    delete (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
+    console.log('✅ GameEngine安全检查已恢复');
+  }
+
+  /**
+   * 验证当前执行环境是否为Worker线程
+   * 防止在主线程意外创建GameEngine实例
+   */
+  private validateWorkerContext(): void {
+    // 检查是否在浏览器主线程（有window对象）
+    const isMainThread = typeof window !== 'undefined';
+    
+    // 检查是否在Node.js环境中（用于测试）
+    const isNode = typeof process !== 'undefined' && 
+                   process.versions && 
+                   process.versions.node;
+    
+    // 检查是否有特殊的测试标记（用于单元测试等）
+    const isTestEnvironment = typeof globalThis !== 'undefined' && 
+                              (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
+    
+    // 检查是否在沙盒Worker中（有safeAPI标记）
+    const isSandboxWorker = typeof globalThis !== 'undefined' && 
+                           (globalThis as any).safeAPI;
+    
+    // 检查是否在Worker环境中（有self但没有window）
+    const isWorkerEnvironment = typeof self !== 'undefined' && !isMainThread;
+    
+    // 只有在浏览器主线程中才阻止创建
+    if (isMainThread && !isTestEnvironment) {
+      const error = new Error(
+        '🛡️ 安全限制：GameEngine禁止在浏览器主线程中运行！\n' +
+        '请使用SimulatorPool启动Worker中的GameEngine实例。\n' +
+        '这是为了确保JS片段执行的安全性。\n' +
+        '如需在测试中使用，请设置 globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true'
+      );
+      console.error(error.message);
+      throw error;
+    }
+    
+    // 记录运行环境
+    if (isSandboxWorker) {
+      console.log('🛡️ GameEngine正在沙盒Worker线程中安全运行');
+    } else if (isWorkerEnvironment) {
+      console.log('🛡️ GameEngine正在Worker线程中运行');
+    } else if (isNode) {
+      console.log('🛡️ GameEngine在Node.js环境中运行（测试模式）');
+    } else if (isTestEnvironment) {
+      console.log('🛡️ GameEngine在测试环境中运行（已标记允许）');
+    }
+  }
+
   // ==================== 构造函数 ====================
 
   /**
@@ -191,6 +257,9 @@ export class GameEngine {
    * @param config 引擎配置
    */
   constructor(config: Partial<EngineConfig> = {}) {
+    // 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
+    this.validateWorkerContext();
+    
     // 设置默认配置
     this.config = {
       targetFPS: 60,
@@ -210,15 +279,12 @@ export class GameEngine {
       ...config
     };
 
-    // 初始化核心模块
-    this.memberRegistry = new MemberRegistry();
+    // 初始化核心模块 - 按依赖顺序
     this.eventQueue = new EventQueue(this.config.eventQueueConfig);
-    this.messageRouter = new MessageRouter(this.memberRegistry);
-    this.frameLoop = new FrameLoop(
-      this.memberRegistry, 
-      this.eventQueue,
-      this.config.frameLoopConfig
-    );
+    this.memberManager = new MemberManager(this); // 注入自身引用
+    this.messageRouter = new MessageRouter(this); // 注入引擎
+    this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎（内含eventExecutor）
+    this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
 
     // 🔥 设置帧循环状态变化回调 - 简化为直接输出
     this.frameLoop.setStateChangeCallback((event) => {
@@ -227,14 +293,6 @@ export class GameEngine {
         this.outputFrameState();
       }
     });
-
-
-
-    // 初始化事件执行器
-    this.eventExecutor = new EventExecutor(this.config.frameLoopConfig.enablePerformanceMonitoring);
-
-    // 初始化事件处理器工厂
-    this.eventHandlerFactory = new EventHandlerFactory(this.eventExecutor, this.memberRegistry);
 
     // 初始化默认事件处理器
     this.initializeDefaultEventHandlers();
@@ -348,7 +406,7 @@ export class GameEngine {
   }
 
   /**
-   * 添加成员（委托给 MemberRegistry）
+   * 添加成员（委托给 memberManager）
    * 
    * @param campId 阵营ID
    * @param teamId 队伍ID
@@ -366,7 +424,7 @@ export class GameEngine {
     } = {},
   ): void {
     // 容器只负责委托，不处理具体创建逻辑
-    const member = this.memberRegistry.createAndRegister(memberData, campId, teamId, initialState);
+    const member = this.memberManager.createAndRegister(memberData, campId, teamId, initialState);
     console.log('GameEngine: 添加成员:', member);
   }
 
@@ -482,22 +540,22 @@ export class GameEngine {
 
 
   /**
-   * 获取所有成员（委托给 MemberRegistry）
+   * 获取所有成员（委托给 memberManager）
    * 
    * @returns 成员数组
    */
   getAllMembers(): any[] {
-    return this.memberRegistry.getAllMembers();
+    return this.memberManager.getAllMembers();
   }
 
   /**
-   * 查找成员（委托给 MemberRegistry）
+   * 查找成员（委托给 memberManager）
    * 
    * @param memberId 成员ID
    * @returns 成员实例
    */
   findMember(memberId: string): any | null {
-    return this.memberRegistry.getMember(memberId);
+    return this.memberManager.getMember(memberId);
   }
 
   // ==================== 外部数据访问接口 ====================
@@ -509,12 +567,12 @@ export class GameEngine {
    * @returns 成员数据，如果不存在则返回null
    */
   getMemberData(memberId: string): any | null {
-    const member = this.memberRegistry.getMember(memberId);
+    const member = this.memberManager.getMember(memberId);
     if (!member) {
       return null;
     }
 
-    const entry = this.memberRegistry.getMemberEntry(memberId);
+    const entry = this.memberManager.getMemberEntry(memberId);
     return {
       id: member.getId(),
       name: member.getName(),
@@ -534,7 +592,7 @@ export class GameEngine {
    * @returns 所有成员数据数组
    */
   getAllMemberData(): MemberSerializeData[] {
-    const members = this.memberRegistry.getAllMembers();
+    const members = this.memberManager.getAllMembers();
     const memberData = members.map(member => member.serialize());
     return memberData;
   }
@@ -546,9 +604,9 @@ export class GameEngine {
    * @returns 指定阵营的成员数据数组
    */
   getMembersByCamp(campId: string): MemberSerializeData[] {
-    const members = this.memberRegistry.getMembersByCamp(campId);
+    const members = this.memberManager.getMembersByCamp(campId);
     return members.map(member => {
-      const entry = this.memberRegistry.getMemberEntry(member.getId());
+      const entry = this.memberManager.getMemberEntry(member.getId());
       return {
         id: member.getId(),
         name: member.getName(),
@@ -575,9 +633,9 @@ export class GameEngine {
    * @returns 指定队伍的成员数据数组
    */
   getMembersByTeam(teamId: string): MemberSerializeData[] {
-    const members = this.memberRegistry.getMembersByTeam(teamId);
+    const members = this.memberManager.getMembersByTeam(teamId);
     return members.map(member => {
-      const entry = this.memberRegistry.getMemberEntry(member.getId());
+      const entry = this.memberManager.getMemberEntry(member.getId());
       return {
         id: member.getId(),
         name: member.getName(),
@@ -603,7 +661,7 @@ export class GameEngine {
    * @returns 当前战斗快照
    */
   getCurrentSnapshot(): BattleSnapshot {
-    const members = this.memberRegistry.getAllMembers();
+    const members = this.memberManager.getAllMembers();
     const currentFrame = this.frameLoop.getFrameNumber();
 
     return {
@@ -613,8 +671,8 @@ export class GameEngine {
         id: member.getId(),
         name: member.getName(),
         type: member.getType(),
-        campId: this.memberRegistry.getMemberEntry(member.getId())?.campId || "",
-        teamId: this.memberRegistry.getMemberEntry(member.getId())?.teamId || "",
+        campId: this.memberManager.getMemberEntry(member.getId())?.campId || "",
+        teamId: this.memberManager.getMemberEntry(member.getId())?.teamId || "",
         isAlive: member.isAlive(),
         isActive: member.isActive(),
         stats: member.getStats(),
@@ -665,7 +723,7 @@ export class GameEngine {
       state: this.state,
       currentFrame: this.frameLoop.getFrameNumber(),
       runTime,
-      memberCount: this.memberRegistry.size(),
+      memberCount: this.memberManager.size(),
       eventQueueStats: this.eventQueue.getStats(),
       frameLoopStats: this.frameLoop.getPerformanceStats(),
       messageRouterStats: this.messageRouter.getStats(),
@@ -698,7 +756,7 @@ export class GameEngine {
     this.stop();
 
     // 清理成员注册表
-    this.memberRegistry.clear();
+    this.memberManager.clear();
 
     // 清理事件队列
     this.eventQueue.clear();
@@ -713,6 +771,40 @@ export class GameEngine {
     };
 
     console.log("🧹 引擎资源已清理");
+  }
+
+  // ==================== 便捷访问方法 (依赖注入支持) ====================
+
+  /**
+   * 获取事件队列实例
+   * 供Member等组件通过Engine访问
+   */
+  getEventQueue(): EventQueue {
+    return this.eventQueue;
+  }
+
+  /**
+   * 获取成员管理器实例
+   * 供Member等组件通过Engine访问
+   */
+  getMemberManager(): MemberManager {
+    return this.memberManager;
+  }
+
+  /**
+   * 获取消息路由器实例
+   * 供Member等组件通过Engine访问
+   */
+  getMessageRouter(): MessageRouter {
+    return this.messageRouter;
+  }
+
+  /**
+   * 获取帧循环实例
+   * 供Member等组件通过Engine访问
+   */
+  getFrameLoop(): FrameLoop {
+    return this.frameLoop;
   }
 
   // ==================== 私有方法 ====================

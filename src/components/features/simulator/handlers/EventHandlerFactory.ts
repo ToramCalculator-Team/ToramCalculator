@@ -15,7 +15,8 @@
 
 import type { EventHandler } from "../core/EventQueue";
 import type { EventExecutor } from "../core/EventExecutor";
-import type { MemberRegistry } from "../core/MemberRegistry";
+import type { MemberManager } from "../core/MemberManager";
+import type GameEngine from "../core/GameEngine";
 
 // 导入所有处理器
 import {
@@ -35,6 +36,10 @@ import {
   SkillCastHandler
 } from "./SkillHandlers";
 
+import {
+  CustomEventHandler
+} from "./CustomHandlers";
+
 // ============================== 事件处理器工厂 ==============================
 
 /**
@@ -43,11 +48,8 @@ import {
 export class EventHandlerFactory {
   // ==================== 私有属性 ====================
 
-  /** 事件执行器 */
-  private eventExecutor: EventExecutor;
-
-  /** 成员注册表 */
-  private memberRegistry: MemberRegistry;
+  /** 游戏引擎引用 */
+  private engine: GameEngine;
 
   /** 创建的处理器缓存 */
   private handlerCache: Map<string, EventHandler> = new Map();
@@ -57,12 +59,10 @@ export class EventHandlerFactory {
   /**
    * 构造函数
    * 
-   * @param eventExecutor 事件执行器
-   * @param memberRegistry 成员注册表
+   * @param engine 游戏引擎实例
    */
-  constructor(eventExecutor: EventExecutor, memberRegistry: MemberRegistry) {
-    this.eventExecutor = eventExecutor;
-    this.memberRegistry = memberRegistry;
+  constructor(engine: GameEngine) {
+    this.engine = engine;
   }
 
   // ==================== 公共接口 ====================
@@ -89,6 +89,9 @@ export class EventHandlerFactory {
     handlers.set('skill_effect', this.createSkillEffectHandler());
     handlers.set('skill_end', this.createSkillEndHandler());
     handlers.set('skill_cast', this.createSkillCastHandler());
+
+    // 创建自定义事件处理器
+    handlers.set('custom', this.createCustomEventHandler());
 
     console.log(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
     return handlers;
@@ -173,7 +176,7 @@ export class EventHandlerFactory {
    * 创建成员伤害处理器
    */
   private createMemberDamageHandler(): EventHandler {
-    return new MemberDamageHandler(this.eventExecutor, this.memberRegistry);
+    return new MemberDamageHandler(this.engine.getFrameLoop().getEventExecutor(), this.engine.getMemberManager());
   }
 
   /**
@@ -244,6 +247,13 @@ export class EventHandlerFactory {
    */
   private createSkillCastHandler(): EventHandler {
     return new SkillCastHandler();
+  }
+
+  /**
+   * 创建自定义事件处理器
+   */
+  private createCustomEventHandler(): EventHandler {
+    return new CustomEventHandler(this.engine.getFrameLoop().getEventExecutor(), this.engine.getMemberManager());
   }
 }
 

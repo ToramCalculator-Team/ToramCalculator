@@ -15,6 +15,7 @@ import { type MemberType } from "@db/schema/enums";
 import type { FSMEventBridge, FSMEventInput, FSMTransformContext } from "./fsmBridge/BridgeInterface";
 import type { EventQueue } from "./EventQueue";
 import { ReactiveSystem, type AttributeExpression } from "./member/ReactiveSystem";
+import type GameEngine from "./GameEngine";
 
 // ============================== 类型定义 ==============================
 
@@ -311,11 +312,11 @@ export abstract class Member<TAttrKey extends string = string> {
 
   // ==================== FSM事件桥集成 ====================
 
+  /** 游戏引擎实例 - 提供所有核心服务的访问 */
+  protected readonly engine: GameEngine;
+
   /** FSM事件桥接器 */
   protected fsmBridge: FSMEventBridge;
-
-  /** 外部事件队列引用 */
-  protected externalEventQueue: EventQueue | null = null;
 
   /** 当前帧号 */
   protected currentFrame: number = 0;
@@ -336,18 +337,19 @@ export abstract class Member<TAttrKey extends string = string> {
    * 构造函数
    *
    * @param memberData 成员基础数据
+   * @param engine 游戏引擎实例 - 提供所有核心服务访问
    * @param fsmBridge FSM事件桥接器（依赖注入）
-   * @param externalEventQueue 外部事件队列
+   * @param reactiveSystemConfig 响应式系统配置
    * @param initialState 初始状态配置
    */
   constructor(
     protected readonly memberData: MemberWithRelations,
+    engine: GameEngine,
     fsmBridge: FSMEventBridge,
     reactiveSystemConfig: {
       attrKeys: TAttrKey[];
       attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
     },
-    externalEventQueue?: EventQueue,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -358,9 +360,11 @@ export abstract class Member<TAttrKey extends string = string> {
     this.type = memberData.type;
     this.teamId = memberData.teamId;
 
+    // 注入游戏引擎 - 核心依赖
+    this.engine = engine;
+
     // 初始化FSM事件桥
     this.fsmBridge = fsmBridge;
-    this.externalEventQueue = externalEventQueue || null;
 
     // 初始化响应式配置
     this.reactiveSystemConfig = reactiveSystemConfig;
@@ -373,7 +377,10 @@ export abstract class Member<TAttrKey extends string = string> {
       input: initialState,
     });
 
-    console.log(`Member: 创建成员: ${memberData.name} (${this.type})，使用事件桥: ${fsmBridge.getName()}`);
+    // 启动状态机
+    this.actor.start();
+
+    console.log(`Member: 创建成员: ${memberData.name} (${this.type})，通过引擎访问服务，使用事件桥: ${fsmBridge.getName()}`);
   }
 
   // ==================== 抽象方法 ====================
@@ -387,22 +394,6 @@ export abstract class Member<TAttrKey extends string = string> {
   protected abstract handleSpecificEvent(event: MemberEvent): void;
 
   /**
-   * 获取子类特有的属性键数组
-   * 子类可以重写此方法来提供属性键配置，默认返回空数组
-   */
-  protected getAttrKeys(): TAttrKey[] {
-    return this.reactiveSystemConfig.attrKeys;
-  }
-
-  /**
-   * 获取子类特有的属性表达式映射
-   * 子类可以重写此方法来提供属性计算表达式，默认返回空映射
-   */
-  protected getAttrExpressions(): Map<TAttrKey, AttributeExpression<TAttrKey>> {
-    return this.reactiveSystemConfig.attrExpressions;
-  }
-
-  /**
    * 创建状态机
    * 子类必须实现此方法来创建特定的状态机
    *
@@ -414,7 +405,6 @@ export abstract class Member<TAttrKey extends string = string> {
     currentHp?: number;
     currentMp?: number;
   }): MemberStateMachine;
-
 
 
   // ==================== 公共接口 ====================
@@ -692,16 +682,8 @@ export abstract class Member<TAttrKey extends string = string> {
   }
 
   /**
-   * 设置外部事件队列
-   * 用于将FSM事件转换后的EventQueue事件插入外部队列
-   */
-  setExternalEventQueue(eventQueue: EventQueue): void {
-    this.externalEventQueue = eventQueue;
-  }
-
-  /**
-   * 处理FSM事件
-   * 将XState的FSM事件转换为EventQueue事件
+   * 调用事件桥处理FSM事件
+   * 将XState的FSM事件转换为EventQueue事件，并插入到（引擎）事件队列
    *
    * @param fsmEvent FSM事件输入
    * @returns 是否成功处理
@@ -727,9 +709,10 @@ export abstract class Member<TAttrKey extends string = string> {
       // 处理转换结果
       const events = Array.isArray(queueEvents) ? queueEvents : [queueEvents];
 
-      // 如果有外部事件队列，插入到外部队列
-      if (this.externalEventQueue) {
-        return events.every((event) => this.externalEventQueue!.insert(event));
+      // 如果有外部事件队列，插入到外部队列（引擎事件队列）
+      const engineEventQueue = this.engine.getEventQueue();
+      if (engineEventQueue) {
+        return events.every((event) => engineEventQueue.insert(event));
       }
 
       // 否则记录日志（未来可能扩展为其他处理方式）
@@ -1169,14 +1152,14 @@ export abstract class Member<TAttrKey extends string = string> {
       currentHp?: number;
       currentMp?: number;
     },
-    reactiveSystemConfig?: {
+    reactiveSystemConfig: {
       attrKeys: TAttrKey[];
       attrExpressions: Map<TAttrKey, AttributeExpression<TAttrKey>>;
     },
   ): void {
     // 使用传入的配置或从子类获取
-    const attrKeys = reactiveSystemConfig?.attrKeys || this.getAttrKeys();
-    const attrExpressions = reactiveSystemConfig?.attrExpressions || this.getAttrExpressions();
+    const attrKeys = reactiveSystemConfig.attrKeys;
+    const attrExpressions = reactiveSystemConfig.attrExpressions;
     
     // 创建响应式系统
     this.reactiveDataManager = new ReactiveSystem<TAttrKey>(attrKeys, attrExpressions);

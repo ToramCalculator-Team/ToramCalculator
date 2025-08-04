@@ -9,28 +9,28 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 
-import { create, all } from "mathjs";
+import JSExpressionIntegration from '../expression/JSExpressionIntegration';
 
 // ============================== 通用接口定义 ==============================
 
 export interface ModifierSource {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
     type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "system";
   }
   
   export interface Modifier {
     value: number;
     source: ModifierSource;
-  }
-  
-  export interface AttributeExpression<TAttr extends string> {
-    expression: string;
-    isBase?: boolean;
-  }
+}
 
-// 创建 math 实例
-const math = create(all);
+export interface AttributeExpression<TAttr extends string> {
+  expression: string;
+  isBase?: boolean;
+}
+
+// TODO: 暂时注释掉mathjs实例，等待JS解析器实现
+// const math = create(all);
 
 // ============================== 枚举和常量 ==============================
 
@@ -192,72 +192,7 @@ export class DependencyGraph {
   }
 }
 
-/**
- * 高性能数学作用域
- */
-export class MathScope {
-  private readonly mathInstance: any;
-  private readonly scopeArray: Float64Array;
-  private readonly keyToIndex: Map<string, number>;
 
-  constructor(keys: string[]) {
-    this.mathInstance = math.create(all);
-    this.scopeArray = new Float64Array(keys.length);
-    this.keyToIndex = new Map();
-    
-    keys.forEach((key, index) => {
-      this.keyToIndex.set(key, index);
-    });
-
-    this.registerBuiltinFunctions();
-  }
-
-  private registerBuiltinFunctions(): void {
-    // 注册自定义函数
-    this.mathInstance.import({
-      dynamicTotalValue: (attrName: string) => {
-        const index = this.keyToIndex.get(attrName);
-        return index !== undefined ? this.scopeArray[index] : 0;
-      }
-    });
-  }
-
-  setVariable(name: string, value: number): void {
-    const index = this.keyToIndex.get(name);
-    if (index !== undefined) {
-      this.scopeArray[index] = value;
-    }
-  }
-
-  getVariable(name: string): number {
-    const index = this.keyToIndex.get(name);
-    return index !== undefined ? this.scopeArray[index] : 0;
-  }
-
-  evaluate(expression: string): number {
-    try {
-      // 构建作用域对象
-      const scope: Record<string, number> = {};
-      for (const [key, index] of this.keyToIndex) {
-        scope[key] = this.scopeArray[index];
-      }
-
-      return this.mathInstance.evaluate(expression, scope);
-    } catch (error) {
-      console.error(`Failed to evaluate expression: ${expression}`, error);
-      throw error;
-    }
-  }
-
-  batchSetVariables(values: Float64Array): void {
-    // 批量设置变量值
-    this.scopeArray.set(values);
-  }
-
-  getScopeArray(): Float64Array {
-    return this.scopeArray;
-  }
-}
 
 // ============================== 主要实现 ==============================
 
@@ -279,8 +214,8 @@ export class ReactiveSystem<T extends string> {
   /** 依赖图 */
   private readonly dependencyGraph: DependencyGraph;
 
-  /** 数学作用域 */
-  private readonly mathScope: MathScope;
+  /** JS表达式处理器 */
+  private readonly jsProcessor: JSExpressionIntegration;
 
   /** 脏属性队列 - 使用Uint32Array作为位图 */
   private readonly dirtyBitmap: Uint32Array;
@@ -325,12 +260,16 @@ export class ReactiveSystem<T extends string> {
       this.keyToIndex.set(key, index);
     });
 
-    // 初始化依赖图和数学作用域
+    // 初始化依赖图和JS表达式处理器
     this.dependencyGraph = new DependencyGraph(keyCount);
-    this.mathScope = new MathScope(attrKeys);
+    this.jsProcessor = new JSExpressionIntegration({
+      enableTransformation: false, // 在ReactiveSystem中不需要数据操作转换
+      enableValidation: true,
+      strictMode: false
+    });
     this.computationFunctions = new Map();
 
-    console.log(`🚀 ReactiveSystem initialized with ${keyCount} attributes`);
+    console.log(`🚀 ReactiveSystem 初始化完成，属性数量: ${keyCount}`);
 
     // 设置表达式
     if (expressions) {
@@ -487,14 +426,46 @@ export class ReactiveSystem<T extends string> {
 
       console.log(`📐 设置属性 ${attrName} 的表达式: ${expressionData.expression}`);
 
-      // 设置计算函数
+      // 设置计算函数，使用新的JS表达式解析器
       this.computationFunctions.set(index, (scope: Float64Array) => {
-        try {
-          // 更新数学作用域
-          this.mathScope.batchSetVariables(scope);
-          return this.mathScope.evaluate(expressionData.expression);
-        } catch (error) {
-          console.error(`❌ 计算属性 ${attrName} 时出错:`, error);
+        // 创建执行上下文，将scope中的值映射到属性名
+        const context: any = {};
+        
+        // 将scope数组中的值映射到对应的属性名
+        this.indexToKey.forEach((key, idx) => {
+          context[key] = scope[idx];
+        });
+        
+        // 调试：打印关键属性的映射
+        console.log(`🔍 属性映射调试 - 表达式: ${expressionData.expression}`);
+        console.log(`🔍 关键属性值:`, {
+          lv: context.lv,
+          vit: context.vit,
+          str: context.str,
+          int: context.int,
+          agi: context.agi,
+          dex: context.dex,
+          cri: context.cri,
+          tec: context.tec
+        });
+        
+        // 添加自定义函数
+        context.dynamicTotalValue = (attrName: string) => {
+          const attrIndex = this.keyToIndex.get(attrName as T);
+          return attrIndex !== undefined ? scope[attrIndex] : 0;
+        };
+        
+        // 直接执行表达式，不需要return包装
+        // JSExpressionIntegration会在内部处理函数包装
+        const result = this.jsProcessor.processAndExecute(expressionData.expression, context);
+        
+        if (result.success) {
+          const value = typeof result.value === 'number' ? result.value : 0;
+          console.log(`✅ 表达式计算成功: ${expressionData.expression} = ${value}`);
+          return value;
+        } else {
+          console.error(`❌ 属性 ${attrName} 表达式计算失败: ${expressionData.expression}`, result.error);
+          console.error(`❌ 上下文内容:`, Object.keys(context));
           return 0;
         }
       });
@@ -512,10 +483,41 @@ export class ReactiveSystem<T extends string> {
    * 解析表达式依赖关系
    */
   private parseDependencies(attrIndex: number, expression: string): void {
-    // 简化的依赖解析，查找表达式中的变量名
-    for (const [key, dependencyIndex] of this.keyToIndex) {
-      if (expression.includes(key) && dependencyIndex !== attrIndex) {
-        this.dependencyGraph.addDependency(attrIndex, dependencyIndex);
+    try {
+      // 使用JS表达式处理器分析依赖关系
+      const processor = new JSExpressionIntegration({
+        enableTransformation: false,
+        enableValidation: true,
+        strictMode: false
+      });
+      
+      // 验证表达式并获取AST信息
+      const validation = processor.validateOnly(expression);
+      
+      if (validation.isValid) {
+        // 简化的依赖解析：检查表达式中是否包含其他属性名
+        for (const [key, dependencyIndex] of this.keyToIndex) {
+          if (expression.includes(key) && dependencyIndex !== attrIndex) {
+            this.dependencyGraph.addDependency(attrIndex, dependencyIndex);
+            console.log(`🔗 发现依赖关系: ${this.indexToKey[attrIndex]} 依赖于 ${key}`);
+          }
+        }
+      } else {
+        console.warn(`⚠️ 表达式依赖解析失败: ${expression}`, validation.errors);
+        // 回退到简单的字符串匹配
+        for (const [key, dependencyIndex] of this.keyToIndex) {
+          if (expression.includes(key) && dependencyIndex !== attrIndex) {
+            this.dependencyGraph.addDependency(attrIndex, dependencyIndex);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`❌ 依赖关系解析异常: ${expression}`, error);
+      // 回退到简单的字符串匹配
+      for (const [key, dependencyIndex] of this.keyToIndex) {
+        if (expression.includes(key) && dependencyIndex !== attrIndex) {
+          this.dependencyGraph.addDependency(attrIndex, dependencyIndex);
+        }
       }
     }
   }
@@ -528,6 +530,7 @@ export class ReactiveSystem<T extends string> {
 
     // 如果有计算函数，使用它
     const computationFn = this.computationFunctions.get(index);
+    console.log(`🚀 计算属性值: ${index}`, computationFn);
     if (computationFn) {
       return computationFn(this.values);
     }
@@ -553,8 +556,8 @@ export class ReactiveSystem<T extends string> {
     let updatedCount = 0;
 
     // 获取拓扑排序
-    const order = this.dependencyGraph.getTopologicalOrder();
-
+      const order = this.dependencyGraph.getTopologicalOrder();
+      
     // 按依赖顺序计算
     for (const index of order) {
       if (this.isDirty(index)) {
@@ -577,7 +580,7 @@ export class ReactiveSystem<T extends string> {
       }
     }
 
-    this.stats.lastUpdateTime = performance.now() - startTime;
+      this.stats.lastUpdateTime = performance.now() - startTime;
     this.stats.computations += updatedCount;
     
     // 只在有实际更新时才输出日志
@@ -595,6 +598,9 @@ export class ReactiveSystem<T extends string> {
       return;
     }
 
+    const attrName = this.indexToKey[index];
+    console.log(`📍 标记属性为脏值: ${attrName} (index: ${index})`);
+
     const arrayIndex = index >>> 5; // index / 32
     const bitIndex = index & 31;    // index % 32
     this.dirtyBitmap[arrayIndex] |= (1 << bitIndex);
@@ -604,7 +610,10 @@ export class ReactiveSystem<T extends string> {
 
     // 标记所有依赖此属性的属性为脏值
     const dependents = this.dependencyGraph.getDependents(index);
+    console.log(`🔗 ${attrName} 的依赖者: [${Array.from(dependents).map(dep => this.indexToKey[dep]).join(', ')}]`);
+    
     for (const dependent of dependents) {
+      console.log(`  -> 传播脏状态到: ${this.indexToKey[dependent]} (index: ${dependent})`);
       this.markDirty(dependent);
     }
   }
@@ -887,4 +896,4 @@ export class ReactiveSystem<T extends string> {
 
     return cycles;
   }
-}
+} 

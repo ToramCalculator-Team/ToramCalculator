@@ -1,18 +1,22 @@
 import { createSignal, onMount, onCleanup, For } from "solid-js";
-import { Player } from "~/components/features/simulator/core/member/player/Player";
 import { findMemberWithRelations } from "@db/repositories/member";
+import { findSimulatorWithRelations } from "@db/repositories/simulator";
+import { EnhancedSimulatorPool } from "~/components/features/simulator/SimulatorPool";
 import {
   PlayerAttrEnum,
   PlayerAttrDic,
   PlayerAttrKeys,
   PlayerAttrType,
 } from "~/components/features/simulator/core/member/player/PlayerData";
+import type { MemberSerializeData } from "~/components/features/simulator/core/Member";
 import { Button } from "~/components/controls/button";
 import { Select, SelectOption } from "~/components/controls/select";
 import { Card } from "~/components/containers/card";
 
 export default function ReactivityValidationTestPage() {
-  const [player, setPlayer] = createSignal<Player | null>(null);
+  const [simulatorPool, setSimulatorPool] = createSignal<EnhancedSimulatorPool | null>(null);
+  const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
+  const [currentMember, setCurrentMember] = createSignal<MemberSerializeData | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [dependencyInfoDisplay, setDependencyInfoDisplay] = createSignal(false);
@@ -29,149 +33,214 @@ export default function ReactivityValidationTestPage() {
     }>
   >([]);
 
-  // 更新属性显示
-  const updateAttributes = () => {
-    const playerInstance = player();
-    if (!playerInstance) return;
+  // 更新属性显示（从Worker获取成员数据）
+  const updateAttributes = async () => {
+    const pool = simulatorPool();
+    if (!pool) return;
 
-    const attrValues: Record<string, number> = {};
-    for (const attr of PlayerAttrKeys) {
-      try {
-        attrValues[attr] = playerInstance.getAttributeValue(attr);
-      } catch (err) {
-        attrValues[attr] = 0;
+    try {
+      const memberData = await pool.getMembers();
+      setMembers(memberData);
+      
+      // 找到当前测试的成员
+      const testMember = memberData.find(m => m.type === 'Player');
+      if (testMember) {
+        setCurrentMember(testMember);
+        
+        // 更新属性显示
+        const attrValues: Record<string, number> = {};
+        for (const attr of PlayerAttrKeys) {
+          attrValues[attr] = testMember.state.context.stats[attr] || 0;
+        }
+        setAttributes(attrValues);
       }
+    } catch (err) {
+      console.error('获取成员数据失败:', err);
     }
-    setAttributes(attrValues);
   };
 
-  // 检查脏属性
+  // 检查脏属性（暂时模拟，因为无法直接访问Worker内部状态）
   const checkDirtyAttributes = () => {
-    const playerInstance = player();
-    if (!playerInstance) return;
-
-    const reactiveSystem = playerInstance.getReactiveDataManager();
-    const debugInfo = reactiveSystem.getDebugInfo();
+    // 在Worker环境中，我们无法直接访问ReactiveSystem的内部状态
+    // 这里暂时模拟脏标记检查
     const dirtySet = new Set<string>();
-
-    // 检查哪些属性被标记为脏
-    for (const [attrName, attrInfo] of Object.entries(debugInfo)) {
-      if (attrInfo.isDirty) {
-        dirtySet.add(attrName);
-      }
-    }
-
     setDirtyAttributes(dirtySet);
   };
 
-  // 修改属性并记录变化
-  const modifyAttribute = (attrName: PlayerAttrType, newValue: number) => {
-    const playerInstance = player();
-    if (!playerInstance) return;
+  // 修改属性并记录变化（通过Worker）
+  const modifyAttribute = async (attrName: PlayerAttrType, newValue: number) => {
+    const pool = simulatorPool();
+    const member = currentMember();
+    if (!pool || !member) return;
 
-    const oldValue = playerInstance.getAttributeValue(attrName);
+    const oldValue = attributes()[attrName] || 0;
 
-    // 记录修改前的状态
-    const beforeDirty = new Set(dirtyAttributes());
+    try {
+      // 通过IntentMessage发送属性修改指令
+      const result = await pool.sendIntent({
+        id: `test_modify_${Date.now()}`,
+        type: 'custom',
+        targetMemberId: member.id,
+        timestamp: Date.now(),
+        data: {
+          action: 'modify_attribute',
+          attribute: attrName,
+          value: newValue,
+          scriptCode: `
+            // 安全的属性修改脚本
+            caster.setAttributeValue('${attrName}', 'baseValue', ${newValue}, 'test');
+            return { success: true, oldValue: ${oldValue}, newValue: ${newValue} };
+          `
+        }
+      });
 
-    // 执行修改
-    playerInstance.setAttributeValue(attrName, "baseValue" as any, newValue, "test");
-
-    // 检查修改后的状态
-    setTimeout(() => {
-      checkDirtyAttributes();
-      updateAttributes();
-
-      // 记录变化历史
-      const afterDirty = dirtyAttributes();
-      const newlyDirty = Array.from(afterDirty).filter((attr) => !beforeDirty.has(attr));
-
-      setChangeHistory((prev) => [
-        {
-          timestamp: Date.now(),
-          action: "修改属性",
-          targetAttr: attrName,
-          oldValue,
-          newValue,
-          affectedAttrs: newlyDirty,
-        },
-        ...prev.slice(0, 19),
-      ]); // 保留最近20条记录
-    }, 10);
+      if (result.success) {
+        // 更新本地显示
+        setTimeout(async () => {
+          await updateAttributes();
+          
+          // 记录变化历史
+          setChangeHistory((prev) => [
+            {
+              timestamp: Date.now(),
+              action: "🛡️ 安全修改属性",
+              targetAttr: attrName,
+              oldValue,
+              newValue,
+              affectedAttrs: [], // Worker中无法直接获取依赖信息
+            },
+            ...prev.slice(0, 19),
+          ]);
+        }, 100);
+      } else {
+        console.error('属性修改失败:', result.error);
+      }
+    } catch (err) {
+      console.error('发送修改指令失败:', err);
+    }
   };
 
-  // 批量修改属性
-  const batchModifyAttributes = (modifications: Array<{ attr: PlayerAttrType; value: number }>) => {
-    const playerInstance = player();
-    if (!playerInstance) return;
+  // 批量修改属性（通过Worker）
+  const batchModifyAttributes = async (modifications: Array<{ attr: PlayerAttrType; value: number }>) => {
+    const pool = simulatorPool();
+    const member = currentMember();
+    if (!pool || !member) return;
 
-    const beforeDirty = new Set(dirtyAttributes());
-    const oldValues: Record<string, number> = {};
+    try {
+      // 构建批量修改脚本
+      const scriptCode = `
+        // 安全的批量属性修改脚本
+        const results = [];
+        ${modifications.map(({ attr, value }) => `
+        results.push({
+          attr: '${attr}',
+          oldValue: caster.getAttributeValue('${attr}'),
+          newValue: ${value}
+        });
+        caster.setAttributeValue('${attr}', 'baseValue', ${value}, 'batch-test');
+        `).join('')}
+        return { success: true, results };
+      `;
 
-    // 记录旧值
-    for (const { attr } of modifications) {
-      oldValues[attr] = playerInstance.getAttributeValue(attr);
+      const result = await pool.sendIntent({
+        id: `test_batch_${Date.now()}`,
+        type: 'custom',
+        targetMemberId: member.id,
+        timestamp: Date.now(),
+        data: {
+          action: 'batch_modify_attributes',
+          modifications,
+          scriptCode
+        }
+      });
+
+      if (result.success) {
+        setTimeout(async () => {
+          await updateAttributes();
+          
+          setChangeHistory((prev) => [
+            {
+              timestamp: Date.now(),
+              action: "🛡️ 安全批量修改",
+              targetAttr: modifications.map((m) => m.attr).join(", "),
+              oldValue: undefined,
+              newValue: undefined,
+              affectedAttrs: [],
+            },
+            ...prev.slice(0, 19),
+          ]);
+        }, 100);
+      }
+    } catch (err) {
+      console.error('批量修改失败:', err);
     }
-
-    // 执行批量修改
-    for (const { attr, value } of modifications) {
-      playerInstance.setAttributeValue(attr, "baseValue" as any, value, "batch-test");
-    }
-
-    // 检查修改后的状态
-    setTimeout(() => {
-      checkDirtyAttributes();
-      updateAttributes();
-
-      const afterDirty = dirtyAttributes();
-      const newlyDirty = Array.from(afterDirty).filter((attr) => !beforeDirty.has(attr));
-
-      setChangeHistory((prev) => [
-        {
-          timestamp: Date.now(),
-          action: "批量修改",
-          targetAttr: modifications.map((m) => m.attr).join(", "),
-          oldValue: undefined,
-          newValue: undefined,
-          affectedAttrs: newlyDirty,
-        },
-        ...prev.slice(0, 19),
-      ]);
-    }, 10);
   };
 
-  // 获取依赖关系信息
+  // 获取依赖关系信息（模拟）
   const getDependencyInfo = () => {
-    const playerInstance = player();
-    if (!playerInstance) return null;
-
-    const reactiveSystem = playerInstance.getReactiveDataManager();
-    return reactiveSystem.getDependencyGraphInfo();
+    // 在Worker环境中无法直接访问依赖图信息
+    // 返回一个模拟的依赖关系
+    return {
+      str: ['pAtk', 'maxHp'],
+      int: ['mAtk', 'maxMp'],
+      vit: ['maxHp', 'pDef'],
+      agi: ['aspd', 'pDef'],
+      dex: ['pAtk', 'accuracy']
+    };
   };
 
   onMount(async () => {
     try {
       setLoading(true);
 
-      // 创建Player实例
+      // 创建SimulatorPool实例
+      const pool = new EnhancedSimulatorPool();
+      setSimulatorPool(pool);
+
+      // 获取测试数据
       const memberData = await findMemberWithRelations("defaultMember1Id");
-      const playerInstance = new Player(memberData);
-      setPlayer(playerInstance);
+      const simulatorData = await findSimulatorWithRelations("defaultSimulatorId");
+      
+      // 如果没有找到模拟器数据，创建一个简单的测试配置
+      const testSimulatorData = simulatorData || {
+        campA: [{
+          id: "testTeamA",
+          name: "测试队伍A", 
+          members: [memberData]
+        }],
+        campB: [{
+          id: "testTeamB", 
+          name: "测试队伍B",
+          members: []
+        }]
+      };
 
-      // 初始化显示
-      updateAttributes();
-      checkDirtyAttributes();
-
-      // 定期检查状态
-      const interval = setInterval(() => {
+      // 启动模拟器
+      console.log('🛡️ 启动安全的Worker模拟器...');
+      const startResult = await pool.startSimulation(testSimulatorData);
+      
+      if (startResult.success) {
+        console.log('✅ 安全模拟器启动成功');
+        
+        // 获取初始成员数据
+        await updateAttributes();
         checkDirtyAttributes();
-      }, 100);
 
-      onCleanup(() => {
-        clearInterval(interval);
-      });
+        // 定期更新数据
+        const interval = setInterval(async () => {
+          await updateAttributes();
+          checkDirtyAttributes();
+        }, 1000);
+
+        onCleanup(() => {
+          clearInterval(interval);
+          pool.shutdown();
+        });
+      } else {
+        throw new Error(`模拟器启动失败: ${startResult.error}`);
+      }
     } catch (err) {
-      console.error("❌ 测试初始化失败:", err);
+      console.error("❌ 安全测试初始化失败:", err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
@@ -190,8 +259,8 @@ export default function ReactivityValidationTestPage() {
     <div class="flex h-full flex-col gap-6 p-6">
       {/* 页面标题 */}
       <div>
-        <h1 class="mb-2 text-3xl font-bold">🔍 响应式系统监控测试</h1>
-        <p class="text-accent-color text-lg">监控属性变化、脏标记状态和依赖关系</p>
+        <h1 class="mb-2 text-3xl font-bold">🛡️ 安全沙盒响应式系统测试</h1>
+        <p class="text-accent-color text-lg">通过Worker沙盒安全地测试属性变化和JS片段执行</p>
       </div>
 
       {/* 加载状态 */}
@@ -199,7 +268,7 @@ export default function ReactivityValidationTestPage() {
         <div class="bg-area-color border-dividing-color mb-6 rounded-lg border p-6">
           <div class="flex items-center space-x-3">
             <div class="border-primary-color h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"></div>
-            <span class="text-accent-color">正在初始化响应式系统...</span>
+            <span class="text-accent-color">正在初始化安全沙盒和Worker线程池...</span>
           </div>
         </div>
       )}
@@ -213,7 +282,7 @@ export default function ReactivityValidationTestPage() {
       )}
 
       {/* 主要内容 */}
-      {player() && !loading() && (
+      {currentMember() && !loading() && (
         <div class="flex h-full flex-1 gap-4 overflow-y-hidden">
           {/* 左侧：监控和控制 */}
           <div class="flex h-full basis-1/3 flex-col gap-3">

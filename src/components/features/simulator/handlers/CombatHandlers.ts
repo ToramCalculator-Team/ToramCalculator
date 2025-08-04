@@ -15,7 +15,7 @@
 
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
-import type { MemberRegistry } from "../core/MemberRegistry";
+import type { MemberManager } from "../core/MemberManager";
 
 // ============================== 战斗事件处理器 ==============================
 
@@ -25,7 +25,7 @@ import type { MemberRegistry } from "../core/MemberRegistry";
 export class MemberDamageHandler implements EventHandler {
   constructor(
     private eventExecutor: EventExecutor, 
-    private memberRegistry: MemberRegistry
+    private memberManager: MemberManager
   ) {}
 
   canHandle(event: BaseEvent): boolean {
@@ -38,8 +38,8 @@ export class MemberDamageHandler implements EventHandler {
       console.log(`处理伤害事件: ${event.id}`, payload);
       
       // 获取目标和施法者
-      const target = this.memberRegistry.getMember(payload.targetId);
-      const source = this.memberRegistry.getMember(payload.sourceId);
+      const target = this.memberManager.getMember(payload.targetId);
+      const source = this.memberManager.getMember(payload.sourceId);
       
       if (!target) {
         return {

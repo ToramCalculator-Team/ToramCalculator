@@ -17,6 +17,7 @@
 
 import { createId } from '@paralleldrive/cuid2';
 import type { BaseEvent } from "./EventQueue";
+import JSExpressionIntegration from './expression/JSExpressionIntegration';
 
 // ============================== 类型定义 ==============================
 
@@ -115,6 +116,9 @@ export class EventExecutor {
   /** 调试模式 */
   private debugMode: boolean = false;
 
+  /** JS表达式处理器 */
+  private jsProcessor: JSExpressionIntegration;
+
   // ==================== 构造函数 ====================
 
   /**
@@ -124,10 +128,72 @@ export class EventExecutor {
    */
   constructor(debugMode: boolean = false) {
     this.debugMode = debugMode;
+    this.jsProcessor = new JSExpressionIntegration({
+      enableTransformation: true,
+      enableValidation: true,
+      strictMode: false
+    });
     this.initializeExpressionFunctions();
   }
 
   // ==================== 公共接口 ====================
+
+  /**
+   * 执行JS片段（在沙盒环境中）
+   * 
+   * @param scriptCode JS代码字符串
+   * @param context 执行上下文
+   * @returns 执行结果
+   */
+  executeScript(scriptCode: string, context: ExpressionContext): ExpressionResult {
+    try {
+      // 使用新的JS表达式处理器
+      const executionContext = {
+        member: context.caster,
+        target: context.target,
+        reactiveSystem: context.caster?.getReactiveDataManager?.(),
+        skill: context.skill,
+        currentFrame: context.currentFrame,
+        environment: context.environment
+      };
+      
+      const result = this.jsProcessor.processAndExecute(scriptCode, executionContext);
+      
+      if (result.success) {
+        console.log(`✅ JS片段执行成功，应用了 ${result.dataOperationsApplied} 个数据操作`);
+        if (result.warnings.length > 0) {
+          console.warn('JS片段执行警告:', result.warnings);
+        }
+      }
+      
+      return {
+        value: result.value,
+        success: result.success,
+        error: result.error
+      };
+      
+    } catch (error) {
+      console.error("JS片段执行失败:", error);
+      return {
+        value: 0,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * 清理JS代码，屏蔽危险关键字
+   */
+  private sanitizeScript(code: string): string {
+    return code
+      .replace(/\bthis\b/g, 'undefined')
+      .replace(/\bglobal\b/g, 'undefined')
+      .replace(/\bprocess\b/g, 'undefined')
+      .replace(/\brequire\b/g, 'undefined')
+      .replace(/\bFunction\b/g, 'undefined')
+      .replace(/\beval\b/g, 'undefined');
+  }
 
   /**
    * 执行表达式计算

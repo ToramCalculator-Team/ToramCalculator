@@ -23,7 +23,7 @@ import { createActor } from "xstate";
 import { MobAttrKeys, MobAttrDic, MobAttrType, MobAttrExpressionsMap } from "./MobData";
 import { ModifierSource, AttributeExpression, ReactiveSystem } from "../ReactiveSystem";
 import { MobFSMEventBridge } from "../../fsmBridge/MobBridge";
-import type { EventQueue } from "../../EventQueue";
+import type GameEngine from "../../GameEngine";
 
 // ============================== 角色属性系统类型定义 ==============================
 
@@ -69,12 +69,12 @@ export class Mob extends Member<MobAttrType> {
    * 构造函数
    *
    * @param memberData 成员数据
-   * @param externalEventQueue 外部事件队列（可选）
+   * @param engine 游戏引擎实例
    * @param initialState 初始状态
    */
   constructor(
     memberData: MemberWithRelations,
-    externalEventQueue?: EventQueue,
+    engine: GameEngine,
     initialState: {
       position?: { x: number; y: number };
       currentHp?: number;
@@ -95,8 +95,8 @@ export class Mob extends Member<MobAttrType> {
       attrExpressions: MobAttrExpressionsMap,
     };
 
-    // 调用父类构造函数，注入FSM事件桥
-    super(memberData, mobFSMBridge, reactiveSystemConfig, externalEventQueue, initialState);
+    // 调用父类构造函数，注入游戏引擎和FSM事件桥
+    super(memberData, engine, mobFSMBridge, reactiveSystemConfig, initialState);
 
     // 设置角色数据
     this.mob = memberData.mob;
@@ -107,7 +107,7 @@ export class Mob extends Member<MobAttrType> {
     // 初始化怪物数据（响应式系统已由基类初始化）
     this.initializeMobData();
 
-    console.log(`🎮 已创建怪物: ${memberData.name}，data:`, this);
+    console.log(`🎮 已创建怪物: ${memberData.name}，通过引擎: ${engine.constructor.name}`);
   }
 
   // ==================== 私有方法 ====================

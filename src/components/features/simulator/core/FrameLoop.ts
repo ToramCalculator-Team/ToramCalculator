@@ -11,11 +11,13 @@
  * - 事件调度：每帧处理事件队列中的事件
  * - 状态推进：调用成员更新和状态机推进
  * - 可控制：支持暂停、加速、减速等控制
- * - 低耦合：通过接口与EventQueue和MemberRegistry交互
+ * - 低耦合：通过接口与EventQueue和memberManager交互
  */
 
-import { MemberRegistry } from "./MemberRegistry";
+import { MemberManager } from "./MemberManager";
+import type GameEngine from "./GameEngine";
 import { Member } from "./Member";
+import { EventExecutor } from "./EventExecutor";
 import type { EventQueue, QueueEvent, BaseEvent, EventHandler, ExecutionContext, EventResult } from "./EventQueue";
 
 
@@ -106,11 +108,11 @@ export class FrameLoop {
   /** 帧循环配置 */
   private config: FrameLoopConfig;
 
-  /** 成员注册表引用 */
-  private memberRegistry: MemberRegistry;
+  /** 游戏引擎引用 */
+  private engine: GameEngine;
 
-  /** 事件队列引用 */
-  private eventQueue: EventQueue | null = null;
+  /** 事件执行器 - 处理事件执行逻辑 */
+  private eventExecutor: EventExecutor;
 
   /** 事件处理器注册表 */
   private eventHandlers: Map<string, EventHandler> = new Map();
@@ -160,17 +162,17 @@ export class FrameLoop {
   /**
    * 构造函数
    * 
-   * @param memberRegistry 成员注册表
-   * @param eventQueue 事件队列引用
+   * @param engine 游戏引擎实例
    * @param config 帧循环配置
    */
   constructor(
-    memberRegistry: MemberRegistry, 
-    eventQueue: EventQueue | null = null,
+    engine: GameEngine,
     config: Partial<FrameLoopConfig> = {}
   ) {
-    this.memberRegistry = memberRegistry;
-    this.eventQueue = eventQueue;
+    this.engine = engine;
+    
+    // 初始化事件执行器
+    this.eventExecutor = new EventExecutor(config.enablePerformanceMonitoring || true);
     
     // 设置默认配置
     this.config = {
@@ -193,6 +195,14 @@ export class FrameLoop {
   }
 
   // ==================== 公共接口 ====================
+
+  /**
+   * 获取事件执行器
+   * 供事件处理器工厂等组件使用
+   */
+  getEventExecutor(): EventExecutor {
+    return this.eventExecutor;
+  }
 
   /**
    * 启动帧循环
@@ -351,15 +361,6 @@ export class FrameLoop {
     console.log(`🗑️ 注销事件处理器: ${eventType}`);
   }
 
-  /**
-   * 设置事件队列
-   * 
-   * @param eventQueue 事件队列
-   */
-  setEventQueue(eventQueue: EventQueue): void {
-    this.eventQueue = eventQueue;
-    console.log("🔗 设置事件队列");
-  }
 
   /**
    * 设置状态变化回调
@@ -491,7 +492,8 @@ export class FrameLoop {
 
     try {
       // 1. 处理事件队列
-      if (this.eventQueue) {
+      const engineEventQueue = this.engine.getEventQueue();
+      if (engineEventQueue) {
         eventsProcessed = this.processEvents();
       }
 
@@ -528,11 +530,12 @@ export class FrameLoop {
    * @returns 处理的事件数量
    */
   private processEvents(): number {
-    if (!this.eventQueue) {
+    const engineEventQueue = this.engine.getEventQueue();
+    if (!engineEventQueue) {
       return 0;
     }
 
-    const eventsToProcess = this.eventQueue.getEventsToProcess(this.frameNumber, this.config.maxEventsPerFrame);
+    const eventsToProcess = engineEventQueue.getEventsToProcess(this.frameNumber, this.config.maxEventsPerFrame);
     let processedCount = 0;
 
     for (const event of eventsToProcess) {
@@ -543,20 +546,20 @@ export class FrameLoop {
         const success = this.executeEventSync(event);
         
         const processingTime = performance.now() - startTime;
-        this.eventQueue.markAsProcessed(event.id, processingTime);
+        engineEventQueue.markAsProcessed(event.id, processingTime);
         
         if (success) {
           processedCount++;
         }
       } catch (error) {
         console.error(`❌ 事件处理失败: ${event.id}`, error);
-        this.eventQueue.markAsProcessed(event.id);
+        engineEventQueue.markAsProcessed(event.id);
       }
     }
 
     // 清理已处理的事件
     if (processedCount > 0) {
-      this.eventQueue.cleanup();
+      engineEventQueue.cleanup();
     }
 
     return processedCount;
@@ -589,20 +592,21 @@ export class FrameLoop {
       timeScale: this.timeScale,
       engineState: {
         frameNumber: this.frameNumber,
-        memberRegistry: this.memberRegistry,
-        eventQueue: this.eventQueue
+        memberManager: this.engine.getMemberManager(),
+        eventQueue: this.engine.getEventQueue()
       }
     };
 
     try {
       // 同步执行事件处理
       const result = this.executeHandlerSync(handler, event, context);
+      const engineEventQueue = this.engine.getEventQueue();
 
       if (result.success) {
         // 如果产生了新事件，插入到事件队列
         if (result.newEvents && result.newEvents.length > 0) {
           for (const newEvent of result.newEvents) {
-            this.eventQueue?.insert(newEvent);
+            engineEventQueue?.insert(newEvent);
           }
         }
         
@@ -651,7 +655,7 @@ export class FrameLoop {
    * @returns 更新的成员数量
    */
   private updateMembers(deltaTime: number): number {
-    const members = this.memberRegistry.getAllMembers();
+    const members = this.engine.getMemberManager().getAllMembers();
     let updatedCount = 0;
 
     for (const member of members) {

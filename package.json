@@ -62,6 +62,7 @@
     "@tanstack/solid-table": "latest",
     "@tanstack/solid-virtual": "^3.9.0",
     "@xstate/solid": "^2.0.0",
+    "acorn": "^8.15.0",
     "bcrypt": "^5.1.1",
     "blockly": "^11.2.1",
     "comlink": "^4.4.1",

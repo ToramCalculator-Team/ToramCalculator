@@ -1017,7 +1017,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
         }
       }
 
-      console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取成员数据`);
+      // console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取成员数据`);
 
       // 发送获取成员数据的请求
       const taskId = createId();
@@ -1054,7 +1054,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
       });
 
       if (result.success) {
-        console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员 (Worker: ${targetWorker.id})`);
+        // console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员 (Worker: ${targetWorker.id})`);
         return result.data || [];
       } else {
         console.error(`SimulatorPool: 获取成员数据失败: ${result.error} (Worker: ${targetWorker.id})`);
