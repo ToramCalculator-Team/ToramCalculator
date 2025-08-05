@@ -476,6 +476,27 @@ export abstract class Member<TAttrKey extends string = string> {
   abstract getStats(): Record<TAttrKey, number>;
 
   /**
+   * 获取Schema定义 - 供JS编译器使用
+   */
+  getAttrSchema(): NestedSchema {
+    return this.attrSchema;
+  }
+
+  /**
+   * 获取属性值 - 供编译后的JS代码使用
+   */
+  getValue(attrKey: TAttrKey): number {
+    return this.reactiveDataManager.getValue(attrKey);
+  }
+
+  /**
+   * 设置属性值 - 供编译后的JS代码使用
+   */
+  setValue(attrKey: TAttrKey, value: number): void {
+    this.reactiveDataManager.setValue(attrKey, value);
+  }
+
+  /**
    * 获取当前生命值
    */
   getCurrentHp(): number {
@@ -1113,15 +1134,10 @@ export abstract class Member<TAttrKey extends string = string> {
     },
     schema: NestedSchema,
   ): void {
-    console.log('🔧 使用Schema模式初始化成员响应式系统');
-
-    // 创建响应式系统 - 使用Schema模式
-    this.reactiveDataManager = new ReactiveSystem<TAttrKey>(schema);
+    this.reactiveDataManager = new ReactiveSystem<TAttrKey>(this, schema);
 
     // 设置默认值
     this.setCommonDefaultValues(initialState);
-
-    console.log(`✅ 成员 ${this.memberData.name} 响应式系统初始化完成（Schema模式）`);
   }
   
   /**

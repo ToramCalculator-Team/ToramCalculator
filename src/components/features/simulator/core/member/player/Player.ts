@@ -123,6 +123,22 @@ export class Player extends Member<PlayerAttrType> {
    * 初始化玩家数据
    */
   private initializePlayerData(): void {
+    // 设置基础值，使用DSL路径作为键名
+    this.reactiveDataManager.setBaseValues({
+      lv: this.character.lv,
+      "abi.str": this.character.str,
+      "abi.int": this.character.int,
+      "abi.vit": this.character.vit,
+      "abi.agi": this.character.agi,
+      "abi.dex": this.character.dex,
+      "abi.luk": this.character.personalityType === 'Luk' ? this.character.personalityValue : 0,
+      "abi.tec": this.character.personalityType === 'Tec' ? this.character.personalityValue : 0,
+      "abi.men": this.character.personalityType === 'Men' ? this.character.personalityValue : 0,
+      "abi.cri": this.character.personalityType === 'Cri' ? this.character.personalityValue : 0,
+      "hp.current": 0,
+      "mp.current": 0,
+    } as Record<PlayerAttrType, number>);
+
     // 解析角色配置中的修饰器
     this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
 
@@ -408,8 +424,8 @@ export class Player extends Member<PlayerAttrType> {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setAttributeValue("hpMax", TargetType.baseValue, this.getAttributeValue("hpMax"), "revive");
-            this.setAttributeValue("mpMax", TargetType.baseValue, this.getAttributeValue("mpMax"), "revive");
+            this.setAttributeValue("hp.max", TargetType.baseValue, this.getAttributeValue("hp.max"), "revive");
+            this.setAttributeValue("mp.max", TargetType.baseValue, this.getAttributeValue("mp.max"), "revive");
             return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
           },
           isAlive: true,
@@ -490,10 +506,10 @@ export class Player extends Member<PlayerAttrType> {
         },
 
         // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("hpMax") <= 0,
+        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("hp.current") <= 0,
 
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("hpMax") > 0,
+        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("hp.current") > 0,
       },
     }).createMachine({
       id: machineId,

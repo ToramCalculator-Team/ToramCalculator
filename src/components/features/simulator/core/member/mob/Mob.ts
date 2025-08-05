@@ -92,7 +92,7 @@ export class Mob extends Member<MobAttrType> {
       throw new Error("怪物角色数据缺失");
     }
 
-    const mobSchema = MobAttrSchema();
+    const mobSchema = MobAttrSchema(mob);
 
     // 调用父类构造函数，注入游戏引擎和Schema
     super(memberData, engine, mobSchema, initialState);
@@ -112,47 +112,22 @@ export class Mob extends Member<MobAttrType> {
    * 初始化怪物数据
    */
   private initializeMobData(): void {
+    // 设置基础值，使用DSL路径作为键名
     this.reactiveDataManager.setBaseValues({
-      lv: this.mob.baseLv || 1,
-      hpMax: this.mob.maxhp || 1500,
-      hpCurrent: this.mob.maxhp || 1500,
-      physicalAttack: 0,
-      physicalCriticalRate: 0,
-      physicalCriticalDamage: 0,
-      physicalCriticalStab: 0,
-      magicalAccuracy: 0,
-      magicalAttack: 0,
-      magicalCriticalRate: 0,
-      magicalCriticalDamage: 0,
-      magicalCriticalStab: 0,
-      magicalDefensePhysical: 0,
-      magicalDefenseMagical: 0,
-      magicalResistancePhysical: 0,
-      magicalResistanceMagical: 0,
-      magicalResistanceNeutral: 0,
-      magicalResistanceLight: 0,
-      magicalResistanceDark: 0,
-      magicalResistanceWater: 0,
-      magicalResistanceFire: 0,
-      magicalResistanceEarth: 0,
-      magicalResistanceWind: 0,
-      magicalSurvivalDodge: 0,
-      magicalSurvivalEvasionRecharge: 0,
-      magicalSurvivalAilmentResistance: 0,
-      magicalSurvivalGuardPower: 0,
-      magicalSurvivalGuardRecharge: 0,
-      magicalSpeedAttack: 0,
-      magicalSpeedCast: 0,
-      magicalSpeedMovement: 0,
-      magicalMiscRadius: 0,
-      magicalMiscCaptureable: 0,
-      magicalMiscExperience: 0,
-      magicalMiscPartsExperience: 0
-    });
+      "lv": this.mob.baseLv,
+      "hp.max": this.mob.maxhp,
+      "hp.current": this.mob.maxhp,
+    } as Record<MobAttrType, number>);
+
     // 解析怪物配置中的修饰器（暂时注释掉，直到实现相应方法）
     // this.reactiveDataManager.parseModifiersFromMob(this.mob, "怪物配置");
 
     console.log("✅ 怪物数据初始化完成");
+    
+    // 打印初始化结果摘要
+    const stats = this.getStats();
+    const statEntries = Object.entries(stats).slice(0, 10); // 只显示前10个
+    console.log(`📊 怪物属性初始化完成，共 ${Object.keys(stats).length} 个属性，前10个:`, statEntries);
   }
 
   /**
@@ -194,6 +169,17 @@ export class Mob extends Member<MobAttrType> {
       pDef: 60,     // 怪物防御
       mDef: 40,     // 怪物魔防较低
       mspd: 80,     // 怪物移动速度较慢
+      // 添加缺失的属性
+      pRes: 0,
+      mRes: 0,
+      neutralRes: 0,
+      lightRes: 0,
+      darkRes: 0,
+      waterRes: 0,
+      fireRes: 0,
+      earthRes: 0,
+      windRes: 0,
+      aspd: 100,
     };
   }
 
@@ -463,10 +449,10 @@ export class Mob extends Member<MobAttrType> {
         },
 
         // 检查怪物是否死亡
-        isDead: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.hpCurrent || 0) <= 0,
+        isDead: ({ context }: { context: MemberContext<MobAttrType> }) => this.getAttributeValue("hp.current") <= 0,
 
         // 检查怪物是否存活
-        isAlive: ({ context }: { context: MemberContext<MobAttrType> }) => (context.stats.hpCurrent || 0) > 0,
+        isAlive: ({ context }: { context: MemberContext<MobAttrType> }) => this.getAttributeValue("hp.current") > 0,
       },
     }).createMachine({
       id: machineId,

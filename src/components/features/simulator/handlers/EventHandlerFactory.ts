@@ -93,7 +93,7 @@ export class EventHandlerFactory {
     // 创建自定义事件处理器
     handlers.set('custom', this.createCustomEventHandler());
 
-    console.log(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
+    // console.log(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
     return handlers;
   }
 

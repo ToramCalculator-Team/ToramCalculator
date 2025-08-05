@@ -1229,14 +1229,14 @@ export class EnhancedSimulatorPool extends EventEmitter {
     const isReady = this.workersInitialized && this.workers.length > 0 && this.workersReady.size > 0;
     
     // 调试信息
-    if (!isReady) {
-      console.log('SimulatorPool: Worker未就绪:', {
-        workersInitialized: this.workersInitialized,
-        workersLength: this.workers.length,
-        workersReadySize: this.workersReady.size,
-        workersReadyIds: Array.from(this.workersReady)
-      });
-    }
+    // if (!isReady) {
+    //   console.log('SimulatorPool: Worker未就绪:', {
+    //     workersInitialized: this.workersInitialized,
+    //     workersLength: this.workers.length,
+    //     workersReadySize: this.workersReady.size,
+    //     workersReadyIds: Array.from(this.workersReady)
+    //   });
+    // }
     
     return isReady;
   }

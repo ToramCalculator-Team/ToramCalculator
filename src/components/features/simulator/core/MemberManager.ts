@@ -63,7 +63,7 @@ export class MemberManager {
    * @param engine 游戏引擎引用 - 依赖注入，用于传递给创建的成员
    */
   constructor(private readonly engine: GameEngine) {
-    console.log("MemberManager: 初始化完成，已注入GameEngine依赖");
+    // console.log("MemberManager: 初始化完成，已注入GameEngine依赖");
   }
 
   // ==================== 公共接口 ====================

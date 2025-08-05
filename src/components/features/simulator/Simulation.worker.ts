@@ -104,7 +104,7 @@ function initializeWorkerSandbox() {
     now: () => Date.now(),
   };
 
-  console.log("🛡️ Worker沙盒环境已初始化");
+  // console.log("🛡️ Worker沙盒环境已初始化");
 }
 
 // 初始化沙盒环境
@@ -146,7 +146,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                 case "start_simulation":
                   // 初始化战斗数据
                   const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-                  console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
+                  // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
                   // 添加阵营A
                   gameEngine.addCamp("campA", "阵营A");
                   simulatorData.campA.forEach((team, index) => {
@@ -276,7 +276,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
         // 通知主线程Worker已准备就绪
         const readyMessage: WorkerSystemMessage = { type: "worker_ready" };
         self.postMessage(readyMessage);
-        console.log("🛡️ 沙盒化Worker已准备就绪");
+
         return;
 
       default:

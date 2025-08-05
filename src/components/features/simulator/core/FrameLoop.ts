@@ -171,8 +171,8 @@ export class FrameLoop {
   ) {
     this.engine = engine;
     
-    // 初始化事件执行器
-    this.eventExecutor = new EventExecutor(config.enablePerformanceMonitoring || true);
+    // 初始化事件执行器，传入engine引用
+    this.eventExecutor = new EventExecutor(engine, config.enablePerformanceMonitoring || true);
     
     // 设置默认配置
     this.config = {
@@ -191,7 +191,7 @@ export class FrameLoop {
     // 根据目标帧率计算帧间隔
     this.config.frameInterval = 1000 / this.config.targetFPS;
 
-    console.log("FrameLoop: 初始化完成", this.config);
+    // console.log("FrameLoop: 初始化完成", this.config);
   }
 
   // ==================== 公共接口 ====================

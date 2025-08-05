@@ -1,6 +1,7 @@
 /**
  * 玩家数据配置
  */
+import { MobWithRelations } from "@db/repositories/mob";
 import { MainHandType, SubHandType } from "@db/schema/enums";
 
 /*
@@ -104,210 +105,22 @@ export const MobAttrKeys = Object.keys(MobAttrDic) as MobAttrType[];
 // 与原属数据层的映射关系
 export const MobAttrExpressionsMap = new Map<MobAttrType, { expression: string; isBase?: boolean }>([]);
 
-export const MobAttrSchema = () => ({
+export const MobAttrSchema = (mob: MobWithRelations) => ({
   // ============================== 基础信息 ==============================
   lv: {
     displayName: "等级",
-    expression: "lv",
-    isBase: true,
+    expression: `${mob.baseLv}`,
   },
 
   // ============================== 生命值 ==============================
   hp: {
     max: {
       displayName: "最大HP",
-      expression: "maxHp",
-      isBase: true,
+      expression: `${mob.maxhp}`,
     },
     current: {
       displayName: "当前HP",
-      expression: "currentHp",
-      isBase: true,
-    },
-  },
-
-  // ============================== 攻击属性 ==============================
-
-  physical: {
-    attack: {
-      displayName: "物理攻击",
-      expression: "pAtk",
-    },
-    critical: {
-      rate: {
-        displayName: "物理暴击率",
-        expression: "pCritRate",
-      },
-      damage: {
-        displayName: "物理暴击伤害",
-        expression: "pCritDmg",
-      },
-      stab: {
-        displayName: "物理稳定率",
-        expression: "",
-      },
-    },
-  },
-  magical: {
-    attack: {
-      displayName: "魔法攻击",
-      expression: "mAtk",
-    },
-    critical: {
-      rate: {
-        displayName: "魔法暴击率",
-        expression: "pCritRate",
-      },
-      damage: {
-        displayName: "魔法暴击伤害",
-        expression: "pCritDmg",
-      },
-      stab: {
-        displayName: "魔法稳定率",
-        expression: "",
-      },
-    },
-    accuracy: {
-      displayName: "命中",
-      expression: "accuracy",
-      isBase: true,
-    },
-
-    // ============================== 防御属性 ==============================
-    defense: {
-      physical: {
-        displayName: "物理防御",
-        expression: "pDef",
-        isBase: true,
-      },
-      magical: {
-        displayName: "魔法防御",
-        expression: "mDef",
-        isBase: true,
-      },
-    },
-
-    // ============================== 抗性属性 ==============================
-    resistance: {
-      physical: {
-        displayName: "物理抗性",
-        expression: "pRes",
-        isBase: true,
-      },
-      magical: {
-        displayName: "魔法抗性",
-        expression: "mRes",
-        isBase: true,
-      },
-      neutral: {
-        displayName: "无属性抗性",
-        expression: "neutralRes",
-        isBase: true,
-      },
-      light: {
-        displayName: "光属性抗性",
-        expression: "lightRes",
-        isBase: true,
-      },
-      dark: {
-        displayName: "暗属性抗性",
-        expression: "darkRes",
-        isBase: true,
-      },
-      water: {
-        displayName: "水属性抗性",
-        expression: "waterRes",
-        isBase: true,
-      },
-      fire: {
-        displayName: "火属性抗性",
-        expression: "fireRes",
-        isBase: true,
-      },
-      earth: {
-        displayName: "地属性抗性",
-        expression: "earthRes",
-        isBase: true,
-      },
-      wind: {
-        displayName: "风属性抗性",
-        expression: "windRes",
-        isBase: true,
-      },
-    },
-
-    // ============================== 生存能力 ==============================
-    survival: {
-      dodge: {
-        displayName: "回避",
-        expression: "dodge",
-        isBase: true,
-      },
-      ailmentResistance: {
-        displayName: "异常抗性",
-        expression: "ailmentRes",
-        isBase: true,
-      },
-      guard: {
-        power: {
-          displayName: "格挡力",
-          expression: "guardPower",
-          isBase: true,
-        },
-        recharge: {
-          displayName: "格挡回复",
-          expression: "guardRecharge",
-          isBase: true,
-        },
-      },
-      evasionRecharge: {
-        displayName: "闪躲回复",
-        expression: "evasionRecharge",
-        isBase: true,
-      },
-    },
-
-    // ============================== 速度属性 ==============================
-    speed: {
-      attack: {
-        displayName: "攻击速度",
-        expression: "aspd",
-        isBase: true,
-      },
-      cast: {
-        displayName: "咏唱速度",
-        expression: "cspd",
-        isBase: true,
-      },
-      movement: {
-        displayName: "行动速度",
-        expression: "mspd",
-        isBase: true,
-      },
-    },
-
-    // ============================== 其他属性 ==============================
-    misc: {
-      radius: {
-        displayName: "半径",
-        expression: "radius",
-        isBase: true,
-      },
-      captureable: {
-        displayName: "是否可捕获",
-        expression: "captureable",
-        isBase: true,
-      },
-      experience: {
-        displayName: "经验值",
-        expression: "experience",
-        isBase: true,
-      },
-      partsExperience: {
-        displayName: "部位经验值",
-        expression: "partsExperience",
-        isBase: true,
-      },
+      expression: "0",
     },
   },
 });

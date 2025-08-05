@@ -26,6 +26,7 @@ import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
 import { MemberContext, MemberSerializeData } from "./Member";
 import { Snapshot } from "xstate";
+import { JSExpressionProcessor, type CompilationContext, type CompileResult } from "./expression/JSExpressionProcessor";
 // 容器不直接依赖具体成员类型
 
 
@@ -158,6 +159,14 @@ export class GameEngine {
   /** 事件处理器工厂 - 创建和管理事件处理器 */
   private eventHandlerFactory: EventHandlerFactory;
 
+  // ==================== JS编译系统 ====================
+
+  /** JS表达式处理器 - 负责编译JS代码 */
+  private jsProcessor: JSExpressionProcessor;
+
+  /** 编译缓存 - 存储编译后的JS代码 */
+  private compiledScripts: Map<string, string> = new Map();
+
   // ==================== 事件系统 ====================
 
   /** 状态变化监听器列表 */
@@ -285,6 +294,7 @@ export class GameEngine {
     this.messageRouter = new MessageRouter(this); // 注入引擎
     this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎（内含eventExecutor）
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
+    this.jsProcessor = new JSExpressionProcessor(); // 初始化JS表达式处理器
 
     // 🔥 设置帧循环状态变化回调 - 简化为直接输出
     this.frameLoop.setStateChangeCallback((event) => {
@@ -807,6 +817,257 @@ export class GameEngine {
     return this.frameLoop;
   }
 
+  // ==================== JS编译和执行 ====================
+
+  /**
+   * 编译JS脚本
+   * 将self.xxx转换为_self.getValue('xxx')格式并缓存结果
+   * 
+   * @param code 原始JS代码
+   * @param memberId 成员ID
+   * @param targetId 目标成员ID (可选)
+   * @returns 编译后的代码
+   */
+  compileScript(code: string, memberId: string, targetId?: string): string {
+    // 获取成员的Schema
+    const member = this.findMember(memberId);
+    if (!member) {
+      throw new Error(`成员不存在: ${memberId}`);
+    }
+
+    const schema = member.getAttrSchema(); // 需要在Member中添加此方法
+    
+    const context: CompilationContext = {
+      memberId,
+      targetId,
+      schema,
+      options: {
+        enableCaching: true,
+        enableValidation: true
+      }
+    };
+
+    // 检查缓存
+    const result = this.jsProcessor.compile(code, context);
+    if (!result.success) {
+      throw new Error(`编译失败: ${result.error}`);
+    }
+
+    // 缓存编译结果
+    this.compiledScripts.set(result.cacheKey, result.compiledCode);
+    
+    console.log(`✅ JS脚本编译成功: ${result.cacheKey}`);
+    
+    return result.compiledCode;
+  }
+
+  /**
+   * 执行编译后的脚本
+   * this指向GameEngine，提供最高权限
+   * 
+   * @param compiledCode 编译后的代码
+   * @param memberId 成员ID
+   * @param context 执行上下文
+   * @returns 执行结果
+   */
+  executeScript(compiledCode: string, memberId: string, context: any): any {
+    // 创建执行上下文，this指向GameEngine
+    const executionContext = {
+      ...context,
+      // 绑定GameEngine方法
+      findMember: this.findMember.bind(this),
+      getEventQueue: this.getEventQueue.bind(this),
+      getMemberManager: this.getMemberManager.bind(this),
+      // 技能效果专用方法
+      applyDamage: this.applyDamage.bind(this),
+      applyHealing: this.applyHealing.bind(this),
+      addBuff: this.addBuff.bind(this),
+      removeBuff: this.removeBuff.bind(this),
+    };
+
+    // 使用Function构造器执行，确保this绑定
+    const fn = new Function('ctx', `
+      with (ctx) {
+        ${compiledCode}
+      }
+    `);
+
+    return fn.call(this, executionContext);
+  }
+
+  /**
+   * 执行技能效果 - 专门用于技能系统
+   * 
+   * @param casterId 施法者ID
+   * @param skillCode 技能代码
+   * @param targetId 目标ID（可选）
+   * @returns 技能执行结果
+   */
+  executeSkillEffect(casterId: string, skillCode: string, targetId?: string): any {
+    try {
+      // 编译技能代码
+      const compiledCode = this.compileScript(skillCode, casterId, targetId);
+      
+      // 创建技能专用上下文
+      const skillContext = this.createSkillContext(casterId, targetId);
+      
+      // 执行技能效果
+      const result = this.executeScript(compiledCode, casterId, skillContext);
+      
+      console.log(`🎯 技能效果执行成功: ${casterId} -> ${targetId || 'self'}`);
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ 技能效果执行失败:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建技能执行上下文
+   */
+  private createSkillContext(casterId: string, targetId?: string) {
+    const caster = this.findMember(casterId);
+    const target = targetId ? this.findMember(targetId) : null;
+    
+    if (!caster) {
+      throw new Error(`施法者不存在: ${casterId}`);
+    }
+    
+    return {
+      caster,
+      target,
+      // 技能效果可以访问所有成员
+      allMembers: this.memberManager.getAllMembers(),
+      // 游戏状态
+      currentFrame: this.frameLoop.getCurrentFrame(),
+      // 实用方法
+      distance: this.calculateDistance.bind(this),
+      findNearbyMembers: this.findNearbyMembers.bind(this),
+    };
+  }
+
+  // ==================== 技能效果专用方法 ====================
+
+  /**
+   * 对目标造成伤害
+   */
+  private applyDamage(targetId: string, damage: number, damageType: string = 'physical'): void {
+    const target = this.findMember(targetId);
+    if (target) {
+      // 发送伤害事件到队列
+      this.eventQueue.enqueue({
+        id: `damage_${Date.now()}`,
+        type: 'member_damage',
+        priority: 'high',
+        targetMemberId: targetId,
+        data: { damage, damageType },
+        timestamp: Date.now(),
+      } as any);
+    }
+  }
+
+  /**
+   * 对目标治疗
+   */
+  private applyHealing(targetId: string, healing: number): void {
+    const target = this.findMember(targetId);
+    if (target) {
+      this.eventQueue.enqueue({
+        id: `heal_${Date.now()}`,
+        type: 'member_heal',
+        priority: 'high',
+        targetMemberId: targetId,
+        data: { healing },
+        timestamp: Date.now(),
+      } as any);
+    }
+  }
+
+  /**
+   * 添加BUFF
+   */
+  private addBuff(targetId: string, buffData: any): void {
+    const target = this.findMember(targetId);
+    if (target) {
+      this.eventQueue.enqueue({
+        id: `buff_${Date.now()}`,
+        type: 'add_buff',
+        priority: 'normal',
+        targetMemberId: targetId,
+        data: buffData,
+        timestamp: Date.now(),
+      } as any);
+    }
+  }
+
+  /**
+   * 移除BUFF
+   */
+  private removeBuff(targetId: string, buffId: string): void {
+    const target = this.findMember(targetId);
+    if (target) {
+      this.eventQueue.enqueue({
+        id: `remove_buff_${Date.now()}`,
+        type: 'remove_buff',
+        priority: 'normal',
+        targetMemberId: targetId,
+        data: { buffId },
+        timestamp: Date.now(),
+      } as any);
+    }
+  }
+
+  /**
+   * 计算两个成员间的距离
+   */
+  private calculateDistance(member1Id: string, member2Id: string): number {
+    const m1 = this.findMember(member1Id);
+    const m2 = this.findMember(member2Id);
+    
+    if (!m1 || !m2) return Infinity;
+    
+    const pos1 = m1.getPosition();
+    const pos2 = m2.getPosition();
+    
+    return Math.sqrt(
+      Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2)
+    );
+  }
+
+  /**
+   * 查找附近的成员
+   */
+  private findNearbyMembers(centerId: string, radius: number): any[] {
+    const center = this.findMember(centerId);
+    if (!center) return [];
+    
+    return this.memberManager.getAllMembers().filter(member => {
+      if (member.getId() === centerId) return false;
+      return this.calculateDistance(centerId, member.getId()) <= radius;
+    });
+  }
+
+  /**
+   * 获取编译缓存统计
+   * 用于调试和监控
+   */
+  getCompilationStats(): { cacheSize: number; cacheKeys: string[] } {
+    return {
+      cacheSize: this.compiledScripts.size,
+      cacheKeys: Array.from(this.compiledScripts.keys())
+    };
+  }
+
+  /**
+   * 清理编译缓存
+   * 用于内存管理
+   */
+  clearCompilationCache(): void {
+    this.compiledScripts.clear();
+    console.log('🧹 JS编译缓存已清理');
+  }
+
   // ==================== 私有方法 ====================
   
   // 容器模式：不包含业务逻辑方法
@@ -826,7 +1087,7 @@ export class GameEngine {
       this.registerEventHandler(eventType, handler);
     }
     
-    console.log('GameEngine: 默认事件处理器初始化完成');
+    // console.log('GameEngine: 默认事件处理器初始化完成');
   }
 }
 

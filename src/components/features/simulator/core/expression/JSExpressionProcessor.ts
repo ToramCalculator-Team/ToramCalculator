@@ -1,19 +1,22 @@
 /**
- * JS表达式处理器
+ * JS表达式处理器 - 纯编译工具
  * 
  * 核心功能：
  * 1. 验证JS代码的安全性和正确性
- * 2. 转换数据操作为ReactiveSystem调用
- * 3. 在沙盒环境中安全执行
+ * 2. 编译JS代码，替换属性访问为ReactiveSystem调用
+ * 3. 生成可缓存的编译结果
  * 
- * 支持场景：
- * - Blockly生成的JS片段
- * - 装备属性的简单表达式
- * - 技能效果的复杂逻辑
+ * 设计理念：
+ * - 纯编译工具：只负责代码转换，不执行代码
+ * - Schema驱动：基于Schema进行属性路径解析
+ * - 缓存友好：生成可缓存的编译结果
+ * - 高性能：编译一次，多次执行
  */
 
 import { parse } from 'acorn';
-import type { Node, Program, Expression, CallExpression, MemberExpression, BinaryExpression } from 'acorn';
+import type { Node, Program } from 'acorn';
+import type { NestedSchema } from '../member/ReactiveSystem';
+import { SchemaPathResolver, type SchemaPath, escapeRegExp } from './SchemaPathResolver';
 
 // ============================== 类型定义 ==============================
 
@@ -24,33 +27,171 @@ export interface ValidationResult {
   securityIssues: string[];
 }
 
-export interface DataOperation {
-  type: 'modifier' | 'setter' | 'method';
-  target: string;        // 目标属性如 'hp', 'mAtk'
-  operation: string;     // 操作类型如 'add', 'multiply', 'set'
-  value: number | string; // 操作值
-  originalCode: string;  // 原始代码片段
+export interface CompilationContext {
+  /** 成员ID */
+  memberId: string;
+  /** 目标成员ID (可选) */
+  targetId?: string;
+  /** Schema定义 */
+  schema: NestedSchema;
+  /** 编译选项 */
+  options?: {
+    enableCaching?: boolean;
+    enableValidation?: boolean;
+  };
 }
 
-export interface TransformResult {
+export interface CompileResult {
   success: boolean;
-  transformedCode: string;
-  dataOperations: DataOperation[];
-  originalCode: string;
+  compiledCode: string;
+  dependencies: string[];
+  cacheKey: string;
   error?: string;
-}
-
-export interface ExecutionContext {
-  member: any;           // Member实例
-  reactiveSystem: any;   // ReactiveSystem实例
-  [key: string]: any;    // 其他上下文变量
+  warnings?: string[];
 }
 
 // ============================== 核心处理器 ==============================
 
 export class JSExpressionProcessor {
+  private schemaResolver: SchemaPathResolver | null = null;
   
-  // ==================== 校验器 ====================
+  // ==================== 核心编译功能 ====================
+  
+  /**
+   * 编译JS代码 - 核心功能
+   * 将self.xxx转换为_self.getValue('xxx')格式
+   */
+  compile(code: string, context: CompilationContext): CompileResult {
+    try {
+      // 1. 语法验证
+      if (context.options?.enableValidation !== false) {
+        const validation = this.validate(code);
+        if (!validation.isValid) {
+          return {
+            success: false,
+            compiledCode: '',
+            dependencies: [],
+            cacheKey: '',
+            error: `验证失败: ${validation.errors.join(', ')}`,
+            warnings: validation.warnings
+          };
+        }
+      }
+      
+      // 2. 初始化Schema解析器
+      this.schemaResolver = new SchemaPathResolver(context.schema);
+      
+      // 3. 提取属性访问
+      const pathResolution = this.schemaResolver.extractPropertyAccesses(code);
+      
+      if (pathResolution.invalidPaths.length > 0) {
+        return {
+          success: false,
+          compiledCode: '',
+          dependencies: [],
+          cacheKey: '',
+          error: `无效的属性路径: ${pathResolution.invalidPaths.join(', ')}`,
+          warnings: pathResolution.warnings
+        };
+      }
+      
+      // 4. 生成编译后的代码
+      const compiledCode = this.generateCompiledCode(code, pathResolution.resolvedPaths, context);
+      
+      // 5. 生成缓存键
+      const cacheKey = this.generateCacheKey(code, context.memberId);
+      
+      // 6. 提取依赖关系
+      const dependencies = [...new Set(pathResolution.resolvedPaths.map(access => access.reactiveKey))];
+      
+      return {
+        success: true,
+        compiledCode,
+        dependencies,
+        cacheKey,
+        warnings: pathResolution.warnings
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        compiledCode: '',
+        dependencies: [],
+        cacheKey: '',
+        error: error instanceof Error ? error.message : 'Unknown compilation error'
+      };
+    }
+  }
+  
+  // ==================== 私有方法 ====================
+  
+  /**
+   * 生成编译后的代码
+   */
+  private generateCompiledCode(
+    originalCode: string, 
+    propertyAccesses: SchemaPath[], 
+    context: CompilationContext
+  ): string {
+    let compiledCode = originalCode;
+    
+    // 按字符串长度降序排序，避免替换冲突
+    propertyAccesses.sort((a, b) => b.fullExpression.length - a.fullExpression.length);
+    
+    // 替换属性访问
+    for (const access of propertyAccesses) {
+      const memberRef = access.accessor === 'self' ? '_self' : '_target';
+      const replacement = `${memberRef}.getValue('${access.reactiveKey}')`;
+      
+      compiledCode = compiledCode.replace(
+        new RegExp(escapeRegExp(access.fullExpression), 'g'),
+        replacement
+      );
+    }
+    
+    // 注入上下文声明
+    const contextInjection = this.generateContextInjection(context);
+    
+    return `${contextInjection}\n${compiledCode}`;
+  }
+  
+  /**
+   * 生成上下文注入代码
+   */
+  private generateContextInjection(context: CompilationContext): string {
+    const lines = [
+      `const _self = this.findMember('${context.memberId}');`
+    ];
+    
+    if (context.targetId) {
+      lines.push(`const _target = this.findMember('${context.targetId}');`);
+    }
+    
+    return lines.join('\n');
+  }
+  
+  /**
+   * 生成缓存键
+   */
+  private generateCacheKey(code: string, memberId: string): string {
+    const hash = this.simpleHash(code);
+    return `${memberId}_${hash}`;
+  }
+  
+  /**
+   * 简单哈希函数
+   */
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+  
+  // ==================== 验证功能 ====================
   
   /**
    * 验证JS代码的安全性和正确性
@@ -64,7 +205,7 @@ export class JSExpressionProcessor {
     };
 
     try {
-      // 1. 语法解析检查 - 处理包含return语句的代码
+      // 1. 语法解析检查
       let ast: Program;
       
       if (code.includes('return')) {
@@ -72,19 +213,18 @@ export class JSExpressionProcessor {
         const wrappedCode = `function tempFunction() {\n${code}\n}`;
         try {
           ast = parse(wrappedCode, { 
-            ecmaVersion: 5,
+            ecmaVersion: 2020,
             sourceType: 'script'
           });
         } catch (wrapError) {
-          // 如果包装后仍然失败，说明代码确实有语法错误
           result.isValid = false;
-          result.errors.push(`语法解析错误: ${wrapError.message}`);
+          result.errors.push(`语法解析错误: ${wrapError instanceof Error ? wrapError.message : 'Unknown error'}`);
           return result;
         }
       } else {
         // 普通代码直接解析
         ast = parse(code, { 
-          ecmaVersion: 5,  // Blockly生成ES5代码
+          ecmaVersion: 2020,
           sourceType: 'script'
         });
       }
@@ -95,12 +235,9 @@ export class JSExpressionProcessor {
       // 3. 语法正确性检查
       this.checkSyntax(ast, result);
       
-      // 4. 沙盒兼容性检查
-      this.checkSandboxCompatibility(ast, result);
-      
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`语法解析错误: ${error.message}`);
+      result.errors.push(`语法解析错误: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     result.isValid = result.errors.length === 0 && result.securityIssues.length === 0;
@@ -122,16 +259,6 @@ export class JSExpressionProcessor {
         const identifier = node as any;
         if (dangerousPatterns.includes(identifier.name)) {
           result.securityIssues.push(`检测到危险操作: ${identifier.name}`);
-        }
-      }
-      
-      if (node.type === 'CallExpression') {
-        const call = node as CallExpression;
-        if (call.callee.type === 'Identifier') {
-          const callee = call.callee as any;
-          if (dangerousPatterns.includes(callee.name)) {
-            result.securityIssues.push(`检测到危险函数调用: ${callee.name}`);
-          }
         }
       }
     });
@@ -156,201 +283,6 @@ export class JSExpressionProcessor {
     }
   }
 
-  /**
-   * 沙盒兼容性检查
-   */
-  private checkSandboxCompatibility(ast: Program, result: ValidationResult): void {
-    // 检查是否使用了沙盒中不可用的功能
-    this.walkAST(ast, (node: Node) => {
-      if (node.type === 'ThisExpression') {
-        result.warnings.push('在沙盒中this将被设为undefined');
-      }
-    });
-  }
-
-  // ==================== 转换器 ====================
-
-  /**
-   * 转换数据操作为ReactiveSystem调用
-   */
-  transform(code: string): TransformResult {
-    try {
-      const ast = parse(code, { 
-        ecmaVersion: 5,
-        sourceType: 'script'
-      });
-
-      const dataOperations: DataOperation[] = [];
-      let transformedCode = code;
-
-      // 识别数据操作模式
-      this.identifyDataOperations(ast, dataOperations);
-      
-      // 转换代码
-      transformedCode = this.transformDataOperations(code, dataOperations);
-
-      return {
-        success: true,
-        transformedCode,
-        dataOperations,
-        originalCode: code
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        transformedCode: '',
-        dataOperations: [],
-        originalCode: code,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * 识别数据操作模式
-   */
-  private identifyDataOperations(ast: Program, operations: DataOperation[]): void {
-    this.walkAST(ast, (node: Node) => {
-      // 识别模式1: self.hp + 10% -> 修饰符添加
-      if (this.isPercentageOperation(node)) {
-        const operation = this.parsePercentageOperation(node);
-        if (operation) operations.push(operation);
-      }
-      
-      // 识别模式2: caster.mAtk * 1.5 -> 直接计算
-      if (this.isCalculationOperation(node)) {
-        const operation = this.parseCalculationOperation(node);
-        if (operation) operations.push(operation);
-      }
-      
-      // 识别模式3: target.takeDamage(100) -> 方法调用
-      if (this.isMethodCall(node)) {
-        const operation = this.parseMethodCall(node);
-        if (operation) operations.push(operation);
-      }
-    });
-  }
-
-  /**
-   * 检查是否为百分比操作 (如: hp + 10%)
-   */
-  private isPercentageOperation(node: Node): boolean {
-    if (node.type !== 'BinaryExpression') return false;
-    
-    const binary = node as BinaryExpression;
-    if (binary.operator !== '+' && binary.operator !== '-') return false;
-    
-    // 检查右操作数是否包含%
-    return this.containsPercentage(binary.right);
-  }
-
-  /**
-   * 检查表达式是否包含百分比
-   */
-  private containsPercentage(node: Expression): boolean {
-    // 简化实现：检查字面量字符串是否包含%
-    // 实际实现可能需要更复杂的AST分析
-    const code = this.nodeToString(node);
-    return code.includes('%');
-  }
-
-  /**
-   * 解析百分比操作
-   */
-  private parsePercentageOperation(node: Node): DataOperation | null {
-    const binary = node as BinaryExpression;
-    
-    // 提取目标属性名
-    const target = this.extractAttributeName(binary.left);
-    if (!target) return null;
-    
-    // 提取百分比值
-    const percentValue = this.extractPercentageValue(binary.right);
-    if (percentValue === null) return null;
-    
-    return {
-      type: 'modifier',
-      target,
-      operation: binary.operator === '+' ? 'add' : 'subtract',
-      value: percentValue,
-      originalCode: this.nodeToString(node)
-    };
-  }
-
-  /**
-   * 检查是否为计算操作
-   */
-  private isCalculationOperation(node: Node): boolean {
-    return node.type === 'BinaryExpression';
-  }
-
-  /**
-   * 解析计算操作
-   */
-  private parseCalculationOperation(node: Node): DataOperation | null {
-    // 对于一般的计算操作，保持原样
-    // 这里可以根据需要添加特殊转换逻辑
-    return null;
-  }
-
-  /**
-   * 检查是否为方法调用
-   */
-  private isMethodCall(node: Node): boolean {
-    return node.type === 'CallExpression';
-  }
-
-  /**
-   * 解析方法调用
-   */
-  private parseMethodCall(node: Node): DataOperation | null {
-    const call = node as CallExpression;
-    
-    if (call.callee.type === 'MemberExpression') {
-      const member = call.callee as MemberExpression;
-      const method = this.nodeToString(member.property);
-      
-      // 特殊处理一些已知的方法
-      if (method === 'takeDamage' || method === 'heal') {
-        return {
-          type: 'method',
-          target: method,
-          operation: 'call',
-          value: call.arguments.length > 0 ? this.nodeToString(call.arguments[0]) : '',
-          originalCode: this.nodeToString(node)
-        };
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * 转换数据操作代码
-   */
-  private transformDataOperations(code: string, operations: DataOperation[]): string {
-    let transformedCode = code;
-    
-    // 为每个数据操作生成转换后的代码
-    for (const op of operations) {
-      if (op.type === 'modifier') {
-        const replacement = this.generateModifierCode(op);
-        transformedCode = transformedCode.replace(op.originalCode, replacement);
-      }
-    }
-    
-    return transformedCode;
-  }
-
-  /**
-   * 生成修饰符操作代码
-   */
-  private generateModifierCode(op: DataOperation): string {
-    // 生成ReactiveSystem的addModifier调用
-    return `ctx.reactiveSystem.addModifier('${op.target}', 'percentage', ${op.value}, { id: 'temp', type: 'system', name: 'temp' })`;
-  }
-
   // ==================== 工具方法 ====================
 
   /**
@@ -373,44 +305,6 @@ export class JSExpressionProcessor {
         }
       }
     }
-  }
-
-  /**
-   * 将AST节点转换为字符串
-   */
-  private nodeToString(node: Node): string {
-    // 简化实现，实际可能需要更复杂的代码生成
-    switch (node.type) {
-      case 'Identifier':
-        return (node as any).name;
-      case 'Literal':
-        return String((node as any).value);
-      case 'MemberExpression':
-        const member = node as MemberExpression;
-        return `${this.nodeToString(member.object)}.${this.nodeToString(member.property)}`;
-      default:
-        return '[complex expression]';
-    }
-  }
-
-  /**
-   * 提取属性名
-   */
-  private extractAttributeName(node: Expression): string | null {
-    if (node.type === 'MemberExpression') {
-      const member = node as MemberExpression;
-      return this.nodeToString(member.property);
-    }
-    return null;
-  }
-
-  /**
-   * 提取百分比值
-   */
-  private extractPercentageValue(node: Expression): number | null {
-    const code = this.nodeToString(node);
-    const match = code.match(/(\d+(?:\.\d+)?)%/);
-    return match ? parseFloat(match[1]) : null;
   }
 }
 

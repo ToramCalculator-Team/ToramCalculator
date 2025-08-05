@@ -24,7 +24,7 @@ import { MainHandType, SubHandType } from "@db/schema/enums";
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 
 // 类型枚举
-export enum BounsTypeEnum {
+enum BounsTypeEnum {
   None, // 无
   bStr, // 力量
   bInt, // 智力
@@ -253,7 +253,7 @@ export enum BounsTypeEnum {
 
 // ============================== 计算层类型 ==============================
 // 类型枚举
-export enum PlayerAttrEnum {
+enum PlayerAttrEnum {
   lv, // 等级
 
   // 基础能力值
@@ -907,7 +907,6 @@ export const SubWeaponTypeMap: Record<
  * - 属性路径小驼峰化后作为实际存储结构的键名，表达式内的属性调用使用当前结构自身的属性路径
  */
 export const PlayerAttrSchema = (character: CharacterWithRelations) => {
-  console.log("character", character);
   const mainWeaponType = character.weapon.type as MainHandType;
   const subWeaponType = character.subWeapon.type as SubHandType;
   return {
@@ -1046,7 +1045,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
         },
         total: {
           displayName: "武器攻击",
-          expression: "equip.weapon.main.attack.physical + equip.weapon.main.attack.magical",
+          expression: "equip.weapon.attack.physical + equip.weapon.attack.magical",
         },
       },
     },
@@ -1092,11 +1091,11 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
   },
   physical: {
     displayName: "物理攻击",
-    expression: `lv + equip.weapon.main.attack.physical + str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.str.pAtkC} + int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.pAtkC} + agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.pAtkC} + dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.pAtkC}`,
+    expression: `lv + equip.weapon.attack.physical + abi.str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.str.pAtkC} + abi.int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.pAtkC} + abi.agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.pAtkC} + abi.dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.pAtkC}`,
   },
   magical: {
     displayName: "魔法攻击",
-    expression: `lv + equip.weapon.main.attack.magical + str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.mAtkC} + int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.mAtkC} + agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.mAtkC} + dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.mAtkC}`,
+    expression: `lv + equip.weapon.attack.magical + abi.str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.mAtkC} + abi.int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.mAtkC} + abi.agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.mAtkC} + abi.dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.mAtkC}`,
   },
   unsheathe: {
     displayName: "拔刀攻击",

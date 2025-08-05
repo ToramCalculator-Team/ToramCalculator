@@ -17,7 +17,8 @@
 
 import { createId } from '@paralleldrive/cuid2';
 import type { BaseEvent } from "./EventQueue";
-import JSExpressionIntegration from './expression/JSExpressionIntegration';
+import GameEngine from './GameEngine';
+// 不再直接使用JSExpressionIntegration，改为通过GameEngine
 
 // ============================== 类型定义 ==============================
 
@@ -116,30 +117,27 @@ export class EventExecutor {
   /** 调试模式 */
   private debugMode: boolean = false;
 
-  /** JS表达式处理器 */
-  private jsProcessor: JSExpressionIntegration;
+  /** 游戏引擎引用 */
+  private engine: GameEngine; // 避免循环依赖，使用any
 
   // ==================== 构造函数 ====================
 
   /**
    * 构造函数
    * 
+   * @param engine 游戏引擎实例
    * @param debugMode 是否启用调试模式
    */
-  constructor(debugMode: boolean = false) {
+  constructor(engine: GameEngine, debugMode: boolean = false) {
+    this.engine = engine;
     this.debugMode = debugMode;
-    this.jsProcessor = new JSExpressionIntegration({
-      enableTransformation: true,
-      enableValidation: true,
-      strictMode: false
-    });
     this.initializeExpressionFunctions();
   }
 
   // ==================== 公共接口 ====================
 
   /**
-   * 执行JS片段（在沙盒环境中）
+   * 执行JS片段 - 使用GameEngine的编译执行流程
    * 
    * @param scriptCode JS代码字符串
    * @param context 执行上下文
@@ -147,33 +145,26 @@ export class EventExecutor {
    */
   executeScript(scriptCode: string, context: ExpressionContext): ExpressionResult {
     try {
-      // 使用新的JS表达式处理器
-      const executionContext = {
-        member: context.caster,
-        target: context.target,
-        reactiveSystem: context.caster?.getReactiveDataManager?.(),
-        skill: context.skill,
-        currentFrame: context.currentFrame,
-        environment: context.environment
-      };
-      
-      const result = this.jsProcessor.processAndExecute(scriptCode, executionContext);
-      
-      if (result.success) {
-        console.log(`✅ JS片段执行成功，应用了 ${result.dataOperationsApplied} 个数据操作`);
-        if (result.warnings.length > 0) {
-          console.warn('JS片段执行警告:', result.warnings);
-        }
+      const memberId = context.caster?.getId();
+      const targetId = context.target?.getId();
+
+      if (!memberId) {
+        throw new Error('缺少成员ID');
       }
-      
+
+      // 使用GameEngine的编译和执行能力
+      const compiledCode = this.engine.compileScript(scriptCode, memberId, targetId);
+      const result = this.engine.executeScript(compiledCode, memberId, context);
+
+      console.log(`✅ JS脚本执行成功: ${memberId}`);
+
       return {
-        value: result.value,
-        success: result.success,
-        error: result.error
+        value: result,
+        success: true
       };
-      
+
     } catch (error) {
-      console.error("JS片段执行失败:", error);
+      console.error("JS脚本执行失败:", error);
       return {
         value: 0,
         success: false,
@@ -403,7 +394,7 @@ export class EventExecutor {
       return baseDamage * (1 - resistance / 100);
     });
 
-    console.log("表达式函数库初始化完成");
+    // console.log("表达式函数库初始化完成");
   }
 
   /**
