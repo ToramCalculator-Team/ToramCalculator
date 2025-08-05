@@ -28,8 +28,8 @@ const sszw: CharacterSkillWithRelations = {
       details: "",
       belongToskillId: "",
       elementLogic: "",
-      castingRange: 0,
-      effectiveRange: 0,
+      castingRange: "0",
+      effectiveRange: "0",
       logic: [
         {
           id: "",
@@ -90,8 +90,8 @@ const yqyq: CharacterSkillWithRelations = {
       details: "",
       belongToskillId: "",
       elementLogic: "",
-      castingRange: 0,
-      effectiveRange: 0,
+      castingRange: "0",
+      effectiveRange: "0",
       logic: [
         {
           id: "",
@@ -160,8 +160,8 @@ const mfp: CharacterSkillWithRelations = {
       details: "",
       belongToskillId: "",
       elementLogic: "",
-      castingRange: 0,
-      effectiveRange: 0,
+      castingRange: "0",
+      effectiveRange: "0",
       logic: [
         {
           id: "",
@@ -222,8 +222,8 @@ const cjb: CharacterSkillWithRelations = {
       details: "",
       belongToskillId: "",
       elementLogic: "",
-      castingRange: 0,
-      effectiveRange: 0,
+      castingRange: "0",
+      effectiveRange: "0",
       logic: [
         {
           id: "",
@@ -284,8 +284,8 @@ const bn: CharacterSkillWithRelations = {
       details: "",
       belongToskillId: "",
       elementLogic: "",
-      castingRange: 0,
-      effectiveRange: 0,
+      castingRange: "0",
+      effectiveRange: "0",
       logic: [
         {
           id: "",

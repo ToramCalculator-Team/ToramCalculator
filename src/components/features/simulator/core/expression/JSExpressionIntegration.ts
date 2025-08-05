@@ -7,6 +7,34 @@
 
 import JSExpressionProcessor, { type ValidationResult, type TransformResult, type ExecutionContext } from './JSExpressionProcessor';
 import type { ReactiveSystem } from '../member/ReactiveSystem';
+import * as Enums from '@db/schema/enums';
+
+// ============================== 枚举映射定义 ==============================
+
+// 运行时枚举映射生成器
+function createEnumMapping<T extends readonly string[]>(enumArray: T) {
+  const toNumeric = {} as Record<T[number], number>;
+  const fromNumeric = {} as Record<number, T[number]>;
+  
+  enumArray.forEach((value, index) => {
+    (toNumeric as any)[value] = index;
+    (fromNumeric as any)[index] = value;
+  });
+  
+  return { toNumeric, fromNumeric } as const;
+}
+
+// 自动为所有枚举数组创建映射
+const ENUM_MAPPINGS: Record<string, { toNumeric: Record<string, number>; fromNumeric: Record<number, string> }> = {};
+
+// 遍历Enums对象，找到所有以_TYPE结尾的数组属性
+Object.entries(Enums).forEach(([key, value]) => {
+  // 检查是否是数组且以_TYPE结尾
+  if (Array.isArray(value) && key.endsWith('_TYPE')) {
+    const enumName = key.replace(/_TYPE$/, ''); // 移除_TYPE后缀
+    ENUM_MAPPINGS[enumName] = createEnumMapping(value);
+  }
+});
 
 // ============================== 集成接口 ==============================
 
@@ -102,7 +130,7 @@ export class JSExpressionIntegration {
         value: null,
         dataOperationsApplied: 0,
         warnings: [],
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: `执行错误: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }
@@ -111,7 +139,7 @@ export class JSExpressionIntegration {
    * 应用数据操作到ReactiveSystem
    */
   private applyDataOperations(operations: any[], context: ExecutionContext): void {
-    const reactiveSystem = context.reactiveSystem as ReactiveSystem<any>;
+    const reactiveSystem = context.reactiveSystem;
     if (!reactiveSystem) {
       console.warn('ReactiveSystem not available in context');
       return;
@@ -129,9 +157,11 @@ export class JSExpressionIntegration {
           case 'method':
             this.applyMethodOperation(op, context);
             break;
+          default:
+            console.warn(`未知的操作类型: ${op.type}`);
         }
       } catch (error) {
-        console.error(`应用数据操作失败:`, op, error);
+        console.error(`应用数据操作失败: ${error instanceof Error ? error.message : 'Unknown error'}`, op);
       }
     }
   }
@@ -209,12 +239,29 @@ export class JSExpressionIntegration {
   }
 
   /**
-   * 创建执行上下文
-   * 由于GameEngine层已进行沙盒化，直接传递所有属性
+   * 创建执行上下文，处理字符串枚举到数字的转换
    */
   private createSafeContext(context: ExecutionContext): any {
-    // 直接返回传入的context，因为GameEngine层已经处理了安全性
-    return context;
+    const safeContext = { ...context };
+    
+    // 处理字符串枚举到数字的转换
+    if (context.member) {
+      // 遍历所有枚举映射，自动转换字符串枚举为数字
+      Object.entries(ENUM_MAPPINGS).forEach(([enumName, mapping]) => {
+        const memberValue = context.member[enumName];
+        if (memberValue && typeof memberValue === 'string') {
+          const numericValue = mapping.toNumeric[memberValue];
+          if (numericValue !== undefined) {
+            safeContext[enumName] = numericValue;
+          }
+        }
+      });
+    }
+    
+    // 添加枚举映射到上下文，供JS代码使用
+    safeContext.ENUM_MAPPINGS = ENUM_MAPPINGS;
+    
+    return safeContext;
   }
 
   /**

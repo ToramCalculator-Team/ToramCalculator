@@ -28,7 +28,7 @@ import type { CharacterSkillWithRelations } from "@db/repositories/characterSkil
 
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
-import { PlayerAttrKeys, PlayerAttrSchema } from "./PlayerData";
+import { PlayerAttrSchema } from "./PlayerData";
 import { ModifierSource, ReactiveSystem, ExtractAttrPaths } from "../ReactiveSystem";
 
 import type GameEngine from "../../GameEngine";
@@ -103,10 +103,7 @@ export class Player extends Member<PlayerAttrType> {
     }
 
     // 创建响应式配置
-    const playerSchema =  PlayerAttrSchema({
-      mainWeaponType: character.weapon.type as MainHandType,
-      subWeaponType: character.subWeapon.type as SubHandType,
-    })
+    const playerSchema =  PlayerAttrSchema(character)
 
     // 调用父类构造函数，注入游戏引擎、FSM事件桥和响应式配置
     super(memberData, engine, playerSchema, initialState);
@@ -126,75 +123,6 @@ export class Player extends Member<PlayerAttrType> {
    * 初始化玩家数据
    */
   private initializePlayerData(): void {
-    this.reactiveDataManager.setBaseValues({
-      lv: this.character.lv,
-      aggro: 0,
-      physical: 0,
-      magical: 0,
-      unsheathe: 0,
-      total: 0,
-      final: 0,
-      accuracy: 0,
-      anticipate: 0,
-      guardBreak: 0,
-      reflect: 0,
-      absolute: 0,
-      abiStr: 0,
-      abiInt: 0,
-      abiVit: 0,
-      abiAgi: 0,
-      abiDex: 0,
-      abiLuk: 0,
-      abiTec: 0,
-      abiMen: 0,
-      abiCri: 0,
-      hpMax: 0,
-      hpCurrent: 0,
-      hpRegen: 0,
-      mpMax: 0,
-      mpCurrent: 0,
-      mpRegen: 0,
-      mpAtkRegen: 0,
-      equipWeaponMainRange: 0,
-      equipWeaponMainStability: 0,
-      equipWeaponMainBaseAtk: 0,
-      equipWeaponMainType: 0,
-      equipWeaponMainRef: 0,
-      equipWeaponSubRange: 0,
-      equipWeaponSubStability: 0,
-      equipWeaponSubType: 0,
-      equipWeaponSubRef: 0,
-      equipWeaponAttackPhysical: 0,
-      equipWeaponAttackMagical: 0,
-      equipWeaponAttackTotal: 0,
-      equipArmorType: 0,
-      equipArmorRef: 0,
-      equipArmorBaseAbi: 0,
-      equipAdditionalRef: 0,
-      equipAdditionalBaseAbi: 0,
-      equipSpecialBaseAbi: 0,
-      piercePhysical: 0,
-      pierceMagical: 0,
-      criticalPhysicalRate: 0,
-      criticalPhysicalDamage: 0,
-      criticalMagicalRate: 0,
-      criticalMagicalDamage: 0,
-      criticalMagicalConvRate: 0,
-      criticalMagicalDmgConvRate: 0,
-      rangeShort: 0,
-      rangeLong: 0,
-      elementNeutral: 0,
-      elementLight: 0,
-      elementDark: 0,
-      elementWater: 0,
-      elementFire: 0,
-      elementEarth: 0,
-      elementWind: 0,
-      stabilityPhysical: 0,
-      stabilityMagical: 0,
-      pursuitPhysical: 0,
-      pursuitMagical: 0
-    });
     // 解析角色配置中的修饰器
     this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
 
@@ -491,7 +419,7 @@ export class Player extends Member<PlayerAttrType> {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          // console.log(`🎮 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
         },
 
         // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）

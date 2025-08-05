@@ -1116,7 +1116,7 @@ export abstract class Member<TAttrKey extends string = string> {
     console.log('🔧 使用Schema模式初始化成员响应式系统');
 
     // 创建响应式系统 - 使用Schema模式
-    this.reactiveDataManager = new ReactiveSystem<TAttrKey>({ schema });
+    this.reactiveDataManager = new ReactiveSystem<TAttrKey>(schema);
 
     // 设置默认值
     this.setCommonDefaultValues(initialState);

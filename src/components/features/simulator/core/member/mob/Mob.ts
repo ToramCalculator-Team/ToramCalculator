@@ -394,7 +394,7 @@ export class Mob extends Member<MobAttrType> {
 
         // 记录事件
         logEvent: ({ context, event }: { context: MemberContext; event: any }) => {
-          console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
+          // console.log(`👹 [${context.memberData.name}] 事件: ${event.type}`, (event as any).data || "");
         },
 
         // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）
