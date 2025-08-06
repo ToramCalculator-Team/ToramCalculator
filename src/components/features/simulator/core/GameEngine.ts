@@ -554,7 +554,7 @@ export class GameEngine {
    * 
    * @returns 成员数组
    */
-  getAllMembers(): any[] {
+  getAllMembers() {
     return this.memberManager.getAllMembers();
   }
 
@@ -564,7 +564,7 @@ export class GameEngine {
    * @param memberId 成员ID
    * @returns 成员实例
    */
-  findMember(memberId: string): any | null {
+  findMember(memberId: string) {
     return this.memberManager.getMember(memberId);
   }
 
@@ -576,7 +576,7 @@ export class GameEngine {
    * @param memberId 成员ID
    * @returns 成员数据，如果不存在则返回null
    */
-  getMemberData(memberId: string): any | null {
+  getMemberData(memberId: string) {
     const member = this.memberManager.getMember(memberId);
     if (!member) {
       return null;
@@ -940,7 +940,7 @@ export class GameEngine {
       // 技能效果可以访问所有成员
       allMembers: this.memberManager.getAllMembers(),
       // 游戏状态
-      currentFrame: this.frameLoop.getCurrentFrame(),
+      currentFrame: this.frameLoop.getFrameNumber(),
       // 实用方法
       distance: this.calculateDistance.bind(this),
       findNearbyMembers: this.findNearbyMembers.bind(this),
@@ -956,12 +956,10 @@ export class GameEngine {
     const target = this.findMember(targetId);
     if (target) {
       // 发送伤害事件到队列
-      this.eventQueue.enqueue({
+      this.eventQueue.insert({
         id: `damage_${Date.now()}`,
         type: 'member_damage',
-        priority: 'high',
-        targetMemberId: targetId,
-        data: { damage, damageType },
+        data: { damage, damageType, targetMemberId: targetId },
         timestamp: Date.now(),
       } as any);
     }
@@ -973,12 +971,10 @@ export class GameEngine {
   private applyHealing(targetId: string, healing: number): void {
     const target = this.findMember(targetId);
     if (target) {
-      this.eventQueue.enqueue({
+      this.eventQueue.insert({
         id: `heal_${Date.now()}`,
         type: 'member_heal',
-        priority: 'high',
-        targetMemberId: targetId,
-        data: { healing },
+        data: { healing, targetMemberId: targetId },
         timestamp: Date.now(),
       } as any);
     }
@@ -990,12 +986,10 @@ export class GameEngine {
   private addBuff(targetId: string, buffData: any): void {
     const target = this.findMember(targetId);
     if (target) {
-      this.eventQueue.enqueue({
+      this.eventQueue.insert({
         id: `buff_${Date.now()}`,
         type: 'add_buff',
-        priority: 'normal',
-        targetMemberId: targetId,
-        data: buffData,
+        data: { ...buffData, targetMemberId: targetId },
         timestamp: Date.now(),
       } as any);
     }
@@ -1007,12 +1001,10 @@ export class GameEngine {
   private removeBuff(targetId: string, buffId: string): void {
     const target = this.findMember(targetId);
     if (target) {
-      this.eventQueue.enqueue({
+      this.eventQueue.insert({
         id: `remove_buff_${Date.now()}`,
         type: 'remove_buff',
-        priority: 'normal',
-        targetMemberId: targetId,
-        data: { buffId },
+        data: { buffId, targetMemberId: targetId },
         timestamp: Date.now(),
       } as any);
     }

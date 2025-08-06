@@ -347,7 +347,7 @@ export interface SimulationConfig {
  * - 事件发射
  * - 优雅关闭
  */
-export class EnhancedSimulatorPool extends EventEmitter {
+export class SimulatorPool extends EventEmitter {
   private workers: WorkerWrapper[] = [];
   private taskQueue = new PriorityTaskQueue();
   // private semaphore: Semaphore; // 暂时不使用，使用 Worker 池本身来控制并发
@@ -1381,7 +1381,7 @@ export class EnhancedSimulatorPool extends EventEmitter {
 }
 
 // 多线程模式 - 用于批量计算和并行处理
-export const enhancedSimulatorPool = new EnhancedSimulatorPool({
+export const BatchSimulatorPool = new SimulatorPool({
   maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 多Worker用于并行计算
   taskTimeout: 60000, // 增加超时时间，战斗模拟可能需要更长时间
   enableBatching: false, // 战斗模拟通常不需要批处理
@@ -1391,7 +1391,7 @@ export const enhancedSimulatorPool = new EnhancedSimulatorPool({
 });
 
 // 单线程模式 - 专门用于实时模拟控制器
-export const realtimeSimulatorPool = new EnhancedSimulatorPool({
+export const realtimeSimulatorPool = new SimulatorPool({
   maxWorkers: 1, // 单Worker用于实时模拟
   taskTimeout: 30000, // 实时模拟需要更快的响应
   enableBatching: false, // 实时模拟不需要批处理

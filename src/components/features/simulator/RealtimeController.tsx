@@ -8,7 +8,7 @@
  * - UI状态管理和用户交互
  */
 
-import { createSignal, createEffect, createMemo, onCleanup, createResource, Show } from "solid-js";
+import { createSignal, createEffect, createMemo, onCleanup, createResource, Show, For } from "solid-js";
 import { realtimeSimulatorPool } from "./SimulatorPool";
 import type { IntentMessage } from "./core/MessageRouter";
 //
@@ -62,6 +62,23 @@ export default function RealtimeController() {
   });
   const [mob, { refetch: refetchMob }] = createResource(async () => {
     return findMobWithRelations("defaultMobId");
+  });
+
+  // 获取角色习得的技能列表
+  const characterSkills = createMemo(() => {
+    const char = character();
+    if (!char || !char.skills) return [];
+
+    return char.skills
+      .filter((cs) => cs.template) // 过滤掉没有模板的技能
+      .map((cs) => ({
+        id: cs.id,
+        name: cs.template!.name,
+        level: cs.lv,
+        isStarGem: cs.isStarGem,
+        template: cs.template!,
+        effects: cs.template!.effects || [],
+      }));
   });
 
   // 事件驱动的状态更新
@@ -301,11 +318,11 @@ export default function RealtimeController() {
       }
 
       // 技能可用性检查（这里可以添加更复杂的逻辑）
-      if (targetMember.currentMp < 50) {
-        // 示例：魔法值检查
-        addLog(`⚠️ 魔法值不足，无法释放技能: ${skillId}`);
-        return;
-      }
+      // if (targetMember.currentMp < 50) {
+      //   // 示例：魔法值检查
+      //   addLog(`⚠️ 魔法值不足，无法释放技能: ${skillId}`);
+      //   return;
+      // }
 
       // 技能冷却检查（这里可以添加更复杂的逻辑）
       // const skillCooldown = getSkillCooldown(targetMember.id, skillId);
@@ -377,7 +394,6 @@ export default function RealtimeController() {
   const castSkill = (skillId: string, targetId?: string) => {
     const memberId = getSelectedMemberId();
     if (!memberId) return;
-
     sendIntent({
       type: "cast_skill",
       targetMemberId: memberId,
@@ -431,6 +447,7 @@ export default function RealtimeController() {
    * 添加日志
    */
   const addLog = (message: string) => {
+    console.log( message);
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [`[${timestamp}] ${message}`, ...prev.slice(0, 99)]);
   };
@@ -593,24 +610,35 @@ export default function RealtimeController() {
 
           {/* 技能和操作按钮 - 类似手机游戏控制器 */}
           <div class="grid grid-cols-8 gap-2">
-            <Button
-              onClick={() => castSkill("skill_1")}
-              disabled={!state().isWorkerReady || !state().selectedMemberId}
-              level="primary"
-              size="lg"
-              class="aspect-square"
+            {/* 角色习得的技能 */}
+            <Show
+              when={characterSkills().length > 0}
+              fallback={<div class="col-span-4 text-center text-sm text-gray-500">未习得技能</div>}
             >
-              技能1
-            </Button>
-            <Button
-              onClick={() => castSkill("skill_2")}
-              disabled={!state().isWorkerReady || !state().selectedMemberId}
-              level="primary"
-              size="lg"
-              class="aspect-square"
-            >
-              技能2
-            </Button>
+              <For each={characterSkills()}>
+                {(skill) => (
+                  <Button
+                    onClick={() => {
+                      console.log("RealtimeController: 释放技能:", skill.id);
+                      castSkill(skill.id);
+                    }}
+                    disabled={!state().isWorkerReady || !state().selectedMemberId}
+                    level="primary"
+                    size="lg"
+                    class="aspect-square"
+                    title={`${skill.name} Lv.${skill.level}${skill.isStarGem ? " ⭐" : ""}`}
+                  >
+                    <div class="flex flex-col items-center justify-center text-xs">
+                      <span class="font-bold">{skill.name}</span>
+                      <span class="text-xs">Lv.{skill.level}</span>
+                      {skill.isStarGem && <span class="text-yellow-400">⭐</span>}
+                    </div>
+                  </Button>
+                )}
+              </For>
+            </Show>
+
+            {/* 基础操作按钮 */}
             <Button
               onClick={() => move(100, 100)}
               disabled={!state().isWorkerReady || !state().selectedMemberId}
@@ -628,6 +656,21 @@ export default function RealtimeController() {
               class="aspect-square"
             >
               停止
+            </Button>
+
+            {/* 性能测试按钮 */}
+            <Button
+              onClick={() => castSkill("testCharacterSkill")}
+              disabled={!state().isWorkerReady || !state().selectedMemberId}
+              level="secondary"
+              size="lg"
+              class="aspect-square bg-red-500 hover:bg-red-600"
+              title="TypedArray性能测试技能"
+            >
+              <div class="flex flex-col items-center justify-center text-xs">
+                <span class="font-bold">性能</span>
+                <span class="text-xs">测试</span>
+              </div>
             </Button>
           </div>
         </div>

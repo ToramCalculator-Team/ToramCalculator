@@ -29,7 +29,7 @@ import type { CharacterSkillWithRelations } from "@db/repositories/characterSkil
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { ComboWithRelations } from "@db/repositories/combo";
 import { PlayerAttrSchema } from "./PlayerData";
-import { ModifierSource, ReactiveSystem, ExtractAttrPaths } from "../ReactiveSystem";
+import { ModifierSource, ReactiveSystem, ExtractAttrPaths, ModifierType } from "../ReactiveSystem";
 
 import type GameEngine from "../../GameEngine";
 
@@ -103,7 +103,7 @@ export class Player extends Member<PlayerAttrType> {
     }
 
     // 创建响应式配置
-    const playerSchema =  PlayerAttrSchema(character)
+    const playerSchema = PlayerAttrSchema(character);
 
     // 调用父类构造函数，注入游戏引擎、FSM事件桥和响应式配置
     super(memberData, engine, playerSchema, initialState);
@@ -126,17 +126,6 @@ export class Player extends Member<PlayerAttrType> {
     // 设置基础值，使用DSL路径作为键名
     this.reactiveDataManager.setBaseValues({
       lv: this.character.lv,
-      "abi.str": this.character.str,
-      "abi.int": this.character.int,
-      "abi.vit": this.character.vit,
-      "abi.agi": this.character.agi,
-      "abi.dex": this.character.dex,
-      "abi.luk": this.character.personalityType === 'Luk' ? this.character.personalityValue : 0,
-      "abi.tec": this.character.personalityType === 'Tec' ? this.character.personalityValue : 0,
-      "abi.men": this.character.personalityType === 'Men' ? this.character.personalityValue : 0,
-      "abi.cri": this.character.personalityType === 'Cri' ? this.character.personalityValue : 0,
-      "hp.current": 0,
-      "mp.current": 0,
     } as Record<PlayerAttrType, number>);
 
     // 解析角色配置中的修饰器
@@ -313,14 +302,21 @@ export class Player extends Member<PlayerAttrType> {
    * @param value 修饰符值
    * @param source 来源信息
    */
-  addAttributeModifier(
-    attrName: PlayerAttrType,
-    type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
-    value: number,
-    source: ModifierSource,
-  ): void {
+  addAttributeModifier(attrName: PlayerAttrType, type: ModifierType, value: number, source: ModifierSource): void {
     this.reactiveDataManager.addModifier(attrName, type, value, source);
     console.log(`🎮 [${this.getName()}] 添加修饰符: ${attrName} ${type} +${value} (来源: ${source.name})`);
+  }
+
+  /**
+   * 移除属性修饰符
+   *
+   * @param attrName 属性名称
+   * @param type 修饰符类型
+   * @param sourceId 来源ID
+   */
+  removeAttributeModifier(attrName: PlayerAttrType, type: ModifierType, sourceId: string): void {
+    this.reactiveDataManager.removeModifier(attrName, type, sourceId);
+    console.log(`🎮 [${this.getName()}] 移除修饰符: ${attrName} (来源: ${sourceId})`);
   }
 
   /**
@@ -441,32 +437,31 @@ export class Player extends Member<PlayerAttrType> {
         // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）
         processCustomEvent: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`🔄 [${context.memberData.name}] FSM转换自定义事件到执行队列:`, event.data);
-          
+
           try {
             // FSM负责事件转换，不直接执行业务逻辑
             const gameEvent = {
               id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-              type: 'custom' as const,
-              priority: 'normal' as const,
+              type: "custom" as const,
+              priority: "normal" as const,
               executeFrame: this.engine.getFrameLoop().getFrameNumber() + 1, // 下一帧执行
               payload: {
                 targetMemberId: this.id,
                 memberType: this.type,
-                action: event.data.action || 'execute',
+                action: event.data.action || "execute",
                 scriptCode: event.data.scriptCode,
                 attribute: event.data.attribute,
                 value: event.data.value,
-                sourceEvent: 'fsm_custom',
+                sourceEvent: "fsm_custom",
                 timestamp: Date.now(),
-                ...event.data
+                ...event.data,
               },
-              source: 'player_fsm'
+              source: "player_fsm",
             };
-            
+
             // 插入到事件队列，由EventExecutor统一处理
             this.engine.getEventQueue().insert(gameEvent);
             console.log(`✅ [${context.memberData.name}] 自定义事件已转换并加入执行队列`);
-            
           } catch (error) {
             console.error(`❌ [${context.memberData.name}] FSM事件转换失败:`, error);
           }

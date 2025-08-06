@@ -11,8 +11,8 @@
 
 import { JSExpressionProcessor, type CompilationContext } from "../expression/JSExpressionProcessor";
 import { Member } from "../Member";
-import * as Enums from '@db/schema/enums';
-import { ReactiveSystemASTCompiler } from './ReactiveSystemAST';
+import * as Enums from "@db/schema/enums";
+import { ReactiveSystemASTCompiler } from "./ReactiveSystemAST";
 
 // ============================== 枚举映射生成 ==============================
 
@@ -21,13 +21,13 @@ import { ReactiveSystemASTCompiler } from './ReactiveSystemAST';
  */
 function createEnumMappings(): Map<string, number> {
   const enumMapping = new Map<string, number>();
-  
+
   // 遍历所有枚举数组
   Object.entries(Enums).forEach(([key, value]) => {
     // 检查是否是数组且以_TYPE结尾的常量
     if (Array.isArray(value) && key.endsWith("_TYPE")) {
       // console.log(`📋 注册枚举映射: ${key}`, value);
-      
+
       // 为每个枚举值创建字符串->数字映射
       value.forEach((enumValue: string, index: number) => {
         enumMapping.set(enumValue, index);
@@ -35,7 +35,7 @@ function createEnumMappings(): Map<string, number> {
       });
     }
   });
-  
+
   // console.log(`✅ 枚举映射创建完成，共 ${enumMapping.size} 个映射`);
   return enumMapping;
 }
@@ -104,13 +104,13 @@ export interface FlattenedSchema<T extends string> {
  * 从Schema生成属性键的联合类型
  * 直接使用DSL路径，不再进行小驼峰转换
  */
-export type ExtractAttrPaths<T extends NestedSchema, Path extends string[] = []> = {
+export type ExtractAttrPaths<T extends NestedSchema, Path extends string = ''> = {
   [K in keyof T]: T[K] extends SchemaAttribute
-    ? Path extends []
+    ? Path extends ''
       ? K & string
-      : `${Path[number]}.${K & string}`
+      : `${Path}.${K & string}`
     : T[K] extends NestedSchema
-      ? ExtractAttrPaths<T[K], [...Path, K & string]>
+      ? ExtractAttrPaths<T[K], Path extends '' ? K & string : `${Path}.${K & string}`>
       : never;
 }[keyof T];
 
@@ -230,6 +230,8 @@ export enum ModifierArrayIndex {
   MODIFIER_ARRAYS_COUNT = 5,
 }
 
+export type ModifierType = "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage";
+
 // ============================== 工具类 ==============================
 
 /**
@@ -274,7 +276,7 @@ export class BitFlags {
 }
 
 /**
- * 依赖图管理（优化版本）
+ * 依赖图管理
  */
 export class DependencyGraph {
   private readonly dependencies: Set<number>[] = [];
@@ -385,9 +387,6 @@ export class ReactiveSystem<T extends string> {
   /** 依赖图 */
   private readonly dependencyGraph: DependencyGraph;
 
-  /** JS表达式处理器 - 用于编译表达式和分析依赖 */
-  private readonly jsProcessor: JSExpressionProcessor;
-
   /** 脏属性队列 - 使用Uint32Array作为位图 */
   private readonly dirtyBitmap: Uint32Array;
 
@@ -431,6 +430,7 @@ export class ReactiveSystem<T extends string> {
    * @param schema 嵌套的Schema结构
    */
   constructor(member: Member, schema: NestedSchema) {
+    console.log("🚀 ReactiveSystem 构造函数", member, schema);
     this.member = member;
     const flattened = SchemaFlattener.flatten<T>(schema);
     const attrKeys = flattened.attrKeys;
@@ -462,7 +462,6 @@ export class ReactiveSystem<T extends string> {
 
     // 初始化依赖图和JS处理器
     this.dependencyGraph = new DependencyGraph(keyCount);
-    this.jsProcessor = new JSExpressionProcessor();
     this.computationFunctions = new Map();
 
     // 设置表达式，填充依赖关系
@@ -476,57 +475,11 @@ export class ReactiveSystem<T extends string> {
     console.log(`🚀 ReactiveSystem 初始化完成:`, this);
   }
 
-  // ==================== DSL支持API ====================
-
-  /**
-   * 通过DSL路径获取属性值
-   *
-   * @param dslPath DSL路径，如 "abi.str", "hp.max"
-   * @returns 属性值，如果路径不存在返回0
-   */
-  getValueByDSL(dslPath: string): number {
-    const attrKey = this.dslMapping.get(dslPath);
-    if (!attrKey) {
-      console.warn(`⚠️ DSL路径不存在: ${dslPath}`);
-      return 0;
-    }
-    return this.getValue(attrKey);
-  }
-
-  /**
-   * 通过DSL路径设置属性值
-   *
-   * @param dslPath DSL路径，如 "abi.str", "hp.current"
-   * @param value 要设置的值
-   */
-  setValueByDSL(dslPath: string, value: number): void {
-    const attrKey = this.dslMapping.get(dslPath);
-    if (!attrKey) {
-      console.warn(`⚠️ DSL路径不存在: ${dslPath}`);
-      return;
-    }
-    this.setValue(attrKey, value);
-  }
-
   /**
    * 获取属性的显示名称
    */
   getDisplayName(attr: T): string {
     return this.displayNames.get(attr) || attr;
-  }
-
-  /**
-   * 获取所有DSL路径映射
-   */
-  getDSLMapping(): Map<string, T> {
-    return new Map(this.dslMapping);
-  }
-
-  /**
-   * 检查DSL路径是否存在
-   */
-  hasDSLPath(dslPath: string): boolean {
-    return this.dslMapping.has(dslPath);
   }
 
   // ==================== 核心API（保持兼容） ====================
@@ -623,7 +576,7 @@ export class ReactiveSystem<T extends string> {
    */
   addModifier(
     attr: T,
-    type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
+    type: ModifierType,
     value: number,
     source: ModifierSource,
   ): void {
@@ -660,6 +613,43 @@ export class ReactiveSystem<T extends string> {
     console.log(`✅ 成功添加修饰器: ${attr} ${type} +${value} (来源: ${source.name})`);
   }
 
+  /**
+   * 移除修饰符
+   */
+  removeModifier(
+    attr: T,
+    type: ModifierType,
+    sourceId: string,
+  ): void {
+    const index = this.keyToIndex.get(attr);
+    if (index === undefined) {
+      console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
+      return;
+    }
+    let arrayIndex: ModifierArrayIndex;
+    switch (type) {
+      case "staticFixed":
+        arrayIndex = ModifierArrayIndex.STATIC_FIXED;
+        break;
+      case "staticPercentage":
+        arrayIndex = ModifierArrayIndex.STATIC_PERCENTAGE;
+        break;
+      case "dynamicFixed":
+        arrayIndex = ModifierArrayIndex.DYNAMIC_FIXED;
+        break;
+      case "dynamicPercentage":
+        arrayIndex = ModifierArrayIndex.DYNAMIC_PERCENTAGE;
+        break;
+      default:
+        console.warn(`⚠️ 未知的修饰符类型: ${type}`);
+        return;
+    }
+    // 移除修饰符
+    this.modifierArrays[arrayIndex][index] = 0;
+    this.markDirty(index);
+    console.log(`✅ 成功移除修饰器: ${attr} (来源: ${sourceId})`);
+  }
+
   // ==================== 内部实现 ====================
 
   /**
@@ -678,11 +668,11 @@ export class ReactiveSystem<T extends string> {
       this.currentCompilingAttr = attrName; // 设置当前编译的属性名
       const simpleCompiledCode = this.compileSimpleExpression(expressionData.expression);
       this.currentCompilingAttr = undefined; // 清除当前编译的属性名
-      
+
       if (simpleCompiledCode) {
         // 解析依赖关系 - 从原始表达式中提取
         this.parseSimpleDependencies(index, expressionData.expression);
-        
+
         // 创建计算函数
         this.computationFunctions.set(index, () => {
           try {
@@ -691,30 +681,32 @@ export class ReactiveSystem<T extends string> {
               console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
               return 0;
             }
-            
+
             this.isComputing.add(index);
-            
+
             // 静默计算属性
-            
+
             // 创建简化的执行上下文，只包含_self
             const executionContext = {
               _self: this.member,
             };
-            
-            const fn = new Function('ctx', `
+
+            const fn = new Function(
+              "ctx",
+              `
               with (ctx) {
                 return ${simpleCompiledCode};
               }
-            `);
-            
+            `,
+            );
+
             const result = fn.call(null, executionContext);
-            const finalResult = typeof result === 'number' ? result : 0;
-            
+            const finalResult = typeof result === "number" ? result : 0;
+
             // 静默计算完成
-            
+
             this.isComputing.delete(index);
             return finalResult;
-            
           } catch (error) {
             this.isComputing.delete(index);
             console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
@@ -734,7 +726,7 @@ export class ReactiveSystem<T extends string> {
     }
 
     console.log("✅ 表达式和依赖关系设置完成");
-    
+
     // 打印初始化结果摘要
     const allValues = this.getValues();
     const valueEntries = Object.entries(allValues).slice(0, 10); // 只显示前10个
@@ -750,23 +742,22 @@ export class ReactiveSystem<T extends string> {
       if (!isNaN(Number(expression)) && isFinite(Number(expression))) {
         return expression;
       }
-      
+
       // 2. 检查是否为枚举值，转换为数字
       const enumValue = this.getEnumValue(expression);
       if (enumValue !== null) {
         return String(enumValue);
       }
-      
+
       // 3. 检查是否为自引用（避免无限递归）
       const currentAttrName = this.getCurrentAttributeName();
       if (expression.trim() === currentAttrName) {
         console.warn(`⚠️ 检测到自引用: ${expression}，返回默认值0`);
-        return '0';
+        return "0";
       }
-      
+
       // 4. 使用AST解析和转换
       return this.compileExpressionWithAST(expression);
-      
     } catch (error) {
       console.error(`❌ 表达式编译失败: ${expression}`, error);
       return null;
@@ -779,13 +770,13 @@ export class ReactiveSystem<T extends string> {
   private compileExpressionWithAST(expression: string): string | null {
     try {
       // 1. 准备AST编译器
-      const knownAttributes = Array.from(this.keyToIndex.keys()).map(attr => String(attr));
+      const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
       const currentAttrName = this.getCurrentAttributeName();
       const compiler = new ReactiveSystemASTCompiler(knownAttributes, currentAttrName);
 
       // 2. 编译表达式
       const result = compiler.compile(expression);
-      
+
       if (!result.success) {
         console.error(`❌ AST编译失败: ${expression}`, result.error);
         return null;
@@ -797,48 +788,60 @@ export class ReactiveSystem<T extends string> {
       }
 
       return result.compiledCode;
-      
     } catch (error) {
       console.error(`❌ AST编译异常: ${expression}`, error);
       return null;
     }
   }
-  
+
   /**
    * 获取枚举值对应的数字，如果不是枚举则返回null
    */
   private getEnumValue(expression: string): number | null {
     const trimmed = expression.trim();
-    
+
     // 排除JavaScript内置对象和关键字
     const excludedValues = [
-      'Math', 'Number', 'String', 'Object', 'Array', 'Boolean', 'Date', 'RegExp',
-      'console', 'window', 'document', 'parseInt', 'parseFloat', 'isNaN', 'isFinite'
+      "Math",
+      "Number",
+      "String",
+      "Object",
+      "Array",
+      "Boolean",
+      "Date",
+      "RegExp",
+      "console",
+      "window",
+      "document",
+      "parseInt",
+      "parseFloat",
+      "isNaN",
+      "isFinite",
     ];
     if (excludedValues.includes(trimmed)) {
       return null;
     }
-    
+
     // 排除明显的属性名（包含点号或常见属性模式）
-    if (trimmed.includes('.') || /^[a-z][A-Za-z]*$/.test(trimmed)) {
+    if (trimmed.includes(".") || /^[a-z][A-Za-z]*$/.test(trimmed)) {
       return null;
     }
-    
+
     // 从枚举映射中查找（只查找PascalCase的枚举值）
     const enumValue = ENUM_MAPPINGS.get(trimmed);
     if (enumValue !== undefined) {
       console.log(`🎯 匹配到枚举: ${trimmed} -> ${enumValue}`);
       return enumValue;
     }
-    
+
     return null;
   }
-  
+
   /**
    * 获取当前正在编译的属性名（用于避免自引用）
    */
   private getCurrentAttributeName(): string {
-    return this.currentCompilingAttr ? String(this.currentCompilingAttr) : '';
+    return this.currentCompilingAttr ? String(this.currentCompilingAttr) : "";
   }
 
   /**
@@ -846,35 +849,33 @@ export class ReactiveSystem<T extends string> {
    */
   private parseSimpleDependencies(attrIndex: number, expression: string): void {
     const dependencies = new Set<string>();
-    
+
     // 1. 匹配self.property模式
     const selfPattern = /\bself\.([a-zA-Z_][a-zA-Z0-9_.]*)/g;
     const selfMatches = expression.matchAll(selfPattern);
-    
+
     for (const match of selfMatches) {
       dependencies.add(match[1]);
     }
-    
+
     // 2. 智能匹配已知的完整属性路径
     const knownAttributes = Array.from(this.keyToIndex.keys());
-    const sortedAttributes = knownAttributes
-      .map(attr => String(attr))
-      .sort((a, b) => b.length - a.length); // 优先匹配最长的路径
-    
-    sortedAttributes.forEach(attrKeyStr => {
-      const escapedAttr = attrKeyStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const attrPattern = new RegExp(`\\b${escapedAttr}\\b`, 'g');
-      
+    const sortedAttributes = knownAttributes.map((attr) => String(attr)).sort((a, b) => b.length - a.length); // 优先匹配最长的路径
+
+    sortedAttributes.forEach((attrKeyStr) => {
+      const escapedAttr = attrKeyStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const attrPattern = new RegExp(`\\b${escapedAttr}\\b`, "g");
+
       if (attrPattern.test(expression)) {
         dependencies.add(attrKeyStr);
       }
     });
-    
+
     // 3. 添加依赖关系
-    dependencies.forEach(property => {
+    dependencies.forEach((property) => {
       const depKey = property as T;
       const depIndex = this.keyToIndex.get(depKey);
-      
+
       if (depIndex !== undefined && depIndex !== attrIndex) {
         this.dependencyGraph.addDependency(attrIndex, depIndex);
         // console.log(`🔗 发现依赖关系: ${this.indexToKey[attrIndex]} 依赖于 ${property}`);
@@ -888,14 +889,7 @@ export class ReactiveSystem<T extends string> {
   private computeAttributeValue(index: number): number {
     this.stats.computations++;
 
-    // 如果有计算函数，使用它
-    const computationFn = this.computationFunctions.get(index);
-    if (computationFn) {
-      return computationFn(this.values);
-    }
-
-    // 否则使用标准计算
-    const base = this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index];
+    // 获取修饰符值
     const staticFixed = this.modifierArrays[ModifierArrayIndex.STATIC_FIXED][index];
     const staticPercentage = this.modifierArrays[ModifierArrayIndex.STATIC_PERCENTAGE][index];
     const dynamicFixed = this.modifierArrays[ModifierArrayIndex.DYNAMIC_FIXED][index];
@@ -904,6 +898,15 @@ export class ReactiveSystem<T extends string> {
     const totalPercentage = staticPercentage + dynamicPercentage;
     const totalFixed = staticFixed + dynamicFixed;
 
+    // 如果有计算函数，先计算基础值，然后应用修饰符
+    const computationFn = this.computationFunctions.get(index);
+    if (computationFn) {
+      const baseValue = computationFn(this.values);
+      return Math.floor(baseValue * (1 + totalPercentage / 100) + totalFixed);
+    }
+
+    // 否则使用标准计算（基于BASE_VALUE）
+    const base = this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index];
     return Math.floor(base * (1 + totalPercentage / 100) + totalFixed);
   }
 
@@ -921,7 +924,7 @@ export class ReactiveSystem<T extends string> {
         initialDirtyIndices.push(i);
       }
     }
-    const initialDirtyAttrs = initialDirtyIndices.map(i => String(this.indexToKey[i]));
+    const initialDirtyAttrs = initialDirtyIndices.map((i) => String(this.indexToKey[i]));
 
     if (initialDirtyAttrs.length > 0) {
       console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
@@ -935,7 +938,7 @@ export class ReactiveSystem<T extends string> {
       if (this.isDirty(index)) {
         const attrName = String(this.indexToKey[index]);
         // 静默更新属性
-        
+
         const value = this.computeAttributeValue(index);
         this.values[index] = value;
         BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
@@ -949,7 +952,7 @@ export class ReactiveSystem<T extends string> {
       if (this.isDirty(i)) {
         const attrName = String(this.indexToKey[i]);
         // console.log(`🔧 更新独立属性: ${attrName} (index: ${i})`);
-        
+
         const value = this.computeAttributeValue(i);
         this.values[i] = value;
         BitFlags.set(this.flags, i, AttributeFlags.IS_CACHED);
@@ -970,7 +973,7 @@ export class ReactiveSystem<T extends string> {
     }
 
     if (remainingDirtyIndices.length > 0) {
-      const remainingDirtyAttrs = remainingDirtyIndices.map(i => String(this.indexToKey[i]));
+      const remainingDirtyAttrs = remainingDirtyIndices.map((i) => String(this.indexToKey[i]));
       console.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
     }
 

@@ -1,11 +1,4 @@
 import { Component, createSignal, createResource, Show } from "solid-js";
-import { 
-  testBasicReactivity, 
-  testDependencyChainReactivity, 
-  testBatchReactivity, 
-  testDataConsistency,
-  runAllReactivityTests 
-} from "../../../components/features/simulator/test/reactivityTest";
 import { findMemberWithRelations } from "@db/repositories/member";
 
 const ReactivityValidationTest: Component = () => {

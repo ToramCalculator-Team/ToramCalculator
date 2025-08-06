@@ -1,52 +1,45 @@
-import { Component, createSignal, createResource, Show } from "solid-js";
-import { runAllPlayerTests, testPlayerBasicFunctionality, testPlayerPerformance, testPlayerExpressions } from "../../../components/features/simulator/test/playerTest";
+import { Component, createSignal, createResource, Show, createEffect, on } from "solid-js";
 import { findMemberWithRelations } from "@db/repositories/member";
+import { findSimulatorWithRelations } from "@db/repositories/simulator";
+import { realtimeSimulatorPool } from "~/components/features/simulator/SimulatorPool";
 
 const PlayerTypedArrayTest: Component = () => {
   const [consoleOutput, setConsoleOutput] = createSignal<string[]>([]);
   const [isRunning, setIsRunning] = createSignal(false);
-  
+  const [poolStatus, setPoolStatus] = createSignal<any>(null);
+
   // 预加载数据库数据
   const [memberData] = createResource(() => findMemberWithRelations("defaultMember1Id"));
+  const [simulatorData] = createResource(() => findSimulatorWithRelations("defaultSimulatorId"));
 
   // 捕获控制台输出
   let originalConsoleLog = console.log;
   let originalConsoleWarn = console.warn;
   let originalConsoleError = console.error;
-  let originalConsoleTime = console.time;
-  let originalConsoleTimeEnd = console.timeEnd;
 
   const captureConsole = () => {
     console.log = (...args: any[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
-      setConsoleOutput([...consoleOutput(), message]);
+      setConsoleOutput(prev => [message, ...prev.slice(0, 99)]);
       originalConsoleLog(...args);
     };
 
     console.warn = (...args: any[]) => {
-      const message = `⚠️ ${args.map(arg => String(arg)).join(' ')}`;
-      setConsoleOutput([...consoleOutput(), message]);
+      const message = `⚠️ ${args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ')}`;
+      setConsoleOutput(prev => [message, ...prev.slice(0, 99)]);
       originalConsoleWarn(...args);
     };
 
     console.error = (...args: any[]) => {
-      const message = `❌ ${args.map(arg => String(arg)).join(' ')}`;
-      setConsoleOutput([...consoleOutput(), message]);
+      const message = `❌ ${args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ')}`;
+      setConsoleOutput(prev => [message, ...prev.slice(0, 99)]);
       originalConsoleError(...args);
-    };
-
-    console.time = (label?: string) => {
-      const message = `⏱️ 开始计时: ${label}`;
-      setConsoleOutput([...consoleOutput(), message]);
-      originalConsoleTime(label);
-    };
-
-    console.timeEnd = (label?: string) => {
-      const message = `⏰ 计时结束: ${label}`;
-      setConsoleOutput([...consoleOutput(), message]);
-      originalConsoleTimeEnd(label);
     };
   };
 
@@ -54,166 +47,234 @@ const PlayerTypedArrayTest: Component = () => {
     console.log = originalConsoleLog;
     console.warn = originalConsoleWarn;
     console.error = originalConsoleError;
-    console.time = originalConsoleTime;
-    console.timeEnd = originalConsoleTimeEnd;
   };
 
-  const runTest = async (testFunction: () => Promise<void>, testName: string) => {
+  // 监听池状态变化
+  createEffect(() => {
+    const interval = setInterval(() => {
+      if (realtimeSimulatorPool.isReady()) {
+        setPoolStatus(realtimeSimulatorPool.getStatus());
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  });
+
+  const runPerformanceTest = async () => {
+    if (isRunning()) return;
+    
     setIsRunning(true);
-    setConsoleOutput([]);
-    
     captureConsole();
-    
+
     try {
-      console.log(`🚀 开始运行: ${testName}`);
-      console.log("📊 正在从数据库加载数据...");
+      console.log("🚀 开始TypedArray性能测试 (Worker模式)");
+
+      // 等待池准备就绪
+      if (!realtimeSimulatorPool.isReady()) {
+        console.log("⏳ 等待SimulatorPool准备就绪...");
+        await new Promise(resolve => {
+          const checkReady = () => {
+            if (realtimeSimulatorPool.isReady()) {
+              resolve(true);
+            } else {
+              setTimeout(checkReady, 100);
+            }
+          };
+          checkReady();
+        });
+      }
+
+      console.log("✅ SimulatorPool已准备就绪");
+
+      // 启动模拟
+      const simulator = simulatorData();
+      if (!simulator) {
+        throw new Error("模拟器数据未加载");
+      }
+
+      console.log("🎮 启动战斗模拟...");
+      const startResult = await realtimeSimulatorPool.startSimulation(simulator);
+      if (!startResult.success) {
+        throw new Error(`启动模拟失败: ${startResult.error}`);
+      }
+
+      console.log("✅ 战斗模拟启动成功");
+
+      // 等待引擎初始化
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 获取初始成员数据
+      console.log("📊 获取初始成员数据...");
+      const initialMembers = await realtimeSimulatorPool.getMembers();
+      console.log(`📊 初始成员数量: ${initialMembers.length}`);
+
+      if (initialMembers.length === 0) {
+        throw new Error("没有找到成员数据");
+      }
+
+      // 执行所有测试，但不立即输出结果
+      let addModifierTime = 0;
+      let removeModifierTime = 0;
+      let getMembersTime = 0;
+      let successCount = 0;
+      let errorCount = 0;
+
+      // 测试修饰符操作性能 - 批量添加
+      const addStartTime = performance.now();
+      for (let i = 0; i < 1000; i++) {
+        const intent = {
+          id: `add_modifier_${i}`,
+          type: "add_modifier" as const,
+          targetMemberId: initialMembers[0].id,
+          timestamp: Date.now(),
+          data: {
+            attributePath: "ability.str",
+            modifierType: "staticFixed",
+            value: i,
+            source: {
+              id: `test${i}`,
+              name: `test${i}`,
+              type: "system" as const,
+            }
+          }
+        };
+
+        const result = await realtimeSimulatorPool.sendIntent(intent);
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      }
+      addModifierTime = performance.now() - addStartTime;
+
+      // 测试修饰符批量移除性能
+      const removeStartTime = performance.now();
+      for (let i = 0; i < 1000; i++) {
+        const intent = {
+          id: `remove_modifier_${i}`,
+          type: "remove_modifier" as const,
+          targetMemberId: initialMembers[0].id,
+          timestamp: Date.now(),
+          data: {
+            attributePath: "ability.str",
+            modifierType: "staticFixed",
+            sourceId: `test${i}`
+          }
+        };
+
+        const result = await realtimeSimulatorPool.sendIntent(intent);
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      }
+      removeModifierTime = performance.now() - removeStartTime;
+
+      // 测试批量属性获取性能
+      const getMembersStartTime = performance.now();
+      for (let i = 0; i < 1000; i++) {
+        const members = await realtimeSimulatorPool.getMembers();
+        if (members.length === 0) {
+          throw new Error("获取成员数据失败");
+        }
+      }
+      getMembersTime = performance.now() - getMembersStartTime;
+
+      // 获取引擎统计信息
+      const statsResult = await realtimeSimulatorPool.getEngineStats();
+      const finalMembers = await realtimeSimulatorPool.getMembers();
+
+      // ==================== 性能评估报告 ====================
+      console.log("\n" + "=".repeat(60));
+      console.log("🎯 TYPEDARRAY WORKER 性能测试报告");
+      console.log("=".repeat(60));
       
-      // 直接执行异步测试函数
-      await testFunction();
-      console.log(`✅ 完成: ${testName}`);
+      console.log(`📊 修饰符批量添加性能: ${addModifierTime.toFixed(2)}ms (1000次操作)`);
+      console.log(`📊 修饰符批量移除性能: ${removeModifierTime.toFixed(2)}ms (1000次操作)`);
+      console.log(`📊 批量属性获取性能: ${getMembersTime.toFixed(2)}ms (1000次操作)`);
+      
+      console.log(`\n📈 详细性能指标:`);
+      console.log(`   • 添加修饰符: ${(addModifierTime / 1000).toFixed(3)}ms/次`);
+      console.log(`   • 移除修饰符: ${(removeModifierTime / 1000).toFixed(3)}ms/次`);
+      console.log(`   • 获取成员: ${(getMembersTime / 1000).toFixed(3)}ms/次`);
+      
+      console.log(`\n✅ 操作统计:`);
+      console.log(`   • 成功操作: ${successCount} 次`);
+      console.log(`   • 失败操作: ${errorCount} 次`);
+      console.log(`   • 成功率: ${((successCount / (successCount + errorCount)) * 100).toFixed(1)}%`);
+      
+      console.log(`\n💾 系统状态:`);
+      console.log(`   • 最终成员数量: ${finalMembers.length}`);
+      if (statsResult.success && statsResult.data) {
+        console.log(`   • 引擎统计:`, statsResult.data);
+      }
+      
+      console.log("\n" + "=".repeat(60));
+      console.log("✅ 性能测试完成");
+      console.log("=".repeat(60) + "\n");
+
     } catch (error) {
-      console.error(`${testName} 执行失败:`, error);
+      console.error("❌ 性能测试失败:", error);
     } finally {
+      // 停止模拟
+      try {
+        await realtimeSimulatorPool.stopSimulation();
+        console.log("🛑 模拟已停止");
+      } catch (error) {
+        console.error("停止模拟失败:", error);
+      }
+
       restoreConsole();
       setIsRunning(false);
     }
   };
 
-  const clearOutput = () => {
+  const clearConsole = () => {
     setConsoleOutput([]);
   };
 
   return (
     <div class="p-6 max-w-6xl mx-auto">
-      <h1 class="text-3xl font-bold mb-6">Player类TypedArray集成测试</h1>
-      
-      {/* 数据加载状态 */}
-      <div class="mb-4 p-3 rounded-lg bg-gray-100">
-        <Show
-          when={!memberData.loading}
-          fallback={<div class="flex items-center gap-2"><div class="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div><span>正在加载数据库数据...</span></div>}
-        >
-          <Show
-            when={memberData()}
-            fallback={<div class="text-red-600">❌ 无法加载成员数据，请检查数据库中是否存在 defaultMember1Id</div>}
-          >
-            <div class="text-green-600">✅ 数据库数据加载完成，可以开始测试</div>
-          </Show>
-        </Show>
-      </div>
-
-      <div class="mb-6 space-y-4">
-        <div class="flex gap-4 flex-wrap">
+      <div class="bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">TypedArray性能测试 (Worker模式)</h1>
+        
+        {/* 控制按钮 */}
+        <div class="mb-6 space-x-4">
           <button
-            onClick={() => runTest(testPlayerBasicFunctionality, "基础功能测试")}
-            disabled={isRunning() || memberData.loading || !memberData()}
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            onClick={runPerformanceTest}
+            disabled={isRunning()}
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
           >
-            {isRunning() ? "运行中..." : "基础功能测试"}
+            {isRunning() ? "测试中..." : "开始性能测试"}
           </button>
           
           <button
-            onClick={() => runTest(testPlayerPerformance, "性能测试")}
-            disabled={isRunning() || memberData.loading || !memberData()}
-            class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-          >
-            {isRunning() ? "运行中..." : "性能测试"}
-          </button>
-          
-          <button
-            onClick={() => runTest(testPlayerExpressions, "表达式计算测试")}
-            disabled={isRunning() || memberData.loading || !memberData()}
-            class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
-          >
-            {isRunning() ? "运行中..." : "表达式计算测试"}
-          </button>
-          
-          <button
-            onClick={() => runTest(runAllPlayerTests, "完整测试套件")}
-            disabled={isRunning() || memberData.loading || !memberData()}
-            class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
-          >
-            {isRunning() ? "运行中..." : "完整测试套件"}
-          </button>
-          
-          <button
-            onClick={clearOutput}
+            onClick={clearConsole}
             class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            清空输出
+            清空日志
           </button>
         </div>
-        
-        <div class="text-sm text-gray-600 space-y-2">
-          <p><strong>基础功能测试</strong>：使用数据库中的真实数据验证Player类创建、属性访问、修饰符添加等基本功能</p>
-          <p><strong>性能测试</strong>：测试TypedArray在Player类中的性能表现</p>
-          <p><strong>表达式计算测试</strong>：验证属性表达式和依赖关系的正确性</p>
-          <p><strong>完整测试套件</strong>：运行所有测试，全面验证集成效果</p>
-          <p><em>注意：测试使用数据库中的 defaultMember1Id 数据</em></p>
-        </div>
-      </div>
 
-      <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-96 overflow-y-auto">
-        {consoleOutput().length === 0 ? (
-          <div class="text-gray-500">点击上方按钮开始测试...</div>
-        ) : (
-          consoleOutput().map((line, index) => (
-            <div class="whitespace-pre-wrap mb-1">{line}</div>
-          ))
-        )}
-      </div>
+        {/* 池状态显示 */}
+        <Show when={poolStatus()}>
+          <div class="mb-6 p-4 bg-gray-100 rounded">
+            <h3 class="font-semibold mb-2">SimulatorPool状态:</h3>
+            <pre class="text-sm overflow-auto">
+              {JSON.stringify(poolStatus(), null, 2)}
+            </pre>
+          </div>
+        </Show>
 
-      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="p-4 bg-blue-50 rounded-lg">
-          <h2 class="text-xl font-semibold mb-2">集成完成✅</h2>
-          <ul class="list-disc list-inside space-y-1 text-sm">
-            <li>Player类已完全切换到TypedArray实现</li>
-            <li>保持了完整的API兼容性</li>
-            <li>移除了旧的Map实现依赖</li>
-            <li>支持所有原有的属性和修饰符功能</li>
-            <li>表达式计算和依赖管理正常工作</li>
-          </ul>
-        </div>
-        
-        <div class="p-4 bg-green-50 rounded-lg">
-          <h2 class="text-xl font-semibold mb-2">预期改进</h2>
-          <ul class="list-disc list-inside space-y-1 text-sm">
-            <li><strong>内存使用</strong>：减少50-70%</li>
-            <li><strong>属性访问</strong>：提升3-5倍速度</li>
-            <li><strong>批量操作</strong>：提升5-10倍速度</li>
-            <li><strong>GC压力</strong>：显著降低</li>
-            <li><strong>缓存效率</strong>：连续内存布局优化</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="mt-6 p-4 bg-yellow-50 rounded-lg">
-        <h2 class="text-xl font-semibold mb-2">技术细节</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <div class="font-semibold">数据结构</div>
-            <ul class="list-disc list-inside">
-              <li>Float64Array存储属性值</li>
-              <li>Uint32Array管理状态位</li>
-              <li>位图优化脏值检查</li>
-            </ul>
-          </div>
-          <div>
-            <div class="font-semibold">性能优化</div>
-            <ul class="list-disc list-inside">
-              <li>O(1)直接索引访问</li>
-              <li>批量SIMD操作支持</li>
-              <li>减少对象分配</li>
-            </ul>
-          </div>
-          <div>
-            <div class="font-semibold">兼容性</div>
-            <ul class="list-disc list-inside">
-              <li>完整API兼容</li>
-              <li>表达式系统不变</li>
-              <li>依赖管理保持</li>
-            </ul>
-          </div>
+        {/* 控制台输出 */}
+        <div class="bg-black text-green-400 p-4 rounded font-mono text-sm h-96 overflow-y-auto">
+          <Show when={consoleOutput().length > 0} fallback={<span class="text-gray-500">等待测试开始...</span>}>
+                         {consoleOutput().map((line, index) => (
+               <div class="whitespace-pre-wrap">{line}</div>
+             ))}
+          </Show>
         </div>
       </div>
     </div>
