@@ -13,7 +13,6 @@
  * - 类型安全：使用TypeScript确保消息类型正确
  */
 
-import { MemberManager } from "./MemberManager";
 import type GameEngine from "./GameEngine";
 
 // ============================== 类型定义 ==============================
