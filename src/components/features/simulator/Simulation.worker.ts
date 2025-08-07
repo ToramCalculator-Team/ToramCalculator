@@ -6,59 +6,49 @@
 import { GameEngine } from "./core/GameEngine";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "./core/MessageRouter";
-import type { MemberSerializeData } from "./core/Member";
-import type { EngineStats } from "./core/GameEngine";
 
 // ==================== 消息类型定义 ====================
 
 /**
- * 主线程到Worker的消息类型
+ * 主线程到Worker的初始化消息类型
  */
 interface MainThreadMessage {
-  taskId?: string;
   type: "init";
-  data?: any;
   port?: MessagePort;
 }
 
 /**
- * MessageChannel端口消息类型
+ * MessageChannel端口消息类型 - 与SimulatorPool保持一致
  */
 interface PortMessage {
   taskId: string;
-  type:
-    | "start_simulation"
-    | "stop_simulation"
-    | "pause_simulation"
-    | "resume_simulation"
-    | "process_intent"
-    | "get_snapshot"
-    | "get_stats"
-    | "get_members"
-    | "send_intent";
-  data?: SimulatorWithRelations | IntentMessage;
+  type: string;
+  data?: any;
 }
 
 /**
- * Worker响应消息类型
+ * Worker响应消息类型 - 与SimulatorPool期望的格式一致
  */
 interface WorkerResponse {
   taskId: string;
   result?: {
     success: boolean;
-    data?: MemberSerializeData[] | EngineStats | { success: boolean; message: string; error?: string } | any;
+    data?: any;
     error?: string;
   } | null;
   error?: string | null;
+  metrics?: {
+    duration: number;
+    memoryUsage: number;
+  };
 }
 
 /**
- * Worker系统消息类型
+ * Worker系统消息类型 - 用于引擎状态更新
  */
 interface WorkerSystemMessage {
-  type: "worker_ready" | "error" | "engine_state_update";
-  error?: string;
-  event?: any; // 引擎状态变化事件
+  type: "engine_state_update" | "system_event";
+  event?: any;
 }
 
 // ==================== 沙盒环境初始化 ====================
@@ -116,13 +106,11 @@ const gameEngine = new GameEngine();
 // 🔥 关键：订阅引擎状态变化事件
 let engineStateSubscription: (() => void) | null = null;
 
-// 处理主线程消息
+// 处理主线程消息 - 只处理初始化
 self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
-  const { taskId, type, data, port } = event.data;
+  const { type, port } = event.data;
 
   try {
-    let result: WorkerSystemMessage;
-
     switch (type) {
       case "init":
         // 初始化Worker，设置MessageChannel
@@ -130,15 +118,12 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           // 设置MessageChannel端口用于任务通信
           port.onmessage = async (portEvent: MessageEvent<PortMessage>) => {
             const { taskId: portTaskId, type: portType, data: portData } = portEvent.data;
+            const startTime = performance.now();
 
             try {
               let portResult: {
                 success: boolean;
-                data?:
-                  | MemberSerializeData[]
-                  | EngineStats
-                  | { success: boolean; message: string; error?: string }
-                  | any;
+                data?: any;
                 error?: string;
               };
 
@@ -146,7 +131,8 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                 case "start_simulation":
                   // 初始化战斗数据
                   const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-                  // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
+                  console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
+                  
                   // 添加阵营A
                   gameEngine.addCamp("campA", "阵营A");
                   simulatorData.campA.forEach((team, index) => {
@@ -175,6 +161,11 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 
                   // 启动引擎
                   gameEngine.start();
+                  
+                  // 验证成员是否添加成功
+                  const initialMembers = gameEngine.getAllMemberData();
+                  console.log(`👹 [Worker] 启动后成员数量: ${initialMembers.length}`);
+                  console.log(`👹 [Worker] 启动后成员列表:`, initialMembers.map(m => m.id));
                   
                   portResult = { success: true };
                   break;
@@ -213,8 +204,9 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 获取所有成员数据（使用序列化接口）
                   try {
                     const members = gameEngine.getAllMemberData();
+                    console.log(`👹 [Worker] 返回成员数据: ${members.length} 个成员`);
+                    console.log(`👹 [Worker] 成员列表:`, members.map(m => m.id));
                     portResult = { success: true, data: members };
-                    // console.log(`👹 [Worker] 返回成员数据: ${members.length} 个成员`);
                   } catch (error) {
                     portResult = { success: false, error: error instanceof Error ? error.message : "Unknown error" };
                     console.error(`Worker: 获取成员数据失败:`, error);
@@ -244,19 +236,35 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   throw new Error(`未知消息类型: ${portType}`);
               }
 
+              // 计算执行时间
+              const endTime = performance.now();
+              const duration = endTime - startTime;
+
               // 返回结果给SimulatorPool
               const response: WorkerResponse = {
                 taskId: portTaskId,
                 result: portResult,
                 error: null,
+                metrics: {
+                  duration,
+                  memoryUsage: 0, // 浏览器环境无法获取精确内存使用
+                },
               };
               port.postMessage(response);
             } catch (error) {
+              // 计算执行时间
+              const endTime = performance.now();
+              const duration = endTime - startTime;
+
               // 返回错误给SimulatorPool
               const errorResponse: WorkerResponse = {
                 taskId: portTaskId,
                 result: null,
                 error: error instanceof Error ? error.message : String(error),
+                metrics: {
+                  duration,
+                  memoryUsage: 0,
+                },
               };
               port.postMessage(errorResponse);
             }
@@ -265,29 +273,30 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 
         // 🔥 关键：设置引擎状态变化订阅
         engineStateSubscription = gameEngine.onStateChange((event) => {
-          // 将引擎事件转发给主线程
-          const stateChangeMessage: WorkerSystemMessage = {
-            type: "engine_state_update",
-            event: event,
+          // 将引擎事件通过MessageChannel转发给主线程
+          // 注意：只传递可序列化的数据，避免函数等不可序列化对象
+          const serializableEvent = {
+            type: 'engine_state_update',
+            timestamp: Date.now(),
+            engineState: event
           };
-          self.postMessage(stateChangeMessage);
+          
+          const stateChangeMessage = {
+            taskId: "engine_state_update", // 使用特殊taskId标识系统事件
+            type: "engine_state_update",
+            data: serializableEvent,
+          };
+          port?.postMessage(stateChangeMessage);
         });
 
-        // 通知主线程Worker已准备就绪
-        const readyMessage: WorkerSystemMessage = { type: "worker_ready" };
-        self.postMessage(readyMessage);
-
+        // Worker初始化完成，不需要通知主线程
         return;
 
       default:
         throw new Error(`未知消息类型: ${type}`);
     }
   } catch (error) {
-    // 返回错误给主线程
-    const errorMessage: WorkerSystemMessage = {
-      type: "error",
-      error: error instanceof Error ? error.message : String(error),
-    };
-    self.postMessage(errorMessage);
+    // 初始化错误，通过MessageChannel返回
+    console.error("Worker初始化失败:", error);
   }
 };

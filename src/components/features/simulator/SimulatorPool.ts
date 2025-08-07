@@ -8,30 +8,24 @@ import { EngineStats } from "./core/GameEngine";
 // ==================== 类型定义 ====================
 
 /**
- * 任务结果接口 - 对应不同任务类型的返回结果
+ * 通用任务结果接口
  */
 export interface TaskResult {
-  start_simulation: { success: boolean };
-  stop_simulation: { success: boolean };
-  pause_simulation: { success: boolean };
-  resume_simulation: { success: boolean };
-  process_intent: { success: boolean; message: string; error?: string };
-  get_snapshot: any; // 快照类型较复杂，暂时保持any
-  get_stats: { success: boolean; data: EngineStats };
-  get_members: { success: boolean; data: MemberSerializeData[] };
-  send_intent: { success: boolean; error?: string };
+  success: boolean; // 任务是否成功
+  data?: any; // 任务返回的数据
+  error?: string; // 错误信息
 }
 
 /**
- * 模拟结果接口 - 根据任务类型返回对应的结果
+ * 通用任务执行结果
  */
-export interface SimulationResult<T extends keyof TaskResult = keyof TaskResult> {
-  success: boolean;
-  data?: TaskResult[T];
-  error?: string;
+export interface TaskExecutionResult {
+  success: boolean; // 任务是否成功
+  data?: any; // 任务返回的数据
+  error?: string; // 错误信息
   metrics?: {
-    duration: number;
-    memoryUsage: number;
+    duration: number; // 执行时长（毫秒）
+    memoryUsage: number; // 内存使用量
   };
 }
 
@@ -48,7 +42,7 @@ export interface SimulationResult<T extends keyof TaskResult = keyof TaskResult>
  * - shutdown: 池关闭
  */
 class EventEmitter {
-  private events: { [key: string]: Function[] } = {};
+  private events: { [key: string]: Function[] } = {}; // 事件监听器映射表
 
   /**
    * 注册事件监听器
@@ -60,6 +54,7 @@ class EventEmitter {
       this.events[event] = [];
     }
     this.events[event].push(listener);
+    console.log(`📡 EventEmitter: 注册事件监听器 "${event}"，当前监听器数量: ${this.events[event].length}`);
   }
 
   /**
@@ -68,6 +63,10 @@ class EventEmitter {
    * @param args 事件参数
    */
   emit(event: string, ...args: any[]): void {
+    // 减少引擎状态更新事件的日志噪音
+    if (event !== "engine_state_update") {
+      console.log(`📡 EventEmitter: 发射事件 "${event}"，监听器数量: ${this.events[event]?.length || 0}`);
+    }
     if (this.events[event]) {
       this.events[event].forEach((listener) => listener(...args));
     }
@@ -89,58 +88,17 @@ class EventEmitter {
   }
 }
 
-/**
- * 同步原语 - 基于文章中的Semaphore实现
- *
- * 信号量用于控制同时访问资源的数量，确保不会超过最大并发数。
- * 在本线程池中主要用于内部资源管理和并发控制。
- *
- * 核心原理：
- * - acquire(): 获取许可，如果没有可用许可则等待
- * - release(): 释放许可，唤醒等待的请求
- */
-class Semaphore {
-  private current = 0; // 当前已获取的许可数
-  private queue: Array<() => void> = []; // 等待队列
-
-  constructor(private maxConcurrent: number = 1) {}
-
-  /**
-   * 获取许可
-   * 如果当前许可数未达到最大值，立即返回
-   * 否则进入等待队列
-   */
-  async acquire(): Promise<void> {
-    if (this.current < this.maxConcurrent) {
-      this.current++;
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((resolve) => {
-      this.queue.push(resolve);
-    });
-  }
-
-  /**
-   * 释放许可
-   * 减少当前许可数，并唤醒等待队列中的下一个请求
-   */
-  release(): void {
-    this.current--;
-    if (this.queue.length > 0 && this.current < this.maxConcurrent) {
-      this.current++;
-      const next = this.queue.shift();
-      next?.();
-    }
-  }
-}
+// Semaphore 类已移除 - 遵循 YAGNI 原则，线程池本身已提供并发控制
 
 /**
- * 消息序列化器
- *
- * 处理主线程与Worker线程之间的消息传递，特别是Transferable对象的处理。
- * Transferable对象（如ArrayBuffer、MessagePort）可以在线程间零拷贝传输，
- * 提高性能并避免数据序列化/反序列化的开销。
+ * 类型安全的消息序列化器
+ * 
+ * 使用泛型提供类型安全的Worker消息序列化功能，确保：
+ * 1. 消息结构可预测
+ * 2. 类型信息不丢失
+ * 3. Transferable对象正确处理
+ * 4. 编译时类型检查
+ * 5. 保持通用性，不包含业务逻辑
  */
 class MessageSerializer {
   /**
@@ -148,7 +106,7 @@ class MessageSerializer {
    * @param obj 要检查的对象
    * @returns 是否为Transferable对象
    */
-  static isTransferable(obj: any): boolean {
+  static isTransferable(obj: unknown): obj is Transferable {
     return obj instanceof ArrayBuffer || obj instanceof MessagePort;
   }
 
@@ -157,10 +115,10 @@ class MessageSerializer {
    * @param obj 要扫描的对象
    * @returns 找到的所有Transferable对象数组
    */
-  static findTransferables(obj: any): Transferable[] {
+  static findTransferables(obj: unknown): Transferable[] {
     const transferables = new Set<Transferable>();
 
-    function scan(item: any): void {
+    function scan(item: unknown): void {
       if (!item || typeof item !== "object") return;
 
       if (MessageSerializer.isTransferable(item)) {
@@ -169,11 +127,15 @@ class MessageSerializer {
       }
 
       if (Array.isArray(item)) {
-        item.forEach(scan);
+        (item as unknown[]).forEach(scan);
         return;
       }
 
-      Object.values(item).forEach(scan);
+      if (item && typeof item === "object" && item !== null) {
+        for (const value of Object.values(item)) {
+          scan(value);
+        }
+      }
     }
 
     scan(obj);
@@ -181,32 +143,39 @@ class MessageSerializer {
   }
 
   /**
-   * 准备消息用于传输
+   * 类型安全的消息传输准备
+   * 
    * @param message 要传输的消息
-   * @returns 包含消息和可传输对象列表的对象
+   * @returns 包含消息和可传输对象列表的传输结果
+   * 
+   * 设计原则：
+   * - 类型安全：保持原始消息的类型信息
+   * - 性能优化：自动检测和处理Transferable对象
+   * - 结构可预测：返回结果结构明确
+   * - 通用性：不包含特定业务逻辑
    */
-  static prepareForTransfer(message: any): { message: any; transferables: Transferable[] } {
+  static prepareForTransfer<T>(message: T): { message: T; transferables: Transferable[] } {
     const transferables = this.findTransferables(message);
-    return { message, transferables };
+    return { 
+      message, 
+      transferables 
+    };
   }
 }
 
 /**
- * 模拟任务类型 - 简化后与Worker实现匹配
+ * 通用任务类型 - 使用泛型保持类型安全
+ * 
+ * 设计原则：
+ * - 类型安全：通过泛型保持payload类型信息
+ * - 通用性：不包含特定业务逻辑
+ * - 可扩展性：支持任意任务类型
+ * - 可预测性：任务结构明确
  */
-type SimulationTaskType =
-  | "start_simulation" // 启动战斗模拟
-  | "stop_simulation" // 停止模拟
-  | "pause_simulation" // 暂停模拟
-  | "resume_simulation"; // 恢复模拟
-
-/**
- * 任务接口 - 简化版，专注于战斗模拟
- */
-interface SimulationTask {
+interface Task<TType extends string = string, TPayload = unknown> {
   id: string; // 任务唯一标识
-  type: SimulationTaskType; // 任务类型
-  payload: SimulatorWithRelations | null; // 模拟器数据（仅start_simulation需要）
+  type: TType; // 任务类型（类型安全）
+  payload: TPayload; // 任务数据（类型安全）
   priority: "high" | "medium" | "low"; // 任务优先级
   timestamp: number; // 任务创建时间戳
   timeout: number; // 任务超时时间（毫秒）
@@ -227,17 +196,17 @@ interface SimulationTask {
  */
 class PriorityTaskQueue {
   private queues = {
-    high: [] as SimulationTask[], // 高优先级队列
-    medium: [] as SimulationTask[], // 中优先级队列
-    low: [] as SimulationTask[], // 低优先级队列
+    high: [] as Task<string, unknown>[], // 高优先级队列
+    medium: [] as Task<string, unknown>[], // 中优先级队列
+    low: [] as Task<string, unknown>[], // 低优先级队列
   };
 
   /**
    * 将任务加入队列
    * @param task 要加入的任务
    */
-  enqueue(task: SimulationTask): void {
-    this.queues[task.priority].push(task);
+  enqueue(task: Task<string, unknown>): void {
+    this.queues[task.priority].push(task); // 添加到对应优先级队列末尾
   }
 
   /**
@@ -245,13 +214,13 @@ class PriorityTaskQueue {
    * 按优先级顺序：high -> medium -> low
    * @returns 下一个要执行的任务，如果队列为空则返回null
    */
-  dequeue(): SimulationTask | null {
+  dequeue(): Task<string, unknown> | null {
     for (const priority of ["high", "medium", "low"] as const) {
       if (this.queues[priority].length > 0) {
-        return this.queues[priority].shift() || null;
+        return this.queues[priority].shift() || null; // 从队列头部取出任务
       }
     }
-    return null;
+    return null; // 所有队列都为空
   }
 
   /**
@@ -259,8 +228,8 @@ class PriorityTaskQueue {
    * 主要用于任务重试，确保重试任务能够优先执行
    * @param task 要添加的任务
    */
-  unshift(task: SimulationTask): void {
-    this.queues[task.priority].unshift(task);
+  unshift(task: Task<string, unknown>): void {
+    this.queues[task.priority].unshift(task); // 添加到队列头部
   }
 
   /**
@@ -268,7 +237,7 @@ class PriorityTaskQueue {
    * @returns 是否有任务在队列中
    */
   hasTask(): boolean {
-    return Object.values(this.queues).some((queue) => queue.length > 0);
+    return Object.values(this.queues).some((queue) => queue.length > 0); // 检查任意队列是否有任务
   }
 
   /**
@@ -276,97 +245,85 @@ class PriorityTaskQueue {
    * @returns 所有优先级队列的任务总数
    */
   size(): number {
-    return Object.values(this.queues).reduce((sum, queue) => sum + queue.length, 0);
+    return Object.values(this.queues).reduce((sum, queue) => sum + queue.length, 0); // 计算所有队列的任务总数
   }
 }
 
-// Worker指标
+// Worker性能指标
 interface WorkerMetrics {
-  tasksCompleted: number;
-  errors: number;
-  avgProcessingTime: number;
-  lastActive: number;
-  totalProcessingTime: number;
+  tasksCompleted: number; // 已完成任务数
+  errors: number; // 错误次数
+  avgProcessingTime: number; // 平均处理时间
+  lastActive: number; // 最后活跃时间
+  totalProcessingTime: number; // 总处理时间
 }
 
 // Worker包装器
 interface WorkerWrapper {
-  worker: Worker;
-  port: MessagePort;
-  busy: boolean;
-  id: string;
-  lastUsed: number;
-  metrics: WorkerMetrics;
+  worker: Worker; // Web Worker实例
+  port: MessagePort; // 通信端口
+  busy: boolean; // 是否忙碌
+  id: string; // Worker唯一标识
+  lastUsed: number; // 最后使用时间
+  metrics: WorkerMetrics; // 性能指标
 }
 
 // 池健康指标
 export interface PoolHealthMetrics {
-  activeWorkers: number;
-  totalWorkers: number;
-  queueLength: number;
-  pendingTasks: number;
+  activeWorkers: number; // 活跃Worker数量
+  totalWorkers: number; // 总Worker数量
+  queueLength: number; // 队列长度
+  pendingTasks: number; // 待处理任务数
   workerMetrics: Array<{
-    workerId: string;
-    tasksCompleted: number;
-    errors: number;
-    avgProcessingTime: number;
-    lastActive: number;
+    workerId: string; // Worker标识
+    tasksCompleted: number; // 已完成任务数
+    errors: number; // 错误次数
+    avgProcessingTime: number; // 平均处理时间
+    lastActive: number; // 最后活跃时间
   }>;
-  // 批量执行状态
-  batchExecution?: {
-    isExecuting: boolean;
-    totalTasks: number;
-    submittedTasks: number;
-    completedTasks: number;
-    currentBatchIndex: number;
-    totalBatches: number;
-    progress: number; // 完成百分比
-  };
 }
 
 // 配置接口
-export interface SimulationConfig {
-  maxWorkers?: number;
-  taskTimeout?: number;
-  idleTimeout?: number;
-  enableBatching?: boolean;
-  batchSize?: number;
-  batchDelay?: number;
-  maxRetries?: number;
-  maxQueueSize?: number;
-  monitorInterval?: number;
+export interface PoolConfig {
+  maxWorkers?: number; // 最大Worker数量
+  taskTimeout?: number; // 任务超时时间
+  idleTimeout?: number; // 空闲超时时间
+  maxRetries?: number; // 最大重试次数
+  maxQueueSize?: number; // 最大队列大小
+  monitorInterval?: number; // 监控间隔
 }
 
 /**
- * 增强版模拟器线程池
+ * 通用线程池
  * 
- * 专门用于战斗模拟计算，基于XState模拟器引擎和Web Worker技术：
+ * 基于 Artem Khrienov 设计原则的通用线程池实现：
  * 
  * 核心功能：
- * - 启动/停止/暂停/恢复战斗模拟
+ * - 通用任务执行和调度
  * - 任务重试机制和优先级队列
  * - 性能监控与指标收集
  * - 事件驱动的状态管理
  * - 优雅关闭和资源清理
  * 
  * 架构设计：
- * - 采用双层消息传递机制（Worker + MessageChannel）
+ * - 采用单层 MessageChannel 通信机制
  * - 实现响应式任务分配（Node.js ThreadPool模式）
  * - 支持多Worker并行处理
  * - 提供类型安全的API接口
  * 
  * 设计原则：
- * - 高内聚低耦合：每个组件职责单一
- * - 可扩展性：支持动态Worker数量调整
+ * - 遵循 KISS 原则：保持设计简洁
+ * - 遵循 YAGNI 原则：只实现当前需要的功能
+ * - 遵循 SOLID 原则：单一职责，开闭原则
  * - 容错性：Worker故障自动替换
  * - 性能优化：零拷贝传输和优先级调度
  * 
  * 使用场景：
- * - 实时战斗模拟控制器
- * - 批量计算任务处理
- * - 高性能游戏引擎计算
+ * - 通用计算任务处理
+ * - 高性能并行计算
+ * - 实时任务调度
  */
-export class SimulatorPool extends EventEmitter {
+export class WorkerPool extends EventEmitter {
   // ==================== 私有属性 ====================
   
   /** Worker包装器数组 - 管理所有活跃的Worker实例 */
@@ -382,15 +339,15 @@ export class SimulatorPool extends EventEmitter {
   private taskMap = new Map<
     string,
     {
-      resolve: (result: SimulationResult) => void;
-      reject: (error: Error) => void;
-      timeout: NodeJS.Timeout;
-      task: SimulationTask;
+      resolve: (result: any) => void; // Promise解析函数
+      reject: (error: Error) => void; // Promise拒绝函数
+      timeout: NodeJS.Timeout; // 超时定时器
+      task: Task<string, unknown>; // 任务对象
     }
   >();
 
   /** 线程池配置 - 运行时不可变，确保配置一致性 */
-  private readonly config: Required<SimulationConfig>;
+  private readonly config: Required<PoolConfig>;
   
   /** 资源清理定时器 - 定期清理超时任务和空闲Worker */
   private cleanupInterval?: NodeJS.Timeout;
@@ -401,26 +358,13 @@ export class SimulatorPool extends EventEmitter {
   /** 池状态标志 - 控制是否接受新任务 */
   private accepting = true;
 
-  /** 批量执行状态跟踪 - 用于批量任务的进度监控 */
-  private batchExecutionState = {
-    isExecuting: false,      // 是否正在执行批量任务
-    totalTasks: 0,           // 总任务数
-    submittedTasks: 0,       // 已提交任务数
-    completedTasks: 0,       // 已完成任务数
-    currentBatchIndex: 0,    // 当前批次索引
-    totalBatches: 0,         // 总批次数
-  };
-
   /** Worker初始化状态 - 控制延迟初始化 */
   private workersInitialized = false;
-  
-  /** Worker就绪状态集合 - 跟踪哪些Worker已完成初始化并准备就绪 */
-  private workersReady = new Set<string>();
 
   /**
    * 构造函数
    * 
-   * 初始化模拟器线程池，设置配置参数并启动后台服务
+   * 初始化通用线程池，设置配置参数并启动后台服务
    * 
    * @param config 线程池配置参数
    * 
@@ -429,21 +373,18 @@ export class SimulatorPool extends EventEmitter {
    * - 配置验证：确保所有配置参数有效
    * - 后台服务：启动监控和清理进程，确保系统健康
    */
-  constructor(config: SimulationConfig = {}) {
+  constructor(config: PoolConfig = {}) {
     super();
     this.validateConfig(config);
 
     // 合并用户配置和默认配置
-    // 应用YAGNI原则：只实现当前需要的功能
+    // 应用KISS原则：保持配置简单
     this.config = {
-      maxWorkers: config.maxWorkers || 1,        // 默认单Worker，适合实时模拟
-      taskTimeout: config.taskTimeout || 30000,  // 30秒超时，平衡响应性和稳定性
-      idleTimeout: config.idleTimeout || 300000, // 5分钟空闲超时，节省资源
-      enableBatching: config.enableBatching || true,  // 默认启用批处理
-      batchSize: config.batchSize || 10,         // 每批10个任务，优化吞吐量
-      batchDelay: config.batchDelay || 16,       // 16ms延迟，约60FPS
-      maxRetries: config.maxRetries || 3,        // 最多重试3次，平衡可靠性和性能
-      maxQueueSize: config.maxQueueSize || 1000, // 队列上限1000，防止内存溢出
+      maxWorkers: config.maxWorkers || 1,        // 默认单Worker
+      taskTimeout: config.taskTimeout || 30000,  // 30秒超时
+      idleTimeout: config.idleTimeout || 300000, // 5分钟空闲超时
+      maxRetries: config.maxRetries || 3,        // 最多重试3次
+      maxQueueSize: config.maxQueueSize || 1000, // 队列上限1000
       monitorInterval: config.monitorInterval || 5000, // 5秒监控间隔
       ...config, // 用户配置覆盖默认值
     };
@@ -472,25 +413,25 @@ export class SimulatorPool extends EventEmitter {
    * - maxRetries: 必须为非负整数
    * - maxQueueSize: 必须为正整数
    */
-  private validateConfig(config: SimulationConfig): void {
+  private validateConfig(config: PoolConfig): void {
     // 验证Worker数量
     if (config.maxWorkers !== undefined && (config.maxWorkers < 1 || !Number.isInteger(config.maxWorkers))) {
-      throw new Error("Invalid maxWorkers: must be a positive integer");
+      throw new Error("无效的maxWorkers：必须为正整数");
     }
 
     // 验证任务超时时间
     if (config.taskTimeout !== undefined && config.taskTimeout <= 0) {
-      throw new Error("Invalid taskTimeout: must be positive");
+      throw new Error("无效的taskTimeout：必须为正数");
     }
 
     // 验证重试次数
     if (config.maxRetries !== undefined && (config.maxRetries < 0 || !Number.isInteger(config.maxRetries))) {
-      throw new Error("Invalid maxRetries: must be a non-negative integer");
+      throw new Error("无效的maxRetries：必须为非负整数");
     }
 
     // 验证队列大小
     if (config.maxQueueSize !== undefined && (config.maxQueueSize < 1 || !Number.isInteger(config.maxQueueSize))) {
-      throw new Error("Invalid maxQueueSize: must be a positive integer");
+      throw new Error("无效的maxQueueSize：必须为正整数");
     }
   }
 
@@ -527,7 +468,7 @@ export class SimulatorPool extends EventEmitter {
    * @returns WorkerWrapper 新创建的Worker包装器
    * 
    * 设计要点：
-   * - 双层通信：Worker直接消息 + MessageChannel
+   * - 单层通信：统一使用MessageChannel
    * - 唯一标识：每个Worker有独立的ID
    * - 性能监控：跟踪任务完成情况和处理时间
    * - 错误处理：Worker故障时自动替换
@@ -547,11 +488,11 @@ export class SimulatorPool extends EventEmitter {
       id: createId(),       // 生成唯一ID
       lastUsed: Date.now(), // 记录最后使用时间
       metrics: {
-        tasksCompleted: 0,
-        errors: 0,
-        avgProcessingTime: 0,
-        lastActive: Date.now(),
-        totalProcessingTime: 0,
+        tasksCompleted: 0, // 已完成任务数
+        errors: 0, // 错误次数
+        avgProcessingTime: 0, // 平均处理时间
+        lastActive: Date.now(), // 最后活跃时间
+        totalProcessingTime: 0, // 总处理时间
       },
     };
 
@@ -564,14 +505,12 @@ export class SimulatorPool extends EventEmitter {
       this.handleWorkerMessage(wrapper, event);
     };
 
-    // 设置Worker直接消息处理 - 用于系统消息（如worker_ready）
-    worker.onmessage = (event) => {
-      this.handleWorkerDirectMessage(wrapper, event);
-    };
+    // 统一使用 MessageChannel 处理所有消息
+    // 遵循 Artem 的设计原则：单层通信
 
     // 设置错误处理
     worker.onerror = (error) => {
-      console.error(`Worker ${wrapper.id} error:`, error);
+      console.error(`Worker ${wrapper.id} 错误:`, error);
       this.handleWorkerError(wrapper, error);
     };
 
@@ -580,44 +519,6 @@ export class SimulatorPool extends EventEmitter {
     return wrapper;
   }
 
-  /**
-   * 处理Worker直接消息（系统消息）
-   *
-   * 处理通过Worker直接通信通道发送的系统级消息
-   * 这些消息不涉及任务执行，主要用于状态同步和事件通知
-   *
-   * @param worker Worker包装器
-   * @param event 消息事件
-   * 
-   * 支持的消息类型：
-   * - worker_ready: Worker初始化完成，准备接收任务
-   * - engine_state_update: 游戏引擎状态变化事件
-   * - 其他系统消息：用于调试和扩展
-   */
-  private handleWorkerDirectMessage(worker: WorkerWrapper, event: MessageEvent): void {
-    // 处理Worker就绪消息
-    if (event.data && event.data.type === "worker_ready") {
-      console.log(`Worker ${worker.id} is ready`);
-      this.workersReady.add(worker.id); // 标记Worker为已准备好
-      return;
-    }
-
-    // 处理引擎状态变化事件
-    // 这是实时模拟的关键功能，用于状态同步
-    if (event.data && event.data.type === "engine_state_update") {
-      // console.log(`Worker ${worker.id} 引擎状态变化:`, event.data.event);
-      
-      // 转发给池的事件监听器，实现事件驱动架构
-      this.emit("engine_state_update", {
-        workerId: worker.id,
-        event: event.data.event
-      });
-      return;
-    }
-
-    // 处理其他系统消息（用于调试和扩展）
-    console.log(`Worker ${worker.id} direct message:`, event.data);
-  }
 
   /**
    * 处理Worker返回的消息（通过MessageChannel）
@@ -639,9 +540,12 @@ export class SimulatorPool extends EventEmitter {
    * - 事件驱动：通过事件通知外部系统状态变化
    */
   private handleWorkerMessage(worker: WorkerWrapper, event: MessageEvent): void {
-    const { taskId, result, error, metrics } = event.data;
-
-    // 获取任务回调信息
+    const { taskId, result, error, metrics, type, data } = event.data;
+    
+    // 发射原始消息事件，让子类处理业务逻辑
+    this.emit('worker-message', { worker, event: { taskId, result, error, metrics, type, data } });
+    
+    // 处理任务结果
     const taskCallback = this.taskMap.get(taskId);
     if (!taskCallback) {
       // 任务不存在（可能已超时或被清理），忽略此消息
@@ -672,11 +576,13 @@ export class SimulatorPool extends EventEmitter {
     } else {
       // 任务执行成功，返回结果和性能指标
       this.taskMap.delete(taskId);
-      resolve({
+      const taskResult = {
         success: true,
         data: result,
         metrics,
-      });
+      } as TaskExecutionResult;
+      
+      resolve(taskResult);
       this.emit("task-completed", { taskId, result, metrics });
     }
 
@@ -722,7 +628,6 @@ export class SimulatorPool extends EventEmitter {
     const index = this.workers.indexOf(worker);
     if (index !== -1) {
       this.workers.splice(index, 1);
-      this.workersReady.delete(worker.id); // 清理ready状态
 
       if (this.accepting) {
         const newWorker = this.createWorker();
@@ -736,7 +641,6 @@ export class SimulatorPool extends EventEmitter {
     const index = this.workers.indexOf(worker);
     if (index !== -1) {
       this.workers.splice(index, 1);
-      this.workersReady.delete(worker.id); // 清理ready状态
       try {
         worker.worker.terminate();
       } catch (error) {
@@ -751,7 +655,7 @@ export class SimulatorPool extends EventEmitter {
     }
   }
 
-  private getWorkerForTask(task: SimulationTask): WorkerWrapper | null {
+  private getWorkerForTask(task: Task<string, unknown>): WorkerWrapper | null {
     // 简化的实现，实际可能需要更复杂的逻辑
     return this.workers.find((w) => w.busy) || null;
   }
@@ -771,50 +675,18 @@ export class SimulatorPool extends EventEmitter {
   }
 
   /**
-   * 启动战斗模拟
-   */
-  async startSimulation(
-    simulatorData: SimulatorWithRelations,
-    priority: SimulationTask["priority"] = "high",
-  ): Promise<SimulationResult> {
-    this.ensureWorkersInitialized();
-    return await this.executeTask("start_simulation", simulatorData, priority);
-  }
-
-  /**
-   * 停止战斗模拟
-   */
-  async stopSimulation(priority: SimulationTask["priority"] = "medium"): Promise<SimulationResult> {
-    return await this.executeTask("stop_simulation", null, priority);
-  }
-
-  /**
-   * 暂停战斗模拟
-   */
-  async pauseSimulation(priority: SimulationTask["priority"] = "medium"): Promise<SimulationResult> {
-    return await this.executeTask("pause_simulation", null, priority);
-  }
-
-  /**
-   * 恢复战斗模拟
-   */
-  async resumeSimulation(priority: SimulationTask["priority"] = "medium"): Promise<SimulationResult> {
-    return await this.executeTask("resume_simulation", null, priority);
-  }
-
-  /**
-   * 执行模拟任务
+   * 执行通用任务
    */
   async executeTask(
-    type: SimulationTaskType,
-    payload: SimulatorWithRelations | null,
-    priority: SimulationTask["priority"] = "medium",
-  ): Promise<SimulationResult> {
+    type: string,
+    payload: any,
+    priority: Task["priority"] = "medium",
+  ): Promise<TaskExecutionResult> {
     if (!this.accepting) {
       throw new Error("Pool is shutting down");
     }
 
-    const task: SimulationTask = {
+    const task: Task = {
       id: createId(),
       type,
       payload,
@@ -838,7 +710,7 @@ export class SimulatorPool extends EventEmitter {
    * 4. 实现完整的任务生命周期管理
    *
    * @param task 要处理的任务
-   * @returns Promise<SimulationResult> 任务执行结果
+   * @returns Promise<TaskExecutionResult> 任务执行结果
    * 
    * 设计原则：
    * - 响应式分配：优先立即执行，避免不必要的排队
@@ -846,7 +718,7 @@ export class SimulatorPool extends EventEmitter {
    * - 容错机制：超时重试和错误恢复
    * - 资源管理：防止内存溢出和资源泄漏
    */
-  private async processTask(task: SimulationTask): Promise<SimulationResult> {
+  private async processTask(task: Task<string, unknown>): Promise<TaskExecutionResult> {
     return new Promise((resolve, reject) => {
       // 设置任务超时处理机制
       const timeout = setTimeout(() => {
@@ -948,33 +820,27 @@ export class SimulatorPool extends EventEmitter {
    * - 响应性：即使失败也要继续处理其他任务
    * - 性能优化：使用Transferable对象实现零拷贝传输
    */
-  private assignTaskToWorker(worker: WorkerWrapper, task: SimulationTask): void {
+  private assignTaskToWorker(worker: WorkerWrapper, task: Task<string, unknown>): void {
     // 标记Worker为忙碌状态，防止重复分配
     worker.busy = true;
 
     // 准备发送给Worker的消息格式（与simulation.worker.ts匹配）
     // 应用类型安全原则，确保消息格式正确
     let workerMessage;
-    if (task.type === "start_simulation" && task.payload) {
-      workerMessage = {
-        type: "start_simulation" as const,
-        data: task.payload,
-      };
-    } else {
-      workerMessage = {
-        type: task.type,
-      };
-    }
 
     // 准备消息传输，处理Transferable对象
     // 应用性能优化原则，实现零拷贝传输
-    const { message, transferables } = MessageSerializer.prepareForTransfer({
+    const workerMessageWithTaskId = {
       taskId: task.id,
-      ...workerMessage,
-    });
+      
+      type: task.type,
+      data: task.payload,
+    };
+    const { message, transferables } = MessageSerializer.prepareForTransfer(workerMessageWithTaskId);
 
     try {
       // 通过MessageChannel发送任务到Worker
+      console.log("🔄 SimulatorPool: 发送任务到Worker", message);
       worker.port.postMessage(message, transferables);
     } catch (error) {
       // 发送失败，释放Worker状态
@@ -1005,76 +871,12 @@ export class SimulatorPool extends EventEmitter {
     }
   }
 
-  /**
-   * 批量执行模拟任务（简化版）
-   * 战斗模拟通常不需要批处理，但保留接口以兼容现有代码
-   */
-  async executeBatch(
-    tasks: Array<{
-      type: SimulationTaskType;
-      payload: SimulatorWithRelations | null;
-      priority?: SimulationTask["priority"];
-    }>,
-  ): Promise<SimulationResult[]> {
-    // 初始化批量执行状态
-    const batchSize = Math.min(this.config.maxWorkers * 2, 20);
-    const totalBatches = Math.ceil(tasks.length / batchSize);
-
-    this.batchExecutionState = {
-      isExecuting: true,
-      totalTasks: tasks.length,
-      submittedTasks: 0,
-      completedTasks: 0,
-      currentBatchIndex: 0,
-      totalBatches,
-    };
-
-    console.log(`🚀 开始批量执行: ${tasks.length}个任务，分${totalBatches}批，每批${batchSize}个`);
-
-    const results: SimulationResult[] = [];
-
-    try {
-      for (let i = 0; i < tasks.length; i += batchSize) {
-        const batch = tasks.slice(i, i + batchSize);
-        this.batchExecutionState.currentBatchIndex = Math.floor(i / batchSize) + 1;
-        this.batchExecutionState.submittedTasks = Math.min(i + batchSize, tasks.length);
-
-        console.log(
-          `📦 处理批次 ${this.batchExecutionState.currentBatchIndex}/${totalBatches}，提交${batch.length}个任务`,
-        );
-
-        const batchResults = await Promise.all(
-          batch.map(async (task) => {
-            const result = await this.executeTask(task.type, task.payload, task.priority);
-            this.batchExecutionState.completedTasks++;
-            return result;
-          }),
-        );
-        results.push(...batchResults);
-
-        console.log(
-          `✅ 批次 ${this.batchExecutionState.currentBatchIndex} 完成，总进度: ${this.batchExecutionState.completedTasks}/${tasks.length}`,
-        );
-
-        // 小延迟，让Worker有时间处理
-        if (i + batchSize < tasks.length) {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-      }
-    } finally {
-      // 重置批量执行状态
-      this.batchExecutionState.isExecuting = false;
-      console.log(`🎉 批量执行完成: ${results.length}/${tasks.length}个任务`);
-    }
-
-    return results;
-  }
 
   /**
    * 获取池状态
    */
   getStatus(): PoolHealthMetrics {
-    const baseMetrics = {
+    return {
       activeWorkers: this.workers.filter((w) => w.busy).length,
       totalWorkers: this.workers.length,
       queueLength: this.taskQueue.size(),
@@ -1087,274 +889,6 @@ export class SimulatorPool extends EventEmitter {
         lastActive: w.metrics.lastActive,
       })),
     };
-
-    // 如果正在执行批量任务，添加批量执行状态
-    if (this.batchExecutionState.isExecuting) {
-      const progress =
-        this.batchExecutionState.totalTasks > 0
-          ? (this.batchExecutionState.completedTasks / this.batchExecutionState.totalTasks) * 100
-          : 0;
-
-      return {
-        ...baseMetrics,
-        batchExecution: {
-          isExecuting: true,
-          progress: Math.round(progress),
-          completedTasks: this.batchExecutionState.completedTasks,
-          totalTasks: this.batchExecutionState.totalTasks,
-          submittedTasks: this.batchExecutionState.submittedTasks,
-          currentBatchIndex: this.batchExecutionState.currentBatchIndex,
-          totalBatches: this.batchExecutionState.totalBatches,
-        },
-      };
-    }
-
-    return {
-      ...baseMetrics,
-      batchExecution: {
-        isExecuting: false,
-        progress: 0,
-        completedTasks: 0,
-        totalTasks: 0,
-        submittedTasks: 0,
-        currentBatchIndex: 0,
-        totalBatches: 0,
-      },
-    };
-  }
-
-  // ==================== 控制器功能 ====================
-
-  /**
-   * 获取成员数据
-   * 控制器通过此方法获取指定或当前模拟的成员信息
-   * 
-   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
-   * @returns 成员数据数组
-   */
-  async getMembers(workerId?: string): Promise<MemberSerializeData[]> {
-    try {
-      this.ensureWorkersInitialized();
-
-      // 根据workerId查找指定的worker，或使用第一个可用的worker
-      let targetWorker: WorkerWrapper | undefined;
-      
-      if (workerId) {
-        // 查找指定的worker
-        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
-        if (!targetWorker) {
-          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
-          return [];
-        }
-      } else {
-        // 使用第一个可用的worker（保持向后兼容）
-        targetWorker = this.workers.find((w) => w.worker && w.port);
-        if (!targetWorker) {
-        console.warn("SimulatorPool: 没有找到可用的worker");
-        return [];
-        }
-      }
-
-      // console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取成员数据`);
-
-      // 发送获取成员数据的请求
-      const taskId = createId();
-      const result = await new Promise<{ 
-        success: boolean; 
-        data?: MemberSerializeData[]; 
-        error?: string 
-      }>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Get members timeout"));
-        }, 5000);
-
-        // 通过MessagePort发送获取成员数据的消息
-        targetWorker!.port.postMessage({
-          type: "get_members",
-          taskId,
-        });
-
-        // 监听响应
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data && event.data.taskId === taskId) {
-            clearTimeout(timeout);
-            targetWorker!.port.removeEventListener("message", handleMessage);
-            // 兼容worker返回格式
-            if (event.data.error) {
-              resolve({ success: false, error: event.data.error });
-            } else {
-              resolve(event.data.result || { success: false, error: "No result data" });
-            }
-          }
-        };
-
-        targetWorker!.port.addEventListener("message", handleMessage);
-      });
-
-      if (result.success) {
-        // console.log(`SimulatorPool: 成功获取成员数据: ${result.data?.length || 0} 个成员 (Worker: ${targetWorker.id})`);
-        return result.data || [];
-      } else {
-        console.error(`SimulatorPool: 获取成员数据失败: ${result.error} (Worker: ${targetWorker.id})`);
-        return [];
-      }
-    } catch (error) {
-      console.error("SimulatorPool: 获取成员数据异常:", error);
-      return [];
-    }
-  }
-
-  /**
-   * 获取引擎状态
-   * 控制器通过此方法获取指定或当前引擎的状态信息
-   * 
-   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
-   * @returns 引擎状态信息
-   */
-  async getEngineStats(workerId?: string): Promise<{
-    success: boolean;
-    data?: EngineStats;
-    error?: string;
-  }> {
-    try {
-      this.ensureWorkersInitialized();
-
-      // 根据workerId查找指定的worker，或使用第一个可用的worker
-      let targetWorker: WorkerWrapper | undefined;
-      
-      if (workerId) {
-        // 查找指定的worker
-        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
-        if (!targetWorker) {
-          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
-          return { success: false, error: `No worker found with ID: ${workerId}` };
-        }
-      } else {
-        // 使用第一个可用的worker（保持向后兼容）
-        targetWorker = this.workers.find((w) => w.worker && w.port);
-        if (!targetWorker) {
-        console.warn("SimulatorPool: 没有找到可用的worker");
-        return { success: false, error: "No available worker" };
-        }
-      }
-
-      console.log(`🔍 [SimulatorPool] 使用worker ${targetWorker.id} 获取引擎状态`);
-
-      const taskId = createId();
-      const result = await new Promise<{ 
-        success: boolean; 
-        data?: EngineStats; 
-        error?: string 
-      }>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Get engine stats timeout"));
-        }, 5000);
-
-        targetWorker!.port.postMessage({
-          type: "get_stats",
-          taskId,
-        });
-
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data && event.data.taskId === taskId) {
-            clearTimeout(timeout);
-            targetWorker!.port.removeEventListener("message", handleMessage);
-            if (event.data.error) {
-              resolve({ success: false, error: event.data.error });
-            } else {
-              resolve(event.data.result || { success: false, error: "No result data" });
-            }
-          }
-        };
-
-        targetWorker!.port.addEventListener("message", handleMessage);
-      });
-
-      return result;
-    } catch (error) {
-      console.error("SimulatorPool: 获取引擎状态异常:", error);
-      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-    }
-  }
-
-  /**
-   * 发送意图消息
-   * 控制器通过此方法向指定或当前Worker发送意图消息
-   * 
-   * @param intent 意图消息
-   * @param workerId 可选的worker ID，如果不指定则使用第一个可用的worker
-   * @returns 发送结果
-   */
-  async sendIntent(intent: IntentMessage, workerId?: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      this.ensureWorkersInitialized();
-
-      // 根据workerId查找指定的worker，或使用第一个可用的worker
-      let targetWorker: WorkerWrapper | undefined;
-      
-      if (workerId) {
-        // 查找指定的worker
-        targetWorker = this.workers.find((w) => w.id === workerId && w.worker && w.port);
-        if (!targetWorker) {
-          console.warn(`SimulatorPool: 没有找到指定的worker: ${workerId}`);
-          return { success: false, error: `No worker found with ID: ${workerId}` };
-        }
-      } else {
-        // 使用第一个可用的worker（保持向后兼容）
-        targetWorker = this.workers.find((w) => w.worker && w.port);
-        if (!targetWorker) {
-        console.warn("SimulatorPool: 没有找到可用的worker");
-        return { success: false, error: "No available worker" };
-        }
-      }
-
-      console.log(`SimulatorPool: 使用worker ${targetWorker.id} 发送意图消息`);
-      console.log(`SimulatorPool: 意图数据:`, intent);
-
-      // 发送意图消息
-      const taskId = createId();
-      const result = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Send intent timeout"));
-        }, 5000);
-
-        // 通过MessagePort发送意图消息
-        const message = {
-          type: "send_intent",
-          taskId,
-          data: intent,
-        };
-        console.log(`SimulatorPool: 发送消息:`, message);
-        targetWorker!.port.postMessage(message);
-
-        // 监听响应
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data && event.data.taskId === taskId) {
-            clearTimeout(timeout);
-            targetWorker!.port.removeEventListener("message", handleMessage);
-            // 兼容worker返回格式
-            if (event.data.error) {
-              resolve({ success: false, error: event.data.error });
-            } else {
-              resolve(event.data.result || { success: false, error: "No result data" });
-            }
-          }
-        };
-
-        targetWorker!.port.addEventListener("message", handleMessage);
-      });
-
-      if (result.success) {
-        console.log(`SimulatorPool: 成功发送意图消息 (Worker: ${targetWorker.id})`);
-      } else {
-        console.error(`SimulatorPool: 发送意图消息失败: ${result.error} (Worker: ${targetWorker.id})`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error("SimulatorPool: 发送意图消息异常:", error);
-      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-    }
   }
 
   /**
@@ -1364,19 +898,7 @@ export class SimulatorPool extends EventEmitter {
   isReady(): boolean {
     // 确保workers已初始化
     this.ensureWorkersInitialized();
-    const isReady = this.workersInitialized && this.workers.length > 0 && this.workersReady.size > 0;
-    
-    // 调试信息
-    // if (!isReady) {
-    //   console.log('SimulatorPool: Worker未就绪:', {
-    //     workersInitialized: this.workersInitialized,
-    //     workersLength: this.workers.length,
-    //     workersReadySize: this.workersReady.size,
-    //     workersReadyIds: Array.from(this.workersReady)
-    //   });
-    // }
-    
-    return isReady;
+    return this.workersInitialized && this.workers.length > 0;
   }
 
   /**
@@ -1412,7 +934,6 @@ export class SimulatorPool extends EventEmitter {
     busy: boolean;
     lastUsed: number;
     metrics: WorkerMetrics;
-    isReady: boolean;
   } | null {
     const worker = this.workers.find(w => w.id === workerId);
     if (!worker) {
@@ -1424,7 +945,6 @@ export class SimulatorPool extends EventEmitter {
       busy: worker.busy,
       lastUsed: worker.lastUsed,
       metrics: worker.metrics,
-      isReady: this.workersReady.has(worker.id),
     };
   }
 
@@ -1535,7 +1055,6 @@ export class SimulatorPool extends EventEmitter {
     // 清理内存和状态
     // 应用状态一致性原则，确保所有状态被正确清理
     this.workers.length = 0;
-    this.workersReady.clear(); // 清理所有ready状态
     this.taskMap.clear();
 
     // 通知外部系统关闭完成
@@ -1543,22 +1062,120 @@ export class SimulatorPool extends EventEmitter {
   }
 }
 
-// 多线程模式 - 用于批量计算和并行处理
-export const BatchSimulatorPool = new SimulatorPool({
+// ==================== 模拟器专用扩展 ====================
+
+/**
+ * 模拟器线程池 - 基于通用 WorkerPool 的模拟器专用实现
+ * 
+ * 提供模拟器业务特定的 API，同时保持通用线程池的核心功能
+ */
+export class SimulatorPool extends WorkerPool {
+  constructor(config: PoolConfig = {}) {
+    super(config);
+    
+    // 设置模拟器专用的事件处理器
+    this.on('worker-message', (data: { worker: WorkerWrapper; event: any }) => {
+      const { type, data: eventData } = data.event;
+      
+      // 处理引擎状态更新事件
+      if (type === "engine_state_update") {
+        this.emit("engine_state_update", { workerId: data.worker.id, event: eventData });
+      } 
+      // 处理系统事件
+      else if (type === "system_event") {
+        this.emit("system_event", { workerId: data.worker.id, event: eventData });
+      }
+    });
+  }
+
+  /**
+   * 启动模拟
+   */
+  async startSimulation(simulatorData: SimulatorWithRelations): Promise<TaskExecutionResult> {
+    return this.executeTask("start_simulation", simulatorData, "high");
+  }
+
+  /**
+   * 停止模拟
+   */
+  async stopSimulation(): Promise<TaskExecutionResult> {
+    return this.executeTask("stop_simulation", null, "high");
+  }
+
+  /**
+   * 暂停模拟
+   */
+  async pauseSimulation(): Promise<TaskExecutionResult> {
+    return this.executeTask("pause_simulation", null, "medium");
+  }
+
+  /**
+   * 恢复模拟
+   */
+  async resumeSimulation(): Promise<TaskExecutionResult> {
+    return this.executeTask("resume_simulation", null, "medium");
+  }
+
+  /**
+   * 发送意图消息
+   */
+  async sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
+    const result = await this.executeTask("send_intent", intent, "high");
+    return {
+      success: result.success,
+      error: result.error
+    };
+  }
+
+  /**
+   * 获取成员信息
+   */
+  async getMembers(): Promise<MemberSerializeData[]> {
+    const result = await this.executeTask("get_members", null, "low");
+    console.log("🔍 SimulatorPool.getMembers: 原始结果:", result);
+    
+    // result.data 是 Worker 返回的 { success: true, data: members }
+    if (result.success && result.data && result.data.success && result.data.data) {
+      console.log("🔍 SimulatorPool.getMembers: 解析成功，成员数量:", result.data.data.length);
+      return result.data.data;
+    }
+    
+    console.log("🔍 SimulatorPool.getMembers: 解析失败，返回空数组");
+    return [];
+  }
+
+  /**
+   * 获取引擎统计信息
+   */
+  async getEngineStats(): Promise<{ success: boolean; data?: EngineStats; error?: string }> {
+    const result = await this.executeTask("get_stats", null, "low");
+    return {
+      success: result.success,
+      data: result.data,
+      error: result.error
+    };
+  }
+}
+
+// ==================== 实例导出 ====================
+
+// 实时模拟实例 - 单Worker，适合实时控制
+export const realtimeSimulatorPool = new SimulatorPool({
+  maxWorkers: 1, // 单Worker用于实时模拟
+  taskTimeout: 30000, // 实时模拟需要更快的响应
+  maxRetries: 1, // 实时模拟减少重试次数
+  maxQueueSize: 10, // 实时模拟减少队列大小
+  monitorInterval: 5000, // 实时模拟更频繁的监控
+});
+
+// 批量计算实例 - 多Worker，适合并行计算
+export const batchSimulatorPool = new SimulatorPool({
   maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 多Worker用于并行计算
   taskTimeout: 60000, // 增加超时时间，战斗模拟可能需要更长时间
-  enableBatching: false, // 战斗模拟通常不需要批处理
   maxRetries: 2, // 减少重试次数
   maxQueueSize: 100, // 减少队列大小
   monitorInterval: 10000, // 增加监控间隔
 });
 
-// 单线程模式 - 专门用于实时模拟控制器
-export const realtimeSimulatorPool = new SimulatorPool({
-  maxWorkers: 1, // 单Worker用于实时模拟
-  taskTimeout: 30000, // 实时模拟需要更快的响应
-  enableBatching: false, // 实时模拟不需要批处理
-  maxRetries: 1, // 实时模拟减少重试次数
-  maxQueueSize: 10, // 实时模拟减少队列大小
-  monitorInterval: 5000, // 实时模拟更频繁的监控
-});
+// 导出通用线程池类
+export default WorkerPool;

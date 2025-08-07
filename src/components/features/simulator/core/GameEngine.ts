@@ -16,7 +16,7 @@
 
 import type { TeamWithRelations } from "@db/repositories/team";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { MemberManager } from "./MemberManager";
+import { MemberManager, MemberManagerEntry } from "./MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
@@ -24,7 +24,7 @@ import { EventQueue } from "./EventQueue";
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
-import { MemberContext, MemberSerializeData } from "./Member";
+import Member, { MemberContext, MemberSerializeData } from "./Member";
 import { Snapshot } from "xstate";
 import { JSExpressionProcessor, type CompilationContext, type CompileResult } from "./expression/JSExpressionProcessor";
 // 容器不直接依赖具体成员类型
@@ -68,22 +68,6 @@ export interface EngineConfig {
 }
 
 /**
- * 引擎状态变化事件类型
- */
-export interface EngineStateChangeEvent {
-  type: 'engine_state_update';
-  timestamp: number;
-  engineState: {
-    currentFrame: number;
-    currentTime: number;
-    eventQueue: any[];
-    members: MemberSerializeData[];
-    stats: EngineStats;
-    state: EngineState;
-  };
-}
-
-/**
  * 引擎统计信息接口
  */
 export interface EngineStats {
@@ -93,8 +77,8 @@ export interface EngineStats {
   currentFrame: number;
   /** 运行时间（毫秒） */
   runTime: number;
-  /** 成员数量 */
-  memberCount: number;
+  /** 成员 */
+  members: MemberSerializeData[];
   /** 事件队列统计 */
   eventQueueStats: QueueStats;
   /** 帧循环统计 */
@@ -152,10 +136,6 @@ export class GameEngine {
   /** 帧循环 - 推进时间和调度事件 */
   private frameLoop: FrameLoop;
 
-
-
-
-
   /** 事件处理器工厂 - 创建和管理事件处理器 */
   private eventHandlerFactory: EventHandlerFactory;
 
@@ -170,7 +150,7 @@ export class GameEngine {
   // ==================== 事件系统 ====================
 
   /** 状态变化监听器列表 */
-  private stateChangeListeners: Array<(event: EngineStateChangeEvent) => void> = [];
+  private stateChangeListeners: Array<(event: EngineStats) => void> = [];
 
   /** 引擎状态 */
   private state: EngineState = "initialized";
@@ -441,7 +421,7 @@ export class GameEngine {
   /**
    * 添加状态变化监听器
    */
-  onStateChange(listener: (event: EngineStateChangeEvent) => void): () => void {
+  onStateChange(listener: (event: EngineStats) => void): () => void {
     this.stateChangeListeners.push(listener);
     
     // 返回取消订阅函数
@@ -460,18 +440,7 @@ export class GameEngine {
     // 直接通知所有监听器，不需要中间的回调层
     this.stateChangeListeners.forEach(listener => {
       try {
-        listener({
-          type: 'engine_state_update',
-          timestamp: Date.now(),
-          engineState: {
-            currentFrame: this.frameLoop.getFrameNumber(),
-            currentTime: Date.now(),
-            eventQueue: this.eventQueue.getEventsToProcess(this.frameLoop.getFrameNumber(), 100),
-            members: this.getAllMemberData(),
-            stats: this.getStats(),
-            state: this.getState()
-          }
-        });
+        listener(this.getStats());
       } catch (error) {
         console.error('GameEngine: 状态输出监听器执行失败:', error);
       }
@@ -733,7 +702,7 @@ export class GameEngine {
       state: this.state,
       currentFrame: this.frameLoop.getFrameNumber(),
       runTime,
-      memberCount: this.memberManager.size(),
+      members: this.memberManager.getAllMembers().map(member => member.serialize()),
       eventQueueStats: this.eventQueue.getStats(),
       frameLoopStats: this.frameLoop.getPerformanceStats(),
       messageRouterStats: this.messageRouter.getStats(),

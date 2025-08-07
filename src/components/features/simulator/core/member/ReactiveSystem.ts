@@ -104,13 +104,13 @@ export interface FlattenedSchema<T extends string> {
  * 从Schema生成属性键的联合类型
  * 直接使用DSL路径，不再进行小驼峰转换
  */
-export type ExtractAttrPaths<T extends NestedSchema, Path extends string = ''> = {
+export type ExtractAttrPaths<T extends NestedSchema, Path extends string = ""> = {
   [K in keyof T]: T[K] extends SchemaAttribute
-    ? Path extends ''
+    ? Path extends ""
       ? K & string
       : `${Path}.${K & string}`
     : T[K] extends NestedSchema
-      ? ExtractAttrPaths<T[K], Path extends '' ? K & string : `${Path}.${K & string}`>
+      ? ExtractAttrPaths<T[K], Path extends "" ? K & string : `${Path}.${K & string}`>
       : never;
 }[keyof T];
 
@@ -574,12 +574,7 @@ export class ReactiveSystem<T extends string> {
   /**
    * 添加修饰符
    */
-  addModifier(
-    attr: T,
-    type: ModifierType,
-    value: number,
-    source: ModifierSource,
-  ): void {
+  addModifier(attr: T, type: ModifierType, value: number, source: ModifierSource): void {
     const index = this.keyToIndex.get(attr);
     if (index === undefined) {
       console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
@@ -616,11 +611,7 @@ export class ReactiveSystem<T extends string> {
   /**
    * 移除修饰符
    */
-  removeModifier(
-    attr: T,
-    type: ModifierType,
-    sourceId: string,
-  ): void {
+  removeModifier(attr: T, type: ModifierType, sourceId: string): void {
     const index = this.keyToIndex.get(attr);
     if (index === undefined) {
       console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
@@ -928,58 +919,58 @@ export class ReactiveSystem<T extends string> {
 
     if (initialDirtyAttrs.length > 0) {
       console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
-    }
 
-    // 获取拓扑排序
-    const order = this.dependencyGraph.getTopologicalOrder();
+      // 获取拓扑排序
+      const order = this.dependencyGraph.getTopologicalOrder();
 
-    // 按依赖顺序计算
-    for (const index of order) {
-      if (this.isDirty(index)) {
-        const attrName = String(this.indexToKey[index]);
-        // 静默更新属性
+      // 按依赖顺序计算
+      for (const index of order) {
+        if (this.isDirty(index)) {
+          const attrName = String(this.indexToKey[index]);
+          // 静默更新属性
 
-        const value = this.computeAttributeValue(index);
-        this.values[index] = value;
-        BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
-        this.clearDirty(index);
-        updatedCount++;
+          const value = this.computeAttributeValue(index);
+          this.values[index] = value;
+          BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
+          this.clearDirty(index);
+          updatedCount++;
+        }
       }
-    }
 
-    // 处理没有依赖关系的属性
-    for (let i = 0; i < this.values.length; i++) {
-      if (this.isDirty(i)) {
-        const attrName = String(this.indexToKey[i]);
-        // console.log(`🔧 更新独立属性: ${attrName} (index: ${i})`);
+      // 处理没有依赖关系的属性
+      for (let i = 0; i < this.values.length; i++) {
+        if (this.isDirty(i)) {
+          const attrName = String(this.indexToKey[i]);
+          // console.log(`🔧 更新独立属性: ${attrName} (index: ${i})`);
 
-        const value = this.computeAttributeValue(i);
-        this.values[i] = value;
-        BitFlags.set(this.flags, i, AttributeFlags.IS_CACHED);
-        this.clearDirty(i);
-        updatedCount++;
+          const value = this.computeAttributeValue(i);
+          this.values[i] = value;
+          BitFlags.set(this.flags, i, AttributeFlags.IS_CACHED);
+          this.clearDirty(i);
+          updatedCount++;
+        }
       }
-    }
 
-    this.stats.lastUpdateTime = performance.now() - startTime;
-    this.stats.computations += updatedCount;
+      this.stats.lastUpdateTime = performance.now() - startTime;
+      this.stats.computations += updatedCount;
 
-    // 检查是否还有脏属性（可能表明循环依赖）
-    const remainingDirtyIndices = [];
-    for (let i = 0; i < this.values.length; i++) {
-      if (this.isDirty(i)) {
-        remainingDirtyIndices.push(i);
+      // 检查是否还有脏属性（可能表明循环依赖）
+      const remainingDirtyIndices = [];
+      for (let i = 0; i < this.values.length; i++) {
+        if (this.isDirty(i)) {
+          remainingDirtyIndices.push(i);
+        }
       }
-    }
 
-    if (remainingDirtyIndices.length > 0) {
-      const remainingDirtyAttrs = remainingDirtyIndices.map((i) => String(this.indexToKey[i]));
-      console.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
-    }
+      if (remainingDirtyIndices.length > 0) {
+        const remainingDirtyAttrs = remainingDirtyIndices.map((i) => String(this.indexToKey[i]));
+        console.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
+      }
 
-    // 只在有实际更新时才输出日志
-    if (updatedCount > 0) {
-      console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
+      // 只在有实际更新时才输出日志
+      if (updatedCount > 0) {
+        console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
+      }
     }
   }
 
