@@ -1,9 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
-import type { IntentMessage } from "./core/MessageRouter";
-import type { MemberSerializeData } from "./core/Member";
+import type { IntentMessage } from "./messages";
+import type { MemberSerializeData } from "../Member";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { EngineStats } from "./core/GameEngine";
+import { WorkerSystemMessageSchema } from "./messages";
+import { EngineStats } from "../GameEngine";
 
 // ==================== 类型定义 ====================
 
@@ -65,7 +66,7 @@ class EventEmitter {
   emit(event: string, ...args: any[]): void {
     // 减少引擎状态更新事件的日志噪音
     if (event !== "engine_state_update") {
-      console.log(`📡 EventEmitter: 发射事件 "${event}"，监听器数量: ${this.events[event]?.length || 0}`);
+      // console.log(`📡 EventEmitter: 发射事件 "${event}"，监听器数量: ${this.events[event]?.length || 0}`);
     }
     if (this.events[event]) {
       this.events[event].forEach((listener) => listener(...args));
@@ -346,6 +347,9 @@ export class WorkerPool extends EventEmitter {
     }
   >();
 
+  /** 任务与Worker的映射关系，用于精确错误归属与统计 */
+  private taskToWorkerId = new Map<string, string>();
+
   /** 线程池配置 - 运行时不可变，确保配置一致性 */
   private readonly config: Required<PoolConfig>;
   
@@ -502,6 +506,13 @@ export class WorkerPool extends EventEmitter {
 
     // 设置MessageChannel消息处理 - 用于任务相关消息
     channel.port2.onmessage = (event) => {
+      // 尝试根据系统消息 schema 进行解析（若匹配则直接透传系统事件）
+      const parsed = WorkerSystemMessageSchema.safeParse(event.data);
+      if (parsed.success) {
+        const sys = parsed.data;
+        this.emit('worker-message', { worker: wrapper, event: { type: sys.type, data: sys.data, taskId: sys.taskId } });
+        return;
+      }
       this.handleWorkerMessage(wrapper, event);
     };
 
@@ -590,6 +601,10 @@ export class WorkerPool extends EventEmitter {
     // 这是Node.js ThreadPool设计的核心思想，确保系统的高响应性
     worker.busy = false;
     worker.lastUsed = Date.now();
+    // 清理任务与worker的绑定
+    if (taskId) {
+      this.taskToWorkerId.delete(taskId);
+    }
     this.processNextTask(); // 立即尝试处理队列中的下一个任务
   }
 
@@ -597,26 +612,28 @@ export class WorkerPool extends EventEmitter {
     this.updateWorkerMetrics(worker, "error");
 
     // 查找该worker正在处理的任务
-    const activeTask = Array.from(this.taskMap.entries()).find(
-      ([_, callback]) => callback.task && this.getWorkerForTask(callback.task) === worker,
-    );
+    // 从映射表查找该 worker 当前处理的任务
+    const activeTask = Array.from(this.taskToWorkerId.entries()).find(([, workerId]) => workerId === worker.id);
 
     if (activeTask) {
-      const [taskId, callback] = activeTask;
-      const { task } = callback;
+      const [taskId] = activeTask;
+      const callback = this.taskMap.get(taskId);
+      if (callback) {
+        const { task } = callback;
+        clearTimeout(callback.timeout);
 
-      clearTimeout(callback.timeout);
-
-      // 重试机制
-      if (task.retriesLeft > 0) {
-        task.retriesLeft--;
-        this.taskQueue.unshift(task);
-        this.emit("task-retry", { taskId, retriesLeft: task.retriesLeft, error: error.message });
-      } else {
-        this.taskMap.delete(taskId);
-        callback.reject(new Error(`Worker error: ${error.message}`));
-        this.emit("task-failed", { taskId, error: error.message });
+        // 重试机制
+        if (task.retriesLeft > 0) {
+          task.retriesLeft--;
+          this.taskQueue.unshift(task);
+          this.emit("task-retry", { taskId, retriesLeft: task.retriesLeft, error: error.message });
+        } else {
+          this.taskMap.delete(taskId);
+          callback.reject(new Error(`Worker error: ${error.message}`));
+          this.emit("task-failed", { taskId, error: error.message });
+        }
       }
+      this.taskToWorkerId.delete(taskId);
     }
 
     // 替换worker
@@ -656,8 +673,10 @@ export class WorkerPool extends EventEmitter {
   }
 
   private getWorkerForTask(task: Task<string, unknown>): WorkerWrapper | null {
-    // 简化的实现，实际可能需要更复杂的逻辑
-    return this.workers.find((w) => w.busy) || null;
+    // 通过 taskToWorkerId 映射进行精确查找
+    const workerId = this.taskToWorkerId.get(task.id);
+    if (!workerId) return null;
+    return this.workers.find((w) => w.id === workerId) || null;
   }
 
   private updateWorkerMetrics(worker: WorkerWrapper, status: "success" | "error", processingTime: number = 0): void {
@@ -840,7 +859,9 @@ export class WorkerPool extends EventEmitter {
 
     try {
       // 通过MessageChannel发送任务到Worker
-      console.log("🔄 SimulatorPool: 发送任务到Worker", message);
+      // console.log("🔄 SimulatorPool: 发送任务到Worker", message);
+      // 记录绑定关系
+      this.taskToWorkerId.set(task.id, worker.id);
       worker.port.postMessage(message, transferables);
     } catch (error) {
       // 发送失败，释放Worker状态
@@ -864,6 +885,7 @@ export class WorkerPool extends EventEmitter {
           this.emit("task-failed", { taskId: task.id, error: errorMessage });
         }
       }
+      this.taskToWorkerId.delete(task.id);
 
       // 关键：即使发送失败也要尝试处理下一个任务
       // 应用响应性原则，确保系统的持续响应性
@@ -1085,6 +1107,14 @@ export class SimulatorPool extends WorkerPool {
       else if (type === "system_event") {
         this.emit("system_event", { workerId: data.worker.id, event: eventData });
       }
+      // 已选中成员状态更新
+      else if (type === "member_state_update") {
+        this.emit("member_state_update", { workerId: data.worker.id, event: eventData });
+      }
+      // 低频全量引擎状态
+      else if (type === "engine_stats_full") {
+        this.emit("engine_stats_full", { workerId: data.worker.id, event: eventData });
+      }
     });
   }
 
@@ -1133,13 +1163,14 @@ export class SimulatorPool extends WorkerPool {
   async getMembers(): Promise<MemberSerializeData[]> {
     const result = await this.executeTask("get_members", null, "low");
     console.log("🔍 SimulatorPool.getMembers: 原始结果:", result);
-    
-    // result.data 是 Worker 返回的 { success: true, data: members }
-    if (result.success && result.data && result.data.success && result.data.data) {
-      console.log("🔍 SimulatorPool.getMembers: 解析成功，成员数量:", result.data.data.length);
-      return result.data.data;
+
+    // 统一扁平结构：result.data 直接是 WorkerTaskResult
+    const task = result.data as { success: boolean; data?: MemberSerializeData[] } | undefined;
+    if (result.success && task?.success && Array.isArray(task.data)) {
+      console.log("🔍 SimulatorPool.getMembers: 解析成功，成员数量:", task.data.length);
+      return task.data;
     }
-    
+
     console.log("🔍 SimulatorPool.getMembers: 解析失败，返回空数组");
     return [];
   }
@@ -1154,6 +1185,27 @@ export class SimulatorPool extends WorkerPool {
       data: result.data,
       error: result.error
     };
+  }
+
+  /** 订阅某个成员的 FSM 状态变化 */
+  async watchMember(memberId: string): Promise<{ success: boolean; error?: string }> {
+    const result = await this.executeTask("watch_member", { memberId }, "medium");
+    return { success: result.success, error: result.error };
+  }
+
+  /** 取消订阅某个成员的 FSM 状态变化 */
+  async unwatchMember(memberId: string): Promise<{ success: boolean; error?: string }> {
+    const result = await this.executeTask("unwatch_member", { memberId }, "low");
+    return { success: result.success, error: result.error };
+  }
+
+  /** 拉取单个成员的当前 FSM 状态（即时同步一次） */
+  async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
+    const result = await this.executeTask("get_member_state", { memberId }, "low");
+    if (result.success && (result.data as any)?.success) {
+      return { success: true, value: (result.data as any).data?.value };
+    }
+    return { success: false, error: (result.data as any)?.error || result.error };
   }
 }
 

@@ -91,6 +91,12 @@ export interface PerformanceStats {
     averageEventsPerFrame: number;
     maxEventsPerFrame: number;
   };
+  /** 调度时钟类型（可观测） */
+  clockKind?: "raf" | "timeout";
+  /** 配置帧预算（毫秒） */
+  frameBudgetMs?: number;
+  /** 累积跳帧次数（由于帧堆积被压缩） */
+  skippedFrames?: number;
 }
 
 // ============================== 帧循环类 ==============================
@@ -120,8 +126,10 @@ export class FrameLoop {
   /** 状态变化回调（用于通知GameEngine） */
   private onStateChange?: (event: { type: string; data: any }) => void;
 
-  /** 帧循环定时器ID */
+  /** 帧循环定时器ID（rAF 或 setTimeout） */
   private frameTimer: number | null = null;
+  /** 当前使用的调度时钟类型 */
+  private clockKind: "raf" | "timeout" = "raf";
 
   /** 帧计数器 */
   private frameNumber: number = 0;
@@ -151,7 +159,9 @@ export class FrameLoop {
       totalEventsProcessed: 0,
       averageEventsPerFrame: 0,
       maxEventsPerFrame: 0
-    }
+    },
+    frameBudgetMs: undefined,
+    skippedFrames: 0
   };
 
   /** 帧信息历史 */
@@ -190,6 +200,7 @@ export class FrameLoop {
 
     // 根据目标帧率计算帧间隔
     this.config.frameInterval = 1000 / this.config.targetFPS;
+    this.performanceStats.frameBudgetMs = this.config.frameInterval;
 
     // console.log("FrameLoop: 初始化完成", this.config);
   }
@@ -223,7 +234,13 @@ export class FrameLoop {
     // 重置性能统计
     this.resetPerformanceStats();
 
-    console.log(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS`);
+    // 选择调度时钟：Worker 中可能没有 rAF
+    const hasRAF = typeof (globalThis as any).requestAnimationFrame === "function" &&
+                   typeof (globalThis as any).cancelAnimationFrame === "function";
+    this.clockKind = hasRAF ? "raf" : "timeout";
+    this.performanceStats.clockKind = this.clockKind;
+
+    console.log(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
     this.scheduleNextFrame();
   }
 
@@ -239,7 +256,11 @@ export class FrameLoop {
     this.state = "stopped";
     
     if (this.frameTimer !== null) {
-      cancelAnimationFrame(this.frameTimer);
+      if (this.clockKind === "raf" && typeof (globalThis as any).cancelAnimationFrame === "function") {
+        (globalThis as any).cancelAnimationFrame(this.frameTimer);
+      } else {
+        clearTimeout(this.frameTimer as unknown as number);
+      }
       this.frameTimer = null;
     }
 
@@ -261,7 +282,11 @@ export class FrameLoop {
     this.state = "paused";
     
     if (this.frameTimer !== null) {
-      cancelAnimationFrame(this.frameTimer);
+      if (this.clockKind === "raf" && typeof (globalThis as any).cancelAnimationFrame === "function") {
+        (globalThis as any).cancelAnimationFrame(this.frameTimer);
+      } else {
+        clearTimeout(this.frameTimer as unknown as number);
+      }
       this.frameTimer = null;
     }
 
@@ -434,10 +459,17 @@ export class FrameLoop {
     if (this.state !== "running") {
       return;
     }
-
-    this.frameTimer = requestAnimationFrame((timestamp) => {
-      this.processFrameLoop(timestamp);
-    });
+    if (this.clockKind === "raf" && typeof (globalThis as any).requestAnimationFrame === "function") {
+      this.frameTimer = (globalThis as any).requestAnimationFrame((timestamp: number) => {
+        this.processFrameLoop(timestamp);
+      });
+    } else {
+      const delay = this.config.frameInterval;
+      this.frameTimer = setTimeout(() => {
+        const now = performance.now();
+        this.processFrameLoop(now);
+      }, delay) as unknown as number;
+    }
   }
 
   /**
@@ -462,6 +494,7 @@ export class FrameLoop {
     // 处理帧跳跃
     if (this.config.enableFrameSkip && this.frameAccumulator > this.config.frameInterval * this.config.maxFrameSkip) {
       this.frameSkipCount++;
+      this.performanceStats.skippedFrames = (this.performanceStats.skippedFrames || 0) + this.config.maxFrameSkip;
       this.frameAccumulator = this.config.frameInterval;
       console.log(`⏭️ 帧跳跃 - 跳过 ${this.config.maxFrameSkip} 帧`);
     }

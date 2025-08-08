@@ -10,8 +10,8 @@
 
 import { createSignal, createEffect, createMemo, onCleanup, createResource, Show, For } from "solid-js";
 import { setup, assign, createActor } from "xstate";
-import { realtimeSimulatorPool } from "./SimulatorPool";
-import type { IntentMessage } from "./core/MessageRouter";
+import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
+import type { IntentMessage } from "./core/thread/messages";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { findCharacterWithRelations } from "@db/repositories/character";
@@ -19,7 +19,7 @@ import { findMobWithRelations } from "@db/repositories/mob";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { MemberSerializeData } from "./core/Member";
-import MemberStatusPanel from "./MemberStatusPanel";
+import MemberStatusPanel from "./core/member/MemberStatusPanel";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { EngineStats } from "./core/GameEngine";
 import { re } from "mathjs";
@@ -72,198 +72,220 @@ const controllerMachine = setup({
       }
     },
   },
-}).createMachine(
-  {
-    id: "realtimeController",
-    initial: "initializing",
-    context: {
-      selectedMemberId: null,
+}).createMachine({
+  id: "realtimeController",
+  initial: "initializing",
+  context: {
+    selectedMemberId: null,
+    members: [],
+    engineStats: {
+      state: "initialized",
+      currentFrame: 0,
+      runTime: 0,
       members: [],
-      engineStats: {
-        state: "initialized",
-        currentFrame: 0,
-        runTime: 0,
-        members: [],
-        eventQueueStats: {
-          currentSize: 0,
-          totalProcessed: 0,
-          totalInserted: 0,
-          averageProcessingTime: 0,
-          overflowCount: 0,
-          lastProcessedTime: 0,
-        },
-        frameLoopStats: {
-          averageFPS: 0,
-          averageFrameTime: 0,
-          totalFrames: 0,
-          totalRunTime: 0,
-          fpsHistory: [],
-          frameTimeHistory: [],
-          eventStats: {
-            totalEventsProcessed: 0,
-            averageEventsPerFrame: 0,
-            maxEventsPerFrame: 0,
-          },
-        },
-        messageRouterStats: {
-          totalMessagesProcessed: 0,
-          successfulMessages: 0,
-          failedMessages: 0,
-          lastProcessedTimestamp: 0,
-          successRate: "",
+      eventQueueStats: {
+        currentSize: 0,
+        totalProcessed: 0,
+        totalInserted: 0,
+        averageProcessingTime: 0,
+        overflowCount: 0,
+        lastProcessedTime: 0,
+      },
+      frameLoopStats: {
+        averageFPS: 0,
+        averageFrameTime: 0,
+        totalFrames: 0,
+        totalRunTime: 0,
+        fpsHistory: [],
+        frameTimeHistory: [],
+        eventStats: {
+          totalEventsProcessed: 0,
+          averageEventsPerFrame: 0,
+          maxEventsPerFrame: 0,
         },
       },
-      logs: [],
-      isLogPanelOpen: false,
-      error: null,
+      messageRouterStats: {
+        totalMessagesProcessed: 0,
+        successfulMessages: 0,
+        failedMessages: 0,
+        lastProcessedTimestamp: 0,
+        successRate: "",
+      },
     },
-    states: {
-      initializing: {
-        entry: assign(() => ({ error: null })),
-        on: {
-          WORKER_READY: "ready",
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign((_, event) => ({ error: (event as any).error })),
-          },
-        },
-        after: {
-          10000: {
-            target: "error",
-            actions: assign(() => ({ error: "Worker初始化超时" })),
-          },
+    logs: [],
+    isLogPanelOpen: false,
+    error: null,
+  },
+  states: {
+    initializing: {
+      entry: assign(() => ({ error: null })),
+      on: {
+        WORKER_READY: "ready",
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign(({ event }) => ({ error: (event as any).error })),
         },
       },
-      ready: {
-        entry: assign(() => ({ error: null })),
-        on: {
-          START_SIMULATION: "starting",
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign((_, event) => ({ error: (event as any).error })),
-          },
+      after: {
+        10000: {
+          target: "error",
+          actions: assign(() => ({ error: "Worker初始化超时" })),
         },
       },
-      starting: {
-        entry: assign(() => ({ error: null })),
-        on: {
-          ENGINE_STATE_UPDATE: {
-            target: "running",
-            actions: assign((_, event) => ({
-              engineStats: (event as any).stats,
-              members: (event as any).members,
-            })),
-          },
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign((_, event) => ({ error: (event as any).error })),
-          },
-        },
-        after: {
-          5000: {
-            target: "error",
-            actions: assign(() => ({ error: "启动模拟超时" })),
-          },
+    },
+    ready: {
+      entry: assign(() => ({ error: null })),
+      on: {
+        START_SIMULATION: "starting",
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign(({ event }) => ({ error: (event as any).error })),
         },
       },
-      running: {
-        on: {
-          ENGINE_STATE_UPDATE: {
-            actions: assign((_, event) => ({
-              engineStats: (event as any).stats,
-              members: (event as any).members,
-            })),
-          },
-          STOP_SIMULATION: "stopping",
-          PAUSE_SIMULATION: "paused",
-          SELECT_MEMBER: {
-            actions: assign((_, event) => ({ selectedMemberId: (event as any).memberId })),
-          },
-          SEND_INTENT: {
-            actions: "sendIntent",
-          },
-          TOGGLE_LOG_PANEL: {
-            actions: assign((context) => ({
-              isLogPanelOpen: !context.isLogPanelOpen,
-            })),
-          },
-          ADD_LOG: {
-            actions: assign((context, event) => ({
-              logs: [...context.logs, (event as any).message],
-            })),
-          },
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign((_, event) => ({ error: (event as any).error })),
-          },
+    },
+    starting: {
+      entry: assign(() => ({ error: null })),
+      on: {
+        ENGINE_STATE_UPDATE: {
+          target: "running",
+          actions: assign(({ context, event }) => {
+            const e = event as any;
+            return {
+              engineStats: e.stats ?? context.engineStats,
+              members: e.members ?? context.members,
+            };
+          }),
+        },
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign(({ event }) => ({ error: (event as any).error })),
         },
       },
-      paused: {
-        on: {
-          ENGINE_STATE_UPDATE: {
-            actions: assign((_, event) => ({
-              engineStats: (event as any).stats,
-              members: (event as any).members,
-            })),
-          },
-          RESUME_SIMULATION: "running",
-          STOP_SIMULATION: "stopping",
-          SELECT_MEMBER: {
-            actions: assign((_, event) => ({ selectedMemberId: (event as any).memberId })),
-          },
-          SEND_INTENT: {
-            actions: "sendIntent",
-          },
-          TOGGLE_LOG_PANEL: {
-            actions: assign((context) => ({
-              isLogPanelOpen: !context.isLogPanelOpen,
-            })),
-          },
-          ADD_LOG: {
-            actions: assign((context, event) => ({
-              logs: [...context.logs, (event as any).message],
-            })),
-          },
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign((_, event) => ({ error: (event as any).error })),
-          },
+      after: {
+        5000: {
+          target: "error",
+          actions: assign(() => ({ error: "启动模拟超时" })),
         },
       },
-      stopping: {
-        entry: assign({ error: null }),
-        on: {
-          ENGINE_STATE_UPDATE: {
-            target: "ready",
-            actions: assign({
-              engineStats: (_, event) => (event as any).stats,
-              members: (_, event) => (event as any).members,
-            }),
-          },
-          WORKER_ERROR: {
-            target: "error",
-            actions: assign({ error: (_, event) => (event as any).error }),
-          },
+    },
+    running: {
+      on: {
+        ENGINE_STATE_UPDATE: {
+          actions: assign(({ context, event }) => {
+            const e = event as any;
+            return {
+              engineStats: e.stats ?? context.engineStats,
+              members: e.members ?? context.members,
+            };
+          }),
         },
-        after: {
-          3000: {
-            target: "error",
-            actions: assign({ error: "停止模拟超时" }),
-          },
+        SELECT_MEMBER: {
+          actions: [
+            assign(({ event }) => ({ selectedMemberId: (event as any)?.memberId ?? null })),
+            ({ context, event }) => {
+              const prev = context.selectedMemberId as string | null;
+              const next = (event as any)?.memberId as string | undefined;
+              if (prev && next && prev !== next) {
+                realtimeSimulatorPool.unwatchMember(prev);
+              }
+              if (next) {
+                realtimeSimulatorPool.watchMember(next);
+              }
+            },
+          ],
+        },
+        STOP_SIMULATION: "stopping",
+        PAUSE_SIMULATION: "paused",
+        SEND_INTENT: {
+          actions: "sendIntent",
+        },
+        TOGGLE_LOG_PANEL: {
+          actions: assign(({ context }) => ({
+            isLogPanelOpen: !context.isLogPanelOpen,
+          })),
+        },
+        ADD_LOG: {
+          actions: assign(({ context, event }) => ({
+            logs: [...context.logs, (event as any).message],
+          })),
+        },
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign((_, event) => ({ error: (event as any).error })),
         },
       },
-      error: {
-        on: {
-          CLEAR_ERROR: {
-            target: "ready",
-            actions: assign({ error: null }),
-          },
-          WORKER_READY: "ready",
+    },
+    paused: {
+      on: {
+        ENGINE_STATE_UPDATE: {
+          actions: assign(({ context, event }) => {
+            const e = event as any;
+            return {
+              engineStats: e.stats ?? context.engineStats,
+              members: e.members ?? context.members,
+            };
+          }),
         },
+        RESUME_SIMULATION: "running",
+        STOP_SIMULATION: "stopping",
+        SELECT_MEMBER: {
+          actions: assign((_, event) => ({ selectedMemberId: (event as any).memberId })),
+        },
+        SEND_INTENT: {
+          actions: "sendIntent",
+        },
+        TOGGLE_LOG_PANEL: {
+          actions: assign(({ context }) => ({
+            isLogPanelOpen: !context.isLogPanelOpen,
+          })),
+        },
+        ADD_LOG: {
+          actions: assign(({ context, event }) => ({
+            logs: [...context.logs, (event as any).message],
+          })),
+        },
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign((_, event) => ({ error: (event as any).error })),
+        },
+      },
+    },
+    stopping: {
+      entry: assign({ error: null }),
+      on: {
+        ENGINE_STATE_UPDATE: {
+          target: "ready",
+          actions: assign(({ context, event }) => {
+            const e = event as any;
+            return {
+              engineStats: e.stats ?? context.engineStats,
+              members: e.members ?? context.members,
+            };
+          }),
+        },
+        WORKER_ERROR: {
+          target: "error",
+          actions: assign({ error: (_, event) => (event as any).error }),
+        },
+      },
+      after: {
+        3000: {
+          target: "error",
+          actions: assign({ error: "停止模拟超时" }),
+        },
+      },
+    },
+    error: {
+      on: {
+        CLEAR_ERROR: {
+          target: "ready",
+          actions: assign({ error: null }),
+        },
+        WORKER_READY: "ready",
       },
     },
   },
-);
+});
 
 // ============================== 组件实现 ==============================
 
@@ -272,11 +294,12 @@ export default function RealtimeController() {
 
   const actor = createActor(controllerMachine);
   const [state, setState] = createSignal(actor.getSnapshot());
+  const [selectedMemberFsm, setSelectedMemberFsm] = createSignal<string | null>(null);
 
   // 启动 actor 并订阅状态变化
   createEffect(() => {
     actor.subscribe((snapshot) => {
-      console.log("🔄 控制器状态转换:", snapshot.value);
+      // 降噪：不在每次 engineView 更新时打印状态
       setState(snapshot);
     });
 
@@ -289,8 +312,6 @@ export default function RealtimeController() {
   });
 
   // ==================== 数据资源 ====================
-
-  const [logs, setLogs] = createSignal<string[]>([]);
 
   // 获取真实的simulator数据
   const [simulator, { refetch: refetchSimulator }] = createResource(async () => {
@@ -325,23 +346,80 @@ export default function RealtimeController() {
   // ==================== 事件处理 ====================
 
   // 处理引擎状态变化事件
-  const handleEngineStateChange = (data: { workerId: string; event: any }) => {
+  const handleEngineStateChange = (data: {
+    workerId: string;
+    event: {
+      type: "engine_state_update";
+      engineView?: { frameNumber: number; runTime: number; frameLoop: any; eventQueue: any };
+      engineState?: EngineStats;
+    };
+  }) => {
     const { event } = data;
 
     if (event.type === "engine_state_update") {
       try {
-        if (event.engineState) {
-          const stats = event.engineState as EngineStats;
-          const members = stats.members || [];
-
+        // 轻量 EngineView：仅用于进度/KPI 展示
+        if (event.engineView) {
+          // 可以在此处合成最小 UI 状态（若需要）
+          // 暂不改变 state.context 的结构，先不注入 members
           actor.send({
             type: "ENGINE_STATE_UPDATE",
-            stats,
-            members,
+            stats: {
+              ...state().context.engineStats,
+              currentFrame: event.engineView.frameNumber,
+              runTime: event.engineView.runTime,
+              frameLoopStats: {
+                ...state().context.engineStats.frameLoopStats,
+                averageFPS: event.engineView.frameLoop.averageFPS,
+                averageFrameTime: event.engineView.frameLoop.averageFrameTime,
+                totalFrames: event.engineView.frameLoop.totalFrames,
+                totalRunTime: event.engineView.frameLoop.totalRunTime,
+                clockKind: event.engineView.frameLoop.clockKind,
+                skippedFrames: (event.engineView.frameLoop as any).skippedFrames,
+                frameBudgetMs: (event.engineView.frameLoop as any).frameBudgetMs,
+                // 保留历史数组引用，不在此高频事件里更新
+              },
+              eventQueueStats: {
+                ...state().context.engineStats.eventQueueStats,
+                currentSize: event.engineView.eventQueue.currentSize,
+                totalProcessed: event.engineView.eventQueue.totalProcessed,
+                totalInserted: event.engineView.eventQueue.totalInserted,
+                overflowCount: event.engineView.eventQueue.overflowCount,
+              },
+            } as unknown as EngineStats,
+            // members 字段在 ENGINE_STATE_UPDATE 中可选传入；避免 undefined 造成 assign 报错
+            members: state().context.members,
           });
+        } else if (event.engineState) {
+          // 兼容旧通道（全量 EngineStats）
+          const stats = event.engineState as EngineStats;
+          actor.send({ type: "ENGINE_STATE_UPDATE", stats, members: stats.members || state().context.members });
         }
       } catch (error) {
         console.error("RealtimeController: 更新引擎状态失败:", error);
+      }
+    }
+  };
+
+  // 接收低频全量 EngineStats
+  const handleEngineStatsFull = (data: { workerId: string; event: EngineStats }) => {
+    try {
+      const stats = data.event as EngineStats;
+      if (stats && typeof stats.currentFrame === "number") {
+        actor.send({ type: "ENGINE_STATE_UPDATE", stats, members: state().context.members });
+      }
+    } catch {}
+  };
+
+  // 处理选中成员 FSM 状态更新
+  const handleMemberStateUpdate = (data: { workerId: string; event: { memberId: string; value: string } }) => {
+    const { event } = data;
+    if (event && event.memberId) {
+      const memberId = event.memberId as string;
+      const ctx = state().context;
+      if (ctx.selectedMemberId === memberId) {
+        // 将选中成员的 FSM 状态同步到本地信号，用于即时展示
+        setSelectedMemberFsm(event.value || null);
       }
     }
   };
@@ -352,6 +430,8 @@ export default function RealtimeController() {
     // 订阅引擎状态变化事件
     console.log("🔗 RealtimeController: 订阅引擎状态变化事件");
     realtimeSimulatorPool.on("engine_state_update", handleEngineStateChange);
+    realtimeSimulatorPool.on("member_state_update", handleMemberStateUpdate);
+    realtimeSimulatorPool.on("engine_stats_full", handleEngineStatsFull);
 
     // 检查worker准备状态
     const checkWorkerReady = () => {
@@ -365,20 +445,62 @@ export default function RealtimeController() {
       }
     };
 
-    // 初始检查
-    checkWorkerReady();
+    // 初始检查：仅在 actor 未进入终态时检查一次
+    try {
+      if (!actor.getSnapshot().status || actor.getSnapshot().status !== "done") {
+        checkWorkerReady();
+      }
+    } catch {}
 
     // 添加worker状态监控
+    // 定时检查：若已进入非初始状态（ready/starting/running/paused/stopping/error），避免再发送 WORKER_READY
     const workerStatusInterval = setInterval(() => {
+      const snap = actor.getSnapshot();
+      if (
+        snap.matches &&
+        (snap.matches("ready") ||
+          snap.matches("starting") ||
+          snap.matches("running") ||
+          snap.matches("paused") ||
+          snap.matches("stopping") ||
+          snap.matches("error"))
+      ) {
+        return; // 不再触发 WORKER_READY
+      }
       checkWorkerReady();
     }, 500);
 
     // 清理函数
     onCleanup(() => {
       realtimeSimulatorPool.off("engine_state_update", handleEngineStateChange);
+      realtimeSimulatorPool.off("member_state_update", handleMemberStateUpdate);
+      realtimeSimulatorPool.off("engine_stats_full", handleEngineStatsFull);
       clearInterval(workerStatusInterval);
+      // 清理选中成员订阅
+      const selectedId = actor.getSnapshot().context.selectedMemberId;
+      if (selectedId) {
+        realtimeSimulatorPool.unwatchMember(selectedId);
+      }
       actor.stop();
     });
+  });
+
+  // 当选中成员变化时，立即水合一次其 FSM 状态，保证“首帧有值”
+  let lastSelectedId: string | null = null;
+  createEffect(() => {
+    const currentId = context().selectedMemberId;
+    if (!currentId || currentId === lastSelectedId) return;
+    lastSelectedId = currentId;
+    setSelectedMemberFsm(null);
+    (async () => {
+      try {
+        const res = await realtimeSimulatorPool.getMemberState(currentId);
+        // 只在当前仍为选中对象时应用结果，避免竞态
+        if (actor.getSnapshot().context.selectedMemberId === currentId && res.success) {
+          setSelectedMemberFsm(res.value || null);
+        }
+      } catch {}
+    })();
   });
 
   // ==================== 业务逻辑方法 ====================
@@ -398,6 +520,19 @@ export default function RealtimeController() {
       }
 
       console.log("✅ 模拟启动成功");
+
+      // 启动成功后，主动拉取一次成员数据用于下拉框
+      try {
+        const members = await realtimeSimulatorPool.getMembers();
+        // 更新成员数据
+        actor.send({
+          type: "ENGINE_STATE_UPDATE",
+          stats: state().context.engineStats,
+          members,
+        });
+      } catch (e) {
+        console.warn("获取成员失败（可稍后手动重试）", e);
+      }
     } catch (error) {
       console.error("❌ 启动模拟失败:", error);
       actor.send({
@@ -434,6 +569,8 @@ export default function RealtimeController() {
       }
 
       console.log("✅ 模拟暂停成功");
+      // 成功后进入本地 paused 状态，保证按钮可用性正确
+      actor.send({ type: "PAUSE_SIMULATION" });
     } catch (error) {
       console.error("❌ 暂停模拟失败:", error);
       actor.send({
@@ -451,6 +588,8 @@ export default function RealtimeController() {
       }
 
       console.log("✅ 模拟恢复成功");
+      // 成功后进入本地 running 状态
+      actor.send({ type: "RESUME_SIMULATION" });
     } catch (error) {
       console.error("❌ 恢复模拟失败:", error);
       actor.send({
@@ -482,6 +621,7 @@ export default function RealtimeController() {
   };
 
   const selectMember = (memberId: string) => {
+    setSelectedMemberFsm(null);
     actor.send({ type: "SELECT_MEMBER", memberId });
   };
 
@@ -516,6 +656,9 @@ export default function RealtimeController() {
       currentState().matches("starting") ||
       currentState().matches("stopping"),
   );
+
+  // 只有当 Worker 就绪 且 模拟器数据已就绪 才允许启动
+  const canStart = createMemo(() => currentState().matches("ready") && !!simulator());
 
   const selectedMember = createMemo(() => {
     const memberId = context().selectedMemberId;
@@ -594,24 +737,30 @@ export default function RealtimeController() {
   const fetchEngineMembers = async () => {
     try {
       const members = await realtimeSimulatorPool.getMembers();
-      console.log("✅ 获取成功:", members.length, "个成员:", members.map((m) => m.id).join(", "));
+      actor.send({ type: "ENGINE_STATE_UPDATE", stats: state().context.engineStats, members });
     } catch (error) {
-      console.error("❌ 获取失败:", error);
+      actor.send({ type: "WORKER_ERROR", error: error instanceof Error ? error.message : "获取成员失败" });
     }
   };
 
   // ==================== UI 渲染 ====================
 
   return (
-    <div class="flex h-full flex-col gap-4 p-4">
-      {/* 状态栏 */}
-      <div class="bg-area-color flex items-center justify-between rounded-lg p-4">
+    <div class="grid h-full auto-rows-min grid-cols-12 gap-4 overflow-y-auto p-4">
+      {/* 状态栏（摘要 + 指标 + 操作） */}
+      <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">状态:</span>
             <div
               class={`h-2 w-2 rounded-full ${
-                isLoading() ? "bg-yellow-500" : isError() ? "bg-red-500" : isRunning() ? "bg-green-500" : "bg-gray-500"
+                isLoading()
+                  ? "bg-brand-color-1st"
+                  : isError()
+                    ? "bg-brand-color-2nd"
+                    : isRunning()
+                      ? "bg-brand-color-3rd"
+                      : "bg-brand-color-4th"
               }`}
             ></div>
             <span class="text-sm">
@@ -626,107 +775,106 @@ export default function RealtimeController() {
                     : "就绪"}
             </span>
           </div>
-
-          {isRunning() && (
+          <Show when={isRunning()}>
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium">帧数:</span>
+              <span class="text-sm font-medium">帧数</span>
               <span class="text-sm">{context().engineStats.currentFrame}</span>
             </div>
-          )}
-        </div>
-
-        {isError() && (
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-red-600">{context().error}</span>
-            <Button size="sm" onClick={clearError}>
-              清除
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* 控制按钮 */}
-      <div class="flex gap-2">
-        <Button onClick={startSimulation} disabled={isLoading() || isRunning()} class="bg-green-600 hover:bg-green-700">
-          启动模拟
-        </Button>
-
-        <Button onClick={stopSimulation} disabled={isLoading() || !isRunning()} class="bg-red-600 hover:bg-red-700">
-          停止模拟
-        </Button>
-
-        <Button
-          onClick={pauseSimulation}
-          disabled={isLoading() || !isRunning() || isPaused()}
-          class="bg-yellow-600 hover:bg-yellow-700"
-        >
-          暂停
-        </Button>
-
-        <Button onClick={resumeSimulation} disabled={isLoading() || !isPaused()} class="bg-blue-600 hover:bg-blue-700">
-          恢复
-        </Button>
-
-        <Button onClick={debugEngineMembers} class="bg-gray-600 hover:bg-gray-700">
-          调试成员
-        </Button>
-
-        <Button onClick={fetchEngineMembers} class="bg-purple-600 hover:bg-purple-700">
-          获取成员
-        </Button>
-
-        <Button onClick={toggleLogPanel} class="bg-indigo-600 hover:bg-indigo-700">
-          {context().isLogPanelOpen ? "隐藏日志" : "显示日志"}
-        </Button>
-      </div>
-
-      {/* 成员选择 */}
-      <div class="bg-area-color rounded-lg p-4">
-        <h3 class="mb-2 text-lg font-semibold">成员选择</h3>
-
-        <Show
-          when={context().members.length > 0}
-          fallback={
-            <div class="bg-area-color flex h-fit flex-col gap-2 rounded p-3">
-              <h1 class="animate-pulse">正在加载成员数据...</h1>
-              <LoadingBar class="w-full" />
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium">FPS</span>
+              <span class="text-sm">{context().engineStats.frameLoopStats.averageFPS.toFixed?.(1) ?? 0}</span>
             </div>
-          }
-        >
-          <div
-            class={`mb-2 rounded border p-3 ${context().members.length > 0 ? "border-green-400 bg-green-100" : "border-orange-400 bg-orange-100"}`}
+            <div class="flex items-center gap-2 portrait:hidden">
+              <span class="text-sm font-medium">时钟</span>
+              <span class="text-sm">{(context().engineStats.frameLoopStats as any).clockKind || "raf"}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium">队列</span>
+              <span class="text-sm">{context().engineStats.eventQueueStats.currentSize}</span>
+            </div>
+          </Show>
+        </div>
+      </div>
+
+      {/* 控制栏（精简） + 成员选择 */}
+      <div class="col-span-12 flex h-[1fr] flex-wrap items-center gap-x-8 gap-y-2">
+        <div class="ControlPanel flex gap-2">
+          <Button
+            onClick={() => {
+              clearError();
+              startSimulation();
+            }}
+            disabled={!canStart()}
+            class="bg-green-600 hover:bg-green-700"
           >
-            <div class={`text-sm ${context().members.length > 0 ? "text-green-800" : "text-orange-800"}`}>
-              <div>✅ 模拟运行中，显示引擎数据</div>
-              <div class="mt-1 text-xs">
-                引擎成员: {context().members.length} 个
-                {context().members.length === 0 && <span class="ml-2">(点击"获取成员"按钮同步数据)</span>}
+            启动模拟
+          </Button>
+          <Button onClick={stopSimulation} disabled={isLoading() || !isRunning()} class="bg-red-600 hover:bg-red-700">
+            停止模拟
+          </Button>
+          <Button
+            onClick={pauseSimulation}
+            disabled={!currentState().matches("running")}
+            class="bg-brand-color-1st hover:brightness-110"
+          >
+            暂停
+          </Button>
+          <Button
+            onClick={resumeSimulation}
+            disabled={!currentState().matches("paused")}
+            class="bg-blue-600 hover:bg-blue-700"
+          >
+            恢复
+          </Button>
+        </div>
+        {/* 成员选择/获取 */}
+        <div class="MemberSelect ml-auto flex flex-1 items-center gap-2">
+          <Show when={context().members.length > 0}>
+            <Select
+              value={context().selectedMemberId || ""}
+              setValue={(v) => {
+                if (!v && context().members.length > 0) return;
+                selectMember(v);
+              }}
+              options={[
+                ...context().members.map((member) => ({
+                  label: `${member.name || member.id} (${member.type || "unknown"})`,
+                  value: member.id,
+                })),
+              ]}
+              placeholder="请选择成员"
+            />
+          </Show>
+        </div>
+      </div>
+      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
+      <div class="col-span-12 h-[8fr] items-center overflow-y-auto">
+        <Show when={selectedMember()}>
+          <div class="border-transition-color-20 rounded-lg border">
+            <div class="bg-area-color sticky top-0 flex items-center justify-between px-4 py-2">
+              <div class="flex items-center gap-4 text-sm">
+                <span class="font-semibold">{selectedMember()!.name || selectedMember()!.id}</span>
+                <span>
+                  HP {selectedMember()!.currentHp}/{selectedMember()!.maxHp}
+                </span>
+                <span>
+                  MP {selectedMember()!.currentMp}/{selectedMember()!.maxMp}
+                </span>
+                <span>
+                  状态 {selectedMemberFsm() ?? ((selectedMember() as any).state?.value || "")}
+                </span>
               </div>
             </div>
+            <div class="p-2">
+              <MemberStatusPanel selectedMember={selectedMember()!} />
+            </div>
           </div>
-          <Select
-            value={context().selectedMemberId || ""}
-            setValue={selectMember}
-            options={[
-              { label: "请选择成员", value: "" },
-              ...context().members.map((member) => ({
-                label: `${member.name || member.id} (${member.type || "unknown"})`,
-                value: member.id,
-              })),
-            ]}
-            placeholder="请选择成员"
-          />
         </Show>
       </div>
 
-      {/* 成员状态面板 */}
-      <Show when={selectedMember()}>
-        <MemberStatusPanel selectedMember={selectedMember()!} />
-      </Show>
-
       {/* 技能面板 */}
       <Show when={selectedMember() && characterSkills().length > 0}>
-        <div class="bg-area-color rounded-lg p-4">
+        <div class="col-span-12 h-[1fr] rounded-lg">
           <h3 class="mb-2 text-lg font-semibold">技能</h3>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             <For each={characterSkills()}>
@@ -742,7 +890,7 @@ export default function RealtimeController() {
 
       {/* 动作面板 */}
       <Show when={selectedMember()}>
-        <div class="bg-area-color rounded-lg p-4">
+        <div class="col-span-12 h-[1fr] rounded-lg">
           <h3 class="mb-2 text-lg font-semibold">动作</h3>
           <div class="flex gap-2">
             <Button onClick={() => move(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
@@ -751,16 +899,6 @@ export default function RealtimeController() {
             <Button onClick={stopAction} class="bg-red-600 hover:bg-red-700" size="sm">
               停止动作
             </Button>
-          </div>
-        </div>
-      </Show>
-
-      {/* 日志面板 */}
-      <Show when={context().isLogPanelOpen}>
-        <div class="bg-area-color rounded-lg p-4">
-          <h3 class="mb-2 text-lg font-semibold">日志</h3>
-          <div class="h-32 overflow-y-auto rounded bg-black p-2 text-sm text-green-400">
-            <For each={context().logs}>{(log) => <div>{log}</div>}</For>
           </div>
         </div>
       </Show>

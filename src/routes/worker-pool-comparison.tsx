@@ -1,6 +1,6 @@
 import { Component, createSignal, onMount, onCleanup } from "solid-js";
 import { WorkerPool } from "~/lib/utils/workerPool";
-import { SimulatorPool } from "~/components/features/simulator/SimulatorPool";
+import { SimulatorPool } from "~/components/features/simulator/core/thread/SimulatorPool";
 import poolWorkerUrl from "~/lib/utils/poolWorker?worker&url";
 
 // 定义事件类型

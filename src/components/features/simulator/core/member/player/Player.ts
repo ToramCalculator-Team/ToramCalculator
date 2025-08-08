@@ -387,6 +387,56 @@ export class Player extends Member<PlayerAttrType> {
 
         onCastStart: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`🎮 [${context.memberData.name}] 前摇开始事件`);
+          try {
+            const data = (event as any)?.data || {};
+            const skillId = data?.skillId;
+            const currentFrame = this.engine.getFrameLoop().getFrameNumber();
+            const executor = this.engine.getFrameLoop().getEventExecutor();
+
+            // 扣除 MP（默认 1600，可表达式）
+            let mpCost = 1600;
+            if (typeof data?.mpCost === "number") mpCost = data.mpCost;
+            if (typeof data?.mpCostExpr === "string" && data.mpCostExpr.trim()) {
+              const res = executor.executeExpression(data.mpCostExpr, {
+                currentFrame,
+                caster: this,
+                skill: { id: skillId },
+              } as any);
+              if (res.success && Number.isFinite(res.value)) mpCost = Math.max(0, Math.round(res.value));
+            }
+            const currentMp = this.getAttributeValue("mp.current");
+            const newMp = Math.max(0, (typeof currentMp === "number" ? currentMp : 0) - mpCost);
+            this.engine.getEventQueue().insert({
+              id: `mp_cost_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              executeFrame: currentFrame,
+              priority: "high",
+              type: "custom",
+              payload: { action: "modify_attribute", targetMemberId: this.id, attribute: "mp.current", value: newMp },
+            });
+
+            // 计算前摇帧数（默认 100，可表达式）
+            let preCastFrames = 100;
+            if (typeof data?.preCastFrames === "number") preCastFrames = Math.max(0, Math.round(data.preCastFrames));
+            if (typeof data?.preCastExpr === "string" && data.preCastExpr.trim()) {
+              const res = executor.executeExpression(data.preCastExpr, {
+                currentFrame,
+                caster: this,
+                skill: { id: skillId },
+              } as any);
+              if (res.success && Number.isFinite(res.value)) preCastFrames = Math.max(0, Math.round(res.value));
+            }
+
+            // 调度前摇结束
+            this.engine.getEventQueue().insert({
+              id: `fsm_cast_end_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              executeFrame: currentFrame + preCastFrames,
+              priority: "high",
+              type: "member_fsm_event",
+              payload: { targetMemberId: this.id, fsmEventType: "cast_end", data: { skillId } },
+              source: "player_fsm",
+              actionId: skillId ? `skill_${skillId}` : undefined,
+            });
+          } catch {}
         },
 
         onCastEnd: ({ context, event }: { context: MemberContext; event: any }) => {
@@ -395,6 +445,27 @@ export class Player extends Member<PlayerAttrType> {
 
         onSkillEffect: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`🎮 [${context.memberData.name}] 技能效果事件`);
+          try {
+            const data = (event as any)?.data || {};
+            const skillId = data?.skillId;
+            const currentFrame = this.engine.getFrameLoop().getFrameNumber();
+            // 交给引擎执行技能效果；处理器完成后自行追加动画结束的 FSM 事件
+            this.engine.getEventQueue().insert({
+              id: `skill_effect_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              executeFrame: currentFrame,
+              priority: "high",
+              type: "skill_effect",
+              payload: {
+                memberId: this.id,
+                skillId,
+                animationFrames:
+                  typeof data?.animationFrames === "number" ? Math.max(0, Math.round(data.animationFrames)) : undefined,
+                animationExpr: typeof data?.animationExpr === "string" ? data.animationExpr : undefined,
+              },
+              source: "player_fsm",
+              actionId: skillId ? `skill_${skillId}` : undefined,
+            });
+          } catch {}
         },
 
         onSkillAnimationEnd: ({ context, event }: { context: MemberContext; event: any }) => {
@@ -404,6 +475,37 @@ export class Player extends Member<PlayerAttrType> {
 
         onChargeStart: ({ context, event }: { context: MemberContext; event: any }) => {
           console.log(`🎮 [${context.memberData.name}] 开始蓄力事件`);
+          try {
+            const data = (event as any)?.data || {};
+            const skillId = data?.skillId;
+            const currentFrame = this.engine.getFrameLoop().getFrameNumber();
+            const executor = this.engine.getFrameLoop().getEventExecutor();
+
+            let chargeFrames = 100;
+            if (typeof data?.chargeFrames === "number") chargeFrames = Math.max(0, Math.round(data.chargeFrames));
+            if (typeof data?.chargeExpr === "string" && data.chargeExpr.trim()) {
+              const res = executor.executeExpression(data.chargeExpr, {
+                currentFrame,
+                caster: this,
+                skill: { id: skillId },
+              } as any);
+              if (res.success && Number.isFinite(res.value)) chargeFrames = Math.max(0, Math.round(res.value));
+            }
+
+            this.engine.getEventQueue().insert({
+              id: `fsm_charge_end_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              executeFrame: currentFrame + chargeFrames,
+              priority: "high",
+              type: "member_fsm_event",
+              payload: {
+                targetMemberId: this.id,
+                fsmEventType: "charge_end",
+                data: { skillId },
+              },
+              source: "player_fsm",
+              actionId: skillId ? `skill_${skillId}` : undefined,
+            });
+          } catch {}
         },
 
         onChargeEnd: ({ context, event }: { context: MemberContext; event: any }) => {
@@ -470,41 +572,39 @@ export class Player extends Member<PlayerAttrType> {
       guards: {
         // 检查是否有后续连击步骤
         hasNextCombo: ({ context, event }: { context: MemberContext; event: any }) => {
+          console.log(`🎮 检查[${context.memberData.name}] 是否有后续连击步骤`);
           // 检查是否有后续连击步骤
           // 可以根据实际连击逻辑实现
           return false; // 暂时返回false，可以根据实际逻辑调整
         },
 
-        // 检查当前技能是否有蓄力动作
+        // 检查当前技能是否有蓄力动作（正向 guard）
         hasChargeAction: ({ context, event }: { context: MemberContext; event: any }) => {
-          // 检查当前技能是否有蓄力动作
-          // 可以根据技能配置确定
-          return false; // 暂时返回false，可以根据实际逻辑调整
+          console.log(`🎮 检查[${context.memberData.name}] 技能是否有蓄力动作`);
+          // TODO: 基于技能模板判断是否需要蓄力
+          return false; // 先保留占位实现
         },
 
-        // 检查当前技能没有蓄力动作
-        hasNoChargeAction: ({ context, event }: { context: MemberContext; event: any }) => {
-          // 检查当前技能没有蓄力动作
-          return true; // 暂时返回true，可以根据实际逻辑调整
-        },
-
-        // 检查技能是否可用（冷却、MP等）
+        // 技能可用性检查（汇总冷却/资源/状态）
         isSkillAvailable: ({ context, event }: { context: MemberContext; event: any }) => {
-          // 检查技能是否可用（冷却、MP等）
+          console.log(`🎮 检查[${context.memberData.name}] 技能是否可用`);
+          // TODO: 汇总沉默/冷却/MP/HP等检查
           return this.isActive();
         },
 
-        // 技能不可用，输出警告
-        skillNotAvailable: ({ context, event }: { context: MemberContext; event: any }) => {
-          console.warn(`🎮 [${context.memberData.name}] 技能不可用`);
-          return true;
+        // 检查玩家是否死亡
+        isDead: ({ context }: { context: MemberContext }) => {
+          const isDead = this.getAttributeValue("hp.current") <= 0;
+          console.log(`🎮 检查[${context.memberData.name}] 是否死亡: ${isDead}`);
+          return isDead;
         },
 
-        // 检查玩家是否死亡
-        isDead: ({ context }: { context: MemberContext }) => this.getAttributeValue("hp.current") <= 0,
-
         // 检查玩家是否存活
-        isAlive: ({ context }: { context: MemberContext }) => this.getAttributeValue("hp.current") > 0,
+        isAlive: ({ context }: { context: MemberContext }) => {
+          const isAlive = this.getAttributeValue("hp.current") > 0;
+          console.log(`🎮 检查[${context.memberData.name}] 是否存活: ${isAlive}`);
+          return isAlive;
+        },
       },
     }).createMachine({
       id: machineId,
@@ -569,12 +669,18 @@ export class Player extends Member<PlayerAttrType> {
               states: {
                 idle: {
                   on: {
-                    move_command: {
-                      target: "moving",
-                    },
-                    skill_press: {
-                      target: "skill_casting",
-                    },
+                    move_command: { target: "moving" },
+                    skill_press: [
+                      {
+                        guard: "isSkillAvailable",
+                        target: "skill_casting.pre_cast",
+                        actions: ["onSkillStart"],
+                      },
+                      {
+                        target: `#${machineId}.alive.operational.idle`,
+                        actions: ["logEvent"],
+                      },
+                    ],
                   },
                 },
                 moving: {
@@ -589,19 +695,18 @@ export class Player extends Member<PlayerAttrType> {
                   states: {
                     skill_init: {
                       on: {
-                        check_availability: [
+                        skill_press: [
                           {
                             target: "pre_cast",
                             guard: "isSkillAvailable",
+                            actions: ["onSkillStart"],
                           },
+                          // 默认分支：不可用时回到 idle，并提示
                           {
                             target: `#${machineId}.alive.operational.idle`,
-                            guard: "skillNotAvailable",
+                            actions: ["logEvent"],
                           },
                         ],
-                      },
-                      entry: {
-                        type: "onSkillStart",
                       },
                     },
                     pre_cast: {
@@ -611,9 +716,9 @@ export class Player extends Member<PlayerAttrType> {
                             target: "charge",
                             guard: "hasChargeAction",
                           },
+                          // 默认分支：无蓄力则直接进入效果
                           {
                             target: "skill_effect",
-                            guard: "hasNoChargeAction",
                           },
                         ],
                       },

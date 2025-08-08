@@ -429,7 +429,7 @@ export abstract class Member<TAttrKey extends string = string> {
     // 构建基于响应式系统的上下文
     const reactiveContext: MemberContext<TAttrKey> = {
       memberData: this.memberData,
-      stats: this.getStats(), // 直接从响应式系统获取最新属性
+      stats: this.getStats(),
       isAlive: this.isAlive(),
       isActive: this.isActive(),
       statusEffects: [],
@@ -439,15 +439,10 @@ export abstract class Member<TAttrKey extends string = string> {
       position: this.getPosition(),
     };
 
-    // XState v5的Snapshot结构不同，需要正确访问状态
-    if (snapshot.status === "active") {
-      return {
-        value: "active",
-        context: reactiveContext,
-      };
-    }
+    // 取真实状态值：XState v5 的 snapshot.value 才是状态值，status 是生命周期枚举
+    const stateValue = (snapshot as any)?.value ?? (snapshot as any)?.status ?? "unknown";
     return {
-      value: snapshot.status,
+      value: typeof stateValue === 'string' ? stateValue : JSON.stringify(stateValue),
       context: reactiveContext,
     };
   }
@@ -605,9 +600,6 @@ export abstract class Member<TAttrKey extends string = string> {
     // 处理事件队列
     this.processEventQueue(currentTimestamp);
 
-    // 发送更新事件到状态机
-    this.actor.send({ type: "update" });
-
     // 调用子类特定的更新逻辑
     this.onUpdate(currentTimestamp);
   }
@@ -756,8 +748,15 @@ export abstract class Member<TAttrKey extends string = string> {
    * @returns 是否可以接受输入
    */
   canAcceptInput(): boolean {
-    const state = this.getCurrentState();
-    return this.isAlive() && this.isActive() && state.value !== "stunned" && state.value !== "casting";
+    try {
+      const snap: any = this.actor.getSnapshot();
+      const value = snap?.value;
+      const forbid = new Set(["stunned", "casting"]);
+      const inForbidden = typeof value === 'string' ? forbid.has(value) : false;
+      return this.isAlive() && this.isActive() && !inForbidden;
+    } catch {
+      return this.isAlive() && this.isActive();
+    }
   }
 
   /**

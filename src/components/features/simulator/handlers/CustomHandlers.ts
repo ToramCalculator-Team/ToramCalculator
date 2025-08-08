@@ -29,12 +29,27 @@ export class CustomEventHandler implements EventHandler {
   ) {}
 
   canHandle(event: BaseEvent): boolean {
-    return event.type === 'custom';
+    return event.type === 'custom' || event.type === 'member_fsm_event';
   }
 
   execute(event: BaseEvent, context: ExecutionContext): EventResult {
     try {
       const payload = event.payload as any;
+      if (event.type === 'member_fsm_event') {
+        // 将排程到达的 FSM 事件转发给目标成员的状态机
+        const targetMemberId = payload?.targetMemberId;
+        const member = this.memberManager.getMember(targetMemberId);
+        if (!member) {
+          return { success: false, error: `目标成员不存在: ${targetMemberId}` };
+        }
+        try {
+          member.getFSM().send({ type: payload.fsmEventType, data: payload.data } as any);
+          return { success: true, data: { forwarded: true, to: targetMemberId, eventType: payload.fsmEventType } };
+        } catch (err) {
+          return { success: false, error: err instanceof Error ? err.message : 'FSM send failed' };
+        }
+      }
+
       console.log(`🎮 处理自定义事件: ${event.id}`, payload);
       
       // 获取目标成员

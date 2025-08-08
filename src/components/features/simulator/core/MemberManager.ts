@@ -55,6 +55,14 @@ export class MemberManager {
 
   /** 所有成员的管理表 - 主存储 */
   private members: Map<string, MemberManagerEntry> = new Map();
+  /** 阵营注册表 */
+  private camps: Map<string, { id: string; name?: string }> = new Map();
+  /** 队伍注册表（不强依赖外部类型，仅存基础信息） */
+  private teams: Map<string, { id: string; campId: string; name?: string }> = new Map();
+  /** 阵营 -> 成员ID集合 索引 */
+  private membersByCamp: Map<string, Set<string>> = new Map();
+  /** 队伍 -> 成员ID集合 索引 */
+  private membersByTeam: Map<string, Set<string>> = new Map();
 
   // ==================== 构造函数 ====================
 
@@ -147,6 +155,17 @@ export class MemberManager {
 
       this.members.set(entry.id, entry);
       console.log(`📝 注册成员: ${entry.name} (${entry.type}) -> ${campId}/${teamId}`);
+
+      // 维护阵营/队伍索引
+      if (!this.membersByCamp.has(campId)) {
+        this.membersByCamp.set(campId, new Set());
+      }
+      this.membersByCamp.get(campId)!.add(entry.id);
+
+      if (!this.membersByTeam.has(teamId)) {
+        this.membersByTeam.set(teamId, new Set());
+      }
+      this.membersByTeam.get(teamId)!.add(entry.id);
       return true;
     } catch (error) {
       console.error("❌ 注册成员失败:", error);
@@ -173,6 +192,20 @@ export class MemberManager {
       
       // 从注册表中移除
       this.members.delete(memberId);
+
+      // 从索引中移除
+      if (entry.campId && this.membersByCamp.has(entry.campId)) {
+        this.membersByCamp.get(entry.campId)!.delete(memberId);
+        if (this.membersByCamp.get(entry.campId)!.size === 0) {
+          this.membersByCamp.delete(entry.campId);
+        }
+      }
+      if (entry.teamId && this.membersByTeam.has(entry.teamId)) {
+        this.membersByTeam.get(entry.teamId)!.delete(memberId);
+        if (this.membersByTeam.get(entry.teamId)!.size === 0) {
+          this.membersByTeam.delete(entry.teamId);
+        }
+      }
       
       console.log(`🗑️ 注销成员: ${entry.name} (${entry.type})`);
       return true;
@@ -240,9 +273,14 @@ export class MemberManager {
    * @returns 指定阵营的成员数组
    */
   getMembersByCamp(campId: string): Member[] {
-    return Array.from(this.members.values())
-      .filter(entry => entry.campId === campId)
-      .map(entry => entry.member);
+    const idSet = this.membersByCamp.get(campId);
+    if (!idSet) return [];
+    const result: Member[] = [];
+    for (const id of idSet) {
+      const entry = this.members.get(id);
+      if (entry) result.push(entry.member);
+    }
+    return result;
   }
 
   /**
@@ -252,9 +290,14 @@ export class MemberManager {
    * @returns 指定队伍的成员数组
    */
   getMembersByTeam(teamId: string): Member[] {
-    return Array.from(this.members.values())
-      .filter(entry => entry.teamId === teamId)
-      .map(entry => entry.member);
+    const idSet = this.membersByTeam.get(teamId);
+    if (!idSet) return [];
+    const result: Member[] = [];
+    for (const id of idSet) {
+      const entry = this.members.get(id);
+      if (entry) result.push(entry.member);
+    }
+    return result;
   }
 
   /**
@@ -282,7 +325,31 @@ export class MemberManager {
     }
 
     try {
+      const prevCamp = entry.campId;
+      const prevTeam = entry.teamId;
+
       Object.assign(entry, updates);
+
+      // 维护索引（阵营变更）
+      if (updates.campId && updates.campId !== prevCamp) {
+        if (prevCamp && this.membersByCamp.has(prevCamp)) {
+          this.membersByCamp.get(prevCamp)!.delete(memberId);
+          if (this.membersByCamp.get(prevCamp)!.size === 0) this.membersByCamp.delete(prevCamp);
+        }
+        if (!this.membersByCamp.has(updates.campId)) this.membersByCamp.set(updates.campId, new Set());
+        this.membersByCamp.get(updates.campId)!.add(memberId);
+      }
+
+      // 维护索引（队伍变更）
+      if (updates.teamId && updates.teamId !== prevTeam) {
+        if (prevTeam && this.membersByTeam.has(prevTeam)) {
+          this.membersByTeam.get(prevTeam)!.delete(memberId);
+          if (this.membersByTeam.get(prevTeam)!.size === 0) this.membersByTeam.delete(prevTeam);
+        }
+        if (!this.membersByTeam.has(updates.teamId)) this.membersByTeam.set(updates.teamId, new Set());
+        this.membersByTeam.get(updates.teamId)!.add(memberId);
+      }
+
       console.log(`🔄 更新成员: ${entry.name} (${entry.type})`);
       return true;
     } catch (error) {
@@ -309,6 +376,10 @@ export class MemberManager {
 
     // 清空注册表
     this.members.clear();
+    this.membersByCamp.clear();
+    this.membersByTeam.clear();
+    this.camps.clear();
+    this.teams.clear();
   }
 
   /**
@@ -338,6 +409,32 @@ export class MemberManager {
   hasMember(memberId: string): boolean {
     return this.members.has(memberId);
   }
+
+  // ==================== 阵营/队伍管理 ====================
+
+  /** 添加阵营（幂等） */
+  addCamp(campId: string, campName?: string): void {
+    if (!this.camps.has(campId)) {
+      this.camps.set(campId, { id: campId, name: campName });
+      this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
+    }
+  }
+
+  /** 添加队伍（幂等） */
+  addTeam(campId: string, team: { id: string; name?: string }, teamName?: string): void {
+    if (!this.camps.has(campId)) {
+      // 若未注册阵营，先注册
+      this.addCamp(campId);
+    }
+    const name = teamName ?? team.name;
+    this.teams.set(team.id, { id: team.id, campId, name });
+    this.membersByTeam.set(team.id, this.membersByTeam.get(team.id) || new Set());
+  }
+
+  /** 查询阵营是否存在 */
+  hasCamp(campId: string): boolean { return this.camps.has(campId); }
+  /** 查询队伍是否存在 */
+  hasTeam(teamId: string): boolean { return this.teams.has(teamId); }
 }
 
 // ============================== 导出 ==============================

@@ -1,7 +1,7 @@
 import { Component, createSignal, createResource, Show, createEffect, on } from "solid-js";
 import { findMemberWithRelations } from "@db/repositories/member";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
-import { realtimeSimulatorPool } from "~/components/features/simulator/SimulatorPool";
+import { realtimeSimulatorPool } from "~/components/features/simulator/core/thread/SimulatorPool";
 
 const PlayerTypedArrayTest: Component = () => {
   const [consoleOutput, setConsoleOutput] = createSignal<string[]>([]);

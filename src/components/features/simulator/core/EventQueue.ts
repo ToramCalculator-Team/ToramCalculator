@@ -617,10 +617,11 @@ export class EventQueue {
    * @returns 帧号
    */
   private timestampToFrame(timestamp: number): number {
-    // 这里需要引擎提供当前帧号和时间的对应关系
-    // 暂时使用简单的转换逻辑
-    const currentTime = performance.now();
-    const frameDelta = Math.floor((timestamp - currentTime) / (1000 / 60));
+    // 以 Date.now() 作为时间基准，避免与 performance.now() 的时基不一致
+    // 将未来时间映射为距离当前的帧偏移，过去时间映射为当前帧（0 偏移）
+    const nowEpoch = Date.now();
+    const deltaMs = timestamp - nowEpoch;
+    const frameDelta = Math.floor(deltaMs / (1000 / 60));
     return Math.max(0, frameDelta);
   }
 

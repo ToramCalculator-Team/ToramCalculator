@@ -154,6 +154,22 @@ export class SkillEffectHandler implements EventHandler {
           }
         }
       }
+
+      // 追加：根据动画时长调度 FSM 的 skill_animation_end（默认0帧）
+      const animationFrames = typeof payload?.animationFrames === 'number' ? Math.max(0, Math.round(payload.animationFrames)) : 0;
+      newEvents.push({
+        id: `${event.id}_anim_end`,
+        executeFrame: context.currentFrame + animationFrames,
+        priority: 'normal',
+        type: 'member_fsm_event',
+        payload: {
+          targetMemberId: payload.memberId,
+          fsmEventType: 'skill_animation_end',
+          data: { skillId: payload.skillId }
+        },
+        source: event.source,
+        actionId: event.actionId
+      });
       
       return {
         success: true,

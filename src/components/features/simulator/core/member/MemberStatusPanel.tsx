@@ -7,8 +7,8 @@
  * - 展示成员属性、位置、状态等数据
  */
 
-import { createSignal, createEffect, Show } from "solid-js";
-import { MemberSerializeData } from "./core/Member";
+import { createSignal, createEffect, Show, createMemo } from "solid-js";
+import { MemberSerializeData } from "../Member";
 
 // ============================== 类型定义 ==============================
 
@@ -66,7 +66,7 @@ function calculateDynamicTotalValue(modifier: any): number {
   return Math.round(total * 100) / 100; // 保留两位小数
 }
 
-// 递归渲染stats对象的组件
+// 递归渲染stats对象的组件（支持 Map、Map-like、Record）
 function StatsRenderer(props: { data: any; path?: string[] }) {
   const renderStats = (obj: any, path: string[] = []) => {
     if (!obj || typeof obj !== "object") {
@@ -75,11 +75,34 @@ function StatsRenderer(props: { data: any; path?: string[] }) {
     
     // 处理Map对象
     let entries: [string, any][] = [];
-    if (obj instanceof Map) {
-      entries = Array.from(obj.entries()).map(([key, value]) => [String(key), value]);
-    } else {
+    try {
+      // 显式 Map
+      if (obj instanceof Map) {
+        entries = Array.from(obj.entries()).map(([key, value]) => [String(key), value]);
+      }
+      // Worker 传回的形如 { dataType: 'Map', data: [[k,v], ...] }
+      else if ((obj as any)?.dataType === 'Map' && Array.isArray((obj as any).data)) {
+        entries = (obj as any).data.map(([k, v]: any[]) => [String(k), v]);
+      }
+      // 一般 Record
+      else {
+        entries = Object.entries(obj);
+      }
+    } catch {
       entries = Object.entries(obj);
     }
+
+    // 对 keys 做稳定排序：数字在前，字符串按字母
+    entries.sort(([ak], [bk]) => {
+      const an = Number(ak);
+      const bn = Number(bk);
+      const aIsNum = !Number.isNaN(an);
+      const bIsNum = !Number.isNaN(bn);
+      if (aIsNum && bIsNum) return an - bn;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      return ak.localeCompare(bk);
+    });
     
     return entries.map(([key, value]) => {
       const currentPath = [...path, key];
@@ -205,17 +228,61 @@ function StatsRenderer(props: { data: any; path?: string[] }) {
     });
   };
   
-  return (
-    <div class="flex w-full flex-col gap-1 p-1">
-      {renderStats(props.data, props.path || [])}
-    </div>
-  );
+  const normalized = (() => {
+    const d = props.data;
+    if (!d) return {};
+    if (d instanceof Map) return d;
+    if (d?.dataType === 'Map' && Array.isArray(d?.data)) return new Map(d.data);
+    // 若是超大扁平 Record，仅挑选前 200 项以免卡顿（可按需调整）
+    const entries = Object.entries(d);
+    if (entries.length > 500) {
+      return Object.fromEntries(entries.slice(0, 200));
+    }
+    return d;
+  })();
+
+  return <div class="flex w-full flex-col gap-1 p-1">{renderStats(normalized, props.path || [])}</div>;
 }
 
 // ============================== 组件实现 ==============================
 
 export default function MemberStatusPanel(props: MemberStatusPanelProps) {
   const [stats, setStats] = createSignal<StatDisplay[]>([]);
+
+  // 将扁平化的 stats（"a.b.c": 1）重建为嵌套对象，以便完整递归渲染
+  const nestedStats = createMemo(() => {
+    const source = (props.selectedMember as any)?.state?.context?.stats;
+    if (!source) return {} as Record<string, any>;
+
+    // 兼容 Map / Map-like
+    const entries: [string, any][] =
+      source instanceof Map
+        ? Array.from(source.entries())
+        : source?.dataType === "Map" && Array.isArray(source?.data)
+          ? (source.data as any[]).map(([k, v]) => [String(k), v])
+          : Object.entries(source as Record<string, any>);
+
+    const root: Record<string, any> = {};
+    for (const [key, value] of entries) {
+      if (typeof key !== "string") continue;
+      const parts = key.split(".").filter(Boolean);
+      if (parts.length === 0) continue;
+      let cursor: Record<string, any> = root;
+      for (let i = 0; i < parts.length; i += 1) {
+        const part = parts[i];
+        const isLeaf = i === parts.length - 1;
+        if (isLeaf) {
+          cursor[part] = value;
+        } else {
+          if (!(part in cursor) || typeof cursor[part] !== "object" || cursor[part] === null) {
+            cursor[part] = {};
+          }
+          cursor = cursor[part];
+        }
+      }
+    }
+    return root;
+  });
 
   // 解析成员状态数据
   createEffect(() => {
@@ -355,22 +422,6 @@ export default function MemberStatusPanel(props: MemberStatusPanelProps) {
             </div>
           </div>
 
-          {/* 属性信息 */}
-          <div class="bg-area-color p-2">
-            <h4 class="text-md text-main-text-color mb-3 font-semibold">属性信息</h4>
-            <div class="space-y-2">
-              
-              {stats().map((stat) => (
-                <div class="border-dividing-color flex items-center justify-between border-b py-1 last:border-b-0">
-                  <span class="text-dividing-color text-sm">{stat.name}:</span>
-                  <span class={`font-mono text-sm ${getStatusColor(stat.type, stat.currentValue, stat.maxValue)}`}>
-                    {formatValue(stat.currentValue, stat.maxValue)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* 状态机信息 */}
           <Show when={props.selectedMember?.state?.context}>
             <div class="bg-area-color p-2">
@@ -390,12 +441,16 @@ export default function MemberStatusPanel(props: MemberStatusPanelProps) {
                 </div>
               </div>
               
-              {/* Stats信息 */}
+              {/* Stats信息（可折叠，默认收起） */}
               <Show when={props.selectedMember?.state?.context?.stats}>
-                <div class="mt-3">
-                  <h5 class="text-sm text-main-text-color mb-2 font-semibold">属性详情</h5>
-                  <StatsRenderer data={props.selectedMember?.state?.context?.stats} />
-                </div>
+                <details class="mt-3">
+                  <summary class="text-sm text-main-text-color mb-2 font-semibold cursor-pointer select-none">
+                    属性详情（完整）
+                  </summary>
+              <div class="max-h-80 overflow-auto pr-1">
+                <StatsRenderer data={nestedStats()} />
+                  </div>
+                </details>
               </Show>
             </div>
           </Show>

@@ -91,7 +91,10 @@ export class EventHandlerFactory {
     handlers.set('skill_cast', this.createSkillCastHandler());
 
     // 创建自定义事件处理器
-    handlers.set('custom', this.createCustomEventHandler());
+    const customHandler = this.createCustomEventHandler();
+    handlers.set('custom', customHandler);
+    // 复用同一处理器处理按帧调度的 FSM 转发事件
+    handlers.set('member_fsm_event', customHandler);
 
     // console.log(`EventHandlerFactory: 创建了 ${handlers.size} 个事件处理器`);
     return handlers;

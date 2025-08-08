@@ -1,11 +1,11 @@
 /**
  * 消息路由器 - 分发外部指令到FSM
- * 
+ *
  * 核心职责（根据架构文档）：
  * 1. 接收外部指令（控制器/AI）
  * 2. 分发给相应的 FSM / 实例处理
  * 3. 返回处理结果给调用者
- * 
+ *
  * 设计理念：
  * - 纯分发：只负责路由，不处理业务逻辑
  * - FSM驱动：让FSM负责根据消息生成事件
@@ -14,62 +14,13 @@
  */
 
 import type GameEngine from "./GameEngine";
-
-// ============================== 类型定义 ==============================
-
-
-/**
- * 消息路由统计接口 - 对应MessageRouter.getStats()的返回类型
- */
-export interface MessageRouterStats {
-  totalMessagesProcessed: number;
-  successfulMessages: number;
-  failedMessages: number;
-  lastProcessedTimestamp: number;
-  successRate: string;
-}
-
-/**
- * 意图消息接口
- * 外部控制器发送的意图指令
- */
-export interface IntentMessage {
-  /** 消息ID */
-  id: string;
-  /** 消息类型 */
-  type: IntentMessageType;
-  /** 目标成员ID */
-  targetMemberId: string;
-  /** 发送时间戳 */
-  timestamp: number;
-  /** 消息数据 */
-  data: Record<string, any>;
-}
-
-/**
- * 意图消息类型枚举
- */
-export type IntentMessageType =
-  | "cast_skill"      // 释放技能
-  | "move"            // 移动
-  | "stop_action"     // 停止动作
-  | "use_item"        // 使用道具
-  | "target_change"   // 切换目标
-  | "block"           // 格挡
-  | "dodge"           // 闪躲
-  | "custom";         // 自定义意图
-
-/**
- * 消息处理结果接口
- */
-export interface MessageProcessResult {
-  /** 处理是否成功 */
-  success: boolean;
-  /** 结果消息 */
-  message: string;
-  /** 错误信息（如果失败） */
-  error?: string;
-}
+import {
+  IntentMessage,
+  IntentMessageType,
+  IntentMessageSchema,
+  MessageProcessResult,
+  MessageRouterStats,
+} from "./thread/messages";
 
 // ============================== 消息路由器类 ==============================
 
@@ -95,7 +46,7 @@ export class MessageRouter {
 
   /**
    * 构造函数
-   * 
+   *
    * @param engine 游戏引擎实例
    */
   constructor(engine: GameEngine) {
@@ -107,7 +58,7 @@ export class MessageRouter {
   /**
    * 处理意图消息
    * 将消息分发到目标成员的FSM
-   * 
+   *
    * @param message 意图消息
    * @returns 处理结果
    */
@@ -121,7 +72,7 @@ export class MessageRouter {
         return {
           success: false,
           message: "消息格式无效",
-          error: "Invalid message format"
+          error: "Invalid message format",
         };
       }
 
@@ -131,92 +82,85 @@ export class MessageRouter {
         return {
           success: false,
           message: `目标成员不存在: ${message.targetMemberId}`,
-          error: "Target member not found"
-        };
-      }
-
-      // 检查成员是否可以接受输入
-      if (!targetMember.canAcceptInput()) {
-        return {
-          success: false,
-          message: `成员当前无法接受输入: ${targetMember.getName()}`,
-          error: "Member cannot accept input"
+          error: "Target member not found",
         };
       }
 
       // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
       try {
-        console.log(`🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`, 
-                   targetMember.getFSM().getSnapshot().value);
-        console.log(`🔍 MessageRouter: 发送的事件:`, { type: message.type, data: message.data });
-        
-        targetMember.getFSM().send({
-          type: message.type,
-          data: message.data,
-        });
+        // console.log(
+        //   `🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`,
+        //   targetMember.getFSM().getSnapshot().value,
+        // );
 
-        const newState = targetMember.getFSM().getSnapshot();
-        console.log(`🔍 MessageRouter: 发送事件到FSM后，成员 ${targetMember.getName()} 新状态:`, newState.value);
+        // 输入意图到 FSM 事件的映射（解耦 UI/意图 与 内部 FSM 事件语义）
+        const mapped = this.mapIntentToFsmEvent(targetMember, message);
+        // console.log(`🔍 MessageRouter: 发送的事件:`, mapped);
+
+        targetMember.getFSM().send(mapped as any);
+
+        // const newState = targetMember.getFSM().getSnapshot();
+        // console.log(`🔍 MessageRouter: 发送事件到FSM后，成员 ${targetMember.getName()} 新状态:`, newState.value);
 
         this.stats.successfulMessages++;
-        console.log(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
-        
+        // console.log(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
+
         return {
           success: true,
           message: `消息已分发到 ${targetMember.getName()}`,
-          error: undefined
+          error: undefined,
         };
       } catch (fsmError: any) {
         this.stats.failedMessages++;
         console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`, fsmError);
-        
+
         return {
           success: false,
           message: `FSM处理失败: ${targetMember.getName()}`,
-          error: fsmError.message
+          error: fsmError.message,
         };
       }
-
     } catch (error: any) {
       this.stats.failedMessages++;
       console.error("MessageRouter: 分发消息时发生错误:", error);
-      
+
       return {
         success: false,
         message: "分发消息时发生内部错误",
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   /**
    * 批量处理消息
-   * 
+   *
    * @param messages 消息数组
    * @returns 处理结果数组
    */
   async processMessages(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
     const results: MessageProcessResult[] = [];
-    
+
     for (const message of messages) {
       const result = await this.processMessage(message);
       results.push(result);
     }
-    
+
     return results;
   }
 
   /**
    * 获取处理统计信息
-   * 
+   *
    * @returns 统计信息
    */
   getStats(): MessageRouterStats {
     return {
       ...this.stats,
-      successRate: this.stats.totalMessagesProcessed > 0 
-        ? (this.stats.successfulMessages / this.stats.totalMessagesProcessed * 100).toFixed(2) + '%'
-        : '0%'
+      successRate:
+        this.stats.totalMessagesProcessed > 0
+          ? ((this.stats.successfulMessages / this.stats.totalMessagesProcessed) * 100).toFixed(2) + "%"
+          : "0%",
     };
   }
 
@@ -234,25 +178,16 @@ export class MessageRouter {
 
   /**
    * 获取支持的消息类型
-   * 
+   *
    * @returns 支持的消息类型数组
    */
   getSupportedMessageTypes(): IntentMessageType[] {
-    return [
-      "cast_skill",
-      "move", 
-      "stop_action",
-      "use_item",
-      "target_change",
-      "block",
-      "dodge",
-      "custom"
-    ];
+    return ["cast_skill", "move", "stop_action", "use_item", "target_change", "block", "dodge", "custom"];
   }
 
   /**
    * 检查是否支持指定消息类型
-   * 
+   *
    * @param messageType 消息类型
    * @returns 是否支持
    */
@@ -266,17 +201,27 @@ export class MessageRouter {
    * 验证消息格式
    */
   private validateMessage(message: IntentMessage): boolean {
-    return !!(
-      message.id &&
-      message.type &&
-      message.targetMemberId &&
-      message.timestamp &&
-      message.data &&
-      typeof message.data === 'object'
-    );
+    return IntentMessageSchema.safeParse(message).success;
+  }
+
+  /**
+   * 将外部意图映射为目标成员 FSM 事件
+   * 目前最小实现：cast_skill -> skill_press（Player FSM 期望的事件）
+   */
+  private mapIntentToFsmEvent(
+    _targetMember: any,
+    message: IntentMessage,
+  ): { type: string; data?: Record<string, any> } {
+    // 最小实现：意图名即事件名；特例映射外置到 mapper（后续可注入）
+    const { type, data } = message;
+    if (type === "cast_skill") {
+      const skillId = (data as any)?.skillId;
+      return { type: "skill_press", data: { skillId, ...data } };
+    }
+    return { type, data } as any;
   }
 }
 
 // ============================== 导出 ==============================
 
-export default MessageRouter; 
+export default MessageRouter;

@@ -22,7 +22,7 @@ import { FrameLoop, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
 
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
-import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
+import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
 import type { QueueEvent, EventPriority, EventHandler, BaseEvent, ExecutionContext, EventResult, QueueStats } from "./EventQueue";
 import Member, { MemberContext, MemberSerializeData } from "./Member";
 import { Snapshot } from "xstate";
@@ -381,6 +381,7 @@ export class GameEngine {
    * @param campName 阵营名称
    */
   addCamp(campId: string, campName?: string): void {
+    this.memberManager.addCamp(campId, campName);
     console.log(`GameEngine: 添加阵营: ${campId} - ${campName || '未命名'}`);
   }
 
@@ -392,6 +393,7 @@ export class GameEngine {
    * @param teamName 队伍名称
    */
   addTeam(campId: string, teamData: TeamWithRelations, teamName?: string): void {
+    this.memberManager.addTeam(campId, { id: teamData.id, name: teamData.name ?? undefined }, teamName);
     console.log(`GameEngine: 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
   }
 
@@ -454,6 +456,7 @@ export class GameEngine {
    * @returns 处理结果
    */
   async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
+    console.log("GameEngine: 处理意图消息:", message);
     if (!this.config.enableRealtimeControl) {
       return {
         success: false,
@@ -927,6 +930,7 @@ export class GameEngine {
       // 发送伤害事件到队列
       this.eventQueue.insert({
         id: `damage_${Date.now()}`,
+        executeFrame: this.frameLoop.getFrameNumber(),
         type: 'member_damage',
         data: { damage, damageType, targetMemberId: targetId },
         timestamp: Date.now(),
@@ -942,6 +946,7 @@ export class GameEngine {
     if (target) {
       this.eventQueue.insert({
         id: `heal_${Date.now()}`,
+        executeFrame: this.frameLoop.getFrameNumber(),
         type: 'member_heal',
         data: { healing, targetMemberId: targetId },
         timestamp: Date.now(),
@@ -957,6 +962,7 @@ export class GameEngine {
     if (target) {
       this.eventQueue.insert({
         id: `buff_${Date.now()}`,
+        executeFrame: this.frameLoop.getFrameNumber(),
         type: 'add_buff',
         data: { ...buffData, targetMemberId: targetId },
         timestamp: Date.now(),
@@ -972,6 +978,7 @@ export class GameEngine {
     if (target) {
       this.eventQueue.insert({
         id: `remove_buff_${Date.now()}`,
+        executeFrame: this.frameLoop.getFrameNumber(),
         type: 'remove_buff',
         data: { buffId, targetMemberId: targetId },
         timestamp: Date.now(),
