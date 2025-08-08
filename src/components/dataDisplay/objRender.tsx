@@ -42,6 +42,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
         fallback={
           <For each={Object.entries(props.data)}>
             {([key, val]) => {
+              if (props.hiddenFields?.includes(key)) return null;
               const schemaField = props.dataSchema?.shape[key];
               const kind = schemaField ? getZodType(schemaField) : ZodFirstPartyTypeKind.ZodString;
               const fieldName = props.dictionary?.fields[key].key ?? key;

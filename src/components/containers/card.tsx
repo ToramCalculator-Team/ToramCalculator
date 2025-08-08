@@ -108,7 +108,7 @@ export const Card = (props: CardProps) => {
       () => props.total,
       () => {
         setRotationAngle((props.total - props.index - 1) * 2);
-        console.log(props.index, props.total, props.title);
+        // console.log(props.index, props.total, props.title);
       },
     ),
   );

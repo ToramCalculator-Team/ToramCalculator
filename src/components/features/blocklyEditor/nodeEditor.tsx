@@ -1,5 +1,5 @@
 import { Accessor, createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount, Signal, useContext } from "solid-js";
-import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization, WorkspaceSvg } from "blockly/core";
+import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization, WorkspaceSvg, svgResize } from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
@@ -23,9 +23,11 @@ import { MediaContext } from "~/lib/contexts/Media";
 interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
   setData: (data: unknown) => void;
-  code: Accessor<string>;
-  setCode: (code: string) => void;
+  code?: Accessor<string>;
+  setCode?: (code: string) => void;
   state: unknown;
+  // 仅展示模式：禁用所有编辑能力（无工具箱、不可拖拽/连线/删除）
+  readOnly?: boolean;
 }
 
 export function NodeEditor(props: NodeEditorProps) {
@@ -33,6 +35,91 @@ export function NodeEditor(props: NodeEditorProps) {
   const [ref, setRef] = createSignal<HTMLDivElement>();
   const [workerSpaceState, setWorkerSpaceState] = createSignal<Record<string, any>>({});
   const [workerSpace, setWorkerSpace] = createSignal<WorkspaceSvg>();
+
+  // 计算工具箱/飞出面板宽度（优先 metrics，回退 DOM 量测）
+  const measureToolboxWidthPx = (ws: WorkspaceSvg, container: HTMLElement, metrics: any, isHorizontal: boolean, toolboxPosition: string) => {
+    if (isHorizontal || toolboxPosition !== "start") return 0;
+    const metricsWidth = (metrics.toolboxWidth ?? metrics.flyoutWidth ?? 0) as number;
+    if (metricsWidth && metricsWidth > 0) return metricsWidth;
+    const host: HTMLElement = (ws as any).getInjectionDiv?.() || container;
+    const toolboxDiv = host.querySelector?.(".blocklyToolboxDiv") as HTMLElement | null;
+    if (toolboxDiv) {
+      const w = toolboxDiv.getBoundingClientRect().width;
+      if (w > 0) return w;
+    }
+    const flyoutDiv = host.querySelector?.(".blocklyFlyout") as HTMLElement | null;
+    if (flyoutDiv) {
+      const w = flyoutDiv.getBoundingClientRect().width;
+      if (w > 0) return w;
+    }
+    return 0;
+  };
+
+  // 使用内置方法进行初始居中（不做额外偏差计算）
+  const centerInitialView = (ws: WorkspaceSvg) => {
+    if (!ws) return;
+    try {
+      const blocks = ws.getTopBlocks(false);
+      svgResize(ws);
+      if (blocks && blocks.length > 0) {
+        ws.centerOnBlock(blocks[0].id);
+        return;
+      }
+      if (typeof (ws as any).scrollCenter === "function") {
+        (ws as any).scrollCenter(0, 0);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // 读取 Tailwind 类实际颜色，便于与系统主题一致
+  const resolveColorFromClass = (container: HTMLElement, className: string, property: "background-color" | "color" = "background-color"): string => {
+    const probe = document.createElement("div");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.pointerEvents = "none";
+    probe.className = className;
+    container.appendChild(probe);
+    const color = getComputedStyle(probe).getPropertyValue(property) || "";
+    container.removeChild(probe);
+    return color || "";
+  };
+
+  const createToramTheme = (container: HTMLElement) => {
+    // 基础配色从应用类名读取，若获取失败则回退
+    const workspaceBg = resolveColorFromClass(container, "bg-area-color") || "#1e1e1e";
+    const toolboxBg = resolveColorFromClass(container, "bg-accent-color") || "#161616";
+    const toolboxFg = resolveColorFromClass(container, "text-primary-color", "color") || "#ffffff";
+    const flyoutBg = resolveColorFromClass(container, "bg-primary-color") || "#202020";
+    const flyoutFg = resolveColorFromClass(container, "text-primary-color", "color") || "#cccccc";
+    const scrollbarColor = resolveColorFromClass(container, "bg-dividing-color") || "#7f7f7f";
+    const cursorColor = resolveColorFromClass(container, "text-accent-color", "color") || "#d0d0d0";
+    const brand1 = resolveColorFromClass(container, "bg-brand-color-1st") || "#16a34a";
+
+    return Theme.defineTheme("toram", {
+      base: Themes.Zelos,
+      componentStyles: {
+        workspaceBackgroundColour: workspaceBg,
+        toolboxBackgroundColour: toolboxBg,
+        toolboxForegroundColour: toolboxFg,
+        flyoutBackgroundColour: flyoutBg,
+        flyoutForegroundColour: flyoutFg,
+        flyoutOpacity: 0.9,
+        scrollbarColour: scrollbarColor,
+        scrollbarOpacity: 0.5,
+        insertionMarkerColour: brand1,
+        insertionMarkerOpacity: 0.4,
+        cursorColour: cursorColor,
+      },
+      fontStyle: {
+        family: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'",
+        weight: "500",
+        size: 12,
+      },
+      name: "toram",
+    });
+  };
 
   const { default: _d, ...location } = {
     "zh-CN": Zh,
@@ -890,43 +977,39 @@ export function NodeEditor(props: NodeEditorProps) {
           ],
         };
         setLocale(location);
-        let workerSpace = inject(div, {
+        const isReadOnly = !!props.readOnly;
+        const injectionOptions: any = {
           horizontalLayout: media.orientation === "portrait",
           // renderer: "geras",
           toolboxPosition: media.orientation === "landscape" ? "start" : "end",
-          theme: Theme.defineTheme("dark", {
-            base: Themes.Zelos,
-            componentStyles: {
-              workspaceBackgroundColour: "#1e1e1e",
-              toolboxBackgroundColour: "#000",
-              toolboxForegroundColour: "#fff",
-              flyoutBackgroundColour: "#252526",
-              flyoutForegroundColour: "#ccc",
-              flyoutOpacity: 1,
-              scrollbarColour: "#797979",
-              insertionMarkerColour: "#fff",
-              insertionMarkerOpacity: 0.3,
-              scrollbarOpacity: 0.4,
-              cursorColour: "#d0d0d0",
-            },
-            name: "dark",
-          }),
+          theme: createToramTheme(div),
           toolbox,
+          readOnly: isReadOnly,
+
+          move: {
+            scrollbars: true,
+            drag: true,
+            // wheel: true,
+          },
           grid: {
             spacing: 25,
             length: 3,
             colour: "#ccc",
             snap: true,
           },
-        });
+        };
+        let workerSpace = inject(div, injectionOptions);
         const data = props.data;
         serialization.workspaces.load(data ?? {}, workerSpace);
-        workerSpace.addChangeListener(() => props.setCode(javascriptGenerator.workspaceToCode(workerSpace)));
+        workerSpace.addChangeListener(() => props.setCode?.(javascriptGenerator.workspaceToCode(workerSpace)));
         // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
+
+        // 使用内置方法进行初始居中（双 rAF 确保度量稳定）
+        requestAnimationFrame(() => requestAnimationFrame(() => centerInitialView(workerSpace)));
 
         // 当代码发生变化时
         createEffect((prevCode) => {
-          const curCode = props.code();
+          const curCode = props.code?.();
           if (curCode !== prevCode) {
             // console.log(curCode);
             props.setData(serialization.workspaces.save(workerSpace));

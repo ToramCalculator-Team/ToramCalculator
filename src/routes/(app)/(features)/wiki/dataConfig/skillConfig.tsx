@@ -1,5 +1,4 @@
-import { createResource, createSignal, For, JSX, Show, Index, Accessor } from "solid-js";
-import { DataEnums } from "@db/dataEnums";
+import { For, JSX, Index, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { skillSchema, skill_effectSchema, statisticSchema } from "@db/generated/zod/index";
@@ -421,7 +420,7 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
       {
         id: "treeType",
         accessorFn: (row) => row.treeType,
-        cell: (info) => info.getValue<keyof DataEnums["skill"]["treeType"]>(),
+        cell: (info) => info.getValue<SkillTreeType>(),
         size: 120,
       },
       {
@@ -450,15 +449,6 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
   },
   form: ({ dic, data }) => SkillWithRelatedForm(dic, data),
   card: ({ dic, data }) => {
-    const [effectsData] = createResource(data.id, async (skillId) => {
-      const db = await getDB();
-      return await db
-        .selectFrom("skill_effect")
-        .where("skill_effect.belongToskillId", "=", skillId)
-        .selectAll("skill_effect")
-        .execute();
-    });
-
     return (
       <>
         <div class="SkillImage bg-area-color h-[18vh] w-full rounded"></div>
@@ -475,19 +465,39 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
           },
         })}
 
-        <CardSection
-          title={dic.db.skill_effect.selfName}
-          data={effectsData.latest}
-          dataRender={(effect) => {
-            return (
-              <Button
-                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "skill_effect", id: effect.id }])}
-              >
-                {effect.condition}
-              </Button>
-            );
-          }}
-        />
+        <Show when={data.effects?.length}>
+          <section class="FieldGroup w-full gap-2">
+            <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              {dic.db.skill_effect.selfName}
+              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+            </h3>
+            <div class="Content flex flex-col gap-3 p-1">
+              <For each={data.effects}>
+                {(effect) => {
+                  return (
+                    <div class="ObjectBox bg-area-color flex flex-col rounded-md p-2">
+                      {ObjRender<skill_effect>({
+                        data: effect,
+                        dictionary: dic.db.skill_effect,
+                        dataSchema: skill_effectSchema,
+                        hiddenFields: ["id", "belongToskillId"],
+                      })}
+                      <NodeEditor
+                        data={effect.logic}
+                         setData={() => {}}
+                         state={true}
+                         readOnly
+                        id={effect.id}
+                        class="h-[80vh] w-full"
+                      />
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
+          </section>
+        </Show>
+
         <CardSharedSection dic={dic} data={data} delete={deleteSkill} />
       </>
     );

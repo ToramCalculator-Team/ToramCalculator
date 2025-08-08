@@ -1,3 +1,9 @@
+#blocklyDiv {
+  border-radius: 12px;
+  border: 1px solid var(--color-brand-color-1st);
+  overflow: hidden;
+}
+
 .blocklyTooltipDiv,
 #blocklyDiv * {
   transition: transform 0s;
@@ -5,9 +11,13 @@
 
 @media (max-width: 1024px) {
   .blocklyToolboxDiv {
+    bottom: 4px !important;
+    left: 4px !important;
     height: auto !important;
-    width: 100% !important;
+    width: calc(100% - 8px) !important;
     display: flex !important;
+    border-radius: 12px;
+    overflow-x: auto !important;
   }
 
   .blocklyToolboxContents {
@@ -28,6 +38,17 @@
   } */
 
   .blocklyBlockCanvas {
+  }
+}
+
+@media (min-width: 1025px) {
+  .blocklyToolboxDiv {
+    border-radius: 12px;
+    top: 4px !important;
+    left: 4px !important;
+    height: calc(100% - 8px) !important;
+    width: auto !important;
+    overflow-x: auto;
   }
 }
 

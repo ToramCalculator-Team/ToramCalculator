@@ -6,7 +6,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       {
         ""type"": ""procedures_defreturn"",
         ""id"": ""BsFK8,PgtaH0SXb489F8"",
-        ""x"": -862,
+        ""x"": -287,
         ""y"": -362,
         ""icons"": {
           ""comment"": {
@@ -337,7 +337,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       {
         ""type"": ""procedures_defreturn"",
         ""id"": ""0wT{TqcDskB[2_Ono6*}"",
-        ""x"": -862,
+        ""x"": -287,
         ""y"": -137,
         ""icons"": {
           ""comment"": {
@@ -548,140 +548,82 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
         }
       },
       {
-        ""type"": ""procedures_defnoreturn"",
-        ""id"": ""39FakA;Z=QWG])gI#AhB"",
-        ""x"": -862,
-        ""y"": 38,
-        ""icons"": {
-          ""comment"": {
-            ""text"": ""描述该功能..."",
-            ""pinned"": false,
-            ""height"": 80,
-            ""width"": 160
-          }
-        },
-        ""fields"": {
-          ""NAME"": ""main""
-        },
+        ""type"": ""controls_if"",
+        ""id"": ""j{[yAku{oN0zUBi0.$6}"",
+        ""x"": -87,
+        ""y"": 138,
         ""inputs"": {
-          ""STACK"": {
+          ""IF0"": {
             ""block"": {
-              ""type"": ""controls_if"",
-              ""id"": ""OM]x4`yeI2:+sAf|8{zZ"",
+              ""type"": ""logic_compare"",
+              ""id"": ""3_%+376ozzFk;iqIc/|F"",
+              ""fields"": {
+                ""OP"": ""EQ""
+              },
               ""inputs"": {
-                ""IF0"": {
+                ""A"": {
                   ""block"": {
-                    ""type"": ""logic_compare"",
-                    ""id"": ""`%{SVyvl,5cN$uI#utoN"",
+                    ""type"": ""procedures_callreturn"",
+                    ""id"": ""KWVH;*nO,OW|CP{l^CFt"",
+                    ""extraState"": {
+                      ""name"": ""isHit""
+                    }
+                  }
+                },
+                ""B"": {
+                  ""block"": {
+                    ""type"": ""logic_boolean"",
+                    ""id"": ""qqz;)I@y5{L5GO,yj$$y"",
                     ""fields"": {
-                      ""OP"": ""GT""
+                      ""BOOL"": ""TRUE""
+                    }
+                  }
+                }
+              }
+            }
+          },
+          ""DO0"": {
+            ""block"": {
+              ""type"": ""target_hp_set"",
+              ""id"": ""B6-,kXG]u6Nrp6YHm?0e"",
+              ""inputs"": {
+                ""VALUE"": {
+                  ""block"": {
+                    ""type"": ""math_arithmetic"",
+                    ""id"": ""%Twvfi@XkH]2^Lf^zd|%"",
+                    ""fields"": {
+                      ""OP"": ""MINUS""
                     },
                     ""inputs"": {
                       ""A"": {
-                        ""block"": {
-                          ""type"": ""self_attribute"",
-                          ""id"": ""X%W(4h:!A,6QnQB7B.q}"",
+                        ""shadow"": {
+                          ""type"": ""math_number"",
+                          ""id"": ""F.eRrY3@NHD(:BYtL3Sk"",
                           ""fields"": {
-                            ""ATTRIBUTE_NAME"": ""currentMp""
+                            ""NUM"": 1
+                          }
+                        },
+                        ""block"": {
+                          ""type"": ""target_attribute"",
+                          ""id"": ""!P?iV{zw{lj:xOk=C=m?"",
+                          ""fields"": {
+                            ""ATTRIBUTE_NAME"": ""hp""
                           }
                         }
                       },
                       ""B"": {
-                        ""block"": {
-                          ""type"": ""variables_get"",
-                          ""id"": ""x==XqRuLFY0W0A7Q]D1x"",
+                        ""shadow"": {
+                          ""type"": ""math_number"",
+                          ""id"": ""%!nLvu=vflw5i$k,~c6R"",
                           ""fields"": {
-                            ""VAR"": {
-                              ""id"": ""TK@G4W;!TLu3We:/}flf""
-                            }
+                            ""NUM"": 1
                           }
-                        }
-                      }
-                    }
-                  }
-                },
-                ""DO0"": {
-                  ""block"": {
-                    ""type"": ""controls_if"",
-                    ""id"": ""j{[yAku{oN0zUBi0.$6}"",
-                    ""inputs"": {
-                      ""IF0"": {
+                        },
                         ""block"": {
-                          ""type"": ""logic_compare"",
-                          ""id"": ""3_%+376ozzFk;iqIc/|F"",
-                          ""fields"": {
-                            ""OP"": ""EQ""
-                          },
-                          ""inputs"": {
-                            ""A"": {
-                              ""block"": {
-                                ""type"": ""procedures_callreturn"",
-                                ""id"": ""KWVH;*nO,OW|CP{l^CFt"",
-                                ""extraState"": {
-                                  ""name"": ""isHit""
-                                }
-                              }
-                            },
-                            ""B"": {
-                              ""block"": {
-                                ""type"": ""logic_boolean"",
-                                ""id"": ""qqz;)I@y5{L5GO,yj$$y"",
-                                ""fields"": {
-                                  ""BOOL"": ""TRUE""
-                                }
-                              }
-                            }
-                          }
-                        }
-                      },
-                      ""DO0"": {
-                        ""block"": {
-                          ""type"": ""target_hp_set"",
-                          ""id"": ""B6-,kXG]u6Nrp6YHm?0e"",
-                          ""inputs"": {
-                            ""VALUE"": {
-                              ""block"": {
-                                ""type"": ""math_arithmetic"",
-                                ""id"": ""%Twvfi@XkH]2^Lf^zd|%"",
-                                ""fields"": {
-                                  ""OP"": ""MINUS""
-                                },
-                                ""inputs"": {
-                                  ""A"": {
-                                    ""shadow"": {
-                                      ""type"": ""math_number"",
-                                      ""id"": ""F.eRrY3@NHD(:BYtL3Sk"",
-                                      ""fields"": {
-                                        ""NUM"": 1
-                                      }
-                                    },
-                                    ""block"": {
-                                      ""type"": ""target_attribute"",
-                                      ""id"": ""!P?iV{zw{lj:xOk=C=m?"",
-                                      ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""hp""
-                                      }
-                                    }
-                                  },
-                                  ""B"": {
-                                    ""shadow"": {
-                                      ""type"": ""math_number"",
-                                      ""id"": ""%!nLvu=vflw5i$k,~c6R"",
-                                      ""fields"": {
-                                        ""NUM"": 1
-                                      }
-                                    },
-                                    ""block"": {
-                                      ""type"": ""procedures_callreturn"",
-                                      ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
-                                      ""extraState"": {
-                                        ""name"": ""damage""
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
+                          ""type"": ""procedures_callreturn"",
+                          ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
+                          ""extraState"": {
+                            ""name"": ""damage""
                           }
                         }
                       }
@@ -691,37 +633,6 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
               }
             }
           }
-        }
-      },
-      {
-        ""type"": ""variables_set"",
-        ""id"": ""CQCS{{D=_gdcW`5FOf8A"",
-        ""x"": -1137,
-        ""y"": -362,
-        ""fields"": {
-          ""VAR"": {
-            ""id"": ""TK@G4W;!TLu3We:/}flf""
-          }
-        },
-        ""inputs"": {
-          ""VALUE"": {
-            ""block"": {
-              ""type"": ""math_number"",
-              ""id"": ""mQ2ZY1A/x|_jx-uUSd8N"",
-              ""fields"": {
-                ""NUM"": 100
-              }
-            }
-          }
-        }
-      },
-      {
-        ""type"": ""procedures_callnoreturn"",
-        ""id"": ""~hPsT=gLSi_F#1*xh?I*"",
-        ""x"": -1287,
-        ""y"": -137,
-        ""extraState"": {
-          ""name"": ""main""
         }
       }
     ]
@@ -752,5 +663,4 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       ""id"": ""M$MiLF!ZK+//D#C%!C7m""
     }
   ]
-}
-",null,defaultSkillId
+}",null,defaultSkillId
