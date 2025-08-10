@@ -384,6 +384,9 @@ export class ReactiveSystem<T extends string> {
   /** 修饰符数据存储 - 5个数组分别存储不同类型的修饰符 */
   private readonly modifierArrays: Float64Array[];
 
+  /** 修饰符来源聚合：按类型 -> 属性索引 -> sourceId -> value */
+  private readonly modifierSources: Map<ModifierArrayIndex, Map<number, Map<string, number>>>;
+
   /** 依赖图 */
   private readonly dependencyGraph: DependencyGraph;
 
@@ -450,6 +453,9 @@ export class ReactiveSystem<T extends string> {
       this.modifierArrays[i] = new Float64Array(keyCount);
     }
 
+    // 初始化修饰符来源聚合结构
+    this.modifierSources = new Map();
+
     // 初始化映射关系
     this.keyToIndex = new Map();
     this.indexToKey = attrKeys;
@@ -467,6 +473,13 @@ export class ReactiveSystem<T extends string> {
     // 设置表达式，填充依赖关系
     if (expressions.size > 0) {
       this.setupExpressions(expressions);
+    }
+
+    // 标记基础属性（无计算函数的属性视为基础值）
+    for (let i = 0; i < this.indexToKey.length; i++) {
+      if (!BitFlags.has(this.flags, i, AttributeFlags.HAS_COMPUTATION)) {
+        BitFlags.set(this.flags, i, AttributeFlags.IS_BASE);
+      }
     }
 
     // 标记所有属性为脏值
@@ -601,8 +614,22 @@ export class ReactiveSystem<T extends string> {
         return;
     }
 
-    // 累加修饰符值
-    this.modifierArrays[arrayIndex][index] += value;
+    // 来源聚合：记录 sourceId 的值并同步到累加数组
+    let perType = this.modifierSources.get(arrayIndex);
+    if (!perType) {
+      perType = new Map();
+      this.modifierSources.set(arrayIndex, perType);
+    }
+    let perAttr = perType.get(index);
+    if (!perAttr) {
+      perAttr = new Map();
+      perType.set(index, perAttr);
+    }
+    const prev = perAttr.get(source.id) ?? 0;
+    const next = prev + value;
+    perAttr.set(source.id, next);
+    const delta = next - prev;
+    this.modifierArrays[arrayIndex][index] += delta;
     this.markDirty(index);
 
     console.log(`✅ 成功添加修饰器: ${attr} ${type} +${value} (来源: ${source.name})`);
@@ -635,10 +662,19 @@ export class ReactiveSystem<T extends string> {
         console.warn(`⚠️ 未知的修饰符类型: ${type}`);
         return;
     }
-    // 移除修饰符
-    this.modifierArrays[arrayIndex][index] = 0;
-    this.markDirty(index);
-    console.log(`✅ 成功移除修饰器: ${attr} (来源: ${sourceId})`);
+    // 来源级移除：从来源聚合删除并从累加数组扣减
+    const perType = this.modifierSources.get(arrayIndex);
+    const perAttr = perType?.get(index);
+    const amount = perAttr?.get(sourceId) ?? 0;
+    if (amount !== 0) {
+      this.modifierArrays[arrayIndex][index] -= amount;
+      perAttr!.delete(sourceId);
+      if (perAttr!.size === 0) {
+        perType!.delete(index);
+      }
+      this.markDirty(index);
+      console.log(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
+    }
   }
 
   // ==================== 内部实现 ====================
@@ -661,59 +697,67 @@ export class ReactiveSystem<T extends string> {
       this.currentCompilingAttr = undefined; // 清除当前编译的属性名
 
       if (simpleCompiledCode) {
-        // 解析依赖关系 - 从原始表达式中提取
-        this.parseSimpleDependencies(index, expressionData.expression);
+        // 判断是否为纯常量（数字或已映射的枚举值）
+        const trimmed = String(simpleCompiledCode).trim();
+        const numValue = Number(trimmed);
+        const isConstant = trimmed !== "" && Number.isFinite(numValue) && String(numValue) === trimmed;
 
-        // 创建计算函数
-        this.computationFunctions.set(index, () => {
-          try {
-            // 防止递归调用
-            if (this.isComputing.has(index)) {
-              console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
+        if (isConstant) {
+          // 直接作为基础值存储，不注册计算函数
+          this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index] = numValue;
+          // 常量视为基础属性
+          BitFlags.set(this.flags, index, AttributeFlags.IS_BASE);
+        } else {
+          // 使用AST结果注册依赖关系
+          const deps = this.extractDependenciesWithAST(expressionData.expression);
+          if (Array.isArray(deps) && deps.length > 0) {
+            for (const dep of deps) {
+              const depIndex = this.keyToIndex.get(dep as T);
+              if (depIndex !== undefined && depIndex !== index) {
+                this.dependencyGraph.addDependency(index, depIndex);
+              }
+            }
+          }
+
+          // 创建计算函数
+          this.computationFunctions.set(index, () => {
+            try {
+              if (this.isComputing.has(index)) {
+                console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
+                return 0;
+              }
+              this.isComputing.add(index);
+
+              const executionContext = { _self: this.member };
+              const fn = new Function(
+                "ctx",
+                `
+                with (ctx) {
+                  return ${simpleCompiledCode};
+                }
+              `,
+              );
+              const result = fn.call(null, executionContext);
+              const finalResult = typeof result === "number" ? result : 0;
+              this.isComputing.delete(index);
+              return finalResult;
+            } catch (error) {
+              this.isComputing.delete(index);
+              console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
+              console.error(`❌ 失败的编译代码: ${simpleCompiledCode}`);
               return 0;
             }
+          });
 
-            this.isComputing.add(index);
-
-            // 静默计算属性
-
-            // 创建简化的执行上下文，只包含_self
-            const executionContext = {
-              _self: this.member,
-            };
-
-            const fn = new Function(
-              "ctx",
-              `
-              with (ctx) {
-                return ${simpleCompiledCode};
-              }
-            `,
-            );
-
-            const result = fn.call(null, executionContext);
-            const finalResult = typeof result === "number" ? result : 0;
-
-            // 静默计算完成
-
-            this.isComputing.delete(index);
-            return finalResult;
-          } catch (error) {
-            this.isComputing.delete(index);
-            console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
-            console.error(`❌ 失败的编译代码: ${simpleCompiledCode}`);
-            return 0;
-          }
-        });
+          BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
+        }
       } else {
         console.error(`❌ 属性 ${attrName} 表达式编译失败: ${expressionData.expression}`);
         // 设置默认计算函数
         this.computationFunctions.set(index, () => 0);
+        BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
       }
-
-      BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
-
-      // 依赖关系已在addDependenciesFromCompilation中处理
+      // 依赖关系已在上方注册
     }
 
     console.log("✅ 表达式和依赖关系设置完成");
@@ -773,15 +817,26 @@ export class ReactiveSystem<T extends string> {
         return null;
       }
 
-      // 3. 记录依赖关系（用于ReactiveSystem的依赖管理）
-      for (const dep of result.dependencies) {
-        // 静默记录依赖关系，不打印
-      }
-
       return result.compiledCode;
     } catch (error) {
       console.error(`❌ AST编译异常: ${expression}`, error);
       return null;
+    }
+  }
+
+  /**
+   * 仅提取依赖列表（通过AST）
+   */
+  private extractDependenciesWithAST(expression: string): string[] {
+    try {
+      const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
+      const currentAttrName = this.getCurrentAttributeName();
+      const compiler = new ReactiveSystemASTCompiler(knownAttributes, currentAttrName);
+      const result = compiler.compile(expression);
+      if (!result.success) return [];
+      return Array.from(result.dependencies || []);
+    } catch {
+      return [];
     }
   }
 
@@ -920,8 +975,15 @@ export class ReactiveSystem<T extends string> {
     if (initialDirtyAttrs.length > 0) {
       console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
 
-      // 获取拓扑排序
-      const order = this.dependencyGraph.getTopologicalOrder();
+      // 获取拓扑排序（容错：循环依赖时降级为线性一次性刷新）
+      let order: number[] = [];
+      try {
+        order = this.dependencyGraph.getTopologicalOrder();
+      } catch (err) {
+        console.warn("⚠️ 检测到循环依赖，采用降级刷新策略");
+        // 降级：直接遍历所有索引，顺序计算一次
+        order = Array.from({ length: this.values.length }, (_, i) => i);
+      }
 
       // 按依赖顺序计算
       for (const index of order) {
@@ -978,32 +1040,25 @@ export class ReactiveSystem<T extends string> {
    * 标记属性为脏值（带依赖传播）
    */
   private markDirty(index: number): void {
-    // 避免重复标记
-    if (this.isDirty(index)) {
-      return;
-    }
+    if (this.isDirty(index)) return;
 
-    const attrName = this.indexToKey[index];
-    // console.log(`📍 标记属性为脏值: ${attrName} (index: ${index})`);
+    const queue: number[] = [index];
+    const visited = new Set<number>();
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
 
-    const arrayIndex = index >>> 5; // index / 32
-    const bitIndex = index & 31; // index % 32
-    this.dirtyBitmap[arrayIndex] |= 1 << bitIndex;
+      const arrayIndex = current >>> 5;
+      const bitIndex = current & 31;
+      this.dirtyBitmap[arrayIndex] |= 1 << bitIndex;
+      BitFlags.set(this.flags, current, AttributeFlags.IS_DIRTY);
+      BitFlags.clear(this.flags, current, AttributeFlags.IS_CACHED);
 
-    BitFlags.set(this.flags, index, AttributeFlags.IS_DIRTY);
-    BitFlags.clear(this.flags, index, AttributeFlags.IS_CACHED);
-
-    // 标记所有依赖此属性的属性为脏值
-    const dependents = this.dependencyGraph.getDependents(index);
-    // console.log(
-    //   `🔗 ${attrName} 的依赖者: [${Array.from(dependents)
-    //     .map((dep) => this.indexToKey[dep])
-    //     .join(", ")}]`,
-    // );
-
-    for (const dependent of dependents) {
-      // console.log(`  -> 传播脏状态到: ${this.indexToKey[dependent]} (index: ${dependent})`);
-      this.markDirty(dependent);
+      const dependents = this.dependencyGraph.getDependents(current);
+      for (const dep of dependents) {
+        if (!visited.has(dep)) queue.push(dep);
+      }
     }
   }
 

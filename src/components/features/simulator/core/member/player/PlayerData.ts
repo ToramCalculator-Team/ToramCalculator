@@ -408,60 +408,6 @@ enum PlayerAttrEnum {
   recoilDmg, // 反作用伤害
   gemPowderDrop, // 晶石粉末掉落
 }
-// 角色属性嵌套模型，核心结构
-const PlayerAttr = {
-  abi: {
-    str: "str",
-    int: "int",
-    agi: "agi",
-    dex: "dex",
-    vit: "vit",
-    luk: "personalityType === 'Luk' ? luk : 0",
-    tec: "personalityType === 'Tec' ? tec : 0",
-    men: "personalityType === 'Men' ? men : 0",
-    cri: "personalityType === 'Cri' ? cri : 0",
-  },
-  equip: {
-    mainWeapon: {
-      baseAspd: "mainWeaponAbiT(mainWeapon.type).baseAspd",
-      baseHitRate: "mainWeaponAbiT(mainWeapon.type).baseHitRate",
-      patkC: "mainWeaponAbiT(mainWeapon.type).patkC",
-      matkC: "mainWeaponAbiT(mainWeapon.type).matkC",
-      attrConvert: {
-        pAtkC: "mainWeaponAbiT(mainWeapon.type).abi_Attr_Convert.str.pAtkC",
-        mAtkC: "mainWeaponAbiT(mainWeapon.type).abi_Attr_Convert.str.mAtkC",
-        aspdC: "mainWeaponAbiT(mainWeapon.type).abi_Attr_Convert.str.aspdC",
-        pStabC: "mainWeaponAbiT(mainWeapon.type).abi_Attr_Convert.str.pStabC",
-      },
-      baseAtk: "mainWeapon.baseAtk",
-      pstab: "mainWeapon.Pstab",
-      range: "mainWeapon.range",
-      baseElement: "mainWeapon.baseElement",
-      refv: "mainWeapon.refv",
-      element: "mainWeapon.element",
-    },
-    subWeapon: {
-      baseAtk: "subWeapon.baseAtk",
-      element: "subWeapon.element",
-      refv: "subWeapon.refv",
-      range: "subWeapon.range",
-      pstab: "subWeapon.Pstab",
-      modifiers: {
-        aspdM: "subWeaponModifier[subWeapon.type].aspdM",
-        pAtkM: "subWeaponModifier[subWeapon.type].pAtkM",
-        mAtkM: "subWeaponModifier[subWeapon.type].mAtkM",
-        pDefM: "subWeaponModifier[subWeapon.type].pDefM",
-        mDefM: "subWeaponModifier[subWeapon.type].mDefM",
-      },
-    },
-    armor: {
-      baseAbi: "armor.baseAbi",
-      refv: "armor.refv",
-      type: "armor.type",
-      aspdM: "armor.type === 'light' ? 0.5 : armor.type === 'heavy' ? -0.5 : 0",
-    },
-  },
-};
 
 // ============================== 其他玩家数据 ==============================
 

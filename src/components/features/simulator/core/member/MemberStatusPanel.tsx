@@ -68,6 +68,7 @@ function calculateDynamicTotalValue(modifier: any): number {
 
 // 递归渲染stats对象的组件（支持 Map、Map-like、Record）
 function StatsRenderer(props: { data: any; path?: string[] }) {
+  console.log("StatsRenderer", props);
   const renderStats = (obj: any, path: string[] = []) => {
     if (!obj || typeof obj !== "object") {
       return null;
@@ -251,6 +252,7 @@ export default function MemberStatusPanel(props: MemberStatusPanelProps) {
 
   // 将扁平化的 stats（"a.b.c": 1）重建为嵌套对象，以便完整递归渲染
   const nestedStats = createMemo(() => {
+    console.log("nestedStats", props.selectedMember);
     const source = (props.selectedMember as any)?.state?.context?.stats;
     if (!source) return {} as Record<string, any>;
 

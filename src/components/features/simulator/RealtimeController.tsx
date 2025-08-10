@@ -664,7 +664,6 @@ export default function RealtimeController() {
     const memberId = context().selectedMemberId;
     if (!memberId) return null;
 
-    // 优先从引擎成员中查找
     const engineMember = context().members.find((member) => member.id === memberId);
     if (engineMember) {
       return engineMember;
