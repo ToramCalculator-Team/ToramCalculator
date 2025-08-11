@@ -153,7 +153,7 @@ export class ReactiveSystemASTCompiler {
             start: node.start,
             end: node.end,
             originalText,
-            replacement: `_self.getValue('${propertyPath}')`,
+            replacement: `_get('${propertyPath}')`,
             attributeKey: propertyPath,
             nodeType: 'member-expression'
           });
@@ -178,7 +178,7 @@ export class ReactiveSystemASTCompiler {
             start: node.start,
             end: node.end,
             originalText,
-            replacement: `_self.getValue('${attrName}')`,
+            replacement: `_get('${attrName}')`,
             attributeKey: attrName,
             nodeType: 'identifier'
           });

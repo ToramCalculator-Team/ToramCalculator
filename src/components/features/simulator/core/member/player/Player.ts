@@ -11,7 +11,6 @@
 import {
   AttributeInfluence,
   Member,
-  TargetType,
   ValueType,
   type MemberBaseStats,
   type MemberEvent,
@@ -124,12 +123,41 @@ export class Player extends Member<PlayerAttrType> {
    */
   private initializePlayerData(): void {
     // 设置基础值，使用DSL路径作为键名
-    this.reactiveDataManager.setBaseValues({
-      lv: this.character.lv,
-    } as Record<PlayerAttrType, number>);
+    this.reactiveDataManager.addModifier(
+        "lv",
+        ModifierType.BASE_VALUE,
+        this.character.lv,
+        {
+            id: "player_base",
+            name: "player_base",
+            type: "system",
+        }
+    );
 
     // 解析角色配置中的修饰器
-    this.reactiveDataManager.parseModifiersFromCharacter(this.character, "角色配置");
+    function findAllModifiersWithPath(obj: any, path: string[] = []): void {
+      if (typeof obj !== "object" || obj === null) return;
+
+      for (const [key, value] of Object.entries(obj)) {
+        const currentPath = [...path, key];
+
+        if (key === "modifiers" && Array.isArray(value) && value.every((v) => typeof v === "string")) {
+          const fullPath = currentPath.join(".");
+          console.log(`📌 从${path.join(".")}中找到修饰符: ${fullPath}`);
+          for (const mod of value) {
+            // console.log(` - ${mod}`);
+            // TODO: 添加修饰符
+          }
+        } else if (typeof value === "object") {
+          findAllModifiersWithPath(value, currentPath);
+        }
+      }
+    }
+
+    findAllModifiersWithPath(this.character);
+
+    // 示例：可以根据角色数据添加各种修饰符
+    // this.addModifier("str", "staticFixed", character.equipmentBonus?.str || 0, source);
 
     console.log("✅ 玩家数据初始化完成");
   }
@@ -140,36 +168,6 @@ export class Player extends Member<PlayerAttrType> {
    */
   getStats(): Record<PlayerAttrType, number> {
     return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
-  }
-
-  // ==================== 基类抽象方法实现 ====================
-
-  /**
-   * 获取玩家属性键数组
-   */
-
-  /**
-   * 获取玩家属性表达式映射
-   */
-  /**
-   * 获取玩家默认属性值
-   * 可以覆盖基类的通用属性默认值
-   */
-  protected getDefaultAttrValues(): Record<string, number> {
-    return {
-      // 玩家特有的默认值，可以覆盖基类
-      lv: 1,
-      str: 10,
-      int: 10,
-      vit: 10,
-      agi: 10,
-      dex: 10,
-      // 可以覆盖基类的通用属性
-      maxHp: 2000, // 玩家比基类默认值更高
-      maxMp: 200, // 玩家比基类默认值更高
-      pAtk: 150, // 玩家初始攻击力更高
-      mAtk: 120, // 玩家初始魔攻更高
-    };
   }
 
   // ==================== 公共接口 ====================
@@ -247,43 +245,6 @@ export class Player extends Member<PlayerAttrType> {
     return this.reactiveDataManager.getValue(attrName);
   }
 
-  /**
-   * 设置属性值
-   *
-   * @param attrName 属性名称
-   * @param targetType 目标类型
-   * @param value 属性值
-   * @param origin 来源
-   */
-  setAttributeValue(attrName: PlayerAttrType, targetType: TargetType, value: number, origin: string): void {
-    const source: ModifierSource = {
-      id: origin,
-      name: origin,
-      type: "system",
-    };
-
-    switch (targetType) {
-      case TargetType.baseValue:
-        this.reactiveDataManager.setBaseValue(attrName, {
-          value,
-          source,
-        });
-        break;
-      case TargetType.staticConstant:
-        this.reactiveDataManager.addModifier(attrName, "staticFixed", value, source);
-        break;
-      case TargetType.staticPercentage:
-        this.reactiveDataManager.addModifier(attrName, "staticPercentage", value, source);
-        break;
-      case TargetType.dynamicConstant:
-        this.reactiveDataManager.addModifier(attrName, "dynamicFixed", value, source);
-        break;
-      case TargetType.dynamicPercentage:
-        this.reactiveDataManager.addModifier(attrName, "dynamicPercentage", value, source);
-        break;
-    }
-    console.log(`🎮 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
-  }
 
   /**
    * 获取所有属性值
@@ -522,8 +483,16 @@ export class Player extends Member<PlayerAttrType> {
         resetHpMpAndStatus: assign({
           stats: ({ context }) => {
             // 重置HP/MP到初始值
-            this.setAttributeValue("hp.max", TargetType.baseValue, this.getAttributeValue("hp.max"), "revive");
-            this.setAttributeValue("mp.max", TargetType.baseValue, this.getAttributeValue("mp.max"), "revive");
+            this.addModifier("hp.max", ModifierType.BASE_VALUE, this.getAttributeValue("hp.max"), {
+              id: "revive",
+              name: "系统重置",
+              type: "system",
+            });
+            this.addModifier("mp.max", ModifierType.BASE_VALUE, this.getAttributeValue("mp.max"), {
+              id: "revive",
+              name: "系统重置",
+              type: "system",
+            });
             return this.reactiveDataManager.getValues(Object.keys(this.attrSchema) as PlayerAttrType[]);
           },
           isAlive: true,

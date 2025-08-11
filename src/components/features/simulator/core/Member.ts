@@ -15,6 +15,8 @@ import { type MemberType } from "@db/schema/enums";
 
 import type { EventQueue } from "./EventQueue";
 import { 
+  ModifierSource,
+  ModifierType,
   ReactiveSystem, 
   type AttributeExpression, 
   type NestedSchema,
@@ -95,22 +97,11 @@ export enum ValueType {
 }
 
 /**
- * 目标类型枚举
- */
-export enum TargetType {
-  baseValue = "baseValue",
-  staticConstant = "staticConstant",
-  staticPercentage = "staticPercentage",
-  dynamicConstant = "dynamicConstant",
-  dynamicPercentage = "dynamicPercentage",
-}
-
-/**
  * 属性影响关系接口
  */
 export interface AttributeInfluence {
   name: string; // 将影响的目标属性
-  targetType: TargetType; // 作用的位置
+  targetType: ModifierType; // 作用的位置
   computation: () => number; // 作用的值
 }
 
@@ -448,23 +439,6 @@ export abstract class Member<TAttrKey extends string = string> {
   }
 
   /**
-   * 获取默认上下文
-   */
-  private getDefaultContext(): MemberContext {
-    return {
-      memberData: this.memberData,
-      stats: {},
-      isAlive: true,
-      isActive: true,
-      statusEffects: [],
-      eventQueue: [],
-      lastUpdateTimestamp: 0,
-      extraData: {},
-      position: { x: 0, y: 0 },
-    };
-  }
-
-  /**
    * 获取成员属性
    * 直接从响应式系统获取计算结果，子类实现具体逻辑
    */
@@ -487,8 +461,8 @@ export abstract class Member<TAttrKey extends string = string> {
   /**
    * 设置属性值 - 供编译后的JS代码使用
    */
-  setValue(attrKey: TAttrKey, value: number): void {
-    this.reactiveDataManager.setValue(attrKey, value);
+  addModifier(attrKey: TAttrKey, targetType: ModifierType, value: number, source: ModifierSource): void {
+    this.reactiveDataManager.addModifier(attrKey, targetType, value, source);
   }
 
   /**
@@ -933,21 +907,6 @@ export abstract class Member<TAttrKey extends string = string> {
       data,
     };
     this.addEvent(event);
-  }
-
-  /**
-   * 直接修改属性 - 通用方法，供子类使用
-   * 绕过事件队列，直接操作ReactiveSystem
-   */
-  protected setAttributeDirect(attribute: TAttrKey, value: number, source: string = "direct_intent"): boolean {
-    try {
-      this.reactiveDataManager.setBaseValue(attribute, value);
-      console.log(`✅ [${this.getName()}] 直接修改属性: ${attribute} = ${value} (${source})`);
-      return true;
-    } catch (error) {
-      console.error(`❌ [${this.getName()}] 直接修改属性失败:`, error);
-      return false;
-    }
   }
 
   /**

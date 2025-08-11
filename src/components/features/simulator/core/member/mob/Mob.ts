@@ -6,7 +6,6 @@
 
 import {
   Member,
-  TargetType,
   type MemberBaseStats,
   type MemberEvent,
   type MemberContext,
@@ -19,7 +18,7 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import { isMobMember } from "../../Member";
 import type { MobWithRelations } from "@db/repositories/mob";
 import { ComboWithRelations } from "@db/repositories/combo";
-import { ModifierSource, AttributeExpression, ReactiveSystem, ExtractAttrPaths } from "../ReactiveSystem";
+import { ModifierSource, AttributeExpression, ReactiveSystem, ExtractAttrPaths, ModifierType } from "../ReactiveSystem";
 import type GameEngine from "../../GameEngine";
 import { MobAttrSchema } from "./MobData";
 
@@ -113,11 +112,6 @@ export class Mob extends Member<MobAttrType> {
    */
   private initializeMobData(): void {
     // 设置基础值，使用DSL路径作为键名
-    this.reactiveDataManager.setBaseValues({
-      "lv": this.mob.baseLv,
-      "hp.max": this.mob.maxhp,
-      "hp.current": this.mob.maxhp,
-    } as Record<MobAttrType, number>);
 
     // 解析怪物配置中的修饰器（暂时注释掉，直到实现相应方法）
     // this.reactiveDataManager.parseModifiersFromMob(this.mob, "怪物配置");
@@ -245,33 +239,13 @@ export class Mob extends Member<MobAttrType> {
    * @param value 属性值
    * @param origin 来源
    */
-  setAttributeValue(attrName: MobAttrType, targetType: TargetType, value: number, origin: string): void {
+  setAttributeValue(attrName: MobAttrType, targetType: ModifierType, value: number, origin: string): void {
     const source: ModifierSource = {
       id: origin,
       name: origin,
       type: "system",
     };
-
-    switch (targetType) {
-      case TargetType.baseValue:
-        this.reactiveDataManager.setBaseValue(attrName, {
-          value,
-          source,
-        });
-        break;
-      case TargetType.staticConstant:
-        this.reactiveDataManager.addModifier(attrName, "staticFixed", value, source);
-        break;
-      case TargetType.staticPercentage:
-        this.reactiveDataManager.addModifier(attrName, "staticPercentage", value, source);
-        break;
-      case TargetType.dynamicConstant:
-        this.reactiveDataManager.addModifier(attrName, "dynamicFixed", value, source);
-        break;
-      case TargetType.dynamicPercentage:
-        this.reactiveDataManager.addModifier(attrName, "dynamicPercentage", value, source);
-        break;
-    }
+    this.reactiveDataManager.addModifier(attrName, targetType, value, source);
     console.log(`🎮 [${this.getName()}] 更新属性: ${attrName} = ${value} 来源: ${origin}`);
   }
 
@@ -294,7 +268,7 @@ export class Mob extends Member<MobAttrType> {
    */
   addAttributeModifier(
     attrName: MobAttrType,
-    type: "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage",
+    type: ModifierType,
     value: number,
     source: ModifierSource,
   ): void {
