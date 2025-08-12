@@ -102,9 +102,15 @@ class SQLGenerator {
      * 从原始 CREATE TABLE 语句中提取结构信息
      */
     function parseCreateTable(sql) {
-      const match = sql.match(/CREATE TABLE "?(\w+)"?\s*\(([\s\S]+?)\);/i);
+      // 兼容诸如：
+      // CREATE TABLE "public"."user" ( ... );
+      // CREATE TABLE "user" ( ... );
+      // CREATE TABLE public.user ( ... );
+      // 注意：客户端转换阶段统一忽略 schema，使用裸表名生成 *_synced/*_local/视图
+      const match = sql.match(/CREATE\s+TABLE\s+(?:"?([\w$]+)"?\.)?"?([\w$]+)"?\s*\(([\s\S]+?)\);/i);
       if (!match) return null;
-      const [, tableName, body] = match;
+      const [, _schema, rawName, body] = match;
+      const tableName = rawName; // 丢弃 schema，使用原始表名
       const lines = body
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -129,7 +135,14 @@ class SQLGenerator {
      */
     function renamePrimaryKeyConstraint(constraints, newName) {
       return constraints.map((constraint) => {
-        return constraint.replace(/CONSTRAINT\s+"[^"]*"\s+PRIMARY KEY/i, `CONSTRAINT "${newName}" PRIMARY KEY`);
+        // 兼容无 CONSTRAINT 名称的 PRIMARY KEY 定义
+        if (/CONSTRAINT\s+"[^"]*"\s+PRIMARY KEY/i.test(constraint)) {
+          return constraint.replace(/CONSTRAINT\s+"[^"]*"\s+PRIMARY KEY/i, `CONSTRAINT "${newName}" PRIMARY KEY`);
+        }
+        if (/PRIMARY\s+KEY/i.test(constraint)) {
+          return constraint.replace(/PRIMARY\s+KEY/i, `CONSTRAINT "${newName}" PRIMARY KEY`);
+        }
+        return constraint;
       });
     }
 
@@ -171,7 +184,7 @@ class SQLGenerator {
       const colNames = columns.map((col) => col.split(/\s+/, 1)[0].replace(/^"|"$/g, ""));
 
       // 解析主键字段
-      const pkConstraint = constraints.find((c) => c.includes("PRIMARY KEY"));
+      const pkConstraint = constraints.find((c) => /PRIMARY\s+KEY/i.test(c));
       const pkCols = pkConstraint
         ? pkConstraint
             .match(/\(([^)]+)\)/)[1]
@@ -208,8 +221,12 @@ CREATE OR REPLACE VIEW "${tableName}" AS
     END AS "${name}"`,
       );
 
-      const joinCondition = pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ");
-      const whereCondition = `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`;
+      const joinCondition = pkCols.length
+        ? pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ")
+        : colNames.map((c) => `synced."${c}" = local."${c}"`).join(" AND ");
+      const whereCondition = pkCols.length
+        ? `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`
+        : `local."is_deleted" = FALSE`;
 
       const view = `
 CREATE OR REPLACE VIEW "${tableName}" AS
@@ -453,6 +470,7 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
     }
 
     // 匹配完整的 SQL 块（包括注释）
+    // 分块：按语句起始拆分，保证注释与 CREATE TABLE 分离
     const blocks = initContent
       .split(/(?=^--|^CREATE\s|^ALTER\s|^DROP\s)/gim)
       .map((block) => block.trim())
@@ -475,11 +493,12 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
         // output.push(`-- DROP original "${tableName}"`);
         // output.push(`DROP TABLE IF EXISTS "${tableName}";\n`);
 
-        output.push(generateSyncedTable(parsed));
-
-        output.push(generateLocalTable(parsed));
-
-        output.push(generateView(parsed));
+        // 跳过系统表/视图（以 public."_" 前缀的中间表除外）
+        if (parsed.tableName && parsed.tableName.toLowerCase() !== 'changes') {
+          output.push(generateSyncedTable(parsed));
+          output.push(generateLocalTable(parsed));
+          output.push(generateView(parsed));
+        }
       } else {
         // 其余 SQL 保留
         output.push(block);
@@ -509,7 +528,7 @@ FOR EACH ROW
 EXECUTE FUNCTION changes_notify_trigger();
 `;
 
-    fs.writeFileSync(initSQLFilePath, output.join("\n") + changesTable, "utf-8");
+    fs.writeFileSync(initSQLFilePath, output.join("\n") + "\n" + changesTable, "utf-8");
     LogUtils.logSuccess(`已转换initSQL ${initSQLFilePath}`);
   }
 
