@@ -147,14 +147,26 @@ export class MemberManager {
       }
 
       // 启动并注册成员
-      actor.start?.();
-      const success = this.registerMember(actor, campId, teamId, memberData, schema!, rs!);
-      if (success) {
-        console.log(`✅ 创建并注册成员成功: ${memberData.name} (${memberData.type})`);
-        return actor;
-      } else {
-        // 如果注册失败，清理创建的成员
-        actor.stop?.();
+      try {
+        // 确保 Actor 正确启动
+        if (typeof actor.start === 'function') {
+          actor.start();
+          console.log(`🚀 Actor 启动成功: ${memberData.name}`);
+        } else {
+          console.warn(`⚠️ Actor 没有 start 方法: ${memberData.name}`);
+        }
+        
+        const success = this.registerMember(actor, campId, teamId, memberData, schema!, rs!);
+        if (success) {
+          console.log(`✅ 创建并注册成员成功: ${memberData.name} (${memberData.type})`);
+          return actor;
+        } else {
+          // 注册失败：不与 actor 交互，直接返回
+          return null;
+        }
+      } catch (error) {
+        console.error(`❌ Actor 启动失败: ${memberData.name}`, error);
+        // 不直接 stop，避免非根 Actor 抛错
         return null;
       }
     } catch (error) {
@@ -226,9 +238,6 @@ export class MemberManager {
     }
 
     try {
-      // 销毁成员实例
-      entry.actor.stop?.();
-
       // 从注册表中移除
       this.members.delete(memberId);
 
@@ -407,14 +416,7 @@ export class MemberManager {
   clear(): void {
     console.log(`🗑️ 清空成员注册表，共 ${this.members.size} 个成员`);
 
-    // 销毁所有成员实例
-    for (const entry of this.members.values()) {
-      try {
-        entry.actor.stop?.();
-      } catch (error) {
-        console.warn(`⚠️ 销毁成员失败: ${entry.name}`, error);
-      }
-    }
+    // 不与 actor 交互，直接清空索引与引用，避免停止阶段的竞态
 
     // 清空注册表
     this.members.clear();

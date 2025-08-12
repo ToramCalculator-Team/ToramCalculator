@@ -86,6 +86,34 @@ export const createMobActor = (props: {
         console.log(`👹 [${context.config.name}] 技能动画结束事件`, event);
       },
 
+      // 应用移动指令：更新位置
+      applyMoveAssign: assign({
+        position: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
+          const pos = (event as any)?.data?.position;
+          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+            return { x: Math.round(pos.x), y: Math.round(pos.y) };
+          }
+          return context.position;
+        },
+        lastUpdateTimestamp: () => Date.now(),
+      }),
+
+      // 退出移动时调度一次 stop_move（保证状态回到 idle）
+      scheduleStopMove: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
+        try {
+          const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+          const pos = (event as any)?.data?.position;
+          context.engine.getEventQueue().insert({
+            id: `mob_stop_move_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            executeFrame: currentFrame + 1,
+            priority: 'high',
+            type: 'member_fsm_event',
+            payload: { targetMemberId: context.id, fsmEventType: 'stop_move', data: { position: pos } },
+            source: 'mob_fsm',
+          } as any);
+        } catch {}
+      },
+
       // 蓄力开始/结束
       onChargeStart: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
         console.log(`👹 [${context.config.name}] 开始蓄力事件`, event);
@@ -197,7 +225,9 @@ export const createMobActor = (props: {
                 },
               },
               moving: {
+                entry: { type: 'applyMoveAssign' },
                 on: { stop_move: { target: "idle" } },
+                exit: { type: 'scheduleStopMove' },
               },
               skill_casting: {
                 initial: "skill_init",

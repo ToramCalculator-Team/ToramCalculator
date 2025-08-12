@@ -145,8 +145,8 @@ export class EventExecutor {
    */
   executeScript(scriptCode: string, context: ExpressionContext): ExpressionResult {
     try {
-      const memberId = context.caster?.getId();
-      const targetId = context.target?.getId();
+      const memberId = context.caster?.getId?.() || context.caster?.id;
+      const targetId = context.target?.getId?.() || context.target?.id;
 
       if (!memberId) {
         throw new Error('缺少成员ID');
@@ -154,7 +154,9 @@ export class EventExecutor {
 
       // 使用GameEngine的编译和执行能力
       const compiledCode = this.engine.compileScript(scriptCode, memberId, targetId);
-      const result = this.engine.executeScript(compiledCode, memberId, context);
+      // 在 Engine 中未提供 executeScript 时，直接使用 Function 执行并注入必要 API
+      const runner = new Function('engine', 'ctx', `${compiledCode}`);
+      const result = runner(this.engine as any, context as any);
 
       console.log(`✅ JS脚本执行成功: ${memberId}`);
 
@@ -407,13 +409,19 @@ export class EventExecutor {
   private preprocessExpression(expression: string, context: ExpressionContext): string {
     let processed = expression;
 
-    // 替换上下文变量
-    Object.entries(context).forEach(([key, value]) => {
-      if (typeof value === 'number') {
-        const regex = new RegExp(`\\b${key}\\b`, 'g');
-        processed = processed.replace(regex, value.toString());
+    // 替换上下文变量（上下文可能为空，做防御）
+    if (context && typeof context === 'object') {
+      try {
+        Object.entries(context).forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            const regex = new RegExp(`\\b${key}\\b`, 'g');
+            processed = processed.replace(regex, value.toString());
+          }
+        });
+      } catch {
+        // ignore
       }
-    });
+    }
 
     // 处理成员属性访问
     processed = processed.replace(/(\w+)\.(\w+)/g, (match, obj, prop) => {

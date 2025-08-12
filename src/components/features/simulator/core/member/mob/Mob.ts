@@ -51,7 +51,7 @@ type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
  * 怪物成员类
  * 实现怪物特有的属性和行为
  */
-export class Mob extends Member<MobAttrType> {
+class Mob extends Member<MobAttrType> {
   // ==================== 怪物特有属性 ====================
 
   /** 怪物角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
@@ -658,7 +658,3 @@ export class Mob extends Member<MobAttrType> {
    */
   // convertMapToStats 方法已移除，现在直接使用响应式系统
 }
-
-// ============================== 导出 ==============================
-
-export default Mob;

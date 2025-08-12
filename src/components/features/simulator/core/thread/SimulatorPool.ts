@@ -1,10 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "./messages";
-import type { MemberSerializeData } from "../Member";
+
 import simulationWorker from "./Simulation.worker?worker&url";
 import { WorkerSystemMessageSchema } from "./messages";
 import { EngineStats } from "../GameEngine";
+import { MemberSerializeData } from "../member/MemberType";
 
 // ==================== 类型定义 ====================
 

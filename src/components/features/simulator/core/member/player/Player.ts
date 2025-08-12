@@ -61,7 +61,7 @@ type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
  * 玩家成员类
  * 实现玩家特有的属性和行为
  */
-export class Player extends Member<PlayerAttrType> {
+class Player extends Member<PlayerAttrType> {
   // ==================== 玩家特有属性 ====================
 
   /** 玩家角色数据（包含所有装备、技能、连击等信息），仅在初始哈过程中使用 */
@@ -870,7 +870,3 @@ export class Player extends Member<PlayerAttrType> {
    */
   // convertMapToStats 方法已移除，现在直接使用响应式系统
 }
-
-// ============================== 导出 ==============================
-
-export default Player;

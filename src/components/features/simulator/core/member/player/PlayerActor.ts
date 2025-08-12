@@ -1,5 +1,5 @@
-import { Actor, createActor, EventObject, NonReducibleUnknown, setup, StateMachine, assign } from "xstate";
-import { DataStorage, DataStorages, ExtractAttrPaths, ModifierType, ReactiveSystem } from "../ReactiveSystem";
+import { createActor, setup, assign } from "xstate";
+import { ExtractAttrPaths, ModifierType, ReactiveSystem } from "../ReactiveSystem";
 import { PlayerAttrSchema } from "./PlayerData";
 import { MemberWithRelations } from "@db/repositories/member";
 import GameEngine from "../../GameEngine";
@@ -143,6 +143,34 @@ export const createPlayerActor = (props: {
 
       onSkillAnimationEnd: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         console.log(`🎮 [${context.config.name}] 技能动画结束事件`, event);
+      },
+
+      // 应用移动指令：更新位置
+      applyMoveAssign: assign({
+        position: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
+          const pos = (event as any)?.data?.position;
+          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+            return { x: Math.round(pos.x), y: Math.round(pos.y) };
+          }
+          return context.position;
+        },
+        lastUpdateTimestamp: () => Date.now(),
+      }),
+
+      // 退出移动时调度一次 stop_move（保证状态回到 idle）
+      scheduleStopMove: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
+        try {
+          const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+          const pos = (event as any)?.data?.position;
+          context.engine.getEventQueue().insert({
+            id: `fsm_stop_move_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            executeFrame: currentFrame + 1,
+            priority: 'high',
+            type: 'member_fsm_event',
+            payload: { targetMemberId: context.id, fsmEventType: 'stop_move', data: { position: pos } },
+            source: 'player_fsm',
+          } as any);
+        } catch {}
       },
 
       onChargeStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
@@ -364,11 +392,11 @@ export const createPlayerActor = (props: {
                 },
               },
               moving: {
+                entry: { type: 'applyMoveAssign' },
                 on: {
-                  stop_move: {
-                    target: "idle",
-                  },
+                  stop_move: { target: "idle" },
                 },
+                exit: { type: 'scheduleStopMove' },
               },
               skill_casting: {
                 initial: "skill_init",

@@ -13,7 +13,6 @@
  * - 高效操作：使用堆结构优化优先级队列
  */
 
-import type { MemberEvent } from "./Member";
 import { createId } from '@paralleldrive/cuid2';
 
 // ============================== 类型定义 ==============================
@@ -206,11 +205,11 @@ export class EventQueue {
   /**
    * 插入事件到队列
    * 
-   * @param event 事件对象（可以是BaseEvent或MemberEvent）
+   * @param event 事件对象
    * @param priority 事件优先级（如果event没有指定）
    * @returns 插入是否成功
    */
-  insert(event: BaseEvent | MemberEvent, priority: EventPriority = "normal"): boolean {
+  insert(event: BaseEvent, priority: EventPriority = "normal"): boolean {
     try {
       // 检查队列大小限制
       if (this.events.length >= this.config.maxQueueSize) {
@@ -220,10 +219,8 @@ export class EventQueue {
       }
 
       // 标准化事件格式
-      const baseEvent: BaseEvent = this.normalizeEvent(event, priority);
-      
       const queueEvent: QueueEvent = {
-        ...baseEvent,
+        ...event,
         queueTime: performance.now(),
         processed: false
       };
@@ -259,7 +256,7 @@ export class EventQueue {
    * @param priority 事件优先级
    * @returns 成功插入的事件数量
    */
-  insertBatch(events: (BaseEvent | MemberEvent)[], priority: EventPriority = "normal"): number {
+  insertBatch(events: BaseEvent[], priority: EventPriority = "normal"): number {
     let successCount = 0;
 
     for (const event of events) {
@@ -582,34 +579,6 @@ export class EventQueue {
   }
 
   // ==================== 私有方法 ====================
-
-  /**
-   * 标准化事件格式
-   * 将MemberEvent转换为BaseEvent格式
-   * 
-   * @param event 输入事件
-   * @param priority 默认优先级
-   * @returns 标准化的BaseEvent
-   */
-  private normalizeEvent(event: BaseEvent | MemberEvent, priority: EventPriority): BaseEvent {
-    // 如果已经是BaseEvent格式，直接返回
-    if ('executeFrame' in event && 'priority' in event) {
-      return event as BaseEvent;
-    }
-
-    // 将MemberEvent转换为BaseEvent
-    const memberEvent = event as MemberEvent;
-    return {
-      id: memberEvent.id || createId(),
-      executeFrame: this.timestampToFrame(memberEvent.timestamp || performance.now()),
-      priority: priority,
-      type: memberEvent.type,
-      payload: memberEvent.data || {},
-      source: 'member',
-      actionId: undefined
-    };
-  }
-
   /**
    * 时间戳转换为帧号（假设60fps）
    * 

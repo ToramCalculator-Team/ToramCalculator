@@ -615,6 +615,25 @@ export class GameEngine {
       members: actors.map((actor) => {
         const id = actor.id;
         const entry = id ? this.memberManager.getMemberEntry(id) : undefined;
+        
+        // 安全地获取属性值，避免快照为空的情况
+        let attrs: Record<string, number> = {};
+        try {
+          const snapshot = actor.getSnapshot();
+          if (snapshot?.context?.attrs) {
+            attrs = (snapshot.context.attrs as ReactiveSystem<any>).exportFlatValues();
+          } else if (entry?.attrs) {
+            // 如果快照为空，直接从 entry 获取属性
+            attrs = entry.attrs.exportFlatValues();
+          }
+        } catch (error) {
+          console.warn(`⚠️ 获取成员 ${id} 属性失败:`, error);
+          // 使用 entry 中的属性作为后备
+          if (entry?.attrs) {
+            attrs = entry.attrs.exportFlatValues();
+          }
+        }
+        
         return {
           id: id || "",
           name: entry?.name || id || "",
@@ -622,7 +641,7 @@ export class GameEngine {
           campId: entry?.campId || "",
           teamId: entry?.teamId || "",
           isActive: !!entry?.isActive,
-          attrs: (actor.getSnapshot().context.attrs as ReactiveSystem<any>).exportFlatValues(),
+          attrs,
         };
       }),
       battleStatus: {
@@ -682,10 +701,15 @@ export class GameEngine {
    */
   private serializeFrom(entry: MemberManagerEntry): MemberSerializeData {
     // 直接从注册表保存的 ReactiveSystem 导出，避免依赖快照上下文
-    const attrs = entry.attrs.exportFlatValues();
-    // 可选：状态名投影（无需 context）
-    const snap = entry.actor.getSnapshot();
-    console.log('serializeFrom', attrs, snap);
+    const attrs = entry.attrs.exportNestedValues();
+    
+    // 获取状态机快照，用于调试
+    let snap: any = null;
+    try {
+      snap = entry.actor.getSnapshot();
+    } catch (error) {
+      console.warn(`⚠️ 获取 Actor 快照失败: ${entry.name}`, error);
+    }
 
     return {
       id: entry.id,

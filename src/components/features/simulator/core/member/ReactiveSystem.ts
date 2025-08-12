@@ -42,6 +42,7 @@ const ENUM_MAPPINGS = createEnumMappings();
 
 // 数据存储接口，用于向外传输
 export type DataStorage = {
+  displayName: string;
   baseValue: {
     sourceId: number;
     value: number;
@@ -71,6 +72,65 @@ export type DataStorage = {
 export type DataStorages<T extends string> = {
   [key in T]: DataStorage;
 };
+
+// 类型谓词函数，用于检查对象是否为DataStorage类型
+export function isDataStorageType(obj: unknown): obj is DataStorage {
+  return typeof obj === "object" && obj !== null && "displayName" in obj && "displayName" in obj;
+}
+
+// 计算动态总值（简化版本）
+export function dynamicTotalValue(data: DataStorage): number {
+  if (!data || typeof data !== "object") return 0;
+  
+  let baseValue = 0;
+  let total = 0;
+  let staticFixed = 0;
+  let staticPercentage = 0;
+  let dynamicFixed = 0;
+  let dynamicPercentage = 0;
+  let totalPercentage = staticPercentage + dynamicPercentage;
+  let totalFixed = staticFixed + dynamicFixed;
+
+  if (data.baseValue) {
+    baseValue = data.baseValue.reduce((acc, curr) => acc + curr.value, 0);
+  }
+  
+  // 添加静态修正值
+  if (data.static.fixed) {
+    staticFixed = data.static.fixed.reduce((acc, curr) => acc + curr.value, 0);
+  }
+  
+  // 添加静态百分比修正
+  if (data.static.percentage) {
+    staticPercentage = data.static.percentage.reduce((acc, curr) => acc + curr.value, 0);
+  }
+  
+  // 添加动态修正值
+  if (data.dynamic.fixed) {
+    dynamicFixed = data.dynamic.fixed.reduce((acc, curr) => acc + curr.value, 0);
+  }
+  
+  // 添加动态百分比修正
+  if (data.dynamic.percentage) {
+    dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
+  }
+  
+  total = baseValue * ((100 + totalPercentage) / 100) + totalFixed;
+
+  // console.table({
+  //   displayName: data.displayName,
+  //   baseValue,
+  //   staticFixed,
+  //   staticPercentage,
+  //   dynamicFixed,
+  //   dynamicPercentage,
+  //   totalPercentage,
+  //   totalFixed,
+  //   total,
+  // });
+
+  return Math.floor(total);
+}
 
 // ============================== Schema相关类型 ==============================
 
@@ -573,7 +633,35 @@ export class ReactiveSystem<T extends string> {
         }
         current = current[seg] as Record<string, unknown>;
       }
-      current[leafKey] = value;
+
+      // 组装 DataStorage 单元
+      const attrPath = [...path, leafKey].join('.');
+      const index = this.keyToIndex.get(attrPath as T);
+      const storage: DataStorage = {
+        displayName: this.displayNames.get(attrPath as T) || attrPath,
+        baseValue: [],
+        static: { fixed: [], percentage: [] },
+        dynamic: { fixed: [], percentage: [] },
+      };
+      if (index !== undefined) {
+        // 汇总 BASE_VALUE 作为单一来源（sourceId=0）
+        const base = this.modifierArrays[ModifierType.BASE_VALUE][index];
+        if (Number.isFinite(base) && base !== 0) {
+          storage.baseValue.push({ sourceId: 0, value: base });
+        }
+        // 静态修饰
+        const sFixed = this.modifierArrays[ModifierType.STATIC_FIXED][index];
+        if (Number.isFinite(sFixed) && sFixed !== 0) storage.static.fixed.push({ sourceId: 0, value: sFixed });
+        const sPct = this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
+        if (Number.isFinite(sPct) && sPct !== 0) storage.static.percentage.push({ sourceId: 0, value: sPct });
+        // 动态修饰
+        const dFixed = this.modifierArrays[ModifierType.DYNAMIC_FIXED][index];
+        if (Number.isFinite(dFixed) && dFixed !== 0) storage.dynamic.fixed.push({ sourceId: 0, value: dFixed });
+        const dPct = this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
+        if (Number.isFinite(dPct) && dPct !== 0) storage.dynamic.percentage.push({ sourceId: 0, value: dPct });
+      }
+
+      current[leafKey] = storage as unknown as Record<string, unknown>;
     };
 
     for (let i = 0; i < this.indexToKey.length; i++) {
@@ -582,6 +670,7 @@ export class ReactiveSystem<T extends string> {
       const leaf = parts.pop() as string;
       const parentPath = parts;
       const value = this.values[i];
+      // 即便 value 不是有限数，也返回结构齐全的 DataStorage
       setNested(result, parentPath, leaf, Number.isFinite(value) ? value : 0);
     }
 

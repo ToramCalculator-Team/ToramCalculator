@@ -29,7 +29,7 @@ import type GameEngine from "./GameEngine";
  * 通用属性的默认表达式映射
  * 定义通用属性的计算表达式和依赖关系
  */
-export const CommonAttrSchema = {
+ const CommonAttrSchema = {
   lv: {
     name: "lv",
     expression: "lv",
@@ -71,7 +71,7 @@ export const CommonAttrSchema = {
  *
  * @template TAttrKey 属性键的字符串联合类型，与 MemberContext 保持一致
  */
-export interface MemberSerializeData<TAttrKey extends string = string> {
+ interface MemberSerializeData<TAttrKey extends string = string> {
   id: string;
   name: string;
   type: string;
@@ -91,7 +91,7 @@ export interface MemberSerializeData<TAttrKey extends string = string> {
 /**
  * 属性值类型枚举
  */
-export enum ValueType {
+ enum ValueType {
   user = "user",
   system = "system",
 }
@@ -99,7 +99,7 @@ export enum ValueType {
 /**
  * 属性影响关系接口
  */
-export interface AttributeInfluence {
+ interface AttributeInfluence {
   name: string; // 将影响的目标属性
   targetType: ModifierType; // 作用的位置
   computation: () => number; // 作用的值
@@ -111,7 +111,7 @@ export interface AttributeInfluence {
  * 成员基础属性接口
  * 定义所有成员类型共有的基础属性
  */
-export interface MemberBaseStats {
+ interface MemberBaseStats {
   /** 最大生命值 */
   maxHp: number;
   /** 当前生命值 */
@@ -148,7 +148,7 @@ export interface MemberBaseStats {
  *
  * @template TAttrKey 属性键的字符串联合类型，对应响应式系统的属性键
  */
-export interface MemberContext<TAttrKey extends string = string> {
+ interface MemberContext<TAttrKey extends string = string> {
   /** 成员基础数据（来自数据库） */
   memberData: MemberWithRelations;
   /** 成员基础属性 - 直接引用响应式系统的计算结果，类型安全 */
@@ -173,7 +173,7 @@ export interface MemberContext<TAttrKey extends string = string> {
  * 成员事件接口
  * 定义成员状态机可以处理的事件类型
  */
-export interface MemberEvent {
+ interface MemberEvent {
   /** 事件ID */
   id: string;
   /** 事件类型 */
@@ -188,7 +188,7 @@ export interface MemberEvent {
  * 成员事件类型枚举
  * 基础事件类型，所有成员类型都支持的事件
  */
-export type MemberEventType =
+ type MemberEventType =
   | { type: "spawn" } // 生成事件
   | { type: "death" } // 死亡事件
   | { type: "damage"; damage: number; damageType: string; sourceId?: string } // 受到伤害
@@ -207,7 +207,7 @@ export type MemberEventType =
  *
  * @template TAttrKey 属性键的字符串联合类型
  */
-export type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
+ type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
   MemberContext<TAttrKey>, // TContext - 状态机上下文
   MemberEventType, // TEvent - 事件类型（可扩展）
   Record<string, any>, // TChildren - 子状态机
@@ -231,14 +231,14 @@ export type MemberStateMachine<TAttrKey extends string = string> = StateMachine<
  *
  * @template TAttrKey 属性键的字符串联合类型
  */
-export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
+ type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
 
 // ============================== 类型守卫函数 ==============================
 
 /**
  * 类型守卫：检查成员是否为玩家类型
  */
-export function isPlayerMember(
+ function isPlayerMember(
   member: MemberWithRelations,
 ): member is MemberWithRelations & { player: NonNullable<MemberWithRelations["player"]> } {
   return member.player !== null && member.player !== undefined;
@@ -247,7 +247,7 @@ export function isPlayerMember(
 /**
  * 类型守卫：检查成员是否为佣兵类型
  */
-export function isMercenaryMember(
+ function isMercenaryMember(
   member: MemberWithRelations,
 ): member is MemberWithRelations & { mercenary: NonNullable<MemberWithRelations["mercenary"]> } {
   return member.mercenary !== null && member.mercenary !== undefined;
@@ -256,7 +256,7 @@ export function isMercenaryMember(
 /**
  * 类型守卫：检查成员是否为怪物类型
  */
-export function isMobMember(
+ function isMobMember(
   member: MemberWithRelations,
 ): member is MemberWithRelations & { mob: NonNullable<MemberWithRelations["mob"]> } {
   return member.mob !== null && member.mob !== undefined;
@@ -265,7 +265,7 @@ export function isMobMember(
 /**
  * 类型守卫：检查成员是否为伙伴类型
  */
-export function isPartnerMember(
+ function isPartnerMember(
   member: MemberWithRelations,
 ): member is MemberWithRelations & { partner: NonNullable<MemberWithRelations["partner"]> } {
   return member.partner !== null && member.partner !== undefined;
@@ -279,7 +279,7 @@ export function isPartnerMember(
  *
  * @template TAttrKey 属性键的字符串联合类型，用于类型安全的属性访问
  */
-export abstract class Member<TAttrKey extends string = string> {
+ abstract class Member<TAttrKey extends string = string> {
   // ==================== 核心属性 ====================
 
   /** 成员唯一标识符 */
@@ -1166,7 +1166,3 @@ export abstract class Member<TAttrKey extends string = string> {
     return serializeData;
   }
 }
-
-// ============================== 导出 ==============================
-
-export default Member;

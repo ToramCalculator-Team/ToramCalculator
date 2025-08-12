@@ -16,6 +16,7 @@
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
 import type { MemberManager } from "../core/MemberManager";
+import { ModifierType } from "../core/member/ReactiveSystem";
 
 // ============================== 战斗事件处理器 ==============================
 
@@ -37,23 +38,29 @@ export class MemberDamageHandler implements EventHandler {
       const payload = event.payload as any;
       console.log(`处理伤害事件: ${event.id}`, payload);
       
-      // 获取目标和施法者
-      const target = this.memberManager.getMember(payload.targetId);
-      const source = this.memberManager.getMember(payload.sourceId);
-      
-      if (!target) {
+      // 获取目标和施法者（使用注册表条目与 Actor 弱关联）
+      const targetEntry = this.memberManager.getMemberEntry(payload.targetId);
+      const casterEntry = payload.sourceId ? this.memberManager.getMemberEntry(payload.sourceId) : null;
+
+      if (!targetEntry) {
         return {
           success: false,
-          error: `目标不存在: ${payload.targetId}`
+          error: `目标不存在: ${payload.targetId}`,
         };
       }
 
       // 构建表达式上下文
       const expressionContext: ExpressionContext = {
         currentFrame: context.currentFrame,
-        caster: source,
-        target: target,
-        skill: payload.skillId ? { id: payload.skillId } : undefined
+        caster: casterEntry
+          ? ({
+              getStats: () => casterEntry.attrs.getValues() as any,
+            } as any)
+          : undefined,
+        target: ({
+          getStats: () => targetEntry.attrs.getValues() as any,
+        } as any),
+        skill: payload.skillId ? { id: payload.skillId } : undefined,
       };
 
       // 计算伤害
@@ -69,21 +76,48 @@ export class MemberDamageHandler implements EventHandler {
       }
 
       const finalDamage = Math.max(0, Math.floor(damageResult.value));
+
+      // 通过响应式系统应用伤害（作为静态固定修饰符的负值）
+      const hpBefore = targetEntry.attrs.getValue("hp.current" as any);
+      targetEntry.attrs.addModifier(
+        "hp.current" as any,
+        ModifierType.STATIC_FIXED,
+        -finalDamage,
+        {
+          id: `damage_${event.id}`,
+          name: "member_damage",
+          type: "system",
+        },
+      );
+      const hpAfter = targetEntry.attrs.getValue("hp.current" as any);
+
+      console.log(`目标 ${payload.targetId} 受到 ${finalDamage} 点伤害: ${hpBefore} -> ${hpAfter}`);
       
-      // 应用伤害到目标
-      if (typeof target.takeDamage === 'function') {
-        target.takeDamage(finalDamage);
+      const newEvents: BaseEvent[] = [];
+      if (hpAfter <= 0) {
+        newEvents.push({
+          id: `${event.id}_hp_zero`,
+          executeFrame: context.currentFrame,
+          priority: 'critical',
+          type: 'member_fsm_event',
+          payload: {
+            targetMemberId: payload.targetId,
+            fsmEventType: 'hp_zero',
+            data: { sourceId: payload.sourceId },
+          },
+          source: event.source,
+          actionId: event.actionId,
+        });
       }
 
-      console.log(`${target.getName()} 受到 ${finalDamage} 点伤害`);
-      
       return {
         success: true,
         data: {
           ...payload,
           actualDamage: finalDamage,
-          targetCurrentHp: target.getStats?.()?.currentHp || 0
-        }
+          targetCurrentHp: hpAfter,
+        },
+        newEvents,
       };
     } catch (error) {
       return {
