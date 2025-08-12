@@ -88,35 +88,26 @@ export class MessageRouter {
 
       // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
       try {
-        // console.log(
-        //   `🔍 MessageRouter: 发送事件到FSM前，成员 ${targetMember.getName()} 当前状态:`,
-        //   targetMember.getFSM().getSnapshot().value,
-        // );
 
         // 输入意图到 FSM 事件的映射（解耦 UI/意图 与 内部 FSM 事件语义）
         const mapped = this.mapIntentToFsmEvent(targetMember, message);
-        // console.log(`🔍 MessageRouter: 发送的事件:`, mapped);
 
-        targetMember.getFSM().send(mapped as any);
-
-        // const newState = targetMember.getFSM().getSnapshot();
-        // console.log(`🔍 MessageRouter: 发送事件到FSM后，成员 ${targetMember.getName()} 新状态:`, newState.value);
+        targetMember.send(mapped as any);
 
         this.stats.successfulMessages++;
-        // console.log(`MessageRouter: 分发消息成功: ${message.type} -> ${targetMember.getName()}`);
 
         return {
           success: true,
-          message: `消息已分发到 ${targetMember.getName()}`,
+          message: `消息已分发到 ${targetMember.id}`,
           error: undefined,
         };
       } catch (fsmError: any) {
         this.stats.failedMessages++;
-        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.getName()}`, fsmError);
+        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.id}`, fsmError);
 
         return {
           success: false,
-          message: `FSM处理失败: ${targetMember.getName()}`,
+          message: `FSM处理失败: ${targetMember.id}`,
           error: fsmError.message,
         };
       }
@@ -212,13 +203,24 @@ export class MessageRouter {
     _targetMember: any,
     message: IntentMessage,
   ): { type: string; data?: Record<string, any> } {
-    // 最小实现：意图名即事件名；特例映射外置到 mapper（后续可注入）
+    // 输入意图到 FSM 事件的集中映射
     const { type, data } = message;
-    if (type === "cast_skill") {
-      const skillId = (data as any)?.skillId;
-      return { type: "skill_press", data: { skillId, ...data } };
+    switch (type) {
+      case "cast_skill": {
+        const skillId = (data as any)?.skillId;
+        return { type: "skill_press", data: { skillId, ...data } };
+      }
+      case "move": {
+        const x = Number((data as any)?.x ?? (data as any)?.position?.x ?? 0);
+        const y = Number((data as any)?.y ?? (data as any)?.position?.y ?? 0);
+        return { type: "move_command", data: { position: { x, y }, ...data } } as any;
+      }
+      case "stop_action": {
+        return { type: "stop_move" } as any;
+      }
+      default:
+        return { type, data } as any;
     }
-    return { type, data } as any;
   }
 }
 

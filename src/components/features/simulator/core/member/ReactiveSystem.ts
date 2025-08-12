@@ -8,9 +8,6 @@
  * - API兼容：保持与原ReactiveDataManager相同的接口
  * - 内存优化：连续内存布局，减少GC压力
  */
-
-import { JSExpressionProcessor, type CompilationContext } from "../expression/JSExpressionProcessor";
-import { Member } from "../Member";
 import * as Enums from "@db/schema/enums";
 import { ReactiveSystemASTCompiler } from "./ReactiveSystemAST";
 
@@ -43,33 +40,97 @@ function createEnumMappings(): Map<string, number> {
 // 全局枚举映射
 const ENUM_MAPPINGS = createEnumMappings();
 
-// 数据存储逻辑类型
-type DataStorage = {
+// 数据存储接口，用于向外传输
+export type DataStorage = {
+  displayName: string;
   baseValue: {
     sourceId: number;
     value: number;
-  };
+  }[];
   static: {
     fixed: {
       sourceId: number;
       value: number;
-    };
+    }[];
     percentage: {
       sourceId: number;
       value: number;
-    };
+    }[];
   };
   dynamic: {
     fixed: {
       sourceId: number;
       value: number;
-    };
+    }[];
     percentage: {
       sourceId: number;
       value: number;
-    };
+    }[];
   };
 };
+
+export type DataStorages<T extends string> = {
+  [key in T]: DataStorage;
+};
+
+// 类型谓词函数，用于检查对象是否为DataStorage类型
+export function isDataStorageType(obj: unknown): obj is DataStorage {
+  return typeof obj === "object" && obj !== null && "displayName" in obj && "displayName" in obj;
+}
+
+// 计算动态总值（简化版本）
+export function dynamicTotalValue(data: DataStorage): number {
+  if (!data || typeof data !== "object") return 0;
+
+  let baseValue = 0;
+  let total = 0;
+  let staticFixed = 0;
+  let staticPercentage = 0;
+  let dynamicFixed = 0;
+  let dynamicPercentage = 0;
+  let totalPercentage = staticPercentage + dynamicPercentage;
+  let totalFixed = staticFixed + dynamicFixed;
+
+  if (data.baseValue) {
+    baseValue = data.baseValue.reduce((acc, curr) => acc + curr.value, 0);
+  }
+
+  // 添加静态修正值
+  if (data.static.fixed) {
+    staticFixed = data.static.fixed.reduce((acc, curr) => acc + curr.value, 0);
+  }
+
+  // 添加静态百分比修正
+  if (data.static.percentage) {
+    staticPercentage = data.static.percentage.reduce((acc, curr) => acc + curr.value, 0);
+  }
+
+  // 添加动态修正值
+  if (data.dynamic.fixed) {
+    dynamicFixed = data.dynamic.fixed.reduce((acc, curr) => acc + curr.value, 0);
+  }
+
+  // 添加动态百分比修正
+  if (data.dynamic.percentage) {
+    dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
+  }
+
+  total = baseValue * ((100 + totalPercentage) / 100) + totalFixed;
+
+  // console.table({
+  //   displayName: data.displayName,
+  //   baseValue,
+  //   staticFixed,
+  //   staticPercentage,
+  //   dynamicFixed,
+  //   dynamicPercentage,
+  //   totalPercentage,
+  //   totalFixed,
+  //   total,
+  // });
+
+  return Math.floor(total);
+}
 
 // ============================== Schema相关类型 ==============================
 
@@ -80,6 +141,10 @@ export interface SchemaAttribute {
   displayName: string;
   expression: string;
 }
+
+export const isSchemaAttribute = (x: unknown): x is SchemaAttribute => {
+  return !!x && typeof x === "object" && "displayName" in (x as any) && "expression" in (x as any);
+};
 
 /**
  * 嵌套Schema结构（任意深度）
@@ -95,7 +160,6 @@ export interface FlattenedSchema<T extends string> {
   attrKeys: T[];
   expressions: Map<T, AttributeExpression>;
   displayNames: Map<T, string>;
-  dslMapping: Map<string, T>; // DSL路径 -> 扁平化键名的映射
 }
 
 // ============================== Schema工具类型 ==============================
@@ -138,7 +202,6 @@ export class SchemaFlattener {
     const attrKeys: T[] = [];
     const expressions = new Map<T, AttributeExpression>();
     const displayNames = new Map<T, string>();
-    const dslMapping = new Map<string, T>();
 
     function traverse(obj: NestedSchema, path: string[] = []): void {
       for (const [key, value] of Object.entries(obj)) {
@@ -157,8 +220,6 @@ export class SchemaFlattener {
           });
 
           displayNames.set(attrKey, value.displayName);
-          // DSL映射现在就是自映射，保持API兼容性
-          dslMapping.set(dslPath, attrKey);
 
           // console.log(`📋 扁平化属性: ${dslPath} (${value.displayName})`);
         } else {
@@ -175,7 +236,6 @@ export class SchemaFlattener {
       attrKeys,
       expressions,
       displayNames,
-      dslMapping,
     };
   }
 
@@ -212,25 +272,23 @@ export interface AttributeExpression {
  * 使用位运算优化状态检查
  */
 export enum AttributeFlags {
-  IS_DIRTY = 1 << 0, // 0001: 需要重新计算
-  HAS_COMPUTATION = 1 << 1, // 0010: 有计算函数
-  IS_BASE = 1 << 2, // 0100: 基础属性
-  IS_CACHED = 1 << 3, // 1000: 有缓存值
+  // 仅保留必要标记：是否为计算属性、是否为基础值、是否已有缓存
+  HAS_COMPUTATION = 1 << 0, // 0001: 有计算函数
+  IS_BASE = 1 << 1, // 0010: 基础属性
+  IS_CACHED = 1 << 2, // 0100: 有缓存值
 }
 
 /**
  * 修饰符类型映射到数组索引
  */
-export enum ModifierArrayIndex {
-  BASE_VALUE = 0,
-  STATIC_FIXED = 1,
-  STATIC_PERCENTAGE = 2,
-  DYNAMIC_FIXED = 3,
-  DYNAMIC_PERCENTAGE = 4,
+export enum ModifierType {
+  BASE_VALUE,
+  STATIC_FIXED,
+  STATIC_PERCENTAGE,
+  DYNAMIC_FIXED,
+  DYNAMIC_PERCENTAGE,
   MODIFIER_ARRAYS_COUNT = 5,
 }
-
-export type ModifierType = "staticFixed" | "staticPercentage" | "dynamicFixed" | "dynamicPercentage";
 
 // ============================== 工具类 ==============================
 
@@ -365,6 +423,59 @@ export class DependencyGraph {
 
     return affected;
   }
+
+  /**
+   * 导出依赖图的反向映射（以索引表示）
+   * key 为属性索引，value 为依赖该属性的索引数组
+   */
+  toDependentsObject(): Record<number, number[]> {
+    const result: Record<number, number[]> = {};
+    for (let i = 0; i < this.dependents.length; i++) {
+      if (this.dependents[i].size > 0) {
+        result[i] = Array.from(this.dependents[i]);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * 检测循环依赖，返回由索引组成的环列表
+   */
+  detectCycles(): number[][] {
+    const cycles: number[][] = [];
+    const visited = new Set<number>();
+    const recursionStack = new Set<number>();
+    const path: number[] = [];
+
+    const dfs = (nodeIndex: number): boolean => {
+      if (recursionStack.has(nodeIndex)) {
+        const cycleStart = path.indexOf(nodeIndex);
+        if (cycleStart !== -1) cycles.push(path.slice(cycleStart));
+        return true;
+      }
+      if (visited.has(nodeIndex)) return false;
+
+      visited.add(nodeIndex);
+      recursionStack.add(nodeIndex);
+      path.push(nodeIndex);
+
+      for (const dep of this.dependencies[nodeIndex]) {
+        if (dfs(dep)) {
+          return true;
+        }
+      }
+
+      recursionStack.delete(nodeIndex);
+      path.pop();
+      return false;
+    };
+
+    for (let i = 0; i < this.dependencies.length; i++) {
+      if (!visited.has(i)) dfs(i);
+    }
+
+    return cycles;
+  }
 }
 
 // ============================== 主要实现 ==============================
@@ -385,7 +496,7 @@ export class ReactiveSystem<T extends string> {
   private readonly modifierArrays: Float64Array[];
 
   /** 修饰符来源聚合：按类型 -> 属性索引 -> sourceId -> value */
-  private readonly modifierSources: Map<ModifierArrayIndex, Map<number, Map<string, number>>>;
+  private readonly modifierSources: Map<ModifierType, Map<number, Map<string, number>>>;
 
   /** 依赖图 */
   private readonly dependencyGraph: DependencyGraph;
@@ -393,21 +504,17 @@ export class ReactiveSystem<T extends string> {
   /** 脏属性队列 - 使用Uint32Array作为位图 */
   private readonly dirtyBitmap: Uint32Array;
 
-  /** 计算函数存储 */
-  private readonly computationFunctions: Map<number, (scope: Float64Array) => number>;
+  /** 计算函数存储（无参，内部闭包获取需要的上下文） */
+  private readonly computationFunctions: Map<number, () => number>;
 
   /** 属性键映射 */
   private readonly keyToIndex: Map<T, number>;
   private readonly indexToKey: T[];
 
-  /** DSL路径映射（用于DSL支持） */
-  private readonly dslMapping: Map<string, T>;
-
   /** 显示名称映射（用于调试） */
   private readonly displayNames: Map<T, string>;
 
-  /** 所属成员实例 */
-  private readonly member: Member;
+  // 不再持有 Member 引用，避免循环依赖；表达式通过注入的 _get 函数访问值
 
   /** 当前正在编译的属性名（用于避免自引用） */
   private currentCompilingAttr?: T;
@@ -432,14 +539,12 @@ export class ReactiveSystem<T extends string> {
    *
    * @param schema 嵌套的Schema结构
    */
-  constructor(member: Member, schema: NestedSchema) {
-    console.log("🚀 ReactiveSystem 构造函数", member, schema);
-    this.member = member;
+  constructor(member: any, schema: NestedSchema) {
+    // console.log("🚀 ReactiveSystem 构造函数", schema);
     const flattened = SchemaFlattener.flatten<T>(schema);
     const attrKeys = flattened.attrKeys;
     const expressions = flattened.expressions;
     const displayNames = flattened.displayNames;
-    const dslMapping = flattened.dslMapping;
     const keyCount = attrKeys.length;
 
     // 初始化核心数据结构
@@ -449,7 +554,7 @@ export class ReactiveSystem<T extends string> {
 
     // 初始化修饰符数组
     this.modifierArrays = [];
-    for (let i = 0; i < ModifierArrayIndex.MODIFIER_ARRAYS_COUNT; i++) {
+    for (let i = 0; i < ModifierType.MODIFIER_ARRAYS_COUNT; i++) {
       this.modifierArrays[i] = new Float64Array(keyCount);
     }
 
@@ -459,7 +564,6 @@ export class ReactiveSystem<T extends string> {
     // 初始化映射关系
     this.keyToIndex = new Map();
     this.indexToKey = attrKeys;
-    this.dslMapping = dslMapping;
     this.displayNames = displayNames;
 
     attrKeys.forEach((key, index) => {
@@ -485,7 +589,145 @@ export class ReactiveSystem<T extends string> {
     // 标记所有属性为脏值
     this.markAllDirty();
 
-    console.log(`🚀 ReactiveSystem 初始化完成:`, this);
+    // console.log(`🚀 ReactiveSystem 初始化完成:`, this);
+  }
+
+  // ==================== 导出接口 ====================
+
+  /**
+   * 导出扁平数值映射（attrKey -> value）
+   * 会在导出前自动同步所有脏值
+   */
+  public exportFlatValues(): Record<T, number> {
+    return this.getValues();
+  }
+
+  /**
+   * 导出嵌套结构的属性值对象
+   * 根据属性键的 DSL 路径（如 "hp.current"）重建层级对象
+   */
+  public exportNestedValues(): Record<string, unknown> {
+    // 确保最新值
+    if (this.hasDirtyValues()) {
+      this.updateDirtyValues();
+    }
+
+    const result: Record<string, unknown> = {};
+
+    const setNested = (root: Record<string, unknown>, path: string[], leafKey: string, value: number) => {
+      let current: Record<string, unknown> = root;
+      for (const seg of path) {
+        const next = current[seg];
+        if (typeof next !== "object" || next === null) {
+          current[seg] = {} as Record<string, unknown>;
+        }
+        current = current[seg] as Record<string, unknown>;
+      }
+
+      // 组装 DataStorage 单元
+      const attrPath = [...path, leafKey].join(".");
+      const index = this.keyToIndex.get(attrPath as T);
+      const storage: DataStorage = {
+        displayName: this.displayNames.get(attrPath as T) || attrPath,
+        baseValue: [],
+        static: { fixed: [], percentage: [] },
+        dynamic: { fixed: [], percentage: [] },
+      };
+      if (index !== undefined) {
+        // 汇总 BASE_VALUE 作为单一来源（sourceId=0）
+        const base = this.modifierArrays[ModifierType.BASE_VALUE][index];
+        if (Number.isFinite(base) && base !== 0) {
+          storage.baseValue.push({ sourceId: 0, value: base });
+        }
+        // 静态修饰
+        const sFixed = this.modifierArrays[ModifierType.STATIC_FIXED][index];
+        if (Number.isFinite(sFixed) && sFixed !== 0) storage.static.fixed.push({ sourceId: 0, value: sFixed });
+        const sPct = this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
+        if (Number.isFinite(sPct) && sPct !== 0) storage.static.percentage.push({ sourceId: 0, value: sPct });
+        // 动态修饰
+        const dFixed = this.modifierArrays[ModifierType.DYNAMIC_FIXED][index];
+        if (Number.isFinite(dFixed) && dFixed !== 0) storage.dynamic.fixed.push({ sourceId: 0, value: dFixed });
+        const dPct = this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
+        if (Number.isFinite(dPct) && dPct !== 0) storage.dynamic.percentage.push({ sourceId: 0, value: dPct });
+      }
+
+      current[leafKey] = storage as unknown as Record<string, unknown>;
+    };
+
+    for (let i = 0; i < this.indexToKey.length; i++) {
+      const key = this.indexToKey[i] as string; // DSL 路径
+      const parts = key.split(".");
+      const leaf = parts.pop() as string;
+      const parentPath = parts;
+      const value = this.values[i];
+      // 即便 value 不是有限数，也返回结构齐全的 DataStorage
+      setNested(result, parentPath, leaf, Number.isFinite(value) ? value : 0);
+    }
+
+    return result;
+  }
+
+  /**
+   * 导出修饰符来源明细
+   * 结构以属性键为单位，细分五类修饰符，并列出每个来源的累积值
+   */
+  public exportModifierDetails(): Record<
+    T,
+    {
+      baseValue: Array<{ sourceId: string; value: number }>;
+      static: {
+        fixed: Array<{ sourceId: string; value: number }>;
+        percentage: Array<{ sourceId: string; value: number }>;
+      };
+      dynamic: {
+        fixed: Array<{ sourceId: string; value: number }>;
+        percentage: Array<{ sourceId: string; value: number }>;
+      };
+    }
+  > {
+    const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
+      const perType = this.modifierSources.get(type);
+      const perAttr = perType?.get(attrIndex);
+      const out: Array<{ sourceId: string; value: number }> = [];
+      if (perAttr) {
+        for (const [sourceId, value] of perAttr) {
+          out.push({ sourceId, value });
+        }
+      }
+      return out;
+    };
+
+    const result = {} as Record<
+      T,
+      {
+        baseValue: Array<{ sourceId: string; value: number }>;
+        static: {
+          fixed: Array<{ sourceId: string; value: number }>;
+          percentage: Array<{ sourceId: string; value: number }>;
+        };
+        dynamic: {
+          fixed: Array<{ sourceId: string; value: number }>;
+          percentage: Array<{ sourceId: string; value: number }>;
+        };
+      }
+    >;
+
+    for (let i = 0; i < this.indexToKey.length; i++) {
+      const key = this.indexToKey[i];
+      result[key] = {
+        baseValue: collect(ModifierType.BASE_VALUE, i),
+        static: {
+          fixed: collect(ModifierType.STATIC_FIXED, i),
+          percentage: collect(ModifierType.STATIC_PERCENTAGE, i),
+        },
+        dynamic: {
+          fixed: collect(ModifierType.DYNAMIC_FIXED, i),
+          percentage: collect(ModifierType.DYNAMIC_PERCENTAGE, i),
+        },
+      };
+    }
+
+    return result;
   }
 
   /**
@@ -523,24 +765,8 @@ export class ReactiveSystem<T extends string> {
     const value = this.computeAttributeValue(index);
     this.values[index] = value;
     BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
-    BitFlags.clear(this.flags, index, AttributeFlags.IS_DIRTY);
 
     return value;
-  }
-
-  /**
-   * 设置属性值
-   */
-  setValue(attr: T, value: number): void {
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试设置不存在的属性值: ${attr}`);
-      return;
-    }
-
-    // 设置基础值
-    this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index] = value;
-    this.markDirty(index);
   }
 
   /**
@@ -567,58 +793,20 @@ export class ReactiveSystem<T extends string> {
   }
 
   /**
-   * 批量设置基础值
-   */
-  setBaseValues(values: Record<T, number>): void {
-    console.log(`🔧 设置基础值: ${JSON.stringify(values)}`);
-    const baseArray = this.modifierArrays[ModifierArrayIndex.BASE_VALUE];
-
-    for (const [attr, value] of Object.entries(values)) {
-      const index = this.keyToIndex.get(attr as T);
-      if (index !== undefined && typeof value === "number") {
-        baseArray[index] = value;
-        this.markDirty(index);
-      }
-    }
-
-    this.stats.batchUpdates++;
-  }
-
-  /**
    * 添加修饰符
    */
-  addModifier(attr: T, type: ModifierType, value: number, source: ModifierSource): void {
+  addModifier(attr: T, targetType: ModifierType, value: number, source: ModifierSource): void {
+    // 获取属性索引
     const index = this.keyToIndex.get(attr);
     if (index === undefined) {
       console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
       return;
     }
-
-    // 映射修饰符类型到数组索引
-    let arrayIndex: ModifierArrayIndex;
-    switch (type) {
-      case "staticFixed":
-        arrayIndex = ModifierArrayIndex.STATIC_FIXED;
-        break;
-      case "staticPercentage":
-        arrayIndex = ModifierArrayIndex.STATIC_PERCENTAGE;
-        break;
-      case "dynamicFixed":
-        arrayIndex = ModifierArrayIndex.DYNAMIC_FIXED;
-        break;
-      case "dynamicPercentage":
-        arrayIndex = ModifierArrayIndex.DYNAMIC_PERCENTAGE;
-        break;
-      default:
-        console.warn(`⚠️ 未知的修饰符类型: ${type}`);
-        return;
-    }
-
     // 来源聚合：记录 sourceId 的值并同步到累加数组
-    let perType = this.modifierSources.get(arrayIndex);
+    let perType = this.modifierSources.get(targetType);
     if (!perType) {
       perType = new Map();
-      this.modifierSources.set(arrayIndex, perType);
+      this.modifierSources.set(targetType, perType);
     }
     let perAttr = perType.get(index);
     if (!perAttr) {
@@ -629,45 +817,37 @@ export class ReactiveSystem<T extends string> {
     const next = prev + value;
     perAttr.set(source.id, next);
     const delta = next - prev;
-    this.modifierArrays[arrayIndex][index] += delta;
+    this.modifierArrays[targetType][index] += delta;
     this.markDirty(index);
 
-    console.log(`✅ 成功添加修饰器: ${attr} ${type} +${value} (来源: ${source.name})`);
+    console.log(`✅ 成功添加修饰器: ${attr} ${targetType.toString()} +${value} (来源: ${source.name})`);
+  }
+
+  /**
+   * 批量添加修饰符（包含基础值）
+   */
+  addModifiers(items: Array<{ attr: T; targetType: ModifierType; value: number; source: ModifierSource }>): void {
+    for (const it of items) {
+      this.addModifier(it.attr, it.targetType, it.value, it.source);
+    }
+    this.stats.batchUpdates++;
   }
 
   /**
    * 移除修饰符
    */
-  removeModifier(attr: T, type: ModifierType, sourceId: string): void {
+  removeModifier(attr: T, targetType: ModifierType, sourceId: string): void {
     const index = this.keyToIndex.get(attr);
     if (index === undefined) {
       console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
       return;
     }
-    let arrayIndex: ModifierArrayIndex;
-    switch (type) {
-      case "staticFixed":
-        arrayIndex = ModifierArrayIndex.STATIC_FIXED;
-        break;
-      case "staticPercentage":
-        arrayIndex = ModifierArrayIndex.STATIC_PERCENTAGE;
-        break;
-      case "dynamicFixed":
-        arrayIndex = ModifierArrayIndex.DYNAMIC_FIXED;
-        break;
-      case "dynamicPercentage":
-        arrayIndex = ModifierArrayIndex.DYNAMIC_PERCENTAGE;
-        break;
-      default:
-        console.warn(`⚠️ 未知的修饰符类型: ${type}`);
-        return;
-    }
     // 来源级移除：从来源聚合删除并从累加数组扣减
-    const perType = this.modifierSources.get(arrayIndex);
+    const perType = this.modifierSources.get(targetType);
     const perAttr = perType?.get(index);
     const amount = perAttr?.get(sourceId) ?? 0;
     if (amount !== 0) {
-      this.modifierArrays[arrayIndex][index] -= amount;
+      this.modifierArrays[targetType][index] -= amount;
       perAttr!.delete(sourceId);
       if (perAttr!.size === 0) {
         perType!.delete(index);
@@ -683,160 +863,106 @@ export class ReactiveSystem<T extends string> {
    * 设置表达式和依赖关系
    */
   private setupExpressions(expressions: Map<T, AttributeExpression>): void {
-    console.log("🔧 设置表达式和依赖关系...");
+    // console.log("🔧 设置表达式和依赖关系...");
     for (const [attrName, expressionData] of expressions) {
       const index = this.keyToIndex.get(attrName);
       if (index === undefined || !expressionData.expression) {
         continue;
       }
 
-      // ReactiveSystem中只处理简单表达式，使用简化的编译模式
       // 不注入GameEngine上下文，只处理self属性访问
-      this.currentCompilingAttr = attrName; // 设置当前编译的属性名
-      const simpleCompiledCode = this.compileSimpleExpression(expressionData.expression);
-      this.currentCompilingAttr = undefined; // 清除当前编译的属性名
+      const compiled = this.compileExpressionOnce(attrName as T, expressionData.expression);
+      // console.log(attrName, compiled);
+      if (compiled.constant !== null) {
+        // 常量：直接作为基础值
+        this.modifierArrays[ModifierType.BASE_VALUE][index] = compiled.constant;
+        BitFlags.set(this.flags, index, AttributeFlags.IS_BASE);
+        // console.log(this.exportNestedValues())
+        continue;
+      }
 
-      if (simpleCompiledCode) {
-        // 判断是否为纯常量（数字或已映射的枚举值）
-        const trimmed = String(simpleCompiledCode).trim();
-        const numValue = Number(trimmed);
-        const isConstant = trimmed !== "" && Number.isFinite(numValue) && String(numValue) === trimmed;
-
-        if (isConstant) {
-          // 直接作为基础值存储，不注册计算函数
-          this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index] = numValue;
-          // 常量视为基础属性
-          BitFlags.set(this.flags, index, AttributeFlags.IS_BASE);
-        } else {
-          // 使用AST结果注册依赖关系
-          const deps = this.extractDependenciesWithAST(expressionData.expression);
-          if (Array.isArray(deps) && deps.length > 0) {
-            for (const dep of deps) {
-              const depIndex = this.keyToIndex.get(dep as T);
-              if (depIndex !== undefined && depIndex !== index) {
-                this.dependencyGraph.addDependency(index, depIndex);
-              }
-            }
+      if (compiled.code) {
+        // 注册依赖
+        for (const dep of compiled.deps) {
+          const depIndex = this.keyToIndex.get(dep as T);
+          if (depIndex !== undefined && depIndex !== index) {
+            this.dependencyGraph.addDependency(index, depIndex);
           }
+        }
 
-          // 创建计算函数
-          this.computationFunctions.set(index, () => {
-            try {
-              if (this.isComputing.has(index)) {
-                console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
-                return 0;
-              }
-              this.isComputing.add(index);
-
-              const executionContext = { _self: this.member };
-              const fn = new Function(
-                "ctx",
-                `
-                with (ctx) {
-                  return ${simpleCompiledCode};
-                }
-              `,
-              );
-              const result = fn.call(null, executionContext);
-              const finalResult = typeof result === "number" ? result : 0;
-              this.isComputing.delete(index);
-              return finalResult;
-            } catch (error) {
-              this.isComputing.delete(index);
-              console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
-              console.error(`❌ 失败的编译代码: ${simpleCompiledCode}`);
+        // 创建计算函数
+        const code = compiled.code;
+        this.computationFunctions.set(index, () => {
+          try {
+            if (this.isComputing.has(index)) {
+              console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
               return 0;
             }
-          });
+            this.isComputing.add(index);
+            // 仅注入取值函数，避免对 Member 的强耦合
+            const executionContext = { _get: (k: string) => this.getValue(k as T) };
+            const fn = new Function("ctx", `with (ctx) { return ${code}; }`);
+            const result = fn.call(null, executionContext);
+            const finalResult = typeof result === "number" ? result : 0;
+            this.isComputing.delete(index);
+            return finalResult;
+          } catch (error) {
+            this.isComputing.delete(index);
+            console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
+            console.error(`❌ 失败的编译代码: ${code}`);
+            return 0;
+          }
+        });
 
-          BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
-        }
+        BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
       } else {
         console.error(`❌ 属性 ${attrName} 表达式编译失败: ${expressionData.expression}`);
-        // 设置默认计算函数
         this.computationFunctions.set(index, () => 0);
         BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
       }
       // 依赖关系已在上方注册
     }
 
-    console.log("✅ 表达式和依赖关系设置完成");
-
-    // 打印初始化结果摘要
-    const allValues = this.getValues();
-    const valueEntries = Object.entries(allValues).slice(0, 10); // 只显示前10个
-    console.log(`📊 初始化完成，共 ${Object.keys(allValues).length} 个属性，前10个:`, valueEntries);
+    console.log(`✅ 表达式和依赖关系设置完成`);
   }
 
   /**
    * 基于AST的表达式编译 - 精确处理属性访问转换
    */
-  private compileSimpleExpression(expression: string): string | null {
-    try {
-      // 1. 检查是否为纯数字（优先级最高）
-      if (!isNaN(Number(expression)) && isFinite(Number(expression))) {
-        return expression;
-      }
-
-      // 2. 检查是否为枚举值，转换为数字
-      const enumValue = this.getEnumValue(expression);
-      if (enumValue !== null) {
-        return String(enumValue);
-      }
-
-      // 3. 检查是否为自引用（避免无限递归）
-      const currentAttrName = this.getCurrentAttributeName();
-      if (expression.trim() === currentAttrName) {
-        console.warn(`⚠️ 检测到自引用: ${expression}，返回默认值0`);
-        return "0";
-      }
-
-      // 4. 使用AST解析和转换
-      return this.compileExpressionWithAST(expression);
-    } catch (error) {
-      console.error(`❌ 表达式编译失败: ${expression}`, error);
-      return null;
+  private compileExpressionOnce(
+    currentAttr: T,
+    expression: string,
+  ): { code: string | null; deps: string[]; constant: number | null } {
+    // 1) 纯数字常量
+    if (!isNaN(Number(expression)) && isFinite(Number(expression))) {
+      return { code: null, deps: [], constant: Number(expression) };
     }
-  }
 
-  /**
-   * 使用AST解析和转换表达式
-   */
-  private compileExpressionWithAST(expression: string): string | null {
+    // 2) 枚举常量
+    const enumValue = this.getEnumValue(expression);
+    if (enumValue !== null) {
+      return { code: null, deps: [], constant: enumValue };
+    }
+
+    // 3) 自引用保护
+    if (expression.trim() === String(currentAttr)) {
+      console.warn(`⚠️ 检测到自引用: ${expression}，返回0`);
+      return { code: null, deps: [], constant: 0 };
+    }
+
+    // 4) AST 编译，一次性得到 code 与 deps
     try {
-      // 1. 准备AST编译器
       const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
-      const currentAttrName = this.getCurrentAttributeName();
-      const compiler = new ReactiveSystemASTCompiler(knownAttributes, currentAttrName);
-
-      // 2. 编译表达式
+      const compiler = new ReactiveSystemASTCompiler(knownAttributes, String(currentAttr));
       const result = compiler.compile(expression);
-
       if (!result.success) {
         console.error(`❌ AST编译失败: ${expression}`, result.error);
-        return null;
+        return { code: null, deps: [], constant: null };
       }
-
-      return result.compiledCode;
+      return { code: result.compiledCode, deps: result.dependencies, constant: null };
     } catch (error) {
-      console.error(`❌ AST编译异常: ${expression}`, error);
-      return null;
-    }
-  }
-
-  /**
-   * 仅提取依赖列表（通过AST）
-   */
-  private extractDependenciesWithAST(expression: string): string[] {
-    try {
-      const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
-      const currentAttrName = this.getCurrentAttributeName();
-      const compiler = new ReactiveSystemASTCompiler(knownAttributes, currentAttrName);
-      const result = compiler.compile(expression);
-      if (!result.success) return [];
-      return Array.from(result.dependencies || []);
-    } catch {
-      return [];
+      console.error(`❌ 表达式编译异常: ${expression}`, error);
+      return { code: null, deps: [], constant: null };
     }
   }
 
@@ -876,7 +1002,7 @@ export class ReactiveSystem<T extends string> {
     // 从枚举映射中查找（只查找PascalCase的枚举值）
     const enumValue = ENUM_MAPPINGS.get(trimmed);
     if (enumValue !== undefined) {
-      console.log(`🎯 匹配到枚举: ${trimmed} -> ${enumValue}`);
+      // console.log(`🎯 匹配到枚举: ${trimmed} -> ${enumValue}`);
       return enumValue;
     }
 
@@ -891,55 +1017,16 @@ export class ReactiveSystem<T extends string> {
   }
 
   /**
-   * 解析简单依赖关系 - 智能提取属性引用
-   */
-  private parseSimpleDependencies(attrIndex: number, expression: string): void {
-    const dependencies = new Set<string>();
-
-    // 1. 匹配self.property模式
-    const selfPattern = /\bself\.([a-zA-Z_][a-zA-Z0-9_.]*)/g;
-    const selfMatches = expression.matchAll(selfPattern);
-
-    for (const match of selfMatches) {
-      dependencies.add(match[1]);
-    }
-
-    // 2. 智能匹配已知的完整属性路径
-    const knownAttributes = Array.from(this.keyToIndex.keys());
-    const sortedAttributes = knownAttributes.map((attr) => String(attr)).sort((a, b) => b.length - a.length); // 优先匹配最长的路径
-
-    sortedAttributes.forEach((attrKeyStr) => {
-      const escapedAttr = attrKeyStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const attrPattern = new RegExp(`\\b${escapedAttr}\\b`, "g");
-
-      if (attrPattern.test(expression)) {
-        dependencies.add(attrKeyStr);
-      }
-    });
-
-    // 3. 添加依赖关系
-    dependencies.forEach((property) => {
-      const depKey = property as T;
-      const depIndex = this.keyToIndex.get(depKey);
-
-      if (depIndex !== undefined && depIndex !== attrIndex) {
-        this.dependencyGraph.addDependency(attrIndex, depIndex);
-        // console.log(`🔗 发现依赖关系: ${this.indexToKey[attrIndex]} 依赖于 ${property}`);
-      }
-    });
-  }
-
-  /**
    * 计算单个属性值
    */
   private computeAttributeValue(index: number): number {
     this.stats.computations++;
 
     // 获取修饰符值
-    const staticFixed = this.modifierArrays[ModifierArrayIndex.STATIC_FIXED][index];
-    const staticPercentage = this.modifierArrays[ModifierArrayIndex.STATIC_PERCENTAGE][index];
-    const dynamicFixed = this.modifierArrays[ModifierArrayIndex.DYNAMIC_FIXED][index];
-    const dynamicPercentage = this.modifierArrays[ModifierArrayIndex.DYNAMIC_PERCENTAGE][index];
+    const staticFixed = this.modifierArrays[ModifierType.STATIC_FIXED][index];
+    const staticPercentage = this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
+    const dynamicFixed = this.modifierArrays[ModifierType.DYNAMIC_FIXED][index];
+    const dynamicPercentage = this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
 
     const totalPercentage = staticPercentage + dynamicPercentage;
     const totalFixed = staticFixed + dynamicFixed;
@@ -947,12 +1034,12 @@ export class ReactiveSystem<T extends string> {
     // 如果有计算函数，先计算基础值，然后应用修饰符
     const computationFn = this.computationFunctions.get(index);
     if (computationFn) {
-      const baseValue = computationFn(this.values);
+      const baseValue = computationFn();
       return Math.floor(baseValue * (1 + totalPercentage / 100) + totalFixed);
     }
 
     // 否则使用标准计算（基于BASE_VALUE）
-    const base = this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index];
+    const base = this.modifierArrays[ModifierType.BASE_VALUE][index];
     return Math.floor(base * (1 + totalPercentage / 100) + totalFixed);
   }
 
@@ -973,7 +1060,7 @@ export class ReactiveSystem<T extends string> {
     const initialDirtyAttrs = initialDirtyIndices.map((i) => String(this.indexToKey[i]));
 
     if (initialDirtyAttrs.length > 0) {
-      console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
+      // console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
 
       // 获取拓扑排序（容错：循环依赖时降级为线性一次性刷新）
       let order: number[] = [];
@@ -1030,9 +1117,9 @@ export class ReactiveSystem<T extends string> {
       }
 
       // 只在有实际更新时才输出日志
-      if (updatedCount > 0) {
-        console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
-      }
+      // if (updatedCount > 0) {
+      //   console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
+      // }
     }
   }
 
@@ -1052,7 +1139,6 @@ export class ReactiveSystem<T extends string> {
       const arrayIndex = current >>> 5;
       const bitIndex = current & 31;
       this.dirtyBitmap[arrayIndex] |= 1 << bitIndex;
-      BitFlags.set(this.flags, current, AttributeFlags.IS_DIRTY);
       BitFlags.clear(this.flags, current, AttributeFlags.IS_CACHED);
 
       const dependents = this.dependencyGraph.getDependents(current);
@@ -1069,7 +1155,7 @@ export class ReactiveSystem<T extends string> {
     const arrayIndex = index >>> 5;
     const bitIndex = index & 31;
     this.dirtyBitmap[arrayIndex] &= ~(1 << bitIndex);
-    BitFlags.clear(this.flags, index, AttributeFlags.IS_DIRTY);
+    // 脏位图已清除，此处无需再维护标志位
   }
 
   /**
@@ -1099,9 +1185,6 @@ export class ReactiveSystem<T extends string> {
    */
   private markAllDirty(): void {
     this.dirtyBitmap.fill(0xffffffff); // 设置所有位为1
-    for (let i = 0; i < this.values.length; i++) {
-      BitFlags.set(this.flags, i, AttributeFlags.IS_DIRTY);
-    }
   }
 
   // ==================== 调试和统计 ====================
@@ -1137,51 +1220,6 @@ export class ReactiveSystem<T extends string> {
   }
 
   /**
-   * 设置单个基础值（兼容原API）
-   */
-  setBaseValue(attr: T, value: number | { value: number; source: ModifierSource }): void {
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试设置不存在的属性值: ${attr}`);
-      return;
-    }
-
-    const numericValue = typeof value === "number" ? value : value.value;
-    this.modifierArrays[ModifierArrayIndex.BASE_VALUE][index] = numericValue;
-    this.markDirty(index);
-  }
-
-  /**
-   * 从角色数据解析修饰符（兼容原API）
-   */
-  parseModifiersFromCharacter(member: any, sourceName: string): void {
-    console.log(`🔄 从角色数据解析修饰符: ${sourceName}`);
-
-    function findAllModifiersWithPath(obj: any, path: string[] = []): void {
-      if (typeof obj !== "object" || obj === null) return;
-
-      for (const [key, value] of Object.entries(obj)) {
-        const currentPath = [...path, key];
-
-        if (key === "modifiers" && Array.isArray(value) && value.every((v) => typeof v === "string")) {
-          const fullPath = currentPath.join(".");
-          // console.log(`📌 从${sourceName}中找到修饰符: ${fullPath}`);
-          // for (const mod of value) {
-          //   console.log(` - ${mod}`);
-          // }
-        } else if (typeof value === "object") {
-          findAllModifiersWithPath(value, currentPath);
-        }
-      }
-    }
-
-    findAllModifiersWithPath(member);
-
-    // 示例：可以根据角色数据添加各种修饰符
-    // this.addModifier("str", "staticFixed", character.equipmentBonus?.str || 0, source);
-  }
-
-  /**
    * 获取调试信息
    */
   getDebugInfo(): Record<string, any> {
@@ -1197,11 +1235,11 @@ export class ReactiveSystem<T extends string> {
         dependencies: Array.from(this.dependencyGraph.getDependencies(i)).map((idx) => this.indexToKey[idx]),
         dependents: Array.from(this.dependencyGraph.getDependents(i)).map((idx) => this.indexToKey[idx]),
         modifiers: {
-          base: this.modifierArrays[ModifierArrayIndex.BASE_VALUE][i],
-          staticFixed: this.modifierArrays[ModifierArrayIndex.STATIC_FIXED][i],
-          staticPercentage: this.modifierArrays[ModifierArrayIndex.STATIC_PERCENTAGE][i],
-          dynamicFixed: this.modifierArrays[ModifierArrayIndex.DYNAMIC_FIXED][i],
-          dynamicPercentage: this.modifierArrays[ModifierArrayIndex.DYNAMIC_PERCENTAGE][i],
+          base: this.modifierArrays[ModifierType.BASE_VALUE][i],
+          staticFixed: this.modifierArrays[ModifierType.STATIC_FIXED][i],
+          staticPercentage: this.modifierArrays[ModifierType.STATIC_PERCENTAGE][i],
+          dynamicFixed: this.modifierArrays[ModifierType.DYNAMIC_FIXED][i],
+          dynamicPercentage: this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][i],
         },
       };
     }
@@ -1213,16 +1251,13 @@ export class ReactiveSystem<T extends string> {
    * 获取依赖图信息（用于调试）
    */
   getDependencyGraphInfo(): Record<string, string[]> {
+    // 使用依赖图提供的导出方法，避免在此类中重复图遍历逻辑
+    const raw = this.dependencyGraph.toDependentsObject();
     const result: Record<string, string[]> = {};
-
-    for (let i = 0; i < this.indexToKey.length; i++) {
-      const key = this.indexToKey[i];
-      const dependents = Array.from(this.dependencyGraph.getDependents(i));
-      if (dependents.length > 0) {
-        result[key] = dependents.map((idx) => this.indexToKey[idx]);
-      }
+    for (const [idxStr, arr] of Object.entries(raw)) {
+      const i = Number(idxStr);
+      result[this.indexToKey[i]] = arr.map((j) => this.indexToKey[j]);
     }
-
     return result;
   }
 
@@ -1292,7 +1327,7 @@ export class ReactiveSystem<T extends string> {
     console.log(`   • 复杂度: ${avgComplexity.toFixed(2)} (平均每个计算属性的依赖数)`);
 
     // 如果有循环依赖，输出警告
-    const hasCycles = this.detectCycles();
+    const hasCycles = this.dependencyGraph.detectCycles();
     if (hasCycles.length > 0) {
       console.log(`\n⚠️  检测到循环依赖:`);
       hasCycles.forEach((cycle, index) => {
@@ -1302,56 +1337,5 @@ export class ReactiveSystem<T extends string> {
     }
 
     console.log(`\n🎯 === 依赖关系图输出完成 ===\n`);
-  }
-
-  /**
-   * 检测循环依赖
-   *
-   * @returns 循环依赖的数组，每个循环依赖是一个属性索引数组
-   */
-  private detectCycles(): number[][] {
-    const cycles: number[][] = [];
-    const visited = new Set<number>();
-    const recursionStack = new Set<number>();
-    const path: number[] = [];
-
-    const dfs = (nodeIndex: number): boolean => {
-      if (recursionStack.has(nodeIndex)) {
-        // 找到循环，提取循环路径
-        const cycleStart = path.indexOf(nodeIndex);
-        if (cycleStart !== -1) {
-          cycles.push(path.slice(cycleStart));
-        }
-        return true;
-      }
-
-      if (visited.has(nodeIndex)) {
-        return false;
-      }
-
-      visited.add(nodeIndex);
-      recursionStack.add(nodeIndex);
-      path.push(nodeIndex);
-
-      // 遍历所有依赖
-      const dependencies = this.dependencyGraph.getDependencies(nodeIndex);
-      for (const dep of dependencies) {
-        if (dfs(dep)) {
-          return true;
-        }
-      }
-
-      recursionStack.delete(nodeIndex);
-      path.pop();
-      return false;
-    };
-
-    for (let i = 0; i < this.indexToKey.length; i++) {
-      if (!visited.has(i)) {
-        dfs(i);
-      }
-    }
-
-    return cycles;
   }
 }

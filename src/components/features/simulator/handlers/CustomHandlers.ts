@@ -14,8 +14,8 @@
 
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
-import type { MemberManager } from "../core/MemberManager";
-import Member, { TargetType } from "../core/Member";
+import type MemberManager from "../core/MemberManager";
+import { ModifierType } from "../core/member/ReactiveSystem";
 
 // ============================== 自定义事件处理器 ==============================
 
@@ -43,7 +43,7 @@ export class CustomEventHandler implements EventHandler {
           return { success: false, error: `目标成员不存在: ${targetMemberId}` };
         }
         try {
-          member.getFSM().send({ type: payload.fsmEventType, data: payload.data } as any);
+          member.send({ type: payload.fsmEventType, data: payload.data } as any);
           return { success: true, data: { forwarded: true, to: targetMemberId, eventType: payload.fsmEventType } };
         } catch (err) {
           return { success: false, error: err instanceof Error ? err.message : 'FSM send failed' };
@@ -53,9 +53,9 @@ export class CustomEventHandler implements EventHandler {
       console.log(`🎮 处理自定义事件: ${event.id}`, payload);
       
       // 获取目标成员
-      const targetMemberId = (payload as any).targetMemberId;
-      const targetMember = this.memberManager.getMember(targetMemberId);
-      if (!targetMember) {
+      const targetMemberId = (payload as any).targetMemberId as string;
+      const actor = this.memberManager.getMember(targetMemberId);
+      if (!actor) {
         return {
           success: false,
           error: `目标成员不存在: ${targetMemberId}`
@@ -65,10 +65,10 @@ export class CustomEventHandler implements EventHandler {
       // 处理自定义操作 - 优先执行JS片段，属性修改作为副作用
       if (payload.scriptCode) {
         // 主要场景：执行JS片段（可能包含属性修改）
-        return this.handleScriptExecution(targetMember, payload, context);
+        return this.handleScriptExecution(targetMemberId, payload, context);
       } else if (payload.action === 'modify_attribute') {
         // 兼容场景：直接属性修改（不常见）
-        return this.handleAttributeModification(targetMember, payload, context);
+        return this.handleAttributeModification(targetMemberId, payload, context);
       } else {
         return {
           success: false,
@@ -88,83 +88,75 @@ export class CustomEventHandler implements EventHandler {
   /**
    * 处理属性修改
    */
-  private handleAttributeModification(member: Member, payload: any, context: ExecutionContext): EventResult {
+  private handleAttributeModification(targetMemberId: string, payload: any, _context: ExecutionContext): EventResult {
     try {
-      const { attribute, value } = payload;
-      
-      console.log(`🔧 修改成员 ${member.getName()} 的属性: ${attribute} = ${value}`);
-      
-      // 使用Member提供的protected方法（通过类型断言访问）
-      const success = (member as any).setAttributeDirect(attribute, value, "custom_event_handler");
-      
-      if (success) {
-        console.log(`✅ 属性修改成功: ${attribute} = ${value}`);
-        return {
-          success: true,
-          data: {
-            attribute,
-            value,
-            source: "custom_event_handler"
-          }
-        };
-      } else {
-        throw new Error(`属性修改失败: setAttributeDirect returned false`);
+      const { attribute, value, op } = payload as { attribute: string; value: number; op?: 'set' | 'add' };
+      const entry = this.memberManager.getMemberEntry(targetMemberId);
+      if (!entry) {
+        return { success: false, error: `目标成员不存在: ${targetMemberId}` };
       }
+
+      const sourceId = payload?.sourceId || `custom_event_handler_${attribute}`;
+      const current = entry.attrs.getValue(attribute as any);
+
+      if (op === 'add') {
+        entry.attrs.addModifier(attribute as any, ModifierType.STATIC_FIXED, Number(value) || 0, {
+          id: sourceId,
+          name: 'custom_event_handler',
+          type: 'system',
+        });
+      } else {
+        // 绝对赋值：移除旧值（同源），按差值补一个静态修饰以达成目标
+        const delta = (Number(value) || 0) - (Number(current) || 0);
+        entry.attrs.removeModifier(attribute as any, ModifierType.STATIC_FIXED, sourceId);
+        entry.attrs.addModifier(attribute as any, ModifierType.STATIC_FIXED, delta, {
+          id: sourceId,
+          name: 'custom_event_handler',
+          type: 'system',
+        });
+      }
+
+      const nextValue = entry.attrs.getValue(attribute as any);
+      console.log(`✅ 属性修改成功: ${attribute}: ${current} -> ${nextValue}`);
+      return { success: true, data: { attribute, value: nextValue, op: op || 'set' } };
     } catch (error) {
-      return {
-        success: false,
-        error: `属性修改失败: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+      return { success: false, error: `属性修改失败: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   }
 
   /**
    * 处理脚本执行
    */
-  private handleScriptExecution(member: Member, payload: any, context: ExecutionContext): EventResult {
+  private handleScriptExecution(targetMemberId: string, payload: any, context: ExecutionContext): EventResult {
     try {
-      const { scriptCode } = payload;
-      
-      console.log(`📜 执行成员 ${member.getName()} 的脚本`);
-      
-      // 准备脚本执行上下文
+      const { scriptCode } = payload as { scriptCode: string };
+      console.log(`📜 执行成员 ${targetMemberId} 的脚本`);
+
+      // 准备脚本执行上下文（满足 executeScript 对 caster.getId 的要求）
       const scriptContext: ExpressionContext = {
-        member,
-        caster: member,
-        reactiveSystem: (member as any).reactiveDataManager,
-        currentFrame: context.currentFrame
-      };
-      
-      // 执行脚本
+        currentFrame: context.currentFrame,
+        caster: { getId: () => targetMemberId } as any,
+      } as any;
+
       const result = this.eventExecutor.executeScript(scriptCode, scriptContext);
-      
       console.log(`✅ 脚本执行成功:`, result);
-      
-      return {
-        success: true,
-        data: {
-          scriptResult: result
-        }
-      };
+      return { success: true, data: { scriptResult: result } };
     } catch (error) {
-      return {
-        success: false,
-        error: `脚本执行失败: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+      return { success: false, error: `脚本执行失败: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   }
 
   /**
    * 处理组合操作（属性修改 + 脚本执行）
    */
-  private handleCombinedOperation(member: Member, payload: any, context: ExecutionContext): EventResult {
+  private handleCombinedOperation(targetMemberId: string, payload: any, context: ExecutionContext): EventResult {
     try {
       const results: any[] = [];
       
       // 先执行属性修改
       if (payload.attributeChanges) {
         for (const change of payload.attributeChanges) {
-          const attrResult = this.handleAttributeModification(member, change, context);
+          const attrResult = this.handleAttributeModification(targetMemberId, change, context);
           results.push({ type: 'attribute', result: attrResult });
           
           if (!attrResult.success) {
@@ -175,7 +167,7 @@ export class CustomEventHandler implements EventHandler {
       
       // 再执行脚本
       if (payload.scriptCode) {
-        const scriptResult = this.handleScriptExecution(member, payload, context);
+        const scriptResult = this.handleScriptExecution(targetMemberId, payload, context);
         results.push({ type: 'script', result: scriptResult });
         
         if (!scriptResult.success) {

@@ -172,7 +172,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                 case "start_simulation":
                   // 初始化战斗数据
                   const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-                  console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
+                  // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
                   
                   // 添加阵营A
                   gameEngine.addCamp("campA", "阵营A");
@@ -203,17 +203,80 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 启动引擎
                   gameEngine.start();
                   
-                  // 验证成员是否添加成功
-                  const initialMembers = gameEngine.getAllMemberData();
-                  console.log(`👹 [Worker] 启动后成员数量: ${initialMembers.length}`);
-                  console.log(`👹 [Worker] 启动后成员列表:`, initialMembers.map(m => m.id));
+                  // 若停止流程中取消了订阅，则在重新启动后恢复引擎状态订阅（<=20Hz）
+                  if (!engineStateSubscription) {
+                    engineStateSubscription = gameEngine.onStateChange((stats) => {
+                      const now = performance.now();
+                      if (now - lastEngineViewSentAt < ENGINE_VIEW_MIN_INTERVAL) {
+                        return;
+                      }
+                      lastEngineViewSentAt = now;
+                    
+                      const view = projectEngineView(stats);
+                      try { EngineViewSchema.parse(view); } catch {}
+                      const serializableEvent = {
+                        type: 'engine_state_update',
+                        timestamp: Date.now(),
+                        engineView: view,
+                      } as const;
+                    
+                      postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
+                    });
+                  }
+                  
+                  // 周期性推送全量 EngineStats（仅在引擎启动后开启）
+                  if (!fullStatsInterval) {
+                    try {
+                      // 启动后立即推送一次全量，保证首帧数据水合
+                      const stats = gameEngine.getStats();
+                      postSystemMessage(messagePort, 'engine_stats_full', stats);
+                    } catch {}
+                    fullStatsInterval = setInterval(() => {
+                      try {
+                        const stats = gameEngine.getStats();
+                        postSystemMessage(messagePort, 'engine_stats_full', stats);
+                      } catch {}
+                    }, FULL_STATS_INTERVAL_MS) as unknown as number;
+                  }
                   
                   portResult = { success: true };
                   break;
 
                 case "stop_simulation":
+                  // 停止状态订阅
+                  try {
+                    engineStateSubscription?.();
+                  } catch {}
+                  engineStateSubscription = null;
+                  
+                  // 清理全量推送定时器
+                  if (fullStatsInterval) {
+                    try { 
+                      clearInterval(fullStatsInterval as unknown as number); 
+                    } catch {}
+                    fullStatsInterval = null;
+                  }
+                  
+                  // 取消所有成员监听
+                  try {
+                    for (const unsub of memberWatchUnsubMap.values()) {
+                      try { 
+                        unsub(); 
+                      } catch {}
+                    }
+                    memberWatchUnsubMap.clear();
+                    memberLastValueMap.clear();
+                  } catch {}
+                  
+                  // 停止并清理引擎
                   gameEngine.stop();
                   gameEngine.cleanup();
+
+                  // 在停止后立即推送一次全量 EngineStats，驱动前端从 stopping -> ready
+                  try {
+                    const stats = gameEngine.getStats();
+                    postSystemMessage(messagePort, 'engine_stats_full', stats);
+                  } catch {}
                   portResult = { success: true };
                   break;
 
@@ -241,8 +304,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 获取所有成员数据（使用序列化接口）
                   try {
                     const members = gameEngine.getAllMemberData();
-                    console.log(`👹 [Worker] 返回成员数据: ${members.length} 个成员`);
-                    console.log(`👹 [Worker] 成员列表:`, members.map(m => m.id));
                     portResult = { success: true, data: members };
                   } catch (error) {
                     portResult = { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -262,8 +323,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                     break;
                   }
                   try {
-                    const actor = member.getFSM();
-                    const snap: any = actor.getSnapshot();
+                    const snap: any = member.getSnapshot();
                     const value = String(snap?.value ?? "");
                     portResult = { success: true, data: { memberId, value } };
                   } catch (e) {
@@ -278,43 +338,84 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                     portResult = { success: false, error: "memberId required" };
                     break;
                   }
+                  
                   // 取消旧订阅
                   memberWatchUnsubMap.get(memberId)?.();
-                  const member = gameEngine.findMember(memberId);
-                  if (!member) {
+                  
+                  const actor = gameEngine.findMember(memberId);
+                  if (!actor) {
                     portResult = { success: false, error: "member not found" };
                     break;
                   }
-                  const actor = member.getFSM();
-                  const unsub = actor.subscribe((snapshot: any) => {
-                    if (!snapshot.changed) return;
-                    const prevValue = memberLastValueMap.get(memberId);
-                    const nextValue = String(snapshot.value);
-                    if (prevValue === nextValue) return;
-                    memberLastValueMap.set(memberId, nextValue);
-                  postSystemMessage(messagePort, 'member_state_update', {
-                    memberId,
-                    value: nextValue,
-                    context: {
-                      hp: member.getCurrentHp?.(),
-                      mp: member.getCurrentMp?.(),
-                      position: member.getPosition?.(),
-                      targetId: (member as any).getTargetId?.(),
-                    },
-                  });
-                  }).unsubscribe; // xstate subscribe() 返回 subscription
-                  // 某些实现返回对象，做兼容
-                  const finalUnsub = typeof unsub === "function" ? unsub : () => (actor as any).stop?.();
-                  memberWatchUnsubMap.set(memberId, finalUnsub);
-                  portResult = { success: true };
+                  
+                  try {
+                    // 订阅 Actor 状态变化
+                    const unsub = actor.subscribe((snapshot: any) => {
+                      if (!snapshot.changed) return;
+                      
+                      const prevValue = memberLastValueMap.get(memberId);
+                      const nextValue = String(snapshot.value || "unknown");
+                      
+                      if (prevValue === nextValue) return;
+                      memberLastValueMap.set(memberId, nextValue);
+                      
+                      // 获取成员的基本信息（从 entry 中获取）
+                      const entry = gameEngine.getMemberManager().getMemberEntry(memberId);
+                      
+                      // 发送状态更新消息
+                      postSystemMessage(messagePort, 'member_state_update', {
+                        memberId,
+                        value: nextValue,
+                        context: {
+                          // 从 entry 的响应式系统获取属性值
+                          hp: entry?.attrs?.getValue?.("hp.current") || 0,
+                          mp: entry?.attrs?.getValue?.("mp.current") || 0,
+                          position: { x: 0, y: 0 }, // 暂时使用默认值
+                          targetId: "", // 暂时使用默认值
+                        },
+                      });
+                    });
+                    
+                    // 处理订阅返回的取消函数
+                    let finalUnsub: () => void;
+                    if (typeof unsub === "function") {
+                      finalUnsub = unsub;
+                    } else if (unsub && typeof unsub.unsubscribe === "function") {
+                      finalUnsub = () => unsub.unsubscribe();
+                    } else {
+                      // 后备方案：无操作（不同 xstate 版本订阅类型不一致时）
+                      finalUnsub = () => {};
+                    }
+                    
+                    memberWatchUnsubMap.set(memberId, finalUnsub);
+                    portResult = { success: true };
+                    console.log(`👁️ 开始监听成员状态: ${memberId}`);
+                    
+                  } catch (error) {
+                    console.error(`❌ 监听成员状态失败: ${memberId}`, error);
+                    portResult = { success: false, error: error instanceof Error ? error.message : "Subscription failed" };
+                  }
                   break;
                 }
 
                 case "unwatch_member": {
                   const memberId = String(portData?.memberId || "");
-                  memberWatchUnsubMap.get(memberId)?.();
+                  
+                  try {
+                    // 调用取消订阅函数
+                    const unsub = memberWatchUnsubMap.get(memberId);
+                    if (unsub) {
+                      unsub();
+                      console.log(`👁️ 停止监听成员状态: ${memberId}`);
+                    }
+                  } catch (error) {
+                    console.warn(`⚠️ 取消订阅失败: ${memberId}`, error);
+                  }
+                  
+                  // 清理相关数据
                   memberLastValueMap.delete(memberId);
                   memberWatchUnsubMap.delete(memberId);
+                  
                   portResult = { success: true };
                   break;
                 }
@@ -397,15 +498,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
         });
 
-        // 周期性推送全量 EngineStats（低频）
-        if (!fullStatsInterval) {
-          fullStatsInterval = setInterval(() => {
-            try {
-              const stats = gameEngine.getStats();
-              postSystemMessage(messagePort, 'engine_stats_full', stats);
-            } catch {}
-          }, FULL_STATS_INTERVAL_MS) as unknown as number;
-        }
+        // 周期性全量 EngineStats 推送改为在 start_simulation 后启动
 
         // Worker初始化完成，不需要通知主线程
         return;

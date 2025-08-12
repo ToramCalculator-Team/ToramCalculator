@@ -159,14 +159,20 @@ export class JSExpressionProcessor {
    * 生成上下文注入代码
    */
   private generateContextInjection(context: CompilationContext): string {
-    const lines = [
-      `const _self = this.findMember('${context.memberId}');`
-    ];
-    
+    // 为脚本提供与架构解耦的访问器对象，避免直接依赖 Actor/Member 实现
+    const wrapAccessor = (id: string) =>
+      `({ getValue: (key) => {
+          try {
+            const entry = this.getMemberManager().getMemberEntry('${id}');
+            return entry?.attrs?.getValue?.(key) ?? 0;
+          } catch { return 0; }
+        } })`;
+
+    const lines: string[] = [];
+    lines.push(`const _self = ${wrapAccessor(context.memberId)};`);
     if (context.targetId) {
-      lines.push(`const _target = this.findMember('${context.targetId}');`);
+      lines.push(`const _target = ${wrapAccessor(context.targetId)};`);
     }
-    
     return lines.join('\n');
   }
   

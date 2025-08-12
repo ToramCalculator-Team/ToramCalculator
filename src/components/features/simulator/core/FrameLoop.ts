@@ -697,7 +697,7 @@ export class FrameLoop {
         this.updateMemberState(member, deltaTime);
         updatedCount++;
       } catch (error) {
-        console.error(`❌ 成员更新失败: ${member.getId()}`, error);
+        console.error(`❌ 成员更新失败: ${member.id}`, error);
       }
     }
 

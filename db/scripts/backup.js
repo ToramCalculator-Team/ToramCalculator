@@ -145,7 +145,7 @@ class DatabaseBackup {
     }
 
     // 检查 .env 文件是否存在
-    const envFile = path.join(__dirname, "../.env");
+    const envFile = path.join(__dirname, "../../.env");
     if (!utils.fileExists(envFile)) {
       throw new Error(".env 文件不存在！请创建并配置数据库连接信息。");
     }
