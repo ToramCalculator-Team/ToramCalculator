@@ -361,7 +361,10 @@ export default function IndexPage() {
             exit={{
               filter: ["blur(0px)", "blur(20px)"],
             }}
-            transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
+            transition={{
+              duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+              delay: 0.3,
+             }}
             class={`FunctionBox flex w-full flex-col justify-center landscape:flex-row landscape:justify-between`}
           >
             <div
