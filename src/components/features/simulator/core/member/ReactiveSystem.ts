@@ -81,7 +81,7 @@ export function isDataStorageType(obj: unknown): obj is DataStorage {
 // 计算动态总值（简化版本）
 export function dynamicTotalValue(data: DataStorage): number {
   if (!data || typeof data !== "object") return 0;
-  
+
   let baseValue = 0;
   let total = 0;
   let staticFixed = 0;
@@ -94,27 +94,27 @@ export function dynamicTotalValue(data: DataStorage): number {
   if (data.baseValue) {
     baseValue = data.baseValue.reduce((acc, curr) => acc + curr.value, 0);
   }
-  
+
   // 添加静态修正值
   if (data.static.fixed) {
     staticFixed = data.static.fixed.reduce((acc, curr) => acc + curr.value, 0);
   }
-  
+
   // 添加静态百分比修正
   if (data.static.percentage) {
     staticPercentage = data.static.percentage.reduce((acc, curr) => acc + curr.value, 0);
   }
-  
+
   // 添加动态修正值
   if (data.dynamic.fixed) {
     dynamicFixed = data.dynamic.fixed.reduce((acc, curr) => acc + curr.value, 0);
   }
-  
+
   // 添加动态百分比修正
   if (data.dynamic.percentage) {
     dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
   }
-  
+
   total = baseValue * ((100 + totalPercentage) / 100) + totalFixed;
 
   // console.table({
@@ -160,7 +160,6 @@ export interface FlattenedSchema<T extends string> {
   attrKeys: T[];
   expressions: Map<T, AttributeExpression>;
   displayNames: Map<T, string>;
-  dslMapping: Map<string, T>; // DSL路径 -> 扁平化键名的映射
 }
 
 // ============================== Schema工具类型 ==============================
@@ -203,7 +202,6 @@ export class SchemaFlattener {
     const attrKeys: T[] = [];
     const expressions = new Map<T, AttributeExpression>();
     const displayNames = new Map<T, string>();
-    const dslMapping = new Map<string, T>();
 
     function traverse(obj: NestedSchema, path: string[] = []): void {
       for (const [key, value] of Object.entries(obj)) {
@@ -222,8 +220,6 @@ export class SchemaFlattener {
           });
 
           displayNames.set(attrKey, value.displayName);
-          // DSL映射现在就是自映射，保持API兼容性
-          dslMapping.set(dslPath, attrKey);
 
           // console.log(`📋 扁平化属性: ${dslPath} (${value.displayName})`);
         } else {
@@ -240,7 +236,6 @@ export class SchemaFlattener {
       attrKeys,
       expressions,
       displayNames,
-      dslMapping,
     };
   }
 
@@ -516,9 +511,6 @@ export class ReactiveSystem<T extends string> {
   private readonly keyToIndex: Map<T, number>;
   private readonly indexToKey: T[];
 
-  /** DSL路径映射（用于DSL支持） */
-  private readonly dslMapping: Map<string, T>;
-
   /** 显示名称映射（用于调试） */
   private readonly displayNames: Map<T, string>;
 
@@ -548,12 +540,11 @@ export class ReactiveSystem<T extends string> {
    * @param schema 嵌套的Schema结构
    */
   constructor(member: any, schema: NestedSchema) {
-    console.log("🚀 ReactiveSystem 构造函数", schema);
+    // console.log("🚀 ReactiveSystem 构造函数", schema);
     const flattened = SchemaFlattener.flatten<T>(schema);
     const attrKeys = flattened.attrKeys;
     const expressions = flattened.expressions;
     const displayNames = flattened.displayNames;
-    const dslMapping = flattened.dslMapping;
     const keyCount = attrKeys.length;
 
     // 初始化核心数据结构
@@ -573,7 +564,6 @@ export class ReactiveSystem<T extends string> {
     // 初始化映射关系
     this.keyToIndex = new Map();
     this.indexToKey = attrKeys;
-    this.dslMapping = dslMapping;
     this.displayNames = displayNames;
 
     attrKeys.forEach((key, index) => {
@@ -599,7 +589,7 @@ export class ReactiveSystem<T extends string> {
     // 标记所有属性为脏值
     this.markAllDirty();
 
-    console.log(`🚀 ReactiveSystem 初始化完成:`, this);
+    // console.log(`🚀 ReactiveSystem 初始化完成:`, this);
   }
 
   // ==================== 导出接口 ====================
@@ -635,7 +625,7 @@ export class ReactiveSystem<T extends string> {
       }
 
       // 组装 DataStorage 单元
-      const attrPath = [...path, leafKey].join('.');
+      const attrPath = [...path, leafKey].join(".");
       const index = this.keyToIndex.get(attrPath as T);
       const storage: DataStorage = {
         displayName: this.displayNames.get(attrPath as T) || attrPath,
@@ -873,21 +863,21 @@ export class ReactiveSystem<T extends string> {
    * 设置表达式和依赖关系
    */
   private setupExpressions(expressions: Map<T, AttributeExpression>): void {
-    console.log("🔧 设置表达式和依赖关系...");
+    // console.log("🔧 设置表达式和依赖关系...");
     for (const [attrName, expressionData] of expressions) {
       const index = this.keyToIndex.get(attrName);
       if (index === undefined || !expressionData.expression) {
         continue;
       }
 
-      // ReactiveSystem中只处理简单表达式，使用简化的编译模式
       // 不注入GameEngine上下文，只处理self属性访问
-      // 统一使用“一次编译”产出结果
       const compiled = this.compileExpressionOnce(attrName as T, expressionData.expression);
+      // console.log(attrName, compiled);
       if (compiled.constant !== null) {
         // 常量：直接作为基础值
         this.modifierArrays[ModifierType.BASE_VALUE][index] = compiled.constant;
         BitFlags.set(this.flags, index, AttributeFlags.IS_BASE);
+        // console.log(this.exportNestedValues())
         continue;
       }
 
@@ -933,12 +923,7 @@ export class ReactiveSystem<T extends string> {
       // 依赖关系已在上方注册
     }
 
-    console.log("✅ 表达式和依赖关系设置完成");
-
-    // 打印初始化结果摘要
-    const allValues = this.getValues();
-    const valueEntries = Object.entries(allValues).slice(0, 10); // 只显示前10个
-    console.log(`📊 初始化完成，共 ${Object.keys(allValues).length} 个属性，前10个:`, valueEntries);
+    console.log(`✅ 表达式和依赖关系设置完成`);
   }
 
   /**
@@ -1017,7 +1002,7 @@ export class ReactiveSystem<T extends string> {
     // 从枚举映射中查找（只查找PascalCase的枚举值）
     const enumValue = ENUM_MAPPINGS.get(trimmed);
     if (enumValue !== undefined) {
-      console.log(`🎯 匹配到枚举: ${trimmed} -> ${enumValue}`);
+      // console.log(`🎯 匹配到枚举: ${trimmed} -> ${enumValue}`);
       return enumValue;
     }
 
@@ -1075,7 +1060,7 @@ export class ReactiveSystem<T extends string> {
     const initialDirtyAttrs = initialDirtyIndices.map((i) => String(this.indexToKey[i]));
 
     if (initialDirtyAttrs.length > 0) {
-      console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
+      // console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
 
       // 获取拓扑排序（容错：循环依赖时降级为线性一次性刷新）
       let order: number[] = [];
@@ -1132,9 +1117,9 @@ export class ReactiveSystem<T extends string> {
       }
 
       // 只在有实际更新时才输出日志
-      if (updatedCount > 0) {
-        console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
-      }
+      // if (updatedCount > 0) {
+      //   console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
+      // }
     }
   }
 

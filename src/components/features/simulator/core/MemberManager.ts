@@ -148,14 +148,7 @@ export class MemberManager {
 
       // 启动并注册成员
       try {
-        // 确保 Actor 正确启动
-        if (typeof actor.start === 'function') {
-          actor.start();
-          console.log(`🚀 Actor 启动成功: ${memberData.name}`);
-        } else {
-          console.warn(`⚠️ Actor 没有 start 方法: ${memberData.name}`);
-        }
-        
+        actor.start();
         const success = this.registerMember(actor, campId, teamId, memberData, schema!, rs!);
         if (success) {
           console.log(`✅ 创建并注册成员成功: ${memberData.name} (${memberData.type})`);

@@ -23,21 +23,18 @@ import {
 import { setup, assign, createActor } from "xstate";
 import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
 import type { IntentMessage } from "./core/thread/messages";
-import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
-import { findCharacterWithRelations } from "@db/repositories/character";
 import { findMobWithRelations, MobWithRelations } from "@db/repositories/mob";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { MemberSerializeData } from "./core/member/MemberType";
 import MemberStatusPanel from "./core/member/MemberStatusPanel";
-import { LoadingBar } from "~/components/controls/loadingBar";
 import { EngineStats } from "./core/GameEngine";
-import { re } from "mathjs";
 import { createId } from "@paralleldrive/cuid2";
 import { findPlayerWithRelations, PlayerWithRelations } from "@db/repositories/player";
 import { findMercenaryWithRelations, MercenaryWithRelations } from "@db/repositories/mercenary";
 import { findMemberWithRelations, MemberWithRelations } from "@db/repositories/member";
+import { LoadingBar } from "~/components/controls/loadingBar";
 
 // ============================== 类型定义 ==============================
 
@@ -394,7 +391,7 @@ export default function RealtimeController() {
   // 接收低频全量 EngineStats
   const handleEngineStatsFull = (data: { workerId: string; event: EngineStats }) => {
     try {
-      console.log("handleEngineStatsFull", data);
+      // console.log("handleEngineStatsFull", data);
       const stats = data.event as EngineStats;
       if (stats && typeof stats.currentFrame === "number") {
         actor.send({ type: "ENGINE_STATE_UPDATE", stats, members: state().context.members });
@@ -654,35 +651,16 @@ export default function RealtimeController() {
     return null;
   });
 
-  const [selectedMember, { refetch: refetchSelectedMember }] = createResource(async () => {
-    const memberId = selectedEngineMember()?.id;
-    if (!memberId) return null;
-    return await findMemberWithRelations(memberId);
-  });
+  const [selectedMember, setSelectedMember] = createSignal<MemberWithRelations | null>(null);
 
-  const [memberConfig, setMemberConfig] = createSignal<
-    PlayerWithRelations | MobWithRelations | MercenaryWithRelations | undefined
-  >(undefined);
   createEffect(
     on(
       () => selectedEngineMember(),
       async () => {
-        let memberConfig: PlayerWithRelations | MobWithRelations | MercenaryWithRelations | undefined = undefined;
-        const member = selectedMember();
-        if (!member) return;
-        switch (member.type) {
-          case "Player":
-            member.playerId && (memberConfig = await findPlayerWithRelations(member.playerId));
-            break;
-          case "Mob":
-            member.mobId && (memberConfig = await findMobWithRelations(member.mobId));
-            break;
-          case "Mercenary":
-            member.mercenaryId && (memberConfig = await findMercenaryWithRelations(member.mercenaryId));
-            break;
-        }
-        console.log("memberConfig", memberConfig);
-        setMemberConfig(memberConfig);
+        const memberId = selectedEngineMember()?.id;
+        if (!memberId) return null;
+        const member = await findMemberWithRelations(memberId);
+        setSelectedMember(member);
       },
       {
         defer: true,
@@ -739,7 +717,7 @@ export default function RealtimeController() {
   return (
     <div class="grid h-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
       {/* 状态栏（摘要 + 指标 + 操作） */}
-      <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
+      {/* <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">状态:</span>
@@ -785,10 +763,59 @@ export default function RealtimeController() {
             </div>
           </Show>
         </div>
+      </div> */}
+      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
+      <div class="col-span-12 row-span-9 flex flex-col items-center gap-2 overflow-y-auto portrait:row-span-8">
+        <Show when={selectedEngineMember()}>
+          <MemberStatusPanel member={selectedEngineMember} />
+        </Show>
+      </div>
+
+      {/* 技能面板 */}
+      <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
+        <Show when={selectedMember()}>
+          <h3 class="mb-2 text-lg font-semibold">技能</h3>
+          <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
+            <Switch fallback={<div>暂无技能</div>}>
+              <Match when={selectedMember()?.type === "Player"}>
+                <For each={(selectedMember()?.player as PlayerWithRelations).character.skills ?? []}>
+                  {(skill) => (
+                    <Button
+                      onClick={() => castSkill(skill.id)}
+                      class="col-span-1 row-span-1 flex-col items-start"
+                      size="sm"
+                    >
+                      <span class="text-sm">{skill.template?.name}</span>
+                      <span class="text-xs text-gray-500">Lv.{skill.lv}</span>
+                    </Button>
+                  )}
+                </For>
+              </Match>
+              <Match when={selectedMember()?.type === "Mob"}>
+                <pre>{JSON.stringify(selectedMember()?.mob, null, 2)}</pre>
+              </Match>
+            </Switch>
+          </div>
+        </Show>
+      </div>
+
+      {/* 动作面板 */}
+      <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
+        <Show when={selectedEngineMember()}>
+          <h3 class="mb-2 text-lg font-semibold">动作</h3>
+          <div class="flex gap-2">
+            {/* <Button onClick={() => move(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
+              移动到 (100, 100)
+            </Button>
+            <Button onClick={stopAction} class="bg-red-600 hover:bg-red-700" size="sm">
+              停止动作
+            </Button> */}
+          </div>
+        </Show>
       </div>
 
       {/* 控制栏（精简） + 成员选择 */}
-      <div class="col-span-12 row-span-1 flex flex-wrap items-center gap-x-8 gap-y-2">
+      <div class="col-span-12 row-span-1 flex flex-wrap items-center gap-x-8 gap-y-2 portrait:row-span-2">
         <div class="ControlPanel flex gap-2">
           <Button
             onClick={() => {
@@ -820,7 +847,14 @@ export default function RealtimeController() {
         </div>
         {/* 成员选择/获取 */}
         <div class="MemberSelect ml-auto flex flex-1 items-center gap-2">
-          <Show when={context().members.length > 0}>
+          <Show
+            when={context().members.length > 0}
+            fallback={
+              <div class="bg-area-color flex h-12 w-full items-center justify-center rounded">
+                <LoadingBar />
+              </div>
+            }
+          >
             <Select
               value={context().selectedEngineMemberId || ""}
               setValue={(v) => {
@@ -834,62 +868,11 @@ export default function RealtimeController() {
                 })),
               ]}
               placeholder="请选择成员"
+              optionPosition="top"
             />
           </Show>
         </div>
       </div>
-      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
-      <div class="col-span-12 row-span-8 items-center overflow-y-auto">
-        <Show when={selectedEngineMember()}>
-          <div class="border-transition-color-20 rounded-lg">
-            <div class="bg-area-color sticky top-0 flex items-center justify-between px-4 py-2">
-              <div class="flex items-center gap-4 text-sm">
-                <span class="font-semibold">{selectedEngineMember()!.name || selectedEngineMember()!.id}</span>
-                <span>状态 {selectedEngineMemberFsm() ?? ((selectedEngineMember() as any).state?.value || "")}</span>
-              </div>
-            </div>
-            <MemberStatusPanel member={selectedEngineMember} />
-          </div>
-        </Show>
-      </div>
-
-      {/* 技能面板 */}
-      <Show when={selectedEngineMember()}>
-        <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
-          <h3 class="mb-2 text-lg font-semibold">技能</h3>
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            <Switch>
-              <Match when={selectedMember()?.type === "Player"}>
-                <For each={(memberConfig() as PlayerWithRelations).character?.skills ?? []}>
-                  {(skill) => (
-                    <Button onClick={() => castSkill(skill.id)} class="bg-blue-600 hover:bg-blue-700" size="sm">
-                      {skill.template?.name} Lv.{skill.lv}
-                    </Button>
-                  )}
-                </For>
-              </Match>
-              <Match when={selectedMember()?.type === "Mob"}>
-                “Mob暂无技能操作”
-              </Match>
-            </Switch>
-          </div>
-        </div>
-      </Show>
-
-      {/* 动作面板 */}
-      <Show when={selectedEngineMember()}>
-        <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
-          <h3 class="mb-2 text-lg font-semibold">动作</h3>
-          <div class="flex gap-2">
-            <Button onClick={() => move(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
-              移动到 (100, 100)
-            </Button>
-            <Button onClick={stopAction} class="bg-red-600 hover:bg-red-700" size="sm">
-              停止动作
-            </Button>
-          </div>
-        </div>
-      </Show>
     </div>
   );
 }

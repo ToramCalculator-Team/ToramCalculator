@@ -56,7 +56,7 @@ class EventEmitter {
       this.events[event] = [];
     }
     this.events[event].push(listener);
-    console.log(`📡 EventEmitter: 注册事件监听器 "${event}"，当前监听器数量: ${this.events[event].length}`);
+    // console.log(`📡 EventEmitter: 注册事件监听器 "${event}"，当前监听器数量: ${this.events[event].length}`);
   }
 
   /**
@@ -1163,7 +1163,7 @@ export class SimulatorPool extends WorkerPool {
    */
   async getMembers(): Promise<MemberSerializeData[]> {
     const result = await this.executeTask("get_members", null, "low");
-    console.log("🔍 SimulatorPool.getMembers: 原始结果:", result);
+    // console.log("🔍 SimulatorPool.getMembers: 原始结果:", result);
 
     // 统一扁平结构：result.data 直接是 WorkerTaskResult
     const task = result.data as { success: boolean; data?: MemberSerializeData[] } | undefined;

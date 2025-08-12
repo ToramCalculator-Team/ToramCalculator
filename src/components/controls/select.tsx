@@ -15,6 +15,7 @@ type SelectProps = {
   placeholder?: string;
   class?: string;
   disabled?: boolean;
+  optionPosition?: "top" | "bottom";
 };
 
 export function Select(props: SelectProps) {
@@ -103,7 +104,11 @@ export function Select(props: SelectProps) {
         </div>
       </button>
       <Show when={isOpen()}>
-        <div class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg">
+        <div
+          class={`Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md shadow-lg ${
+            props.optionPosition === "top" ? "-top-1 -translate-y-full" : "top-2 translate-y-12"
+          }`}
+        >
           <Show when={initialOptions.latest?.length}>
             <For each={initialOptions.latest}>
               {(option, index) => {

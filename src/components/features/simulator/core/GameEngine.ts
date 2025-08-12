@@ -225,7 +225,8 @@ export class GameEngine {
 
     // 记录运行环境
     if (isSandboxWorker) {
-      console.log("🛡️ GameEngine正在沙盒Worker线程中安全运行");
+      // 默认环境，不需要输出日志
+      // console.log("🛡️ GameEngine正在沙盒Worker线程中安全运行");
     } else if (isWorkerEnvironment) {
       console.log("🛡️ GameEngine正在Worker线程中运行");
     } else if (isNode) {
@@ -414,7 +415,7 @@ export class GameEngine {
   ): void {
     // 容器只负责委托，不处理具体创建逻辑
     const member = this.memberManager.createAndRegister(memberData, campId, teamId);
-    console.log("GameEngine: 添加成员:", member);
+    // console.log("GameEngine: 添加成员:", member);
   }
 
   /**

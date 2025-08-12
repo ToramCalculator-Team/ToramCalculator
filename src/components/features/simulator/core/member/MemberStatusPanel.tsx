@@ -31,7 +31,8 @@ const StatsRenderer = (props: { data?: object }) => {
     path: string[] = [],
     d: Record<string, string | number | object> | undefined = {},
   ) =>
-    Object.entries(obj ?? {}).map(([key, value]) => {
+    Object.entries(obj ?? {}).map((data) => {
+      const [key, value] = data as [string, DataStorage];
       const currentPath = [...path, key].join(".");
       if (typeof value === "object" && value !== null) {
         if (!isDataStorageType(value)) {
@@ -48,7 +49,9 @@ const StatsRenderer = (props: { data?: object }) => {
           <div
             class={`key=${currentPath} Modifiers bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 ${!(value.static.fixed.length > 0 || value.static.percentage.length > 0 || value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && !currentPath.includes(".") && columnsWidth}`}
           >
-            <div class="Key w-full p-1 text-sm font-bold">{(d[key] as string | number) ?? key}：</div>
+            <div class="Key w-full p-1 text-sm font-bold">
+              {value.displayName ?? (d[key] as string | number) ?? key}：
+            </div>
             {value.static.fixed.length > 0 ||
             value.static.percentage.length > 0 ||
             value.dynamic.fixed.length > 0 ||
@@ -157,69 +160,64 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
   const selectedMemberData = createMemo(() => props.member()?.attrs);
 
   return (
-    <div class="flex h-full flex-col gap-2">
-      {/* 成员信息显示 */}
-      <Show
-        when={props.member()}
-        fallback={
-          <div class="flex flex-1 items-center justify-center">
-            <div class="text-dividing-color text-center">
-              <div class="mb-2 text-lg">👤</div>
-              <div class="text-sm">请选择一个成员查看详细信息</div>
-            </div>
-          </div>
-        }
-      >
-        <div class="flex flex-1 flex-col gap-2">
-          {/* 基础信息 */}
-          <div class="bg-area-color p-2">
-            <h4 class="text-md text-main-text-color mb-3 font-semibold">基础信息</h4>
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div class="flex justify-between">
-                <span class="text-dividing-color">ID:</span>
-                <span class="text-main-text-color font-mono">{props.member()?.id}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-dividing-color">类型:</span>
-                <span class="text-main-text-color">{props.member()?.type}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-dividing-color">活跃:</span>
-                <span class={`${props.member()?.isActive ? "text-green-500" : "text-yellow-500"}`}>
-                  {props.member()?.isActive ? "活跃" : "非活跃"}
-                </span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-dividing-color">阵营:</span>
-                <span class="text-main-text-color">{props.member()?.campId || "-"}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-dividing-color">队伍:</span>
-                <span class="text-main-text-color">{props.member()?.teamId || "-"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 属性详情（从 attrs 构建的嵌套对象） */}
-          <div class="bg-area-color p-2">
-            <h4 class="text-md text-main-text-color mb-3 font-semibold">属性详情</h4>
-            <div class="max-h-80 overflow-auto pr-1">
-              <StatsRenderer data={selectedMemberData()} />
-            </div>
-          </div>
-
-          {/* 调试信息 */}
-          <div class="bg-area-color p-2">
-            <h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
-            <details class="text-xs">
-              <summary class="text-dividing-color hover:text-main-text-color cursor-pointer">查看原始数据</summary>
-              <pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
-                {JSON.stringify(props.member(), null, 2)}
-              </pre>
-            </details>
+    <Show
+      when={props.member()}
+      fallback={
+        <div class="flex flex-1 items-center justify-center">
+          <div class="text-dividing-color text-center">
+            <div class="mb-2 text-lg">👤</div>
+            <div class="text-sm">请选择一个成员查看详细信息</div>
           </div>
         </div>
-      </Show>
-    </div>
+      }
+    >
+      <div class="flex w-full flex-1 flex-col gap-1">
+        {/* 基础信息 */}
+        <div class="bg-primary-color sticky top-0 z-10 p-2 border-b-2 border-accent-color">
+          {/* <h4 class="text-md mb-3 font-semibold">基础信息</h4> */}
+          <div class="grid grid-cols-5 gap-4 text-sm">
+            <div class="flex gap-2">
+              <span class="text-main-text-color text-nowrap">名称:</span>
+              <span class="font-bold">{props.member()?.name}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-main-text-color text-nowrap">类型:</span>
+              <span class="font-bold">{props.member()?.type}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-main-text-color text-nowrap">活跃:</span>
+              <span class={`font-bold ${props.member()?.isActive ? "" : ""}`}>
+                {props.member()?.isActive ? "活跃" : "非活跃"}
+              </span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-main-text-color text-nowrap">阵营:</span>
+              <span class="font-bold">{props.member()?.campId || "-"}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-main-text-color text-nowrap">队伍:</span>
+              <span class="font-bold">{props.member()?.teamId || "-"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 属性详情（从 attrs 构建的嵌套对象） */}
+        <div class="bg-area-color flex-1 rounded p-2">
+          <h4 class="text-md text-main-text-color mb-3 font-semibold">属性详情</h4>
+          <StatsRenderer data={selectedMemberData()} />
+        </div>
+
+        {/* 调试信息 */}
+        <div class="bg-area-color rounded p-2">
+          <h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
+          <details class="text-xs">
+            <summary class="text-dividing-color hover:text-main-text-color cursor-pointer">查看原始数据</summary>
+            <pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
+              {JSON.stringify(props.member(), null, 2)}
+            </pre>
+          </details>
+        </div>
+      </div>
+    </Show>
   );
 }

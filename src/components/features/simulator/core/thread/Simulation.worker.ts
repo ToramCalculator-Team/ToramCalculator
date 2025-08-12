@@ -172,7 +172,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                 case "start_simulation":
                   // 初始化战斗数据
                   const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-                  console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
+                  // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
                   
                   // 添加阵营A
                   gameEngine.addCamp("campA", "阵营A");
@@ -203,6 +203,27 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 启动引擎
                   gameEngine.start();
                   
+                  // 若停止流程中取消了订阅，则在重新启动后恢复引擎状态订阅（<=20Hz）
+                  if (!engineStateSubscription) {
+                    engineStateSubscription = gameEngine.onStateChange((stats) => {
+                      const now = performance.now();
+                      if (now - lastEngineViewSentAt < ENGINE_VIEW_MIN_INTERVAL) {
+                        return;
+                      }
+                      lastEngineViewSentAt = now;
+                    
+                      const view = projectEngineView(stats);
+                      try { EngineViewSchema.parse(view); } catch {}
+                      const serializableEvent = {
+                        type: 'engine_state_update',
+                        timestamp: Date.now(),
+                        engineView: view,
+                      } as const;
+                    
+                      postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
+                    });
+                  }
+                  
                   // 周期性推送全量 EngineStats（仅在引擎启动后开启）
                   if (!fullStatsInterval) {
                     try {
@@ -217,11 +238,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                       } catch {}
                     }, FULL_STATS_INTERVAL_MS) as unknown as number;
                   }
-                  
-                  // 验证成员是否添加成功
-                  const initialMembers = gameEngine.getAllMemberData();
-                  console.log(`👹 [Worker] 启动后成员数量: ${initialMembers.length}`);
-                  console.log(`👹 [Worker] 启动后成员列表:`, initialMembers.map(m => m.id));
                   
                   portResult = { success: true };
                   break;
@@ -255,6 +271,12 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 停止并清理引擎
                   gameEngine.stop();
                   gameEngine.cleanup();
+
+                  // 在停止后立即推送一次全量 EngineStats，驱动前端从 stopping -> ready
+                  try {
+                    const stats = gameEngine.getStats();
+                    postSystemMessage(messagePort, 'engine_stats_full', stats);
+                  } catch {}
                   portResult = { success: true };
                   break;
 
@@ -282,8 +304,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 获取所有成员数据（使用序列化接口）
                   try {
                     const members = gameEngine.getAllMemberData();
-                    console.log(`👹 [Worker] 返回成员数据: ${members.length} 个成员`);
-                    console.log(`👹 [Worker] 成员列表:`, members.map(m => m.id));
                     portResult = { success: true, data: members };
                   } catch (error) {
                     portResult = { success: false, error: error instanceof Error ? error.message : "Unknown error" };

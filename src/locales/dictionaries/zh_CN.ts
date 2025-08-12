@@ -1690,7 +1690,7 @@ const dictionary: dictionary = {
           formFieldDescription: "这是怪物的数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
         },
         type: {
-          key: "怪物类型",
+          key: "类型",
           tableFieldDescription:
             "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
           formFieldDescription:

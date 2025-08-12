@@ -847,7 +847,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
       },
     ],
     dictionary: (dic) => MobWithRelatedDic(dic),
-    hiddenColumnDef: ["id", "captureable", "type", "actions", "createdByAccountId", "updatedByAccountId"],
+    hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
     defaultSort: { id: "experience", desc: true },
     tdGenerator: {
       initialElement: (props) =>

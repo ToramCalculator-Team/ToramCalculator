@@ -1,4 +1,4 @@
-import { Character } from "@db/repositories/character";
+import { Character, CharacterInsert } from "@db/repositories/character";
 import { BabylonBg } from "~/components/features/BabylonGame";
 import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
@@ -12,7 +12,7 @@ export default function CharacterIndexPage() {
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
   // 状态管理参数
-  const setCharacter = (value: Character["Insert"]) => setStore("character", "id", value.id);
+  const setCharacter = (value: CharacterInsert) => setStore("character", "id", value.id);
 
   onMount(() => {
     console.log("--CharacterIndexPage Render");
