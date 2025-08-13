@@ -173,7 +173,19 @@ export class MessageRouter {
    * @returns 支持的消息类型数组
    */
   getSupportedMessageTypes(): IntentMessageType[] {
-    return ["cast_skill", "move", "stop_action", "use_item", "target_change", "block", "dodge", "custom"];
+    return [
+      "skill_press",
+      "move_command",
+      "stop_move",
+      "cast_end",
+      "controlled",
+      "charge_end",
+      "hp_zero",
+      "control_end",
+      "skill_animation_end",
+      "check_availability",
+      "custom",
+    ];
   }
 
   /**
@@ -203,24 +215,9 @@ export class MessageRouter {
     _targetMember: any,
     message: IntentMessage,
   ): { type: string; data?: Record<string, any> } {
-    // 输入意图到 FSM 事件的集中映射
+    // 统一协议：直接透传主线程传入的 FSM 事件名与数据
     const { type, data } = message;
-    switch (type) {
-      case "cast_skill": {
-        const skillId = (data as any)?.skillId;
-        return { type: "skill_press", data: { skillId, ...data } };
-      }
-      case "move": {
-        const x = Number((data as any)?.x ?? (data as any)?.position?.x ?? 0);
-        const y = Number((data as any)?.y ?? (data as any)?.position?.y ?? 0);
-        return { type: "move_command", data: { position: { x, y }, ...data } } as any;
-      }
-      case "stop_action": {
-        return { type: "stop_move" } as any;
-      }
-      default:
-        return { type, data } as any;
-    }
+    return { type, data } as any;
   }
 }
 

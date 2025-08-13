@@ -678,7 +678,8 @@ export default function RealtimeController() {
     }
 
     sendIntent({
-      type: "cast_skill",
+      // 直接发送 FSM 事件名
+      type: "skill_press",
       targetMemberId: selectedEngineMemberId,
       data: { skillId },
     });
@@ -692,9 +693,9 @@ export default function RealtimeController() {
     }
 
     sendIntent({
-      type: "move",
+      type: "move_command",
       targetMemberId: selectedEngineMemberId,
-      data: { x, y },
+      data: { position: { x, y } },
     });
   };
 
@@ -706,7 +707,7 @@ export default function RealtimeController() {
     }
 
     sendIntent({
-      type: "stop_action",
+      type: "stop_move",
       targetMemberId: selectedEngineMemberId,
       data: {},
     });

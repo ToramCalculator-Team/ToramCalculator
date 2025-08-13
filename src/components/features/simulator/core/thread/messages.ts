@@ -2,14 +2,20 @@ import { z } from "zod";
 
 // ===================== Intent/Router 消息契约 =====================
 
+// 统一：主线程到 Actor 的消息类型即为 FSM 事件名
 export const IntentMessageTypeEnum = z.enum([
-  "cast_skill",
-  "move",
-  "stop_action",
-  "use_item",
-  "target_change",
-  "block",
-  "dodge",
+  // 通用/玩家/Mob FSM 事件
+  "skill_press",
+  "move_command",
+  "stop_move",
+  "cast_end",
+  "controlled",
+  "charge_end",
+  "hp_zero",
+  "control_end",
+  "skill_animation_end",
+  "check_availability",
+  // 自定义透传事件
   "custom",
 ]);
 

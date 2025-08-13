@@ -1,12 +1,12 @@
 /**
  * 事件执行器 - 处理复杂的事件效果计算
- * 
+ *
  * 核心职责：
  * 1. 处理伤害表达式计算
  * 2. 处理Buff应用和移除
  * 3. 处理状态效果应用
  * 4. 支持表达式解析和计算
- * 
+ *
  * 设计理念：
  * - 表达式驱动：使用表达式字符串描述效果
  * - 上下文感知：根据当前游戏状态计算结果
@@ -14,10 +14,9 @@
  * - 安全性：限制表达式执行范围
  */
 
-
-import { createId } from '@paralleldrive/cuid2';
+import { createId } from "@paralleldrive/cuid2";
 import type { BaseEvent } from "./EventQueue";
-import GameEngine from './GameEngine';
+import GameEngine from "./GameEngine";
 // 不再直接使用JSExpressionIntegration，改为通过GameEngine
 
 // ============================== 类型定义 ==============================
@@ -56,17 +55,17 @@ export interface BuffData {
   attributeModifiers?: {
     attribute: string;
     value: number;
-    type: 'add' | 'multiply' | 'set';
+    type: "add" | "multiply" | "set";
   }[];
   /** 定期效果 */
   periodicEffects?: {
     interval: number; // 间隔帧数
-    effect: string;   // 效果表达式
+    effect: string; // 效果表达式
   }[];
   /** 堆叠规则 */
   stackRule?: {
     maxStacks: number;
-    stackType: 'replace' | 'stack' | 'refresh';
+    stackType: "replace" | "stack" | "refresh";
   };
 }
 
@@ -75,7 +74,7 @@ export interface BuffData {
  */
 export interface StatusEffect {
   /** 效果类型 */
-  type: 'stun' | 'fear' | 'silence' | 'immobilize' | 'invulnerable';
+  type: "stun" | "fear" | "silence" | "immobilize" | "invulnerable";
   /** 持续时间（帧数） */
   duration: number;
   /** 效果强度 */
@@ -124,7 +123,7 @@ export class EventExecutor {
 
   /**
    * 构造函数
-   * 
+   *
    * @param engine 游戏引擎实例
    * @param debugMode 是否启用调试模式
    */
@@ -138,7 +137,7 @@ export class EventExecutor {
 
   /**
    * 执行JS片段 - 使用GameEngine的编译执行流程
-   * 
+   *
    * @param scriptCode JS代码字符串
    * @param context 执行上下文
    * @returns 执行结果
@@ -149,28 +148,27 @@ export class EventExecutor {
       const targetId = context.target?.getId?.() || context.target?.id;
 
       if (!memberId) {
-        throw new Error('缺少成员ID');
+        throw new Error("缺少成员ID");
       }
 
       // 使用GameEngine的编译和执行能力
       const compiledCode = this.engine.compileScript(scriptCode, memberId, targetId);
       // 在 Engine 中未提供 executeScript 时，直接使用 Function 执行并注入必要 API
-      const runner = new Function('engine', 'ctx', `${compiledCode}`);
-      const result = runner(this.engine as any, context as any);
+      const runner = new Function("engine", "ctx", `${compiledCode}`);
+      const result = runner.call(this.engine, this.engine, context);
 
       console.log(`✅ JS脚本执行成功: ${memberId}`);
 
       return {
         value: result,
-        success: true
+        success: true,
       };
-
     } catch (error) {
       console.error("JS脚本执行失败:", error);
       return {
         value: 0,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -180,39 +178,41 @@ export class EventExecutor {
    */
   private sanitizeScript(code: string): string {
     return code
-      .replace(/\bthis\b/g, 'undefined')
-      .replace(/\bglobal\b/g, 'undefined')
-      .replace(/\bprocess\b/g, 'undefined')
-      .replace(/\brequire\b/g, 'undefined')
-      .replace(/\bFunction\b/g, 'undefined')
-      .replace(/\beval\b/g, 'undefined');
+      .replace(/\bthis\b/g, "undefined")
+      .replace(/\bglobal\b/g, "undefined")
+      .replace(/\bprocess\b/g, "undefined")
+      .replace(/\brequire\b/g, "undefined")
+      .replace(/\bFunction\b/g, "undefined")
+      .replace(/\beval\b/g, "undefined");
   }
 
   /**
    * 执行表达式计算
-   * 
+   *
    * @param expression 表达式字符串
    * @param context 计算上下文
    * @returns 计算结果
    */
   executeExpression(expression: string, context: ExpressionContext): ExpressionResult {
     try {
-      const debugInfo = this.debugMode ? {
-        expression,
-        variables: { ...context },
-        steps: [] as string[]
-      } : undefined;
+      const debugInfo = this.debugMode
+        ? {
+            expression,
+            variables: { ...context },
+            steps: [] as string[],
+          }
+        : undefined;
 
       // 预处理表达式
       const processedExpression = this.preprocessExpression(expression, context);
-      
+
       if (debugInfo) {
         debugInfo.steps.push(`预处理后: ${processedExpression}`);
       }
 
       // 计算表达式
       const value = this.evaluateExpression(processedExpression, context);
-      
+
       if (debugInfo) {
         debugInfo.steps.push(`计算结果: ${value}`);
       }
@@ -220,22 +220,21 @@ export class EventExecutor {
       return {
         value,
         success: true,
-        debug: debugInfo
+        debug: debugInfo,
       };
-
     } catch (error) {
       console.error("表达式计算失败:", error);
       return {
         value: 0,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
   /**
    * 应用Buff到目标
-   * 
+   *
    * @param buffData Buff数据
    * @param target 目标成员
    * @param context 执行上下文
@@ -250,34 +249,34 @@ export class EventExecutor {
     events.push({
       id: createId(),
       executeFrame: context.currentFrame,
-      priority: 'high',
-      type: 'buff_applied',
+      priority: "high",
+      type: "buff_applied",
       payload: {
         targetId: target.getId(),
         buffData,
-        duration: buffData.duration
-      }
+        duration: buffData.duration,
+      },
     });
 
     // 生成定期效果事件
     if (buffData.periodicEffects) {
       for (const periodicEffect of buffData.periodicEffects) {
         const totalTicks = Math.floor(buffData.duration / periodicEffect.interval);
-        
+
         for (let tick = 1; tick <= totalTicks; tick++) {
-          const executeFrame = context.currentFrame + (periodicEffect.interval * tick);
-          
+          const executeFrame = context.currentFrame + periodicEffect.interval * tick;
+
           events.push({
             id: createId(),
             executeFrame,
-            priority: 'normal',
-            type: 'buff_periodic_effect',
+            priority: "normal",
+            type: "buff_periodic_effect",
             payload: {
               targetId: target.getId(),
               buffId: buffData.id,
               effectExpression: periodicEffect.effect,
-              tick
-            }
+              tick,
+            },
           });
         }
       }
@@ -287,12 +286,12 @@ export class EventExecutor {
     events.push({
       id: createId(),
       executeFrame: context.currentFrame + buffData.duration,
-      priority: 'normal',
-      type: 'buff_removed',
+      priority: "normal",
+      type: "buff_removed",
       payload: {
         targetId: target.getId(),
-        buffId: buffData.id
-      }
+        buffId: buffData.id,
+      },
     });
 
     return events;
@@ -300,7 +299,7 @@ export class EventExecutor {
 
   /**
    * 应用状态效果
-   * 
+   *
    * @param effect 状态效果
    * @param target 目标成员
    * @param context 执行上下文
@@ -315,27 +314,27 @@ export class EventExecutor {
     events.push({
       id: createId(),
       executeFrame: context.currentFrame,
-      priority: 'critical',
-      type: 'status_effect_applied',
+      priority: "critical",
+      type: "status_effect_applied",
       payload: {
         targetId: target.getId(),
         effectType: effect.type,
         duration: effect.duration,
         intensity: effect.intensity,
-        data: effect.data
-      }
+        data: effect.data,
+      },
     });
 
     // 生成状态效果移除事件
     events.push({
       id: createId(),
       executeFrame: context.currentFrame + effect.duration,
-      priority: 'normal',
-      type: 'status_effect_removed',
+      priority: "normal",
+      type: "status_effect_removed",
       payload: {
         targetId: target.getId(),
-        effectType: effect.type
-      }
+        effectType: effect.type,
+      },
     });
 
     return events;
@@ -357,7 +356,7 @@ export class EventExecutor {
 
   /**
    * 注册自定义表达式函数
-   * 
+   *
    * @param name 函数名
    * @param func 函数实现
    */
@@ -373,25 +372,26 @@ export class EventExecutor {
    */
   private initializeExpressionFunctions(): void {
     // 数学函数
-    this.expressionFunctions.set('max', Math.max);
-    this.expressionFunctions.set('min', Math.min);
-    this.expressionFunctions.set('abs', Math.abs);
-    this.expressionFunctions.set('floor', Math.floor);
-    this.expressionFunctions.set('ceil', Math.ceil);
-    this.expressionFunctions.set('round', Math.round);
-    this.expressionFunctions.set('sqrt', Math.sqrt);
-    this.expressionFunctions.set('pow', Math.pow);
+    this.expressionFunctions.set("max", Math.max);
+    this.expressionFunctions.set("min", Math.min);
+    this.expressionFunctions.set("abs", Math.abs);
+    this.expressionFunctions.set("floor", Math.floor);
+    this.expressionFunctions.set("ceil", Math.ceil);
+    this.expressionFunctions.set("round", Math.round);
+    this.expressionFunctions.set("sqrt", Math.sqrt);
+    this.expressionFunctions.set("pow", Math.pow);
 
     // 游戏相关函数
-    this.expressionFunctions.set('random', () => Math.random());
-    this.expressionFunctions.set('randomInt', (min: number, max: number) => 
-      Math.floor(Math.random() * (max - min + 1)) + min
+    this.expressionFunctions.set("random", () => Math.random());
+    this.expressionFunctions.set(
+      "randomInt",
+      (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
     );
-    this.expressionFunctions.set('criticalHit', (baseDamage: number, critRate: number, critMultiplier: number) => {
+    this.expressionFunctions.set("criticalHit", (baseDamage: number, critRate: number, critMultiplier: number) => {
       const isCritical = Math.random() < critRate;
       return isCritical ? baseDamage * critMultiplier : baseDamage;
     });
-    this.expressionFunctions.set('elementalBonus', (baseDamage: number, element: string, resistance: number) => {
+    this.expressionFunctions.set("elementalBonus", (baseDamage: number, element: string, resistance: number) => {
       // 简化的元素伤害计算
       return baseDamage * (1 - resistance / 100);
     });
@@ -401,7 +401,7 @@ export class EventExecutor {
 
   /**
    * 预处理表达式
-   * 
+   *
    * @param expression 原始表达式
    * @param context 计算上下文
    * @returns 预处理后的表达式
@@ -410,11 +410,11 @@ export class EventExecutor {
     let processed = expression;
 
     // 替换上下文变量（上下文可能为空，做防御）
-    if (context && typeof context === 'object') {
+    if (context && typeof context === "object") {
       try {
         Object.entries(context).forEach(([key, value]) => {
-          if (typeof value === 'number') {
-            const regex = new RegExp(`\\b${key}\\b`, 'g');
+          if (typeof value === "number") {
+            const regex = new RegExp(`\\b${key}\\b`, "g");
             processed = processed.replace(regex, value.toString());
           }
         });
@@ -425,7 +425,7 @@ export class EventExecutor {
 
     // 处理成员属性访问
     processed = processed.replace(/(\w+)\.(\w+)/g, (match, obj, prop) => {
-      if (context[obj] && typeof context[obj].getStats === 'function') {
+      if (context[obj] && typeof context[obj].getStats === "function") {
         const stats = context[obj].getStats();
         return stats[prop] || 0;
       }
@@ -437,7 +437,7 @@ export class EventExecutor {
 
   /**
    * 计算表达式
-   * 
+   *
    * @param expression 表达式字符串
    * @param context 计算上下文
    * @returns 计算结果
@@ -446,17 +446,14 @@ export class EventExecutor {
     // 这里应该使用安全的表达式计算器
     // 为了简化，我们使用简单的字符串替换和 eval
     // 在生产环境中，应该使用专门的表达式解析器
-    
+
     try {
       // 创建函数执行环境
       const functionContext = Object.fromEntries(this.expressionFunctions.entries());
-      
+
       // 创建安全的执行环境
-      const safeEval = new Function(
-        ...Object.keys(functionContext),
-        `return ${expression}`
-      );
-      
+      const safeEval = new Function(...Object.keys(functionContext), `return ${expression}`);
+
       return safeEval(...Object.values(functionContext));
     } catch (error) {
       console.warn(`表达式计算失败: ${expression}`, error);

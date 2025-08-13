@@ -21,6 +21,8 @@ import { findTasks } from "@db/repositories/task";
 import { findWeapons } from "@db/repositories/weapon";
 import { findOptions } from "@db/repositories/optEquip";
 import { findSpecials } from "@db/repositories/speEquip";
+import { findPlayers } from "@db/repositories/player";
+import { findSimulators } from "@db/repositories/simulator";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -133,6 +135,8 @@ export default function AppMainContet(props: ParentProps) {
     findSpecials();
     findTasks();
     findWeapons();
+    findPlayers();
+    findSimulators();
   });
 
   return (
