@@ -148,7 +148,7 @@
                                 "type": "target_attribute",
                                 "id": "WflYRG(MwZMtKmsH(A@+",
                                 "fields": {
-                                  "ATTRIBUTE_NAME": "pDef"
+                                  "ATTRIBUTE_NAME": "def.p"
                                 }
                               }
                             },
@@ -188,7 +188,7 @@
                                       "type": "self_attribute",
                                       "id": "5grY9W3gy.@(nc[-BKeo",
                                       "fields": {
-                                        "ATTRIBUTE_NAME": "pPie"
+                                        "ATTRIBUTE_NAME": "pie.p"
                                       }
                                     }
                                   }

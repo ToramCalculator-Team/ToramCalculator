@@ -1,2 +1,2 @@
 baseAbi,modifiers,itemId
-10,"{""mPie + 10%"",""maxMp + 300""}",defaultSpecialItemId
+10,"{""pie.m + 10%"",""mp.max + 300""}",defaultSpecialItemId

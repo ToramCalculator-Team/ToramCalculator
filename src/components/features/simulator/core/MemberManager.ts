@@ -20,6 +20,7 @@ import type { MemberWithRelations } from "@db/repositories/member";
 import type GameEngine from "./GameEngine";
 import { createPlayerActor, type PlayerAttrType } from "./member/player/PlayerActor";
 import { ReactiveSystem, type NestedSchema } from "./member/ReactiveSystem";
+import { applyPrebattleModifiers } from "./member/player/PrebattleModifiers";
 import { PlayerAttrSchema } from "./member/player/PlayerData";
 import { MobAttrSchema } from "./member/mob/MobData";
 import { createMobActor, MobAttrType } from "./member/mob/MobActor";
@@ -118,6 +119,12 @@ export class MemberManager {
         case "Player":
           schema = PlayerAttrSchema(memberData.player!.character);
           rs = new ReactiveSystem<PlayerAttrType>(memberData, schema);
+          // 装备与被动技能的战前常驻修正注入（在 Actor 启动前）
+          try {
+            applyPrebattleModifiers(rs, memberData);
+          } catch (e) {
+            console.warn("预战修正应用失败", e);
+          }
           actor = createPlayerActor({
             engine: this.engine,
             memberData,

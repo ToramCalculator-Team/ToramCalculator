@@ -96,7 +96,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       ""type"": ""self_attribute"",
                                       ""id"": ""^ea1qsj:^;9ICv%pW[lL"",
                                       ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""pAtk""
+                                        ""ATTRIBUTE_NAME"": ""atk.p""
                                       }
                                     }
                                   }
@@ -115,7 +115,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 ""type"": ""self_attribute"",
                                 ""id"": ""TJ(@1qOym`|R;3kod##H"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_NAME"": ""pRes""
+                                  ""ATTRIBUTE_NAME"": ""res.p""
                                 }
                               }
                             }
@@ -149,7 +149,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 ""type"": ""target_attribute"",
                                 ""id"": ""WflYRG(MwZMtKmsH(A@+"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_NAME"": ""pDef""
+                                  ""ATTRIBUTE_NAME"": ""def.p""
                                 }
                               }
                             },
@@ -189,7 +189,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       ""type"": ""self_attribute"",
                                       ""id"": ""5grY9W3gy.@(nc[-BKeo"",
                                       ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""pPie""
+                                        ""ATTRIBUTE_NAME"": ""pie.p""
                                       }
                                     }
                                   }
