@@ -504,6 +504,13 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
         });
 
+        // 提供渲染通道的统一出口：用于FSM发送渲染指令（透传到主线程）
+        ;(gameEngine as any).postRenderMessage = (payload: any) => {
+          try {
+            messagePort.postMessage(payload);
+          } catch {}
+        };
+
         // 周期性全量 EngineStats 推送改为在 start_simulation 后启动
 
         // Worker初始化完成，不需要通知主线程

@@ -53,6 +53,41 @@ export const createPlayerActor = (props: {
         position: ({ context }) => context.position,
       }),
 
+      // 向渲染层发送 spawn 指令（副作用）
+      spawnRenderEntity: ({ context }: { context: MemberContext<PlayerAttrType> }) => {
+        try {
+          // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
+          const engine: any = context.engine as any;
+          const memberId = context.id;
+          const name = context.config.name ?? memberId;
+          const spawnCmd = {
+            type: "render:cmd" as const,
+            cmd: {
+              type: "spawn" as const,
+              entityId: memberId,
+              name,
+              position: { x: 0, y: 0, z: 0 },
+              seq: 0,
+              ts: Date.now(),
+            },
+          };
+          // 引擎统一出口：借用现有系统消息发送工具（engine 暴露内部端口发送方法）
+          if (engine?.postRenderMessage) {
+            engine.postRenderMessage(spawnCmd);
+          } else if (typeof (engine as any)?.getMessagePort === "function") {
+            // 兜底：如果引擎暴露了 messagePort 获取方法
+            const port: MessagePort | undefined = (engine as any).getMessagePort?.();
+            port?.postMessage(spawnCmd);
+          } else {
+            // 最简单 fallback：直接挂到 window 入口（主线程会转发到控制器）
+            (globalThis as any).__SIM_RENDER__?.(spawnCmd);
+          }
+          console.log("spawnRenderEntity 发送成功", spawnCmd);
+        } catch (e) {
+          console.warn("spawnRenderEntity 发送失败", e);
+        }
+      },
+
       // 技能相关事件
       onSkillStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         console.log(`🎮 [${context.config.name}] 技能开始事件`, event);
@@ -328,9 +363,10 @@ export const createPlayerActor = (props: {
       position: { x: 0, y: 0 },
     },
     initial: "alive",
-    entry: {
-      type: "initializePlayerState",
-    },
+    entry: [
+      { type: "initializePlayerState" },
+      { type: "spawnRenderEntity" },
+    ],
     states: {
       alive: {
         initial: "operational",

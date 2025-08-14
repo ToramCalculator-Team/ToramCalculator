@@ -551,10 +551,10 @@ export class WorkerPool extends EventEmitter {
    * - 事件驱动：通过事件通知外部系统状态变化
    */
   private handleWorkerMessage(worker: WorkerWrapper, event: MessageEvent): void {
-    const { taskId, result, error, metrics, type, data } = event.data;
+    const { taskId, result, error, metrics, type, data, cmd, cmds } = event.data as any;
 
     // 发射原始消息事件，让子类处理业务逻辑
-    this.emit("worker-message", { worker, event: { taskId, result, error, metrics, type, data } });
+    this.emit("worker-message", { worker, event: { taskId, result, error, metrics, type, data, cmd, cmds } });
 
     // 处理任务结果
     const taskCallback = this.taskMap.get(taskId);
@@ -1092,7 +1092,7 @@ export class SimulatorPool extends WorkerPool {
 
     // 设置模拟器专用的事件处理器
     this.on("worker-message", (data: { worker: WorkerWrapper; event: any }) => {
-      const { type, data: eventData } = data.event;
+      const { type, data: eventData, cmd, cmds } = data.event;
 
       // 处理引擎状态更新事件
       if (type === "engine_state_update") {
@@ -1109,6 +1109,10 @@ export class SimulatorPool extends WorkerPool {
       // 低频全量引擎状态
       else if (type === "engine_stats_full") {
         this.emit("engine_stats_full", { workerId: data.worker.id, event: eventData });
+      }
+      // 渲染指令透传（由 RealtimeController 订阅并转发给渲染控制器）
+      else if (type === "render:cmd" || type === "render:cmds") {
+        this.emit("render_cmd", { workerId: data.worker.id, type, cmd, cmds });
       }
     });
   }

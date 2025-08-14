@@ -24,7 +24,6 @@ import { setup, assign, createActor } from "xstate";
 import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
 import type { IntentMessage } from "./core/thread/messages";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
-import { findMobWithRelations, MobWithRelations } from "@db/repositories/mob";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { MemberSerializeData } from "./core/member/MemberType";
@@ -32,10 +31,9 @@ import MemberStatusPanel from "./core/member/MemberStatusPanel";
 import { EngineStats } from "./core/GameEngine";
 import { createId } from "@paralleldrive/cuid2";
 import { findPlayerWithRelations, PlayerWithRelations } from "@db/repositories/player";
-import { findMercenaryWithRelations, MercenaryWithRelations } from "@db/repositories/mercenary";
 import { findMemberWithRelations, MemberWithRelations } from "@db/repositories/member";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import { BabylonBg } from "./core/render/BabylonGame";
 
 // ============================== 类型定义 ==============================
 
@@ -135,7 +133,7 @@ const controllerMachine = setup({
         WORKER_READY: "ready",
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: event.error })),
+          actions: assign(({ event }) => ({ error: (event as any)?.error ?? "Worker错误" })),
         },
       },
       after: {
@@ -151,7 +149,7 @@ const controllerMachine = setup({
         START_SIMULATION: "starting",
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: event.error })),
+          actions: assign(({ event }) => ({ error: (event as any)?.error ?? "Worker错误" })),
         },
       },
     },
@@ -170,7 +168,7 @@ const controllerMachine = setup({
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: event.error })),
+          actions: assign(({ event }) => ({ error: (event as any)?.error ?? "Worker错误" })),
         },
       },
       after: {
@@ -218,12 +216,12 @@ const controllerMachine = setup({
         },
         ADD_LOG: {
           actions: assign(({ context, event }) => ({
-            logs: [...context.logs, event.message],
+            logs: [...context.logs, (event as any)?.message ?? ""],
           })),
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign((_, event) => ({ error: event.error })),
+          actions: assign((_, event) => ({ error: (event as any)?.error ?? "Worker错误" })),
         },
       },
     },
@@ -241,7 +239,7 @@ const controllerMachine = setup({
         RESUME_SIMULATION: "running",
         STOP_SIMULATION: "stopping",
         SELECT_MEMBER: {
-          actions: assign((_, event) => ({ selectedEngineMemberId: event.memberId })),
+          actions: assign((_, event) => ({ selectedEngineMemberId: (event as any)?.memberId })),
         },
         SEND_INTENT: {
           actions: "sendIntent",
@@ -258,7 +256,7 @@ const controllerMachine = setup({
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign((_, event) => ({ error: event.error })),
+          actions: assign((_, event) => ({ error: (event as any)?.error ?? "Worker错误" })),
         },
       },
     },
@@ -277,7 +275,7 @@ const controllerMachine = setup({
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign({ error: (_, event) => event.error }),
+          actions: assign({ error: (_: any, event: any) => event?.error ?? "Worker错误" }),
         },
       },
       after: {
@@ -421,6 +419,19 @@ export default function RealtimeController() {
     realtimeSimulatorPool.on("engine_state_update", handleEngineStateChange);
     realtimeSimulatorPool.on("member_state_update", handleMemberStateUpdate);
     realtimeSimulatorPool.on("engine_stats_full", handleEngineStatsFull);
+    // 渲染指令透传
+    const handleRenderCmd = (msg: { workerId: string; type: string; cmd?: any; cmds?: any[] }) => {
+      try {
+        const fn = (globalThis as any).__SIM_RENDER__;
+        if (typeof fn === "function") {
+          if (msg.type === "render:cmds") fn({ type: msg.type, cmds: msg.cmds });
+          else fn({ type: msg.type, cmd: msg.cmd });
+        }
+      } catch (e) {
+        console.warn("转发渲染指令失败", e);
+      }
+    };
+    realtimeSimulatorPool.on("render_cmd", handleRenderCmd);
 
     // 检查worker准备状态
     const checkWorkerReady = () => {
@@ -464,6 +475,7 @@ export default function RealtimeController() {
       realtimeSimulatorPool.off("engine_state_update", handleEngineStateChange);
       realtimeSimulatorPool.off("member_state_update", handleMemberStateUpdate);
       realtimeSimulatorPool.off("engine_stats_full", handleEngineStatsFull);
+      realtimeSimulatorPool.off("render_cmd", handleRenderCmd);
       clearInterval(workerStatusInterval);
       // 清理选中成员订阅
       const selectedId = actor.getSnapshot().context.selectedEngineMemberId;
@@ -473,6 +485,63 @@ export default function RealtimeController() {
       try {
         actor.stop();
       } catch {}
+    });
+  });
+
+  // ==================== FPS 输入聚合（主线程） ====================
+  // 说明：仅采集 WASD 方向，作为高层意图发送给 Worker，由 FSM 产出渲染命令
+  createEffect(() => {
+    const active = new Set<string>();
+    let rafId = 0 as number | undefined as any;
+    let lastAxis = { x: 0, y: 0 };
+    let lastSentNonZero = false;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      active.add(e.key.toLowerCase());
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      active.delete(e.key.toLowerCase());
+    };
+
+    const loop = () => {
+      const axis = {
+        x: (active.has("d") ? 1 : 0) + (active.has("a") ? -1 : 0),
+        y: (active.has("w") ? 1 : 0) + (active.has("s") ? -1 : 0),
+      };
+      const norm = Math.hypot(axis.x, axis.y);
+      if (norm > 0) {
+        axis.x /= norm;
+        axis.y /= norm;
+      }
+
+      const changed = axis.x !== lastAxis.x || axis.y !== lastAxis.y;
+      const memberId = context().selectedEngineMemberId;
+      if (memberId && changed) {
+        // 非零：发送自定义意图 axis_move；零向量：发送 stop_move
+        if (norm > 0) {
+          sendIntent({
+            type: "custom",
+            targetMemberId: memberId,
+            data: { kind: "axis_move", axis },
+          });
+          lastSentNonZero = true;
+        } else if (lastSentNonZero) {
+          sendIntent({ type: "stop_move", targetMemberId: memberId, data: {} });
+          lastSentNonZero = false;
+        }
+        lastAxis = axis;
+      }
+      rafId = requestAnimationFrame(loop) as any;
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    rafId = requestAnimationFrame(loop) as any;
+
+    onCleanup(() => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      if (rafId) cancelAnimationFrame(rafId);
     });
   });
 
@@ -766,20 +835,17 @@ export default function RealtimeController() {
           </Show>
         </div>
       </div> */}
-      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
-
-      <OverlayScrollbarsComponent
-        element="div"
-        options={{ scrollbars: { autoHide: "scroll" } }}
-        defer
-        class="col-span-12 row-span-9 portrait:row-span-8"
-      >
-        <div class="flex flex-col items-center gap-2">
-          <Show when={selectedEngineMember()}>
-            <MemberStatusPanel member={selectedEngineMember} />
-          </Show>
+      {/* 画面布局 */}
+      <div class="col-span-12 row-span-8 flex flex-col items-center gap-2 portrait:row-span-7">
+        <div class="bg-area-color flex h-full w-full flex-col rounded overflow-hidden">
+          <BabylonBg followEntityId={context().selectedEngineMemberId || undefined} />
         </div>
-      </OverlayScrollbarsComponent>
+      </div>
+
+      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
+      <div class="col-span-12 row-span-1 flex flex-col items-center gap-2 portrait:row-span-1">
+        <MemberStatusPanel member={selectedEngineMember} />
+      </div>
 
       {/* 技能面板 */}
       <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
