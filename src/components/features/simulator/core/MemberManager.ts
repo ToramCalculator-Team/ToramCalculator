@@ -104,11 +104,7 @@ export class MemberManager {
    * @param initialState 初始状态配置
    * @returns 创建的成员实例，失败则返回null
    */
-  createAndRegister(
-    memberData: MemberWithRelations,
-    campId: string,
-    teamId: string,
-  ): Actor<any> | null {
+  createAndRegister(memberData: MemberWithRelations, campId: string, teamId: string): Actor<any> | null {
     try {
       let actor: Actor<any>;
       let schema: NestedSchema | undefined;
@@ -196,7 +192,7 @@ export class MemberManager {
         actor,
         id: memberData.id,
         type: memberData.type as MemberType,
-        name: (memberData as any).name ?? memberData.id,
+        name: memberData.name ?? memberData.id,
         campId,
         teamId,
         isActive: true,
@@ -480,7 +476,7 @@ export class MemberManager {
    */
   sendTo(memberId: string, event: any): void {
     const entry = this.members.get(memberId);
-    entry?.actor.send?.(event as any);
+    entry?.actor.send?.(event);
   }
 
   /** 查询阵营是否存在 */

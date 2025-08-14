@@ -9,7 +9,7 @@
 
 import { Accessor, Show, createMemo } from "solid-js";
 import { MemberSerializeData } from "./MemberType";
-import { DataStorage, dynamicTotalValue, isDataStorageType } from "./ReactiveSystem";
+import { DataStorage, isDataStorageType } from "./ReactiveSystem";
 
 // ============================== 组件实现 ==============================
 
@@ -21,7 +21,7 @@ const originClass =
   "Origin buttom-full absolute left-0 z-10 hidden rounded-sm bg-primary-color p-2 text-sm text-accent-color-70 shadow-xl shadow-transition-color-8 group-hover:flex pointer-events-none";
 // 由于tailwind编译时生成对应class，此处class将不会生效
 // const columns = 8;
-const columnsWidth = " lg:w-[calc((100%-16px)/5)] ";
+const columnsWidth = "";
 
 // 用于递归遍历对象并生成DOM结构的组件（响应式）
 const StatsRenderer = (props: { data?: object }) => {
@@ -38,10 +38,17 @@ const StatsRenderer = (props: { data?: object }) => {
         if (!isDataStorageType(value)) {
           return (
             <div
-              class={`key=${currentPath} Object border-transition-color-20 flex flex-col gap-1 rounded-sm border-[1px] p-1 ${!currentPath.includes(".") && columnsWidth}`}
+              class={`key=${currentPath} Object border-transition-color-20 flex gap-1 border-b-1 p-1 ${!currentPath.includes(".") && columnsWidth}`}
             >
-              <span class="text-main-text-color">{key}</span>
-              {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
+              <span
+                class="font-bold w-8 text-center bg-area-color text-main-text-color"
+                style={{ "writing-mode": "sideways-lr", "text-orientation": "mixed" }}
+              >
+                {key}
+              </span>
+              <div class="flex w-full flex-col gap-1">
+                {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
+              </div>
             </div>
           );
         }
@@ -61,11 +68,11 @@ const StatsRenderer = (props: { data?: object }) => {
                   class={`TotalValue flex flex-col rounded-sm p-1 ${!(value.static.fixed.length > 0 || value.static.percentage.length > 0 || value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && "w-full"}`}
                 >
                   <div class="Key text-accent-color-70 text-sm">{"实际值"}</div>
-                  <div class={`` + actualValueClass}>{dynamicTotalValue(value)}</div>
+                  <div class={`` + actualValueClass}>{value.actValue}</div>
                 </div>
                 <div class="BaseVlaue flex w-[25%] flex-col rounded-sm p-1 lg:w-[10%]">
                   <span class="BaseValueName text-accent-color-70 text-sm">{"基础值"}</span>
-                  <span class={`` + baseValueClass}>{value.baseValue.reduce((acc, curr) => acc + curr.value, 0)}</span>
+                  <span class={`` + baseValueClass}>{value.baseValue}</span>
                 </div>
                 <div class="ModifierVlaue flex w-full flex-1 flex-col rounded-sm p-1">
                   <span class="ModifierValueName text-accent-color-70 px-1 text-sm">{"修正值"}</span>
@@ -136,7 +143,7 @@ const StatsRenderer = (props: { data?: object }) => {
                 </div>
               </div>
             ) : (
-              <div class={`` + actualValueClass}>{dynamicTotalValue(value)}</div>
+              <div class={`` + actualValueClass}>{value.actValue}</div>
             )}
           </div>
         );
@@ -151,9 +158,7 @@ const StatsRenderer = (props: { data?: object }) => {
       );
     });
 
-  return (
-    <div class="RenderObject flex w-full flex-col gap-1 p-1 lg:flex-row lg:flex-wrap">{renderObject(resolved())}</div>
-  );
+  return <div class="RenderObject flex w-full flex-col gap-1">{renderObject(resolved())}</div>;
 };
 
 export default function MemberStatusPanel(props: { member: Accessor<MemberSerializeData<string> | null> }) {
@@ -173,7 +178,7 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
     >
       <div class="flex w-full flex-1 flex-col gap-1">
         {/* 基础信息 */}
-        <div class="bg-primary-color sticky top-0 z-10 p-2 border-b-2 border-accent-color">
+        <div class="bg-primary-color border-accent-color sticky top-0 z-10 border-b-2 p-2">
           {/* <h4 class="text-md mb-3 font-semibold">基础信息</h4> */}
           <div class="grid grid-cols-5 gap-4 text-sm">
             <div class="flex gap-2">
@@ -202,8 +207,7 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
         </div>
 
         {/* 属性详情（从 attrs 构建的嵌套对象） */}
-        <div class="bg-area-color flex-1 rounded p-2">
-          <h4 class="text-md text-main-text-color mb-3 font-semibold">属性详情</h4>
+        <div class="flex-1 rounded">
           <StatsRenderer data={selectedMemberData()} />
         </div>
 

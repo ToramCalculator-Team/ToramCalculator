@@ -23,6 +23,25 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
   return [
     jsonArrayFrom(
       eb
+        .selectFrom("_avatarTocharacter")
+        .innerJoin("avatar", "avatar.id", "_avatarTocharacter.A")
+        .whereRef("_avatarTocharacter.B", "=", id)
+        .selectAll("avatar"),
+    )
+      .$notNull()
+      .as("avatars"),
+    jsonArrayFrom(
+      eb
+        .selectFrom("_characterToconsumable")
+        .innerJoin("consumable", "consumable.itemId", "_characterToconsumable.A")
+        .innerJoin("character", "character.id", "_characterToconsumable.B")
+        .whereRef("character.id", "=", id)
+        .selectAll("consumable"),
+    )
+      .$notNull()
+      .as("consumables"),
+    jsonArrayFrom(
+      eb
         .selectFrom("combo")
         .whereRef("combo.characterId", "=", "character.id")
         .selectAll("combo")
@@ -99,27 +118,16 @@ export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id
 // 3. 基础 CRUD 方法
 export async function findCharacterById(id: string): Promise<Character | null> {
   const db = await getDB();
-  return await db
-    .selectFrom("character")
-    .where("id", "=", id)
-    .selectAll("character")
-    .executeTakeFirst() || null;
+  return (await db.selectFrom("character").where("id", "=", id).selectAll("character").executeTakeFirst()) || null;
 }
 
 export async function findCharacters(): Promise<Character[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("character")
-    .selectAll("character")
-    .execute();
+  return await db.selectFrom("character").selectAll("character").execute();
 }
 
 export async function insertCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
-  return await trx
-    .insertInto("character")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("character").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
@@ -137,20 +145,11 @@ export async function createCharacter(trx: Transaction<DB>, data: CharacterInser
 }
 
 export async function updateCharacter(trx: Transaction<DB>, id: string, data: CharacterUpdate): Promise<Character> {
-  return await trx
-    .updateTable("character")
-    .set(data)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.updateTable("character").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteCharacter(trx: Transaction<DB>, id: string): Promise<Character | null> {
-  return await trx
-    .deleteFrom("character")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("character").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法

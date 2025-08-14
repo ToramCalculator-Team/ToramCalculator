@@ -115,7 +115,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 ""type"": ""self_attribute"",
                                 ""id"": ""TJ(@1qOym`|R;3kod##H"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_NAME"": ""res.p""
+                                  ""ATTRIBUTE_NAME"": ""red.p""
                                 }
                               }
                             }

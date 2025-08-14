@@ -1,5 +1,26 @@
-import { Accessor, createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount, Signal, useContext } from "solid-js";
-import { setLocale, inject, Theme, Themes, ToolboxCategory, registry, serialization, WorkspaceSvg, svgResize } from "blockly/core";
+import {
+  Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Signal,
+  useContext,
+} from "solid-js";
+import {
+  setLocale,
+  inject,
+  Theme,
+  Themes,
+  ToolboxCategory,
+  registry,
+  serialization,
+  WorkspaceSvg,
+  svgResize,
+} from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
@@ -37,17 +58,23 @@ export function NodeEditor(props: NodeEditorProps) {
   const [workerSpace, setWorkerSpace] = createSignal<WorkspaceSvg>();
 
   // 计算工具箱/飞出面板宽度（优先 metrics，回退 DOM 量测）
-  const measureToolboxWidthPx = (ws: WorkspaceSvg, container: HTMLElement, metrics: any, isHorizontal: boolean, toolboxPosition: string) => {
+  const measureToolboxWidthPx = (
+    ws: WorkspaceSvg,
+    container: HTMLElement,
+    metrics: any,
+    isHorizontal: boolean,
+    toolboxPosition: string,
+  ) => {
     if (isHorizontal || toolboxPosition !== "start") return 0;
     const metricsWidth = (metrics.toolboxWidth ?? metrics.flyoutWidth ?? 0) as number;
     if (metricsWidth && metricsWidth > 0) return metricsWidth;
-    const host: HTMLElement = (ws as any).getInjectionDiv?.() || container;
-    const toolboxDiv = host.querySelector?.(".blocklyToolboxDiv") as HTMLElement | null;
+    const host: HTMLElement = ws.getInjectionDiv?.() || container;
+    const toolboxDiv = host.querySelector?.(".blocklyToolboxDiv");
     if (toolboxDiv) {
       const w = toolboxDiv.getBoundingClientRect().width;
       if (w > 0) return w;
     }
-    const flyoutDiv = host.querySelector?.(".blocklyFlyout") as HTMLElement | null;
+    const flyoutDiv = host.querySelector?.(".blocklyFlyout");
     if (flyoutDiv) {
       const w = flyoutDiv.getBoundingClientRect().width;
       if (w > 0) return w;
@@ -65,8 +92,8 @@ export function NodeEditor(props: NodeEditorProps) {
         ws.centerOnBlock(blocks[0].id);
         return;
       }
-      if (typeof (ws as any).scrollCenter === "function") {
-        (ws as any).scrollCenter(0, 0);
+      if (typeof ws.scrollCenter === "function") {
+        ws.scrollCenter();
       }
     } catch {
       // ignore
@@ -74,7 +101,11 @@ export function NodeEditor(props: NodeEditorProps) {
   };
 
   // 读取 Tailwind 类实际颜色，便于与系统主题一致
-  const resolveColorFromClass = (container: HTMLElement, className: string, property: "background-color" | "color" = "background-color"): string => {
+  const resolveColorFromClass = (
+    container: HTMLElement,
+    className: string,
+    property: "background-color" | "color" = "background-color",
+  ): string => {
     const probe = document.createElement("div");
     probe.style.position = "absolute";
     probe.style.visibility = "hidden";
@@ -113,7 +144,8 @@ export function NodeEditor(props: NodeEditorProps) {
         cursorColour: cursorColor,
       },
       fontStyle: {
-        family: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'",
+        family:
+          "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'",
         weight: "500",
         size: 12,
       },
@@ -914,7 +946,7 @@ export function NodeEditor(props: NodeEditorProps) {
                   kind: "block",
                 },
                 {
-                  type: "target_defense_get", 
+                  type: "target_defense_get",
                   kind: "block",
                 },
                 {
@@ -938,7 +970,7 @@ export function NodeEditor(props: NodeEditorProps) {
               contents: [
                 {
                   type: "self_attack_get",
-                  kind: "block", 
+                  kind: "block",
                 },
                 {
                   type: "self_attack_set",

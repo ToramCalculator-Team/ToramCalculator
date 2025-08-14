@@ -1,11 +1,11 @@
 /**
  * 时间推进器 - 推进帧循环和事件调度
- * 
+ *
  * 核心职责（根据架构文档）：
  * 1. 推进帧（如每 16ms）
  * 2. 调度事件执行、状态推进等
  * 3. 可按需加速或暂停
- * 
+ *
  * 设计理念：
  * - 时间驱动：以固定帧率推进游戏时间
  * - 事件调度：每帧处理事件队列中的事件
@@ -14,22 +14,19 @@
  * - 低耦合：通过接口与EventQueue和memberManager交互
  */
 
-import { MemberManager } from "./MemberManager";
 import type GameEngine from "./GameEngine";
-import { Member } from "./Member";
 import { EventExecutor } from "./EventExecutor";
 import type { EventQueue, QueueEvent, BaseEvent, EventHandler, ExecutionContext, EventResult } from "./EventQueue";
-
 
 // ============================== 类型定义 ==============================
 
 /**
  * 帧循环状态枚举
  */
-export type FrameLoopState = 
-  | "stopped"    // 已停止
-  | "running"    // 运行中
-  | "paused";    // 已暂停
+export type FrameLoopState =
+  | "stopped" // 已停止
+  | "running" // 运行中
+  | "paused"; // 已暂停
 
 /**
  * 帧循环配置接口
@@ -158,10 +155,10 @@ export class FrameLoop {
     eventStats: {
       totalEventsProcessed: 0,
       averageEventsPerFrame: 0,
-      maxEventsPerFrame: 0
+      maxEventsPerFrame: 0,
     },
     frameBudgetMs: undefined,
-    skippedFrames: 0
+    skippedFrames: 0,
   };
 
   /** 帧信息历史 */
@@ -171,19 +168,16 @@ export class FrameLoop {
 
   /**
    * 构造函数
-   * 
+   *
    * @param engine 游戏引擎实例
    * @param config 帧循环配置
    */
-  constructor(
-    engine: GameEngine,
-    config: Partial<FrameLoopConfig> = {}
-  ) {
+  constructor(engine: GameEngine, config: Partial<FrameLoopConfig> = {}) {
     this.engine = engine;
-    
+
     // 初始化事件执行器，传入engine引用
     this.eventExecutor = new EventExecutor(engine, config.enablePerformanceMonitoring || true);
-    
+
     // 设置默认配置
     this.config = {
       targetFPS: 60,
@@ -193,7 +187,7 @@ export class FrameLoop {
       enablePerformanceMonitoring: true,
       timeScale: 1.0,
       maxEventsPerFrame: 100,
-      ...config
+      ...config,
     };
 
     this.timeScale = this.config.timeScale;
@@ -235,8 +229,8 @@ export class FrameLoop {
     this.resetPerformanceStats();
 
     // 选择调度时钟：Worker 中可能没有 rAF
-    const hasRAF = typeof (globalThis as any).requestAnimationFrame === "function" &&
-                   typeof (globalThis as any).cancelAnimationFrame === "function";
+    const hasRAF =
+      typeof globalThis.requestAnimationFrame === "function" && typeof globalThis.cancelAnimationFrame === "function";
     this.clockKind = hasRAF ? "raf" : "timeout";
     this.performanceStats.clockKind = this.clockKind;
 
@@ -254,10 +248,10 @@ export class FrameLoop {
     }
 
     this.state = "stopped";
-    
+
     if (this.frameTimer !== null) {
-      if (this.clockKind === "raf" && typeof (globalThis as any).cancelAnimationFrame === "function") {
-        (globalThis as any).cancelAnimationFrame(this.frameTimer);
+      if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
+        globalThis.cancelAnimationFrame(this.frameTimer);
       } else {
         clearTimeout(this.frameTimer as unknown as number);
       }
@@ -267,7 +261,9 @@ export class FrameLoop {
     // 更新性能统计
     this.updatePerformanceStats();
 
-    console.log(`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`);
+    console.log(
+      `⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
+    );
   }
 
   /**
@@ -280,10 +276,10 @@ export class FrameLoop {
     }
 
     this.state = "paused";
-    
+
     if (this.frameTimer !== null) {
-      if (this.clockKind === "raf" && typeof (globalThis as any).cancelAnimationFrame === "function") {
-        (globalThis as any).cancelAnimationFrame(this.frameTimer);
+      if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
+        globalThis.cancelAnimationFrame(this.frameTimer);
       } else {
         clearTimeout(this.frameTimer as unknown as number);
       }
@@ -304,7 +300,7 @@ export class FrameLoop {
 
     this.state = "running";
     this.lastFrameTime = performance.now();
-    
+
     console.log("▶️ 帧循环已恢复");
     this.scheduleNextFrame();
   }
@@ -328,7 +324,7 @@ export class FrameLoop {
 
   /**
    * 设置时间倍率（变速播放）
-   * 
+   *
    * @param scale 时间倍率（1.0=正常，2.0=2倍速，0.5=半速）
    */
   setTimeScale(scale: number): void {
@@ -339,7 +335,7 @@ export class FrameLoop {
 
     this.timeScale = scale;
     this.config.timeScale = scale;
-    
+
     if (scale === 0) {
       this.pause();
     } else if (this.state === "paused" && scale > 0) {
@@ -351,7 +347,7 @@ export class FrameLoop {
 
   /**
    * 设置目标帧率
-   * 
+   *
    * @param fps 目标帧率
    */
   setTargetFPS(fps: number): void {
@@ -367,7 +363,7 @@ export class FrameLoop {
 
   /**
    * 注册事件处理器
-   * 
+   *
    * @param eventType 事件类型
    * @param handler 事件处理器
    */
@@ -378,7 +374,7 @@ export class FrameLoop {
 
   /**
    * 注销事件处理器
-   * 
+   *
    * @param eventType 事件类型
    */
   unregisterEventHandler(eventType: string): void {
@@ -386,10 +382,9 @@ export class FrameLoop {
     console.log(`🗑️ 注销事件处理器: ${eventType}`);
   }
 
-
   /**
    * 设置状态变化回调
-   * 
+   *
    * @param callback 状态变化回调函数
    */
   setStateChangeCallback(callback: (event: { type: string; data: any }) => void): void {
@@ -398,7 +393,7 @@ export class FrameLoop {
 
   /**
    * 获取当前状态
-   * 
+   *
    * @returns 当前帧循环状态
    */
   getState(): FrameLoopState {
@@ -407,7 +402,7 @@ export class FrameLoop {
 
   /**
    * 获取当前帧号
-   * 
+   *
    * @returns 当前帧号
    */
   getFrameNumber(): number {
@@ -416,7 +411,7 @@ export class FrameLoop {
 
   /**
    * 获取性能统计
-   * 
+   *
    * @returns 性能统计信息
    */
   getPerformanceStats(): PerformanceStats {
@@ -425,7 +420,7 @@ export class FrameLoop {
 
   /**
    * 获取帧历史
-   * 
+   *
    * @returns 帧信息历史
    */
   getFrameHistory(): FrameInfo[] {
@@ -434,7 +429,7 @@ export class FrameLoop {
 
   /**
    * 检查是否正在运行
-   * 
+   *
    * @returns 是否正在运行
    */
   isRunning(): boolean {
@@ -443,7 +438,7 @@ export class FrameLoop {
 
   /**
    * 检查是否已暂停
-   * 
+   *
    * @returns 是否已暂停
    */
   isPaused(): boolean {
@@ -459,8 +454,8 @@ export class FrameLoop {
     if (this.state !== "running") {
       return;
     }
-    if (this.clockKind === "raf" && typeof (globalThis as any).requestAnimationFrame === "function") {
-      this.frameTimer = (globalThis as any).requestAnimationFrame((timestamp: number) => {
+    if (this.clockKind === "raf" && typeof globalThis.requestAnimationFrame === "function") {
+      this.frameTimer = globalThis.requestAnimationFrame((timestamp: number) => {
         this.processFrameLoop(timestamp);
       });
     } else {
@@ -474,7 +469,7 @@ export class FrameLoop {
 
   /**
    * 主帧循环
-   * 
+   *
    * @param timestamp 当前时间戳
    */
   private processFrameLoop(timestamp: number): void {
@@ -511,12 +506,12 @@ export class FrameLoop {
 
   /**
    * 处理单帧逻辑
-   * 
+   *
    * @param deltaTime 帧间隔时间
    */
   private processFrame(deltaTime: number): void {
     const frameStartTime = performance.now();
-    
+
     // 增加帧计数
     this.frameNumber++;
 
@@ -540,17 +535,16 @@ export class FrameLoop {
       // 🔥 帧处理完成，直接发送状态更新（不需要判断是否有变化）
       if (this.onStateChange) {
         this.onStateChange({
-          type: 'frame_update',
+          type: "frame_update",
           data: {
             frameNumber: this.frameNumber,
             eventsProcessed,
             membersUpdated,
             processingTime,
-            performanceStats: this.getPerformanceStats()
-          }
+            performanceStats: this.getPerformanceStats(),
+          },
         });
       }
-
     } catch (error) {
       console.error("❌ 帧处理错误:", error);
       // 可以选择停止帧循环或继续运行
@@ -559,7 +553,7 @@ export class FrameLoop {
 
   /**
    * 处理事件队列
-   * 
+   *
    * @returns 处理的事件数量
    */
   private processEvents(): number {
@@ -573,14 +567,14 @@ export class FrameLoop {
 
     for (const event of eventsToProcess) {
       const startTime = performance.now();
-      
+
       try {
         // 同步处理事件，确保帧内完成
         const success = this.executeEventSync(event);
-        
+
         const processingTime = performance.now() - startTime;
         engineEventQueue.markAsProcessed(event.id, processingTime);
-        
+
         if (success) {
           processedCount++;
         }
@@ -600,14 +594,14 @@ export class FrameLoop {
 
   /**
    * 同步执行单个事件
-   * 
+   *
    * @param event 事件对象
    * @returns 执行是否成功
    */
   private executeEventSync(event: QueueEvent): boolean {
     // 查找对应的事件处理器
     const handler = this.eventHandlers.get(event.type);
-    
+
     if (!handler) {
       console.warn(`⚠️ 未找到事件处理器: ${event.type}`);
       return false;
@@ -626,8 +620,8 @@ export class FrameLoop {
       engineState: {
         frameNumber: this.frameNumber,
         memberManager: this.engine.getMemberManager(),
-        eventQueue: this.engine.getEventQueue()
-      }
+        eventQueue: this.engine.getEventQueue(),
+      },
     };
 
     try {
@@ -642,14 +636,13 @@ export class FrameLoop {
             engineEventQueue?.insert(newEvent);
           }
         }
-        
+
         console.log(`✅ 事件处理成功: ${event.type}`);
         return true;
       } else {
         console.warn(`⚠️ 事件处理失败: ${event.type} - ${result.error}`);
         return false;
       }
-
     } catch (error) {
       console.error(`❌ 事件处理异常: ${event.type}`, error);
       return false;
@@ -658,7 +651,7 @@ export class FrameLoop {
 
   /**
    * 同步执行事件处理器
-   * 
+   *
    * @param handler 事件处理器
    * @param event 事件对象
    * @param context 执行上下文
@@ -667,23 +660,23 @@ export class FrameLoop {
   private executeHandlerSync(handler: EventHandler, event: BaseEvent, context: ExecutionContext): EventResult {
     // 如果处理器返回Promise，我们需要同步等待
     const result = handler.execute(event, context);
-    
+
     if (result instanceof Promise) {
       // 在帧循环中，我们不能等待异步操作
       // 记录警告并返回失败
       console.warn(`⚠️ 事件处理器 ${event.type} 返回Promise，帧循环需要同步处理`);
       return {
         success: false,
-        error: 'Async handler not supported in frame loop'
+        error: "Async handler not supported in frame loop",
       };
     }
-    
+
     return result;
   }
 
   /**
    * 更新成员状态
-   * 
+   *
    * @param deltaTime 帧间隔时间
    * @returns 更新的成员数量
    */
@@ -706,29 +699,29 @@ export class FrameLoop {
 
   /**
    * 更新单个成员状态
-   * 
+   *
    * @param member 成员对象
    * @param deltaTime 帧间隔时间
    */
   private updateMemberState(member: any, deltaTime: number): void {
     // 调用成员的update方法
-    if (typeof member.update === 'function') {
+    if (typeof member.update === "function") {
       member.update(deltaTime);
     }
 
     // 推进成员的状态机
-    if (member.getFSM && typeof member.getFSM === 'function') {
+    if (member.getFSM && typeof member.getFSM === "function") {
       const fsm = member.getFSM();
       if (fsm) {
         // 发送时间推进事件到状态机
         try {
           fsm.send({
-            type: 'FRAME_UPDATE',
+            type: "FRAME_UPDATE",
             data: {
               deltaTime,
               currentFrame: this.frameNumber,
-              timeScale: this.timeScale
-            }
+              timeScale: this.timeScale,
+            },
           });
         } catch (error) {
           console.log(`状态机更新失败: ${member.getId()}`, error);
@@ -742,7 +735,7 @@ export class FrameLoop {
 
   /**
    * 更新成员的Buff状态
-   * 
+   *
    * @param member 成员对象
    * @param deltaTime 帧间隔时间
    */
@@ -758,20 +751,25 @@ export class FrameLoop {
 
   /**
    * 记录帧信息
-   * 
+   *
    * @param deltaTime 帧间隔时间
    * @param processingTime 处理时间
    * @param eventsProcessed 处理的事件数量
    * @param membersUpdated 更新的成员数量
    */
-  private recordFrameInfo(deltaTime: number, processingTime: number, eventsProcessed: number, membersUpdated: number): void {
+  private recordFrameInfo(
+    deltaTime: number,
+    processingTime: number,
+    eventsProcessed: number,
+    membersUpdated: number,
+  ): void {
     const frameInfo: FrameInfo = {
       frameNumber: this.frameNumber,
       timestamp: performance.now(),
       deltaTime,
       processingTime,
       eventsProcessed,
-      membersUpdated
+      membersUpdated,
     };
 
     this.frameHistory.push(frameInfo);
@@ -789,7 +787,7 @@ export class FrameLoop {
 
   /**
    * 更新性能统计
-   * 
+   *
    * @param frameInfo 帧信息
    */
   private updatePerformanceStats(frameInfo?: FrameInfo): void {
@@ -820,13 +818,19 @@ export class FrameLoop {
       }
 
       // 计算平均帧处理时间
-      const avgFrameTime = this.performanceStats.frameTimeHistory.reduce((sum, time) => sum + time, 0) / this.performanceStats.frameTimeHistory.length;
+      const avgFrameTime =
+        this.performanceStats.frameTimeHistory.reduce((sum, time) => sum + time, 0) /
+        this.performanceStats.frameTimeHistory.length;
       this.performanceStats.averageFrameTime = avgFrameTime;
 
       // 更新事件统计
       this.performanceStats.eventStats.totalEventsProcessed += frameInfo.eventsProcessed;
-      this.performanceStats.eventStats.averageEventsPerFrame = this.performanceStats.eventStats.totalEventsProcessed / this.frameNumber;
-      this.performanceStats.eventStats.maxEventsPerFrame = Math.max(this.performanceStats.eventStats.maxEventsPerFrame, frameInfo.eventsProcessed);
+      this.performanceStats.eventStats.averageEventsPerFrame =
+        this.performanceStats.eventStats.totalEventsProcessed / this.frameNumber;
+      this.performanceStats.eventStats.maxEventsPerFrame = Math.max(
+        this.performanceStats.eventStats.maxEventsPerFrame,
+        frameInfo.eventsProcessed,
+      );
     }
   }
 
@@ -844,8 +848,8 @@ export class FrameLoop {
       eventStats: {
         totalEventsProcessed: 0,
         averageEventsPerFrame: 0,
-        maxEventsPerFrame: 0
-      }
+        maxEventsPerFrame: 0,
+      },
     };
     this.frameHistory = [];
   }

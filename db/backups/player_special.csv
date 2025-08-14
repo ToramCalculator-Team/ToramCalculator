@@ -1,2 +1,2 @@
-id,name,baseAbi,extraAbi,templateId,masterId
-defaultPlayerSpecialId,defaultPlayerSpecial,0,0,defaultSpecialItemId,defaultPlayerId
+id,name,baseAbi,extraAbi,templateId,modifiers,masterId
+defaultPlayerSpecialId,defaultPlayerSpecial,0,0,defaultSpecialItemId,"{""mp.max + 300"",""pie.m + 10%""}",defaultPlayerId

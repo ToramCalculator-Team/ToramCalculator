@@ -1,3 +1,3 @@
 id,name,type,elementType,baseAbi,stability,extraAbi,templateId,refinement,modifiers,masterId
 defaultPlayerSubWeaponId,defaultPlayerSubWeapon,NinjutsuScroll,Normal,0,0,0,defaultSubWeaponItemId,0,"{""cspd + 250""}",defaultPlayerId
-defaultPlayerWeaponId,defaultPlayerWeapon,Magictool,Light,462,70,10,defaultWeaponItemId,15,"{""element = light"",""amp.normal + 25%"",""atk.p + 6%"",""atk.m + 12%"",""c.rate.p + 60"",""anticipate + 60%"",""res.p + 30%"",""res.m + 30%"",""antiVirus + 15%"",""mainWeapon.range - 3""}",defaultPlayerId
+defaultPlayerWeaponId,defaultPlayerWeapon,Magictool,Light,462,70,10,defaultWeaponItemId,15,"{""mainWeapon.element = light"",""amp.normal + 25%"",""atk.p + 6%"",""atk.m + 12%"",""c.rate.p + 60"",""anticipate + 60%"",""red.p + 30%"",""red.m + 30%"",""antiVirus + 15%"",""mainWeapon.range - 3""}",defaultPlayerId

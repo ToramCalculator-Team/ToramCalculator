@@ -1,4 +1,4 @@
 id,name,type,modifiers,playerId
 defaultAvatarTopId,defaultAvatarTop,Top,"{""str + 2%"",""pie.m + 9%""}",defaultPlayerId
 defaultAvatarBottomId,defaultAvaterBottom,Bottom,"{""pie.m + 7%"",""distanceDmg.short + 2%""}",defaultPlayerId
-defaultAvatarDecorationId,defaultAvatarDecoration,Decoration,"{""dodge + 6"",""pie.m + 7%""}",defaultPlayerId
+defaultAvatarDecorationId,defaultAvatarDecoration,Decoration,"{""avoid + 6"",""pie.m + 7%""}",defaultPlayerId

@@ -99,12 +99,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             const enumValue = zodValue as ZodEnum<any>;
             return (
-              <Input
-                title={inputTitle}
-                description={inputDescription}
-                state={fieldInfo(field())}
-                class={fieldCalss}
-              >
+              <Input title={inputTitle} description={inputDescription} state={fieldInfo(field())} class={fieldCalss}>
                 <EnumSelect
                   value={field().state.value as string}
                   setValue={(value) => field().setValue(value as DeepValue<T, DeepKeys<T>>)}
@@ -178,7 +173,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                             onChange={(e) => {
                               const newArray = [...arrayValue()];
                               newArray[index()] = e.target.value;
-                              field().setValue(newArray as any);
+                              field().setValue(newArray);
                             }}
                             class="w-full p-0!"
                           />
@@ -186,7 +181,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                         <Button
                           onClick={() => {
                             const newArray = arrayValue().filter((_, i) => i !== index());
-                            field().setValue(newArray as any);
+                            field().setValue(newArray);
                           }}
                         >
                           -
@@ -197,7 +192,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                   <Button
                     onClick={() => {
                       const newArray = [...arrayValue(), ""];
-                      field().setValue(newArray as any);
+                      field().setValue(newArray);
                     }}
                     class="w-full"
                   >
@@ -268,12 +263,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
         >
           {(field) => {
             return (
-              <Input
-                title={inputTitle}
-                description={inputDescription}
-                state={fieldInfo(field())}
-                class={fieldCalss}
-              >
+              <Input title={inputTitle} description={inputDescription} state={fieldInfo(field())} class={fieldCalss}>
                 <Toggle
                   id={field().name}
                   onClick={() => {

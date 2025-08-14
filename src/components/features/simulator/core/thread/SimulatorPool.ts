@@ -94,7 +94,7 @@ class EventEmitter {
 
 /**
  * 类型安全的消息序列化器
- * 
+ *
  * 使用泛型提供类型安全的Worker消息序列化功能，确保：
  * 1. 消息结构可预测
  * 2. 类型信息不丢失
@@ -146,10 +146,10 @@ class MessageSerializer {
 
   /**
    * 类型安全的消息传输准备
-   * 
+   *
    * @param message 要传输的消息
    * @returns 包含消息和可传输对象列表的传输结果
-   * 
+   *
    * 设计原则：
    * - 类型安全：保持原始消息的类型信息
    * - 性能优化：自动检测和处理Transferable对象
@@ -158,16 +158,16 @@ class MessageSerializer {
    */
   static prepareForTransfer<T>(message: T): { message: T; transferables: Transferable[] } {
     const transferables = this.findTransferables(message);
-    return { 
-      message, 
-      transferables 
+    return {
+      message,
+      transferables,
     };
   }
 }
 
 /**
  * 通用任务类型 - 使用泛型保持类型安全
- * 
+ *
  * 设计原则：
  * - 类型安全：通过泛型保持payload类型信息
  * - 通用性：不包含特定业务逻辑
@@ -297,29 +297,29 @@ export interface PoolConfig {
 
 /**
  * 通用线程池
- * 
+ *
  * 基于 Artem Khrienov 设计原则的通用线程池实现：
- * 
+ *
  * 核心功能：
  * - 通用任务执行和调度
  * - 任务重试机制和优先级队列
  * - 性能监控与指标收集
  * - 事件驱动的状态管理
  * - 优雅关闭和资源清理
- * 
+ *
  * 架构设计：
  * - 采用单层 MessageChannel 通信机制
  * - 实现响应式任务分配（Node.js ThreadPool模式）
  * - 支持多Worker并行处理
  * - 提供类型安全的API接口
- * 
+ *
  * 设计原则：
  * - 遵循 KISS 原则：保持设计简洁
  * - 遵循 YAGNI 原则：只实现当前需要的功能
  * - 遵循 SOLID 原则：单一职责，开闭原则
  * - 容错性：Worker故障自动替换
  * - 性能优化：零拷贝传输和优先级调度
- * 
+ *
  * 使用场景：
  * - 通用计算任务处理
  * - 高性能并行计算
@@ -327,14 +327,14 @@ export interface PoolConfig {
  */
 export class WorkerPool extends EventEmitter {
   // ==================== 私有属性 ====================
-  
+
   /** Worker包装器数组 - 管理所有活跃的Worker实例 */
   private workers: WorkerWrapper[] = [];
-  
+
   /** 优先级任务队列 - 实现三级优先级调度 */
   private taskQueue = new PriorityTaskQueue();
-  
-  /** 
+
+  /**
    * 任务映射表 - 跟踪所有正在执行的任务
    * Key: 任务ID, Value: 任务回调信息（Promise解析器、超时定时器、任务对象）
    */
@@ -353,13 +353,13 @@ export class WorkerPool extends EventEmitter {
 
   /** 线程池配置 - 运行时不可变，确保配置一致性 */
   private readonly config: Required<PoolConfig>;
-  
+
   /** 资源清理定时器 - 定期清理超时任务和空闲Worker */
   private cleanupInterval?: NodeJS.Timeout;
-  
+
   /** 性能监控定时器 - 定期收集和上报性能指标 */
   private monitorInterval?: NodeJS.Timeout;
-  
+
   /** 池状态标志 - 控制是否接受新任务 */
   private accepting = true;
 
@@ -368,11 +368,11 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 构造函数
-   * 
+   *
    * 初始化通用线程池，设置配置参数并启动后台服务
-   * 
+   *
    * @param config 线程池配置参数
-   * 
+   *
    * 设计原则：
    * - 延迟初始化：Worker只在首次使用时创建，节省资源
    * - 配置验证：确保所有配置参数有效
@@ -385,10 +385,10 @@ export class WorkerPool extends EventEmitter {
     // 合并用户配置和默认配置
     // 应用KISS原则：保持配置简单
     this.config = {
-      maxWorkers: config.maxWorkers || 1,        // 默认单Worker
-      taskTimeout: config.taskTimeout || 30000,  // 30秒超时
+      maxWorkers: config.maxWorkers || 1, // 默认单Worker
+      taskTimeout: config.taskTimeout || 30000, // 30秒超时
       idleTimeout: config.idleTimeout || 300000, // 5分钟空闲超时
-      maxRetries: config.maxRetries || 3,        // 最多重试3次
+      maxRetries: config.maxRetries || 3, // 最多重试3次
       maxQueueSize: config.maxQueueSize || 1000, // 队列上限1000
       monitorInterval: config.monitorInterval || 5000, // 5秒监控间隔
       ...config, // 用户配置覆盖默认值
@@ -396,8 +396,8 @@ export class WorkerPool extends EventEmitter {
 
     // 启动后台服务（不依赖Worker初始化）
     // 应用KISS原则：分离关注点，简化初始化流程
-    this.startCleanupProcess();  // 资源清理服务
-    this.startMonitoring();      // 性能监控服务
+    this.startCleanupProcess(); // 资源清理服务
+    this.startMonitoring(); // 性能监控服务
 
     // 延迟初始化Worker
     // 应用YAGNI原则：只在需要时创建资源
@@ -406,12 +406,12 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 验证配置参数
-   * 
+   *
    * 确保所有配置参数在有效范围内，防止运行时错误
-   * 
+   *
    * @param config 待验证的配置对象
    * @throws Error 当配置参数无效时抛出错误
-   * 
+   *
    * 验证规则：
    * - maxWorkers: 必须为正整数
    * - taskTimeout: 必须为正数
@@ -442,7 +442,7 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 确保Worker已初始化
-   * 
+   *
    * 实现延迟初始化模式，只在首次使用时创建Worker
    * 应用YAGNI原则：避免不必要的资源消耗
    */
@@ -455,7 +455,7 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 初始化Worker池
-   * 
+   *
    * 根据配置创建指定数量的Worker实例
    * 每个Worker都是独立的计算单元，支持并行处理
    */
@@ -467,11 +467,11 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 创建新的Worker实例
-   * 
+   *
    * 创建Worker包装器，设置通信通道和事件处理
-   * 
+   *
    * @returns WorkerWrapper 新创建的Worker包装器
-   * 
+   *
    * 设计要点：
    * - 单层通信：统一使用MessageChannel
    * - 唯一标识：每个Worker有独立的ID
@@ -484,13 +484,13 @@ export class WorkerPool extends EventEmitter {
 
     // 创建MessageChannel用于专用通信
     const channel = new MessageChannel();
-    
+
     // 创建Worker包装器
     const wrapper: WorkerWrapper = {
       worker,
-      port: channel.port2,  // 主线程持有port2
-      busy: false,          // 初始状态为空闲
-      id: createId(),       // 生成唯一ID
+      port: channel.port2, // 主线程持有port2
+      busy: false, // 初始状态为空闲
+      id: createId(), // 生成唯一ID
       lastUsed: Date.now(), // 记录最后使用时间
       metrics: {
         tasksCompleted: 0, // 已完成任务数
@@ -511,7 +511,7 @@ export class WorkerPool extends EventEmitter {
       const parsed = WorkerSystemMessageSchema.safeParse(event.data);
       if (parsed.success) {
         const sys = parsed.data;
-        this.emit('worker-message', { worker: wrapper, event: { type: sys.type, data: sys.data, taskId: sys.taskId } });
+        this.emit("worker-message", { worker: wrapper, event: { type: sys.type, data: sys.data, taskId: sys.taskId } });
         return;
       }
       this.handleWorkerMessage(wrapper, event);
@@ -531,7 +531,6 @@ export class WorkerPool extends EventEmitter {
     return wrapper;
   }
 
-
   /**
    * 处理Worker返回的消息（通过MessageChannel）
    *
@@ -544,7 +543,7 @@ export class WorkerPool extends EventEmitter {
    *
    * @param worker Worker包装器
    * @param event 消息事件
-   * 
+   *
    * 设计原则：
    * - 响应式分配：任务完成后立即处理下一个任务
    * - 容错处理：支持任务重试和错误恢复
@@ -553,10 +552,10 @@ export class WorkerPool extends EventEmitter {
    */
   private handleWorkerMessage(worker: WorkerWrapper, event: MessageEvent): void {
     const { taskId, result, error, metrics, type, data } = event.data;
-    
+
     // 发射原始消息事件，让子类处理业务逻辑
-    this.emit('worker-message', { worker, event: { taskId, result, error, metrics, type, data } });
-    
+    this.emit("worker-message", { worker, event: { taskId, result, error, metrics, type, data } });
+
     // 处理任务结果
     const taskCallback = this.taskMap.get(taskId);
     if (!taskCallback) {
@@ -593,7 +592,7 @@ export class WorkerPool extends EventEmitter {
         data: result,
         metrics,
       } as TaskExecutionResult;
-      
+
       resolve(taskResult);
       this.emit("task-completed", { taskId, result, metrics });
     }
@@ -697,11 +696,7 @@ export class WorkerPool extends EventEmitter {
   /**
    * 执行通用任务
    */
-  async executeTask(
-    type: string,
-    payload: any,
-    priority: Task["priority"] = "medium",
-  ): Promise<TaskExecutionResult> {
+  async executeTask(type: string, payload: any, priority: Task["priority"] = "medium"): Promise<TaskExecutionResult> {
     if (!this.accepting) {
       throw new Error("Pool is shutting down");
     }
@@ -731,7 +726,7 @@ export class WorkerPool extends EventEmitter {
    *
    * @param task 要处理的任务
    * @returns Promise<TaskExecutionResult> 任务执行结果
-   * 
+   *
    * 设计原则：
    * - 响应式分配：优先立即执行，避免不必要的排队
    * - 优先级调度：高优先级任务优先处理
@@ -794,7 +789,7 @@ export class WorkerPool extends EventEmitter {
    * 3. 任务重试时 - 重新分配任务
    *
    * 核心思想：响应式而非贪婪式，保证系统的响应性和公平性
-   * 
+   *
    * 设计原则：
    * - 响应式调度：任务完成后立即处理下一个
    * - 优先级保证：高优先级任务优先执行
@@ -833,7 +828,7 @@ export class WorkerPool extends EventEmitter {
    *
    * @param worker 目标Worker包装器
    * @param task 要分配的任务
-   * 
+   *
    * 设计原则：
    * - 原子性：任务分配要么成功要么失败，无中间状态
    * - 容错性：发送失败时自动重试
@@ -852,7 +847,7 @@ export class WorkerPool extends EventEmitter {
     // 应用性能优化原则，实现零拷贝传输
     const workerMessageWithTaskId = {
       taskId: task.id,
-      
+
       type: task.type,
       data: task.payload,
     };
@@ -894,7 +889,6 @@ export class WorkerPool extends EventEmitter {
     }
   }
 
-
   /**
    * 获取池状态
    */
@@ -927,7 +921,7 @@ export class WorkerPool extends EventEmitter {
   /**
    * 获取活跃的worker列表
    * 返回当前正在运行模拟的worker信息
-   * 
+   *
    * @returns 活跃worker信息数组
    */
   getActiveWorkers(): Array<{
@@ -937,7 +931,7 @@ export class WorkerPool extends EventEmitter {
     tasksCompleted: number;
     errors: number;
   }> {
-    return this.workers.map(worker => ({
+    return this.workers.map((worker) => ({
       id: worker.id,
       busy: worker.busy,
       lastUsed: worker.lastUsed,
@@ -948,7 +942,7 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 获取指定worker的详细信息
-   * 
+   *
    * @param workerId worker ID
    * @returns worker详细信息，如果不存在则返回null
    */
@@ -958,7 +952,7 @@ export class WorkerPool extends EventEmitter {
     lastUsed: number;
     metrics: WorkerMetrics;
   } | null {
-    const worker = this.workers.find(w => w.id === workerId);
+    const worker = this.workers.find((w) => w.id === workerId);
     if (!worker) {
       return null;
     }
@@ -1008,16 +1002,16 @@ export class WorkerPool extends EventEmitter {
 
   /**
    * 优雅关闭线程池
-   * 
+   *
    * 实现优雅关闭模式，确保所有任务完成后再释放资源：
    * 1. 停止接受新任务
    * 2. 等待所有活跃任务完成
    * 3. 清理定时器和后台服务
    * 4. 终止所有Worker实例
    * 5. 清理内存和状态
-   * 
+   *
    * @returns Promise<void> 关闭完成
-   * 
+   *
    * 设计原则：
    * - 优雅关闭：不强制中断正在执行的任务
    * - 资源清理：确保所有资源都被正确释放
@@ -1089,21 +1083,21 @@ export class WorkerPool extends EventEmitter {
 
 /**
  * 模拟器线程池 - 基于通用 WorkerPool 的模拟器专用实现
- * 
+ *
  * 提供模拟器业务特定的 API，同时保持通用线程池的核心功能
  */
 export class SimulatorPool extends WorkerPool {
   constructor(config: PoolConfig = {}) {
     super(config);
-    
+
     // 设置模拟器专用的事件处理器
-    this.on('worker-message', (data: { worker: WorkerWrapper; event: any }) => {
+    this.on("worker-message", (data: { worker: WorkerWrapper; event: any }) => {
       const { type, data: eventData } = data.event;
-      
+
       // 处理引擎状态更新事件
       if (type === "engine_state_update") {
         this.emit("engine_state_update", { workerId: data.worker.id, event: eventData });
-      } 
+      }
       // 处理系统事件
       else if (type === "system_event") {
         this.emit("system_event", { workerId: data.worker.id, event: eventData });
@@ -1154,7 +1148,7 @@ export class SimulatorPool extends WorkerPool {
     const result = await this.executeTask("send_intent", intent, "high");
     return {
       success: result.success,
-      error: result.error
+      error: result.error,
     };
   }
 
@@ -1184,7 +1178,7 @@ export class SimulatorPool extends WorkerPool {
     return {
       success: result.success,
       data: result.data,
-      error: result.error
+      error: result.error,
     };
   }
 
@@ -1203,10 +1197,10 @@ export class SimulatorPool extends WorkerPool {
   /** 拉取单个成员的当前 FSM 状态（即时同步一次） */
   async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
     const result = await this.executeTask("get_member_state", { memberId }, "low");
-    if (result.success && (result.data as any)?.success) {
-      return { success: true, value: (result.data as any).data?.value };
+    if (result.success && result.data?.success) {
+      return { success: true, value: result.data.data?.value };
     }
-    return { success: false, error: (result.data as any)?.error || result.error };
+    return { success: false, error: result.data?.error || result.error };
   }
 }
 

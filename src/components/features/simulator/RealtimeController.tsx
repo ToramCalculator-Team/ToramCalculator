@@ -35,6 +35,7 @@ import { findPlayerWithRelations, PlayerWithRelations } from "@db/repositories/p
 import { findMercenaryWithRelations, MercenaryWithRelations } from "@db/repositories/mercenary";
 import { findMemberWithRelations, MemberWithRelations } from "@db/repositories/member";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
 // ============================== 类型定义 ==============================
 
@@ -134,7 +135,7 @@ const controllerMachine = setup({
         WORKER_READY: "ready",
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: (event as any).error })),
+          actions: assign(({ event }) => ({ error: event.error })),
         },
       },
       after: {
@@ -150,7 +151,7 @@ const controllerMachine = setup({
         START_SIMULATION: "starting",
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: (event as any).error })),
+          actions: assign(({ event }) => ({ error: event.error })),
         },
       },
     },
@@ -160,7 +161,7 @@ const controllerMachine = setup({
         ENGINE_STATE_UPDATE: {
           target: "running",
           actions: assign(({ context, event }) => {
-            const e = event as any;
+            const e = event;
             return {
               engineStats: e.stats ?? context.engineStats,
               members: e.members ?? context.members,
@@ -169,7 +170,7 @@ const controllerMachine = setup({
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign(({ event }) => ({ error: (event as any).error })),
+          actions: assign(({ event }) => ({ error: event.error })),
         },
       },
       after: {
@@ -183,7 +184,7 @@ const controllerMachine = setup({
       on: {
         ENGINE_STATE_UPDATE: {
           actions: assign(({ context, event }) => {
-            const e = event as any;
+            const e = event;
             return {
               engineStats: e.stats ?? context.engineStats,
               members: e.members ?? context.members,
@@ -192,10 +193,10 @@ const controllerMachine = setup({
         },
         SELECT_MEMBER: {
           actions: [
-            assign(({ event }) => ({ selectedEngineMemberId: (event as any)?.memberId ?? null })),
+            assign(({ event }) => ({ selectedEngineMemberId: event?.memberId ?? null })),
             ({ context, event }) => {
               const prev = context.selectedEngineMemberId as string | null;
-              const next = (event as any)?.memberId as string | undefined;
+              const next = event?.memberId as string | undefined;
               if (prev && next && prev !== next) {
                 realtimeSimulatorPool.unwatchMember(prev);
               }
@@ -217,12 +218,12 @@ const controllerMachine = setup({
         },
         ADD_LOG: {
           actions: assign(({ context, event }) => ({
-            logs: [...context.logs, (event as any).message],
+            logs: [...context.logs, event.message],
           })),
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign((_, event) => ({ error: (event as any).error })),
+          actions: assign((_, event) => ({ error: event.error })),
         },
       },
     },
@@ -230,7 +231,7 @@ const controllerMachine = setup({
       on: {
         ENGINE_STATE_UPDATE: {
           actions: assign(({ context, event }) => {
-            const e = event as any;
+            const e = event;
             return {
               engineStats: e.stats ?? context.engineStats,
               members: e.members ?? context.members,
@@ -240,7 +241,7 @@ const controllerMachine = setup({
         RESUME_SIMULATION: "running",
         STOP_SIMULATION: "stopping",
         SELECT_MEMBER: {
-          actions: assign((_, event) => ({ selectedEngineMemberId: (event as any).memberId })),
+          actions: assign((_, event) => ({ selectedEngineMemberId: event.memberId })),
         },
         SEND_INTENT: {
           actions: "sendIntent",
@@ -252,12 +253,12 @@ const controllerMachine = setup({
         },
         ADD_LOG: {
           actions: assign(({ context, event }) => ({
-            logs: [...context.logs, (event as any).message],
+            logs: [...context.logs, event.message],
           })),
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign((_, event) => ({ error: (event as any).error })),
+          actions: assign((_, event) => ({ error: event.error })),
         },
       },
     },
@@ -267,7 +268,7 @@ const controllerMachine = setup({
         ENGINE_STATE_UPDATE: {
           target: "ready",
           actions: assign(({ context, event }) => {
-            const e = event as any;
+            const e = event;
             return {
               engineStats: e.stats ?? context.engineStats,
               members: e.members ?? context.members,
@@ -276,7 +277,7 @@ const controllerMachine = setup({
         },
         WORKER_ERROR: {
           target: "error",
-          actions: assign({ error: (_, event) => (event as any).error }),
+          actions: assign({ error: (_, event) => event.error }),
         },
       },
       after: {
@@ -362,8 +363,8 @@ export default function RealtimeController() {
                 totalFrames: event.engineView.frameLoop.totalFrames,
                 totalRunTime: event.engineView.frameLoop.totalRunTime,
                 clockKind: event.engineView.frameLoop.clockKind,
-                skippedFrames: (event.engineView.frameLoop as any).skippedFrames,
-                frameBudgetMs: (event.engineView.frameLoop as any).frameBudgetMs,
+                skippedFrames: event.engineView.frameLoop.skippedFrames,
+                frameBudgetMs: event.engineView.frameLoop.frameBudgetMs,
                 // 保留历史数组引用，不在此高频事件里更新
               },
               eventQueueStats: {
@@ -756,7 +757,7 @@ export default function RealtimeController() {
             </div>
             <div class="flex items-center gap-2 portrait:hidden">
               <span class="text-sm font-medium">时钟</span>
-              <span class="text-sm">{(context().engineStats.frameLoopStats as any).clockKind || "raf"}</span>
+              <span class="text-sm">{(context().engineStats.frameLoopStats ).clockKind || "raf"}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium">队列</span>
@@ -766,11 +767,19 @@ export default function RealtimeController() {
         </div>
       </div> */}
       {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
-      <div class="col-span-12 row-span-9 flex flex-col items-center gap-2 overflow-y-auto portrait:row-span-8">
-        <Show when={selectedEngineMember()}>
-          <MemberStatusPanel member={selectedEngineMember} />
-        </Show>
-      </div>
+
+      <OverlayScrollbarsComponent
+        element="div"
+        options={{ scrollbars: { autoHide: "scroll" } }}
+        defer
+        class="col-span-12 row-span-9 portrait:row-span-8"
+      >
+        <div class="flex flex-col items-center gap-2">
+          <Show when={selectedEngineMember()}>
+            <MemberStatusPanel member={selectedEngineMember} />
+          </Show>
+        </div>
+      </OverlayScrollbarsComponent>
 
       {/* 技能面板 */}
       <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">

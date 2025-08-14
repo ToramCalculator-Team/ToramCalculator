@@ -88,11 +88,10 @@ export class MessageRouter {
 
       // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
       try {
-
         // 输入意图到 FSM 事件的映射（解耦 UI/意图 与 内部 FSM 事件语义）
         const mapped = this.mapIntentToFsmEvent(targetMember, message);
 
-        targetMember.send(mapped as any);
+        targetMember.send(mapped);
 
         this.stats.successfulMessages++;
 
@@ -217,7 +216,7 @@ export class MessageRouter {
   ): { type: string; data?: Record<string, any> } {
     // 统一协议：直接透传主线程传入的 FSM 事件名与数据
     const { type, data } = message;
-    return { type, data } as any;
+    return { type, data };
   }
 }
 

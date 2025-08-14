@@ -43,27 +43,26 @@ const ENUM_MAPPINGS = createEnumMappings();
 // 数据存储接口，用于向外传输
 export type DataStorage = {
   displayName: string;
-  baseValue: {
-    sourceId: number;
-    value: number;
-  }[];
+  expression: string;
+  baseValue: number;
+  actValue: number;
   static: {
     fixed: {
-      sourceId: number;
+      sourceId: string;
       value: number;
     }[];
     percentage: {
-      sourceId: number;
+      sourceId: string;
       value: number;
     }[];
   };
   dynamic: {
     fixed: {
-      sourceId: number;
+      sourceId: string;
       value: number;
     }[];
     percentage: {
-      sourceId: number;
+      sourceId: string;
       value: number;
     }[];
   };
@@ -75,10 +74,17 @@ export type DataStorages<T extends string> = {
 
 // 类型谓词函数，用于检查对象是否为DataStorage类型
 export function isDataStorageType(obj: unknown): obj is DataStorage {
-  return typeof obj === "object" && obj !== null && "displayName" in obj && "displayName" in obj;
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "displayName" in obj &&
+    "baseValue" in obj &&
+    "static" in obj &&
+    "dynamic" in obj
+  );
 }
 
-// 计算动态总值（简化版本）
+// 计算动态总值
 export function dynamicTotalValue(data: DataStorage): number {
   if (!data || typeof data !== "object") return 0;
 
@@ -91,9 +97,7 @@ export function dynamicTotalValue(data: DataStorage): number {
   let totalPercentage = staticPercentage + dynamicPercentage;
   let totalFixed = staticFixed + dynamicFixed;
 
-  if (data.baseValue) {
-    baseValue = data.baseValue.reduce((acc, curr) => acc + curr.value, 0);
-  }
+  baseValue = Number(data.baseValue) || 0;
 
   // 添加静态修正值
   if (data.static.fixed) {
@@ -115,6 +119,8 @@ export function dynamicTotalValue(data: DataStorage): number {
     dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
   }
 
+  totalFixed = staticFixed + dynamicFixed;
+  totalPercentage = staticPercentage + dynamicPercentage;
   total = baseValue * ((100 + totalPercentage) / 100) + totalFixed;
 
   // console.table({
@@ -140,10 +146,11 @@ export function dynamicTotalValue(data: DataStorage): number {
 export interface SchemaAttribute {
   displayName: string;
   expression: string;
+  noBaseValue?: boolean;
 }
 
 export const isSchemaAttribute = (x: unknown): x is SchemaAttribute => {
-  return !!x && typeof x === "object" && "displayName" in (x as any) && "expression" in (x as any);
+  return !!x && typeof x === "object" && "displayName" in x && "expression" in x;
 };
 
 /**
@@ -217,6 +224,7 @@ export class SchemaFlattener {
           expressions.set(attrKey, {
             displayName: value.displayName,
             expression: value.expression,
+            noBaseValue: Boolean(value.noBaseValue),
           });
 
           displayNames.set(attrKey, value.displayName);
@@ -263,6 +271,7 @@ export interface Modifier {
 export interface AttributeExpression {
   displayName: string;
   expression: string;
+  noBaseValue?: boolean;
 }
 
 // ============================== 枚举和常量 ==============================
@@ -513,6 +522,10 @@ export class ReactiveSystem<T extends string> {
 
   /** 显示名称映射（用于调试） */
   private readonly displayNames: Map<T, string>;
+  /** 表达式原文映射（用于导出展示） */
+  private readonly expressionStrings: Map<T, string> = new Map();
+  /** 标记属性是否为 noBaseValue（百分比应转换为小数fixed累加） */
+  private readonly isNoBaseValue: boolean[] = [];
 
   // 不再持有 Member 引用，避免循环依赖；表达式通过注入的 _get 函数访问值
 
@@ -565,10 +578,20 @@ export class ReactiveSystem<T extends string> {
     this.keyToIndex = new Map();
     this.indexToKey = attrKeys;
     this.displayNames = displayNames;
-
+    // 记录表达式原文，便于导出展示
+    for (const [key, expr] of expressions) {
+      this.expressionStrings.set(key, expr.expression);
+    }
     attrKeys.forEach((key, index) => {
       this.keyToIndex.set(key, index);
     });
+
+    // 初始化 noBaseValue 标记数组（在 keyToIndex 完成后）
+    this.isNoBaseValue = new Array(keyCount).fill(false);
+    for (const [key, expr] of expressions) {
+      const idx = this.keyToIndex.get(key);
+      if (idx !== undefined && expr.noBaseValue) this.isNoBaseValue[idx] = true;
+    }
 
     // 初始化依赖图和JS处理器
     this.dependencyGraph = new DependencyGraph(keyCount);
@@ -614,6 +637,19 @@ export class ReactiveSystem<T extends string> {
 
     const result: Record<string, unknown> = {};
 
+    // 收集指定类型在某属性索引下的全部来源条目
+    const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
+      const perType = this.modifierSources.get(type);
+      const perAttr = perType?.get(attrIndex);
+      const out: Array<{ sourceId: string; value: number }> = [];
+      if (perAttr) {
+        for (const [sourceId, value] of perAttr) {
+          out.push({ sourceId, value });
+        }
+      }
+      return out;
+    };
+
     const setNested = (root: Record<string, unknown>, path: string[], leafKey: string, value: number) => {
       let current: Record<string, unknown> = root;
       for (const seg of path) {
@@ -629,26 +665,30 @@ export class ReactiveSystem<T extends string> {
       const index = this.keyToIndex.get(attrPath as T);
       const storage: DataStorage = {
         displayName: this.displayNames.get(attrPath as T) || attrPath,
-        baseValue: [],
+        expression: this.expressionStrings.get(attrPath as T) || "",
+        baseValue: 0,
+        actValue: Number.isFinite(value) ? value : 0,
         static: { fixed: [], percentage: [] },
         dynamic: { fixed: [], percentage: [] },
       };
       if (index !== undefined) {
-        // 汇总 BASE_VALUE 作为单一来源（sourceId=0）
-        const base = this.modifierArrays[ModifierType.BASE_VALUE][index];
-        if (Number.isFinite(base) && base !== 0) {
-          storage.baseValue.push({ sourceId: 0, value: base });
+        // 基础值：若为计算属性，则取表达式计算结果作为“基础值”；否则读取 BASE_VALUE 槽位
+        let base = this.modifierArrays[ModifierType.BASE_VALUE][index];
+        if (BitFlags.has(this.flags, index, AttributeFlags.HAS_COMPUTATION)) {
+          const computationFn = this.computationFunctions.get(index);
+          if (computationFn) {
+            try {
+              base = computationFn();
+            } catch {
+              base = 0;
+            }
+          }
         }
-        // 静态修饰
-        const sFixed = this.modifierArrays[ModifierType.STATIC_FIXED][index];
-        if (Number.isFinite(sFixed) && sFixed !== 0) storage.static.fixed.push({ sourceId: 0, value: sFixed });
-        const sPct = this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
-        if (Number.isFinite(sPct) && sPct !== 0) storage.static.percentage.push({ sourceId: 0, value: sPct });
-        // 动态修饰
-        const dFixed = this.modifierArrays[ModifierType.DYNAMIC_FIXED][index];
-        if (Number.isFinite(dFixed) && dFixed !== 0) storage.dynamic.fixed.push({ sourceId: 0, value: dFixed });
-        const dPct = this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
-        if (Number.isFinite(dPct) && dPct !== 0) storage.dynamic.percentage.push({ sourceId: 0, value: dPct });
+        storage.baseValue = Number.isFinite(base) ? base : 0;
+        storage.static.fixed = collect(ModifierType.STATIC_FIXED, index);
+        storage.static.percentage = collect(ModifierType.STATIC_PERCENTAGE, index);
+        storage.dynamic.fixed = collect(ModifierType.DYNAMIC_FIXED, index);
+        storage.dynamic.percentage = collect(ModifierType.DYNAMIC_PERCENTAGE, index);
       }
 
       current[leafKey] = storage as unknown as Record<string, unknown>;
@@ -674,7 +714,7 @@ export class ReactiveSystem<T extends string> {
   public exportModifierDetails(): Record<
     T,
     {
-      baseValue: Array<{ sourceId: string; value: number }>;
+      baseValue: number;
       static: {
         fixed: Array<{ sourceId: string; value: number }>;
         percentage: Array<{ sourceId: string; value: number }>;
@@ -700,7 +740,7 @@ export class ReactiveSystem<T extends string> {
     const result = {} as Record<
       T,
       {
-        baseValue: Array<{ sourceId: string; value: number }>;
+        baseValue: number;
         static: {
           fixed: Array<{ sourceId: string; value: number }>;
           percentage: Array<{ sourceId: string; value: number }>;
@@ -715,7 +755,7 @@ export class ReactiveSystem<T extends string> {
     for (let i = 0; i < this.indexToKey.length; i++) {
       const key = this.indexToKey[i];
       result[key] = {
-        baseValue: collect(ModifierType.BASE_VALUE, i),
+        baseValue: this.modifierArrays[ModifierType.BASE_VALUE][i],
         static: {
           fixed: collect(ModifierType.STATIC_FIXED, i),
           percentage: collect(ModifierType.STATIC_PERCENTAGE, i),
@@ -802,11 +842,23 @@ export class ReactiveSystem<T extends string> {
       console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
       return;
     }
+    // 对 noBaseValue 属性：将百分比修饰符转为小数并落入 fixed 通道
+    let type = targetType;
+    let amount = value;
+    if (this.isNoBaseValue[index]) {
+      if (targetType === ModifierType.STATIC_PERCENTAGE) {
+        type = ModifierType.STATIC_FIXED;
+        amount = value; // 按百分数字面量存储（避免被整型取整为0）
+      } else if (targetType === ModifierType.DYNAMIC_PERCENTAGE) {
+        type = ModifierType.DYNAMIC_FIXED;
+        amount = value; // 按百分数字面量存储
+      }
+    }
     // 来源聚合：记录 sourceId 的值并同步到累加数组
-    let perType = this.modifierSources.get(targetType);
+    let perType = this.modifierSources.get(type);
     if (!perType) {
       perType = new Map();
-      this.modifierSources.set(targetType, perType);
+      this.modifierSources.set(type, perType);
     }
     let perAttr = perType.get(index);
     if (!perAttr) {
@@ -814,13 +866,40 @@ export class ReactiveSystem<T extends string> {
       perType.set(index, perAttr);
     }
     const prev = perAttr.get(source.id) ?? 0;
-    const next = prev + value;
+    const next = prev + amount;
     perAttr.set(source.id, next);
     const delta = next - prev;
-    this.modifierArrays[targetType][index] += delta;
+    this.modifierArrays[type][index] += delta;
     this.markDirty(index);
 
-    console.log(`✅ 成功添加修饰器: ${attr} ${targetType.toString()} +${value} (来源: ${source.name})`);
+    // console.log(`✅ 成功添加修饰器: ${attr} ,位置${targetType.toString()} ,值${value} (来源: ${source.name})`);
+  }
+
+  /**
+   * 绝对设置基础值（覆盖所有已有 BASE_VALUE 来源）
+   */
+  setBaseValue(attr: T, value: number, sourceId: string = "system:set_base"): void {
+    const index = this.keyToIndex.get(attr);
+    if (index === undefined) {
+      console.warn(`⚠️ 尝试为不存在的属性设置基础值: ${attr}`);
+      return;
+    }
+
+    // 更新来源聚合：清空该属性的 BASE_VALUE 来源并写入新值
+    let perType = this.modifierSources.get(ModifierType.BASE_VALUE);
+    if (!perType) {
+      perType = new Map();
+      this.modifierSources.set(ModifierType.BASE_VALUE, perType);
+    }
+    const perAttr = new Map<string, number>();
+    perAttr.set(sourceId, value);
+    perType.set(index, perAttr);
+
+    // 直接设置底层 BASE_VALUE 槽位
+    this.modifierArrays[ModifierType.BASE_VALUE][index] = value;
+    this.markDirty(index);
+
+    console.log(`✅ 成功设置基础值: ${attr} = ${value} (来源: ${sourceId})`);
   }
 
   /**
@@ -1030,6 +1109,15 @@ export class ReactiveSystem<T extends string> {
 
     const totalPercentage = staticPercentage + dynamicPercentage;
     const totalFixed = staticFixed + dynamicFixed;
+
+    // noBaseValue 属性：实际值 = 基础值 + (加成总量/100)
+    if (this.isNoBaseValue[index]) {
+      const computationFn = this.computationFunctions.get(index);
+      const baseValue = computationFn ? computationFn() : this.modifierArrays[ModifierType.BASE_VALUE][index];
+      const additions = totalFixed; // 百分数点累加
+      const value = baseValue + additions / 100;
+      return value;
+    }
 
     // 如果有计算函数，先计算基础值，然后应用修饰符
     const computationFn = this.computationFunctions.get(index);

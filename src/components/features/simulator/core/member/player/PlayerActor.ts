@@ -61,7 +61,7 @@ export const createPlayerActor = (props: {
       onCastStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         console.log(`🎮 [${context.config.name}] 前摇开始事件`, event);
         try {
-          const data = (event as any)?.data || {};
+          const data = event?.data || {};
           const skillId = data?.skillId;
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           const executor = context.engine.getFrameLoop().getEventExecutor();
@@ -74,7 +74,7 @@ export const createPlayerActor = (props: {
               currentFrame,
               caster: context.id,
               skill: { id: skillId },
-            } as any);
+            });
             if (res.success && Number.isFinite(res.value)) mpCost = Math.max(0, Math.round(res.value));
           }
           const currentMp = context.attrs.getValue("mp.current");
@@ -95,7 +95,7 @@ export const createPlayerActor = (props: {
               currentFrame,
               caster: context.id,
               skill: { id: skillId },
-            } as any);
+            });
             if (res.success && Number.isFinite(res.value)) preCastFrames = Math.max(0, Math.round(res.value));
           }
 
@@ -119,7 +119,7 @@ export const createPlayerActor = (props: {
       onSkillEffect: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         console.log(`🎮 [${context.config.name}] 技能效果事件`, event);
         try {
-          const data = (event as any)?.data || {};
+          const data = event?.data || {};
           const skillId = data?.skillId;
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           // 交给引擎执行技能效果；处理器完成后自行追加动画结束的 FSM 事件
@@ -148,8 +148,8 @@ export const createPlayerActor = (props: {
       // 应用移动指令：更新位置
       applyMoveAssign: assign({
         position: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-          const pos = (event as any)?.data?.position;
-          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+          const pos = event?.data?.position;
+          if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
             return { x: Math.round(pos.x), y: Math.round(pos.y) };
           }
           return context.position;
@@ -161,22 +161,22 @@ export const createPlayerActor = (props: {
       scheduleStopMove: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         try {
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-          const pos = (event as any)?.data?.position;
+          const pos = event?.data?.position;
           context.engine.getEventQueue().insert({
             id: `fsm_stop_move_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             executeFrame: currentFrame + 1,
-            priority: 'high',
-            type: 'member_fsm_event',
-            payload: { targetMemberId: context.id, fsmEventType: 'stop_move', data: { position: pos } },
-            source: 'player_fsm',
-          } as any);
+            priority: "high",
+            type: "member_fsm_event",
+            payload: { targetMemberId: context.id, fsmEventType: "stop_move", data: { position: pos } },
+            source: "player_fsm",
+          });
         } catch {}
       },
 
       onChargeStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
         console.log(`🎮 [${context.config.name}] 开始蓄力事件`, event);
         try {
-          const data = (event as any)?.data || {};
+          const data = event?.data || {};
           const skillId = data?.skillId;
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           const executor = context.engine.getFrameLoop().getEventExecutor();
@@ -188,7 +188,7 @@ export const createPlayerActor = (props: {
               currentFrame,
               caster: context.id,
               skill: { id: skillId },
-            } as any);
+            });
             if (res.success && Number.isFinite(res.value)) chargeFrames = Math.max(0, Math.round(res.value));
           }
 
@@ -392,11 +392,11 @@ export const createPlayerActor = (props: {
                 },
               },
               moving: {
-                entry: { type: 'applyMoveAssign' },
+                entry: { type: "applyMoveAssign" },
                 on: {
                   stop_move: { target: "idle" },
                 },
-                exit: { type: 'scheduleStopMove' },
+                exit: { type: "scheduleStopMove" },
               },
               skill_casting: {
                 initial: "skill_init",

@@ -702,9 +702,10 @@ model player_option {
     name       String
     baseAbi    Int
     extraAbi   Int
-    template   option    @relation(fields: [templateId], references: [itemId])
+    template   option?   @relation(fields: [templateId], references: [itemId])
     templateId String
     refinement Int
+    modifiers  String[]
     crystals   crystal[]
 
     master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
@@ -720,8 +721,9 @@ model player_special {
     name       String
     baseAbi    Int
     extraAbi   Int
-    template   special   @relation(fields: [templateId], references: [itemId])
+    template   special?  @relation(fields: [templateId], references: [itemId])
     templateId String
+    modifiers  String[]
     crystals   crystal[]
 
     master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
@@ -802,7 +804,7 @@ model character {
     partnerSkillAType String // Enum PARTNER_SKILL_TYPE
     partnerSkillBId   String?
     partnerSkillBType String // Enum PARTNER_SKILL_TYPE
-    consumableList    consumable[]
+    consumables       consumable[]
     combos            combo[]
     master            player            @relation(fields: [masterId], references: [id], onDelete: Cascade)
     masterId          String

@@ -3,6 +3,7 @@
  */
 import { CharacterWithRelations } from "@db/repositories/character";
 import { MainHandType, SubHandType } from "@db/schema/enums";
+import { NestedSchema } from "../ReactiveSystem";
 
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 
@@ -676,7 +677,7 @@ export const SubWeaponTypeMap: Record<
  * - 每个属性包含displayName(显示名称)、expression(计算表达式)
  * - 嵌套结构便于用户理解和DSL编写 (如 self.lv, self.atk.p)
  * - 属性路径小驼峰化后作为实际存储结构的键名，表达式内的属性调用使用当前结构自身的属性路径
- * 
+ *
  * 命名说明：
  * XX基础值：指的是可被百分比加成和常数加成增幅的属性，比如基础智力（可被百分比智力加成和常数智力加成增幅）、
  *          基础武器攻击（可被百分比武器攻击加成和常数武器攻击加成增幅）
@@ -692,7 +693,7 @@ export const SubWeaponTypeMap: Record<
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchema = (character: CharacterWithRelations) => {
+export const PlayerAttrSchema = (character: CharacterWithRelations): NestedSchema => {
   const mainWeaponType = character.weapon.type as MainHandType;
   const subWeaponType = character.subWeapon.type as SubHandType;
   return {
@@ -745,6 +746,10 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
         displayName: "主武器射程",
         expression: `${MainWeaponTypeMap[mainWeaponType].range}`,
       },
+      element: {
+        displayName: "属性觉醒",
+        expression: "Normal",
+      },
       baseAtk: {
         displayName: "主武器基础攻击",
         expression: `${character.weapon.baseAbi}`,
@@ -760,6 +765,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       stability: {
         displayName: "主武器稳定性",
         expression: `${character.weapon.stability}`,
+        noBaseValue: true,
       },
     },
 
@@ -767,6 +773,10 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       range: {
         displayName: "副武器射程",
         expression: `${SubWeaponTypeMap[subWeaponType].range}`,
+      },
+      element: {
+        displayName: "属性觉醒",
+        expression: "Normal",
       },
       type: {
         displayName: "副武器类型",
@@ -779,6 +789,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       stability: {
         displayName: "副武器稳定性",
         expression: `${character.subWeapon.stability}`,
+        noBaseValue: true,
       },
     },
 
@@ -883,10 +894,12 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       pcrToMcr: {
         displayName: "魔法暴击转化率",
         expression: "0",
+        noBaseValue: true,
       },
       pcdToMcd: {
         displayName: "魔法爆伤转化率",
         expression: "0.25",
+        noBaseValue: true,
       },
     },
 
@@ -950,10 +963,12 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       p: {
         displayName: "物理贯穿",
         expression: "0",
+        noBaseValue: true,
       },
       m: {
         displayName: "魔法贯穿",
         expression: "0",
+        noBaseValue: true,
       },
     },
 
@@ -972,21 +987,21 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       rate: {
         p: {
           displayName: "物理暴击率",
-          expression: "0",
+          expression: "25 + cri / 3.4",
         },
         m: {
           displayName: "魔法暴击率",
-          expression: "0",
+          expression: "c.rate.p * conv.pcrToMcr",
         },
       },
       dmg: {
         p: {
           displayName: "物理暴击伤害",
-          expression: "0",
+          expression: "150 + ( str > agi ? str /10 : (str + agi) /20 )",
         },
         m: {
           displayName: "魔法暴击伤害",
-          expression: "0",
+          expression: "100 + ( c.dmg.p - 100 ) * conv.pcdToMcd",
         },
       },
     },
@@ -1004,76 +1019,94 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
 
     red: {
       p: {
-        displayName: "物理减轻",
+        displayName: "物理伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       m: {
-        displayName: "魔法减轻",
+        displayName: "魔法伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       rate: {
         displayName: "百分比伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       water: {
-        displayName: "水属性减轻",
+        displayName: "水属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       fire: {
-        displayName: "火属性减轻",
+        displayName: "火属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       earth: {
-        displayName: "地属性减轻",
+        displayName: "地属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       wind: {
-        displayName: "风属性减轻",
+        displayName: "风属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       light: {
-        displayName: "光属性减轻",
+        displayName: "光属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       dark: {
-        displayName: "暗属性减轻",
+        displayName: "暗属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       normal: {
-        displayName: "无属性减轻",
+        displayName: "无属性伤害减轻",
         expression: "0",
+        noBaseValue: true,
       },
       floor: {
         displayName: "地面伤害减轻（地刺）",
         expression: "0",
+        noBaseValue: true,
       },
       meteor: {
         displayName: "陨石伤害减轻（天火）",
         expression: "0",
+        noBaseValue: true,
       },
       playerEpicenter: {
         displayName: "范围伤害减轻（以玩家为中心的范围伤害）",
         expression: "0",
+        noBaseValue: true,
       },
       foeEpicenter: {
         displayName: "敌方周围伤害减轻（以怪物自身为中心的范围伤害）",
         expression: "0",
+        noBaseValue: true,
       },
       bowling: {
         displayName: "贴地伤害减轻（剑气、风刃）",
         expression: "0",
+        noBaseValue: true,
       },
       bullet: {
         displayName: "子弹伤害减轻（各种球）",
         expression: "0",
+        noBaseValue: true,
       },
       straightLine: {
         displayName: "直线伤害减轻（激光）",
         expression: "0",
+        noBaseValue: true,
       },
       charge: {
         displayName: "冲撞伤害减轻（怪物的位移技能）",
         expression: "0",
+        noBaseValue: true,
       },
     },
 
@@ -1081,30 +1114,37 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       water: {
         displayName: "对水属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       fire: {
         displayName: "对火属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       earth: {
         displayName: "对地属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       wind: {
         displayName: "对风属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       light: {
         displayName: "对光属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       dark: {
         displayName: "对暗属性增强",
         expression: "0",
+        noBaseValue: true,
       },
       normal: {
         displayName: "对无属性增强",
         expression: "0",
+        noBaseValue: true,
       },
     },
 
@@ -1123,13 +1163,14 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       },
       recharge: {
         displayName: "屏障回复速度",
-        expression: "0",
+        expression: "30",
       },
     },
 
     antiVirus: {
       displayName: "异常抗性",
-      expression: "0",
+      expression: "men / 3.4",
+      noBaseValue: true,
     },
 
     pursuit: {
@@ -1137,10 +1178,12 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
         p: {
           displayName: "物理追击概率",
           expression: "0",
+          noBaseValue: true,
         },
         m: {
           displayName: "魔法追击概率",
           expression: "0",
+          noBaseValue: true,
         },
       },
       dmg: {
@@ -1169,19 +1212,14 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       expression: "100",
     },
 
-    element: {
-      displayName: "属性觉醒",
-      expression: "Normal",
-    },
-
     distanceDmg: {
       short: {
         displayName: "近距离伤害",
-        expression: "0",
+        expression: "100",
       },
       long: {
         displayName: "远距离伤害",
-        expression: "0",
+        expression: "100",
       },
     },
 
@@ -1236,16 +1274,19 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
     anticipate: {
       displayName: "看穿",
       expression: "0",
+      noBaseValue: true,
     },
 
     guardBreak: {
       displayName: "破防",
       expression: "0",
+      noBaseValue: true,
     },
 
     reflect: {
       displayName: "反弹伤害",
       expression: "0",
+      noBaseValue: true,
     },
 
     aspd: {
@@ -1255,6 +1296,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
     mspd: {
       displayName: "行动速度",
       expression: "0",
+      noBaseValue: true,
     },
     cspd: {
       displayName: "咏唱速度",
@@ -1263,6 +1305,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
     cspr: {
       displayName: "咏唱缩减",
       expression: "0",
+      noBaseValue: true,
     },
 
     aggro: {
@@ -1279,26 +1322,28 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       rate: {
         displayName: "掉宝率",
         expression: "0",
+        noBaseValue: true,
       },
       gemPowder: {
         displayName: "晶石粉末掉落",
         expression: "0",
+        noBaseValue: true,
       },
     },
     exp: {
       rate: {
         displayName: "经验加成",
-        expression: "0",
+        expression: "100",
       },
       pet: {
         displayName: "宠物经验",
-        expression: "0",
+        expression: "100",
       },
     },
     revival: {
       time: {
         displayName: "复活时间",
-        expression: "0",
+        expression: "300",
       },
     },
     flinchUnavailable: {

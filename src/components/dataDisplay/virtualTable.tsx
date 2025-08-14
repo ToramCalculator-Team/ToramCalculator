@@ -34,10 +34,27 @@ import { Button } from "../controls/button";
 import { Motion, Presence } from "solid-motionone";
 import { MediaContext } from "~/lib/contexts/Media";
 import { Dic, EnumFieldDetail } from "~/locales/type";
-import { getCommonPinningStyles } from "~/lib/utils/table";
 import { debounce } from "@solid-primitives/scheduled";
-import type { Table as TanStackTable } from "@tanstack/solid-table";
+import type { Column, Table as TanStackTable } from "@tanstack/solid-table";
 import { LoadingBar } from "../controls/loadingBar";
+
+// 获取表头样式
+export const getCommonPinningStyles = <T,>(column: Column<T>): JSX.CSSProperties => {
+  const isPinned = column.getIsPinned();
+  const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
+  const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+  const styles: JSX.CSSProperties = {
+    position: isPinned ? "sticky" : "relative",
+    width: column.getSize().toString(),
+    "z-index": isPinned ? 1 : 0,
+  };
+  if (isPinned) {
+    styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
+    styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
+    styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+  }
+  return styles;
+};
 
 export function VirtualTable<T extends Record<string, unknown>>(props: {
   measure?: {

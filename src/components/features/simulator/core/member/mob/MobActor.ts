@@ -5,13 +5,20 @@
  * - 行为只产生意图/事件，由全局事件执行器处理副作用
  */
 
-import { assign, createActor, setup, type Actor, type EventObject, type NonReducibleUnknown, type StateMachine } from "xstate";
+import {
+  assign,
+  createActor,
+  setup,
+  type Actor,
+  type EventObject,
+  type NonReducibleUnknown,
+  type StateMachine,
+} from "xstate";
 import type { MemberWithRelations } from "@db/repositories/member";
 import GameEngine from "../../GameEngine";
 import { ReactiveSystem, ExtractAttrPaths, ModifierType } from "../ReactiveSystem";
 import { MobAttrSchema } from "./MobData";
 import { MemberActor, MemberContext, MemberEventType, MemberStateMachine } from "../MemberType";
-
 
 /**
  * Mob 的属性键类型（基于 MobAttrSchema 提取 DSL 路径）
@@ -89,8 +96,8 @@ export const createMobActor = (props: {
       // 应用移动指令：更新位置
       applyMoveAssign: assign({
         position: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
-          const pos = (event as any)?.data?.position;
-          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+          const pos = event?.data?.position;
+          if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
             return { x: Math.round(pos.x), y: Math.round(pos.y) };
           }
           return context.position;
@@ -102,15 +109,15 @@ export const createMobActor = (props: {
       scheduleStopMove: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
         try {
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-          const pos = (event as any)?.data?.position;
+          const pos = event?.data?.position;
           context.engine.getEventQueue().insert({
             id: `mob_stop_move_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             executeFrame: currentFrame + 1,
-            priority: 'high',
-            type: 'member_fsm_event',
-            payload: { targetMemberId: context.id, fsmEventType: 'stop_move', data: { position: pos } },
-            source: 'mob_fsm',
-          } as any);
+            priority: "high",
+            type: "member_fsm_event",
+            payload: { targetMemberId: context.id, fsmEventType: "stop_move", data: { position: pos } },
+            source: "mob_fsm",
+          });
         } catch {}
       },
 
@@ -136,7 +143,7 @@ export const createMobActor = (props: {
       // FSM 只做事件→意图转换，交由全局执行器处理
       processCustomEvent: ({ context, event }: { context: MemberContext<MobAttrType>; event: any }) => {
         try {
-          const data = (event as any)?.data || {};
+          const data = event?.data || {};
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           context.engine.getEventQueue().insert({
             id: `mob_custom_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -155,7 +162,7 @@ export const createMobActor = (props: {
               ...data,
             },
             source: "mob_fsm",
-          } as any);
+          });
         } catch (error) {
           console.error(`❌ [${context.config.name}] FSM事件转换失败:`, error);
         }
@@ -225,9 +232,9 @@ export const createMobActor = (props: {
                 },
               },
               moving: {
-                entry: { type: 'applyMoveAssign' },
+                entry: { type: "applyMoveAssign" },
                 on: { stop_move: { target: "idle" } },
-                exit: { type: 'scheduleStopMove' },
+                exit: { type: "scheduleStopMove" },
               },
               skill_casting: {
                 initial: "skill_init",
@@ -242,10 +249,7 @@ export const createMobActor = (props: {
                   },
                   pre_cast: {
                     on: {
-                      cast_end: [
-                        { target: "charge", guard: "hasChargeAction" },
-                        { target: "skill_effect" },
-                      ],
+                      cast_end: [{ target: "charge", guard: "hasChargeAction" }, { target: "skill_effect" }],
                     },
                     entry: { type: "onCastStart" },
                     exit: { type: "onCastEnd" },
@@ -283,5 +287,3 @@ export const createMobActor = (props: {
   const actor = createActor(machine, { id: machineId });
   return actor;
 };
-
-
