@@ -8,7 +8,7 @@
  */
 
 import { Accessor, Show, createMemo, createSignal } from "solid-js";
-import { MemberSerializeData } from "./MemberType";
+import { MemberSerializeData } from "./Member";
 import { DataStorage, isDataStorageType } from "./ReactiveSystem";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { Card } from "~/components/containers/card";
@@ -169,7 +169,7 @@ const StatsRenderer = (props: { data?: object }) => {
   return <div class="RenderObject flex w-full flex-col gap-1">{renderObject(resolved())}</div>;
 };
 
-export default function MemberStatusPanel(props: { member: Accessor<MemberSerializeData<string> | null> }) {
+export default function MemberStatusPanel(props: { member: Accessor<MemberSerializeData | null> }) {
   const selectedMemberData = createMemo(() => props.member()?.attrs);
   const [displayDetail, setDisplayDetail] = createSignal(false);
 
@@ -187,29 +187,27 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
     >
       {/* 基础信息 */}
       <Button onClick={() => setDisplayDetail(!displayDetail())} class="w-full">
-        <div class="flex w-full items-center justify-between gap-2 portrait:flex-wrap">
+        <div class="flex w-full items-center justify-between gap-2 text-sm portrait:flex-wrap landscape:p-2">
           {displayDetail() ? <Icons.Outline.Close /> : <Icons.Outline.Expand />}
           <div class="flex gap-2">
             <span class="text-main-text-color text-nowrap">名称:</span>
-            <span class="font-bold">{props.member()?.name}</span>
+            <span class="">{props.member()?.name}</span>
           </div>
           <div class="flex gap-2 portrait:hidden">
             <span class="text-main-text-color text-nowrap">类型:</span>
-            <span class="font-bold">{props.member()?.type}</span>
+            <span class="">{props.member()?.type}</span>
           </div>
           <div class="flex gap-2 portrait:hidden">
             <span class="text-main-text-color text-nowrap">活跃:</span>
-            <span class={`font-bold ${props.member()?.isActive ? "" : ""}`}>
-              {props.member()?.isActive ? "活跃" : "非活跃"}
-            </span>
+            <span class={` ${props.member()?.isAlive ? "" : ""}`}>{props.member()?.isAlive ? "存活" : "死亡"}</span>
           </div>
           <div class="flex gap-2 portrait:hidden">
             <span class="text-main-text-color text-nowrap">阵营:</span>
-            <span class="font-bold">{props.member()?.campId || "-"}</span>
+            <span class="">{props.member()?.campId || "-"}</span>
           </div>
           <div class="flex gap-2 portrait:hidden">
             <span class="text-main-text-color text-nowrap">队伍:</span>
-            <span class="font-bold">{props.member()?.teamId || "-"}</span>
+            <span class="">{props.member()?.teamId || "-"}</span>
           </div>
         </div>
       </Button>

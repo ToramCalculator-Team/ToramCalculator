@@ -899,7 +899,7 @@ export class ReactiveSystem<T extends string> {
     this.modifierArrays[ModifierType.BASE_VALUE][index] = value;
     this.markDirty(index);
 
-    console.log(`✅ 成功设置基础值: ${attr} = ${value} (来源: ${sourceId})`);
+    // console.log(`✅ 成功设置基础值: ${attr} = ${value} (来源: ${sourceId})`);
   }
 
   /**
@@ -1002,7 +1002,7 @@ export class ReactiveSystem<T extends string> {
       // 依赖关系已在上方注册
     }
 
-    console.log(`✅ 表达式和依赖关系设置完成`);
+    // console.log(`✅ 表达式和依赖关系设置完成`);
   }
 
   /**

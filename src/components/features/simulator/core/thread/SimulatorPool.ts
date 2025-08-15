@@ -5,7 +5,7 @@ import type { IntentMessage } from "./messages";
 import simulationWorker from "./Simulation.worker?worker&url";
 import { WorkerSystemMessageSchema } from "./messages";
 import { EngineStats } from "../GameEngine";
-import { MemberSerializeData } from "../member/MemberType";
+import { MemberSerializeData } from "../member/Member";
 
 // ==================== 类型定义 ====================
 

@@ -43,7 +43,7 @@ export class CustomEventHandler implements EventHandler {
           return { success: false, error: `目标成员不存在: ${targetMemberId}` };
         }
         try {
-          member.send({ type: payload.fsmEventType });
+          member.actor.send({ type: payload.fsmEventType });
           return { success: true, data: { forwarded: true, to: targetMemberId, eventType: payload.fsmEventType } };
         } catch (err) {
           return { success: false, error: err instanceof Error ? err.message : "FSM send failed" };
@@ -90,16 +90,16 @@ export class CustomEventHandler implements EventHandler {
   private handleAttributeModification(targetMemberId: string, payload: any, _context: ExecutionContext): EventResult {
     try {
       const { attribute, value, op } = payload as { attribute: string; value: number; op?: "set" | "add" };
-      const entry = this.memberManager.getMemberEntry(targetMemberId);
+      const entry = this.memberManager.getMember(targetMemberId);
       if (!entry) {
         return { success: false, error: `目标成员不存在: ${targetMemberId}` };
       }
 
       const sourceId = payload?.sourceId || `custom_event_handler_${attribute}`;
-      const current = entry.attrs.getValue(attribute);
+      const current = entry.rs.getValue(attribute);
 
       if (op === "add") {
-        entry.attrs.addModifier(attribute, ModifierType.STATIC_FIXED, Number(value) || 0, {
+        entry.rs.addModifier(attribute, ModifierType.STATIC_FIXED, Number(value) || 0, {
           id: sourceId,
           name: "custom_event_handler",
           type: "system",
@@ -107,15 +107,15 @@ export class CustomEventHandler implements EventHandler {
       } else {
         // 绝对赋值：移除旧值（同源），按差值补一个静态修饰以达成目标
         const delta = (Number(value) || 0) - (Number(current) || 0);
-        entry.attrs.removeModifier(attribute, ModifierType.STATIC_FIXED, sourceId);
-        entry.attrs.addModifier(attribute, ModifierType.STATIC_FIXED, delta, {
+        entry.rs.removeModifier(attribute, ModifierType.STATIC_FIXED, sourceId);
+        entry.rs.addModifier(attribute, ModifierType.STATIC_FIXED, delta, {
           id: sourceId,
           name: "custom_event_handler",
           type: "system",
         });
       }
 
-      const nextValue = entry.attrs.getValue(attribute);
+      const nextValue = entry.rs.getValue(attribute);
       console.log(`✅ 属性修改成功: ${attribute}: ${current} -> ${nextValue}`);
       return { success: true, data: { attribute, value: nextValue, op: op || "set" } };
     } catch (error) {

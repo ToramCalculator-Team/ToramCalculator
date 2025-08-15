@@ -39,8 +39,8 @@ export class MemberDamageHandler implements EventHandler {
       console.log(`处理伤害事件: ${event.id}`, payload);
       
       // 获取目标和施法者（使用注册表条目与 Actor 弱关联）
-      const targetEntry = this.memberManager.getMemberEntry(payload.targetId);
-      const casterEntry = payload.sourceId ? this.memberManager.getMemberEntry(payload.sourceId) : null;
+      const targetEntry = this.memberManager.getMember(payload.targetId);
+      const casterEntry = payload.sourceId ? this.memberManager.getMember(payload.sourceId) : null;
 
       if (!targetEntry) {
         return {
@@ -54,11 +54,11 @@ export class MemberDamageHandler implements EventHandler {
         currentFrame: context.currentFrame,
         caster: casterEntry
           ? ({
-              getStats: () => casterEntry.attrs.getValues() ,
+              getStats: () => casterEntry.rs.getValues() ,
             } )
           : undefined,
         target: ({
-          getStats: () => targetEntry.attrs.getValues() ,
+          getStats: () => targetEntry.rs.getValues() ,
         } ),
         skill: payload.skillId ? { id: payload.skillId } : undefined,
       };
@@ -78,8 +78,8 @@ export class MemberDamageHandler implements EventHandler {
       const finalDamage = Math.max(0, Math.floor(damageResult.value));
 
       // 通过响应式系统应用伤害（作为静态固定修饰符的负值）
-      const hpBefore = targetEntry.attrs.getValue("hp.current" );
-      targetEntry.attrs.addModifier(
+      const hpBefore = targetEntry.rs.getValue("hp.current" );
+      targetEntry.rs.addModifier(
         "hp.current" ,
         ModifierType.STATIC_FIXED,
         -finalDamage,
@@ -89,7 +89,7 @@ export class MemberDamageHandler implements EventHandler {
           type: "system",
         },
       );
-      const hpAfter = targetEntry.attrs.getValue("hp.current" );
+      const hpAfter = targetEntry.rs.getValue("hp.current" );
 
       console.log(`目标 ${payload.targetId} 受到 ${finalDamage} 点伤害: ${hpBefore} -> ${hpAfter}`);
       

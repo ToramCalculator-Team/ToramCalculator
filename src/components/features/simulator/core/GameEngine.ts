@@ -14,30 +14,20 @@
  * - 生命周期管理：管理引擎的启动、运行、停止
  */
 
-import type { TeamWithRelations } from "@db/repositories/team";
+import type { Team, TeamWithRelations } from "@db/repositories/team";
 import type { MemberWithRelations } from "@db/repositories/member";
 import { MemberManager, MemberManagerEntry } from "./MemberManager";
 import { MessageRouter } from "./MessageRouter";
-import { FrameLoop, PerformanceStats } from "./FrameLoop";
+import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
 
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
-import type {
-  QueueEvent,
-  EventPriority,
-  EventHandler,
-  BaseEvent,
-  ExecutionContext,
-  EventResult,
-  QueueStats,
-} from "./EventQueue";
-import { type MemberContext, type MemberSerializeData } from "./member/MemberType";
+import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
+import { type MemberSerializeData } from "./member/Member";
 import type { AnyStateMachine, Snapshot, Actor } from "xstate";
-import { PlayerAttrSchema } from "./member/player/PlayerData";
-import { JSExpressionProcessor, type CompilationContext, type CompileResult } from "./expression/JSExpressionProcessor";
+import { JSExpressionProcessor, type CompilationContext } from "./expression/JSExpressionProcessor";
 import { ReactiveSystem } from "./member/ReactiveSystem";
-import { cloneDeep } from "lodash-es";
 // 容器不直接依赖具体成员类型
 
 // ============================== 类型定义 ==============================
@@ -55,26 +45,12 @@ export type EngineState =
  * 引擎配置接口
  */
 export interface EngineConfig {
-  /** 目标帧率 */
-  targetFPS: number;
-  /** 最大模拟时间（秒） */
-  maxSimulationTime: number;
-  /** 快照生成间隔（帧数） */
-  snapshotInterval: number;
   /** 是否启用实时控制 */
   enableRealtimeControl: boolean;
   /** 事件队列配置 */
-  eventQueueConfig: {
-    maxQueueSize: number;
-    enablePrioritySort: boolean;
-    enableSnapshot: boolean;
-  };
+  eventQueueConfig: Partial<EventQueueConfig>;
   /** 帧循环配置 */
-  frameLoopConfig: {
-    enableFrameSkip: boolean;
-    maxFrameSkip: number;
-    enablePerformanceMonitoring: boolean;
-  };
+  frameLoopConfig: Partial<FrameLoopConfig>;
 }
 
 /**
@@ -236,6 +212,20 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 输出当前帧状态 - 引擎的直接输出方法
+   */
+  private outputFrameState(): void {
+    // 直接通知所有监听器，不需要中间的回调层
+    this.stateChangeListeners.forEach((listener) => {
+      try {
+        listener(this.getStats());
+      } catch (error) {
+        console.error("GameEngine: 状态输出监听器执行失败:", error);
+      }
+    });
+  }
+
   // ==================== 构造函数 ====================
 
   /**
@@ -249,19 +239,21 @@ export class GameEngine {
 
     // 设置默认配置
     this.config = {
-      targetFPS: 60,
-      maxSimulationTime: 120, // 120秒
-      snapshotInterval: 60, // 每60帧生成快照
       enableRealtimeControl: true,
       eventQueueConfig: {
         maxQueueSize: 10000,
         enablePrioritySort: true,
         enableSnapshot: true,
+        snapshotRetention: 0,
+        enablePerformanceMonitoring: false,
       },
       frameLoopConfig: {
+        targetFPS: 60,
         enableFrameSkip: true,
         maxFrameSkip: 5,
         enablePerformanceMonitoring: true,
+        timeScale: 0,
+        maxEventsPerFrame: 0,
       },
       ...config,
     };
@@ -287,8 +279,6 @@ export class GameEngine {
 
     console.log("GameEngine: 初始化完成");
   }
-
-  // ==================== 公共接口 ====================
 
   /**
    * 启动引擎
@@ -373,49 +363,44 @@ export class GameEngine {
   }
 
   /**
-   * 添加阵营
+   * 获取引擎状态
    *
-   * @param campId 阵营ID
-   * @param campName 阵营名称
+   * @returns 当前状态
    */
-  addCamp(campId: string, campName?: string): void {
-    this.memberManager.addCamp(campId, campName);
-    console.log(`GameEngine: 添加阵营: ${campId} - ${campName || "未命名"}`);
+  getState(): EngineState {
+    return this.state;
   }
 
   /**
-   * 添加队伍
+   * 检查引擎是否正在运行
    *
-   * @param campId 阵营ID
-   * @param teamData 队伍数据
-   * @param teamName 队伍名称
+   * @returns 是否运行中
    */
-  addTeam(campId: string, teamData: TeamWithRelations, teamName?: string): void {
-    this.memberManager.addTeam(campId, { id: teamData.id, name: teamData.name ?? undefined }, teamName);
-    console.log(`GameEngine: 添加队伍: ${teamData.id} - ${teamName || teamData.name}`);
+  isRunning(): boolean {
+    return this.state === "running";
   }
 
   /**
-   * 添加成员（委托给 memberManager）
-   *
-   * @param campId 阵营ID
-   * @param teamId 队伍ID
-   * @param memberData 成员数据
-   * @param initialState 初始状态
+   * 清理引擎资源
    */
-  addMember(
-    campId: string,
-    teamId: string,
-    memberData: MemberWithRelations,
-    initialState: {
-      currentHp?: number;
-      currentMp?: number;
-      position?: { x: number; y: number };
-    } = {},
-  ): void {
-    // 容器只负责委托，不处理具体创建逻辑
-    const member = this.memberManager.createAndRegister(memberData, campId, teamId);
-    // console.log("GameEngine: 添加成员:", member);
+  cleanup(): void {
+    // 停止引擎
+    this.stop();
+
+    // 清理成员注册表
+    this.memberManager.clear();
+
+    // 清理事件队列
+    this.eventQueue.clear();
+
+    // 重置统计
+    this.stats = {
+      totalSnapshots: 0,
+      totalEventsProcessed: 0,
+      totalMessagesProcessed: 0,
+    };
+
+    console.log("🧹 引擎资源已清理");
   }
 
   /**
@@ -434,17 +419,55 @@ export class GameEngine {
   }
 
   /**
-   * 输出当前帧状态 - 引擎的直接输出方法
+   * 添加阵营
+   *
+   * @param campId 阵营ID
+   * @param campName 阵营名称
    */
-  private outputFrameState(): void {
-    // 直接通知所有监听器，不需要中间的回调层
-    this.stateChangeListeners.forEach((listener) => {
-      try {
-        listener(this.getStats());
-      } catch (error) {
-        console.error("GameEngine: 状态输出监听器执行失败:", error);
-      }
-    });
+  addCamp(campId: string): void {
+    this.memberManager.addCamp(campId);
+  }
+
+  /**
+   * 添加队伍
+   *
+   * @param campId 阵营ID
+   * @param teamData 队伍数据
+   * @param teamName 队伍名称
+   */
+  addTeam(campId: string, teamData: Team): void {
+    this.memberManager.addTeam(campId, teamData);
+  }
+
+  /**
+   * 添加成员（委托给 memberManager）
+   *
+   * @param campId 阵营ID
+   * @param teamId 队伍ID
+   * @param memberData 成员数据
+   */
+  addMember(campId: string, teamId: string, memberData: MemberWithRelations): void {
+    // 容器只负责委托，不处理具体创建逻辑
+    const member = this.memberManager.createAndRegister(memberData, campId, teamId);
+  }
+
+  /**
+   * 获取所有成员
+   *
+   * @returns 成员数组
+   */
+  getAllMembers() {
+    return this.memberManager.getAllMembers();
+  }
+
+  /**
+   * 查找成员
+   *
+   * @param memberId 成员ID
+   * @returns 成员实例
+   */
+  findMember(memberId: string) {
+    return this.memberManager.getMember(memberId);
   }
 
   /**
@@ -454,7 +477,6 @@ export class GameEngine {
    * @returns 处理结果
    */
   async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
-    console.log("GameEngine: 处理意图消息:", message);
     if (!this.config.enableRealtimeControl) {
       return {
         success: false,
@@ -499,10 +521,6 @@ export class GameEngine {
    */
   insertEvent(event: BaseEvent, priority: EventPriority = "normal"): boolean {
     const success = this.eventQueue.insert(event, priority);
-
-    // 🔥 移除事件插入时的状态更新，因为FrameLoop会在下一帧处理时统一发送
-    // 事件插入只是将事件加入队列，实际处理在processFrame中进行
-
     return success;
   }
 
@@ -514,91 +532,6 @@ export class GameEngine {
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
     this.frameLoop.registerEventHandler(eventType, handler);
-    // console.log(`GameEngine: 注册事件处理器: ${eventType}`);
-  }
-
-  /**
-   * 获取所有成员（委托给 memberManager）
-   *
-   * @returns 成员数组
-   */
-  getAllMembers() {
-    return this.memberManager.getAllMembers();
-  }
-
-  /**
-   * 查找成员（委托给 memberManager）
-   *
-   * @param memberId 成员ID
-   * @returns 成员实例
-   */
-  findMember(memberId: string) {
-    return this.memberManager.getMember(memberId);
-  }
-
-  // ==================== 外部数据访问接口 ====================
-
-  /**
-   * 获取成员数据（外部使用 - 序列化）
-   *
-   * @param memberId 成员ID
-   * @returns 成员数据，如果不存在则返回null
-   */
-  getMemberData(memberId: string) {
-    const entry = this.memberManager.getMemberEntry(memberId);
-    if (!entry) return null;
-    const actor = this.memberManager.getMember(memberId);
-    const snapshot = actor?.getSnapshot();
-    if (!snapshot) return null;
-    return this.serializeFrom(entry);
-  }
-
-  /**
-   * 获取所有成员数据（外部使用 - 序列化）
-   *
-   * @returns 所有成员数据数组
-   */
-  getAllMemberData(): MemberSerializeData[] {
-    const ids = this.memberManager.getAllMemberIds();
-    return ids.map((id) => this.getMemberData(id)).filter((x): x is MemberSerializeData => !!x);
-  }
-
-  /**
-   * 按阵营获取成员数据（外部使用 - 序列化）
-   *
-   * @param campId 阵营ID
-   * @returns 指定阵营的成员数据数组
-   */
-  getMembersByCamp(campId: string): MemberSerializeData[] {
-    const actors = this.memberManager.getMembersByCamp(campId) as Actor<AnyStateMachine>[];
-    return actors
-      .map((actor) => {
-        const id = actor.id;
-        if (!id) return null;
-        const entry = this.memberManager.getMemberEntry(id);
-        if (!entry) return null;
-        return this.serializeFrom(entry);
-      })
-      .filter((x): x is MemberSerializeData => !!x);
-  }
-
-  /**
-   * 按队伍获取成员数据（外部使用 - 序列化）
-   *
-   * @param teamId 队伍ID
-   * @returns 指定队伍的成员数据数组
-   */
-  getMembersByTeam(teamId: string): MemberSerializeData[] {
-    const actors = this.memberManager.getMembersByTeam(teamId) as Actor<AnyStateMachine>[];
-    return actors
-      .map((actor) => {
-        const id = actor.id;
-        if (!id) return null;
-        const entry = this.memberManager.getMemberEntry(id);
-        if (!entry) return null;
-        return this.serializeFrom(entry);
-      })
-      .filter((x): x is MemberSerializeData => !!x);
   }
 
   /**
@@ -607,44 +540,13 @@ export class GameEngine {
    * @returns 当前战斗快照
    */
   getCurrentSnapshot(): BattleSnapshot {
-    const actors = this.memberManager.getAllMembers() as Actor<AnyStateMachine>[];
+    const members = this.memberManager.getAllMembers();
     const currentFrame = this.frameLoop.getFrameNumber();
 
     return {
       timestamp: performance.now(),
       frameNumber: currentFrame,
-      members: actors.map((actor) => {
-        const id = actor.id;
-        const entry = id ? this.memberManager.getMemberEntry(id) : undefined;
-        
-        // 安全地获取属性值，避免快照为空的情况
-        let attrs: Record<string, number> = {};
-        try {
-          const snapshot = actor.getSnapshot();
-          if (snapshot?.context?.attrs) {
-            attrs = (snapshot.context.attrs as ReactiveSystem<any>).exportFlatValues();
-          } else if (entry?.attrs) {
-            // 如果快照为空，直接从 entry 获取属性
-            attrs = entry.attrs.exportFlatValues();
-          }
-        } catch (error) {
-          console.warn(`⚠️ 获取成员 ${id} 属性失败:`, error);
-          // 使用 entry 中的属性作为后备
-          if (entry?.attrs) {
-            attrs = entry.attrs.exportFlatValues();
-          }
-        }
-        
-        return {
-          id: id || "",
-          name: entry?.name || id || "",
-          type: (entry?.type as string) || "",
-          campId: entry?.campId || "",
-          teamId: entry?.teamId || "",
-          isActive: !!entry?.isActive,
-          attrs,
-        };
-      }),
+      members: members.map((member) => member.serialize()),
       battleStatus: {
         isEnded: false,
         winner: undefined,
@@ -698,77 +600,48 @@ export class GameEngine {
   }
 
   /**
-   * 从目录项与Actor快照构建可序列化的成员数据
-   */
-  private serializeFrom(entry: MemberManagerEntry): MemberSerializeData {
-    // 直接从注册表保存的 ReactiveSystem 导出，避免依赖快照上下文
-    const attrs = entry.attrs.exportNestedValues();
-    
-    // 获取状态机快照，用于调试
-    let snap: any = null;
-    try {
-      snap = entry.actor.getSnapshot();
-    } catch (error) {
-      console.warn(`⚠️ 获取 Actor 快照失败: ${entry.name}`, error);
-    }
-
-    return {
-      id: entry.id,
-      name: entry.name,
-      type: entry.type,
-      isActive: entry.isActive,
-      attrs,
-      teamId: entry.teamId,
-      campId: entry.campId,
-    };
-  }
-
-  /**
-   * 获取引擎状态
+   * 获取成员数据（外部使用 - 序列化）
    *
-   * @returns 当前状态
+   * @param memberId 成员ID
+   * @returns 成员数据，如果不存在则返回null
    */
-  getState(): EngineState {
-    return this.state;
+  getMemberData(memberId: string) {
+    return this.memberManager.getMember(memberId)?.serialize();
   }
 
   /**
-   * 检查引擎是否正在运行
+   * 获取所有成员数据（外部使用 - 序列化）
    *
-   * @returns 是否运行中
+   * @returns 所有成员数据数组
    */
-  isRunning(): boolean {
-    return this.state === "running";
+  getAllMemberData(): MemberSerializeData[] {
+    return this.memberManager.getAllMembers().map((member) => member.serialize());
   }
 
   /**
-   * 清理引擎资源
+   * 按阵营获取成员数据（外部使用 - 序列化）
+   *
+   * @param campId 阵营ID
+   * @returns 指定阵营的成员数据数组
    */
-  cleanup(): void {
-    // 停止引擎
-    this.stop();
+  getMembersByCamp(campId: string): MemberSerializeData[] {
+    return this.memberManager.getMembersByCamp(campId).map((member) => member.serialize());
+  }
 
-    // 清理成员注册表
-    this.memberManager.clear();
-
-    // 清理事件队列
-    this.eventQueue.clear();
-
-    // 重置统计
-    this.stats = {
-      totalSnapshots: 0,
-      totalEventsProcessed: 0,
-      totalMessagesProcessed: 0,
-    };
-
-    console.log("🧹 引擎资源已清理");
+  /**
+   * 按队伍获取成员数据（外部使用 - 序列化）
+   *
+   * @param teamId 队伍ID
+   * @returns 指定队伍的成员数据数组
+   */
+  getMembersByTeam(teamId: string): MemberSerializeData[] {
+    return this.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
   }
 
   // ==================== 便捷访问方法 (依赖注入支持) ====================
 
   /**
    * 获取事件队列实例
-   * 供Member等组件通过Engine访问
    */
   getEventQueue(): EventQueue {
     return this.eventQueue;
@@ -776,7 +649,6 @@ export class GameEngine {
 
   /**
    * 获取成员管理器实例
-   * 供Member等组件通过Engine访问
    */
   getMemberManager(): MemberManager {
     return this.memberManager;
@@ -784,7 +656,6 @@ export class GameEngine {
 
   /**
    * 获取消息路由器实例
-   * 供Member等组件通过Engine访问
    */
   getMessageRouter(): MessageRouter {
     return this.messageRouter;
@@ -792,7 +663,6 @@ export class GameEngine {
 
   /**
    * 获取帧循环实例
-   * 供Member等组件通过Engine访问
    */
   getFrameLoop(): FrameLoop {
     return this.frameLoop;
@@ -811,11 +681,11 @@ export class GameEngine {
    */
   compileScript(code: string, memberId: string, targetId?: string): string {
     // 从目录项获取Schema
-    const entry = this.memberManager.getMemberEntry(memberId);
-    if (!entry) {
+    const member = this.memberManager.getMember(memberId);
+    if (!member) {
       throw new Error(`成员不存在: ${memberId}`);
     }
-    const schema = entry.schema;
+    const schema = member.schema;
 
     const context: CompilationContext = {
       memberId,
@@ -860,11 +730,6 @@ export class GameEngine {
     this.compiledScripts.clear();
     console.log("🧹 JS编译缓存已清理");
   }
-
-  // ==================== 私有方法 ====================
-
-  // 容器模式：不包含业务逻辑方法
-  // 战斗状态判断由外部系统负责
 
   // ==================== 私有初始化方法 ====================
 

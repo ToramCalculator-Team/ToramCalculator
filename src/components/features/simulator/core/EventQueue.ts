@@ -579,20 +579,6 @@ export class EventQueue {
   }
 
   // ==================== 私有方法 ====================
-  /**
-   * 时间戳转换为帧号（假设60fps）
-   * 
-   * @param timestamp 时间戳
-   * @returns 帧号
-   */
-  private timestampToFrame(timestamp: number): number {
-    // 以 Date.now() 作为时间基准，避免与 performance.now() 的时基不一致
-    // 将未来时间映射为距离当前的帧偏移，过去时间映射为当前帧（0 偏移）
-    const nowEpoch = Date.now();
-    const deltaMs = timestamp - nowEpoch;
-    const frameDelta = Math.floor(deltaMs / (1000 / 60));
-    return Math.max(0, frameDelta);
-  }
 
   /**
    * 插入排序（保持数组有序）

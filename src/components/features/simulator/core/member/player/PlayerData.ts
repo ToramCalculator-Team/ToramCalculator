@@ -693,7 +693,7 @@ export const SubWeaponTypeMap: Record<
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchema = (character: CharacterWithRelations): NestedSchema => {
+export const PlayerAttrSchema = (character: CharacterWithRelations) => {
   const mainWeaponType = character.weapon.type as MainHandType;
   const subWeaponType = character.subWeapon.type as SubHandType;
   return {

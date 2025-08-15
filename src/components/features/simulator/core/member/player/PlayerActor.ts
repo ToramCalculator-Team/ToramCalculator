@@ -1,65 +1,103 @@
-import { createActor, setup, assign } from "xstate";
+import { createActor, setup, assign, EventObject } from "xstate";
 import { ExtractAttrPaths, ModifierType, ReactiveSystem } from "../ReactiveSystem";
 import { PlayerAttrSchema } from "./PlayerData";
-import { MemberWithRelations } from "@db/repositories/member";
-import GameEngine from "../../GameEngine";
-import { MemberActor, MemberContext, MemberEventType, MemberStateMachine } from "../MemberType";
+import { Member, MemberEventType, MemberStateMachine } from "../Member";
+import { evalAstExpression } from "./PrebattleModifiers";
 
 /**
  * Player特有的事件类型
  * 扩展MemberEventType，包含Player特有的状态机事件
  */
+// 技能按下
+interface PlayerSkillPressEvent extends EventObject {
+  type: "skill_press";
+  data: { skillId: string };
+}
+// 前摇结束
+interface PlayerCastEndEvent extends EventObject {
+  type: "cast_end";
+  data: { skillId: string };
+}
+// 受到控制
+interface PlayerControlledEvent extends EventObject {
+  type: "controlled";
+  data: { skillId: string };
+}
+// 蓄力结束
+interface PlayerChargeEndEvent extends EventObject {
+  type: "charge_end";
+  data: { skillId: string };
+}
+// HP小于等于0
+interface PlayerHpZeroEvent extends EventObject {
+  type: "hp_zero";
+  data: { skillId: string };
+}
+// 控制时间结束
+interface PlayerControlEndEvent extends EventObject {
+  type: "control_end";
+  data: { skillId: string };
+}
+// 复活倒计时清零
+interface PlayerReviveReadyEvent extends EventObject {
+  type: "revive_ready";
+  data: { skillId: string };
+}
+// 技能动作结束
+interface PlayerSkillAnimationEndEvent extends EventObject {
+  type: "skill_animation_end";
+  data: { skillId: string };
+}
+// 判断可用性
+interface PlayerCheckAvailabilityEvent extends EventObject {
+  type: "check_availability";
+  data: { skillId: string };
+}
 type PlayerEventType =
   | MemberEventType
-  | { type: "cast_end"; data: { skillId: string } } // 前摇结束
-  | { type: "controlled"; data: { skillId: string } } // 受到控制
-  | { type: "charge_end"; data: { skillId: string } } // 蓄力结束
-  | { type: "hp_zero"; data: { skillId: string } } // HP小于等于0
-  | { type: "control_end"; data: { skillId: string } } // 控制时间结束
-  | { type: "revive_ready"; data: { skillId: string } } // 复活倒计时清零
-  | { type: "skill_press"; data: { skillId: string } } // 按下技能
-  | { type: "check_availability"; data: { skillId: string } } // 判断可用性
-  | { type: "skill_animation_end"; data: { skillId: string } }; // 技能动作结束
+  | PlayerSkillPressEvent
+  | PlayerCastEndEvent
+  | PlayerControlledEvent
+  | PlayerChargeEndEvent
+  | PlayerHpZeroEvent
+  | PlayerControlEndEvent
+  | PlayerReviveReadyEvent
+  | PlayerSkillAnimationEndEvent
+  | PlayerCheckAvailabilityEvent;
 
 // ============================== Player类 ==============================
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
-export const createPlayerActor = (props: {
-  engine: GameEngine;
-  memberData: MemberWithRelations;
-  campId: string;
-  reactiveDataManager: ReactiveSystem<PlayerAttrType>;
-}): MemberActor<PlayerAttrType> => {
-  const machineId = `Player_${props.memberData.id}`;
-  const machine: MemberStateMachine<PlayerAttrType> = setup({
+export const playerStateMachine = (
+  member: Member<PlayerAttrType>,
+): MemberStateMachine<PlayerAttrType, PlayerEventType> => {
+  const machineId = member.id;
+  return setup({
     types: {
-      context: {} as MemberContext<PlayerAttrType>,
+      context: {} as Member<PlayerAttrType>,
       events: {} as PlayerEventType,
-      output: {} as MemberContext<PlayerAttrType>,
+      output: {} as Member<PlayerAttrType>,
     },
     actions: {
       // 根据角色配置初始化玩家状态
       initializePlayerState: assign({
-        attrs: ({ context }) => context.attrs,
+        rs: ({ context }) => context.rs,
         engine: ({ context }) => context.engine,
         id: ({ context }) => context.id,
         campId: ({ context }) => context.campId,
         teamId: ({ context }) => context.teamId,
         targetId: ({ context }) => context.targetId,
         isAlive: true,
-        isActive: true,
-        lastUpdateTimestamp: 0,
-        position: ({ context }) => context.position,
       }),
 
       // 向渲染层发送 spawn 指令（副作用）
-      spawnRenderEntity: ({ context }: { context: MemberContext<PlayerAttrType> }) => {
+      spawnRenderEntity: ({ context }) => {
         try {
           // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
           const engine: any = context.engine as any;
           const memberId = context.id;
-          const name = context.config.name ?? memberId;
+          const name = context.name;
           const spawnCmd = {
             type: "render:cmd" as const,
             cmd: {
@@ -82,38 +120,55 @@ export const createPlayerActor = (props: {
             // 最简单 fallback：直接挂到 window 入口（主线程会转发到控制器）
             (globalThis as any).__SIM_RENDER__?.(spawnCmd);
           }
-          console.log("spawnRenderEntity 发送成功", spawnCmd);
         } catch (e) {
           console.warn("spawnRenderEntity 发送失败", e);
         }
       },
 
       // 技能相关事件
-      onSkillStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 技能开始事件`, event);
+      onSkillStart: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 技能开始事件`, event);
       },
 
-      onCastStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 前摇开始事件`, event);
+      onCastStart: ({ context, event }) => {
+        const e = event as PlayerSkillPressEvent;
+        console.log(`🎮 [${context.name}] 前摇开始事件`, event);
         try {
-          const data = event?.data || {};
-          const skillId = data?.skillId;
+          const skillId = e.data.skillId;
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           const executor = context.engine.getFrameLoop().getEventExecutor();
 
-          // 扣除 MP（默认 1600，可表达式）
-          let mpCost = 1600;
-          if (typeof data?.mpCost === "number") mpCost = data.mpCost;
-          if (typeof data?.mpCostExpr === "string" && data.mpCostExpr.trim()) {
-            const res = executor.executeExpression(data.mpCostExpr, {
+          const skill = context.data.player?.character?.skills?.find((s) => s.id === skillId);
+          if (!skill) {
+            console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+            return;
+          }
+          const effect = skill.template?.effects.find((e) =>
+            executor.executeExpression(e.cost, {
+              currentFrame,
+              caster: context.id,
+              skill: { id: skillId },
+            }),
+          );
+          if (!effect) {
+            console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+            return;
+          }
+          // 扣除技能消耗
+          let mpCost = 0;
+          let hpCost = 0;
+          if (typeof effect.cost === "string" && effect.cost.trim()) {
+            const res = executor.executeExpression(effect.cost, {
               currentFrame,
               caster: context.id,
               skill: { id: skillId },
             });
-            if (res.success && Number.isFinite(res.value)) mpCost = Math.max(0, Math.round(res.value));
+            if (res.success && Number.isFinite(res.value)) {
+              mpCost = Math.max(0, Math.round(res.value));
+            }
           }
-          const currentMp = context.attrs.getValue("mp.current");
-          const newMp = Math.max(0, (typeof currentMp === "number" ? currentMp : 0) - mpCost);
+          const currentMp = context.rs.getValue("mp.current");
+          const newMp = Math.max(0, currentMp - mpCost);
           context.engine.getEventQueue().insert({
             id: `mp_cost_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             executeFrame: currentFrame,
@@ -124,9 +179,9 @@ export const createPlayerActor = (props: {
 
           // 计算前摇帧数（默认 100，可表达式）
           let preCastFrames = 100;
-          if (typeof data?.preCastFrames === "number") preCastFrames = Math.max(0, Math.round(data.preCastFrames));
-          if (typeof data?.preCastExpr === "string" && data.preCastExpr.trim()) {
-            const res = executor.executeExpression(data.preCastExpr, {
+          if (typeof effect.startupFrames === "number") preCastFrames = Math.max(0, Math.round(effect.startupFrames));
+          if (typeof effect.startupFrames === "string" && effect.startupFrames.trim()) {
+            const res = executor.executeExpression(effect.startupFrames, {
               currentFrame,
               caster: context.id,
               skill: { id: skillId },
@@ -147,12 +202,12 @@ export const createPlayerActor = (props: {
         } catch {}
       },
 
-      onCastEnd: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 前摇结束事件`, event);
+      onCastEnd: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 前摇结束事件`, event);
       },
 
-      onSkillEffect: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 技能效果事件`, event);
+      onSkillEffect: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 技能效果事件`, event);
         try {
           const data = event?.data || {};
           const skillId = data?.skillId;
@@ -176,24 +231,12 @@ export const createPlayerActor = (props: {
         } catch {}
       },
 
-      onSkillAnimationEnd: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 技能动画结束事件`, event);
+      onSkillAnimationEnd: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 技能动画结束事件`, event);
       },
 
-      // 应用移动指令：更新位置
-      applyMoveAssign: assign({
-        position: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-          const pos = event?.data?.position;
-          if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-            return { x: Math.round(pos.x), y: Math.round(pos.y) };
-          }
-          return context.position;
-        },
-        lastUpdateTimestamp: () => Date.now(),
-      }),
-
       // 退出移动时调度一次 stop_move（保证状态回到 idle）
-      scheduleStopMove: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
+      scheduleStopMove: ({ context, event }) => {
         try {
           const currentFrame = context.engine.getFrameLoop().getFrameNumber();
           const pos = event?.data?.position;
@@ -208,8 +251,8 @@ export const createPlayerActor = (props: {
         } catch {}
       },
 
-      onChargeStart: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 开始蓄力事件`, event);
+      onChargeStart: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 开始蓄力事件`, event);
         try {
           const data = event?.data || {};
           const skillId = data?.skillId;
@@ -243,43 +286,41 @@ export const createPlayerActor = (props: {
         } catch {}
       },
 
-      onChargeEnd: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 蓄力结束事件`, event);
+      onChargeEnd: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 蓄力结束事件`, event);
       },
 
       // 处理死亡
       handleDeath: assign({
         isAlive: false,
-        isActive: false,
       }),
 
       // 重置HP/MP并清除状态效果
-      resetHpMpAndStatus: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 重置HP/MP并清除状态效果`);
-        context.attrs.addModifier("hp.current", ModifierType.BASE_VALUE, context.attrs.getValue("hp.max"), {
+      resetHpMpAndStatus: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 重置HP/MP并清除状态效果`);
+        context.rs.addModifier("hp.current", ModifierType.BASE_VALUE, context.rs.getValue("hp.max"), {
           id: "revive",
           name: "系统重置",
           type: "system",
         });
-        context.attrs.addModifier("mp.current", ModifierType.BASE_VALUE, context.attrs.getValue("mp.max"), {
+        context.rs.addModifier("mp.current", ModifierType.BASE_VALUE, context.rs.getValue("mp.max"), {
           id: "revive",
           name: "系统重置",
           type: "system",
         });
         assign({
           isAlive: true,
-          isActive: true,
         });
       },
 
       // 记录事件
-      logEvent: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 [${context.config.name}] 的logEvent事件: ${event.type}`, event);
+      logEvent: ({ context, event }) => {
+        console.log(`🎮 [${context.name}] 的logEvent事件: ${event.type}`, event);
       },
 
       // 处理自定义事件（精简架构：FSM转换事件到EventQueue，保持统一执行）
-      processCustomEvent: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🔄 [${context.config.name}] FSM转换自定义事件到执行队列:`, event.data);
+      processCustomEvent: ({ context, event }) => {
+        console.log(`🔄 [${context.name}] FSM转换自定义事件到执行队列:`, event.data);
 
         try {
           // FSM负责事件转换，不直接执行业务逻辑
@@ -290,7 +331,7 @@ export const createPlayerActor = (props: {
             executeFrame: context.engine.getFrameLoop().getFrameNumber() + 1, // 下一帧执行
             payload: {
               targetMemberId: context.id,
-              memberType: context.config.type,
+              memberType: context.type,
               action: event.data.action || "execute",
               scriptCode: event.data.scriptCode,
               attribute: event.data.attribute,
@@ -304,69 +345,54 @@ export const createPlayerActor = (props: {
 
           // 插入到事件队列，由EventExecutor统一处理
           context.engine.getEventQueue().insert(gameEvent);
-          console.log(`✅ [${context.config.name}] 自定义事件已转换并加入执行队列`);
+          console.log(`✅ [${context.name}] 自定义事件已转换并加入执行队列`);
         } catch (error) {
-          console.error(`❌ [${context.config.name}] FSM事件转换失败:`, error);
+          console.error(`❌ [${context.name}] FSM事件转换失败:`, error);
         }
       },
     },
     guards: {
       // 检查是否有后续连击步骤
-      hasNextCombo: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 检查[${context.config.name}] 是否有后续连击步骤`);
+      hasNextCombo: ({ context, event }) => {
+        console.log(`🎮 检查[${context.name}] 是否有后续连击步骤`);
         // 检查是否有后续连击步骤
         // 可以根据实际连击逻辑实现
         return false; // 暂时返回false，可以根据实际逻辑调整
       },
 
       // 检查当前技能是否有蓄力动作（正向 guard）
-      hasChargeAction: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 检查[${context.config.name}] 技能是否有蓄力动作`);
+      hasChargeAction: ({ context, event }) => {
+        console.log(`🎮 检查[${context.name}] 技能是否有蓄力动作`);
         // TODO: 基于技能模板判断是否需要蓄力
         return false; // 先保留占位实现
       },
 
       // 技能可用性检查（汇总冷却/资源/状态）
-      isSkillAvailable: ({ context, event }: { context: MemberContext<PlayerAttrType>; event: any }) => {
-        console.log(`🎮 检查[${context.config.name}] 技能是否可用`);
+      isSkillAvailable: ({ context, event }) => {
+        console.log(`🎮 检查[${context.name}] 技能是否可用`);
         // TODO: 汇总沉默/冷却/MP/HP等检查
-        return context.isActive;
+        return context.isAlive;
       },
 
       // 检查玩家是否死亡
-      isDead: ({ context }: { context: MemberContext<PlayerAttrType> }) => {
-        const isDead = context.attrs.getValue("hp.current") <= 0;
-        console.log(`🎮 检查[${context.config.name}] 是否死亡: ${isDead}`);
+      isDead: ({ context }) => {
+        const isDead = context.rs.getValue("hp.current") <= 0;
+        console.log(`🎮 检查[${context.name}] 是否死亡: ${isDead}`);
         return isDead;
       },
 
       // 检查玩家是否存活
-      isAlive: ({ context }: { context: MemberContext<PlayerAttrType> }) => {
-        const isAlive = context.attrs.getValue("hp.current") > 0;
-        console.log(`🎮 检查[${context.config.name}] 是否存活: ${isAlive}`);
+      isAlive: ({ context }) => {
+        const isAlive = context.rs.getValue("hp.current") > 0;
+        console.log(`🎮 检查[${context.name}] 是否存活: ${isAlive}`);
         return isAlive;
       },
     },
   }).createMachine({
     id: machineId,
-    context: {
-      config: props.memberData,
-      attrs: props.reactiveDataManager,
-      engine: props.engine,
-      id: props.memberData.id,
-      campId: props.campId,
-      teamId: props.memberData.teamId,
-      targetId: "",
-      isAlive: true,
-      isActive: true,
-      lastUpdateTimestamp: 0,
-      position: { x: 0, y: 0 },
-    },
+    context: member,
     initial: "alive",
-    entry: [
-      { type: "initializePlayerState" },
-      { type: "spawnRenderEntity" },
-    ],
+    entry: [{ type: "initializePlayerState" }, { type: "spawnRenderEntity" }],
     states: {
       alive: {
         initial: "operational",
@@ -428,7 +454,6 @@ export const createPlayerActor = (props: {
                 },
               },
               moving: {
-                entry: { type: "applyMoveAssign" },
                 on: {
                   stop_move: { target: "idle" },
                 },
@@ -531,9 +556,4 @@ export const createPlayerActor = (props: {
       },
     },
   });
-  const actor = createActor(machine, {
-    id: machineId,
-  });
-
-  return actor;
 };

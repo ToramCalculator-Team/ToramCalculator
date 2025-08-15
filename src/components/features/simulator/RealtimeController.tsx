@@ -26,7 +26,7 @@ import type { IntentMessage } from "./core/thread/messages";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
-import { MemberSerializeData } from "./core/member/MemberType";
+import { MemberSerializeData } from "./core/member/Member";
 import MemberStatusPanel from "./core/member/MemberStatusPanel";
 import { EngineStats } from "./core/GameEngine";
 import { createId } from "@paralleldrive/cuid2";
@@ -788,7 +788,7 @@ export default function RealtimeController() {
   return (
     <div class="grid h-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
       {/* 状态栏（摘要 + 指标 + 操作） */}
-      {/* <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
+       <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">状态:</span>
@@ -834,9 +834,9 @@ export default function RealtimeController() {
             </div>
           </Show>
         </div>
-      </div> */}
+      </div>
       {/* 画面布局 */}
-      <div class="col-span-12 row-span-8 flex flex-col items-center gap-2 portrait:row-span-7">
+      <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
         <div class="bg-area-color flex h-full w-full flex-col rounded overflow-hidden">
           <BabylonBg followEntityId={context().selectedEngineMemberId || undefined} />
         </div>

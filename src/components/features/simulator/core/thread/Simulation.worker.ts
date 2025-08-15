@@ -90,7 +90,11 @@ function initializeWorkerSandbox() {
 initializeWorkerSandbox();
 
 // 在沙盒环境中创建GameEngine实例
-const gameEngine = new GameEngine();
+const gameEngine = new GameEngine({
+  frameLoopConfig: {
+    targetFPS: 60,
+  },
+});
 
 // 🔥 关键：订阅引擎状态变化事件（加入节流与轻量DTO）
 let engineStateSubscription: (() => void) | null = null;
@@ -175,28 +179,20 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
 
                   // 添加阵营A
-                  gameEngine.addCamp("campA", "阵营A");
+                  gameEngine.addCamp("campA");
                   simulatorData.campA.forEach((team, index) => {
-                    gameEngine.addTeam("campA", team, `队伍${index + 1}`);
+                    gameEngine.addTeam("campA", team);
                     team.members.forEach((member) => {
-                      gameEngine.addMember("campA", team.id, member, {
-                        currentHp: 1000,
-                        currentMp: 100,
-                        position: { x: 100 + index * 50, y: 100 },
-                      });
+                      gameEngine.addMember("campA", team.id, member);
                     });
                   });
 
                   // 添加阵营B
-                  gameEngine.addCamp("campB", "阵营B");
+                  gameEngine.addCamp("campB");
                   simulatorData.campB.forEach((team, index) => {
-                    gameEngine.addTeam("campB", team, `队伍${index + 1}`);
+                    gameEngine.addTeam("campB", team);
                     team.members.forEach((member) => {
-                      gameEngine.addMember("campB", team.id, member as any, {
-                        currentHp: 1000,
-                        currentMp: 100,
-                        position: { x: 500 + index * 50, y: 100 },
-                      });
+                      gameEngine.addMember("campB", team.id, member);
                     });
                   });
 
@@ -325,7 +321,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                     break;
                   }
                   try {
-                    const snap: any = member.getSnapshot();
+                    const snap: any = member.actor.getSnapshot();
                     const value = String(snap?.value ?? "");
                     portResult = { success: true, data: { memberId, value } };
                   } catch (e) {
@@ -344,15 +340,15 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 取消旧订阅
                   memberWatchUnsubMap.get(memberId)?.();
 
-                  const actor = gameEngine.findMember(memberId);
-                  if (!actor) {
+                  const member = gameEngine.findMember(memberId);
+                  if (!member) {
                     portResult = { success: false, error: "member not found" };
                     break;
                   }
 
                   try {
                     // 订阅 Actor 状态变化
-                    const unsub = actor.subscribe((snapshot: any) => {
+                    const unsub = member.actor.subscribe((snapshot: any) => {
                       if (!snapshot.changed) return;
 
                       const prevValue = memberLastValueMap.get(memberId);
@@ -361,17 +357,17 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                       if (prevValue === nextValue) return;
                       memberLastValueMap.set(memberId, nextValue);
 
-                      // 获取成员的基本信息（从 entry 中获取）
-                      const entry = gameEngine.getMemberManager().getMemberEntry(memberId);
+                      // 获取成员的基本信息（从member中获取）
+                      const member = gameEngine.getMemberManager().getMember(memberId);
 
                       // 发送状态更新消息
                       postSystemMessage(messagePort, "member_state_update", {
                         memberId,
                         value: nextValue,
                         context: {
-                          // 从 entry 的响应式系统获取属性值
-                          hp: entry?.attrs?.getValue?.("hp.current") || 0,
-                          mp: entry?.attrs?.getValue?.("mp.current") || 0,
+                          // 从member的响应式系统获取属性值
+                          hp: member?.rs?.getValue?.("hp.current") || 0,
+                          mp: member?.rs?.getValue?.("mp.current") || 0,
                           position: { x: 0, y: 0 }, // 暂时使用默认值
                           targetId: "", // 暂时使用默认值
                         },
@@ -505,7 +501,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
         });
 
         // 提供渲染通道的统一出口：用于FSM发送渲染指令（透传到主线程）
-        ;(gameEngine as any).postRenderMessage = (payload: any) => {
+        (gameEngine as any).postRenderMessage = (payload: any) => {
           try {
             messagePort.postMessage(payload);
           } catch {}

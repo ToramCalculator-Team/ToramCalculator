@@ -34,8 +34,6 @@ export type FrameLoopState =
 export interface FrameLoopConfig {
   /** 目标帧率（FPS） */
   targetFPS: number;
-  /** 帧间隔（毫秒） */
-  frameInterval: number;
   /** 是否启用帧跳跃 */
   enableFrameSkip: boolean;
   /** 最大帧跳跃数 */
@@ -125,6 +123,7 @@ export class FrameLoop {
 
   /** 帧循环定时器ID（rAF 或 setTimeout） */
   private frameTimer: number | null = null;
+
   /** 当前使用的调度时钟类型 */
   private clockKind: "raf" | "timeout" = "raf";
 
@@ -181,7 +180,6 @@ export class FrameLoop {
     // 设置默认配置
     this.config = {
       targetFPS: 60,
-      frameInterval: 1000 / 60, // 16.67ms
       enableFrameSkip: true,
       maxFrameSkip: 5,
       enablePerformanceMonitoring: true,
@@ -193,10 +191,9 @@ export class FrameLoop {
     this.timeScale = this.config.timeScale;
 
     // 根据目标帧率计算帧间隔
-    this.config.frameInterval = 1000 / this.config.targetFPS;
-    this.performanceStats.frameBudgetMs = this.config.frameInterval;
+    this.performanceStats.frameBudgetMs = 1000 / this.config.targetFPS;
 
-    // console.log("FrameLoop: 初始化完成", this.config);
+    // console.log("FrameLoop: 初始化完成", this.config, config);
   }
 
   // ==================== 公共接口 ====================
@@ -357,7 +354,6 @@ export class FrameLoop {
     }
 
     this.config.targetFPS = fps;
-    this.config.frameInterval = 1000 / fps;
     console.log(`⏱️ 目标帧率已更新: ${fps} FPS`);
   }
 
@@ -459,7 +455,7 @@ export class FrameLoop {
         this.processFrameLoop(timestamp);
       });
     } else {
-      const delay = this.config.frameInterval;
+      const delay = 1000 / this.config.targetFPS;
       this.frameTimer = setTimeout(() => {
         const now = performance.now();
         this.processFrameLoop(now);
@@ -487,17 +483,17 @@ export class FrameLoop {
     this.frameAccumulator += scaledDeltaTime;
 
     // 处理帧跳跃
-    if (this.config.enableFrameSkip && this.frameAccumulator > this.config.frameInterval * this.config.maxFrameSkip) {
+    if (this.config.enableFrameSkip && this.frameAccumulator > (1000 / this.config.targetFPS) * this.config.maxFrameSkip) {
       this.frameSkipCount++;
       this.performanceStats.skippedFrames = (this.performanceStats.skippedFrames || 0) + this.config.maxFrameSkip;
-      this.frameAccumulator = this.config.frameInterval;
+      this.frameAccumulator = 1000 / this.config.targetFPS;
       console.log(`⏭️ 帧跳跃 - 跳过 ${this.config.maxFrameSkip} 帧`);
     }
 
     // 处理帧
-    while (this.frameAccumulator >= this.config.frameInterval) {
-      this.processFrame(this.config.frameInterval);
-      this.frameAccumulator -= this.config.frameInterval;
+    while (this.frameAccumulator >= 1000 / this.config.targetFPS) {
+      this.processFrame(1000 / this.config.targetFPS);
+      this.frameAccumulator -= 1000 / this.config.targetFPS;
     }
 
     // 调度下一帧
@@ -659,6 +655,7 @@ export class FrameLoop {
    */
   private executeHandlerSync(handler: EventHandler, event: BaseEvent, context: ExecutionContext): EventResult {
     // 如果处理器返回Promise，我们需要同步等待
+    console.log("executeHandlerSync", handler, event, context);
     const result = handler.execute(event, context);
 
     if (result instanceof Promise) {

@@ -20,8 +20,8 @@ type SourceType = "equipment" | "skill" | "system";
 type EvalContext = { skill?: { lv: number }; env?: Record<string, unknown> };
 
 /** 解析后的标准修饰项 */
-interface NormalizedModifier {
-  attr: string;
+interface NormalizedModifier<T extends string> {
+  attr: T;
   targetType: ModifierType;
   value: number;
   source: { id: string; name: string; type: SourceType };
@@ -65,7 +65,7 @@ function mapEnumValueToIndex(value: unknown): number {
  * 在受限沙盒中求值右侧表达式（基于 mathjs）
  * - 支持：数字、+ - * / ^、括号、三元(?:)、逻辑(&&,||,??)、skill.lv、以及枚举常量
  */
-function evalAstExpression(code: string, ctx: EvalContext): number {
+export function evalAstExpression(code: string, ctx: EvalContext): number {
   const ast = parse(code, { ecmaVersion: 2020, sourceType: "script" });
   if (!ast.body || ast.body.length !== 1 || ast.body[0].type !== "ExpressionStatement") {
     throw new Error("invalid expression");
@@ -148,11 +148,11 @@ function evalAstExpression(code: string, ctx: EvalContext): number {
  * - "atk.p + 6%"（百分比修正）
  * - "atk.p + (6 * skill.lv)%"（带等级的百分比修正）
  */
-function parseModifierLine(
+function parseModifierLine<T extends string>(
   line: string,
   ctx: EvalContext,
-  source: NormalizedModifier["source"],
-): NormalizedModifier | null {
+  source: NormalizedModifier<T>["source"],
+): NormalizedModifier<T> | null {
   const s = String(line || "").trim();
   const tk = tokenizer(s, { ecmaVersion: 5 });
   const tokens: Array<{ type: { label: string }; value?: string | number; start: number; end: number }> = [];
@@ -191,12 +191,12 @@ function parseModifierLine(
   const take = () => tokens[i++];
 
   if (!expect("name")) throw new Error("attr expected");
-  let attr = String(tokens[i].value);
+  let attr = String(tokens[i].value) as T;
   take();
   while (expect(".")) {
     take();
     if (!expect("name")) throw new Error("attr segment expected");
-    attr += "." + String(tokens[i].value);
+    attr = (attr + "." + String(tokens[i].value)) as T;
     take();
   }
 
@@ -323,11 +323,13 @@ function formatRootedPathFromCharacter(segments: string[]): string {
  * - 被动技能模板下的 `logic: string[]` 与 `modifiers: string[]`
  * 语法支持见 parseModifierLine
  */
-export function applyPrebattleModifiers(rs: ReactiveSystem<any>, memberData: MemberWithRelations): void {
+export function applyPrebattleModifiers<T extends string>(
+  rs: ReactiveSystem<T>,
+  memberData: MemberWithRelations,
+): void {
   const character = memberData.player!.character;
-  console.log(character);
 
-  const all: NormalizedModifier[] = [];
+  const all: NormalizedModifier<T>[] = [];
 
   // 构建表达式环境：把角色当前配置映射进来（用于条件判断）
   const env = {
@@ -355,7 +357,7 @@ export function applyPrebattleModifiers(rs: ReactiveSystem<any>, memberData: Mem
           type: "equipment" as const,
         };
         for (const line of toStringArray(v)) {
-          const parsed = parseModifierLine(line, { env }, source);
+          const parsed = parseModifierLine<T>(line, { env }, source);
           if (parsed) {
             all.push(parsed);
           }
@@ -389,7 +391,7 @@ export function applyPrebattleModifiers(rs: ReactiveSystem<any>, memberData: Mem
       type: "skill" as const,
     };
     for (const line of [...toStringArray(tpl.logic), ...toStringArray(tpl.modifiers)]) {
-      const parsed = parseModifierLine(line, ctx, source);
+      const parsed = parseModifierLine<T>(line, ctx, source);
       if (parsed) all.push(parsed);
     }
   }
@@ -402,7 +404,4 @@ export function applyPrebattleModifiers(rs: ReactiveSystem<any>, memberData: Mem
       rs.addModifier(m.attr, m.targetType, m.value, m.source);
     }
   }
-
-  console.log(rs.getValue("mp.max"));
-  console.log(rs.exportNestedValues());
 }

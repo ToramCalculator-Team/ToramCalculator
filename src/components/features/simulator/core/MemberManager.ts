@@ -14,16 +14,18 @@
  * - 类型安全：强类型检查和错误处理
  */
 
-import type { Actor } from "xstate";
+import type { Actor, AnyActorLogic } from "xstate";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";
 import type GameEngine from "./GameEngine";
-import { createPlayerActor, type PlayerAttrType } from "./member/player/PlayerActor";
 import { ReactiveSystem, type NestedSchema } from "./member/ReactiveSystem";
 import { applyPrebattleModifiers } from "./member/player/PrebattleModifiers";
 import { PlayerAttrSchema } from "./member/player/PlayerData";
 import { MobAttrSchema } from "./member/mob/MobData";
-import { createMobActor, MobAttrType } from "./member/mob/MobActor";
+import { Team } from "@db/repositories/team";
+import { Player } from "./member/player/Player";
+import { Member } from "./member/Member";
+import { Mob } from "./member/mob/Mobt";
 
 // ============================== 类型定义 ==============================
 
@@ -62,11 +64,11 @@ export class MemberManager {
   // ==================== 私有属性 ====================
 
   /** 所有成员的管理表 - 主存储（存储Actor与元数据） */
-  private members: Map<string, MemberManagerEntry> = new Map();
+  private members: Map<string, Member<any>> = new Map();
   /** 阵营注册表（仅存基础信息） */
-  private camps: Map<string, { id: string; name?: string }> = new Map();
+  private camps: Map<string, Team[]> = new Map();
   /** 队伍注册表（仅存基础信息） */
-  private teams: Map<string, { id: string; campId: string; name?: string }> = new Map();
+  private teams: Map<string, Team> = new Map();
   /** 阵营 -> 成员ID集合 索引 */
   private membersByCamp: Map<string, Set<string>> = new Map();
   /** 队伍 -> 成员ID集合 索引 */
@@ -83,18 +85,6 @@ export class MemberManager {
   }
 
   // ==================== 公共接口 ====================
-
-  /**
-   * 创建阵营（幂等）
-   */
-  createCamp(campId: string, campName?: string): { id: string; name?: string } {
-    if (!this.camps.has(campId)) {
-      this.camps.set(campId, { id: campId, name: campName });
-      this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
-    }
-    return this.camps.get(campId)!;
-  }
-
   /**
    * 创建并注册新成员
    *
@@ -104,75 +94,63 @@ export class MemberManager {
    * @param initialState 初始状态配置
    * @returns 创建的成员实例，失败则返回null
    */
-  createAndRegister(memberData: MemberWithRelations, campId: string, teamId: string): Actor<any> | null {
-    try {
-      let actor: Actor<any>;
-      let schema: NestedSchema | undefined;
-      let rs: ReactiveSystem<any> | undefined;
-
-      // 根据成员类型创建相应的实例，注入GameEngine依赖
-      switch (memberData.type) {
-        case "Player":
-          schema = PlayerAttrSchema(memberData.player!.character);
-          rs = new ReactiveSystem<PlayerAttrType>(memberData, schema);
-          // 装备与被动技能的战前常驻修正注入（在 Actor 启动前）
-          try {
-            applyPrebattleModifiers(rs, memberData);
-          } catch (e) {
-            console.warn("预战修正应用失败", e);
+  createAndRegister<T extends string>(
+    memberData: MemberWithRelations,
+    campId: string,
+    teamId: string,
+    position?: { x: number; y: number; z: number },
+  ): Actor<AnyActorLogic> | null {
+    switch (memberData.type) {
+      case "Player":
+        {
+          const schema = PlayerAttrSchema(memberData.player!.character);
+          const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, position);
+          const actor = player.actor;
+          actor.subscribe((snapshot) => {
+            console.log("PlayerActor snapshot", snapshot, actor);
+          });
+          const success = this.registerMember(player, campId, teamId, memberData);
+          if (success) {
+            // console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
+            return player.actor;
+          } else {
+            // 注册失败：不与 actor 交互，直接返回
+            return null;
           }
-          actor = createPlayerActor({
-            engine: this.engine,
-            memberData,
-            campId,
-            reactiveDataManager: rs,
-          });
-          break;
-        case "Mob":
-          schema = MobAttrSchema(memberData.mob!);
-          rs = new ReactiveSystem<MobAttrType>(memberData, schema);
-          actor = createMobActor({
-            engine: this.engine,
-            memberData,
-            campId,
-            reactiveDataManager: rs,
-          });
-          break;
-        // case "Mercenary":
-        //   member = new Mercenary(memberData, this.engine, initialState);
-        //   break;
-        // case "Partner":
-        //   member = new Partner(memberData, this.engine, initialState);
-        //   break;
-        default:
-          console.error(`❌ 不支持的成员类型: ${memberData.type}`);
-          return null;
-      }
-
-      // 启动并注册成员
-      try {
-        actor.start();
-        const success = this.registerMember(actor, campId, teamId, memberData, schema!, rs!);
-        if (success) {
-          console.log(`✅ 创建并注册成员成功: ${memberData.name} (${memberData.type})`);
-          return actor;
-        } else {
-          // 注册失败：不与 actor 交互，直接返回
-          return null;
         }
-      } catch (error) {
-        console.error(`❌ Actor 启动失败: ${memberData.name}`, error);
-        // 不直接 stop，避免非根 Actor 抛错
+        break;
+      case "Mob":
+        {
+          const schema = MobAttrSchema(memberData.mob!);
+          const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, position);
+          const actor = mob.actor;
+          actor.subscribe((snapshot) => {
+            console.log("MobActor snapshot", snapshot, actor);
+          });
+          const success = this.registerMember(mob, campId, teamId, memberData);
+            if (success) {
+              // console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
+              return mob.actor;
+            } else {
+              // 注册失败：不与 actor 交互，直接返回
+              return null;
+            }
+        }
+        break;
+      // case "Mercenary":
+      //   member = new Mercenary(memberData, this.engine, initialState);
+      //   break;
+      // case "Partner":
+      //   member = new Partner(memberData, this.engine, initialState);
+      //   break;
+      default:
+        console.error(`❌ 不支持的成员类型: ${memberData.type}`);
         return null;
-      }
-    } catch (error) {
-      console.error("❌ 创建并注册成员失败:", error);
-      return null;
     }
   }
 
   /**
-   * 注册新成员
+   * 注册新成员，将actor包装进MemberManagerEntry中，并维护阵营/队伍索引
    *
    * @param member 成员实例
    * @param campId 阵营ID
@@ -180,44 +158,25 @@ export class MemberManager {
    * @returns 注册是否成功
    */
   registerMember(
-    actor: Actor<any>,
+    member: Member<any>,
     campId: string,
     teamId: string,
     memberData: MemberWithRelations,
-    schema: NestedSchema,
-    attrs: ReactiveSystem<any>,
   ): boolean {
-    try {
-      const entry: MemberManagerEntry = {
-        actor,
-        id: memberData.id,
-        type: memberData.type as MemberType,
-        name: memberData.name ?? memberData.id,
-        campId,
-        teamId,
-        isActive: true,
-        schema,
-        attrs,
-      };
+    this.members.set(memberData.id, member);
+    console.log(`📝 注册成员: ${memberData.name} (${memberData.type}) -> ${campId}/${teamId}`);
 
-      this.members.set(entry.id, entry);
-      console.log(`📝 注册成员: ${entry.name} (${entry.type}) -> ${campId}/${teamId}`);
-
-      // 维护阵营/队伍索引
-      if (!this.membersByCamp.has(campId)) {
-        this.membersByCamp.set(campId, new Set());
-      }
-      this.membersByCamp.get(campId)!.add(entry.id);
-
-      if (!this.membersByTeam.has(teamId)) {
-        this.membersByTeam.set(teamId, new Set());
-      }
-      this.membersByTeam.get(teamId)!.add(entry.id);
-      return true;
-    } catch (error) {
-      console.error("❌ 注册成员失败:", error);
-      return false;
+    // 维护阵营/队伍索引
+    if (!this.membersByCamp.has(campId)) {
+      this.membersByCamp.set(campId, new Set());
     }
+    this.membersByCamp.get(campId)!.add(memberData.id);
+
+    if (!this.membersByTeam.has(teamId)) {
+      this.membersByTeam.set(teamId, new Set());
+    }
+    this.membersByTeam.get(teamId)!.add(memberData.id);
+    return true;
   }
 
   /**
@@ -227,36 +186,20 @@ export class MemberManager {
    * @returns 注销是否成功
    */
   unregisterMember(memberId: string): boolean {
-    const entry = this.members.get(memberId);
-    if (!entry) {
+    const member = this.members.get(memberId);
+    if (!member) {
       console.warn(`⚠️ 成员不存在: ${memberId}`);
       return false;
     }
 
-    try {
-      // 从注册表中移除
-      this.members.delete(memberId);
-
-      // 从索引中移除
-      if (entry.campId && this.membersByCamp.has(entry.campId)) {
-        this.membersByCamp.get(entry.campId)!.delete(memberId);
-        if (this.membersByCamp.get(entry.campId)!.size === 0) {
-          this.membersByCamp.delete(entry.campId);
-        }
-      }
-      if (entry.teamId && this.membersByTeam.has(entry.teamId)) {
-        this.membersByTeam.get(entry.teamId)!.delete(memberId);
-        if (this.membersByTeam.get(entry.teamId)!.size === 0) {
-          this.membersByTeam.delete(entry.teamId);
-        }
-      }
-
-      console.log(`🗑️ 注销成员: ${entry.name} (${entry.type})`);
-      return true;
-    } catch (error) {
-      console.error("❌ 注销成员失败:", error);
-      return false;
-    }
+    this.members.delete(memberId);
+    this.membersByCamp.forEach((value) => {
+      value.delete(memberId);
+    });
+    this.membersByTeam.forEach((value) => {
+      value.delete(memberId);
+    });
+    return true;
   }
 
   /**
@@ -265,18 +208,7 @@ export class MemberManager {
    * @param memberId 成员ID
    * @returns 成员实例，如果不存在则返回null
    */
-  getMember(memberId: string): Actor<any> | null {
-    const entry = this.members.get(memberId);
-    return entry ? entry.actor : null;
-  }
-
-  /**
-   * 获取成员注册信息
-   *
-   * @param memberId 成员ID
-   * @returns 成员注册信息，如果不存在则返回null
-   */
-  getMemberEntry(memberId: string): MemberManagerEntry | null {
+  getMember(memberId: string): Member<any> | null {
     return this.members.get(memberId) || null;
   }
 
@@ -285,8 +217,8 @@ export class MemberManager {
    *
    * @returns 所有成员实例的数组
    */
-  getAllMembers(): Actor<any>[] {
-    return Array.from(this.members.values()).map((entry) => entry.actor);
+  getAllMembers(): Member<any>[] {
+    return Array.from(this.members.values());
   }
 
   /**
@@ -304,10 +236,10 @@ export class MemberManager {
    * @param type 成员类型
    * @returns 指定类型的成员数组
    */
-  getMembersByType(type: MemberType): Actor<any>[] {
+  getMembersByType(type: MemberType): Member<any>[] {
     return Array.from(this.members.values())
-      .filter((entry) => entry.type === type)
-      .map((entry) => entry.actor);
+      .filter((member) => member.type === type)
+      .map((member) => member);
   }
 
   /**
@@ -316,13 +248,13 @@ export class MemberManager {
    * @param campId 阵营ID
    * @returns 指定阵营的成员数组
    */
-  getMembersByCamp(campId: string): Actor<any>[] {
+  getMembersByCamp(campId: string): Member<any>[] {
     const idSet = this.membersByCamp.get(campId);
     if (!idSet) return [];
-    const result: Actor<any>[] = [];
+    const result: Member<any>[] = [];
     for (const id of idSet) {
-      const entry = this.members.get(id);
-      if (entry) result.push(entry.actor);
+      const member = this.members.get(id);
+      if (member) result.push(member);
     }
     return result;
   }
@@ -333,13 +265,13 @@ export class MemberManager {
    * @param teamId 队伍ID
    * @returns 指定队伍的成员数组
    */
-  getMembersByTeam(teamId: string): Actor<any>[] {
+  getMembersByTeam(teamId: string): Member<any>[] {
     const idSet = this.membersByTeam.get(teamId);
     if (!idSet) return [];
-    const result: Actor<any>[] = [];
+    const result: Member<any>[] = [];
     for (const id of idSet) {
-      const entry = this.members.get(id);
-      if (entry) result.push(entry.actor);
+      const member = this.members.get(id);
+      if (member) result.push(member);
     }
     return result;
   }
@@ -349,11 +281,11 @@ export class MemberManager {
    *
    * @returns 活跃成员数组
    */
-  getActiveMembers(): Actor<any>[] {
-    return Array.from(this.members.values())
-      .filter((entry) => entry.isActive)
-      .map((entry) => entry.actor);
-  }
+  // getActiveMembers(): Member<any>[] {
+  //   return Array.from(this.members.values())
+  //     .filter((member) => member.isActive)
+  //     .map((member) => member.actor);
+  // }
 
   /**
    * 更新成员状态
@@ -366,16 +298,16 @@ export class MemberManager {
     memberId: string,
     updates: Partial<Pick<MemberManagerEntry, "campId" | "teamId" | "isActive">>,
   ): boolean {
-    const entry = this.members.get(memberId);
-    if (!entry) {
+    const member = this.members.get(memberId);
+    if (!member) {
       return false;
     }
 
     try {
-      const prevCamp = entry.campId;
-      const prevTeam = entry.teamId;
+      const prevCamp = member.campId;
+      const prevTeam = member.teamId;
 
-      Object.assign(entry, updates);
+      Object.assign(member, updates);
 
       // 维护索引（阵营变更）
       if (updates.campId && updates.campId !== prevCamp) {
@@ -397,7 +329,7 @@ export class MemberManager {
         this.membersByTeam.get(updates.teamId)!.add(memberId);
       }
 
-      console.log(`🔄 更新成员: ${entry.name} (${entry.type})`);
+      console.log(`🔄 更新成员: ${member.name} (${member.type})`);
       return true;
     } catch (error) {
       console.error("❌ 更新成员失败:", error);
@@ -452,31 +384,37 @@ export class MemberManager {
 
   // ==================== 阵营/队伍管理 ====================
 
-  /** 添加阵营（幂等） */
-  addCamp(campId: string, campName?: string): void {
+  /**
+   * 创建阵营（幂等）
+   */
+  addCamp(campId: string): Team[] {
     if (!this.camps.has(campId)) {
-      this.camps.set(campId, { id: campId, name: campName });
+      this.camps.set(campId, []);
       this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
     }
+    return this.camps.get(campId)!;
   }
 
   /** 添加队伍（幂等） */
-  addTeam(campId: string, team: { id: string; name?: string }, teamName?: string): void {
+  addTeam(
+    campId: string,
+    team: Team,
+  ): Team {
     if (!this.camps.has(campId)) {
       // 若未注册阵营，先注册
       this.addCamp(campId);
     }
-    const name = teamName ?? team.name;
-    this.teams.set(team.id, { id: team.id, campId, name });
+    this.teams.set(team.id, team);
     this.membersByTeam.set(team.id, this.membersByTeam.get(team.id) || new Set());
+    return this.teams.get(team.id)!;
   }
 
   /**
    * 发送事件到指定成员
    */
   sendTo(memberId: string, event: any): void {
-    const entry = this.members.get(memberId);
-    entry?.actor.send?.(event);
+    const member = this.members.get(memberId);
+    member?.actor.send?.(event);
   }
 
   /** 查询阵营是否存在 */
