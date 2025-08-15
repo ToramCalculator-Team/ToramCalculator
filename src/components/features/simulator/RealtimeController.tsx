@@ -33,7 +33,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { findPlayerWithRelations, PlayerWithRelations } from "@db/repositories/player";
 import { findMemberWithRelations, MemberWithRelations } from "@db/repositories/member";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { BabylonBg } from "./core/render/BabylonGame";
+import { BabylonBg } from "./core/render/Renderer";
 
 // ============================== 类型定义 ==============================
 
