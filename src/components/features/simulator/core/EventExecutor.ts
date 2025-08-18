@@ -1,23 +1,10 @@
 /**
- * 事件执行器 - 处理复杂的事件效果计算
- *
- * 核心职责：
- * 1. 处理伤害表达式计算
- * 2. 处理Buff应用和移除
- * 3. 处理状态效果应用
- * 4. 支持表达式解析和计算
- *
- * 设计理念：
- * - 表达式驱动：使用表达式字符串描述效果
- * - 上下文感知：根据当前游戏状态计算结果
- * - 可扩展：支持自定义函数和变量
- * - 安全性：限制表达式执行范围
+ * 事件执行器 - 处理战斗时JS逻辑片段
  */
 
 import { createId } from "@paralleldrive/cuid2";
 import type { BaseEvent } from "./EventQueue";
 import GameEngine from "./GameEngine";
-// 不再直接使用JSExpressionIntegration，改为通过GameEngine
 
 // ============================== 类型定义 ==============================
 
@@ -117,7 +104,7 @@ export class EventExecutor {
   private debugMode: boolean = false;
 
   /** 游戏引擎引用 */
-  private engine: GameEngine; // 避免循环依赖，使用any
+  private engine: GameEngine;
 
   // ==================== 构造函数 ====================
 
@@ -387,15 +374,6 @@ export class EventExecutor {
       "randomInt",
       (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
     );
-    this.expressionFunctions.set("criticalHit", (baseDamage: number, critRate: number, critMultiplier: number) => {
-      const isCritical = Math.random() < critRate;
-      return isCritical ? baseDamage * critMultiplier : baseDamage;
-    });
-    this.expressionFunctions.set("elementalBonus", (baseDamage: number, element: string, resistance: number) => {
-      // 简化的元素伤害计算
-      return baseDamage * (1 - resistance / 100);
-    });
-
     // console.log("表达式函数库初始化完成");
   }
 

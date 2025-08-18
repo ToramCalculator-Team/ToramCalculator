@@ -39,7 +39,7 @@ interface MobControlEndEvent extends EventObject {
   data: { skillId: string };
 }
 interface MobSkillPressEvent extends EventObject {
-  type: "skill_press";
+  type: "使用技能";
   data: { skillId: string };
 }
 interface MobCheckAvailabilityEvent extends EventObject {
@@ -205,7 +205,7 @@ export const createMobStateMachine = (member: Member<MobAttrType>): MemberStateM
               idle: {
                 on: {
                   move_command: { target: "moving" },
-                  skill_press: [
+                  使用技能: [
                     {
                       guard: "isSkillAvailable",
                       target: "skill_casting.pre_cast",
@@ -227,7 +227,7 @@ export const createMobStateMachine = (member: Member<MobAttrType>): MemberStateM
                 states: {
                   skill_init: {
                     on: {
-                      skill_press: [
+                      使用技能: [
                         { target: "pre_cast", guard: "isSkillAvailable", actions: ["onSkillStart"] },
                         { target: `#${machineId}.alive.operational.idle`, actions: ["logEvent"] },
                       ],

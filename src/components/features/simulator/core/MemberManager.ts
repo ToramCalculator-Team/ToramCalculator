@@ -106,9 +106,9 @@ export class MemberManager {
           const schema = PlayerAttrSchema(memberData.player!.character);
           const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, position);
           const actor = player.actor;
-          actor.subscribe((snapshot) => {
-            console.log("PlayerActor snapshot", snapshot, actor);
-          });
+          // actor.subscribe((snapshot) => {
+          //   console.log("PlayerActor snapshot", snapshot, actor);
+          // });
           const success = this.registerMember(player, campId, teamId, memberData);
           if (success) {
             // console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);

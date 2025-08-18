@@ -1,9 +1,12 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
-import { NestedSchema } from "../ReactiveSystem";
+import { ExtractAttrPaths, NestedSchema } from "../ReactiveSystem";
 import { applyPrebattleModifiers } from "./PrebattleModifiers";
-import { PlayerAttrType, playerStateMachine } from "./PlayerActor";
+import { playerStateMachine } from "./PlayerStateMachine";
 import GameEngine from "../../GameEngine";
+import { PlayerAttrSchema } from "./PlayerData";
+
+export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
 export class Player extends Member<PlayerAttrType> {
   constructor(

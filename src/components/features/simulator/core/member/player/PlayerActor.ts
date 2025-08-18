@@ -10,7 +10,7 @@ import { evalAstExpression } from "./PrebattleModifiers";
  */
 // 技能按下
 interface PlayerSkillPressEvent extends EventObject {
-  type: "skill_press";
+  type: "使用技能";
   data: { skillId: string };
 }
 // 前摇结束
@@ -128,6 +128,28 @@ export const playerStateMachine = (
       // 技能相关事件
       onSkillStart: ({ context, event }) => {
         console.log(`🎮 [${context.name}] 技能开始事件`, event);
+        const e = event as PlayerSkillPressEvent;
+        const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const executor = context.engine.getFrameLoop().getEventExecutor();
+
+        const skill = context.data.player?.character?.skills?.find((s) => s.id === skillId);
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return;
+        }
+
+        const effect = skill.template?.effects.find((e) =>
+          executor.executeExpression(e.cost, {
+            currentFrame,
+            caster: context.id,
+            skill: { id: skillId },
+          }),
+        );
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          return;
+        }
       },
 
       onCastStart: ({ context, event }) => {
@@ -440,7 +462,7 @@ export const playerStateMachine = (
               idle: {
                 on: {
                   move_command: { target: "moving" },
-                  skill_press: [
+                  使用技能: [
                     {
                       guard: "isSkillAvailable",
                       target: "skill_casting.pre_cast",
@@ -464,7 +486,7 @@ export const playerStateMachine = (
                 states: {
                   skill_init: {
                     on: {
-                      skill_press: [
+                      使用技能: [
                         {
                           target: "pre_cast",
                           guard: "isSkillAvailable",

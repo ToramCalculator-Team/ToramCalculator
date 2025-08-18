@@ -749,7 +749,7 @@ export default function RealtimeController() {
 
     sendIntent({
       // 直接发送 FSM 事件名
-      type: "skill_press",
+      type: "使用技能",
       targetMemberId: selectedEngineMemberId,
       data: { skillId },
     });

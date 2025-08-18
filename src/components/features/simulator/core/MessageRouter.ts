@@ -170,7 +170,7 @@ export class MessageRouter {
    */
   getSupportedMessageTypes(): IntentMessageType[] {
     return [
-      "skill_press",
+      "使用技能",
       "move_command",
       "stop_move",
       "cast_end",

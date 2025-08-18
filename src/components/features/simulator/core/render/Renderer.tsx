@@ -490,12 +490,12 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
       setLoaderState(true);
 
       // 组件卸载时清理控制器与全局入口
-      onCleanup(() => {
-        try {
-          if ((globalThis as any).__SIM_RENDER__) delete (globalThis as any).__SIM_RENDER__;
-        } catch {}
-        controller.dispose();
-      });
+      // onCleanup(() => {
+      //   try {
+      //     if ((globalThis as any).__SIM_RENDER__) delete (globalThis as any).__SIM_RENDER__;
+      //   } catch {}
+      //   controller.dispose();
+      // });
     });
 
     // 在场景渲染循环中添加相机更新（仅在未跟随实体时启用本地FPS控制）
@@ -538,13 +538,13 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
     });
 
     // 清理函数：事件与观察器
-    onCleanup(() => {
-      ro.disconnect();
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("resize", onWinResize);
-    });
+    // onCleanup(() => {
+    //   ro.disconnect();
+    //   window.removeEventListener("mousemove", onMouseMove);
+    //   window.removeEventListener("keydown", onKeyDown);
+    //   window.removeEventListener("keyup", onKeyUp);
+    //   window.removeEventListener("resize", onWinResize);
+    // });
   });
 
   onCleanup(() => {

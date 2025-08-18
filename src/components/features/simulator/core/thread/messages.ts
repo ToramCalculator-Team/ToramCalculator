@@ -5,7 +5,7 @@ import { z } from "zod";
 // 统一：主线程到 Actor 的消息类型即为 FSM 事件名
 export const IntentMessageTypeEnum = z.enum([
   // 通用/玩家/Mob FSM 事件
-  "skill_press",
+  "使用技能",
   "move_command",
   "stop_move",
   "cast_end",

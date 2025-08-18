@@ -14,9 +14,9 @@
  * - 生命周期管理：管理引擎的启动、运行、停止
  */
 
-import type { Team, TeamWithRelations } from "@db/repositories/team";
+import type { Team } from "@db/repositories/team";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { MemberManager, MemberManagerEntry } from "./MemberManager";
+import { MemberManager } from "./MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
@@ -25,9 +25,7 @@ import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
-import type { AnyStateMachine, Snapshot, Actor } from "xstate";
 import { JSExpressionProcessor, type CompilationContext } from "./expression/JSExpressionProcessor";
-import { ReactiveSystem } from "./member/ReactiveSystem";
 // 容器不直接依赖具体成员类型
 
 // ============================== 类型定义 ==============================

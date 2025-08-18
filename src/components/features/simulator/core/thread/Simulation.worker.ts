@@ -93,6 +93,7 @@ initializeWorkerSandbox();
 const gameEngine = new GameEngine({
   frameLoopConfig: {
     targetFPS: 60,
+    enablePerformanceMonitoring: true,
   },
 });
 
