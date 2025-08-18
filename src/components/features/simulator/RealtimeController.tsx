@@ -34,6 +34,7 @@ import { findPlayerWithRelations, PlayerWithRelations } from "@db/repositories/p
 import { findMemberWithRelations, MemberWithRelations } from "@db/repositories/member";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { BabylonBg } from "./core/render/Renderer";
+import { Portal } from "solid-js/web";
 
 // ============================== 类型定义 ==============================
 
@@ -786,9 +787,9 @@ export default function RealtimeController() {
   // ==================== UI 渲染 ====================
 
   return (
-    <div class="grid h-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
+    <div class="grid h-full w-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
       {/* 状态栏（摘要 + 指标 + 操作） */}
-       <div class="bg-area-color col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
+      <div class="col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">状态:</span>
@@ -826,7 +827,7 @@ export default function RealtimeController() {
             </div>
             <div class="flex items-center gap-2 portrait:hidden">
               <span class="text-sm font-medium">时钟</span>
-              <span class="text-sm">{(context().engineStats.frameLoopStats ).clockKind || "raf"}</span>
+              <span class="text-sm">{context().engineStats.frameLoopStats.clockKind || "raf"}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium">队列</span>
@@ -837,9 +838,7 @@ export default function RealtimeController() {
       </div>
       {/* 画面布局 */}
       <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
-        <div class="bg-area-color flex h-full w-full flex-col rounded overflow-hidden">
-          <BabylonBg followEntityId={context().selectedEngineMemberId || undefined} />
-        </div>
+        <div class="flex h-full w-full flex-col overflow-hidden rounded"></div>
       </div>
 
       {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
@@ -949,6 +948,13 @@ export default function RealtimeController() {
           </Show>
         </div>
       </div>
+
+      {/* 全屏画面 */}
+      <Portal>
+        <div class="fixed top-0 left-0 h-full w-full" style={{ "z-index": -1 }}>
+          <BabylonBg followEntityId={context().selectedEngineMemberId || undefined} />
+        </div>
+      </Portal>
     </div>
   );
 }

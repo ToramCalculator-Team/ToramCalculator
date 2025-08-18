@@ -12,12 +12,15 @@ import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator"
 import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import * as _ from "lodash-es";import { SpotLight } from "@babylonjs/core/Lights/spotLight";
+import * as _ from "lodash-es";
+import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
+import { Portal } from "solid-js/web";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { GridMaterial } from "@babylonjs/materials";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -326,6 +329,11 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
     mainSpotLightShadowGenerator.darkness = 0.1;
     mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
+    const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+    const skyboxMaterial = new StandardMaterial("skyBox", scene);
+    skyboxMaterial.backFaceCulling = false;
+    skybox.material = skyboxMaterial;
+
     // -----------------------------------------model--------------------------------------------
 
     await AppendSceneAsync("models/landscape.glb", scene);
@@ -339,6 +347,12 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
     const root = scene.getMeshByName("__root__");
     if (root) {
       root.rotationQuaternion = null;
+      const gridMaterial = new GridMaterial("grid", scene);
+      gridMaterial.mainColor = new Color3(0, 0, 0);
+      gridMaterial.lineColor = new Color3(0.2, 0.4, 1.0);
+      gridMaterial.opacity = 0.98;
+      gridMaterial.backFaceCulling = false;
+      root.material = gridMaterial;
       scene.onBeforeRenderObservable.add(() => {
         root.position.x = Math.round(camera.position.x / stepX) * stepX;
         root.position.z = Math.round(camera.position.z / stepZ) * stepZ;
@@ -347,7 +361,7 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
         root.rotation.y = Math.round(rotationY / snapAngle) * snapAngle;
       });
     }
-    const ground = scene.getMeshByName("groundSubtrateLow");
+    // const ground = scene.getMeshByName("groundSubtrateLow");
     // if (ground) {
     //   NodeMaterial.ParseFromSnippetAsync("#LLUXAC", scene).then((nodeMaterial) => {
     //     ground.material = nodeMaterial;
@@ -474,11 +488,7 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
             const heightOffset = 1.2; // 相机高度
             const nx = Math.sin(pose.yaw);
             const nz = Math.cos(pose.yaw);
-            const camPos = new Vector3(
-              target.x - nx * backOffset,
-              target.y + heightOffset,
-              target.z - nz * backOffset,
-            );
+            const camPos = new Vector3(target.x - nx * backOffset, target.y + heightOffset, target.z - nz * backOffset);
             camera.position.copyFrom(camPos);
             camera.setTarget(target);
           }
@@ -562,13 +572,13 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
       >
         当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
       </canvas>
+      {/* <Portal> */}
       <div
-        class={`LoadingBG bg-primary-color pointer-events-none absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
+        class={`LoadingBG bg-accent-color pointer-events-none absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
           !loaderState() ? "visible opacity-100" : "invisible opacity-0"
         }`}
-      >
-        <LoadingBar class="w-[92dvw] lg:w-[80dvw]" />
-      </div>
+      ></div>
+      {/* </Portal> */}
     </div>
   );
 }
