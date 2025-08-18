@@ -9,6 +9,7 @@ import { assign, EventObject, setup } from "xstate";
 import { ExtractAttrPaths } from "../ReactiveSystem";
 import { MobAttrSchema } from "./MobData";
 import { Member, MemberEventType, MemberStateMachine } from "../Member";
+import { Mob } from "./Mob";
 
 /**
  * Mob 的属性键类型（基于 MobAttrSchema 提取 DSL 路径）
@@ -61,14 +62,14 @@ type MobEventType =
   | MobCheckAvailabilityEvent
   | MobSkillAnimationEndEvent;
 
-export const createMobStateMachine = (member: Member<MobAttrType>): MemberStateMachine<MobAttrType, MobEventType> => {
+export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrType, MobEventType> => {
   const machineId = member.id;
 
   return setup({
     types: {
-      context: {} as Member<MobAttrType>,
+      context: {} as Mob,
       events: {} as MobEventType,
-      output: {} as Member<MobAttrType>,
+      output: {} as Mob,
     },
     actions: {
       // 初始化 Mob 的基础上下文

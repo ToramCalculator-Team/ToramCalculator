@@ -15,11 +15,11 @@ export interface ExpressionContext {
   /** 当前帧号 */
   currentFrame: number;
   /** 施法者属性 */
-  caster?: any;
+  casterId: string;
   /** 目标属性 */
-  target?: any;
+  targetId?: string;
   /** 技能数据 */
-  skill?: any;
+  skillLv: number;
   /** 环境变量 */
   environment?: any;
   /** 自定义变量 */
@@ -131,8 +131,8 @@ export class EventExecutor {
    */
   executeScript(scriptCode: string, context: ExpressionContext): ExpressionResult {
     try {
-      const memberId = context.caster?.getId?.() || context.caster?.id;
-      const targetId = context.target?.getId?.() || context.target?.id;
+      const memberId = context.casterId;
+      const targetId = context.targetId;
 
       if (!memberId) {
         throw new Error("缺少成员ID");
@@ -195,6 +195,7 @@ export class EventExecutor {
 
       if (debugInfo) {
         debugInfo.steps.push(`预处理后: ${processedExpression}`);
+        console.log("预处理后", processedExpression);
       }
 
       // 计算表达式
@@ -202,6 +203,7 @@ export class EventExecutor {
 
       if (debugInfo) {
         debugInfo.steps.push(`计算结果: ${value}`);
+        console.log("计算结果", value);
       }
 
       return {
@@ -431,6 +433,7 @@ export class EventExecutor {
 
       // 创建安全的执行环境
       const safeEval = new Function(...Object.keys(functionContext), `return ${expression}`);
+      console.log("safeEval", safeEval);
 
       return safeEval(...Object.values(functionContext));
     } catch (error) {

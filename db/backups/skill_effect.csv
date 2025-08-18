@@ -1,5 +1,5 @@
-id,condition,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,cost,description,logic,details,belongToskillId
-defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.3,"400mp,0hp",null,"{
+id,condition,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,hpCost,mpCost,description,logic,details,belongToskillId
+defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.3,"0",100,null,"{
   ""blocks"": {
     ""languageVersion"": 0,
     ""blocks"": [

@@ -1,6 +1,6 @@
-import { EventObject, setup } from "xstate";
-import { Member, MemberEventType, MemberStateMachine } from "../Member";
-import { PlayerAttrType } from "./Player";
+import { assign, EventObject, setup } from "xstate";
+import { MemberEventType, MemberStateMachine } from "../Member";
+import { Player, PlayerAttrType } from "./Player";
 
 /**
  * Player特有的事件类型
@@ -57,14 +57,14 @@ type PlayerEventType =
   | 收到后摇结束通知;
 
 export const playerStateMachine = (
-  member: Member<PlayerAttrType>,
-): MemberStateMachine<PlayerAttrType, PlayerEventType> => {
+  member: Player,
+) => {
   const machineId = member.id;
   const machine = setup({
     types: {
-      context: {} as Member<PlayerAttrType>,
+      context: {} as Player,
       events: {} as PlayerEventType,
-      output: {} as Member<PlayerAttrType>,
+      output: {} as Player,
     },
     actions: {
       根据角色配置生成初始状态: function ({ context, event }) {
@@ -128,38 +128,71 @@ export const playerStateMachine = (
       },
     },
     guards: {
-      技能处于冷却: function ({ context, event }) {
-        console.log("判断技能是否处于冷却", event);
-        return false;
-      },
-      不满足施法消耗: function ({ context, event }) {
-        console.log("判断技能是否不满足施法消耗", event);
-        return false;
-      },
       没有可用效果: function ({ context, event }) {
-        console.log("判断技能是否没有可用效果", event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
         const executor = context.engine.getFrameLoop().getEventExecutor();
 
-        const skill = context.data.player?.character?.skills?.find((s) => s.id === skillId);
+        const skill = context.skills?.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
         }
-
         const effect = skill.template?.effects.find((e) =>
-          executor.executeExpression(e.cost, {
+          executor.executeExpression(e.condition, {
             currentFrame,
-            caster: context.id,
-            skill: { id: skillId },
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
           }),
         );
         if (!effect) {
           console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
+        console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
+        assign({
+          skillEffect: effect,
+        });
+        return false;
+      },
+      技能未冷却: function ({ context, event }) {
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const res = context.skillCooldowns.get(skillId);
+        if (res == undefined) {
+          console.log(`- 该技能不存在冷却时间`);
+          return false;
+        }
+        if (res <= 0) {
+          console.log(`- 该技能处于冷却状态`);
+          return false;
+        }
+        console.log(`该技能未冷却，剩余冷却时间：${res}`);
+        return true;
+      },
+      不满足施法消耗: function ({ context, event }) {
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const executor = context.engine.getFrameLoop().getEventExecutor();
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const skill = context.skills?.find((s) => s.id === skillId);
+        const hpCost = executor.executeExpression(context.skillEffect?.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+        const mpCost = executor.executeExpression(context.skillEffect?.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+        if(hpCost.value > context.rs.getValue("hp.current") || mpCost.value > context.rs.getValue("mp.current")) {
+          console.log(`- 该技能不满足施法消耗，HP:${hpCost.value} MP:${mpCost.value}`);
+          // 这里需要撤回RS的修改
+          return true;
+        }
+        console.log(`- 该技能满足施法消耗，HP:${hpCost.value} MP:${mpCost.value}`);
         return false;
       },
       有蓄力动作: function ({ context, event }) {
@@ -222,19 +255,19 @@ export const playerStateMachine = (
                   {
                     target: `#${machineId}.存活.控制类异常状态`,
                     guard: {
-                      type: "技能处于冷却",
+                      type: "没有可用效果",
+                    },
+                  },
+                  {
+                    target: `#${machineId}.存活.控制类异常状态`,
+                    guard: {
+                      type: "技能未冷却",
                     },
                   },
                   {
                     target: `#${machineId}.存活.控制类异常状态`,
                     guard: {
                       type: "不满足施法消耗",
-                    },
-                  },
-                  {
-                    target: `#${machineId}.存活.控制类异常状态`,
-                    guard: {
-                      type: "没有可用效果",
                     },
                   },
                   {

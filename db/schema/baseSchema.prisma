@@ -620,7 +620,8 @@ model skill_effect {
     reservoirFixed    String
     reservoirModified String
     startupFrames     String
-    cost              String
+    hpCost            String?
+    mpCost            String?
     description       String
     logic             Json
     details           String?

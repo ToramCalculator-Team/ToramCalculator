@@ -3,6 +3,8 @@ import { Actor, AnyActorLogic, createActor, EventObject, NonReducibleUnknown, St
 import { NestedSchema, ReactiveSystem } from "./ReactiveSystem";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
+import { Player } from "./player/Player";
+import { Mob } from "./mob/Mob";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -74,7 +76,7 @@ export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
 > = StateMachine<
-  Member<TAttrKey>, // TContext - 状态机上下文
+  any, // TContext - 状态机上下文
   TEvent, // TEvent - 事件类型（可扩展）
   Record<string, any>, // TChildren - 子状态机
   any, // TActor - Actor配置
@@ -100,16 +102,12 @@ export type MemberStateMachine<
 export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
 
 export class Member<TAttrKey extends string = string> {
-  /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey>;
   /** 成员ID */
   id: string;
   /** 成员类型 */
   type: MemberType;
   /** 成员名称 */
   name: string;
-  /** 引擎引用 */
-  engine: GameEngine;
   /** 所属阵营ID */
   campId: string;
   /** 所属队伍ID */
@@ -122,6 +120,10 @@ export class Member<TAttrKey extends string = string> {
   schema: NestedSchema;
   /** 响应式系统实例（用于稳定导出属性） */
   rs: ReactiveSystem<TAttrKey>;
+  /** 成员Actor引用 */
+  actor: MemberActor<TAttrKey>;
+  /** 引擎引用 */
+  engine: GameEngine;
   /** 成员数据 */
   data: MemberWithRelations;
   /** 位置信息 */
@@ -142,7 +144,7 @@ export class Member<TAttrKey extends string = string> {
   }
 
   constructor(
-    stateMachine: (member: Member<TAttrKey>) => MemberStateMachine<TAttrKey>,
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey>,
     engine: GameEngine,
     campId: string,
     teamId: string,

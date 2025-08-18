@@ -299,7 +299,8 @@ export const defaultData: DB = {
     templateId: "",
     refinement: 0,
     masterId: "",
-    baseAbi: 0
+    baseAbi: 0,
+    modifiers: []
   },
   player_pet: {
     id: "",
@@ -329,7 +330,8 @@ export const defaultData: DB = {
     extraAbi: 0,
     templateId: "",
     masterId: "",
-    baseAbi: 0
+    baseAbi: 0,
+    modifiers: []
   },
   player_weapon: {
     id: "",
@@ -413,7 +415,7 @@ export const defaultData: DB = {
     id: "",
     condition: "",
     elementLogic: "",
-    castingRange: 0,
+    castingRange: "",
     effectiveRange: 0,
     motionFixed: "",
     motionModified: "",
@@ -422,7 +424,8 @@ export const defaultData: DB = {
     reservoirFixed: "",
     reservoirModified: "",
     startupFrames: "",
-    cost: "",
+    hpCost: null,
+    mpCost: "100",
     description: "",
     logic: [],
     details: null,

@@ -522,12 +522,12 @@ export class ReactiveSystem<T extends string> {
 
   /** 显示名称映射（用于调试） */
   private readonly displayNames: Map<T, string>;
+
   /** 表达式原文映射（用于导出展示） */
   private readonly expressionStrings: Map<T, string> = new Map();
+  
   /** 标记属性是否为 noBaseValue（百分比应转换为小数fixed累加） */
   private readonly isNoBaseValue: boolean[] = [];
-
-  // 不再持有 Member 引用，避免循环依赖；表达式通过注入的 _get 函数访问值
 
   /** 当前正在编译的属性名（用于避免自引用） */
   private currentCompilingAttr?: T;
