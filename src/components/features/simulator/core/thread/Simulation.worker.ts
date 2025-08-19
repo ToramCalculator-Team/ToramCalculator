@@ -526,7 +526,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
     } catch {}
   }
 };
-
 // ==================== 统一系统消息出口 ====================
 function postSystemMessage(
   port: MessagePort,
@@ -536,3 +535,4 @@ function postSystemMessage(
   const msg = { taskId: type, type, data } as const;
   port?.postMessage(msg);
 }
+

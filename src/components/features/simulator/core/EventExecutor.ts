@@ -195,7 +195,6 @@ export class EventExecutor {
 
       if (debugInfo) {
         debugInfo.steps.push(`预处理后: ${processedExpression}`);
-        console.log("预处理后", processedExpression);
       }
 
       // 计算表达式
@@ -203,7 +202,6 @@ export class EventExecutor {
 
       if (debugInfo) {
         debugInfo.steps.push(`计算结果: ${value}`);
-        console.log("计算结果", value);
       }
 
       return {
@@ -219,114 +217,6 @@ export class EventExecutor {
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
-  }
-
-  /**
-   * 应用Buff到目标
-   *
-   * @param buffData Buff数据
-   * @param target 目标成员
-   * @param context 执行上下文
-   * @returns 生成的事件列表
-   */
-  applyBuff(buffData: BuffData, target: any, context: ExpressionContext): BaseEvent[] {
-    const events: BaseEvent[] = [];
-
-    console.log(`应用Buff: ${buffData.name} 到 ${target.getId()}`);
-
-    // 生成Buff应用事件
-    events.push({
-      id: createId(),
-      executeFrame: context.currentFrame,
-      priority: "high",
-      type: "buff_applied",
-      payload: {
-        targetId: target.getId(),
-        buffData,
-        duration: buffData.duration,
-      },
-    });
-
-    // 生成定期效果事件
-    if (buffData.periodicEffects) {
-      for (const periodicEffect of buffData.periodicEffects) {
-        const totalTicks = Math.floor(buffData.duration / periodicEffect.interval);
-
-        for (let tick = 1; tick <= totalTicks; tick++) {
-          const executeFrame = context.currentFrame + periodicEffect.interval * tick;
-
-          events.push({
-            id: createId(),
-            executeFrame,
-            priority: "normal",
-            type: "buff_periodic_effect",
-            payload: {
-              targetId: target.getId(),
-              buffId: buffData.id,
-              effectExpression: periodicEffect.effect,
-              tick,
-            },
-          });
-        }
-      }
-    }
-
-    // 生成Buff移除事件
-    events.push({
-      id: createId(),
-      executeFrame: context.currentFrame + buffData.duration,
-      priority: "normal",
-      type: "buff_removed",
-      payload: {
-        targetId: target.getId(),
-        buffId: buffData.id,
-      },
-    });
-
-    return events;
-  }
-
-  /**
-   * 应用状态效果
-   *
-   * @param effect 状态效果
-   * @param target 目标成员
-   * @param context 执行上下文
-   * @returns 生成的事件列表
-   */
-  applyStatusEffect(effect: StatusEffect, target: any, context: ExpressionContext): BaseEvent[] {
-    const events: BaseEvent[] = [];
-
-    console.log(`应用状态效果: ${effect.type} 到 ${target.getId()}`);
-
-    // 生成状态效果应用事件
-    events.push({
-      id: createId(),
-      executeFrame: context.currentFrame,
-      priority: "critical",
-      type: "status_effect_applied",
-      payload: {
-        targetId: target.getId(),
-        effectType: effect.type,
-        duration: effect.duration,
-        intensity: effect.intensity,
-        data: effect.data,
-      },
-    });
-
-    // 生成状态效果移除事件
-    events.push({
-      id: createId(),
-      executeFrame: context.currentFrame + effect.duration,
-      priority: "normal",
-      type: "status_effect_removed",
-      payload: {
-        targetId: target.getId(),
-        effectType: effect.type,
-      },
-    });
-
-    return events;
   }
 
   /**

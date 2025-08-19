@@ -910,7 +910,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       },
       current: {
         displayName: "当前HP",
-        expression: "0",
+        expression: "hp.max",
       },
       recovery: {
         displayName: "HP自然回复",
@@ -925,7 +925,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations) => {
       },
       current: {
         displayName: "当前MP",
-        expression: "0",
+        expression: "mp.max",
       },
       recovery: {
         displayName: "MP自然回复",

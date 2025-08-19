@@ -841,7 +841,7 @@ export default function RealtimeController() {
         <div class="flex h-full w-full flex-col overflow-hidden rounded"></div>
       </div>
 
-      {/* 主内容：成员状态（居中 12列布局），技能与动作在其下方 */}
+      {/* 成员状态 */}
       <div class="col-span-12 row-span-1 flex flex-col items-center gap-2 portrait:row-span-1">
         <MemberStatusPanel member={selectedEngineMember} />
       </div>
@@ -950,11 +950,11 @@ export default function RealtimeController() {
       </div>
 
       {/* 全屏画面 */}
-      <Portal>
+      {/* <Portal>
         <div class="fixed top-0 left-0 h-full w-full" style={{ "z-index": -1 }}>
           <BabylonBg followEntityId={context().selectedEngineMemberId || undefined} />
         </div>
-      </Portal>
+      </Portal> */}
     </div>
   );
 }

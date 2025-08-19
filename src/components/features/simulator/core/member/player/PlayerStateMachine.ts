@@ -1,6 +1,7 @@
-import { assign, EventObject, setup } from "xstate";
+import { assign, enqueueActions, EventObject, setup } from "xstate";
 import { MemberEventType, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
+import { ModifierType } from "../ReactiveSystem";
 
 /**
  * Player特有的事件类型
@@ -56,10 +57,8 @@ type PlayerEventType =
   | 收到蓄力结束通知
   | 收到后摇结束通知;
 
-export const playerStateMachine = (
-  member: Player,
-) => {
-  const machineId = member.id;
+export const playerStateMachine = (player: Player) => {
+  const machineId = player.id;
   const machine = setup({
     types: {
       context: {} as Player,
@@ -102,9 +101,62 @@ export const playerStateMachine = (
       前摇动画: function ({ context, event }) {
         console.log("前摇动画", event);
       },
-      扣除技能消耗: function ({ context, event }) {
-        console.log("扣除技能消耗", event);
-      },
+      扣除技能消耗: enqueueActions(({ context, event, enqueue }) => {
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const executor = context.engine.getFrameLoop().getEventExecutor();
+
+        const skill = context.skills?.find((s) => s.id === skillId);
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return;
+        }
+
+        const effect = skill.template?.effects.find((e) =>
+          executor.executeExpression(e.condition, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          }),
+        );
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          return;
+        }
+
+        enqueue.assign({
+          skillEffect: effect,
+        });
+
+        const hpCost = executor.executeExpression(effect.hpCost ?? "0", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+        const mpCost = executor.executeExpression(effect.mpCost ?? "0", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+
+        context.rs.addModifiers([
+          {
+            attr: "hp.current",
+            targetType: ModifierType.STATIC_FIXED,
+            value: -hpCost.value,
+            source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+          },
+          {
+            attr: "mp.current",
+            targetType: ModifierType.STATIC_FIXED,
+            value: -mpCost.value,
+            source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+          },
+        ]);
+        console.log(context.rs.getValue("hp.current"), context.rs.getValue("mp.current"));
+      }),
+
       写入前摇结束通知事件: function ({ context, event }) {
         console.log("写入前摇结束通知事件", event);
       },
@@ -151,9 +203,6 @@ export const playerStateMachine = (
           return true;
         }
         console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-        assign({
-          skillEffect: effect,
-        });
         return false;
       },
       技能未冷却: function ({ context, event }) {
@@ -172,22 +221,38 @@ export const playerStateMachine = (
         return true;
       },
       不满足施法消耗: function ({ context, event }) {
-        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-        const executor = context.engine.getFrameLoop().getEventExecutor();
         const e = event as 使用技能;
         const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const executor = context.engine.getFrameLoop().getEventExecutor();
+
         const skill = context.skills?.find((s) => s.id === skillId);
-        const hpCost = executor.executeExpression(context.skillEffect?.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return true;
+        }
+        const effect = skill.template?.effects.find((e) =>
+          executor.executeExpression(e.condition, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          }),
+        );
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          return true;
+        }
+        const hpCost = executor.executeExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        const mpCost = executor.executeExpression(context.skillEffect?.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
+        const mpCost = executor.executeExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        if(hpCost.value > context.rs.getValue("hp.current") || mpCost.value > context.rs.getValue("mp.current")) {
+        if (hpCost.value > context.rs.getValue("hp.current") || mpCost.value > context.rs.getValue("mp.current")) {
           console.log(`- 该技能不满足施法消耗，HP:${hpCost.value} MP:${mpCost.value}`);
           // 这里需要撤回RS的修改
           return true;
@@ -205,7 +270,7 @@ export const playerStateMachine = (
       },
     },
   }).createMachine({
-    context: member,
+    context: player,
     id: machineId,
     initial: "存活",
     entry: {
