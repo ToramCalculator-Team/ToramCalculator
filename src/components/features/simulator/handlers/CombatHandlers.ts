@@ -14,7 +14,7 @@
 
 
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
-import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
+import type GameEngine from "../core/GameEngine";
 import type { MemberManager } from "../core/MemberManager";
 import { ModifierType } from "../core/member/ReactiveSystem";
 
@@ -25,7 +25,7 @@ import { ModifierType } from "../core/member/ReactiveSystem";
  */
 export class MemberDamageHandler implements EventHandler {
   constructor(
-    private eventExecutor: EventExecutor, 
+    private gameEngine: GameEngine, 
     private memberManager: MemberManager
   ) {}
 
@@ -49,40 +49,28 @@ export class MemberDamageHandler implements EventHandler {
         };
       }
 
-      // 构建表达式上下文
-      const expressionContext: ExpressionContext = {
-        currentFrame: context.currentFrame,
-        caster: casterEntry
-          ? ({
-              getStats: () => casterEntry.rs.getValues() ,
-            } )
-          : undefined,
-        target: ({
-          getStats: () => targetEntry.rs.getValues() ,
-        } ),
-        skill: payload.skillId ? { id: payload.skillId } : undefined,
-      };
-
       // 计算伤害
       const damageExpression = payload.damageExpression || "100";
-      const damageResult = this.eventExecutor.executeExpression(damageExpression, expressionContext);
+      const finalDamage = this.gameEngine.evaluateExpression(damageExpression, {
+        currentFrame: context.currentFrame,
+        casterId: payload.sourceId || "",
+        targetId: payload.targetId,
+        skillLv: payload.skillLv || 0,
+        environment: {
+          caster: casterEntry,
+          target: targetEntry,
+          skill: payload.skillId ? { id: payload.skillId } : undefined,
+        }
+      });
       
-      if (!damageResult.success) {
-        console.warn(`伤害计算失败: ${damageExpression}`, damageResult.error);
-        return {
-          success: false,
-          error: damageResult.error
-        };
-      }
-
-      const finalDamage = Math.max(0, Math.floor(damageResult.value));
+      const finalDamageValue = Math.max(0, Math.floor(finalDamage));
 
       // 通过响应式系统应用伤害（作为静态固定修饰符的负值）
       const hpBefore = targetEntry.rs.getValue("hp.current" );
       targetEntry.rs.addModifier(
         "hp.current" ,
         ModifierType.STATIC_FIXED,
-        -finalDamage,
+        -finalDamageValue,
         {
           id: `damage_${event.id}`,
           name: "member_damage",
@@ -91,7 +79,7 @@ export class MemberDamageHandler implements EventHandler {
       );
       const hpAfter = targetEntry.rs.getValue("hp.current" );
 
-      console.log(`目标 ${payload.targetId} 受到 ${finalDamage} 点伤害: ${hpBefore} -> ${hpAfter}`);
+      console.log(`目标 ${payload.targetId} 受到 ${finalDamageValue} 点伤害: ${hpBefore} -> ${hpAfter}`);
       
       const newEvents: BaseEvent[] = [];
       if (hpAfter <= 0) {
@@ -114,7 +102,7 @@ export class MemberDamageHandler implements EventHandler {
         success: true,
         data: {
           ...payload,
-          actualDamage: finalDamage,
+          actualDamage: finalDamageValue,
           targetCurrentHp: hpAfter,
         },
         newEvents,

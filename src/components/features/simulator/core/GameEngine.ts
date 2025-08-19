@@ -20,24 +20,40 @@ import { MemberManager } from "./MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
-
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
 import { JSExpressionProcessor, type CompilationContext } from "./expression/JSExpressionProcessor";
-// 容器不直接依赖具体成员类型
 
 // ============================== 类型定义 ==============================
+
+/**
+ * 表达式计算上下文
+ */
+export interface ExpressionContext {
+  /** 当前帧号 */
+  currentFrame: number;
+  /** 施法者属性 */
+  casterId: string;
+  /** 目标属性 */
+  targetId?: string;
+  /** 技能数据 */
+  skillLv: number;
+  /** 环境变量 */
+  environment?: any;
+  /** 自定义变量 */
+  [key: string]: any;
+}
 
 /**
  * 引擎状态枚举
  */
 export type EngineState =
   | "initialized" // 已初始化
-  | "running" // 运行中
-  | "paused" // 已暂停
-  | "stopped"; // 已停止
+  | "running"     // 运行中
+  | "paused"      // 已暂停
+  | "stopped";    // 已停止
 
 /**
  * 引擎配置接口
@@ -126,6 +142,8 @@ export class GameEngine {
   /** 状态变化监听器列表 */
   private stateChangeListeners: Array<(event: EngineStats) => void> = [];
 
+  // ==================== 引擎状态 ====================
+
   /** 引擎状态 */
   private state: EngineState = "initialized";
 
@@ -145,7 +163,7 @@ export class GameEngine {
     totalMessagesProcessed: 0,
   };
 
-  // ==================== 安全验证 ====================
+  // ==================== 静态方法 ====================
 
   /**
    * 为测试环境启用GameEngine（仅用于测试）
@@ -162,66 +180,6 @@ export class GameEngine {
   static disableForTesting(): void {
     delete (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
     console.log("✅ GameEngine安全检查已恢复");
-  }
-
-  /**
-   * 验证当前执行环境是否为Worker线程
-   * 防止在主线程意外创建GameEngine实例
-   */
-  private validateWorkerContext(): void {
-    // 检查是否在浏览器主线程（有window对象）
-    const isMainThread = typeof window !== "undefined";
-
-    // 检查是否在Node.js环境中（用于测试）
-    const isNode = typeof process !== "undefined" && process.versions && process.versions.node;
-
-    // 检查是否有特殊的测试标记（用于单元测试等）
-    const isTestEnvironment =
-      typeof globalThis !== "undefined" && (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
-
-    // 检查是否在沙盒Worker中（有safeAPI标记）
-    const isSandboxWorker = typeof globalThis !== "undefined" && (globalThis as any).safeAPI;
-
-    // 检查是否在Worker环境中（有self但没有window）
-    const isWorkerEnvironment = typeof self !== "undefined" && !isMainThread;
-
-    // 只有在浏览器主线程中才阻止创建
-    if (isMainThread && !isTestEnvironment) {
-      const error = new Error(
-        "🛡️ 安全限制：GameEngine禁止在浏览器主线程中运行！\n" +
-          "请使用SimulatorPool启动Worker中的GameEngine实例。\n" +
-          "这是为了确保JS片段执行的安全性。\n" +
-          "如需在测试中使用，请设置 globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true",
-      );
-      console.error(error.message);
-      throw error;
-    }
-
-    // 记录运行环境
-    if (isSandboxWorker) {
-      // 默认环境，不需要输出日志
-      // console.log("🛡️ GameEngine正在沙盒Worker线程中安全运行");
-    } else if (isWorkerEnvironment) {
-      console.log("🛡️ GameEngine正在Worker线程中运行");
-    } else if (isNode) {
-      console.log("🛡️ GameEngine在Node.js环境中运行（测试模式）");
-    } else if (isTestEnvironment) {
-      console.log("🛡️ GameEngine在测试环境中运行（已标记允许）");
-    }
-  }
-
-  /**
-   * 输出当前帧状态 - 引擎的直接输出方法
-   */
-  private outputFrameState(): void {
-    // 直接通知所有监听器，不需要中间的回调层
-    this.stateChangeListeners.forEach((listener) => {
-      try {
-        listener(this.getStats());
-      } catch (error) {
-        console.error("GameEngine: 状态输出监听器执行失败:", error);
-      }
-    });
   }
 
   // ==================== 构造函数 ====================
@@ -260,7 +218,7 @@ export class GameEngine {
     this.eventQueue = new EventQueue(this.config.eventQueueConfig);
     this.memberManager = new MemberManager(this); // 注入自身引用
     this.messageRouter = new MessageRouter(this); // 注入引擎
-    this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎（内含eventExecutor）
+    this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
     this.jsProcessor = new JSExpressionProcessor(); // 初始化JS表达式处理器
 
@@ -277,6 +235,8 @@ export class GameEngine {
 
     console.log("GameEngine: 初始化完成");
   }
+
+  // ==================== 生命周期管理 ====================
 
   /**
    * 启动引擎
@@ -361,24 +321,6 @@ export class GameEngine {
   }
 
   /**
-   * 获取引擎状态
-   *
-   * @returns 当前状态
-   */
-  getState(): EngineState {
-    return this.state;
-  }
-
-  /**
-   * 检查引擎是否正在运行
-   *
-   * @returns 是否运行中
-   */
-  isRunning(): boolean {
-    return this.state === "running";
-  }
-
-  /**
    * 清理引擎资源
    */
   cleanup(): void {
@@ -401,6 +343,47 @@ export class GameEngine {
     console.log("🧹 引擎资源已清理");
   }
 
+  // ==================== 状态查询 ====================
+
+  /**
+   * 获取引擎状态
+   *
+   * @returns 当前状态
+   */
+  getState(): EngineState {
+    return this.state;
+  }
+
+  /**
+   * 检查引擎是否正在运行
+   *
+   * @returns 是否运行中
+   */
+  isRunning(): boolean {
+    return this.state === "running";
+  }
+
+  /**
+   * 获取引擎统计信息
+   *
+   * @returns 统计信息
+   */
+  getStats(): EngineStats {
+    const runTime = performance.now() - this.startTime;
+
+    return {
+      state: this.state,
+      currentFrame: this.frameLoop.getFrameNumber(),
+      runTime,
+      members: this.getAllMemberData(),
+      eventQueueStats: this.eventQueue.getStats(),
+      frameLoopStats: this.frameLoop.getPerformanceStats(),
+      messageRouterStats: this.messageRouter.getStats(),
+    };
+  }
+
+  // ==================== 事件系统 ====================
+
   /**
    * 添加状态变化监听器
    */
@@ -417,10 +400,33 @@ export class GameEngine {
   }
 
   /**
+   * 插入事件到队列
+   *
+   * @param event 事件对象
+   * @param priority 事件优先级
+   * @returns 插入是否成功
+   */
+  insertEvent(event: BaseEvent, priority: EventPriority = "normal"): boolean {
+    const success = this.eventQueue.insert(event, priority);
+    return success;
+  }
+
+  /**
+   * 注册事件处理器
+   *
+   * @param eventType 事件类型
+   * @param handler 事件处理器
+   */
+  registerEventHandler(eventType: string, handler: EventHandler): void {
+    this.frameLoop.registerEventHandler(eventType, handler);
+  }
+
+  // ==================== 成员管理 ====================
+
+  /**
    * 添加阵营
    *
    * @param campId 阵营ID
-   * @param campName 阵营名称
    */
   addCamp(campId: string): void {
     this.memberManager.addCamp(campId);
@@ -431,7 +437,6 @@ export class GameEngine {
    *
    * @param campId 阵营ID
    * @param teamData 队伍数据
-   * @param teamName 队伍名称
    */
   addTeam(campId: string, teamData: Team): void {
     this.memberManager.addTeam(campId, teamData);
@@ -467,6 +472,8 @@ export class GameEngine {
   findMember(memberId: string) {
     return this.memberManager.getMember(memberId);
   }
+
+  // ==================== 消息处理 ====================
 
   /**
    * 处理意图消息
@@ -510,27 +517,7 @@ export class GameEngine {
     return results;
   }
 
-  /**
-   * 插入事件到队列
-   *
-   * @param event 事件对象
-   * @param priority 事件优先级
-   * @returns 插入是否成功
-   */
-  insertEvent(event: BaseEvent, priority: EventPriority = "normal"): boolean {
-    const success = this.eventQueue.insert(event, priority);
-    return success;
-  }
-
-  /**
-   * 注册事件处理器
-   *
-   * @param eventType 事件类型
-   * @param handler 事件处理器
-   */
-  registerEventHandler(eventType: string, handler: EventHandler): void {
-    this.frameLoop.registerEventHandler(eventType, handler);
-  }
+  // ==================== 快照管理 ====================
 
   /**
    * 获取当前快照
@@ -578,24 +565,7 @@ export class GameEngine {
     return this.snapshots.map((snapshot) => ({ ...snapshot }));
   }
 
-  /**
-   * 获取引擎统计信息
-   *
-   * @returns 统计信息
-   */
-  getStats(): EngineStats {
-    const runTime = performance.now() - this.startTime;
-
-    return {
-      state: this.state,
-      currentFrame: this.frameLoop.getFrameNumber(),
-      runTime,
-      members: this.getAllMemberData(),
-      eventQueueStats: this.eventQueue.getStats(),
-      frameLoopStats: this.frameLoop.getPerformanceStats(),
-      messageRouterStats: this.messageRouter.getStats(),
-    };
-  }
+  // ==================== 数据访问 ====================
 
   /**
    * 获取成员数据（外部使用 - 序列化）
@@ -636,7 +606,7 @@ export class GameEngine {
     return this.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
   }
 
-  // ==================== 便捷访问方法 (依赖注入支持) ====================
+  // ==================== 依赖注入支持 ====================
 
   /**
    * 获取事件队列实例
@@ -669,10 +639,9 @@ export class GameEngine {
   // ==================== JS编译和执行 ====================
 
   /**
-   * 编译JS脚本
-   * 将self.xxx转换为_self.getValue('xxx')格式并缓存结果
+   * 编译JS代码
    *
-   * @param code 原始JS代码
+   * @param code JS代码字符串
    * @param memberId 成员ID
    * @param targetId 目标成员ID (可选)
    * @returns 编译后的代码
@@ -710,6 +679,99 @@ export class GameEngine {
   }
 
   /**
+   * 执行编译后的JS代码
+   *
+   * @param compiledCode 编译后的代码
+   * @param context 执行上下文
+   * @returns 执行结果
+   */
+  executeScript(compiledCode: string, context: ExpressionContext): any {
+    try {
+      const memberId = context.casterId;
+      const targetId = context.targetId;
+
+      if (!memberId) {
+        throw new Error("缺少成员ID");
+      }
+
+      // 调试信息
+      console.log(`🔧 GameEngine.executeScript: 执行代码: ${compiledCode}`);
+      console.log(`🔧 GameEngine.executeScript: 上下文:`, context);
+
+      // 在安全的沙盒环境中执行编译后的代码
+      // JSExpressionProcessor 已经在代码中声明了 _self 和 _target 变量
+      const runner = new Function("ctx", compiledCode);
+      
+      // 确保 context 包含 engine 引用，供生成的代码使用
+      const executionContext = {
+        ...context,
+        engine: this
+      };
+      
+      const result = runner.call(null, executionContext);
+      
+      console.log(`✅ JS脚本执行成功: ${memberId}, 结果:`, result);
+      return result;
+    } catch (error) {
+      console.error("JS脚本执行失败:", error);
+      console.error("编译后的代码:", compiledCode);
+      console.error("执行上下文:", context);
+      throw new Error(`脚本执行失败: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  /**
+   * 计算表达式
+   *
+   * @param expression 表达式字符串
+   * @param context 计算上下文
+   * @returns 计算结果
+   */
+  evaluateExpression(expression: string, context: ExpressionContext): number {
+    try {
+      const memberId = context.casterId;
+      if (!memberId) {
+        throw new Error("缺少成员ID");
+      }
+
+      const member = this.memberManager.getMember(memberId);
+      if (!member) {
+        throw new Error(`成员不存在: ${memberId}`);
+      }
+
+      console.log(`🔧 GameEngine.evaluateExpression: 计算表达式: ${expression}`);
+
+      // 使用 JSExpressionProcessor 编译表达式
+      const compiledResult = this.jsProcessor.compile(expression, {
+        memberId,
+        targetId: context.targetId,
+        schema: member.schema,
+        options: { enableValidation: true }
+      });
+      
+      if (!compiledResult.success) {
+        throw new Error(`表达式编译失败: ${compiledResult.error}`);
+      }
+      
+      console.log(`🔧 GameEngine.evaluateExpression: 编译成功，编译后代码: ${compiledResult.compiledCode}`);
+      
+      // 执行编译后的表达式，确保 context 包含 engine 引用
+      const executionContext = {
+        ...context,
+        engine: this
+      };
+      
+      const result = this.executeScript(compiledResult.compiledCode, executionContext);
+      console.log(`🔧 GameEngine.evaluateExpression: 执行结果: ${result} (类型: ${typeof result})`);
+      
+      return result;
+    } catch (error) {
+      console.error("表达式计算失败:", error);
+      return 0;
+    }
+  }
+
+  /**
    * 获取编译缓存统计
    * 用于调试和监控
    */
@@ -729,7 +791,67 @@ export class GameEngine {
     console.log("🧹 JS编译缓存已清理");
   }
 
-  // ==================== 私有初始化方法 ====================
+  // ==================== 私有方法 ====================
+
+  /**
+   * 验证当前执行环境是否为Worker线程
+   * 防止在主线程意外创建GameEngine实例
+   */
+  private validateWorkerContext(): void {
+    // 检查是否在浏览器主线程（有window对象）
+    const isMainThread = typeof window !== "undefined";
+
+    // 检查是否在Node.js环境中（用于测试）
+    const isNode = typeof process !== "undefined" && process.versions && process.versions.node;
+
+    // 检查是否有特殊的测试标记（用于单元测试等）
+    const isTestEnvironment =
+      typeof globalThis !== "undefined" && (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
+
+    // 检查是否在沙盒Worker中（有safeAPI标记）
+    const isSandboxWorker = typeof globalThis !== "undefined" && (globalThis as any).safeAPI;
+
+    // 检查是否在Worker环境中（有self但没有window）
+    const isWorkerEnvironment = typeof self !== "undefined" && !isMainThread;
+
+    // 只有在浏览器主线程中才阻止创建
+    if (isMainThread && !isTestEnvironment) {
+      const error = new Error(
+        "🛡️ 安全限制：GameEngine禁止在浏览器主线程中运行！\n" +
+          "请使用SimulatorPool启动Worker中的GameEngine实例。\n" +
+          "这是为了确保JS片段执行的安全性。\n" +
+          "如需在测试中使用，请设置 globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true",
+      );
+      console.error(error.message);
+      throw error;
+    }
+
+    // 记录运行环境
+    if (isSandboxWorker) {
+      // 默认环境，不需要输出日志
+      // console.log("🛡️ GameEngine正在沙盒Worker线程中安全运行");
+    } else if (isWorkerEnvironment) {
+      console.log("🛡️ GameEngine正在Worker线程中运行");
+    } else if (isNode) {
+      console.log("🛡️ GameEngine在Node.js环境中运行（测试模式）");
+    } else if (isTestEnvironment) {
+      console.log("🛡️ GameEngine在测试环境中运行（已标记允许）");
+    }
+  }
+
+  /**
+   * 输出当前帧状态 - 引擎的直接输出方法
+   */
+  private outputFrameState(): void {
+    // 直接通知所有监听器，不需要中间的回调层
+    this.stateChangeListeners.forEach((listener) => {
+      try {
+        listener(this.getStats());
+      } catch (error) {
+        console.error("GameEngine: 状态输出监听器执行失败:", error);
+      }
+    });
+  }
 
   /**
    * 初始化默认事件处理器

@@ -3,7 +3,7 @@
  * 将GameEngine运行在安全沙盒环境中
  */
 
-import { GameEngine } from "../GameEngine";
+import { EngineStats, GameEngine } from "../GameEngine";
 import { EngineViewSchema, type WorkerTaskResponse, type WorkerTaskResult } from "./messages";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "./messages";
@@ -31,14 +31,6 @@ interface PortMessage {
  * Worker响应消息类型 - 与SimulatorPool期望的格式一致
  */
 type WorkerResponse<T = unknown> = WorkerTaskResponse<T>;
-
-/**
- * Worker系统消息类型 - 用于引擎状态更新
- */
-interface WorkerSystemMessage {
-  type: "engine_state_update" | "system_event";
-  event?: any;
-}
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -97,7 +89,7 @@ const gameEngine = new GameEngine({
   },
 });
 
-// 🔥 关键：订阅引擎状态变化事件（加入节流与轻量DTO）
+// 订阅引擎状态变化事件（加入节流与轻量DTO）
 let engineStateSubscription: (() => void) | null = null;
 let lastEngineViewSentAt = 0;
 const ENGINE_VIEW_MAX_HZ = 20; // <= 20Hz
@@ -130,7 +122,7 @@ type EngineView = {
   };
 };
 
-function projectEngineView(stats: any): EngineView {
+function projectEngineView(stats: EngineStats): EngineView {
   return {
     frameNumber: stats.currentFrame,
     runTime: stats.runTime,
@@ -161,7 +153,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
       case "init":
         // 初始化Worker，设置MessageChannel
         if (!port) {
-          throw new Error("Missing MessagePort for worker initialization");
+          throw new Error("初始化失败，缺少MessagePort");
         }
         const messagePort: MessagePort = port;
         {
@@ -479,7 +471,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           };
         }
 
-        // 🔥 关键：设置引擎状态变化订阅（<=20Hz 节流 + 轻量 EngineView）
+        // 设置引擎状态变化订阅（<=20Hz 节流 + 轻量 EngineView）
         engineStateSubscription = gameEngine.onStateChange((stats) => {
           const now = performance.now();
           if (now - lastEngineViewSentAt < ENGINE_VIEW_MIN_INTERVAL) {
@@ -526,6 +518,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
     } catch {}
   }
 };
+
 // ==================== 统一系统消息出口 ====================
 function postSystemMessage(
   port: MessagePort,

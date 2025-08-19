@@ -13,7 +13,7 @@
  */
 
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
-import type { EventExecutor, ExpressionContext } from "../core/EventExecutor";
+import type GameEngine from "../core/GameEngine";
 import type MemberManager from "../core/MemberManager";
 import { ModifierType } from "../core/member/ReactiveSystem";
 
@@ -24,7 +24,7 @@ import { ModifierType } from "../core/member/ReactiveSystem";
  */
 export class CustomEventHandler implements EventHandler {
   constructor(
-    private eventExecutor: EventExecutor,
+    private gameEngine: GameEngine,
     private memberManager: MemberManager,
   ) {}
 
@@ -131,17 +131,25 @@ export class CustomEventHandler implements EventHandler {
       const { scriptCode } = payload as { scriptCode: string };
       console.log(`📜 执行成员 ${targetMemberId} 的脚本`);
 
-      // 准备脚本执行上下文（满足 executeScript 对 caster.getId 的要求）
-      const scriptContext: ExpressionContext = {
+      // 使用 GameEngine 的编译和执行流程
+      const compiledCode = this.gameEngine.compileScript(scriptCode, targetMemberId);
+      
+      // 通过 GameEngine 执行编译后的代码
+      const result = this.gameEngine.executeScript(compiledCode, {
         currentFrame: context.currentFrame,
-        caster: { getId: () => targetMemberId },
-      };
+        casterId: targetMemberId,
+        targetId: undefined,
+        skillLv: 0,
+        environment: context
+      });
 
-      const result = this.eventExecutor.executeScript(scriptCode, scriptContext);
       console.log(`✅ 脚本执行成功:`, result);
       return { success: true, data: { scriptResult: result } };
     } catch (error) {
-      return { success: false, error: `脚本执行失败: ${error instanceof Error ? error.message : "Unknown error"}` };
+      return { 
+        success: false, 
+        error: `脚本执行失败: ${error instanceof Error ? error.message : "Unknown error"}` 
+      };
     }
   }
 

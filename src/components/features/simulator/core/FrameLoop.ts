@@ -15,8 +15,8 @@
  */
 
 import type GameEngine from "./GameEngine";
-import { EventExecutor } from "./EventExecutor";
 import type { EventQueue, QueueEvent, BaseEvent, EventHandler, ExecutionContext, EventResult } from "./EventQueue";
+import { Member } from "./member/Member";
 
 // ============================== 类型定义 ==============================
 
@@ -112,9 +112,6 @@ export class FrameLoop {
   /** 游戏引擎引用 */
   private engine: GameEngine;
 
-  /** 事件执行器 - 处理事件执行逻辑 */
-  private eventExecutor: EventExecutor;
-
   /** 事件处理器注册表 */
   private eventHandlers: Map<string, EventHandler> = new Map();
 
@@ -174,9 +171,6 @@ export class FrameLoop {
   constructor(engine: GameEngine, config: Partial<FrameLoopConfig> = {}) {
     this.engine = engine;
 
-    // 初始化事件执行器，传入engine引用
-    this.eventExecutor = new EventExecutor(engine, config.enablePerformanceMonitoring || true);
-
     // 设置默认配置
     this.config = {
       targetFPS: 60,
@@ -197,14 +191,6 @@ export class FrameLoop {
   }
 
   // ==================== 公共接口 ====================
-
-  /**
-   * 获取事件执行器
-   * 供事件处理器工厂等组件使用
-   */
-  getEventExecutor(): EventExecutor {
-    return this.eventExecutor;
-  }
 
   /**
    * 启动帧循环
@@ -522,7 +508,6 @@ export class FrameLoop {
       }
 
       // 2. 更新成员状态
-      membersUpdated = this.updateMembers(deltaTime);
 
       // 3. 更新性能统计
       const processingTime = performance.now() - frameStartTime;
@@ -669,81 +654,6 @@ export class FrameLoop {
     }
 
     return result;
-  }
-
-  /**
-   * 更新成员状态
-   *
-   * @param deltaTime 帧间隔时间
-   * @returns 更新的成员数量
-   */
-  private updateMembers(deltaTime: number): number {
-    const members = this.engine.getMemberManager().getAllMembers();
-    let updatedCount = 0;
-
-    for (const member of members) {
-      try {
-        // 更新成员状态（例如：HP/MP恢复，Buff倒计时等）
-        this.updateMemberState(member, deltaTime);
-        updatedCount++;
-      } catch (error) {
-        console.error(`❌ 成员更新失败: ${member.id}`, error);
-      }
-    }
-
-    return updatedCount;
-  }
-
-  /**
-   * 更新单个成员状态
-   *
-   * @param member 成员对象
-   * @param deltaTime 帧间隔时间
-   */
-  private updateMemberState(member: any, deltaTime: number): void {
-    // 调用成员的update方法
-    if (typeof member.update === "function") {
-      member.update(deltaTime);
-    }
-
-    // 推进成员的状态机
-    if (member.getFSM && typeof member.getFSM === "function") {
-      const fsm = member.getFSM();
-      if (fsm) {
-        // 发送时间推进事件到状态机
-        try {
-          fsm.send({
-            type: "FRAME_UPDATE",
-            data: {
-              deltaTime,
-              currentFrame: this.frameNumber,
-              timeScale: this.timeScale,
-            },
-          });
-        } catch (error) {
-          console.log(`状态机更新失败: ${member.getId()}`, error);
-        }
-      }
-    }
-
-    // 处理Buff系统
-    this.updateMemberBuffs(member, deltaTime);
-  }
-
-  /**
-   * 更新成员的Buff状态
-   *
-   * @param member 成员对象
-   * @param deltaTime 帧间隔时间
-   */
-  private updateMemberBuffs(member: any, deltaTime: number): void {
-    // TODO: 实现Buff系统更新逻辑
-    // 这里应该：
-    // 1. 遍历成员的所有Buff
-    // 2. 更新Buff的持续时间
-    // 3. 触发Buff效果
-    // 4. 移除过期的Buff
-    // 5. 生成相应的事件
   }
 
   /**

@@ -14,9 +14,8 @@
 
 
 import type { EventHandler } from "../core/EventQueue";
-import type { EventExecutor } from "../core/EventExecutor";
-import type { MemberManager } from "../core/MemberManager";
 import type GameEngine from "../core/GameEngine";
+import type { MemberManager } from "../core/MemberManager";
 
 // 导入所有处理器
 import {
@@ -103,19 +102,19 @@ export class EventHandlerFactory {
   /**
    * 创建指定类型的事件处理器
    * 
-   * @param handlerType 处理器类型
+   * @param type 处理器类型
    * @returns 事件处理器实例
    */
-  createHandler(handlerType: string): EventHandler | null {
+  createHandler(type: string): EventHandler | null {
     // 检查缓存
-    if (this.handlerCache.has(handlerType)) {
-      return this.handlerCache.get(handlerType)!;
+    if (this.handlerCache.has(type)) {
+      return this.handlerCache.get(type)!;
     }
 
+    // 创建新处理器
     let handler: EventHandler | null = null;
 
-    switch (handlerType) {
-      // 战斗事件处理器
+    switch (type) {
       case 'member_damage':
         handler = this.createMemberDamageHandler();
         break;
@@ -131,8 +130,6 @@ export class EventHandlerFactory {
       case 'buff_remove':
         handler = this.createBuffRemoveHandler();
         break;
-
-      // 技能事件处理器
       case 'skill_start':
         handler = this.createSkillStartHandler();
         break;
@@ -151,15 +148,18 @@ export class EventHandlerFactory {
       case 'skill_cast':
         handler = this.createSkillCastHandler();
         break;
-
+      case 'custom':
+      case 'member_fsm_event':
+        handler = this.createCustomEventHandler();
+        break;
       default:
-        console.warn(`EventHandlerFactory: 未知的处理器类型: ${handlerType}`);
+        console.warn(`未知的处理器类型: ${type}`);
         return null;
     }
 
     // 缓存处理器
     if (handler) {
-      this.handlerCache.set(handlerType, handler);
+      this.handlerCache.set(type, handler);
     }
 
     return handler;
@@ -179,7 +179,7 @@ export class EventHandlerFactory {
    * 创建成员伤害处理器
    */
   private createMemberDamageHandler(): EventHandler {
-    return new MemberDamageHandler(this.engine.getFrameLoop().getEventExecutor(), this.engine.getMemberManager());
+    return new MemberDamageHandler(this.engine, this.engine.getMemberManager());
   }
 
   /**
@@ -256,7 +256,7 @@ export class EventHandlerFactory {
    * 创建自定义事件处理器
    */
   private createCustomEventHandler(): EventHandler {
-    return new CustomEventHandler(this.engine.getFrameLoop().getEventExecutor(), this.engine.getMemberManager());
+    return new CustomEventHandler(this.engine, this.engine.getMemberManager());
   }
 }
 

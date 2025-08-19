@@ -148,7 +148,41 @@ export class JSExpressionProcessor {
     // 注入上下文声明
     const contextInjection = this.generateContextInjection(context);
 
-    return `${contextInjection}\n${compiledCode}`;
+    // 确保生成的代码格式正确
+    // 如果原始代码是简单表达式，需要确保有返回值
+    let finalCode: string;
+    
+    if (propertyAccesses.length === 0 && this.isSimpleExpression(originalCode)) {
+      // 简单表达式：包装在 return 语句中
+      finalCode = `${contextInjection}\nreturn ${compiledCode};`;
+    } else {
+      // 复杂代码：直接拼接
+      finalCode = `${contextInjection}\n${compiledCode}`;
+    }
+    
+    // 调试信息
+    console.log(`🔧 JSExpressionProcessor: 原始代码: ${originalCode}`);
+    console.log(`🔧 JSExpressionProcessor: 属性访问: ${propertyAccesses.length} 个`);
+    console.log(`🔧 JSExpressionProcessor: 简单表达式: ${this.isSimpleExpression(originalCode)}`);
+    console.log(`🔧 JSExpressionProcessor: 生成的代码: ${finalCode}`);
+    
+    return finalCode;
+  }
+
+  /**
+   * 判断是否为简单表达式
+   */
+  private isSimpleExpression(code: string): boolean {
+    const trimmed = code.trim();
+    // 简单表达式的特征：不包含语句分隔符、控制流等
+    return !trimmed.includes(';') && 
+           !trimmed.includes('{') && 
+           !trimmed.includes('}') && 
+           !trimmed.includes('return') &&
+           !trimmed.includes('if') &&
+           !trimmed.includes('for') &&
+           !trimmed.includes('while') &&
+           !trimmed.includes('function');
   }
 
   /**
@@ -158,10 +192,8 @@ export class JSExpressionProcessor {
     // 为脚本提供与架构解耦的访问器对象，避免直接依赖 Actor/Member 实现
     const wrapAccessor = (id: string) =>
       `({ getValue: (key) => {
-          try {
-            const entry = this.getMemberManager().getMemberEntry('${id}');
-            return entry?.attrs?.getValue?.(key) ?? 0;
-          } catch { return 0; }
+            const member = ctx.engine.getMemberManager().getMember('${id}');
+            return member.rs.getValue(key);
         } })`;
 
     const lines: string[] = [];
@@ -209,26 +241,27 @@ export class JSExpressionProcessor {
     try {
       // 1. 语法解析检查
       let ast: Program;
-
-      if (code.includes("return")) {
-        // 如果代码包含return语句，将其包装在函数中进行验证
-        const wrappedCode = `function tempFunction() {\n${code}\n}`;
-        try {
-          ast = parse(wrappedCode, {
-            ecmaVersion: 2020,
-            sourceType: "script",
-          });
-        } catch (wrapError) {
-          result.isValid = false;
-          result.errors.push(`语法解析错误: ${wrapError instanceof Error ? wrapError.message : "Unknown error"}`);
-          return result;
-        }
-      } else {
-        // 普通代码直接解析
+      
+      try {
+        // 首先尝试直接解析
         ast = parse(code, {
           ecmaVersion: 2020,
           sourceType: "script",
         });
+      } catch (parseError) {
+        // 如果直接解析失败，尝试作为表达式解析
+        try {
+          const expressionCode = `(${code})`;
+          ast = parse(expressionCode, {
+            ecmaVersion: 2020,
+            sourceType: "script",
+          });
+          result.warnings.push("代码已作为表达式进行验证");
+        } catch (expressionError) {
+          result.isValid = false;
+          result.errors.push(`语法解析错误: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
+          return result;
+        }
       }
 
       // 2. 安全性检查
@@ -236,9 +269,10 @@ export class JSExpressionProcessor {
 
       // 3. 语法正确性检查
       this.checkSyntax(ast, result);
+      
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`语法解析错误: ${error instanceof Error ? error.message : "Unknown error"}`);
+      result.errors.push(`验证过程错误: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 
     result.isValid = result.errors.length === 0 && result.securityIssues.length === 0;
@@ -265,8 +299,8 @@ export class JSExpressionProcessor {
     this.walkAST(ast, (node: Node) => {
       if (node.type === "Identifier") {
         const identifier = node;
-        if (dangerousPatterns.includes(identifier.name)) {
-          result.securityIssues.push(`检测到危险操作: ${identifier.name}`);
+        if (dangerousPatterns.includes(identifier.type)) {
+          result.securityIssues.push(`检测到危险操作: ${identifier.type}`);
         }
       }
     });
@@ -293,27 +327,32 @@ export class JSExpressionProcessor {
 
   // ==================== 工具方法 ====================
 
+  private isNode(value: any): value is Node {
+    return value && typeof value === "object" && typeof value.type === "string";
+  }
+  
+
   /**
    * 遍历AST
    */
   private walkAST(node: Node, callback: (node: Node) => void): void {
     callback(node);
-
-    for (const key in node) {
-      const value = node[key];
-      if (value && typeof value === "object") {
-        if (Array.isArray(value)) {
-          value.forEach((item) => {
-            if (item && typeof item === "object" && item.type) {
-              this.walkAST(item, callback);
-            }
-          });
-        } else if (value.type) {
-          this.walkAST(value, callback);
+  
+    for (const key of Object.keys(node)) {
+      const value = node[key as keyof Node];
+  
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item && typeof item === "object" && "type" in item) {
+            this.walkAST(item as Node, callback);
+          }
         }
+      } else if (this.isNode(value)) {
+        this.walkAST(value, callback);
       }
     }
   }
+  
 }
 
 // ============================== 导出 ==============================

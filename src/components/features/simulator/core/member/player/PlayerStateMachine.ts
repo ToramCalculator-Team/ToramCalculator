@@ -105,7 +105,6 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-        const executor = context.engine.getFrameLoop().getEventExecutor();
 
         const skill = context.skills?.find((s) => s.id === skillId);
         if (!skill) {
@@ -113,13 +112,15 @@ export const playerStateMachine = (player: Player) => {
           return;
         }
 
-        const effect = skill.template?.effects.find((e) =>
-          executor.executeExpression(e.condition, {
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
-          }),
-        );
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
         if (!effect) {
           console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
           return;
@@ -129,12 +130,12 @@ export const playerStateMachine = (player: Player) => {
           skillEffect: effect,
         });
 
-        const hpCost = executor.executeExpression(effect.hpCost ?? "0", {
+        const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        const mpCost = executor.executeExpression(effect.mpCost ?? "0", {
+        const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
@@ -144,13 +145,13 @@ export const playerStateMachine = (player: Player) => {
           {
             attr: "hp.current",
             targetType: ModifierType.STATIC_FIXED,
-            value: -hpCost.value,
+            value: -hpCost,
             source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
           },
           {
             attr: "mp.current",
             targetType: ModifierType.STATIC_FIXED,
-            value: -mpCost.value,
+            value: -mpCost,
             source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
           },
         ]);
@@ -184,26 +185,32 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-        const executor = context.engine.getFrameLoop().getEventExecutor();
 
         const skill = context.skills?.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
         }
-        const effect = skill.template?.effects.find((e) =>
-          executor.executeExpression(e.condition, {
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
-          }),
-        );
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
         if (!effect) {
           console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
         console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-        return false;
+        console.log(context.engine.evaluateExpression("self.hp.current + 10%;console.log(self.hp.current)", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        }))
+        return true;
       },
       技能未冷却: function ({ context, event }) {
         const e = event as 使用技能;
@@ -224,40 +231,41 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-        const executor = context.engine.getFrameLoop().getEventExecutor();
 
         const skill = context.skills?.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
         }
-        const effect = skill.template?.effects.find((e) =>
-          executor.executeExpression(e.condition, {
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
-          }),
-        );
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
         if (!effect) {
           console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
-        const hpCost = executor.executeExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
+        const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        const mpCost = executor.executeExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
+        const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        if (hpCost.value > context.rs.getValue("hp.current") || mpCost.value > context.rs.getValue("mp.current")) {
-          console.log(`- 该技能不满足施法消耗，HP:${hpCost.value} MP:${mpCost.value}`);
+        if (hpCost > context.rs.getValue("hp.current") || mpCost > context.rs.getValue("mp.current")) {
+          console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
           // 这里需要撤回RS的修改
           return true;
         }
-        console.log(`- 该技能满足施法消耗，HP:${hpCost.value} MP:${mpCost.value}`);
+        console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
         return false;
       },
       有蓄力动作: function ({ context, event }) {

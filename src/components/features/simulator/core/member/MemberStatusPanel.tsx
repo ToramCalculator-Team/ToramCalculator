@@ -500,7 +500,6 @@ const StatsRenderer = (props: { data?: object }) => {
 
 export default function MemberStatusPanel(props: { member: Accessor<MemberSerializeData | null> }) {
   const selectedMemberData = createMemo(() => {
-    console.log(props.member()?.attrs);
     return props.member()?.attrs;
   });
   const [displayDetail, setDisplayDetail] = createSignal(false);
