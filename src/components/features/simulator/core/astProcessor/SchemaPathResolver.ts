@@ -12,7 +12,7 @@
  * - 提供详细的路径验证和错误信息
  */
 
-import type { NestedSchema, SchemaAttribute } from "../member/ReactiveSystem";
+import type { NestedSchema, SchemaAttribute } from "../dataSys/ReactiveSystem";
 
 // ============================== 类型定义 ==============================
 

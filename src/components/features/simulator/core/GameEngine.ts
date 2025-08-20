@@ -24,7 +24,7 @@ import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
-import { JSExpressionProcessor, type CompilationContext } from "./expression/JSExpressionProcessor";
+import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
 
 // ============================== 类型定义 ==============================
 
@@ -132,7 +132,7 @@ export class GameEngine {
   // ==================== JS编译系统 ====================
 
   /** JS表达式处理器 - 负责编译JS代码 */
-  private jsProcessor: JSExpressionProcessor;
+  private jsProcessor: JSProcessor;
 
   /** 编译缓存 - 存储编译后的JS代码 */
   private compiledScripts: Map<string, string> = new Map();
@@ -220,7 +220,7 @@ export class GameEngine {
     this.messageRouter = new MessageRouter(this); // 注入引擎
     this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
-    this.jsProcessor = new JSExpressionProcessor(); // 初始化JS表达式处理器
+    this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
     // 🔥 设置帧循环状态变化回调 - 简化为直接输出
     this.frameLoop.setStateChangeCallback((event) => {

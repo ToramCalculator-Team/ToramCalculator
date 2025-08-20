@@ -9,7 +9,7 @@
 
 import { Accessor, Show, createMemo, createSignal,onMount } from "solid-js";
 import { MemberSerializeData } from "./Member";
-import { DataStorage, isDataStorageType } from "./ReactiveSystem";
+import { DataStorage, isDataStorageType } from "../dataSys/ReactiveSystem";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { Card } from "~/components/containers/card";
 import { Portal } from "solid-js/web";

@@ -1,6 +1,6 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Actor, AnyActorLogic, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { NestedSchema, ReactiveSystem } from "./ReactiveSystem";
+import { NestedSchema, ReactiveSystem } from "../dataSys/ReactiveSystem";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { Player } from "./player/Player";
@@ -163,7 +163,7 @@ export class Member<TAttrKey extends string = string> {
     this.isAlive = true;
     this.schema = schema;
     this.data = memberData;
-    this.rs = new ReactiveSystem<TAttrKey>(memberData, schema);
+    this.rs = new ReactiveSystem<TAttrKey>(schema);
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.actor = createActor(stateMachine(this), {
       id: memberData.id,

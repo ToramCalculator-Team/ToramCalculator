@@ -147,6 +147,7 @@ export interface SchemaAttribute {
   displayName: string;
   expression: string;
   noBaseValue?: boolean;
+  onlyBaseValue?: boolean;
 }
 
 export const isSchemaAttribute = (x: unknown): x is SchemaAttribute => {
@@ -529,9 +530,6 @@ export class ReactiveSystem<T extends string> {
   /** 标记属性是否为 noBaseValue（百分比应转换为小数fixed累加） */
   private readonly isNoBaseValue: boolean[] = [];
 
-  /** 当前正在编译的属性名（用于避免自引用） */
-  private currentCompilingAttr?: T;
-
   /** 正在计算的属性集合（防止递归） */
   private readonly isComputing: Set<number> = new Set();
 
@@ -552,7 +550,7 @@ export class ReactiveSystem<T extends string> {
    *
    * @param schema 嵌套的Schema结构
    */
-  constructor(member: any, schema: NestedSchema) {
+  constructor(schema: NestedSchema) {
     // console.log("🚀 ReactiveSystem 构造函数", schema);
     const flattened = SchemaFlattener.flatten<T>(schema);
     const attrKeys = flattened.attrKeys;
@@ -615,7 +613,148 @@ export class ReactiveSystem<T extends string> {
     // console.log(`🚀 ReactiveSystem 初始化完成:`, this);
   }
 
-  // ==================== 导出接口 ====================
+  // ==================== 公共API - 属性访问 ====================
+
+  /**
+   * 获取属性值
+   */
+  getValue(attr: T): number {
+    const index = this.keyToIndex.get(attr);
+    if (index === undefined) {
+      console.warn(`⚠️ 尝试获取不存在的属性值: ${attr}`);
+      return 0;
+    }
+
+    // 检查是否需要更新
+    if (this.isDirty(index)) {
+      this.updateDirtyValues();
+    }
+
+    // 检查是否有缓存值
+    if (BitFlags.has(this.flags, index, AttributeFlags.IS_CACHED)) {
+      this.stats.cacheHits++;
+      return this.values[index];
+    }
+
+    // 重新计算
+    this.stats.cacheMisses++;
+    const value = this.computeAttributeValue(index);
+    this.values[index] = value;
+    BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
+
+    return value;
+  }
+
+  /**
+   * 批量获取属性值
+   */
+  getValues(attrs?: T[]): Record<T, number> {
+    const targetAttrs = attrs || this.indexToKey;
+    const result: Record<T, number> = {} as Record<T, number>;
+
+    // 只在有脏值时才批量更新
+    if (this.hasDirtyValues()) {
+      this.updateDirtyValues();
+    }
+
+    // 批量读取（不计入缓存统计，因为这是直接数组访问）
+    for (const attr of targetAttrs) {
+      const index = this.keyToIndex.get(attr);
+      if (index !== undefined) {
+        result[attr] = this.values[index];
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取属性的显示名称
+   */
+  getDisplayName(attr: T): string {
+    return this.displayNames.get(attr) || attr;
+  }
+
+  // ==================== 公共API - 修饰符管理 ====================
+
+  /**
+   * 添加修饰符
+   */
+  addModifier(attr: T, targetType: ModifierType, value: number, source: ModifierSource): void {
+    // 获取属性索引
+    const index = this.keyToIndex.get(attr);
+    if (index === undefined) {
+      console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
+      return;
+    }
+    // 对 noBaseValue 属性：将百分比修饰符转为小数并落入 fixed 通道
+    let type = targetType;
+    let amount = value;
+    if (this.isNoBaseValue[index]) {
+      if (targetType === ModifierType.STATIC_PERCENTAGE) {
+        type = ModifierType.STATIC_FIXED;
+        amount = value; // 按百分数字面量存储（避免被整型取整为0）
+      } else if (targetType === ModifierType.DYNAMIC_PERCENTAGE) {
+        type = ModifierType.DYNAMIC_FIXED;
+        amount = value; // 按百分数字面量存储
+      }
+    }
+    // 来源聚合：记录 sourceId 的值并同步到累加数组
+    let perType = this.modifierSources.get(type);
+    if (!perType) {
+      perType = new Map();
+      this.modifierSources.set(type, perType);
+    }
+    let perAttr = perType.get(index);
+    if (!perAttr) {
+      perAttr = new Map();
+      perType.set(index, perAttr);
+    }
+    const prev = perAttr.get(source.id) ?? 0;
+    const next = prev + amount;
+    perAttr.set(source.id, next);
+    const delta = next - prev;
+    this.modifierArrays[type][index] += delta;
+    this.markDirty(index);
+
+    // console.log(`✅ 成功添加修饰器: ${attr} ,位置${targetType.toString()} ,值${value} (来源: ${source.name})`);
+  }
+
+  /**
+   * 批量添加修饰符（包含基础值）
+   */
+  addModifiers(items: Array<{ attr: T; targetType: ModifierType; value: number; source: ModifierSource }>): void {
+    for (const it of items) {
+      this.addModifier(it.attr, it.targetType, it.value, it.source);
+    }
+    this.stats.batchUpdates++;
+  }
+
+  /**
+   * 移除修饰符
+   */
+  removeModifier(attr: T, targetType: ModifierType, sourceId: string): void {
+    const index = this.keyToIndex.get(attr);
+    if (index === undefined) {
+      console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
+      return;
+    }
+    // 来源级移除：从来源聚合删除并从累加数组扣减
+    const perType = this.modifierSources.get(targetType);
+    const perAttr = perType?.get(index);
+    const amount = perAttr?.get(sourceId) ?? 0;
+    if (amount !== 0) {
+      this.modifierArrays[targetType][index] -= amount;
+      perAttr!.delete(sourceId);
+      if (perAttr!.size === 0) {
+        perType!.delete(index);
+      }
+      this.markDirty(index);
+      console.log(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
+    }
+  }
+
+  // ==================== 公共API - 数据导出 ====================
 
   /**
    * 导出扁平数值映射（attrKey -> value）
@@ -672,7 +811,7 @@ export class ReactiveSystem<T extends string> {
         dynamic: { fixed: [], percentage: [] },
       };
       if (index !== undefined) {
-        // 基础值：若为计算属性，则取表达式计算结果作为“基础值”；否则读取 BASE_VALUE 槽位
+        // 基础值：若为计算属性，则取表达式计算结果作为"基础值"；否则读取 BASE_VALUE 槽位
         let base = this.modifierArrays[ModifierType.BASE_VALUE][index];
         if (BitFlags.has(this.flags, index, AttributeFlags.HAS_COMPUTATION)) {
           const computationFn = this.computationFunctions.get(index);
@@ -770,173 +909,7 @@ export class ReactiveSystem<T extends string> {
     return result;
   }
 
-  /**
-   * 获取属性的显示名称
-   */
-  getDisplayName(attr: T): string {
-    return this.displayNames.get(attr) || attr;
-  }
-
-  // ==================== 核心API（保持兼容） ====================
-
-  /**
-   * 获取属性值
-   */
-  getValue(attr: T): number {
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试获取不存在的属性值: ${attr}`);
-      return 0;
-    }
-
-    // 检查是否需要更新
-    if (this.isDirty(index)) {
-      this.updateDirtyValues();
-    }
-
-    // 检查是否有缓存值
-    if (BitFlags.has(this.flags, index, AttributeFlags.IS_CACHED)) {
-      this.stats.cacheHits++;
-      return this.values[index];
-    }
-
-    // 重新计算
-    this.stats.cacheMisses++;
-    const value = this.computeAttributeValue(index);
-    this.values[index] = value;
-    BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
-
-    return value;
-  }
-
-  /**
-   * 批量获取属性值
-   */
-  getValues(attrs?: T[]): Record<T, number> {
-    const targetAttrs = attrs || this.indexToKey;
-    const result: Record<T, number> = {} as Record<T, number>;
-
-    // 只在有脏值时才批量更新
-    if (this.hasDirtyValues()) {
-      this.updateDirtyValues();
-    }
-
-    // 批量读取（不计入缓存统计，因为这是直接数组访问）
-    for (const attr of targetAttrs) {
-      const index = this.keyToIndex.get(attr);
-      if (index !== undefined) {
-        result[attr] = this.values[index];
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * 添加修饰符
-   */
-  addModifier(attr: T, targetType: ModifierType, value: number, source: ModifierSource): void {
-    // 获取属性索引
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
-      return;
-    }
-    // 对 noBaseValue 属性：将百分比修饰符转为小数并落入 fixed 通道
-    let type = targetType;
-    let amount = value;
-    if (this.isNoBaseValue[index]) {
-      if (targetType === ModifierType.STATIC_PERCENTAGE) {
-        type = ModifierType.STATIC_FIXED;
-        amount = value; // 按百分数字面量存储（避免被整型取整为0）
-      } else if (targetType === ModifierType.DYNAMIC_PERCENTAGE) {
-        type = ModifierType.DYNAMIC_FIXED;
-        amount = value; // 按百分数字面量存储
-      }
-    }
-    // 来源聚合：记录 sourceId 的值并同步到累加数组
-    let perType = this.modifierSources.get(type);
-    if (!perType) {
-      perType = new Map();
-      this.modifierSources.set(type, perType);
-    }
-    let perAttr = perType.get(index);
-    if (!perAttr) {
-      perAttr = new Map();
-      perType.set(index, perAttr);
-    }
-    const prev = perAttr.get(source.id) ?? 0;
-    const next = prev + amount;
-    perAttr.set(source.id, next);
-    const delta = next - prev;
-    this.modifierArrays[type][index] += delta;
-    this.markDirty(index);
-
-    // console.log(`✅ 成功添加修饰器: ${attr} ,位置${targetType.toString()} ,值${value} (来源: ${source.name})`);
-  }
-
-  /**
-   * 绝对设置基础值（覆盖所有已有 BASE_VALUE 来源）
-   */
-  setBaseValue(attr: T, value: number, sourceId: string = "system:set_base"): void {
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试为不存在的属性设置基础值: ${attr}`);
-      return;
-    }
-
-    // 更新来源聚合：清空该属性的 BASE_VALUE 来源并写入新值
-    let perType = this.modifierSources.get(ModifierType.BASE_VALUE);
-    if (!perType) {
-      perType = new Map();
-      this.modifierSources.set(ModifierType.BASE_VALUE, perType);
-    }
-    const perAttr = new Map<string, number>();
-    perAttr.set(sourceId, value);
-    perType.set(index, perAttr);
-
-    // 直接设置底层 BASE_VALUE 槽位
-    this.modifierArrays[ModifierType.BASE_VALUE][index] = value;
-    this.markDirty(index);
-
-    // console.log(`✅ 成功设置基础值: ${attr} = ${value} (来源: ${sourceId})`);
-  }
-
-  /**
-   * 批量添加修饰符（包含基础值）
-   */
-  addModifiers(items: Array<{ attr: T; targetType: ModifierType; value: number; source: ModifierSource }>): void {
-    for (const it of items) {
-      this.addModifier(it.attr, it.targetType, it.value, it.source);
-    }
-    this.stats.batchUpdates++;
-  }
-
-  /**
-   * 移除修饰符
-   */
-  removeModifier(attr: T, targetType: ModifierType, sourceId: string): void {
-    const index = this.keyToIndex.get(attr);
-    if (index === undefined) {
-      console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
-      return;
-    }
-    // 来源级移除：从来源聚合删除并从累加数组扣减
-    const perType = this.modifierSources.get(targetType);
-    const perAttr = perType?.get(index);
-    const amount = perAttr?.get(sourceId) ?? 0;
-    if (amount !== 0) {
-      this.modifierArrays[targetType][index] -= amount;
-      perAttr!.delete(sourceId);
-      if (perAttr!.size === 0) {
-        perType!.delete(index);
-      }
-      this.markDirty(index);
-      console.log(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
-    }
-  }
-
-  // ==================== 内部实现 ====================
+  // ==================== 内部实现 - 表达式处理 ====================
 
   /**
    * 设置表达式和依赖关系
@@ -1088,12 +1061,7 @@ export class ReactiveSystem<T extends string> {
     return null;
   }
 
-  /**
-   * 获取当前正在编译的属性名（用于避免自引用）
-   */
-  private getCurrentAttributeName(): string {
-    return this.currentCompilingAttr ? String(this.currentCompilingAttr) : "";
-  }
+  // ==================== 内部实现 - 计算引擎 ====================
 
   /**
    * 计算单个属性值
@@ -1210,6 +1178,8 @@ export class ReactiveSystem<T extends string> {
       // }
     }
   }
+
+  // ==================== 内部实现 - 脏值管理 ====================
 
   /**
    * 标记属性为脏值（带依赖传播）

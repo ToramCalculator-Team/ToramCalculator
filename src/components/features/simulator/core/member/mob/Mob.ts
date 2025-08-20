@@ -1,6 +1,6 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
-import { NestedSchema } from "../ReactiveSystem";
+import { NestedSchema } from "../../dataSys/ReactiveSystem";
 import { MobAttrType, createMobStateMachine } from "./MobActor";
 import GameEngine from "../../GameEngine";
 

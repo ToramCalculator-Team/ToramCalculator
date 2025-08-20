@@ -15,7 +15,7 @@
 
 import { parse } from "acorn";
 import type { Node, Program } from "acorn";
-import type { NestedSchema } from "../member/ReactiveSystem";
+import type { NestedSchema } from "../dataSys/ReactiveSystem";
 import { SchemaPathResolver, type SchemaPath, escapeRegExp } from "./SchemaPathResolver";
 
 // ============================== 类型定义 ==============================
@@ -52,7 +52,7 @@ export interface CompileResult {
 
 // ============================== 核心处理器 ==============================
 
-export class JSExpressionProcessor {
+export class JSProcessor {
   private schemaResolver: SchemaPathResolver | null = null;
 
   // ==================== 核心编译功能 ====================
@@ -62,6 +62,7 @@ export class JSExpressionProcessor {
    * 将self.xxx转换为_self.getValue('xxx')格式
    */
   compile(code: string, context: CompilationContext): CompileResult {
+    console.log("🔧 编译代码: ", code);
     try {
       // 1. 语法验证
       if (context.options?.enableValidation !== false) {
@@ -151,7 +152,7 @@ export class JSExpressionProcessor {
     // 确保生成的代码格式正确
     // 如果原始代码是简单表达式，需要确保有返回值
     let finalCode: string;
-    
+
     if (propertyAccesses.length === 0 && this.isSimpleExpression(originalCode)) {
       // 简单表达式：包装在 return 语句中
       finalCode = `${contextInjection}\nreturn ${compiledCode};`;
@@ -159,13 +160,13 @@ export class JSExpressionProcessor {
       // 复杂代码：直接拼接
       finalCode = `${contextInjection}\n${compiledCode}`;
     }
-    
+
     // 调试信息
     console.log(`🔧 JSExpressionProcessor: 原始代码: ${originalCode}`);
     console.log(`🔧 JSExpressionProcessor: 属性访问: ${propertyAccesses.length} 个`);
     console.log(`🔧 JSExpressionProcessor: 简单表达式: ${this.isSimpleExpression(originalCode)}`);
     console.log(`🔧 JSExpressionProcessor: 生成的代码: ${finalCode}`);
-    
+
     return finalCode;
   }
 
@@ -175,14 +176,16 @@ export class JSExpressionProcessor {
   private isSimpleExpression(code: string): boolean {
     const trimmed = code.trim();
     // 简单表达式的特征：不包含语句分隔符、控制流等
-    return !trimmed.includes(';') && 
-           !trimmed.includes('{') && 
-           !trimmed.includes('}') && 
-           !trimmed.includes('return') &&
-           !trimmed.includes('if') &&
-           !trimmed.includes('for') &&
-           !trimmed.includes('while') &&
-           !trimmed.includes('function');
+    return (
+      !trimmed.includes(";") &&
+      !trimmed.includes("{") &&
+      !trimmed.includes("}") &&
+      !trimmed.includes("return") &&
+      !trimmed.includes("if") &&
+      !trimmed.includes("for") &&
+      !trimmed.includes("while") &&
+      !trimmed.includes("function")
+    );
   }
 
   /**
@@ -241,7 +244,7 @@ export class JSExpressionProcessor {
     try {
       // 1. 语法解析检查
       let ast: Program;
-      
+
       try {
         // 首先尝试直接解析
         ast = parse(code, {
@@ -269,7 +272,6 @@ export class JSExpressionProcessor {
 
       // 3. 语法正确性检查
       this.checkSyntax(ast, result);
-      
     } catch (error) {
       result.isValid = false;
       result.errors.push(`验证过程错误: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -296,7 +298,7 @@ export class JSExpressionProcessor {
       "window",
     ];
 
-    this.walkAST(ast, (node: Node) => {
+    JSProcessor.walkAST(ast, (node: Node) => {
       if (node.type === "Identifier") {
         const identifier = node;
         if (dangerousPatterns.includes(identifier.type)) {
@@ -313,7 +315,7 @@ export class JSExpressionProcessor {
     // 检查基本语法规则
     let hasReturn = false;
 
-    this.walkAST(ast, (node: Node) => {
+    JSProcessor.walkAST(ast, (node: Node) => {
       if (node.type === "ReturnStatement") {
         hasReturn = true;
       }
@@ -325,36 +327,34 @@ export class JSExpressionProcessor {
     }
   }
 
-  // ==================== 工具方法 ====================
-
-  private isNode(value: any): value is Node {
-    return value && typeof value === "object" && typeof value.type === "string";
-  }
-  
+  // ==================== 静态工具方法 ====================
 
   /**
-   * 遍历AST
+   * 遍历AST - 通用工具方法
+   * 可以在多个地方复用
    */
-  private walkAST(node: Node, callback: (node: Node) => void): void {
+  static walkAST(node: Node, callback: (node: Node) => void): void {
     callback(node);
-  
+
     for (const key of Object.keys(node)) {
       const value = node[key as keyof Node];
-  
+
       if (Array.isArray(value)) {
         for (const item of value) {
           if (item && typeof item === "object" && "type" in item) {
-            this.walkAST(item as Node, callback);
+            JSProcessor.walkAST(item as Node, callback);
           }
         }
-      } else if (this.isNode(value)) {
-        this.walkAST(value, callback);
+      } else if (JSProcessor.isNode(value)) {
+        JSProcessor.walkAST(value, callback);
       }
     }
   }
-  
+
+  /**
+   * 检查值是否为AST节点
+   */
+  static isNode(value: any): value is Node {
+    return value && typeof value === "object" && typeof value.type === "string";
+  }
 }
-
-// ============================== 导出 ==============================
-
-export default JSExpressionProcessor;

@@ -1,5 +1,5 @@
 import type { MemberWithRelations } from "@db/repositories/member";
-import { ModifierType, type ReactiveSystem } from "../ReactiveSystem";
+import { ModifierType, type ReactiveSystem } from "../../dataSys/ReactiveSystem";
 import { tokenizer, parse } from "acorn";
 import { create, all } from "mathjs";
 import * as Enums from "@db/schema/enums";
@@ -25,7 +25,6 @@ interface NormalizedModifier<T extends string> {
   targetType: ModifierType;
   value: number;
   source: { id: string; name: string; type: SourceType };
-  op: "setBase" | "add";
 }
 
 // 枚举字符串到数字索引
@@ -271,7 +270,7 @@ function parseModifierLine<T extends string>(
   const value = exprCode ? evalAstExpression(exprCode, ctx) : 0;
 
   if (op === "=") {
-    return { attr, targetType: ModifierType.BASE_VALUE, value, source, op: "setBase" };
+    return { attr, targetType: ModifierType.BASE_VALUE, value, source };
   }
 
   const signed = op === "-" ? -value : value;
@@ -280,7 +279,6 @@ function parseModifierLine<T extends string>(
     targetType: isPercentage ? ModifierType.STATIC_PERCENTAGE : ModifierType.STATIC_FIXED,
     value: signed,
     source,
-    op: "add",
   };
 }
 
@@ -398,10 +396,6 @@ export function applyPrebattleModifiers<T extends string>(
 
   // 应用
   for (const m of all) {
-    if (m.op === "setBase") {
-      rs.setBaseValue(m.attr, m.value, m.source.id);
-    } else {
-      rs.addModifier(m.attr, m.targetType, m.value, m.source);
-    }
+    rs.addModifier(m.attr, m.targetType, m.value, m.source);
   }
 }

@@ -3,7 +3,7 @@
  */
 import { CharacterWithRelations } from "@db/repositories/character";
 import { MainHandType, SubHandType } from "@db/schema/enums";
-import { NestedSchema } from "../ReactiveSystem";
+import { NestedSchema } from "../../dataSys/ReactiveSystem";
 
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 

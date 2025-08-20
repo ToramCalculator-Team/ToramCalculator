@@ -1,6 +1,6 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
-import { ExtractAttrPaths, NestedSchema } from "../ReactiveSystem";
+import { ExtractAttrPaths, NestedSchema } from "../../dataSys/ReactiveSystem";
 import { applyPrebattleModifiers } from "./PrebattleModifiers";
 import { playerStateMachine } from "./PlayerStateMachine";
 import GameEngine from "../../GameEngine";

@@ -6,7 +6,7 @@
  */
 
 import { assign, EventObject, setup } from "xstate";
-import { ExtractAttrPaths } from "../ReactiveSystem";
+import { ExtractAttrPaths } from "../../dataSys/ReactiveSystem";
 import { MobAttrSchema } from "./MobData";
 import { Member, MemberEventType, MemberStateMachine } from "../Member";
 import { Mob } from "./Mob";

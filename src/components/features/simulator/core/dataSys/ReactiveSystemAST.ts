@@ -7,6 +7,7 @@
 
 import { parse } from "acorn";
 import type { Node, Program, Identifier, MemberExpression, Literal } from "acorn";
+import { JSProcessor } from "../astProcessor/JSProcessor";
 
 export interface ASTCompileResult {
   success: boolean;
@@ -136,7 +137,7 @@ export class ReactiveSystemASTCompiler {
       nodeType: "member-expression" | "identifier";
     }> = [];
 
-    this.walkAST(ast, (node: Node) => {
+    JSProcessor.walkAST(ast, (node: Node) => {
       // 处理所有成员表达式（如 abi.vit, weapon.attack.physical 等）
       if (node.type === "MemberExpression") {
         const memberExpr = node as MemberExpression;
@@ -225,7 +226,7 @@ export class ReactiveSystemASTCompiler {
   private isInMemberExpression(targetNode: Node, ast: Program): boolean {
     let isInMember = false;
 
-    this.walkAST(ast, (node: Node) => {
+    JSProcessor.walkAST(ast, (node: Node) => {
       if (node.type === "MemberExpression") {
         const memberExpr = node as MemberExpression;
         if (memberExpr.property === targetNode) {
@@ -292,28 +293,5 @@ export class ReactiveSystemASTCompiler {
     }
 
     return result;
-  }
-
-  /**
-   * 遍历AST节点
-   */
-  private walkAST(node: Node, callback: (node: Node) => void): void {
-    callback(node);
-
-    // 遍历子节点
-    for (const key in node) {
-      const value = node[key as keyof Node];
-      if (value && typeof value === "object") {
-        if (Array.isArray(value)) {
-          for (const item of value) {
-            if (item && typeof item === "object" && item.type) {
-              this.walkAST(item, callback);
-            }
-          }
-        } else if (value.type) {
-          this.walkAST(value, callback);
-        }
-      }
-    }
   }
 }

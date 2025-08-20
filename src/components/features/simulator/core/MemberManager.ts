@@ -18,7 +18,7 @@ import type { Actor, AnyActorLogic } from "xstate";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";
 import type GameEngine from "./GameEngine";
-import { ReactiveSystem, type NestedSchema } from "./member/ReactiveSystem";
+import { ReactiveSystem, type NestedSchema } from "./dataSys/ReactiveSystem";
 import { applyPrebattleModifiers } from "./member/player/PrebattleModifiers";
 import { PlayerAttrSchema } from "./member/player/PlayerData";
 import { MobAttrSchema } from "./member/mob/MobData";

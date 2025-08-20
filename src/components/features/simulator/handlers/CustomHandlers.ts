@@ -15,7 +15,7 @@
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type GameEngine from "../core/GameEngine";
 import type MemberManager from "../core/MemberManager";
-import { ModifierType } from "../core/member/ReactiveSystem";
+import { ModifierType } from "../core/dataSys/ReactiveSystem";
 
 // ============================== 自定义事件处理器 ==============================
 

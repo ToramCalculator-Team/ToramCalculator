@@ -1,7 +1,7 @@
 import { assign, enqueueActions, EventObject, setup } from "xstate";
 import { MemberEventType, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
-import { ModifierType } from "../ReactiveSystem";
+import { ModifierType } from "../../dataSys/ReactiveSystem";
 
 /**
  * Player特有的事件类型
