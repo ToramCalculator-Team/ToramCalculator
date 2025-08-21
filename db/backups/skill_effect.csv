@@ -6,7 +6,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       {
         ""type"": ""procedures_defreturn"",
         ""id"": ""BsFK8,PgtaH0SXb489F8"",
-        ""x"": -287,
+        ""x"": -862,
         ""y"": -362,
         ""icons"": {
           ""comment"": {
@@ -77,10 +77,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       }
                                     },
                                     ""block"": {
-                                      ""type"": ""self_attribute"",
+                                      ""type"": ""self_attribute_get"",
                                       ""id"": ""%jxOwJE`rim?}{jbBiR%"",
                                       ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""lv""
+                                        ""ATTRIBUTE_PATH"": ""lv""
                                       }
                                     }
                                   },
@@ -93,10 +93,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       }
                                     },
                                     ""block"": {
-                                      ""type"": ""self_attribute"",
+                                      ""type"": ""self_attribute_get"",
                                       ""id"": ""^ea1qsj:^;9ICv%pW[lL"",
                                       ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""atk.p""
+                                        ""ATTRIBUTE_PATH"": ""pAtk""
                                       }
                                     }
                                   }
@@ -112,10 +112,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 }
                               },
                               ""block"": {
-                                ""type"": ""self_attribute"",
+                                ""type"": ""self_attribute_get"",
                                 ""id"": ""TJ(@1qOym`|R;3kod##H"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_NAME"": ""red.p""
+                                  ""ATTRIBUTE_PATH"": ""pRes""
                                 }
                               }
                             }
@@ -146,10 +146,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 }
                               },
                               ""block"": {
-                                ""type"": ""target_attribute"",
+                                ""type"": ""target_attribute_get"",
                                 ""id"": ""WflYRG(MwZMtKmsH(A@+"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_NAME"": ""def.p""
+                                  ""ATTRIBUTE_PATH"": ""def.p""
                                 }
                               }
                             },
@@ -186,11 +186,11 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       }
                                     },
                                     ""block"": {
-                                      ""type"": ""self_attribute"",
-                                      ""id"": ""5grY9W3gy.@(nc[-BKeo"",
-                                      ""fields"": {
-                                        ""ATTRIBUTE_NAME"": ""pie.p""
-                                      }
+                                                                          ""type"": ""self_attribute_get"",
+                                    ""id"": ""5grY9W3gy.@(nc[-BKeo"",
+                                    ""fields"": {
+                                      ""ATTRIBUTE_PATH"": ""pie.p""
+                                    }
                                     }
                                   }
                                 }
@@ -337,7 +337,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       {
         ""type"": ""procedures_defreturn"",
         ""id"": ""0wT{TqcDskB[2_Ono6*}"",
-        ""x"": -287,
+        ""x"": -862,
         ""y"": -137,
         ""icons"": {
           ""comment"": {
@@ -432,10 +432,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                             }
                                           },
                                           ""block"": {
-                                            ""type"": ""self_attribute"",
+                                            ""type"": ""self_attribute_get"",
                                             ""id"": ""InRj[4^YXXC172+X{T|}"",
                                             ""fields"": {
-                                              ""ATTRIBUTE_NAME"": ""hit""
+                                              ""ATTRIBUTE_PATH"": ""hit""
                                             }
                                           }
                                         },
@@ -448,10 +448,10 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                             }
                                           },
                                           ""block"": {
-                                            ""type"": ""target_attribute"",
+                                            ""type"": ""target_attribute_get"",
                                             ""id"": ""cJRIc[BvH6F1);(TV3xS"",
                                             ""fields"": {
-                                              ""ATTRIBUTE_NAME"": ""flee""
+                                              ""ATTRIBUTE_PATH"": ""flee""
                                             }
                                           }
                                         }
@@ -548,82 +548,140 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
         }
       },
       {
-        ""type"": ""controls_if"",
-        ""id"": ""j{[yAku{oN0zUBi0.$6}"",
-        ""x"": -87,
-        ""y"": 138,
+        ""type"": ""procedures_defnoreturn"",
+        ""id"": ""39FakA;Z=QWG])gI#AhB"",
+        ""x"": -862,
+        ""y"": 38,
+        ""icons"": {
+          ""comment"": {
+            ""text"": ""描述该功能..."",
+            ""pinned"": false,
+            ""height"": 80,
+            ""width"": 160
+          }
+        },
+        ""fields"": {
+          ""NAME"": ""main""
+        },
         ""inputs"": {
-          ""IF0"": {
+          ""STACK"": {
             ""block"": {
-              ""type"": ""logic_compare"",
-              ""id"": ""3_%+376ozzFk;iqIc/|F"",
-              ""fields"": {
-                ""OP"": ""EQ""
-              },
+              ""type"": ""controls_if"",
+              ""id"": ""OM]x4`yeI2:+sAf|8{zZ"",
               ""inputs"": {
-                ""A"": {
+                ""IF0"": {
                   ""block"": {
-                    ""type"": ""procedures_callreturn"",
-                    ""id"": ""KWVH;*nO,OW|CP{l^CFt"",
-                    ""extraState"": {
-                      ""name"": ""isHit""
-                    }
-                  }
-                },
-                ""B"": {
-                  ""block"": {
-                    ""type"": ""logic_boolean"",
-                    ""id"": ""qqz;)I@y5{L5GO,yj$$y"",
+                    ""type"": ""logic_compare"",
+                    ""id"": ""`%{SVyvl,5cN$uI#utoN"",
                     ""fields"": {
-                      ""BOOL"": ""TRUE""
-                    }
-                  }
-                }
-              }
-            }
-          },
-          ""DO0"": {
-            ""block"": {
-              ""type"": ""target_hp_set"",
-              ""id"": ""B6-,kXG]u6Nrp6YHm?0e"",
-              ""inputs"": {
-                ""VALUE"": {
-                  ""block"": {
-                    ""type"": ""math_arithmetic"",
-                    ""id"": ""%Twvfi@XkH]2^Lf^zd|%"",
-                    ""fields"": {
-                      ""OP"": ""MINUS""
+                      ""OP"": ""GT""
                     },
                     ""inputs"": {
                       ""A"": {
-                        ""shadow"": {
-                          ""type"": ""math_number"",
-                          ""id"": ""F.eRrY3@NHD(:BYtL3Sk"",
-                          ""fields"": {
-                            ""NUM"": 1
-                          }
-                        },
                         ""block"": {
-                          ""type"": ""target_attribute"",
-                          ""id"": ""!P?iV{zw{lj:xOk=C=m?"",
+                          ""type"": ""self_attribute_get"",
+                          ""id"": ""X%W(4h:!6QnQB7B.q}"",
                           ""fields"": {
-                            ""ATTRIBUTE_NAME"": ""hp""
+                            ""ATTRIBUTE_PATH"": ""currentMp""
                           }
                         }
                       },
                       ""B"": {
-                        ""shadow"": {
-                          ""type"": ""math_number"",
-                          ""id"": ""%!nLvu=vflw5i$k,~c6R"",
-                          ""fields"": {
-                            ""NUM"": 1
-                          }
-                        },
                         ""block"": {
-                          ""type"": ""procedures_callreturn"",
-                          ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
-                          ""extraState"": {
-                            ""name"": ""damage""
+                          ""type"": ""variables_get"",
+                          ""id"": ""x==XqRuLFY0W0A7Q]D1x"",
+                          ""fields"": {
+                            ""VAR"": {
+                              ""id"": ""TK@G4W;!TLu3We:/}flf""
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                ""DO0"": {
+                  ""block"": {
+                    ""type"": ""controls_if"",
+                    ""id"": ""j{[yAku{oN0zUBi0.$6}"",
+                    ""inputs"": {
+                      ""IF0"": {
+                        ""block"": {
+                          ""type"": ""logic_compare"",
+                          ""id"": ""3_%+376ozzFk;iqIc/|F"",
+                          ""fields"": {
+                            ""OP"": ""EQ""
+                          },
+                          ""inputs"": {
+                            ""A"": {
+                              ""block"": {
+                                ""type"": ""procedures_callreturn"",
+                                ""id"": ""KWVH;*nO,OW|CP{l^CFt"",
+                                ""extraState"": {
+                                  ""name"": ""isHit""
+                                }
+                              }
+                            },
+                            ""B"": {
+                              ""block"": {
+                                ""type"": ""logic_boolean"",
+                                ""id"": ""qqz;)I@y5{L5GO,yj$$y"",
+                                ""fields"": {
+                                  ""BOOL"": ""TRUE""
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      ""DO0"": {
+                        ""block"": {
+                          ""type"": ""target_hp_set"",
+                          ""id"": ""B6-,kXG]u6Nrp6YHm?0e"",
+                          ""inputs"": {
+                            ""VALUE"": {
+                              ""block"": {
+                                ""type"": ""math_arithmetic"",
+                                ""id"": ""%Twvfi@XkH]2^Lf^zd|%"",
+                                ""fields"": {
+                                  ""OP"": ""MINUS""
+                                },
+                                ""inputs"": {
+                                  ""A"": {
+                                    ""shadow"": {
+                                      ""type"": ""math_number"",
+                                      ""id"": ""F.eRrY3@NHD(:BYtL3Sk"",
+                                      ""fields"": {
+                                        ""NUM"": 1
+                                      }
+                                    },
+                                    ""block"": {
+                                                                          ""type"": ""target_attribute_get"",
+                                    ""id"": ""!P?iV{zw{lj:xOk=C=m?"",
+                                    ""fields"": {
+                                      ""ATTRIBUTE_PATH"": ""hp""
+                                    }
+                                    }
+                                  },
+                                  ""B"": {
+                                    ""shadow"": {
+                                      ""type"": ""math_number"",
+                                      ""id"": ""%!nLvu=vflw5i$k,~c6R"",
+                                      ""fields"": {
+                                        ""NUM"": 1
+                                      }
+                                    },
+                                    ""block"": {
+                                      ""type"": ""procedures_callreturn"",
+                                      ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
+                                      ""extraState"": {
+                                        ""name"": ""damage""
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -633,6 +691,37 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
               }
             }
           }
+        }
+      },
+      {
+        ""type"": ""variables_set"",
+        ""id"": ""CQCS{{D=_gdcW`5FOf8A"",
+        ""x"": -1137,
+        ""y"": -362,
+        ""fields"": {
+          ""VAR"": {
+            ""id"": ""TK@G4W;!TLu3We:/}flf""
+          }
+        },
+        ""inputs"": {
+          ""VALUE"": {
+            ""block"": {
+              ""type"": ""math_number"",
+              ""id"": ""mQ2ZY1A/x|_jx-uUSd8N"",
+              ""fields"": {
+                ""NUM"": 100
+              }
+            }
+          }
+        }
+      },
+      {
+        ""type"": ""procedures_callnoreturn"",
+        ""id"": ""~hPsT=gLSi_F#1*xh?I*"",
+        ""x"": -1287,
+        ""y"": -137,
+        ""extraState"": {
+          ""name"": ""main""
         }
       }
     ]
@@ -663,4 +752,5 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       ""id"": ""M$MiLF!ZK+//D#C%!C7m""
     }
   ]
-}",null,defaultSkillId
+}
+",null,defaultSkillId

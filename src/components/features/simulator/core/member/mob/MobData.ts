@@ -120,7 +120,7 @@ export const MobAttrSchema = (mob: MobWithRelations) => ({
     },
     current: {
       displayName: "当前HP",
-      expression: "0",
+      expression: "hp.max",
     },
   },
 });

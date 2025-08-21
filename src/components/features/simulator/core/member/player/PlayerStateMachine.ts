@@ -205,10 +205,11 @@ export const playerStateMachine = (player: Player) => {
           return true;
         }
         console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-        console.log(context.engine.evaluateExpression("self.hp.current + 10%;console.log(self.hp.current)", {
+        console.log(context.engine.evaluateExpression("console.log(target.hp.current)", {
           currentFrame,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
+          targetId: "defaultMember2Id",
         }))
         return true;
       },

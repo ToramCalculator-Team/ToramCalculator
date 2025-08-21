@@ -27,9 +27,10 @@ import * as Ja from "blockly/msg/ja";
 import * as ZhTw from "blockly/msg/zh-hant";
 import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
-import "./gameAttributeBlocks";
+import { SchemaBlockGenerator } from "./gameAttributeBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
+import { NestedSchema } from "../simulator/core/dataSys/ReactiveSystem";
 
 // class CustomCategory extends ToolboxCategory {
 //   /**
@@ -43,6 +44,8 @@ import { MediaContext } from "~/lib/contexts/Media";
 
 interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
+  schema: NestedSchema; // 自身属性 schema
+  targetSchema: NestedSchema; // 目标属性 schema
   setData: (data: unknown) => void;
   code?: Accessor<string>;
   setCode?: (code: string) => void;
@@ -54,33 +57,7 @@ interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
 export function NodeEditor(props: NodeEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
-  const [workerSpaceState, setWorkerSpaceState] = createSignal<Record<string, any>>({});
-  const [workerSpace, setWorkerSpace] = createSignal<WorkspaceSvg>();
 
-  // 计算工具箱/飞出面板宽度（优先 metrics，回退 DOM 量测）
-  const measureToolboxWidthPx = (
-    ws: WorkspaceSvg,
-    container: HTMLElement,
-    metrics: any,
-    isHorizontal: boolean,
-    toolboxPosition: string,
-  ) => {
-    if (isHorizontal || toolboxPosition !== "start") return 0;
-    const metricsWidth = (metrics.toolboxWidth ?? metrics.flyoutWidth ?? 0) as number;
-    if (metricsWidth && metricsWidth > 0) return metricsWidth;
-    const host: HTMLElement = ws.getInjectionDiv?.() || container;
-    const toolboxDiv = host.querySelector?.(".blocklyToolboxDiv");
-    if (toolboxDiv) {
-      const w = toolboxDiv.getBoundingClientRect().width;
-      if (w > 0) return w;
-    }
-    const flyoutDiv = host.querySelector?.(".blocklyFlyout");
-    if (flyoutDiv) {
-      const w = flyoutDiv.getBoundingClientRect().width;
-      if (w > 0) return w;
-    }
-    return 0;
-  };
 
   // 使用内置方法进行初始居中（不做额外偏差计算）
   const centerInitialView = (ws: WorkspaceSvg) => {
@@ -937,28 +914,19 @@ export function NodeEditor(props: NodeEditorProps) {
               name: "目标属性",
               categorystyle: "logic_category",
               contents: [
+                // 目标属性读取积木
                 {
-                  type: "target_hp_get",
+                  type: "target_attribute_get",
                   kind: "block",
                 },
+                // 目标属性百分比修改积木
                 {
-                  type: "target_hp_set",
+                  type: "target_attribute_percentage",
                   kind: "block",
                 },
+                // 目标属性固定值修改积木
                 {
-                  type: "target_defense_get",
-                  kind: "block",
-                },
-                {
-                  type: "target_defense_set",
-                  kind: "block",
-                },
-                {
-                  type: "target_attribute",
-                  kind: "block",
-                },
-                {
-                  type: "target_attribute_set",
+                  type: "target_attribute_fixed",
                   kind: "block",
                 },
               ],
@@ -968,28 +936,19 @@ export function NodeEditor(props: NodeEditorProps) {
               name: "自身属性",
               categorystyle: "math_category",
               contents: [
+                // 自身属性读取积木
                 {
-                  type: "self_attack_get",
+                  type: "self_attribute_get",
                   kind: "block",
                 },
+                // 自身属性百分比修改积木
                 {
-                  type: "self_attack_set",
+                  type: "self_attribute_percentage",
                   kind: "block",
                 },
+                // 自身属性固定值修改积木
                 {
-                  type: "self_mp_get",
-                  kind: "block",
-                },
-                {
-                  type: "self_mp_set",
-                  kind: "block",
-                },
-                {
-                  type: "self_attribute",
-                  kind: "block",
-                },
-                {
-                  type: "self_attribute_set",
+                  type: "self_attribute_fixed",
                   kind: "block",
                 },
               ],
@@ -1030,10 +989,16 @@ export function NodeEditor(props: NodeEditorProps) {
             snap: true,
           },
         };
+        // 初始化 Schema 积木生成器
+        // 创建积木生成器并注册积木
+        const schemaBlockGenerator = new SchemaBlockGenerator(props.schema, props.targetSchema);
+        console.log("✅ Schema 积木已生成:", schemaBlockGenerator.getBlockIds());
+        
         let workerSpace = inject(div, injectionOptions);
         const data = props.data;
         serialization.workspaces.load(data ?? {}, workerSpace);
         workerSpace.addChangeListener(() => props.setCode?.(javascriptGenerator.workspaceToCode(workerSpace)));
+        
         // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
 
         // 使用内置方法进行初始居中（双 rAF 确保度量稳定）

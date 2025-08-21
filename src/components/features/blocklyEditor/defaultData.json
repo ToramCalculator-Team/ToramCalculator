@@ -76,10 +76,10 @@
                                       }
                                     },
                                     "block": {
-                                      "type": "self_attribute",
+                                      "type": "self_attribute_get",
                                       "id": "%jxOwJE`rim?}{jbBiR%",
                                       "fields": {
-                                        "ATTRIBUTE_NAME": "lv"
+                                        "ATTRIBUTE_PATH": "lv"
                                       }
                                     }
                                   },
@@ -92,10 +92,10 @@
                                       }
                                     },
                                     "block": {
-                                      "type": "self_attribute",
+                                      "type": "self_attribute_get",
                                       "id": "^ea1qsj:^;9ICv%pW[lL",
                                       "fields": {
-                                        "ATTRIBUTE_NAME": "pAtk"
+                                        "ATTRIBUTE_PATH": "pAtk"
                                       }
                                     }
                                   }
@@ -111,10 +111,10 @@
                                 }
                               },
                               "block": {
-                                "type": "self_attribute",
+                                "type": "self_attribute_get",
                                 "id": "TJ(@1qOym`|R;3kod##H",
                                 "fields": {
-                                  "ATTRIBUTE_NAME": "pRes"
+                                  "ATTRIBUTE_PATH": "pRes"
                                 }
                               }
                             }
@@ -145,10 +145,10 @@
                                 }
                               },
                               "block": {
-                                "type": "target_attribute",
+                                "type": "target_attribute_get",
                                 "id": "WflYRG(MwZMtKmsH(A@+",
                                 "fields": {
-                                  "ATTRIBUTE_NAME": "def.p"
+                                  "ATTRIBUTE_PATH": "def.p"
                                 }
                               }
                             },
@@ -185,11 +185,11 @@
                                       }
                                     },
                                     "block": {
-                                      "type": "self_attribute",
-                                      "id": "5grY9W3gy.@(nc[-BKeo",
-                                      "fields": {
-                                        "ATTRIBUTE_NAME": "pie.p"
-                                      }
+                                                                          "type": "self_attribute_get",
+                                    "id": "5grY9W3gy.@(nc[-BKeo",
+                                    "fields": {
+                                      "ATTRIBUTE_PATH": "pie.p"
+                                    }
                                     }
                                   }
                                 }
@@ -431,10 +431,10 @@
                                             }
                                           },
                                           "block": {
-                                            "type": "self_attribute",
+                                            "type": "self_attribute_get",
                                             "id": "InRj[4^YXXC172+X{T|}",
                                             "fields": {
-                                              "ATTRIBUTE_NAME": "hit"
+                                              "ATTRIBUTE_PATH": "hit"
                                             }
                                           }
                                         },
@@ -447,10 +447,10 @@
                                             }
                                           },
                                           "block": {
-                                            "type": "target_attribute",
+                                            "type": "target_attribute_get",
                                             "id": "cJRIc[BvH6F1);(TV3xS",
                                             "fields": {
-                                              "ATTRIBUTE_NAME": "flee"
+                                              "ATTRIBUTE_PATH": "flee"
                                             }
                                           }
                                         }
@@ -578,10 +578,10 @@
                     "inputs": {
                       "A": {
                         "block": {
-                          "type": "self_attribute",
-                          "id": "X%W(4h:!A,6QnQB7B.q}",
+                          "type": "self_attribute_get",
+                          "id": "X%W(4h:!6QnQB7B.q}",
                           "fields": {
-                            "ATTRIBUTE_NAME": "currentMp"
+                            "ATTRIBUTE_PATH": "currentMp"
                           }
                         }
                       },
@@ -655,11 +655,11 @@
                                       }
                                     },
                                     "block": {
-                                      "type": "target_attribute",
-                                      "id": "!P?iV{zw{lj:xOk=C=m?",
-                                      "fields": {
-                                        "ATTRIBUTE_NAME": "hp"
-                                      }
+                                                                          "type": "target_attribute_get",
+                                    "id": "!P?iV{zw{lj:xOk=C=m?",
+                                    "fields": {
+                                      "ATTRIBUTE_PATH": "hp"
+                                    }
                                     }
                                   },
                                   "B": {
