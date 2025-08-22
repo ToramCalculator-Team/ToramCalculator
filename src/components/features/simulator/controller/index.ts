@@ -1,51 +1,25 @@
 /**
- * 控制器模块入口文件
+ * 简化的控制器模块入口文件
  * 
- * 统一导出所有模块的功能
+ * 只保留核心功能：
+ * - 简化的控制器
+ * - 简化的通信层
+ * - UI组件
  */
 
-// 状态机模块
+// 简化的控制器
 export {
-  controllerMachine,
-  handleEngineStateChange,
-  handleEngineStatsFull,
-  handleMemberStateUpdate,
-  handleRenderCommand,
-  type ControllerContext,
-  type ControllerEvent,
-  type EngineStateChangeEvent,
-  type EngineStatsFullEvent,
-  type MemberStateUpdateEvent,
-  type RenderCommandEvent,
-} from "./stateMachine";
+  Controller,
+  controller,
+} from "./controller";
 
-// 模拟控制模块
+// 简化的通信层
 export {
-  startSimulation,
-  stopSimulation,
-  pauseSimulation,
-  resumeSimulation,
-  sendIntent,
-  checkWorkerReady,
-  getMembers,
-  getMemberState,
-  watchMember,
-  unwatchMember,
-} from "./simulation";
+  ControllerCommunication,
+  controllerCommunication,
+} from "./communication";
 
-// 成员管理模块
-export {
-  castSkill,
-  move,
-  stopAction,
-  createKeyboardInputManager,
-  createMemberSelectionManager,
-  type MemberActionOptions,
-  type AxisInput,
-  type MemberSelectionState,
-} from "./members";
-
-// UI组件模块
+// UI组件
 export {
   StatusBar,
   ControlPanel,

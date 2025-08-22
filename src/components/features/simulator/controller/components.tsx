@@ -7,7 +7,7 @@
  * - 可复用的UI组件
  */
 
-import { Show, For, Switch, Match } from "solid-js";
+import { Show, For, Switch, Match, type Accessor, type Setter } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -15,18 +15,19 @@ import MemberStatusPanel from "../core/member/MemberStatusPanel";
 import type { MemberSerializeData } from "../core/member/Member";
 import type { PlayerWithRelations } from "@db/repositories/player";
 import type { MemberWithRelations } from "@db/repositories/member";
+import { controller } from "./controller";
 
 // ============================== 状态栏组件 ==============================
 
 interface StatusBarProps {
-  isLoading: boolean;
-  isError: boolean;
-  isRunning: boolean;
-  isPaused: boolean;
-  currentFrame: number;
-  averageFPS: number;
-  clockKind: string;
-  queueSize: number;
+  isLoading: Accessor<boolean>;
+  isError: Accessor<string | null>;
+  isRunning: Accessor<boolean>;
+  isPaused: Accessor<boolean>;
+  currentFrame: Accessor<{ currentFrame: number }>;
+  averageFPS: Accessor<{ frameLoopStats: { averageFPS: number } }>;
+  clockKind: Accessor<{ frameLoopStats: { clockKind: string } }>;
+  queueSize: Accessor<{ eventQueueStats: { currentSize: number } }>;
 }
 
 /**
@@ -40,43 +41,43 @@ export function StatusBar(props: StatusBarProps) {
           <span class="text-sm font-medium">状态:</span>
           <div
             class={`h-2 w-2 rounded-full ${
-              props.isLoading
+              props.isLoading()
                 ? "bg-brand-color-1st"
-                : props.isError
+                : props.isError()
                   ? "bg-brand-color-2nd"
-                  : props.isRunning
+                  : props.isRunning()
                     ? "bg-brand-color-3rd"
                     : "bg-brand-color-4th"
             }`}
           ></div>
           <span class="text-sm">
-            {props.isLoading
+            {props.isLoading()
               ? "加载中..."
-              : props.isError
+              : props.isError()
                 ? "错误"
-                : props.isRunning
-                  ? props.isPaused
+                : props.isRunning()
+                  ? props.isPaused()
                     ? "已暂停"
                     : "运行中"
                   : "就绪"}
           </span>
         </div>
-        <Show when={props.isRunning}>
+        <Show when={props.isRunning()}>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">帧数</span>
-            <span class="text-sm">{props.currentFrame}</span>
+            <span class="text-sm">{props.currentFrame()?.currentFrame || 0}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">FPS</span>
-            <span class="text-sm">{props.averageFPS.toFixed?.(1) ?? 0}</span>
+            <span class="text-sm">{props.averageFPS()?.frameLoopStats?.averageFPS?.toFixed(1) || "0.0"}</span>
           </div>
           <div class="flex items-center gap-2 portrait:hidden">
             <span class="text-sm font-medium">时钟</span>
-            <span class="text-sm">{props.clockKind || "raf"}</span>
+            <span class="text-sm">{props.clockKind()?.frameLoopStats?.clockKind || "raf"}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">队列</span>
-            <span class="text-sm">{props.queueSize}</span>
+            <span class="text-sm">{props.queueSize()?.eventQueueStats?.currentSize || 0}</span>
           </div>
         </Show>
       </div>
@@ -182,7 +183,7 @@ export function MemberSelect(props: MemberSelectProps) {
 }
 
 interface MemberStatusProps {
-  member: MemberSerializeData | null;
+  member: Accessor<MemberSerializeData | null>;
 }
 
 /**
@@ -191,7 +192,7 @@ interface MemberStatusProps {
 export function MemberStatus(props: MemberStatusProps) {
   return (
     <div class="col-span-12 row-span-1 flex flex-col items-center gap-2 portrait:row-span-1">
-      <MemberStatusPanel member={() => props.member} />
+      <MemberStatusPanel member={props.member} />
     </div>
   );
 }
@@ -199,7 +200,7 @@ export function MemberStatus(props: MemberStatusProps) {
 // ============================== 技能面板组件 ==============================
 
 interface SkillPanelProps {
-  selectedMember: MemberWithRelations | null;
+  selectedMember: Accessor<MemberSerializeData | null>;
   onCastSkill: (skillId: string) => void;
 }
 
@@ -209,26 +210,30 @@ interface SkillPanelProps {
 export function SkillPanel(props: SkillPanelProps) {
   return (
     <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
-      <Show when={props.selectedMember}>
-        <h3 class="mb-2 text-lg font-semibold">技能</h3>
-        <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
-          <Switch fallback={<div>暂无技能</div>}>
-            <Match when={props.selectedMember?.type === "Player"}>
-              <For each={(props.selectedMember?.player as PlayerWithRelations).character.skills ?? []}>
+      <Show when={props.selectedMember()}>
+        <h3 class="text-lg font-semibold mb-2">技能</h3>
+        <div class="flex-1 grid grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
+          <Switch fallback={<div class="text-sm text-gray-500">暂无技能</div>}>
+            <Match when={props.selectedMember()?.type === "Player"}>
+              {/* 玩家技能 - 使用控制器中的技能信号 */}
+              <For each={controller.getSelectedMemberSkills()}>
                 {(skill) => (
                   <Button
                     onClick={() => props.onCastSkill(skill.id)}
                     class="col-span-1 row-span-1 flex-col items-start"
                     size="sm"
                   >
-                    <span class="text-sm">{skill.template?.name}</span>
-                    <span class="text-xs text-gray-500">Lv.{skill.lv}</span>
+                    <span class="text-sm">{skill.name}</span>
+                    <span class="text-xs text-gray-500">Lv.{skill.level}</span>
                   </Button>
                 )}
               </For>
             </Match>
-            <Match when={props.selectedMember?.type === "Mob"}>
-              <pre>{JSON.stringify(props.selectedMember?.mob, null, 2)}</pre>
+            <Match when={props.selectedMember()?.type === "Mob"}>
+              {/* 怪物技能 */}
+              <div class="col-span-4 text-sm text-gray-500">
+                怪物技能系统待实现
+              </div>
             </Match>
           </Switch>
         </div>
@@ -240,7 +245,7 @@ export function SkillPanel(props: SkillPanelProps) {
 // ============================== 动作面板组件 ==============================
 
 interface ActionPanelProps {
-  selectedEngineMember: MemberSerializeData | null;
+  selectedEngineMember: Accessor<MemberSerializeData | null>;
   onMove: (x: number, y: number) => void;
   onStopAction: () => void;
 }
@@ -251,16 +256,23 @@ interface ActionPanelProps {
 export function ActionPanel(props: ActionPanelProps) {
   return (
     <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
-      <Show when={props.selectedEngineMember}>
+      <Show when={props.selectedEngineMember()}>
         <h3 class="mb-2 text-lg font-semibold">动作</h3>
         <div class="flex gap-2">
-          {/* 暂时注释掉，等待实现 */}
-          {/* <Button onClick={() => props.onMove(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
+          <Button 
+            onClick={() => props.onMove(100, 100)} 
+            class="bg-green-600 hover:bg-green-700" 
+            size="sm"
+          >
             移动到 (100, 100)
           </Button>
-          <Button onClick={props.onStopAction} class="bg-red-600 hover:bg-red-700" size="sm">
+          <Button 
+            onClick={props.onStopAction} 
+            class="bg-red-600 hover:bg-red-700" 
+            size="sm"
+          >
             停止动作
-          </Button> */}
+          </Button>
         </div>
       </Show>
     </div>
