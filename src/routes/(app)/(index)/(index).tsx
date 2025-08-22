@@ -63,7 +63,12 @@ export default function IndexPage() {
       onClick: () => void;
       icon: JSX.Element;
     }[]
-  >([
+    >([{
+      onClick: () => {
+        navigate("logicEditor");
+      },
+      icon: <Icons.Outline.Box2 />,
+    },
     {
       onClick: () => {
         navigate("queryBuilder");

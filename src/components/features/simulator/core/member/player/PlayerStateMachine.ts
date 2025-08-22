@@ -205,12 +205,61 @@ export const playerStateMachine = (player: Player) => {
           return true;
         }
         console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-        console.log(context.engine.evaluateExpression("console.log(target.hp.current)", {
-          currentFrame,
-          casterId: context.id,
-          skillLv: skill?.lv ?? 0,
-          targetId: "defaultMember2Id",
-        }))
+        // 测试内容
+        context.engine.evaluateExpression(
+          `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+
+// 计算造成的伤害
+function damage() {
+_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.rs.getValue("lv") + self.rs.getValue("lv")) * (1 - target.rs.getValue("red.p")) - target.rs.getValue("def.p") * (1 - self.rs.getValue("pie.p"));
+_E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
+_E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
+return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+}
+
+function mathRandomInt(a, b) {
+if (a > b) {
+  // Swap a and b to ensure a is smaller.
+  var c = a;
+  a = b;
+  b = c;
+}
+return Math.floor(Math.random() * (b - a + 1) + a);
+}
+
+// 判断是否命中
+function isHit() {
+_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.rs.getValue("accuracy") - target.rs.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
+console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
+return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
+}
+
+// 描述该功能...
+function main() {
+if (self.rs.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+  if (isHit() == true) {
+    console.log("isHit, damage:",damage())
+    console.log("before damage:",target.rs.getValue("hp.current"))
+    target.rs.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
+    console.log("after damage:",target.rs.getValue("hp.current"))
+  } else {
+    console.log("miss")
+  }
+}
+}
+
+
+_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
+
+
+main();`,
+          {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+            targetId: "defaultMember2Id",
+          },
+        );
         return true;
       },
       技能未冷却: function ({ context, event }) {

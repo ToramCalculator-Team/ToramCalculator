@@ -694,12 +694,7 @@ export class GameEngine {
         throw new Error("缺少成员ID");
       }
 
-      // 调试信息
-      console.log(`🔧 GameEngine.executeScript: 执行代码: ${compiledCode}`);
-      console.log(`🔧 GameEngine.executeScript: 上下文:`, context);
-
       // 在安全的沙盒环境中执行编译后的代码
-      // JSExpressionProcessor 已经在代码中声明了 _self 和 _target 变量
       const runner = new Function("ctx", compiledCode);
       
       // 确保 context 包含 engine 引用，供生成的代码使用
@@ -739,8 +734,6 @@ export class GameEngine {
         throw new Error(`成员不存在: ${memberId}`);
       }
 
-      console.log(`🔧 GameEngine.evaluateExpression: 计算表达式: ${expression}`);
-
       // 使用 JSExpressionProcessor 编译表达式
       const compiledResult = this.jsProcessor.compile(expression, {
         memberId,
@@ -752,8 +745,6 @@ export class GameEngine {
       if (!compiledResult.success) {
         throw new Error(`表达式编译失败: ${compiledResult.error}`);
       }
-      
-      console.log(`🔧 GameEngine.evaluateExpression: 编译成功，编译后代码: ${compiledResult.compiledCode}`);
       
       // 执行编译后的表达式，确保 context 包含 engine 引用
       const executionContext = {

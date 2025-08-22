@@ -15,7 +15,7 @@
 
 import { parse } from "acorn";
 import type { Node, Program } from "acorn";
-import type { NestedSchema } from "../dataSys/ReactiveSystem";
+import type { NestedSchema } from "../dataSys/SchemaTypes";
 import { SchemaPathResolver, type SchemaPath, escapeRegExp } from "./SchemaPathResolver";
 
 // ============================== 类型定义 ==============================
@@ -140,8 +140,18 @@ export class JSProcessor {
 
     // 替换属性访问
     for (const access of propertyAccesses) {
-      const memberRef = access.accessor === "self" ? "_self" : "_target";
-      const replacement = `${memberRef}.getValue('${access.reactiveKey}')`;
+      let replacement: string;
+      
+      // 检查是否为 getValue 格式
+      if (access.fullExpression.includes('.rs.getValue(')) {
+        // 对于 self.rs.getValue("xxx") 格式，保持原有结构，只替换引号
+        // 这样可以保持代码的可读性，同时确保语法正确
+        replacement = access.fullExpression.replace(/["']([^"']+)["']/, `'${access.reactiveKey}'`);
+      } else {
+        // 对于传统的 self.xxx 格式，替换为 self.rs.getValue('xxx')
+        const memberRef = access.accessor === "self" ? "self" : "target";
+        replacement = `${memberRef}.rs.getValue('${access.reactiveKey}')`;
+      }
 
       compiledCode = compiledCode.replace(new RegExp(escapeRegExp(access.fullExpression), "g"), replacement);
     }
@@ -160,12 +170,6 @@ export class JSProcessor {
       // 复杂代码：直接拼接
       finalCode = `${contextInjection}\n${compiledCode}`;
     }
-
-    // 调试信息
-    console.log(`🔧 JSExpressionProcessor: 原始代码: ${originalCode}`);
-    console.log(`🔧 JSExpressionProcessor: 属性访问: ${propertyAccesses.length} 个`);
-    console.log(`🔧 JSExpressionProcessor: 简单表达式: ${this.isSimpleExpression(originalCode)}`);
-    console.log(`🔧 JSExpressionProcessor: 生成的代码: ${finalCode}`);
 
     return finalCode;
   }
@@ -192,18 +196,23 @@ export class JSProcessor {
    * 生成上下文注入代码
    */
   private generateContextInjection(context: CompilationContext): string {
-    // 为脚本提供与架构解耦的访问器对象，避免直接依赖 Actor/Member 实现
-    const wrapAccessor = (id: string) =>
-      `({ getValue: (key) => {
-            const member = ctx.engine.getMemberManager().getMember('${id}');
-            return member.rs.getValue(key);
-        } })`;
-
+    // 直接注入 self 和 target 对象，提供完整的 Member 访问能力
     const lines: string[] = [];
-    lines.push(`const _self = ${wrapAccessor(context.memberId)};`);
+    
+    // 注入 self 对象
+    lines.push(`const self = ctx.engine.getMemberManager().getMember('${context.memberId}');`);
+    
+    // 注入 target 对象（如果存在）
     if (context.targetId) {
-      lines.push(`const _target = ${wrapAccessor(context.targetId)};`);
+      lines.push(`const target = ctx.engine.getMemberManager().getMember('${context.targetId}');`);
     }
+    
+    // 为了向后兼容，也保留 _self 和 _target
+    lines.push(`const _self = self;`);
+    if (context.targetId) {
+      lines.push(`const _target = target;`);
+    }
+    
     return lines.join("\n");
   }
 
