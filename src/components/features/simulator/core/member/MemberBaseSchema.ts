@@ -393,8 +393,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
       displayName: "当前生命值",
       expression: "0",
     },
-  },
-  mp: {
+    },
+    mp: {
     max: {
       displayName: "最大魔法值",
       expression: "0",
@@ -403,8 +403,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
       displayName: "当前魔法值",
       expression: "0",
     },
-  },
-  atk: {
+    },
+    atk: {
     p: {
       displayName: "物理攻击力",
       expression: "0",
@@ -413,8 +413,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
       displayName: "魔法攻击力",
       expression: "0",
     },
-  },
-  def: {
+    },
+    def: {
     p: {
       displayName: "物理防御力",
       expression: "0",
@@ -423,9 +423,9 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
       displayName: "魔法防御力",
       expression: "0",
     },
-  },
-  c: {
-    rate: {
+    },
+    c: {
+        rate: {
       p: {
         displayName: "物理暴击率",
         expression: "0",
@@ -434,8 +434,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
         displayName: "魔法暴击率",
         expression: "0",
       },
-    },
-    dmg: {
+        },
+        dmg: {
       p: {
         displayName: "物理暴击伤害",
         expression: "0",
@@ -445,8 +445,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
         expression: "0",
       },
     },
-  },
-  stab: {
+    },
+    stab: {
     p: {
       displayName: "物理穿透",
       expression: "0",
@@ -455,8 +455,8 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
       displayName: "魔法穿透",
       expression: "0",
     },
-  },
-  red: {
+    },
+    red: {
     p: {
       displayName: "物理抗性",
       expression: "0",

@@ -238,10 +238,10 @@ return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
 function main() {
 if (self.rs.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
   if (isHit() == true) {
-    console.log("isHit, damage:",damage())
-    console.log("before damage:",target.rs.getValue("hp.current"))
+    console.log("命中成功, 伤害:",damage())
+    console.log("命中前血量:",target.rs.getValue("hp.current"))
     target.rs.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-    console.log("after damage:",target.rs.getValue("hp.current"))
+    console.log("命中后血量:",target.rs.getValue("hp.current"))
   } else {
     console.log("miss")
   }
