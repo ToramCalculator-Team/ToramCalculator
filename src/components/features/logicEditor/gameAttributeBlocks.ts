@@ -10,7 +10,7 @@
 
 import { Blocks, FieldDropdown, FieldNumber, FieldTextInput } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
-import type { NestedSchema, SchemaAttribute } from "../simulator/core/dataSys/ReactiveSystem";
+import type { NestedSchema, SchemaAttribute } from "../simulator/core/dataSys/SchemaTypes";
 
 // ============================== 类型定义 ==============================
 

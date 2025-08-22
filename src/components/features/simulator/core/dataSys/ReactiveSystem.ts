@@ -10,6 +10,11 @@
  */
 import * as Enums from "@db/schema/enums";
 import { ReactiveSystemASTCompiler } from "./ReactiveSystemAST";
+import type { 
+  NestedSchema, 
+  AttributeExpression,
+} from "./SchemaTypes";
+import { SchemaFlattener } from "./SchemaTypes";
 
 // ============================== 枚举映射生成 ==============================
 
@@ -138,124 +143,6 @@ export function dynamicTotalValue(data: DataStorage): number {
   return Math.floor(total);
 }
 
-// ============================== Schema相关类型 ==============================
-
-/**
- * Schema中单个属性的定义
- */
-export interface SchemaAttribute {
-  displayName: string;
-  expression: string;
-  noBaseValue?: boolean;
-  onlyBaseValue?: boolean;
-}
-
-export const isSchemaAttribute = (x: unknown): x is SchemaAttribute => {
-  return !!x && typeof x === "object" && "displayName" in x && "expression" in x;
-};
-
-/**
- * 嵌套Schema结构（任意深度）
- */
-export type NestedSchema = {
-  [key: string]: SchemaAttribute | NestedSchema;
-};
-
-/**
- * 扁平化后的Schema结果
- */
-export interface FlattenedSchema<T extends string> {
-  attrKeys: T[];
-  expressions: Map<T, AttributeExpression>;
-  displayNames: Map<T, string>;
-}
-
-// ============================== Schema工具类型 ==============================
-
-/**
- * 从Schema生成属性键的联合类型
- * 直接使用DSL路径，不再进行小驼峰转换
- */
-export type ExtractAttrPaths<T extends NestedSchema, Path extends string = ""> = {
-  [K in keyof T]: T[K] extends SchemaAttribute
-    ? Path extends ""
-      ? K & string
-      : `${Path}.${K & string}`
-    : T[K] extends NestedSchema
-      ? ExtractAttrPaths<T[K], Path extends "" ? K & string : `${Path}.${K & string}`>
-      : never;
-}[keyof T];
-
-/**
- * 从Schema生成属性键的字符串联合类型
- */
-export type SchemaToAttrType<T extends NestedSchema> = ExtractAttrPaths<T>;
-
-/**
- * 从Schema生成完整的属性类型映射
- * 包含所有属性键和对应的number类型
- */
-export type SchemaToAttrRecord<T extends NestedSchema> = Record<SchemaToAttrType<T>, number>;
-
-// ============================== Schema工具函数 ==============================
-
-/**
- * Schema扁平化工具类
- */
-export class SchemaFlattener {
-  /**
-   * 扁平化嵌套的Schema结构
-   */
-  static flatten<T extends string>(schema: NestedSchema): FlattenedSchema<T> {
-    const attrKeys: T[] = [];
-    const expressions = new Map<T, AttributeExpression>();
-    const displayNames = new Map<T, string>();
-
-    function traverse(obj: NestedSchema, path: string[] = []): void {
-      for (const [key, value] of Object.entries(obj)) {
-        const currentPath = [...path, key];
-        const dslPath = currentPath.join(".");
-
-        if (SchemaFlattener.isSchemaAttribute(value)) {
-          // 直接使用DSL路径作为属性键名
-          const attrKey = dslPath as T;
-
-          attrKeys.push(attrKey);
-
-          expressions.set(attrKey, {
-            displayName: value.displayName,
-            expression: value.expression,
-            noBaseValue: Boolean(value.noBaseValue),
-          });
-
-          displayNames.set(attrKey, value.displayName);
-
-          // console.log(`📋 扁平化属性: ${dslPath} (${value.displayName})`);
-        } else {
-          traverse(value, currentPath);
-        }
-      }
-    }
-
-    traverse(schema);
-
-    // console.log(`✅ Schema扁平化完成: ${attrKeys.length} 个属性`);
-
-    return {
-      attrKeys,
-      expressions,
-      displayNames,
-    };
-  }
-
-  /**
-   * 检查对象是否为SchemaAttribute
-   */
-  private static isSchemaAttribute(obj: any): obj is SchemaAttribute {
-    return obj && typeof obj === "object" && typeof obj.displayName === "string" && typeof obj.expression === "string";
-  }
-}
-
 // ============================== 通用接口定义 ==============================
 
 export interface ModifierSource {
@@ -267,12 +154,6 @@ export interface ModifierSource {
 export interface Modifier {
   value: number;
   source: ModifierSource;
-}
-
-export interface AttributeExpression {
-  displayName: string;
-  expression: string;
-  noBaseValue?: boolean;
 }
 
 // ============================== 枚举和常量 ==============================

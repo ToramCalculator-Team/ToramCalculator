@@ -96,7 +96,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       ""type"": ""self_attribute_get"",
                                       ""id"": ""^ea1qsj:^;9ICv%pW[lL"",
                                       ""fields"": {
-                                        ""ATTRIBUTE_PATH"": ""pAtk""
+                                        ""ATTRIBUTE_PATH"": ""lv""
                                       }
                                     }
                                   }
@@ -112,10 +112,37 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                 }
                               },
                               ""block"": {
-                                ""type"": ""self_attribute_get"",
-                                ""id"": ""TJ(@1qOym`|R;3kod##H"",
+                                ""type"": ""math_arithmetic"",
+                                ""id"": ""o]MWU6[DSr^ZTwA1k,ZB"",
                                 ""fields"": {
-                                  ""ATTRIBUTE_PATH"": ""pRes""
+                                  ""OP"": ""MINUS""
+                                },
+                                ""inputs"": {
+                                  ""A"": {
+                                    ""shadow"": {
+                                      ""type"": ""math_number"",
+                                      ""id"": ""E**I@~p=!ec-nk+^mX*m"",
+                                      ""fields"": {
+                                        ""NUM"": 1
+                                      }
+                                    }
+                                  },
+                                  ""B"": {
+                                    ""shadow"": {
+                                      ""type"": ""math_number"",
+                                      ""id"": ""t^$#PTs4@OV.o#NTOe{Y"",
+                                      ""fields"": {
+                                        ""NUM"": 1
+                                      }
+                                    },
+                                    ""block"": {
+                                      ""type"": ""target_attribute_get"",
+                                      ""id"": ""9HW?59Wu=oc#;0XKyFUI"",
+                                      ""fields"": {
+                                        ""ATTRIBUTE_PATH"": ""red.p""
+                                      }
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -186,11 +213,11 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                       }
                                     },
                                     ""block"": {
-                                                                          ""type"": ""self_attribute_get"",
-                                    ""id"": ""5grY9W3gy.@(nc[-BKeo"",
-                                    ""fields"": {
-                                      ""ATTRIBUTE_PATH"": ""pie.p""
-                                    }
+                                      ""type"": ""self_attribute_get"",
+                                      ""id"": ""5grY9W3gy.@(nc[-BKeo"",
+                                      ""fields"": {
+                                        ""ATTRIBUTE_PATH"": ""pie.p""
+                                      }
                                     }
                                   }
                                 }
@@ -435,7 +462,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                             ""type"": ""self_attribute_get"",
                                             ""id"": ""InRj[4^YXXC172+X{T|}"",
                                             ""fields"": {
-                                              ""ATTRIBUTE_PATH"": ""hit""
+                                              ""ATTRIBUTE_PATH"": ""accuracy""
                                             }
                                           }
                                         },
@@ -451,7 +478,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                                             ""type"": ""target_attribute_get"",
                                             ""id"": ""cJRIc[BvH6F1);(TV3xS"",
                                             ""fields"": {
-                                              ""ATTRIBUTE_PATH"": ""flee""
+                                              ""ATTRIBUTE_PATH"": ""avoid""
                                             }
                                           }
                                         }
@@ -582,7 +609,7 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                           ""type"": ""self_attribute_get"",
                           ""id"": ""X%W(4h:!6QnQB7B.q}"",
                           ""fields"": {
-                            ""ATTRIBUTE_PATH"": ""currentMp""
+                            ""ATTRIBUTE_PATH"": ""hp.current""
                           }
                         }
                       },
@@ -636,49 +663,19 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
                       },
                       ""DO0"": {
                         ""block"": {
-                          ""type"": ""target_hp_set"",
-                          ""id"": ""B6-,kXG]u6Nrp6YHm?0e"",
+                          ""type"": ""target_attribute_fixed"",
+                          ""id"": ""{l]B)^@ny2VOA;T)ACfZ"",
+                          ""fields"": {
+                            ""ATTRIBUTE_PATH"": ""hp.current"",
+                            ""OPERATION"": ""SUBTRACT""
+                          },
                           ""inputs"": {
                             ""VALUE"": {
                               ""block"": {
-                                ""type"": ""math_arithmetic"",
-                                ""id"": ""%Twvfi@XkH]2^Lf^zd|%"",
-                                ""fields"": {
-                                  ""OP"": ""MINUS""
-                                },
-                                ""inputs"": {
-                                  ""A"": {
-                                    ""shadow"": {
-                                      ""type"": ""math_number"",
-                                      ""id"": ""F.eRrY3@NHD(:BYtL3Sk"",
-                                      ""fields"": {
-                                        ""NUM"": 1
-                                      }
-                                    },
-                                    ""block"": {
-                                                                          ""type"": ""target_attribute_get"",
-                                    ""id"": ""!P?iV{zw{lj:xOk=C=m?"",
-                                    ""fields"": {
-                                      ""ATTRIBUTE_PATH"": ""hp""
-                                    }
-                                    }
-                                  },
-                                  ""B"": {
-                                    ""shadow"": {
-                                      ""type"": ""math_number"",
-                                      ""id"": ""%!nLvu=vflw5i$k,~c6R"",
-                                      ""fields"": {
-                                        ""NUM"": 1
-                                      }
-                                    },
-                                    ""block"": {
-                                      ""type"": ""procedures_callreturn"",
-                                      ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
-                                      ""extraState"": {
-                                        ""name"": ""damage""
-                                      }
-                                    }
-                                  }
+                                ""type"": ""procedures_callreturn"",
+                                ""id"": ""p:GkKW0n7TK.j!UXNnv0"",
+                                ""extraState"": {
+                                  ""name"": ""damage""
                                 }
                               }
                             }
@@ -752,5 +749,4 @@ defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.
       ""id"": ""M$MiLF!ZK+//D#C%!C7m""
     }
   ]
-}
-",null,defaultSkillId
+}",null,defaultSkillId

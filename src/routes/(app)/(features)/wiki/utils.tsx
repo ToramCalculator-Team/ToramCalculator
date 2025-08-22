@@ -5,7 +5,7 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
-import { NodeEditor } from "~/components/features/blocklyEditor/nodeEditor";
+import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 简化后的表单字段
@@ -237,13 +237,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                 state={fieldInfo(field())}
                 class={fieldCalss}
               >
-                <NodeEditor
-                  data={field().state.value}
-                  setData={(data) => field().setValue(data as DeepValue<T, DeepKeys<T>>)}
-                  state={true}
-                  id={field().name}
-                  class="h-[80vh] w-full"
-                />
+                "逻辑编辑器，暂未处理"
               </Input>
             );
           }}

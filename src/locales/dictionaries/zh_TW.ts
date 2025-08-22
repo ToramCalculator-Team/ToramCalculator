@@ -2017,6 +2017,11 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        modifiers: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: "",
@@ -2195,6 +2200,11 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        modifiers: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -2652,8 +2662,13 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        cost: {
-          key: "",
+        hpCost: {
+          key: "HP消耗",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
+        mpCost: {
+          key: "MP消耗",
           tableFieldDescription: "",
           formFieldDescription: "",
         },

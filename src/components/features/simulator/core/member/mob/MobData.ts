@@ -2,110 +2,35 @@
  * 玩家数据配置
  */
 import { MobWithRelations } from "@db/repositories/mob";
-import { MainHandType, SubHandType } from "@db/schema/enums";
+import { ConvertToNestedSchema, ConvertToNestedSchemaDic, ConvertToSchema } from "../../dataSys/SchemaTypes";
+import { MemberBaseStructure } from "../MemberBaseSchema";
 
-/*
- * 命名说明：
- * XX基础值：指的是可被百分比加成和常数加成增幅的属性，比如基础智力（可被百分比智力加成和常数智力加成增幅）、
- *          基础武器攻击（可被百分比武器攻击加成和常数武器攻击加成增幅）
+// ============================== 基础结构定义 ==============================
+
+/**
+ * 成员基础结构定义
  *
- * 物理相关：physical → p
- * 魔法相关：magical → m
- * 攻击相关：attack → atk
- * 防御相关：defense → def
- * 抗性相关：resistance → res
- * 伤害相关：damage → dmg
- * 减轻相关：reduce → red
- * 增强相关：strongerAgainst → vs
- * 转换率相关：conversionRate → conv
- * 基础值相关：baseValue → base
+ * 这个接口定义了成员的基本属性结构，使用null作为占位符
+ * 通过类型推导可以自动生成Schema、NestedSchema或NestedSchemaDic类型
  */
-
-// ============================== 计算层类型 ==============================
-// 类型枚举
-export enum MobAttrEnum {
-  // 基础属性
-  lv, // 等级
-  maxHp, // 最大HP
-  currentHp, // 当前HP
-  // 攻击属性
-  pAtk, // 物理攻击
-  mAtk, // 魔法攻击
-  pCritRate, // 物理暴击率
-  pCritDmg, // 物理暴击伤害
-  pStab, // 物理稳定率
-  accuracy, // 命中
-  // 防御属性
-  pDef, // 物理防御
-  mDef, // 魔法防御
-  pRes, // 物理抗性
-  mRes, // 魔法抗性
-  neutralRes, // 无属性抗性
-  lightRes, // 光属性抗性
-  darkRes, // 暗属性抗性
-  waterRes, // 水属性抗性
-  fireRes, // 火属性抗性
-  earthRes, // 地属性抗性
-  windRes, // 风属性抗性
-  // 生存能力
-  dodge, // 回避
-  ailmentRes, // 异常抗性
-  guardPower, // 格挡力
-  guardRecharge, // 格挡回复
-  evasionRecharge, // 闪躲回复
-  // 速度属性
-  aspd, // 攻击速度
-  cspd, // 咏唱速度
-  mspd, // 行动速度
-  // 其他属性
-  radius, // 半径
-  captureable, // 是否可捕获
-  experience, // 经验值
-  partsExperience, // 部位经验值
-}
-// 字符串类型
-export type MobAttrType = keyof typeof MobAttrEnum;
-// 调试用的字典
-export const MobAttrDic: Record<MobAttrType, string> = {
-  lv: "lv",
-  maxHp: "maxHp",
-  currentHp: "currentHp",
-  pAtk: "pAtk",
-  mAtk: "mAtk",
-  pCritRate: "pCritRate",
-  pCritDmg: "pCritDmg",
-  pStab: "pStab",
-  accuracy: "accuracy",
-  pDef: "pDef",
-  mDef: "mDef",
-  pRes: "pRes",
-  mRes: "mRes",
-  neutralRes: "",
-  lightRes: "",
-  darkRes: "",
-  waterRes: "",
-  fireRes: "",
-  earthRes: "",
-  windRes: "",
-  dodge: "",
-  ailmentRes: "",
-  guardPower: "",
-  guardRecharge: "",
-  evasionRecharge: "",
-  aspd: "",
-  cspd: "",
-  mspd: "",
-  radius: "",
-  captureable: "",
-  experience: "",
-  partsExperience: "",
+export interface MobDataStructure extends MemberBaseStructure {
 };
-// 字符串键列表
-export const MobAttrKeys = Object.keys(MobAttrDic) as MobAttrType[];
-// 与原属数据层的映射关系
-export const MobAttrExpressionsMap = new Map<MobAttrType, { expression: string; isBase?: boolean }>([]);
 
-export const MobAttrSchema = (mob: MobWithRelations) => ({
+/**
+ * 将基础结构转换为NestedSchema类型
+ *
+ * 递归地将null值转换为SchemaAttribute，需要提供属性工厂类型
+ */
+export type MobDataNestedSchema = ConvertToNestedSchema<MobDataStructure>;
+
+/**
+ * 将基础结构转换为NestedSchemaDic类型
+ *
+ * 递归地将null值转换为多语言对象，需要提供多语言工厂类型
+ */
+export type MobDataNestedSchemaDic = ConvertToNestedSchemaDic<MobDataStructure>;
+
+export const MobAttrSchema = (mob: MobWithRelations): MobDataNestedSchema => ({
   // ============================== 基础信息 ==============================
   lv: {
     displayName: "等级",
@@ -122,5 +47,125 @@ export const MobAttrSchema = (mob: MobWithRelations) => ({
       displayName: "当前HP",
       expression: "hp.max",
     },
+  },
+  mp: {
+    max: {
+      displayName: "最大MP",
+      expression: `0`,
+    },
+    current: {
+      displayName: "当前MP",
+      expression: "mp.max",
+    },
+  },
+  atk: {
+    p: {
+      displayName: "物理攻击",
+      expression: `0`,
+    },
+    m: {
+      displayName: "魔法攻击",
+      expression: `0`,
+    },
+  },
+  def: {
+    p: {
+      displayName: "物理防御",
+      expression: `${mob.physicalDefense}`,
+    },
+    m: {
+      displayName: "魔法防御",
+      expression: `${mob.magicalDefense}`,
+    },
+  },
+  c: {
+    rate: {
+      p: {
+        displayName: "物理暴击率",
+        expression: `${0}`,
+      },
+      m: {
+        displayName: "魔法暴击率",
+        expression: `${0}`,
+      },
+    },
+    dmg: {
+      p: {
+        displayName: "物理暴击伤害",
+        expression: `${0}`,
+      },
+      m: {
+        displayName: "魔法暴击伤害",
+        expression: `${0}`,
+      },
+    },
+  },
+  stab: {
+    p: {
+      displayName: "物理稳定率",
+      expression: `${0}`,
+    },
+    m: {
+      displayName: "魔法稳定",
+      expression: `${0}`,
+    },
+  },
+  red: {
+    p: {
+      displayName: "物理抗性",
+      expression: `${0}`,
+    },
+    m: {
+      displayName: "魔法抗性",
+      expression: `${0}`,
+    },
+    rate: {
+      displayName: "百分比伤害抗性",
+      expression: `${0}`,
+    },
+    water: {
+      displayName: "水属性伤害",
+      expression: `${0}`,
+    },
+    fire: {
+      displayName: "火属性伤害",
+      expression: `${0}`,
+    },
+    earth: {
+      displayName: "地属性伤害",
+      expression: `${0}`,
+    },
+    wind: {
+      displayName: "风属性伤害",
+      expression: `${0}`,
+    },
+    light: {
+      displayName: "光属性伤害",
+      expression: `${0}`,
+    },
+    dark: {
+      displayName: "暗属性伤害",
+      expression: `${0}`,
+    },
+    normal: {
+      displayName: "无属性伤害",
+      expression: `${0}`,
+    },
+  },
+  accuracy: {
+    displayName: "命中",
+    expression: `${0}`,
+  },
+  avoid: {
+    displayName: "回避",
+    expression: `${0}`,
+  },
+  guardRate: {
+    displayName: "格挡率",
+    expression: `${0}`,
+  },
+  dodgeRate: {
+    displayName: "闪躲率",
+    expression: `${0}`,
   },
 });

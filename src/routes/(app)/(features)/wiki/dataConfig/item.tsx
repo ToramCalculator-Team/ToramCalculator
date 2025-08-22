@@ -320,7 +320,7 @@ export const deleteItem = async (trx: Transaction<DB>, id: string) => {
 export const ItemSharedFormField = (
   dic: dictionary,
   oldItem: ItemWithRelated,
-  form: SolidFormApi<any, any, any, any, any, any, any, any, any, unknown>,
+  form: SolidFormApi<any, any, any, any, any, any, any, any, any, any, any, unknown>,
 ) => {
   return (
     <For each={Object.entries(oldItem ?? defaultItemWithRelated)}>
@@ -1630,7 +1630,7 @@ export const ItemWithSubObjectForm = <SubObject extends Record<string, any>>(pro
     defaultData: SubObject;
     fieldsRender: (
       data: SubObject,
-      form: SolidFormApi<SubObject & ItemWithRelated, any, any, any, any, any, any, any, any, unknown>,
+      form: SolidFormApi<SubObject & ItemWithRelated, any, any, any, any, any, any, any, any, any, any, unknown>,
     ) => JSX.Element;
     fieldsHandler: (trx: Transaction<DB>, data: SubObject, oldData: SubObject | undefined, item: item) => Promise<void>;
   };

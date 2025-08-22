@@ -30,7 +30,7 @@ import "blockly/blocks";
 import { SchemaBlockGenerator } from "./gameAttributeBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
-import { NestedSchema } from "../simulator/core/dataSys/ReactiveSystem";
+import { NestedSchema, Schema } from "../simulator/core/dataSys/SchemaTypes";
 
 // class CustomCategory extends ToolboxCategory {
 //   /**
@@ -42,7 +42,7 @@ import { NestedSchema } from "../simulator/core/dataSys/ReactiveSystem";
 //   }
 // }
 
-interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
+interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
   schema: NestedSchema; // 自身属性 schema
   targetSchema: NestedSchema; // 目标属性 schema
@@ -54,7 +54,7 @@ interface NodeEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   readOnly?: boolean;
 }
 
-export function NodeEditor(props: NodeEditorProps) {
+export function LogicEditor(props: LogicEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
 

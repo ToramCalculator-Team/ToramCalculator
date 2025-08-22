@@ -2017,6 +2017,11 @@ const dictionary: dictionary = {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
+        },
+        modifiers: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
         }
       },
       description: "",
@@ -2195,6 +2200,11 @@ const dictionary: dictionary = {
           formFieldDescription: "",
         },
         baseAbi: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: ""
+        },
+        modifiers: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -2607,10 +2617,15 @@ const dictionary: dictionary = {
           tableFieldDescription: "技能前摇",
           formFieldDescription: "技能前摇",
         },
-        cost: {
-          key: "技能消耗",
-          tableFieldDescription: "技能消耗",
-          formFieldDescription: "技能消耗",
+        hpCost: {
+          key: "HP消耗",
+          tableFieldDescription: "HP消耗",
+          formFieldDescription: "HP消耗",
+        },
+        mpCost: {
+          key: "MP消耗",
+          tableFieldDescription: "MP消耗",
+          formFieldDescription: "MP消耗",
         },
         description: {
           key: "效果描述",

@@ -21,10 +21,11 @@ import { store } from "~/store";
 import { createStatistic } from "@db/repositories/statistic";
 import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
-import { NodeEditor } from "~/components/features/blocklyEditor/nodeEditor";
+import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { pick } from "lodash-es";
 import { arrayDiff } from "./utils";
 import { CardSharedSection } from "./utils";
+import { MemberBaseNestedSchema } from "~/components/features/simulator/core/member/MemberBaseSchema";
 
 type SkillWithRelated = skill & {
   effects: skill_effect[];
@@ -319,11 +320,13 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                                                     state={fieldInfo(logicField())}
                                                     class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                                                   >
-                                                    <NodeEditor
+                                                    <LogicEditor
                                                       data={logicField().state.value}
                                                       setData={(data) => logicField().setValue(data)}
                                                       state={true}
                                                       id={logicField().name}
+                                                      schema={MemberBaseNestedSchema}
+                                                      targetSchema={MemberBaseNestedSchema}
                                                       class="h-[80vh] w-full"
                                                     />
                                                   </Input>
@@ -482,11 +485,13 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
                         dataSchema: skill_effectSchema,
                         hiddenFields: ["id", "belongToskillId"],
                       })}
-                      <NodeEditor
+                      <LogicEditor
                         data={effect.logic}
-                         setData={() => {}}
-                         state={true}
-                         readOnly
+                        setData={() => {}}
+                        state={true}
+                        readOnly
+                        schema={MemberBaseNestedSchema}
+                        targetSchema={MemberBaseNestedSchema}
                         id={effect.id}
                         class="h-[80vh] w-full"
                       />

@@ -1,4 +1,4 @@
-import { type Mob } from "@db/repositories/mob";
+import { MobWithRelations, type Mob } from "@db/repositories/mob";
 import { MobDifficultyFlag } from "@db/generated/kysely/enums";
 import { mob } from "@db/generated/kysely/kyesely";
 /**
@@ -79,8 +79,8 @@ export const generateBossDataByFlag = <T extends mob & unknown>(
  * @param dictionary UI字典
  * @returns 新的列表
  */
-export const generateAugmentedMobList = (baseMobList: Mob["Card"][]) => {
-  const result: Mob["Card"][] = [];
+export const generateAugmentedMobList = (baseMobList: MobWithRelations[]) => {
+  const result: MobWithRelations[] = [];
   baseMobList.forEach((mob) => {
     // 表中记录的是1星状态下的定点王数据， 2 / 3 / 4 星的经验和HP为1星的 2 / 5 / 10 倍；物防、魔防、回避值为1星的 2 / 4 / 6 倍。
     if (mob.type !== "Boss") {

@@ -1,12 +1,12 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
-import { ExtractAttrPaths, NestedSchema } from "../../dataSys/ReactiveSystem";
 import { applyPrebattleModifiers } from "./PrebattleModifiers";
 import { playerStateMachine } from "./PlayerStateMachine";
 import GameEngine from "../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerData";
 import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
+import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 

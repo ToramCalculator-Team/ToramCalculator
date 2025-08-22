@@ -1,5 +1,5 @@
 "use server";
-import { findUserByEmail, findUserById, User } from "@db/repositories/user";
+import { findUserByEmail, findUserById, findUserWithRelations, User } from "@db/repositories/user";
 import { jwtVerify } from "jose";
 import { getCookie } from "vinxi/http";
 
@@ -21,7 +21,7 @@ export async function getUserByCookie() {
   const userId = await verifyJWT(token, secrt);
   if (!userId) return null;
 
-  const user = await findUserById(userId);
+  const user = await findUserWithRelations(userId);
   return user;
 }
 
