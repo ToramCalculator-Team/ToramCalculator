@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
-import type { IntentMessage } from "./messages";
+import type { IntentMessage } from "../MessageRouter";
 
 import simulationWorker from "./Simulation.worker?worker&url";
 import { WorkerSystemMessageSchema } from "./messages";
@@ -102,68 +102,7 @@ class EventEmitter {
  * 4. 编译时类型检查
  * 5. 保持通用性，不包含业务逻辑
  */
-class MessageSerializer {
-  /**
-   * 检查对象是否为可传输对象
-   * @param obj 要检查的对象
-   * @returns 是否为Transferable对象
-   */
-  static isTransferable(obj: unknown): obj is Transferable {
-    return obj instanceof ArrayBuffer || obj instanceof MessagePort;
-  }
-
-  /**
-   * 递归查找消息中的所有可传输对象
-   * @param obj 要扫描的对象
-   * @returns 找到的所有Transferable对象数组
-   */
-  static findTransferables(obj: unknown): Transferable[] {
-    const transferables = new Set<Transferable>();
-
-    function scan(item: unknown): void {
-      if (!item || typeof item !== "object") return;
-
-      if (MessageSerializer.isTransferable(item)) {
-        transferables.add(item);
-        return;
-      }
-
-      if (Array.isArray(item)) {
-        (item as unknown[]).forEach(scan);
-        return;
-      }
-
-      if (item && typeof item === "object" && item !== null) {
-        for (const value of Object.values(item)) {
-          scan(value);
-        }
-      }
-    }
-
-    scan(obj);
-    return Array.from(transferables);
-  }
-
-  /**
-   * 类型安全的消息传输准备
-   *
-   * @param message 要传输的消息
-   * @returns 包含消息和可传输对象列表的传输结果
-   *
-   * 设计原则：
-   * - 类型安全：保持原始消息的类型信息
-   * - 性能优化：自动检测和处理Transferable对象
-   * - 结构可预测：返回结果结构明确
-   * - 通用性：不包含特定业务逻辑
-   */
-  static prepareForTransfer<T>(message: T): { message: T; transferables: Transferable[] } {
-    const transferables = this.findTransferables(message);
-    return {
-      message,
-      transferables,
-    };
-  }
-}
+import { prepareForTransfer } from "./MessageSerializer";
 
 /**
  * 通用任务类型 - 使用泛型保持类型安全
@@ -851,7 +790,7 @@ export class WorkerPool extends EventEmitter {
       type: task.type,
       data: task.payload,
     };
-    const { message, transferables } = MessageSerializer.prepareForTransfer(workerMessageWithTaskId);
+    const { message, transferables } = prepareForTransfer(workerMessageWithTaskId);
 
     try {
       // 通过MessageChannel发送任务到Worker

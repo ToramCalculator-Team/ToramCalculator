@@ -21,10 +21,11 @@ import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
 import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
-import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./thread/messages";
+import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
+import { z } from "zod";
 
 // ============================== 类型定义 ==============================
 
@@ -39,7 +40,7 @@ export interface ExpressionContext {
   /** 目标属性 */
   targetId?: string;
   /** 技能数据 */
-  skillLv: number;
+  skillLv?: number;
   /** 环境变量 */
   environment?: any;
   /** 自定义变量 */
@@ -86,6 +87,66 @@ export interface EngineStats {
   /** 消息路由统计 */
   messageRouterStats: MessageRouterStats;
 }
+
+/**
+ * 引擎视图类型
+ * 高频KPI数据，用于实时监控引擎性能
+ * 这是引擎对外暴露的状态快照
+ */
+export interface EngineView {
+  frameNumber: number;
+  runTime: number;
+  frameLoop: {
+    averageFPS: number;
+    averageFrameTime: number;
+    totalFrames: number;
+    totalRunTime: number;
+    clockKind?: "raf" | "timeout";
+    skippedFrames?: number;
+    frameBudgetMs?: number;
+  };
+  eventQueue: {
+    currentSize: number;
+    totalProcessed: number;
+    totalInserted: number;
+    overflowCount: number;
+  };
+}
+
+/**
+ * 引擎视图Schema
+ */
+export const EngineViewSchema = z.object({
+  frameNumber: z.number(),
+  runTime: z.number(),
+  frameLoop: z.object({
+    averageFPS: z.number(),
+    averageFrameTime: z.number(),
+    totalFrames: z.number(),
+    totalRunTime: z.number(),
+    clockKind: z.enum(["raf", "timeout"]).optional(),
+    skippedFrames: z.number().optional(),
+    frameBudgetMs: z.number().optional(),
+  }),
+  eventQueue: z.object({
+    currentSize: z.number(),
+    totalProcessed: z.number(),
+    totalInserted: z.number(),
+    overflowCount: z.number(),
+  }),
+});
+
+/**
+ * 引擎统计完整类型
+ * 扩展的引擎统计信息，支持动态属性
+ */
+export const EngineStatsFullSchema = z
+  .object({
+    currentFrame: z.number(),
+  })
+  .passthrough();
+
+export type EngineStatsFull = z.infer<typeof EngineStatsFullSchema>;
 
 /**
  * 战斗快照接口
@@ -141,6 +202,9 @@ export class GameEngine {
 
   /** 状态变化监听器列表 */
   private stateChangeListeners: Array<(event: EngineStats) => void> = [];
+
+  /** 状态同步回调函数（用于Worker线程通信） */
+  private stateSyncCallback?: (eventType: string, data: any) => void;
 
   // ==================== 引擎状态 ====================
 
@@ -780,6 +844,21 @@ export class GameEngine {
   clearCompilationCache(): void {
     this.compiledScripts.clear();
     console.log("🧹 JS编译缓存已清理");
+  }
+
+  /**
+   * 设置状态同步回调函数（用于Worker线程通信）
+   * 通过MessageRouter统一管理状态同步
+   *
+   * @param callback 回调函数
+   */
+  setStateSyncCallback(callback: (eventType: string, data: any) => void): void {
+    this.stateSyncCallback = callback;
+    
+    // 同时设置MessageRouter的状态同步回调
+    if (this.messageRouter) {
+      this.messageRouter.setStateSyncCallback(callback);
+    }
   }
 
   // ==================== 私有方法 ====================

@@ -18,14 +18,14 @@ import type { Actor, AnyActorLogic } from "xstate";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";
 import type GameEngine from "./GameEngine";
-import { ReactiveSystem, type NestedSchema } from "./dataSys/ReactiveSystem";
-import { applyPrebattleModifiers } from "./member/player/PrebattleModifiers";
+import { ReactiveSystem } from "./dataSys/ReactiveSystem";
 import { PlayerAttrSchema } from "./member/player/PlayerData";
 import { MobAttrSchema } from "./member/mob/MobData";
 import { Team } from "@db/repositories/team";
 import { Player } from "./member/player/Player";
 import { Member } from "./member/Member";
 import { Mob } from "./member/mob/Mob";
+import { NestedSchema } from "./dataSys/SchemaTypes";
 
 // ============================== 类型定义 ==============================
 

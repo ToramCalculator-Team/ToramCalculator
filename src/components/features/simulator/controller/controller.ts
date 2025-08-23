@@ -12,15 +12,7 @@ import { controllerCommunication } from "./communication";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
 import { type MemberSerializeData } from "../core/member/Member";
-import { type EngineView } from "../core/thread/messages";
-
-// ============================== 类型定义 ==============================
-
-// EngineStats 类型 - 低频全量数据，使用 any 类型避免复杂的类型推断问题
-interface WorkerEventData {
-  workerId: string;
-  event: any; // 使用 any 类型，因为不同事件的数据结构不同
-}
+import { EngineView } from "../core/GameEngine";
 
 export class Controller {
   // ==================== 状态管理 (展示) ====================

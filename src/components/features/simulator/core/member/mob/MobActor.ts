@@ -6,10 +6,10 @@
  */
 
 import { assign, EventObject, setup } from "xstate";
-import { ExtractAttrPaths } from "../../dataSys/ReactiveSystem";
 import { MobAttrSchema } from "./MobData";
 import { Member, MemberEventType, MemberStateMachine } from "../Member";
 import { Mob } from "./Mob";
+import { ExtractAttrPaths } from "../../dataSys/SchemaTypes";
 
 /**
  * Mob 的属性键类型（基于 MobAttrSchema 提取 DSL 路径）

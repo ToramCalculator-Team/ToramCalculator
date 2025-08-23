@@ -1,7 +1,9 @@
 import { assign, enqueueActions, EventObject, setup } from "xstate";
+import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
 import { ModifierType } from "../../dataSys/ReactiveSystem";
+import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
 
 /**
  * Player特有的事件类型
@@ -67,7 +69,7 @@ export const playerStateMachine = (player: Player) => {
     },
     actions: {
       根据角色配置生成初始状态: function ({ context, event }) {
-        console.log("根据角色配置生成初始状态", event);
+        console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, event);
         // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
         const engine: any = context.engine as any;
         const memberId = context.id;
@@ -96,10 +98,10 @@ export const playerStateMachine = (player: Player) => {
         }
       },
       休息动画: function ({ context, event }) {
-        console.log("休息动画", event);
+        console.log(`👤 [${context.name}] 休息动画`, event);
       },
       前摇动画: function ({ context, event }) {
-        console.log("前摇动画", event);
+        console.log(`👤 [${context.name}] 前摇动画`, event);
       },
       扣除技能消耗: enqueueActions(({ context, event, enqueue }) => {
         const e = event as 使用技能;
@@ -155,29 +157,109 @@ export const playerStateMachine = (player: Player) => {
             source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
           },
         ]);
-        console.log(context.rs.getValue("hp.current"), context.rs.getValue("mp.current"));
+        console.log(
+          `👤 [${context.name}] HP: ${context.rs.getValue("hp.current")}, MP: ${context.rs.getValue("mp.current")}`,
+        );
       }),
 
       写入前摇结束通知事件: function ({ context, event }) {
-        console.log("写入前摇结束通知事件", event);
+        console.log("🎮 写入前摇结束通知事件", event);
+
+        const e = event as 收到前摇结束通知;
+        const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+
+        const skill = context.skills?.find((s) => s.id === skillId);
+        if (!skill) {
+          throw new Error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+        }
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
+
+        if (!effect) {
+          throw new Error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+        }
+
+        const motionFixed = Math.floor(
+          context.engine.evaluateExpression(effect.motionFixed ?? "0", {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          }),
+        );
+        const motionModified = Math.floor(
+          context.engine.evaluateExpression(effect.motionModified ?? "0", {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          }),
+        );
+        const mspd = Math.min(0.5, Math.floor(context.rs.getValue("mspd")));
+        console.log(`👤 [${context.name}] 固定帧：`, motionFixed);
+        console.log(`👤 [${context.name}] 可加速帧：`, motionModified);
+        console.log(`👤 [${context.name}] 当前行动速度：`, mspd);
+
+        const totalMotion = motionFixed + motionModified * (1 - mspd);
+        console.log(`👤 [${context.name}] 总帧数：`, totalMotion);
+
+        const startupRatio = context.engine.evaluateExpression(
+          effect?.startupFrames ?? "throw new Error('前摇时长表达式不存在')",
+          {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          },
+        );
+        console.log(`👤 [${context.name}] 前摇比例：`, startupRatio);
+        const startupFrames = Math.floor(startupRatio * totalMotion);
+        console.log(`👤 [${context.name}] 前摇帧数：`, startupFrames);
+
+        // 计算前摇结束的目标帧
+        const targetFrame = currentFrame + startupFrames;
+
+        // 向事件队列写入定时事件
+        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
+        context.engine.getEventQueue().insert({
+          id: createId(), // 生成唯一事件ID
+          type: "member_fsm_event",
+          executeFrame: targetFrame,
+          priority: "high",
+          payload: {
+            targetMemberId: context.id, // 目标成员ID
+            fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
+            skillId: skillId, // 技能ID
+            source: "skill_front_swing", // 事件来源
+          },
+        });
+
+        console.log(
+          `👤 [${context.name}] 前摇开始，${startupFrames}帧后结束 (当前帧: ${currentFrame}, 目标帧: ${targetFrame})`,
+        );
       },
       蓄力动画: function ({ context, event }) {
-        console.log("蓄力动画", event);
+        console.log(`👤 [${context.name}] 蓄力动画`, event);
       },
       写入蓄力结束通知事件: function ({ context, event }) {
-        console.log("写入蓄力结束通知事件", event);
+        console.log(`👤 [${context.name}] 写入蓄力结束通知事件`, event);
       },
       后摇动画: function ({ context, event }) {
-        console.log("后摇动画", event);
+        console.log(`👤 [${context.name}] 后摇动画`, event);
       },
       写入后摇结束通知事件: function ({ context, event }) {
-        console.log("写入后摇结束通知事件", event);
+        console.log(`👤 [${context.name}] 写入后摇结束通知事件`, event);
       },
       在当前帧写入技能效果事件: function ({ context, event }) {
-        console.log("在当前帧写入技能效果事件", event);
+        console.log(`👤 [${context.name}] 在当前帧写入技能效果事件`, event);
       },
       重置角色状态: function ({ context, event }) {
-        console.log("重置角色状态", event);
+        console.log(`👤 [${context.name}] 重置角色状态`, event);
       },
     },
     guards: {
@@ -237,6 +319,9 @@ return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
 // 描述该功能...
 function main() {
 if (self.rs.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+  console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
+  self.rs.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
+  console.log("技能消耗后当前MP",self.rs.getValue("mp.current"))
   if (isHit() == true) {
     console.log("命中成功, 伤害:",damage())
     console.log("命中前血量:",target.rs.getValue("hp.current"))
@@ -260,7 +345,7 @@ main();`,
             targetId: "defaultMember2Id",
           },
         );
-        return true;
+        return false;
       },
       技能未冷却: function ({ context, event }) {
         const e = event as 使用技能;
@@ -318,12 +403,57 @@ main();`,
         console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
         return false;
       },
-      有蓄力动作: function ({ context, event }) {
-        console.log("判断技能是否有蓄力动作", event);
-        return true;
+      有蓄力动作: function ({ context, event }, params: { effect: SkillEffectWithRelations | null }) {
+        console.log(`👤 [${context.name}] 判断技能是否有蓄力动作`, event);
+
+        const effect = params.effect;
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在`);
+          return false;
+        }
+
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const chargeFixed = context.engine.evaluateExpression(params.effect?.chantingFixed ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        const chargeModified = context.engine.evaluateExpression(params.effect?.chantingModified ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+
+        const chantingFixed = context.engine.evaluateExpression(params.effect?.chantingFixed ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        const chantingModified = context.engine.evaluateExpression(params.effect?.chantingModified ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+
+        const chargeType = chargeFixed + chargeModified > 0 ? "有蓄力动作" : "没有蓄力动作";
+        const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱动作" : "没有咏唱动作";
+
+        switch ([chargeType, chantingType]) {
+          case ["有蓄力动作", "有咏唱动作"]:
+            console.log(`👤 [${context.name}] 技能有蓄力动作和咏唱动作`);
+            return true;
+          case ["有蓄力动作", "没有咏唱动作"]:
+            console.log(`👤 [${context.name}] 技能有蓄力动作，没有咏唱动作`);
+            return true;
+          case ["没有蓄力动作", "有咏唱动作"]:
+            console.log(`👤 [${context.name}] 技能没有蓄力动作，有咏唱动作`);
+            return true;
+          case ["没有蓄力动作", "没有咏唱动作"]:
+            console.log(`👤 [${context.name}] 技能没有蓄力动作，没有咏唱动作`);
+            return false;
+          default:
+            console.log(`👤 [${context.name}] 技能没有蓄力动作和没有咏唱动作`);
+            return false;
+        }
       },
       没有后续技能: function ({ context, event }) {
-        console.log("判断技能是否没有后续技能", event);
+        console.log(`👤 [${context.name}] 判断技能是否没有后续技能`, event);
         return true;
       },
     },
@@ -408,6 +538,9 @@ main();`,
                           target: "蓄力动作",
                           guard: {
                             type: "有蓄力动作",
+                            params: ({ context }) => ({
+                              effect: context.skillEffect,
+                            }),
                           },
                         },
                         {

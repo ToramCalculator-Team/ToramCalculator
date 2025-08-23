@@ -22,6 +22,7 @@ import {
 export default function RealtimeController() {
   // 初始化控制器
   createEffect(() => {
+    console.log("初始化控制器");
     controller.initialize();
   });
 

@@ -3,12 +3,38 @@
  * 将GameEngine运行在安全沙盒环境中
  */
 
-import { EngineStats, GameEngine } from "../GameEngine";
-import { EngineViewSchema, type WorkerTaskResponse, type WorkerTaskResult } from "./messages";
+import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../GameEngine";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
-import type { IntentMessage } from "./messages";
+import type { IntentMessage } from "../MessageRouter";
+
+import { 
+  prepareForTransfer, 
+  sanitizeForPostMessage
+} from "./MessageSerializer";
 
 // ==================== 消息类型定义 ====================
+
+/**
+ * Worker任务结果类型
+ */
+interface WorkerTaskResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Worker响应消息类型 - 与SimulatorPool期望的格式一致
+ */
+type WorkerResponse<T = unknown> = {
+  taskId: string;
+  result: WorkerTaskResult<T> | null;
+  error: string | null;
+  metrics: {
+    duration: number;
+    memoryUsage: number;
+  };
+};
 
 /**
  * 主线程到Worker的初始化消息类型
@@ -26,11 +52,6 @@ interface PortMessage {
   type: string;
   data?: any;
 }
-
-/**
- * Worker响应消息类型 - 与SimulatorPool期望的格式一致
- */
-type WorkerResponse<T = unknown> = WorkerTaskResponse<T>;
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -89,6 +110,22 @@ const gameEngine = new GameEngine({
   },
 });
 
+// 全局变量存储messagePort，供事件发射器回调使用
+let globalMessagePort: MessagePort | null = null;
+
+// 设置状态同步回调，将GameEngine的状态更新转发到主线程
+gameEngine.setStateSyncCallback((eventType: string, data: any) => {
+  // 通过postSystemMessage将状态更新发送到主线程
+  if (globalMessagePort && typeof postSystemMessage === 'function') {
+    // 只处理支持的事件类型
+    if (eventType === "member_state_update") {
+      postSystemMessage(globalMessagePort, eventType as "member_state_update", data);
+    } else {
+      console.warn(`Worker: 不支持的事件类型: ${eventType}`);
+    }
+  }
+});
+
 // 订阅引擎状态变化事件（加入节流与轻量DTO）
 let engineStateSubscription: (() => void) | null = null;
 let lastEngineViewSentAt = 0;
@@ -102,28 +139,11 @@ let fullStatsInterval: number | null = null;
 const memberWatchUnsubMap = new Map<string, () => void>();
 const memberLastValueMap = new Map<string, string>();
 
-type EngineView = {
-  frameNumber: number;
-  runTime: number;
-  frameLoop: {
-    averageFPS: number;
-    averageFrameTime: number;
-    totalFrames: number;
-    totalRunTime: number;
-    clockKind?: "raf" | "timeout";
-    skippedFrames?: number;
-    frameBudgetMs?: number;
-  };
-  eventQueue: {
-    currentSize: number;
-    totalProcessed: number;
-    totalInserted: number;
-    overflowCount: number;
-  };
-};
+// EngineView类型已从messages.ts导入，无需重复定义
 
 function projectEngineView(stats: EngineStats): EngineView {
-  return {
+  // 构建EngineView数据，使用EngineViewSchema进行验证
+  const engineView = {
     frameNumber: stats.currentFrame,
     runTime: stats.runTime,
     frameLoop: {
@@ -142,6 +162,9 @@ function projectEngineView(stats: EngineStats): EngineView {
       overflowCount: stats.eventQueueStats?.overflowCount ?? 0,
     },
   };
+  
+  // 使用EngineViewSchema验证数据
+  return EngineViewSchema.parse(engineView);
 }
 
 // 处理主线程消息 - 只处理初始化
@@ -156,6 +179,9 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           throw new Error("初始化失败，缺少MessagePort");
         }
         const messagePort: MessagePort = port;
+        
+        // 设置全局messagePort供事件发射器使用
+        globalMessagePort = messagePort;
         {
           // 设置MessageChannel端口用于任务通信
           messagePort.onmessage = async (portEvent: MessageEvent<PortMessage>) => {
@@ -350,20 +376,13 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                       if (prevValue === nextValue) return;
                       memberLastValueMap.set(memberId, nextValue);
 
-                      // 获取成员的基本信息（从member中获取）
-                      const member = gameEngine.getMemberManager().getMember(memberId);
-
+                      // 使用MessageSerializer统一处理XState快照
+                      const safeSnapshot = sanitizeForPostMessage(snapshot);
+                      
                       // 发送状态更新消息
                       postSystemMessage(messagePort, "member_state_update", {
                         memberId,
-                        value: nextValue,
-                        context: {
-                          // 从member的响应式系统获取属性值
-                          hp: member?.rs?.getValue?.("hp.current") || 0,
-                          mp: member?.rs?.getValue?.("mp.current") || 0,
-                          position: { x: 0, y: 0 }, // 暂时使用默认值
-                          targetId: "", // 暂时使用默认值
-                        },
+                        state: safeSnapshot,
                       });
                     });
 
@@ -525,7 +544,21 @@ function postSystemMessage(
   type: "engine_state_update" | "engine_stats_full" | "member_state_update" | "system_event",
   data: any,
 ) {
-  const msg = { taskId: type, type, data } as const;
-  port?.postMessage(msg);
+  // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
+  const sanitizedData = sanitizeForPostMessage(data);
+  const msg = { taskId: type, type, data: sanitizedData } as const;
+  
+  try {
+    const { message, transferables } = prepareForTransfer(msg);
+    port?.postMessage(message, transferables);
+  } catch (error) {
+    console.error("Worker: 消息序列化失败:", error);
+    // 如果序列化失败，尝试发送清理后的数据
+    try {
+      port?.postMessage({ taskId: type, type, data: sanitizedData });
+    } catch (fallbackError) {
+      console.error("Worker: 备用消息发送也失败:", fallbackError);
+    }
+  }
 }
 

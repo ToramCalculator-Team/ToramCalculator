@@ -1,10 +1,9 @@
 import { MemberWithRelations } from "@db/repositories/member";
-import { Actor, AnyActorLogic, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { NestedSchema, ReactiveSystem } from "../dataSys/ReactiveSystem";
+import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
+import { ReactiveSystem } from "../dataSys/ReactiveSystem";
+import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
-import { Player } from "./player/Player";
-import { Mob } from "./mob/Mob";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -169,8 +168,11 @@ export class Member<TAttrKey extends string = string> {
       id: memberData.id,
     });
     this.actor.start();
-    // this.actor.subscribe((snapshot) => {
-    //   console.log(`👤 [${this.name}] 状态机状态更新:`, snapshot);
-    // });
+    this.actor.subscribe((snapshot) => {
+      // console.log(`👤 [${this.name}] 状态机状态更新:`, snapshot);
+      
+      // 使用专门的成员状态同步方法，确保XState快照被正确处理
+      this.engine.getMessageRouter().syncMemberState(this.id, snapshot);
+    });
   }
 }

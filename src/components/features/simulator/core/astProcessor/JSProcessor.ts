@@ -62,7 +62,7 @@ export class JSProcessor {
    * 将self.xxx转换为_self.getValue('xxx')格式
    */
   compile(code: string, context: CompilationContext): CompileResult {
-    console.log("🔧 编译代码: ", code);
+    // console.log("🔧 编译代码: ", code);
     try {
       // 1. 语法验证
       if (context.options?.enableValidation !== false) {

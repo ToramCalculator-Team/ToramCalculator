@@ -1,126 +1,95 @@
+/**
+ * 通信协议定义
+ * 定义Worker线程和主线程之间的通信消息结构
+ * 
+ * 重构说明：
+ * - 只保留通信层相关的类型定义
+ * - 业务逻辑类型由各自的模块定义
+ * - 引擎状态类型由引擎模块定义
+ * - 保持向后兼容
+ */
+
 import { z } from "zod";
 
-// ===================== Intent/Router 消息契约 =====================
+// ==================== 通信协议类型 ====================
 
-// 统一：主线程到 Actor 的消息类型即为 FSM 事件名
-export const IntentMessageTypeEnum = z.enum([
-  // 通用/玩家/Mob FSM 事件
-  "使用技能",
-  "move_command",
-  "stop_move",
-  "cast_end",
-  "controlled",
-  "charge_end",
-  "hp_zero",
-  "control_end",
-  "skill_animation_end",
-  "check_availability",
-  // 自定义透传事件
-  "custom",
-]);
-
-export type IntentMessageType = z.infer<typeof IntentMessageTypeEnum>;
-
-export const IntentMessageSchema = z.object({
-  id: z.string(),
-  type: IntentMessageTypeEnum,
-  targetMemberId: z.string(),
-  timestamp: z.number(),
-  data: z.record(z.any()),
-});
-
-export type IntentMessage = z.infer<typeof IntentMessageSchema>;
-
-export interface MessageProcessResult {
-  success: boolean;
-  message: string;
-  error?: string;
+/**
+ * 基础通信消息接口
+ */
+export interface CommunicationMessage<T = any> {
+  id: string;
+  type: string;
+  timestamp: number;
+  data: T;
+  metadata?: Record<string, any>;
 }
 
-export interface MessageRouterStats {
-  totalMessagesProcessed: number;
-  successfulMessages: number;
-  failedMessages: number;
-  lastProcessedTimestamp: number;
-  successRate: string;
+/**
+ * Worker到主线程的消息
+ */
+export interface WorkerToMainMessage<T = any> extends CommunicationMessage<T> {
+  workerId: string;
+  taskId?: string;
 }
 
-// EngineView (高频KPI) - 与 Simulation.worker.ts 的 projectEngineView 对齐
-export const EngineViewSchema = z.object({
-  frameNumber: z.number(),
-  runTime: z.number(),
-  frameLoop: z.object({
-    averageFPS: z.number(),
-    averageFrameTime: z.number(),
-    totalFrames: z.number(),
-    totalRunTime: z.number(),
-    clockKind: z.enum(["raf", "timeout"]).optional(),
-    skippedFrames: z.number().optional(),
-    frameBudgetMs: z.number().optional(),
-  }),
-  eventQueue: z.object({
-    currentSize: z.number(),
-    totalProcessed: z.number(),
-    totalInserted: z.number(),
-    overflowCount: z.number(),
-  }),
-});
-
-export type EngineView = z.infer<typeof EngineViewSchema>;
-
-// EngineStats（低频全量）- 简化验证，核心字段保证存在
-export const EngineStatsFullSchema = z
-  .object({
-    currentFrame: z.number(),
-  })
-  .passthrough();
-
-// Worker 系统事件消息
-export const WorkerSystemMessageSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("engine_state_update"),
-    taskId: z.string(),
-    data: z.object({
-      type: z.literal("engine_state_update"),
-      timestamp: z.number(),
-      engineView: EngineViewSchema,
-    }),
-  }),
-  z.object({ type: z.literal("engine_stats_full"), taskId: z.string(), data: EngineStatsFullSchema }),
-  z.object({
-    type: z.literal("member_state_update"),
-    taskId: z.string(),
-    data: z.object({
-      memberId: z.string(),
-      value: z.string(),
-      context: z.record(z.any()).optional(),
-    }),
-  }),
-  z.object({
-    type: z.literal("system_event"),
-    taskId: z.string(),
-    data: z.object({
-      level: z.enum(["info", "warn", "error"]).default("info"),
-      message: z.string(),
-    }),
-  }),
-]);
-
-export type WorkerSystemMessage = z.infer<typeof WorkerSystemMessageSchema>;
-
-// Worker 任务响应（统一结构）
-export interface WorkerTaskResult<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export interface WorkerTaskResponse<T = unknown> {
+/**
+ * 主线程到Worker的消息
+ */
+export interface MainToWorkerMessage<T = any> extends CommunicationMessage<T> {
   taskId: string;
-  result?: WorkerTaskResult<T> | null;
-  error?: string | null;
-  metrics?: {
-    duration: number;
-    memoryUsage: number;
-  };
+  priority: "high" | "medium" | "low";
 }
+
+// ==================== 系统事件类型 ====================
+
+/**
+ * 系统事件类型
+ */
+export type SystemEventType = 
+  | "engine_state_update"
+  | "engine_stats_full" 
+  | "member_state_update"
+  | "system_event";
+
+/**
+ * 系统事件消息
+ */
+export interface SystemEventMessage<T = any> extends CommunicationMessage<T> {
+  type: SystemEventType;
+}
+
+/**
+ * Worker系统消息Schema
+ * 用于验证Worker发送的系统事件消息
+ */
+export const WorkerSystemMessageSchema = z.object({
+  type: z.enum(["engine_state_update", "engine_stats_full", "member_state_update", "system_event"]),
+  data: z.any(),
+  taskId: z.string().optional(),
+});
+
+// ==================== 任务相关类型 ====================
+
+// 注意：TaskResult和TaskResponse类型已移动到SimulatorPool.ts，因为这是线程池产生的数据
+// 主线程应该从线程池模块导入：import { TaskResult, TaskExecutionResult } from "./SimulatorPool";
+
+// ==================== 业务消息类型（向后兼容） ====================
+
+// 注意：IntentMessage相关类型已移动到MessageRouter.ts，因为这是消息路由模块的核心类型
+// 主线程应该从消息路由模块导入：import { IntentMessage, MessageProcessResult, MessageRouterStats } from "../MessageRouter";
+
+// ==================== 数据模型类型（向后兼容） ====================
+
+// 注意：EngineView类型已移动到GameEngine.ts，因为这是引擎产生的数据
+// 主线程应该从引擎模块导入：import { EngineView } from "../GameEngine";
+
+// 注意：EngineStatsFull类型已移动到GameEngine.ts，因为这是引擎产生的数据
+// 主线程应该从引擎模块导入：import { EngineStatsFull } from "../GameEngine";
+
+// ==================== 废弃警告 ====================
+/**
+ * @deprecated 此文件包含混合的职责，建议：
+ * - 通信协议：直接使用此文件中的CommunicationMessage等类型
+ * - 业务逻辑：由状态机模块定义自己的消息类型
+ * - 数据模型：由引擎模块定义自己的状态类型
+ */
