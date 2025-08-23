@@ -79,24 +79,9 @@ export interface MessageRouterStats {
 
 // ==================== 扩展的消息路由统计 ====================
 
-/**
- * 扩展的消息路由统计接口
- * 包含额外的统计信息，如状态同步次数
- */
-export interface ExtendedMessageRouterStats extends MessageRouterStats {
-  /** 状态同步总次数 */
-  totalStateSyncs: number;
-}
 
-// ==================== 状态同步接口 ====================
 
-/**
- * 状态同步回调接口
- * 用于向主线程发送状态更新事件
- */
-export interface StateSyncCallback {
-  (eventType: string, data: any): void;
-}
+
 
 // ============================== 消息路由器类 ==============================
 
@@ -110,8 +95,7 @@ export class MessageRouter {
   /** 游戏引擎引用 */
   private engine: GameEngine;
 
-  /** 状态同步回调函数 */
-  private stateSyncCallback?: StateSyncCallback;
+
 
   /** 消息处理统计 */
   private stats = {
@@ -119,8 +103,8 @@ export class MessageRouter {
     successfulMessages: 0,
     failedMessages: 0,
     lastProcessedTimestamp: 0,
-    totalStateSyncs: 0,
-  };
+    successRate: "0%",
+  } as MessageRouterStats;
 
   // ==================== 构造函数 ====================
 
@@ -221,7 +205,7 @@ export class MessageRouter {
    *
    * @returns 统计信息
    */
-  getStats(): ExtendedMessageRouterStats {
+  getStats(): MessageRouterStats {
     return {
       totalMessagesProcessed: this.stats.totalMessagesProcessed,
       successfulMessages: this.stats.successfulMessages,
@@ -231,7 +215,7 @@ export class MessageRouter {
         this.stats.totalMessagesProcessed > 0
           ? ((this.stats.successfulMessages / this.stats.totalMessagesProcessed) * 100).toFixed(2) + "%"
           : "0%",
-      totalStateSyncs: this.stats.totalStateSyncs,
+
     };
   }
 
@@ -244,7 +228,7 @@ export class MessageRouter {
       successfulMessages: 0,
       failedMessages: 0,
       lastProcessedTimestamp: 0,
-      totalStateSyncs: 0,
+      successRate: "0%",
     };
   }
 
@@ -277,51 +261,6 @@ export class MessageRouter {
    */
   supportsMessageType(messageType: IntentMessageType): boolean {
     return this.getSupportedMessageTypes().includes(messageType);
-  }
-
-  // ==================== 状态同步管理 ====================
-
-  /**
-   * 设置状态同步回调函数
-   * 用于向主线程发送状态更新事件
-   *
-   * @param callback 回调函数
-   */
-  setStateSyncCallback(callback: StateSyncCallback): void {
-    this.stateSyncCallback = callback;
-  }
-
-  /**
-   * 发送状态更新事件到主线程
-   * 这是状态同步的核心方法
-   *
-   * @param eventType 事件类型
-   * @param data 事件数据
-   */
-  syncState(eventType: string, data: any): void {
-    if (this.stateSyncCallback) {
-      // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
-      const safeData = sanitizeForPostMessage(data);
-      this.stateSyncCallback(eventType, safeData);
-      this.stats.totalStateSyncs++;
-    }
-  }
-
-  /**
-   * 发送成员状态更新事件
-   * 专门用于成员状态机状态变化
-   *
-   * @param memberId 成员ID
-   * @param state 状态快照
-   */
-  syncMemberState(memberId: string, state: any): void {
-    // 使用统一的sanitizeForPostMessage处理XState状态快照
-    const safeState = sanitizeForPostMessage(state);
-    
-    this.syncState("member_state_update", {
-      memberId,
-      state: safeState,
-    });
   }
 
   // ==================== 私有方法 ====================

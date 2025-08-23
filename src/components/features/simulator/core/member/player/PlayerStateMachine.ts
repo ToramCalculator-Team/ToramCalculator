@@ -1,9 +1,10 @@
 import { assign, enqueueActions, EventObject, setup } from "xstate";
 import { createId } from "@paralleldrive/cuid2";
-import { MemberEventType, MemberStateMachine } from "../Member";
+import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
 import { ModifierType } from "../../dataSys/ReactiveSystem";
 import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
+import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 
 /**
  * Player特有的事件类型
@@ -61,9 +62,26 @@ type PlayerEventType =
 
 export const playerStateMachine = (player: Player) => {
   const machineId = player.id;
+
+  // 扩展Player的context，添加状态机需要的状态
+  interface PlayerStateContext extends Player {
+    /** 技能列表 */
+    skillList: CharacterSkillWithRelations[];
+    /** 技能冷却 */
+    skillCooldowns: number[];
+    /** 正在施放的技能效果 */
+    currentSkillEffect: SkillEffectWithRelations | null;
+    /** 正在施放的技能序号 */
+    currentSkillIndex: number;
+    /** 技能开始帧 */
+    skillStartFrame: number;
+    /** 技能结束帧 */
+    skillEndFrame: number;
+  }
+
   const machine = setup({
     types: {
-      context: {} as Player,
+      context: {} as PlayerStateContext,
       events: {} as PlayerEventType,
       output: {} as Player,
     },
@@ -108,7 +126,7 @@ export const playerStateMachine = (player: Player) => {
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
 
-        const skill = context.skills?.find((s) => s.id === skillId);
+        const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return;
@@ -129,7 +147,7 @@ export const playerStateMachine = (player: Player) => {
         }
 
         enqueue.assign({
-          skillEffect: effect,
+          currentSkillEffect: effect,
         });
 
         const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
@@ -169,7 +187,7 @@ export const playerStateMachine = (player: Player) => {
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
 
-        const skill = context.skills?.find((s) => s.id === skillId);
+        const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           throw new Error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
         }
@@ -268,7 +286,7 @@ export const playerStateMachine = (player: Player) => {
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
 
-        const skill = context.skills?.find((s) => s.id === skillId);
+        const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
@@ -349,8 +367,7 @@ main();`,
       },
       技能未冷却: function ({ context, event }) {
         const e = event as 使用技能;
-        const skillId = e.data.skillId;
-        const res = context.skillCooldowns.get(skillId);
+        const res = context.skillCooldowns[context.currentSkillIndex];
         if (res == undefined) {
           console.log(`- 该技能不存在冷却时间`);
           return false;
@@ -367,7 +384,7 @@ main();`,
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
 
-        const skill = context.skills?.find((s) => s.id === skillId);
+        const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
@@ -403,35 +420,38 @@ main();`,
         console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
         return false;
       },
-      有蓄力动作: function ({ context, event }, params: { effect: SkillEffectWithRelations | null }) {
+      有蓄力动作: function ({ context, event }) {
         console.log(`👤 [${context.name}] 判断技能是否有蓄力动作`, event);
 
-        const effect = params.effect;
+        const effect = context.currentSkillEffect;
         if (!effect) {
-          console.error(`🎮 [${context.name}] 技能效果不存在`);
+          console.error(`👤 [${context.name}] 技能效果不存在`);
           return false;
         }
 
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-        const chargeFixed = context.engine.evaluateExpression(params.effect?.chantingFixed ?? "0", {
+        
+        // 蓄力动作相关属性（假设使用chargeFixed和chargeModified）
+        const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
           currentFrame,
           casterId: context.id,
         });
-        const chargeModified = context.engine.evaluateExpression(params.effect?.chantingModified ?? "0", {
-          currentFrame,
-          casterId: context.id,
-        });
-
-        const chantingFixed = context.engine.evaluateExpression(params.effect?.chantingFixed ?? "0", {
-          currentFrame,
-          casterId: context.id,
-        });
-        const chantingModified = context.engine.evaluateExpression(params.effect?.chantingModified ?? "0", {
+        const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
           currentFrame,
           casterId: context.id,
         });
 
-        const chargeType = chargeFixed + chargeModified > 0 ? "有蓄力动作" : "没有蓄力动作";
+        // 咏唱动作相关属性
+        const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+
+        const chargeType = reservoirFixed + reservoirModified > 0 ? "有蓄力动作" : "没有蓄力动作";
         const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱动作" : "没有咏唱动作";
 
         switch ([chargeType, chantingType]) {
@@ -458,7 +478,16 @@ main();`,
       },
     },
   }).createMachine({
-    context: player,
+    context: {
+      ...player,
+      skillList: player.data.player?.character?.skills ?? [],
+      skillCooldowns: player.data.player?.character?.skills?.map((s) => 0) ?? [],
+      currentSkillEffect: null,
+      currentSkillIndex: 0,
+      skillStartFrame: 0,
+      skillEndFrame: 0,
+      serialize: () => ({}) as MemberSerializeData, // 状态机不应该处理此方法，只是为了通过类型检查
+    },
     id: machineId,
     initial: "存活",
     entry: {
@@ -538,9 +567,6 @@ main();`,
                           target: "蓄力动作",
                           guard: {
                             type: "有蓄力动作",
-                            params: ({ context }) => ({
-                              effect: context.skillEffect,
-                            }),
                           },
                         },
                         {

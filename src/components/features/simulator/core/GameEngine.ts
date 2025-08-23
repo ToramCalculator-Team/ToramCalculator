@@ -24,6 +24,7 @@ import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
+import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
 import { z } from "zod";
 
@@ -114,6 +115,47 @@ export interface EngineView {
 }
 
 /**
+ * 帧快照接口 - 包含引擎和所有成员的完整状态
+ */
+export interface FrameSnapshot {
+  frameNumber: number;
+  timestamp: number;
+  engine: {
+    frameNumber: number;
+    runTime: number;
+    frameLoop: {
+      averageFPS: number;
+      averageFrameTime: number;
+      totalFrames: number;
+      totalRunTime: number;
+      clockKind?: "raf" | "timeout";
+      skippedFrames?: number;
+      frameBudgetMs?: number;
+    };
+    eventQueue: {
+      currentSize: number;
+      totalProcessed: number;
+      totalInserted: number;
+      overflowCount: number;
+    };
+    memberCount: number;
+    activeMemberCount: number;
+  };
+  members: Array<{
+    id: string;
+    type: MemberType;
+    name: string;
+    state: any; // 状态机状态
+    attrs: Record<string, unknown>; // rs数据
+    isAlive: boolean;
+    position: { x: number; y: number; z: number };
+    campId: string;
+    teamId: string;
+    targetId: string;
+  }>;
+}
+
+/**
  * 引擎视图Schema
  */
 export const EngineViewSchema = z.object({
@@ -134,6 +176,51 @@ export const EngineViewSchema = z.object({
     totalInserted: z.number(),
     overflowCount: z.number(),
   }),
+});
+
+/**
+ * 帧快照Schema
+ */
+export const FrameSnapshotSchema = z.object({
+  frameNumber: z.number(),
+  timestamp: z.number(),
+  engine: z.object({
+    frameNumber: z.number(),
+    runTime: z.number(),
+    frameLoop: z.object({
+      averageFPS: z.number(),
+      averageFrameTime: z.number(),
+      totalFrames: z.number(),
+      totalRunTime: z.number(),
+      clockKind: z.enum(["raf", "timeout"]).optional(),
+      skippedFrames: z.number().optional(),
+      frameBudgetMs: z.number().optional(),
+    }),
+    eventQueue: z.object({
+      currentSize: z.number(),
+      totalProcessed: z.number(),
+      totalInserted: z.number(),
+      overflowCount: z.number(),
+    }),
+    memberCount: z.number(),
+    activeMemberCount: z.number(),
+  }),
+  members: z.array(z.object({
+    id: z.string(),
+    type: z.string(), // 这里保持 z.string() 因为 Zod 不支持从外部类型推断
+    name: z.string(),
+    state: z.any(),
+    attrs: z.record(z.string(), z.unknown()),
+    isAlive: z.boolean(),
+    position: z.object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+    }),
+    campId: z.string(),
+    teamId: z.string(),
+    targetId: z.string(),
+  })),
 });
 
 /**
@@ -198,13 +285,7 @@ export class GameEngine {
   /** 编译缓存 - 存储编译后的JS代码 */
   private compiledScripts: Map<string, string> = new Map();
 
-  // ==================== 事件系统 ====================
 
-  /** 状态变化监听器列表 */
-  private stateChangeListeners: Array<(event: EngineStats) => void> = [];
-
-  /** 状态同步回调函数（用于Worker线程通信） */
-  private stateSyncCallback?: (eventType: string, data: any) => void;
 
   // ==================== 引擎状态 ====================
 
@@ -286,13 +367,7 @@ export class GameEngine {
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
-    // 🔥 设置帧循环状态变化回调 - 简化为直接输出
-    this.frameLoop.setStateChangeCallback((event) => {
-      if (event.type === "frame_update") {
-        // 直接输出引擎状态，不需要复杂的回调链
-        this.outputFrameState();
-      }
-    });
+
 
     // 初始化默认事件处理器
     this.initializeDefaultEventHandlers();
@@ -446,22 +521,7 @@ export class GameEngine {
     };
   }
 
-  // ==================== 事件系统 ====================
 
-  /**
-   * 添加状态变化监听器
-   */
-  onStateChange(listener: (event: EngineStats) => void): () => void {
-    this.stateChangeListeners.push(listener);
-
-    // 返回取消订阅函数
-    return () => {
-      const index = this.stateChangeListeners.indexOf(listener);
-      if (index > -1) {
-        this.stateChangeListeners.splice(index, 1);
-      }
-    };
-  }
 
   /**
    * 插入事件到队列
@@ -846,20 +906,9 @@ export class GameEngine {
     console.log("🧹 JS编译缓存已清理");
   }
 
-  /**
-   * 设置状态同步回调函数（用于Worker线程通信）
-   * 通过MessageRouter统一管理状态同步
-   *
-   * @param callback 回调函数
-   */
-  setStateSyncCallback(callback: (eventType: string, data: any) => void): void {
-    this.stateSyncCallback = callback;
-    
-    // 同时设置MessageRouter的状态同步回调
-    if (this.messageRouter) {
-      this.messageRouter.setStateSyncCallback(callback);
-    }
-  }
+
+
+
 
   // ==================== 私有方法 ====================
 
@@ -909,18 +958,61 @@ export class GameEngine {
     }
   }
 
+
+
   /**
-   * 输出当前帧状态 - 引擎的直接输出方法
+   * 创建当前帧的完整快照
+   * 包含引擎状态和所有成员的完整信息
    */
-  private outputFrameState(): void {
-    // 直接通知所有监听器，不需要中间的回调层
-    this.stateChangeListeners.forEach((listener) => {
-      try {
-        listener(this.getStats());
-      } catch (error) {
-        console.error("GameEngine: 状态输出监听器执行失败:", error);
-      }
+  public createFrameSnapshot(): FrameSnapshot {
+    const currentFrame = this.frameLoop.getFrameNumber();
+    const currentTime = Date.now();
+    
+    // 获取引擎状态
+    const frameLoopStats = this.frameLoop.getPerformanceStats();
+    const eventQueueStats = this.eventQueue.getStats();
+    
+    // 获取所有成员数据
+    const members = this.memberManager.getAllMembers().map(member => {
+      const actorSnapshot = member.actor.getSnapshot();
+      const memberData = member.serialize();
+      
+      return {
+        id: member.id,
+        type: member.type,
+        name: member.name,
+        state: actorSnapshot, // 状态机状态
+        attrs: memberData.attrs, // rs数据
+        isAlive: member.isAlive,
+        position: member.position,
+        campId: member.campId,
+        teamId: member.teamId,
+        targetId: member.targetId,
+      };
     });
+
+    return {
+      frameNumber: currentFrame,
+      timestamp: currentTime,
+      engine: {
+        frameNumber: currentFrame,
+        runTime: currentFrame,
+        frameLoop: frameLoopStats,
+        eventQueue: eventQueueStats,
+        memberCount: members.length,
+        activeMemberCount: members.filter(m => m.isAlive).length,
+      },
+      members,
+    };
+  }
+
+  /**
+   * 发送帧快照到主线程
+   * 直接通过Worker线程发送，不需要回调
+   */
+  public sendFrameSnapshot(snapshot: FrameSnapshot): void {
+    // 这里可以通过全局变量或其他方式发送
+    // 暂时为空，由Worker线程直接调用
   }
 
   /**

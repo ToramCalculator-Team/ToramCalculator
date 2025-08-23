@@ -113,31 +113,19 @@ const gameEngine = new GameEngine({
 // 全局变量存储messagePort，供事件发射器回调使用
 let globalMessagePort: MessagePort | null = null;
 
-// 设置状态同步回调，将GameEngine的状态更新转发到主线程
-gameEngine.setStateSyncCallback((eventType: string, data: any) => {
-  // 通过postSystemMessage将状态更新发送到主线程
+// 帧快照发送函数 - 直接在帧循环中调用
+function sendFrameSnapshot(snapshot: any) {
   if (globalMessagePort && typeof postSystemMessage === 'function') {
-    // 只处理支持的事件类型
-    if (eventType === "member_state_update") {
-      postSystemMessage(globalMessagePort, eventType as "member_state_update", data);
-    } else {
-      console.warn(`Worker: 不支持的事件类型: ${eventType}`);
-    }
+    postSystemMessage(globalMessagePort, "frame_snapshot", snapshot);
   }
-});
+}
 
-// 订阅引擎状态变化事件（加入节流与轻量DTO）
-let engineStateSubscription: (() => void) | null = null;
-let lastEngineViewSentAt = 0;
-const ENGINE_VIEW_MAX_HZ = 20; // <= 20Hz
-const ENGINE_VIEW_MIN_INTERVAL = 1000 / ENGINE_VIEW_MAX_HZ;
-// 低频全量状态推送
-const FULL_STATS_INTERVAL_MS = 2000;
-let fullStatsInterval: number | null = null;
+// 将发送函数挂载到引擎上，供FrameLoop调用
+(gameEngine as any).sendFrameSnapshot = sendFrameSnapshot;
 
-// 成员状态订阅管理
-const memberWatchUnsubMap = new Map<string, () => void>();
-const memberLastValueMap = new Map<string, string>();
+
+
+
 
 // EngineView类型已从messages.ts导入，无需重复定义
 
@@ -218,82 +206,25 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   // 启动引擎
                   gameEngine.start();
 
-                  // 若停止流程中取消了订阅，则在重新启动后恢复引擎状态订阅（<=20Hz）
-                  if (!engineStateSubscription) {
-                    engineStateSubscription = gameEngine.onStateChange((stats) => {
-                      const now = performance.now();
-                      if (now - lastEngineViewSentAt < ENGINE_VIEW_MIN_INTERVAL) {
-                        return;
-                      }
-                      lastEngineViewSentAt = now;
 
-                      const view = projectEngineView(stats);
-                      try {
-                        EngineViewSchema.parse(view);
-                      } catch {}
-                      const serializableEvent = {
-                        type: "engine_state_update",
-                        timestamp: Date.now(),
-                        engineView: view,
-                      } as const;
 
-                      postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
-                    });
-                  }
 
-                  // 周期性推送全量 EngineStats（仅在引擎启动后开启）
-                  if (!fullStatsInterval) {
-                    try {
-                      // 启动后立即推送一次全量，保证首帧数据水合
-                      const stats = gameEngine.getStats();
-                      postSystemMessage(messagePort, "engine_stats_full", stats);
-                    } catch {}
-                    fullStatsInterval = setInterval(() => {
-                      try {
-                        const stats = gameEngine.getStats();
-                        postSystemMessage(messagePort, "engine_stats_full", stats);
-                      } catch {}
-                    }, FULL_STATS_INTERVAL_MS) as unknown as number;
-                  }
 
                   portResult = { success: true };
                   break;
 
                 case "stop_simulation":
-                  // 停止状态订阅
-                  try {
-                    engineStateSubscription?.();
-                  } catch {}
-                  engineStateSubscription = null;
 
-                  // 清理全量推送定时器
-                  if (fullStatsInterval) {
-                    try {
-                      clearInterval(fullStatsInterval as unknown as number);
-                    } catch {}
-                    fullStatsInterval = null;
-                  }
 
-                  // 取消所有成员监听
-                  try {
-                    for (const unsub of memberWatchUnsubMap.values()) {
-                      try {
-                        unsub();
-                      } catch {}
-                    }
-                    memberWatchUnsubMap.clear();
-                    memberLastValueMap.clear();
-                  } catch {}
+
+
+
 
                   // 停止并清理引擎
                   gameEngine.stop();
                   gameEngine.cleanup();
 
-                  // 在停止后立即推送一次全量 EngineStats，驱动前端从 stopping -> ready
-                  try {
-                    const stats = gameEngine.getStats();
-                    postSystemMessage(messagePort, "engine_stats_full", stats);
-                  } catch {}
+
                   portResult = { success: true };
                   break;
 
@@ -349,88 +280,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   break;
                 }
 
-                case "watch_member": {
-                  const memberId = String(portData?.memberId || "");
-                  if (!memberId) {
-                    portResult = { success: false, error: "memberId required" };
-                    break;
-                  }
 
-                  // 取消旧订阅
-                  memberWatchUnsubMap.get(memberId)?.();
-
-                  const member = gameEngine.findMember(memberId);
-                  if (!member) {
-                    portResult = { success: false, error: "member not found" };
-                    break;
-                  }
-
-                  try {
-                    // 订阅 Actor 状态变化
-                    const unsub = member.actor.subscribe((snapshot: any) => {
-                      if (!snapshot.changed) return;
-
-                      const prevValue = memberLastValueMap.get(memberId);
-                      const nextValue = String(snapshot.value || "unknown");
-
-                      if (prevValue === nextValue) return;
-                      memberLastValueMap.set(memberId, nextValue);
-
-                      // 使用MessageSerializer统一处理XState快照
-                      const safeSnapshot = sanitizeForPostMessage(snapshot);
-                      
-                      // 发送状态更新消息
-                      postSystemMessage(messagePort, "member_state_update", {
-                        memberId,
-                        state: safeSnapshot,
-                      });
-                    });
-
-                    // 处理订阅返回的取消函数
-                    let finalUnsub: () => void;
-                    if (typeof unsub === "function") {
-                      finalUnsub = unsub;
-                    } else if (unsub && typeof unsub.unsubscribe === "function") {
-                      finalUnsub = () => unsub.unsubscribe();
-                    } else {
-                      // 后备方案：无操作（不同 xstate 版本订阅类型不一致时）
-                      finalUnsub = () => {};
-                    }
-
-                    memberWatchUnsubMap.set(memberId, finalUnsub);
-                    portResult = { success: true };
-                    console.log(`👁️ 开始监听成员状态: ${memberId}`);
-                  } catch (error) {
-                    console.error(`❌ 监听成员状态失败: ${memberId}`, error);
-                    portResult = {
-                      success: false,
-                      error: error instanceof Error ? error.message : "Subscription failed",
-                    };
-                  }
-                  break;
-                }
-
-                case "unwatch_member": {
-                  const memberId = String(portData?.memberId || "");
-
-                  try {
-                    // 调用取消订阅函数
-                    const unsub = memberWatchUnsubMap.get(memberId);
-                    if (unsub) {
-                      unsub();
-                      console.log(`👁️ 停止监听成员状态: ${memberId}`);
-                    }
-                  } catch (error) {
-                    console.warn(`⚠️ 取消订阅失败: ${memberId}`, error);
-                  }
-
-                  // 清理相关数据
-                  memberLastValueMap.delete(memberId);
-                  memberWatchUnsubMap.delete(memberId);
-
-                  portResult = { success: true };
-                  break;
-                }
 
                 case "send_intent":
                   // 处理意图消息（可能包含JS片段）
@@ -490,27 +340,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           };
         }
 
-        // 设置引擎状态变化订阅（<=20Hz 节流 + 轻量 EngineView）
-        engineStateSubscription = gameEngine.onStateChange((stats) => {
-          const now = performance.now();
-          if (now - lastEngineViewSentAt < ENGINE_VIEW_MIN_INTERVAL) {
-            return;
-          }
-          lastEngineViewSentAt = now;
 
-          const view = projectEngineView(stats);
-          // 轻量校验（防御）：避免偶发结构变化导致主端崩溃
-          try {
-            EngineViewSchema.parse(view);
-          } catch {}
-          const serializableEvent = {
-            type: "engine_state_update",
-            timestamp: Date.now(),
-            engineView: view,
-          } as const;
-
-          postSystemMessage(messagePort, serializableEvent.type, serializableEvent);
-        });
 
         // 提供渲染通道的统一出口：用于FSM发送渲染指令（透传到主线程）
         (gameEngine as any).postRenderMessage = (payload: any) => {
@@ -541,7 +371,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 // ==================== 统一系统消息出口 ====================
 function postSystemMessage(
   port: MessagePort,
-  type: "engine_state_update" | "engine_stats_full" | "member_state_update" | "system_event",
+  type: "system_event" | "frame_snapshot",
   data: any,
 ) {
   // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递

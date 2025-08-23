@@ -119,10 +119,6 @@ export class MemberManager {
         {
           const schema = MobAttrSchema(memberData.mob!);
           const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, position);
-          const actor = mob.actor;
-          actor.subscribe((snapshot) => {
-            console.log("MobActor snapshot", snapshot, actor);
-          });
           const success = this.registerMember(mob, campId, teamId, memberData);
             if (success) {
               // console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);

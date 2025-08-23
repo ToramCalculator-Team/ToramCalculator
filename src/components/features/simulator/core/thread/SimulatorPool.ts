@@ -1033,21 +1033,13 @@ export class SimulatorPool extends WorkerPool {
     this.on("worker-message", (data: { worker: WorkerWrapper; event: any }) => {
       const { type, data: eventData, cmd, cmds } = data.event;
 
-      // 处理引擎状态更新事件
-      if (type === "engine_state_update") {
-        this.emit("engine_state_update", { workerId: data.worker.id, event: eventData });
-      }
       // 处理系统事件
-      else if (type === "system_event") {
+      if (type === "system_event") {
         this.emit("system_event", { workerId: data.worker.id, event: eventData });
       }
-      // 已选中成员状态更新
-      else if (type === "member_state_update") {
-        this.emit("member_state_update", { workerId: data.worker.id, event: eventData });
-      }
-      // 低频全量引擎状态
-      else if (type === "engine_stats_full") {
-        this.emit("engine_stats_full", { workerId: data.worker.id, event: eventData });
+      // 帧快照事件 - 每帧包含完整的引擎和成员状态
+      else if (type === "frame_snapshot") {
+        this.emit("frame_snapshot", { workerId: data.worker.id, event: eventData });
       }
       // 渲染指令透传（由 RealtimeController 订阅并转发给渲染控制器）
       else if (type === "render:cmd" || type === "render:cmds") {
@@ -1125,17 +1117,7 @@ export class SimulatorPool extends WorkerPool {
     };
   }
 
-  /** 订阅某个成员的 FSM 状态变化 */
-  async watchMember(memberId: string): Promise<{ success: boolean; error?: string }> {
-    const result = await this.executeTask("watch_member", { memberId }, "medium");
-    return { success: result.success, error: result.error };
-  }
 
-  /** 取消订阅某个成员的 FSM 状态变化 */
-  async unwatchMember(memberId: string): Promise<{ success: boolean; error?: string }> {
-    const result = await this.executeTask("unwatch_member", { memberId }, "low");
-    return { success: result.success, error: result.error };
-  }
 
   /** 拉取单个成员的当前 FSM 状态（即时同步一次） */
   async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {

@@ -115,8 +115,7 @@ export class FrameLoop {
   /** 事件处理器注册表 */
   private eventHandlers: Map<string, EventHandler> = new Map();
 
-  /** 状态变化回调（用于通知GameEngine） */
-  private onStateChange?: (event: { type: string; data: any }) => void;
+
 
   /** 帧循环定时器ID（rAF 或 setTimeout） */
   private frameTimer: number | null = null;
@@ -364,14 +363,7 @@ export class FrameLoop {
     console.log(`🗑️ 注销事件处理器: ${eventType}`);
   }
 
-  /**
-   * 设置状态变化回调
-   *
-   * @param callback 状态变化回调函数
-   */
-  setStateChangeCallback(callback: (event: { type: string; data: any }) => void): void {
-    this.onStateChange = callback;
-  }
+
 
   /**
    * 获取当前状态
@@ -513,18 +505,15 @@ export class FrameLoop {
       const processingTime = performance.now() - frameStartTime;
       this.recordFrameInfo(deltaTime, processingTime, eventsProcessed, membersUpdated);
 
-      // 🔥 帧处理完成，直接发送状态更新（不需要判断是否有变化）
-      if (this.onStateChange) {
-        this.onStateChange({
-          type: "frame_update",
-          data: {
-            frameNumber: this.frameNumber,
-            eventsProcessed,
-            membersUpdated,
-            processingTime,
-            performanceStats: this.getPerformanceStats(),
-          },
-        });
+
+
+      // 🔥 帧处理完成，发送帧快照到主线程
+      try {
+        const snapshot = this.engine.createFrameSnapshot();
+        // 直接通过引擎发送帧快照
+        this.engine.sendFrameSnapshot(snapshot);
+      } catch (error) {
+        console.error("❌ 帧快照创建失败:", error);
       }
     } catch (error) {
       console.error("❌ 帧处理错误:", error);

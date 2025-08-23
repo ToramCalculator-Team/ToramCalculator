@@ -51,7 +51,7 @@ export class ControllerCommunication {
   // ==================== 成员操作 ====================
   
   async selectMember(memberId: string) {
-    realtimeSimulatorPool.watchMember(memberId);
+    // 不再需要订阅成员状态，因为每帧都会发送完整的帧快照
     return { success: true };
   }
 

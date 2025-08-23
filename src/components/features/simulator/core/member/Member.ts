@@ -24,6 +24,8 @@ export interface MemberSerializeData {
     y: number;
     z: number;
   };
+  // 状态机状态信息（可选，用于实时同步）
+  state?: any;
 }
 
 /**
@@ -168,11 +170,6 @@ export class Member<TAttrKey extends string = string> {
       id: memberData.id,
     });
     this.actor.start();
-    this.actor.subscribe((snapshot) => {
-      // console.log(`👤 [${this.name}] 状态机状态更新:`, snapshot);
-      
-      // 使用专门的成员状态同步方法，确保XState快照被正确处理
-      this.engine.getMessageRouter().syncMemberState(this.id, snapshot);
-    });
+
   }
 }

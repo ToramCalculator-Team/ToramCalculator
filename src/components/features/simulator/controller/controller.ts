@@ -214,28 +214,53 @@ export class Controller {
 
   // 设置Worker监听器
   private setupWorkerListeners() {
-    // 引擎状态更新 - 高频KPI数据
-    controllerCommunication.on("engine_state_update", (data: any) => {
-      // console.log("🔧 收到引擎状态更新:", data);
-      // engine_state_update 事件的数据结构包含 engineView 字段
-      if (data.event && data.event.engineView) {
-        this.setEngineView(data.event.engineView);
+    // 帧快照更新 - 每帧包含完整的引擎和成员状态
+    controllerCommunication.on("frame_snapshot", (data: any) => {
+      // console.log("🔧 收到帧快照:", data);
+      
+      if (data.event) {
+        const snapshot = data.event;
+        
+        // 更新引擎视图（包含FPS和帧数信息）
+        if (snapshot.engine) {
+          this.setEngineView({
+            frameNumber: snapshot.engine.frameNumber,
+            runTime: snapshot.engine.runTime,
+            frameLoop: snapshot.engine.frameLoop,
+            eventQueue: snapshot.engine.eventQueue,
+          });
+          
+          // 同时更新引擎统计信息（用于显示FPS等）
+          this.setEngineStats({
+            frameNumber: snapshot.engine.frameNumber,
+            runTime: snapshot.engine.runTime,
+            frameLoop: snapshot.engine.frameLoop,
+            eventQueue: snapshot.engine.eventQueue,
+            memberCount: snapshot.engine.memberCount,
+            activeMemberCount: snapshot.engine.activeMemberCount,
+          });
+        }
+        
+        // 更新成员数据（包含状态机状态和属性）
+        if (snapshot.members && Array.isArray(snapshot.members)) {
+          // 将帧快照中的成员数据转换为 MemberSerializeData 格式
+          const members: MemberSerializeData[] = snapshot.members.map((member: any) => ({
+            id: member.id,
+            type: member.type as any,
+            name: member.name,
+            attrs: member.attrs,
+            isAlive: member.isAlive,
+            position: member.position,
+            campId: member.campId,
+            teamId: member.teamId,
+            targetId: member.targetId,
+            // 添加状态机状态信息
+            state: member.state,
+          }));
+          
+          this.setMembers(members);
+        }
       }
-    });
-
-    // 成员状态更新
-    controllerCommunication.on("member_state_update", (data: any) => {
-      console.log("🔧 收到成员状态更新:", data);
-      if (data.event.memberId === this.getSelectedMemberId()) {
-        // 更新选中成员状态
-        this.refreshSelectedMember();
-      }
-    });
-
-    // 引擎统计 - 低频全量数据
-    controllerCommunication.on("engine_stats_full", (data: any) => {
-      // console.log("🔧 收到引擎统计:", data);
-      this.setEngineStats(data.event);
     });
   }
 
@@ -321,6 +346,8 @@ export class Controller {
   private setEngineStats(value: any | null) {
     this.engineStats[1](value);
   }
+
+
 
   // 更新选中成员的技能数据
   private updateSelectedMemberSkills(member: MemberWithRelations | null) {
