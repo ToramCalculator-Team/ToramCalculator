@@ -380,6 +380,7 @@ main();`,
         return true;
       },
       不满足施法消耗: function ({ context, event }) {
+        // 此守卫通过后说明技能可发动，则更新当前技能数据
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
@@ -454,17 +455,20 @@ main();`,
         const chargeType = reservoirFixed + reservoirModified > 0 ? "有蓄力动作" : "没有蓄力动作";
         const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱动作" : "没有咏唱动作";
 
-        switch ([chargeType, chantingType]) {
-          case ["有蓄力动作", "有咏唱动作"]:
+        // 使用字符串拼接来创建唯一标识符
+        const actionType = `${chargeType}_${chantingType}`;
+        
+        switch (actionType) {
+          case "有蓄力动作_有咏唱动作":
             console.log(`👤 [${context.name}] 技能有蓄力动作和咏唱动作`);
             return true;
-          case ["有蓄力动作", "没有咏唱动作"]:
+          case "有蓄力动作_没有咏唱动作":
             console.log(`👤 [${context.name}] 技能有蓄力动作，没有咏唱动作`);
             return true;
-          case ["没有蓄力动作", "有咏唱动作"]:
+          case "没有蓄力动作_有咏唱动作":
             console.log(`👤 [${context.name}] 技能没有蓄力动作，有咏唱动作`);
             return true;
-          case ["没有蓄力动作", "没有咏唱动作"]:
+          case "没有蓄力动作_没有咏唱动作":
             console.log(`👤 [${context.name}] 技能没有蓄力动作，没有咏唱动作`);
             return false;
           default:

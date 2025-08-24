@@ -191,7 +191,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
       >
         <For each={Object.entries(formInitialValues)}>
           {(skillField, skillFieldIndex) => {
-            console.log("skillFieldIndex", skillFieldIndex(), skillField);
+            // console.log("skillFieldIndex", skillFieldIndex(), skillField);
             const fieldKey = skillField[0] as keyof SkillWithRelated;
             const fieldValue = skillField[1];
             switch (fieldKey) {
@@ -463,8 +463,7 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
           fieldGroupMap: {
             基本信息: ["name", "treeType", "tier", "posX", "posY"],
             技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
-            数据来源: ["dataSources"],
-            技能效果: ["details"],
+            其他信息: ["dataSources","details"],
           },
         })}
 
