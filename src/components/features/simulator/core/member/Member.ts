@@ -4,6 +4,7 @@ import { ReactiveSystem } from "../dataSys/ReactiveSystem";
 import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
+import BuffManager from "../buff/BuffManager";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -121,6 +122,8 @@ export class Member<TAttrKey extends string = string> {
   schema: NestedSchema;
   /** 响应式系统实例（用于稳定导出属性） */
   rs: ReactiveSystem<TAttrKey>;
+  /** Buff 管理器（生命周期/钩子/机制状态） */
+  buffManager: BuffManager;
   /** 成员Actor引用 */
   actor: MemberActor<TAttrKey>;
   /** 引擎引用 */
@@ -165,6 +168,7 @@ export class Member<TAttrKey extends string = string> {
     this.schema = schema;
     this.data = memberData;
     this.rs = new ReactiveSystem<TAttrKey>(schema);
+    this.buffManager = new BuffManager(this);
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.actor = createActor(stateMachine(this), {
       id: memberData.id,

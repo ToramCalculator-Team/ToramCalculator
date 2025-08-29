@@ -500,6 +500,11 @@ export class FrameLoop {
       }
 
       // 2. 更新成员状态
+      const members = this.engine.getMemberManager().getAllMembers();
+      for (const m of members) {
+        m.buffManager?.update(this.frameNumber);
+        membersUpdated++;
+      }
 
       // 3. 更新性能统计
       const processingTime = performance.now() - frameStartTime;
