@@ -49,9 +49,14 @@ export class MemberDamageHandler implements EventHandler {
         };
       }
 
-      // 计算伤害
+      // 计算伤害（集成 Buff 钩子：before/after/apply）
       const damageExpression = payload.damageExpression || "100";
-      const finalDamage = this.gameEngine.evaluateExpression(damageExpression, {
+      // before: 允许 buff 修改乘区/常数/无敌等标志
+      const beforeIO: { mul?: number; add?: number; flags?: { invul?: boolean } } = { mul: 1, add: 0 };
+      casterEntry?.buffManager?.applyBeforeDamage({ context, payload, event }, beforeIO);
+      targetEntry.buffManager?.applyBeforeDamage({ context, payload, event }, beforeIO);
+
+      const baseValue = this.gameEngine.evaluateExpression(damageExpression, {
         currentFrame: context.currentFrame,
         casterId: payload.sourceId || "",
         targetId: payload.targetId,
@@ -62,15 +67,27 @@ export class MemberDamageHandler implements EventHandler {
           skill: payload.skillId ? { id: payload.skillId } : undefined,
         }
       });
-      
-      const finalDamageValue = Math.max(0, Math.floor(finalDamage));
+      let computed = Math.max(0, Math.floor(baseValue * (beforeIO.mul ?? 1) + (beforeIO.add ?? 0)));
+      if (beforeIO.flags?.invul) computed = 0;
+
+      // after: 封顶/常数等
+      const afterIO: { final?: number } = { final: computed };
+      casterEntry?.buffManager?.applyAfterDamage({ context, payload, event }, afterIO);
+      targetEntry.buffManager?.applyAfterDamage({ context, payload, event }, afterIO);
+      const finalDamageValue = Math.max(0, Math.floor(afterIO.final ?? computed));
 
       // 通过响应式系统应用伤害（作为静态固定修饰符的负值）
       const hpBefore = targetEntry.rs.getValue("hp.current" );
+      // apply: 允许屏障/保命等改写落账值
+      const applyIO: { applied?: number } = { applied: finalDamageValue };
+      casterEntry?.buffManager?.applyApplyDamage({ context, payload, event }, applyIO);
+      targetEntry.buffManager?.applyApplyDamage({ context, payload, event }, applyIO);
+      const appliedDamage = Math.max(0, Math.floor(applyIO.applied ?? finalDamageValue));
+
       targetEntry.rs.addModifier(
         "hp.current" ,
         ModifierType.STATIC_FIXED,
-        -finalDamageValue,
+        -appliedDamage,
         {
           id: `damage_${event.id}`,
           name: "member_damage",
@@ -79,7 +96,7 @@ export class MemberDamageHandler implements EventHandler {
       );
       const hpAfter = targetEntry.rs.getValue("hp.current" );
 
-      console.log(`目标 ${payload.targetId} 受到 ${finalDamageValue} 点伤害: ${hpBefore} -> ${hpAfter}`);
+      console.log(`目标 ${payload.targetId} 受到 ${appliedDamage} 点伤害: ${hpBefore} -> ${hpAfter}`);
       
       const newEvents: BaseEvent[] = [];
       if (hpAfter <= 0) {
