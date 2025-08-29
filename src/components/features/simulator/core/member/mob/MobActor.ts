@@ -1,7 +1,7 @@
 /**
  * Mob Actor（状态机）
  * 参考 PlayerActor，采用 Actor-first 架构。
- * - 上下文包含引擎、配置、ReactiveSystem 等引用
+ * - 上下文包含引擎、配置、StatContainer 等引用
  * - 行为只产生意图/事件，由全局事件执行器处理副作用
  */
 
@@ -74,7 +74,7 @@ export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrTy
     actions: {
       // 初始化 Mob 的基础上下文
       initializeMobState: assign({
-        rs: ({ context }) => context.rs,
+        rs: ({ context }) => context.statContainer,
         engine: ({ context }) => context.engine,
         id: ({ context }) => context.id,
         campId: ({ context }) => context.campId,
@@ -176,8 +176,8 @@ export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrTy
       // 技能可用性（简化：基于是否可行动）
       isSkillAvailable: ({ context }) => true,
       // 存活/死亡判断（基于属性）
-      isDead: ({ context }) => context.rs.getValue("hp.current") <= 0,
-      isAlive: ({ context }) => context.rs.getValue("hp.current") > 0,
+      isDead: ({ context }) => context.statContainer.getValue("hp.current") <= 0,
+      isAlive: ({ context }) => context.statContainer.getValue("hp.current") > 0,
     },
   }).createMachine({
     id: machineId,

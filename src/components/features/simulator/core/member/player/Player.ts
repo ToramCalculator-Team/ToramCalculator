@@ -19,6 +19,6 @@ export class Player extends Member<PlayerAttrType> {
     position?: { x: number; y: number; z: number },
   ) {
     super(playerStateMachine, engine, campId, teamId, targetId, memberData, schema, position);
-    applyPrebattleModifiers(this.rs, memberData);
+    applyPrebattleModifiers(this.statContainer, memberData);
   }
 }

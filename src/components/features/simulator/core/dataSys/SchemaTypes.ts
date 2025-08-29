@@ -4,7 +4,7 @@
  * 这个文件定义了与Schema相关的所有类型和工具，包括：
  * 1. 基础Schema类型定义
  * 2. 多语言Schema字典类型
- * 3. ReactiveSystem相关类型
+ * 3. StatContainer相关类型
  * 4. Schema工具类型和工具函数
  * 5. Schema扁平化工具类
  *
@@ -47,7 +47,7 @@ export interface SchemaAttribute {
  * 嵌套Schema结构类型
  *
  * 支持任意深度的嵌套结构，每个节点可以是SchemaAttribute或NestedSchema
- * 用途：用于ReactiveSystem等需要完整属性信息的场景
+ * 用途：用于StatContainer等需要完整属性信息的场景
  */
 export type NestedSchema = {
   [key: string]: SchemaAttribute | NestedSchema;
@@ -108,12 +108,12 @@ export type ConvertToNestedSchemaDic<T> = {
       : T[K]; // 保持其他类型不变
 };
 
-// ============================== ReactiveSystem相关类型 ==============================
+// ============================== StatContainer相关类型 ==============================
 
 /**
  * 属性表达式接口
  *
- * 用于ReactiveSystem中存储属性的表达式信息
+ * 用于StatContainer中存储属性的表达式信息
  */
 export interface AttributeExpression {
   /** 属性的显示名称 */
@@ -194,7 +194,7 @@ export const isSchemaAttribute = (x: unknown): x is SchemaAttribute => {
 /**
  * Schema扁平化工具类
  *
- * 用于ReactiveSystem中将嵌套Schema扁平化为可用的数据结构
+ * 用于StatContainer中将嵌套Schema扁平化为可用的数据结构
  * 支持递归遍历、依赖关系分析和性能优化
  */
 export class SchemaFlattener {

@@ -1,5 +1,5 @@
 import type { MemberWithRelations } from "@db/repositories/member";
-import { ModifierType, type ReactiveSystem } from "../../dataSys/ReactiveSystem";
+import { ModifierType, type StatContainer } from "../../dataSys/StatContainer";
 import { tokenizer, parse } from "acorn";
 import { create, all } from "mathjs";
 import * as Enums from "@db/schema/enums";
@@ -322,7 +322,7 @@ function formatRootedPathFromCharacter(segments: string[]): string {
  * 语法支持见 parseModifierLine
  */
 export function applyPrebattleModifiers<T extends string>(
-  rs: ReactiveSystem<T>,
+  rs: StatContainer<T>,
   memberData: MemberWithRelations,
 ): void {
   const character = memberData.player!.character;

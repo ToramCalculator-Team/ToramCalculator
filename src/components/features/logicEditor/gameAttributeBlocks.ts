@@ -14,7 +14,7 @@ import type { NestedSchema, SchemaAttribute } from "../simulator/core/dataSys/Sc
 
 // ============================== 类型定义 ==============================
 
-import { ModifierType } from "../simulator/core/dataSys/ReactiveSystem";
+import { ModifierType } from "../simulator/core/dataSys/StatContainer";
 
 /**
  * 积木类型枚举
@@ -105,7 +105,7 @@ class SchemaBlockGenerator {
     // 生成对应的 JS 代码
     javascriptGenerator.forBlock[blockId] = function(block, generator) {
       const attributePath = block.getFieldValue('ATTRIBUTE_PATH');
-      const code = `${accessor}.rs.getValue("${attributePath}")`;
+      const code = `${accessor}.statContainer.getValue("${attributePath}")`;
       return [code, Order.MEMBER];
     };
 
@@ -146,7 +146,7 @@ class SchemaBlockGenerator {
       const attributePath = block.getFieldValue('ATTRIBUTE_PATH');
       const value = generator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
       // 使用 addModifier 的 DYNAMIC_FIXED 类型来设置固定值
-      return `${accessor}.rs.addModifier("${attributePath}", ModifierType.DYNAMIC_FIXED, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });\n`;
+      return `${accessor}.statContainer.addModifier("${attributePath}", ModifierType.DYNAMIC_FIXED, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });\n`;
     };
 
     this.blockDefinitions.set(blockId, Blocks[blockId]);
@@ -175,7 +175,7 @@ class SchemaBlockGenerator {
 
     javascriptGenerator.forBlock[blockId] = function(block, generator) {
       const attributePath = block.getFieldValue('ATTRIBUTE_PATH');
-      return [`target.rs.getValue("${attributePath}")`, Order.ATOMIC];
+      return [`target.statContainer.getValue("${attributePath}")`, Order.ATOMIC];
     };
 
     this.blockDefinitions.set(blockId, Blocks[blockId]);
@@ -204,7 +204,7 @@ class SchemaBlockGenerator {
 
     javascriptGenerator.forBlock[blockId] = function(block, generator) {
       const attributePath = block.getFieldValue('ATTRIBUTE_PATH');
-      return [`self.rs.getValue("${attributePath}")`, Order.ATOMIC];
+      return [`self.statContainer.getValue("${attributePath}")`, Order.ATOMIC];
     };
 
     this.blockDefinitions.set(blockId, Blocks[blockId]);
@@ -249,15 +249,15 @@ class SchemaBlockGenerator {
       switch (operation) {
         case "SET":
           // 使用 BASE_VALUE 类型来设置值
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
           break;
         case "ADD":
           // 使用 DYNAMIC_PERCENTAGE 类型来增加百分比
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
           break;
         case "SUBTRACT":
           // 使用 DYNAMIC_PERCENTAGE 类型来减少百分比（负值）
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
           break;
         default:
           code = `// 未知操作: ${operation}`;
@@ -307,15 +307,15 @@ class SchemaBlockGenerator {
       switch (operation) {
         case "SET":
           // 使用 BASE_VALUE 类型来设置值
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
           break;
         case "ADD":
           // 使用 DYNAMIC_FIXED 类型来增加固定值
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
           break;
         case "SUBTRACT":
           // 使用 DYNAMIC_FIXED 类型来减少固定值（负值）
-          code = `target.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
+          code = `target.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
           break;
         default:
           code = `// 未知操作: ${operation}`;
@@ -366,15 +366,15 @@ class SchemaBlockGenerator {
       switch (operation) {
         case "SET":
           // 使用 BASE_VALUE 类型来设置值
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
           break;
         case "ADD":
           // 使用 DYNAMIC_PERCENTAGE 类型来增加百分比
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
           break;
         case "SUBTRACT":
           // 使用 DYNAMIC_PERCENTAGE 类型来减少百分比（负值）
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_PERCENTAGE}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
           break;
         default:
           code = `// 未知操作: ${operation}`;
@@ -424,15 +424,15 @@ class SchemaBlockGenerator {
       switch (operation) {
         case "SET":
           // 使用 BASE_VALUE 类型来设置值
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });`;
           break;
         case "ADD":
           // 使用 DYNAMIC_FIXED 类型来增加固定值
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, ${value}, { id: "blockly_add", name: "积木增加", type: "system" });`;
           break;
         case "SUBTRACT":
           // 使用 DYNAMIC_FIXED 类型来减少固定值（负值）
-          code = `self.rs.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
+          code = `self.statContainer.addModifier("${attributePath}", ${ModifierType.DYNAMIC_FIXED}, -${value}, { id: "blockly_subtract", name: "积木减少", type: "system" });`;
           break;
         default:
           code = `// 未知操作: ${operation}`;
@@ -608,7 +608,7 @@ Blocks['target_hp_get'] = {
 };
 
 javascriptGenerator.forBlock['target_hp_get'] = function(block, generator) {
-  const code = 'target.rs.getValue("hp")';
+  const code = 'target.statContainer.getValue("hp")';
   return [code, Order.MEMBER];
 };
 
@@ -629,7 +629,7 @@ Blocks['target_hp_set'] = {
 javascriptGenerator.forBlock['target_hp_set'] = function(block, generator) {
   const value = generator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
   // 使用 addModifier 的 BASE_VALUE 类型来设置值
-  return `target.rs.addModifier("hp", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });\n`;
+  return `target.statContainer.addModifier("hp", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });\n`;
 };
 
 // 自己攻击力变量获取块
@@ -645,7 +645,7 @@ Blocks['self_attack_get'] = {
 };
 
 javascriptGenerator.forBlock['self_attack_get'] = function(block, generator) {
-  const code = 'self.rs.getValue("atk")';
+  const code = 'self.statContainer.getValue("atk")';
   return [code, Order.MEMBER];
 };
 
@@ -662,7 +662,7 @@ Blocks['self_mp_get'] = {
 };
 
 javascriptGenerator.forBlock['self_mp_get'] = function(block, generator) {
-  const code = 'self.rs.getValue("mp")';
+  const code = 'self.statContainer.getValue("mp")';
   return [code, Order.MEMBER];
 };
 

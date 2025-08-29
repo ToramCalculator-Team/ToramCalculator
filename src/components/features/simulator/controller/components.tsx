@@ -1,6 +1,6 @@
 /**
  * UI组件模块
- * 
+ *
  * 功能：
  * - 按功能区域组织的UI组件
  * - 状态栏、控制面板、成员面板等
@@ -13,9 +13,9 @@ import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import MemberStatusPanel from "../core/member/MemberStatusPanel";
 import type { MemberSerializeData } from "../core/member/Member";
-import type { PlayerWithRelations } from "@db/repositories/player";
-import type { MemberWithRelations } from "@db/repositories/member";
 import { controller } from "./controller";
+import { Portal } from "solid-js/web";
+import { GameView } from "../core/render/Renderer";
 
 // ============================== 状态栏组件 ==============================
 
@@ -115,11 +115,7 @@ export function ControlPanel(props: ControlPanelProps) {
       >
         启动模拟
       </Button>
-      <Button 
-        onClick={props.onStop} 
-        disabled={props.isLoading || !props.isRunning} 
-        class="bg-red-600 hover:bg-red-700"
-      >
+      <Button onClick={props.onStop} disabled={props.isLoading || !props.isRunning} class="bg-red-600 hover:bg-red-700">
         停止模拟
       </Button>
       <Button
@@ -129,11 +125,7 @@ export function ControlPanel(props: ControlPanelProps) {
       >
         暂停
       </Button>
-      <Button
-        onClick={props.onResume}
-        disabled={!props.isPaused}
-        class="bg-blue-600 hover:bg-blue-700"
-      >
+      <Button onClick={props.onResume} disabled={!props.isPaused} class="bg-blue-600 hover:bg-blue-700">
         恢复
       </Button>
     </div>
@@ -211,8 +203,8 @@ export function SkillPanel(props: SkillPanelProps) {
   return (
     <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
       <Show when={props.selectedMember()}>
-        <h3 class="text-lg font-semibold mb-2">技能</h3>
-        <div class="flex-1 grid grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
+        <h3 class="mb-2 text-lg font-semibold">技能</h3>
+        <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
           <Switch fallback={<div class="text-sm text-gray-500">暂无技能</div>}>
             <Match when={props.selectedMember()?.type === "Player"}>
               {/* 玩家技能 - 使用控制器中的技能信号 */}
@@ -231,9 +223,7 @@ export function SkillPanel(props: SkillPanelProps) {
             </Match>
             <Match when={props.selectedMember()?.type === "Mob"}>
               {/* 怪物技能 */}
-              <div class="col-span-4 text-sm text-gray-500">
-                怪物技能系统待实现
-              </div>
+              <div class="col-span-4 text-sm text-gray-500">怪物技能系统待实现</div>
             </Match>
           </Switch>
         </div>
@@ -259,18 +249,10 @@ export function ActionPanel(props: ActionPanelProps) {
       <Show when={props.selectedEngineMember()}>
         <h3 class="mb-2 text-lg font-semibold">动作</h3>
         <div class="flex gap-2">
-          <Button 
-            onClick={() => props.onMove(100, 100)} 
-            class="bg-green-600 hover:bg-green-700" 
-            size="sm"
-          >
+          <Button onClick={() => props.onMove(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
             移动到 (100, 100)
           </Button>
-          <Button 
-            onClick={props.onStopAction} 
-            class="bg-red-600 hover:bg-red-700" 
-            size="sm"
-          >
+          <Button onClick={props.onStopAction} class="bg-red-600 hover:bg-red-700" size="sm">
             停止动作
           </Button>
         </div>
@@ -279,15 +261,3 @@ export function ActionPanel(props: ActionPanelProps) {
   );
 }
 
-// ============================== 画面组件 ==============================
-
-/**
- * 游戏画面区域组件
- */
-export function GameViewArea() {
-  return (
-    <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
-      <div class="flex h-full w-full flex-col overflow-hidden rounded"></div>
-    </div>
-  );
-}

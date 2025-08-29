@@ -15,7 +15,7 @@
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type GameEngine from "../core/GameEngine";
 import type MemberManager from "../core/MemberManager";
-import { ModifierType } from "../core/dataSys/ReactiveSystem";
+import { ModifierType } from "../core/dataSys/StatContainer";
 
 // ============================== 自定义事件处理器 ==============================
 
@@ -96,10 +96,10 @@ export class CustomEventHandler implements EventHandler {
       }
 
       const sourceId = payload?.sourceId || `custom_event_handler_${attribute}`;
-      const current = entry.rs.getValue(attribute);
+      const current = entry.statContainer.getValue(attribute);
 
       if (op === "add") {
-        entry.rs.addModifier(attribute, ModifierType.STATIC_FIXED, Number(value) || 0, {
+        entry.statContainer.addModifier(attribute, ModifierType.STATIC_FIXED, Number(value) || 0, {
           id: sourceId,
           name: "custom_event_handler",
           type: "system",
@@ -107,15 +107,15 @@ export class CustomEventHandler implements EventHandler {
       } else {
         // 绝对赋值：移除旧值（同源），按差值补一个静态修饰以达成目标
         const delta = (Number(value) || 0) - (Number(current) || 0);
-        entry.rs.removeModifier(attribute, ModifierType.STATIC_FIXED, sourceId);
-        entry.rs.addModifier(attribute, ModifierType.STATIC_FIXED, delta, {
+        entry.statContainer.removeModifier(attribute, ModifierType.STATIC_FIXED, sourceId);
+        entry.statContainer.addModifier(attribute, ModifierType.STATIC_FIXED, delta, {
           id: sourceId,
           name: "custom_event_handler",
           type: "system",
         });
       }
 
-      const nextValue = entry.rs.getValue(attribute);
+      const nextValue = entry.statContainer.getValue(attribute);
       console.log(`✅ 属性修改成功: ${attribute}: ${current} -> ${nextValue}`);
       return { success: true, data: { attribute, value: nextValue, op: op || "set" } };
     } catch (error) {

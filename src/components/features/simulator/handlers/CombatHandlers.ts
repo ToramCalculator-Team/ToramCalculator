@@ -16,7 +16,7 @@
 import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
 import type GameEngine from "../core/GameEngine";
 import type { MemberManager } from "../core/MemberManager";
-import { ModifierType } from "../core/dataSys/ReactiveSystem";
+import { ModifierType } from "../core/dataSys/StatContainer";
 
 // ============================== 战斗事件处理器 ==============================
 
@@ -77,14 +77,14 @@ export class MemberDamageHandler implements EventHandler {
       const finalDamageValue = Math.max(0, Math.floor(afterIO.final ?? computed));
 
       // 通过响应式系统应用伤害（作为静态固定修饰符的负值）
-      const hpBefore = targetEntry.rs.getValue("hp.current" );
+      const hpBefore = targetEntry.statContainer.getValue("hp.current" );
       // apply: 允许屏障/保命等改写落账值
       const applyIO: { applied?: number } = { applied: finalDamageValue };
       casterEntry?.buffManager?.applyApplyDamage({ context, payload, event }, applyIO);
       targetEntry.buffManager?.applyApplyDamage({ context, payload, event }, applyIO);
       const appliedDamage = Math.max(0, Math.floor(applyIO.applied ?? finalDamageValue));
 
-      targetEntry.rs.addModifier(
+      targetEntry.statContainer.addModifier(
         "hp.current" ,
         ModifierType.STATIC_FIXED,
         -appliedDamage,
@@ -94,7 +94,7 @@ export class MemberDamageHandler implements EventHandler {
           type: "system",
         },
       );
-      const hpAfter = targetEntry.rs.getValue("hp.current" );
+      const hpAfter = targetEntry.statContainer.getValue("hp.current" );
 
       console.log(`目标 ${payload.targetId} 受到 ${appliedDamage} 点伤害: ${hpBefore} -> ${hpAfter}`);
       

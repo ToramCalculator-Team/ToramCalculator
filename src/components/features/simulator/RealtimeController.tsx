@@ -1,9 +1,9 @@
 /**
  * 实时模拟控制器 - 简化版本
- * 
+ *
  * 使用简化的控制器，只做3件事：
  * 1. 展示 - 管理UI状态
- * 2. 输入 - 处理用户操作  
+ * 2. 输入 - 处理用户操作
  * 3. 通信 - 与Worker交互
  */
 
@@ -16,8 +16,9 @@ import {
   MemberStatus,
   SkillPanel,
   ActionPanel,
-  GameViewArea,
 } from "./controller/components";
+import { Portal } from "solid-js/web";
+import { GameView } from "./core/render/Renderer";
 
 export default function RealtimeController() {
   // 初始化控制器
@@ -36,22 +37,32 @@ export default function RealtimeController() {
         isRunning={controller.isRunning[0]}
         isPaused={controller.isPaused[0]}
         currentFrame={createMemo(() => ({ currentFrame: controller.engineView[0]()?.frameNumber || 0 }))}
-        averageFPS={createMemo(() => ({ frameLoopStats: { averageFPS: controller.engineView[0]()?.frameLoop?.averageFPS || 0 } }))}
-        clockKind={createMemo(() => ({ frameLoopStats: { clockKind: controller.engineView[0]()?.frameLoop?.clockKind || "raf" } }))}
-        queueSize={createMemo(() => ({ eventQueueStats: { currentSize: controller.engineView[0]()?.eventQueue?.currentSize || 0 } }))}
+        averageFPS={createMemo(() => ({
+          frameLoopStats: { averageFPS: controller.engineView[0]()?.frameLoop?.averageFPS || 0 },
+        }))}
+        clockKind={createMemo(() => ({
+          frameLoopStats: { clockKind: controller.engineView[0]()?.frameLoop?.clockKind || "raf" },
+        }))}
+        queueSize={createMemo(() => ({
+          eventQueueStats: { currentSize: controller.engineView[0]()?.eventQueue?.currentSize || 0 },
+        }))}
       />
 
       {/* 游戏视图区域 */}
-      <GameViewArea />
+      <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
+        <div class="flex h-full w-full flex-col overflow-hidden rounded"></div>
+      </div>
 
       {/* 成员状态 */}
-      <MemberStatus member={createMemo(() => {
-        const memberId = controller.selectedMemberId[0]();
-        const memberList = controller.members[0]();
-        if (!memberId || !memberList) return null;
-        const foundMember = memberList.find(m => m.id === memberId);
-        return foundMember || null;
-      })} />
+      <MemberStatus
+        member={createMemo(() => {
+          const memberId = controller.selectedMemberId[0]();
+          const memberList = controller.members[0]();
+          if (!memberId || !memberList) return null;
+          const foundMember = memberList.find((m) => m.id === memberId);
+          return foundMember || null;
+        })}
+      />
 
       {/* 技能面板 */}
       <SkillPanel
@@ -59,7 +70,7 @@ export default function RealtimeController() {
           const memberId = controller.selectedMemberId[0]();
           const memberList = controller.members[0]();
           if (!memberId || !memberList) return null;
-          const foundMember = memberList.find(m => m.id === memberId);
+          const foundMember = memberList.find((m) => m.id === memberId);
           return foundMember || null;
         })}
         onCastSkill={controller.castSkill.bind(controller)}
@@ -71,7 +82,7 @@ export default function RealtimeController() {
           const memberId = controller.selectedMemberId[0]();
           const memberList = controller.members[0]();
           if (!memberId || !memberList) return null;
-          const foundMember = memberList.find(m => m.id === memberId);
+          const foundMember = memberList.find((m) => m.id === memberId);
           return foundMember || null;
         })}
         onMove={controller.moveMember.bind(controller)}
@@ -91,13 +102,20 @@ export default function RealtimeController() {
           onResume={controller.resumeSimulation.bind(controller)}
           onClearError={controller.clearError.bind(controller)}
         />
-        
+
         <MemberSelect
           members={controller.members[0]() || []}
           selectedId={controller.selectedMemberId[0]()}
           onSelect={controller.selectMember.bind(controller)}
         />
       </div>
+
+      {/* 背景游戏视图显示 */}
+      <Portal>
+        <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
+          <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
+        </div>
+      </Portal>
     </div>
   );
 }

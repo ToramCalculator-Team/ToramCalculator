@@ -2,7 +2,7 @@
  * Schema路径解析器
  * 
  * 核心功能：
- * 1. 将DSL路径（如 self.abi.str）转换为ReactiveSystem键名（如 abi.str）
+ * 1. 将DSL路径（如 self.abi.str）转换为StatContainer键名（如 abi.str）
  * 2. 从JS代码中提取所有属性访问
  * 3. 验证Schema路径的有效性
  * 
@@ -19,7 +19,7 @@ import { NestedSchema, SchemaAttribute } from "../dataSys/SchemaTypes";
 export interface SchemaPath {
   /** 原始DSL路径 (如: self.abi.str) */
   dslPath: string;
-  /** ReactiveSystem中的键名 (如: abi.str) */
+  /** StatContainer中的键名 (如: abi.str) */
   reactiveKey: string;
   /** 访问者类型 (self/target) */
   accessor: 'self' | 'target';
@@ -47,11 +47,11 @@ export class SchemaPathResolver {
   constructor(private schema: NestedSchema) {}
   
   /**
-   * 解析DSL路径到ReactiveSystem键名
+   * 解析DSL路径到StatContainer键名
    * self.abi.str → "abi.str"
    * self.equip.weapon.main.attack.physical → "equip.weapon.main.attack.physical"
-   * self.rs.getValue("lv") → "lv" (从方法调用中提取属性路径)
-   * target.rs.addModifier("hp.current", ...) → "hp.current" (从方法调用中提取属性路径)
+   * self.statContainer.getValue("lv") → "lv" (从方法调用中提取属性路径)
+   * target.statContainer.addModifier("hp.current", ...) → "hp.current" (从方法调用中提取属性路径)
    */
   resolvePath(dslPath: string): string | null {
     // 1. 检查是否为方法调用格式：self.xxx.yyy("zzz") 或 target.xxx.yyy("zzz")

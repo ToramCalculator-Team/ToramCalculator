@@ -3,7 +3,7 @@
  *
  * 核心功能：
  * 1. 验证JS代码的安全性和正确性
- * 2. 编译JS代码，替换属性访问为ReactiveSystem调用
+ * 2. 编译JS代码，替换属性访问为StatContainer调用
  * 3. 生成可缓存的编译结果
  *
  * 设计理念：
@@ -143,14 +143,14 @@ export class JSProcessor {
       let replacement: string;
       
       // 检查是否为 getValue 格式
-      if (access.fullExpression.includes('.rs.getValue(')) {
-        // 对于 self.rs.getValue("xxx") 格式，保持原有结构，只替换引号
+      if (access.fullExpression.includes('.statContainer.getValue(')) {
+        // 对于 self.statContainer.getValue("xxx") 格式，保持原有结构，只替换引号
         // 这样可以保持代码的可读性，同时确保语法正确
         replacement = access.fullExpression.replace(/["']([^"']+)["']/, `'${access.reactiveKey}'`);
       } else {
-        // 对于传统的 self.xxx 格式，替换为 self.rs.getValue('xxx')
+        // 对于传统的 self.xxx 格式，替换为 self.statContainer.getValue('xxx')
         const memberRef = access.accessor === "self" ? "self" : "target";
-        replacement = `${memberRef}.rs.getValue('${access.reactiveKey}')`;
+        replacement = `${memberRef}.statContainer.getValue('${access.reactiveKey}')`;
       }
 
       compiledCode = compiledCode.replace(new RegExp(escapeRegExp(access.fullExpression), "g"), replacement);

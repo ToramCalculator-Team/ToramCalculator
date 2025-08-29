@@ -1,6 +1,6 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { ReactiveSystem } from "../dataSys/ReactiveSystem";
+import { StatContainer } from "../dataSys/StatContainer";
 import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
@@ -121,7 +121,7 @@ export class Member<TAttrKey extends string = string> {
   /** 属性Schema（用于编译表达式等） */
   schema: NestedSchema;
   /** 响应式系统实例（用于稳定导出属性） */
-  rs: ReactiveSystem<TAttrKey>;
+  statContainer: StatContainer<TAttrKey>;
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 成员Actor引用 */
@@ -135,7 +135,7 @@ export class Member<TAttrKey extends string = string> {
   /** 序列化方法 */
   public serialize(): MemberSerializeData {
     return {
-      attrs: this.rs.exportNestedValues(),
+      attrs: this.statContainer.exportNestedValues(),
       id: this.id,
       type: this.type,
       name: this.name,
@@ -167,7 +167,7 @@ export class Member<TAttrKey extends string = string> {
     this.isAlive = true;
     this.schema = schema;
     this.data = memberData;
-    this.rs = new ReactiveSystem<TAttrKey>(schema);
+    this.statContainer = new StatContainer<TAttrKey>(schema);
     this.buffManager = new BuffManager(this);
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.actor = createActor(stateMachine(this), {

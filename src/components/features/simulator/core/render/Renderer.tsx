@@ -20,7 +20,8 @@ import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
 import { Portal } from "solid-js/web";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { GridMaterial } from "@babylonjs/materials";
+import { GridMaterial, SkyMaterial } from "@babylonjs/materials";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -43,7 +44,7 @@ const cssColors = {
 };
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
-export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
+export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
   const themeColors = createMemo(
     () =>
       ({
@@ -286,6 +287,18 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
     // skybox
     // const envTexture = new CubeTexture("/models/skybox.dds", scene);
     // scene.createDefaultSkybox(envTexture, true, 1000);
+    // -----------------------------------天空盒-----------------------------------
+    const skyboxMaterial = new SkyMaterial("skyMaterial", scene);
+    const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+    skyboxMaterial.backFaceCulling = false;
+    skyboxMaterial.turbidity = 5; //nigori
+    skyboxMaterial.rayleigh = 2; //rayleigh sanran
+    skyboxMaterial.luminance = 0.8; //blightness
+    skyboxMaterial.inclination = 0;
+    skyboxMaterial.mieCoefficient = 0.005;
+    skyboxMaterial.mieDirectionalG = 0.9999;
+    skyboxMaterial.azimuth = 0.2147;
+    skybox.material = skyboxMaterial;
 
     // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
@@ -329,10 +342,10 @@ export function BabylonBg(props: { followEntityId?: EntityId }): JSX.Element {
     mainSpotLightShadowGenerator.darkness = 0.1;
     mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
-    const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
-    const skyboxMaterial = new StandardMaterial("skyBox", scene);
-    skyboxMaterial.backFaceCulling = false;
-    skybox.material = skyboxMaterial;
+    // const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+    // const skyboxMaterial = new StandardMaterial("skyBox", scene);
+    // skyboxMaterial.backFaceCulling = false;
+    // skybox.material = skyboxMaterial;
 
     // -----------------------------------------model--------------------------------------------
 

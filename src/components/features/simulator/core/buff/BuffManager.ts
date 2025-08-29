@@ -1,5 +1,5 @@
 import type { Member } from "../member/Member";
-import { ModifierType } from "../dataSys/ReactiveSystem";
+import { ModifierType } from "../dataSys/StatContainer";
 
 export type StackRule = "stack" | "refresh" | "replace";
 
@@ -50,7 +50,7 @@ export interface BuffInstance {
 /**
  * 轻量 BuffManager：
  * - 管理 buff 生命周期（仅到期移除）
- * - 将修饰落入/撤出 StatContainer（ReactiveSystem）
+ * - 将修饰落入/撤出 StatContainer（StatContainer）
  * - 提供钩子聚合 API 给同步流水线调用
  * - 提供 mechanicState（成员私有机制状态）存取
  */
@@ -168,7 +168,7 @@ export class BuffManager {
   private applyModifiers(buff: BuffInstance): void {
     if (!buff.modifiers || buff.modifiers.length === 0) return;
     for (const m of buff.modifiers) {
-      this.member.rs.addModifier(m.attr as any, m.kind, m.value, {
+      this.member.statContainer.addModifier(m.attr as any, m.kind, m.value, {
         id: this.sourceId(buff, m.attr),
         name: buff.name,
         type: "buff",
@@ -178,7 +178,7 @@ export class BuffManager {
   private removeModifiers(buff: BuffInstance): void {
     if (!buff.modifiers || buff.modifiers.length === 0) return;
     for (const m of buff.modifiers) {
-      this.member.rs.removeModifier(m.attr as any, m.kind, this.sourceKey(buff, m.attr));
+      this.member.statContainer.removeModifier(m.attr as any, m.kind, this.sourceKey(buff, m.attr));
     }
   }
   private sourceId(buff: BuffInstance, attr: string): { id: string; name: string; type: "buff" } {

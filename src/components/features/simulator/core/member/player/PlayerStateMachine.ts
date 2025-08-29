@@ -2,7 +2,7 @@ import { assign, enqueueActions, EventObject, setup } from "xstate";
 import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
-import { ModifierType } from "../../dataSys/ReactiveSystem";
+import { ModifierType } from "../../dataSys/StatContainer";
 import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
 import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 
@@ -161,7 +161,7 @@ export const playerStateMachine = (player: Player) => {
           skillLv: skill?.lv ?? 0,
         });
 
-        context.rs.addModifiers([
+        context.statContainer.addModifiers([
           {
             attr: "hp.current",
             targetType: ModifierType.STATIC_FIXED,
@@ -176,7 +176,7 @@ export const playerStateMachine = (player: Player) => {
           },
         ]);
         console.log(
-          `👤 [${context.name}] HP: ${context.rs.getValue("hp.current")}, MP: ${context.rs.getValue("mp.current")}`,
+          `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
         );
       }),
 
@@ -219,7 +219,7 @@ export const playerStateMachine = (player: Player) => {
             skillLv: skill?.lv ?? 0,
           }),
         );
-        const mspd = Math.min(0.5, Math.floor(context.rs.getValue("mspd")));
+        const mspd = Math.min(0.5, Math.floor(context.statContainer.getValue("mspd")));
         console.log(`👤 [${context.name}] 固定帧：`, motionFixed);
         console.log(`👤 [${context.name}] 可加速帧：`, motionModified);
         console.log(`👤 [${context.name}] 当前行动速度：`, mspd);
@@ -311,7 +311,7 @@ export const playerStateMachine = (player: Player) => {
 
 // 计算造成的伤害
 function damage() {
-_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.rs.getValue("lv") + self.rs.getValue("lv")) * (1 - target.rs.getValue("red.p")) - target.rs.getValue("def.p") * (1 - self.rs.getValue("pie.p"));
+_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
 _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
 _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
 return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
@@ -329,22 +329,22 @@ return Math.floor(Math.random() * (b - a + 1) + a);
 
 // 判断是否命中
 function isHit() {
-_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.rs.getValue("accuracy") - target.rs.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
+_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
 console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
 return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
 }
 
 // 描述该功能...
 function main() {
-if (self.rs.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
   console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
-  self.rs.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
-  console.log("技能消耗后当前MP",self.rs.getValue("mp.current"))
+  self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
+  console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
   if (isHit() == true) {
     console.log("命中成功, 伤害:",damage())
-    console.log("命中前血量:",target.rs.getValue("hp.current"))
-    target.rs.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-    console.log("命中后血量:",target.rs.getValue("hp.current"))
+    console.log("命中前血量:",target.statContainer.getValue("hp.current"))
+    target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
+    console.log("命中后血量:",target.statContainer.getValue("hp.current"))
   } else {
     console.log("miss")
   }
@@ -413,7 +413,7 @@ main();`,
           casterId: context.id,
           skillLv: skill?.lv ?? 0,
         });
-        if (hpCost > context.rs.getValue("hp.current") || mpCost > context.rs.getValue("mp.current")) {
+        if (hpCost > context.statContainer.getValue("hp.current") || mpCost > context.statContainer.getValue("mp.current")) {
           console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
           // 这里需要撤回RS的修改
           return true;
