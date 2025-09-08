@@ -143,7 +143,7 @@ const attrsMap = {
   "amp.light": ["1%", "2%", "3%"],
   "amp.dark": ["1%", "2%", "3%"],
   "amp.normal": ["1%", "2%", "3%"],
-  // 属性伤害减轻【1%~10%】
+  // 属性抗性【1%~10%】
   "red.water": ["1%", "2%", "3%", "4%", "5%", "6%", "7%", "8%", "9%", "10%"],
   "red.fire": ["1%", "2%", "3%", "4%", "5%", "6%", "7%", "8%", "9%", "10%"],
   "red.earth": ["1%", "2%", "3%", "4%", "5%", "6%", "7%", "8%", "9%", "10%"],
@@ -272,13 +272,13 @@ const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
   "amp.light": "对光属性增强",
   "amp.dark": "对暗属性增强",
   "amp.normal": "对无属性增强",
-  "red.water": "水属性伤害减轻",
-  "red.fire": "火属性伤害减轻",
-  "red.earth": "地属性伤害减轻",
-  "red.wind": "风属性伤害减轻",
-  "red.light": "光属性伤害减轻",
-  "red.dark": "暗属性伤害减轻",
-  "red.normal": "无属性伤害减轻",
+  "red.water": "水属性抗性",
+  "red.fire": "火属性抗性",
+  "red.earth": "地属性抗性",
+  "red.wind": "风属性抗性",
+  "red.light": "光属性抗性",
+  "red.dark": "暗属性抗性",
+  "red.normal": "无属性抗性",
   "aggro.rate": "仇恨值增加",
   "distanceDmg.short": "近距离威力",
   "distanceDmg.long": "远距离威力",
@@ -294,6 +294,25 @@ const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
 
 type AttrType = keyof typeof attrsMap;
 type AttrValue<T extends AttrType> = (typeof attrsMap)[T][number];
+
+// 判断某个属性值是否为该类属性的最大值
+const isMaxValue = (attrType: AttrType, attrValue: string): boolean => {
+  const values = attrsMap[attrType];
+
+  // 分离数值和百分比值
+  const numericValues = values.filter((v) => !v.includes("%")).map((v) => parseFloat(v));
+  const percentageValues = values.filter((v) => v.includes("%")).map((v) => parseFloat(v.replace("%", "")));
+
+  if (attrValue.includes("%")) {
+    // 如果是百分比值，与百分比值比较
+    const currentValue = parseFloat(attrValue.replace("%", ""));
+    return percentageValues.length > 0 && currentValue === Math.max(...percentageValues);
+  } else {
+    // 如果是数值，与数值比较
+    const currentValue = parseFloat(attrValue);
+    return numericValues.length > 0 && currentValue === Math.max(...numericValues);
+  }
+};
 
 export default function AvatarMachinePage() {
   const [animationEnabled, setAnimationEnabled] = createSignal(false); // 控制动画是否启用
@@ -323,7 +342,7 @@ export default function AvatarMachinePage() {
    * 时装属性生成器
    * 根据时间戳，随机生成3条属性
    * 第一条必定生成，第二条有50%概率生成，第三条有25%概率生成
-   * 每个属性从可选属性里随机选择
+   * 每个属性从可选属性里随机选择，已生成的属性不会重复
    *
    * @param timeStamp
    * @returns
@@ -348,12 +367,25 @@ export default function AvatarMachinePage() {
 
     // 获取所有可用的属性类型
     const attrTypes = Object.keys(attrsMap) as AttrType[];
+    // 已生成的属性类型，避免重复
+    const usedAttrTypes = new Set<AttrType>();
 
     // 生成随机属性的辅助函数
-    const generateRandomAttr = (): { attrType: AttrType; attrValue: AttrValue<AttrType> } => {
-      const randomAttrType = attrTypes[Math.floor(random() * attrTypes.length)];
+    const generateRandomAttr = (): { attrType: AttrType; attrValue: AttrValue<AttrType> } | null => {
+      // 过滤出未使用的属性类型
+      const availableAttrTypes = attrTypes.filter((type) => !usedAttrTypes.has(type));
+
+      // 如果没有可用的属性类型，返回null
+      if (availableAttrTypes.length === 0) {
+        return null;
+      }
+
+      const randomAttrType = availableAttrTypes[Math.floor(random() * availableAttrTypes.length)];
       const availableValues = attrsMap[randomAttrType];
       const randomValue = availableValues[Math.floor(random() * availableValues.length)];
+
+      // 记录已使用的属性类型
+      usedAttrTypes.add(randomAttrType);
 
       return {
         attrType: randomAttrType,
@@ -364,16 +396,27 @@ export default function AvatarMachinePage() {
     const result: Record<Postion, { attrType: AttrType; attrValue: AttrValue<AttrType> }> = {} as any;
 
     // 第一条属性：必定生成
-    result.A = generateRandomAttr();
-
-    // 第二条属性：50% 概率生成
-    if (random() < 0.5) {
-      result.B = generateRandomAttr();
+    const firstAttr = generateRandomAttr();
+    if (firstAttr) {
+      result.A = firstAttr;
     }
 
-    // 第三条属性：25% 概率生成
-    if (random() < 0.25) {
-      result.C = generateRandomAttr();
+    // 第二条属性：50% 概率生成
+    let hasSecondAttr = false;
+    if (random() < 0.5) {
+      const secondAttr = generateRandomAttr();
+      if (secondAttr) {
+        result.B = secondAttr;
+        hasSecondAttr = true;
+      }
+    }
+
+    // 第三条属性：25% 概率生成，但只有在第二条生成时才会尝试生成
+    if (hasSecondAttr && random() < 0.25) {
+      const thirdAttr = generateRandomAttr();
+      if (thirdAttr) {
+        result.C = thirdAttr;
+      }
     }
 
     console.log("Generated attrs with timestamp:", timeStamp, result);
@@ -438,37 +481,57 @@ export default function AvatarMachinePage() {
           </div>
         </div>
         <div class="FunctionArea flex h-full flex-col gap-3 p-6">
-          <div class="InfoArea bg-area-color flex h-full flex-col gap-2 rounded p-2">
-            {/* 使用 animationKey 作为关键依赖来强制重新渲染整个列表 */}
-            <Show when={attrs()} keyed>
-              {(currentAttrs) => (
-                <Index each={Object.values(currentAttrs)}>
-                  {(attr, index) => {
-                    return (
-                      <Motion.div
-                        animate={{
-                          opacity: [0, 1],
-                          transform: ["translateY(30px)", "translateY(0)"],
-                        }}
-                        transition={{
-                          duration: animationEnabled() && store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-                          delay:
-                            animationEnabled() && store.settings.userInterface.isAnimationEnabled ? index * 0.3 : 0,
-                        }}
-                        class="Field bg-primary-color border-dividing-color flex h-16 items-center justify-center gap-1 rounded border-1"
-                      >
-                        {attrDisplayNames[attr().attrType] || attr().attrType} + {attr().attrValue}
-                      </Motion.div>
-                    );
-                  }}
-                </Index>
-              )}
-            </Show>
-          </div>
+          <Show
+            when={history().length > 0}
+            fallback={
+              <div class="grid h-full place-items-center">
+                <pre class="text-boundary-color">点击下面的按钮试试手气吧 ٩(◕‿◕｡)۶</pre>
+              </div>
+            }
+          >
+            <div class={`InfoArea bg-area-color flex h-full flex-col gap-2 rounded p-2`}>
+              {/* 使用 animationKey 作为关键依赖来强制重新渲染整个列表 */}
+              <Show when={attrs()} keyed>
+                {(currentAttrs) => (
+                  <Index each={Object.values(currentAttrs)}>
+                    {(attr, index) => {
+                      return (
+                        <Motion.div
+                          initial={{
+                            opacity: animationEnabled() && store.settings.userInterface.isAnimationEnabled ? 0 : 1,
+                            transform:
+                              animationEnabled() && store.settings.userInterface.isAnimationEnabled
+                                ? "translateY(30px)"
+                                : "translateY(0)",
+                          }}
+                          animate={{
+                            opacity: 1,
+                            transform: "translateY(0)",
+                          }}
+                          transition={{
+                            duration: animationEnabled() && store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+                            delay:
+                              animationEnabled() && store.settings.userInterface.isAnimationEnabled ? index * 0.3 : 0,
+                          }}
+                          class={`Field border-dividing-color bg-primary-color flex h-16 items-center justify-center gap-1 rounded border-1 ${
+                            isMaxValue(attr().attrType, attr().attrValue) ? "text-brand-color-3rd" : ""
+                          }`}
+                        >
+                          {attrDisplayNames[attr().attrType] || attr().attrType} + {attr().attrValue}
+                          {isMaxValue(attr().attrType, attr().attrValue) && (
+                            <span class="text-brand-color-3rd ml-1">✨</span>
+                          )}
+                        </Motion.div>
+                      );
+                    }}
+                  </Index>
+                )}
+              </Show>
+            </div>
+          </Show>
           <div class="ControlArea flex gap-1">
             <Button icon={<Icons.Outline.Chart />} onClick={() => setDisplayHistory(!displayHistory())}></Button>
             <Button
-              icon={<Icons.Outline.Flag />}
               class="w-full"
               onClick={() => {
                 // 启用动画
@@ -490,7 +553,8 @@ export default function AvatarMachinePage() {
               }}
               disabled={animationEnabled()}
             >
-              再来一发
+              <Icons.Outline.Flag />
+              {history().length > 0 ? `[${history().length}]   再来一发` : "生成属性"}
             </Button>
           </div>
         </div>
@@ -508,20 +572,30 @@ export default function AvatarMachinePage() {
             >
               <Card title="属性详情" index={0} total={1} display={displayHistory()}>
                 <For each={history()}>
-                  {(item) => {
+                  {(item, index) => {
                     return (
-                      <div class="Field bg-primary-color border-dividing-color flex h-16 flex-col items-center justify-center gap-1 rounded border-1">
-                        <For each={Object.values(item)}>
-                          {(item, index) => {
-                            return (
-                              <div
-                                class={`Field bg-primary-color border-dividing-color flex h-16 items-center justify-center gap-1 ${index() === 0 ? "" : "border-t-1"}`}
-                              >
-                                {attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
-                              </div>
-                            );
-                          }}
-                        </For>
+                      <div class="Field bg-primary-color border-dividing-color flex rounded border-1">
+                        <div class="SerialNumber grid w-12 place-items-center border-dividing-color border-r-1">
+                          {index() + 1}
+                        </div>
+                        <div class="Attrs w-full flex flex-col gap-1">
+                          <For each={Object.values(item)}>
+                            {(item, index) => {
+                              return (
+                                <div
+                                  class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t-1"} ${
+                                    isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
+                                  }`}
+                                >
+                                  {attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
+                                  {isMaxValue(item.attrType, item.attrValue) && (
+                                    <span class="text-brand-color-3rd ml-1">✨</span>
+                                  )}
+                                </div>
+                              );
+                            }}
+                          </For>
+                        </div>
                       </div>
                     );
                   }}
