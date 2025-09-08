@@ -1,5 +1,4 @@
-import { onMount } from "solid-js/types/reactive/signal.js";
-import { ParentProps } from "solid-js/types/render/component.js";
+import { onMount, type ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons";
