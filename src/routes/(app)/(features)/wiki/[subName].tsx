@@ -210,16 +210,18 @@ export default function WikiSubPage() {
                     }}
                   />
                   <div class="FunctionGroup flex">
-                    <Button // 仅移动端显示
-                      size="sm"
-                      icon={<Icons.Outline.CloudUpload />}
-                      class="flex bg-transparent lg:hidden"
-                      onClick={() => {
-                        setWikiStore("form", {
-                          isOpen: true,
-                        });
-                      }}
-                    ></Button>
+                    <Show when={store.session.user.id}>
+                      <Button // 仅移动端显示
+                        size="sm"
+                        icon={<Icons.Outline.CloudUpload />}
+                        class="flex bg-transparent lg:hidden"
+                        onClick={() => {
+                          setWikiStore("form", {
+                            isOpen: true,
+                          });
+                        }}
+                      ></Button>
+                    </Show>
                     <Button // 仅移动端显示
                       size="sm"
                       icon={<Icons.Outline.InfoCircle />}
@@ -405,14 +407,12 @@ export default function WikiSubPage() {
                 exit={{ opacity: 0, transform: "translateX(-50%)" }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
               >
-                <Show when={store.session.user.id}>
-                  <Button
-                    size="sm"
-                    class="bg-transparent"
-                    icon={<Icons.Outline.Swap />}
-                    onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
-                  ></Button>
-                </Show>
+                <Button
+                  size="sm"
+                  class="bg-transparent"
+                  icon={<Icons.Outline.Swap />}
+                  onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
+                ></Button>
                 <input
                   id="filterInput"
                   type="text"

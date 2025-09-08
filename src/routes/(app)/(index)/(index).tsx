@@ -37,6 +37,7 @@ import { DBDataConfig } from "../(features)/wiki/dataConfig/dataConfig";
 import { searchAllTables } from "~/routes/(app)/(index)/search";
 import { setWikiStore, wikiStore } from "../(features)/wiki/store";
 import { getCardDatas } from "~/lib/utils/cardDataCache";
+import { Sheet } from "~/components/containers/sheet";
 
 type Result = DB[keyof DB];
 
@@ -57,24 +58,44 @@ export default function IndexPage() {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
 
-  // 页面附加功能（右上角按钮组）配置
-  const [extraFunctionConfig] = createSignal<
+  // 小工具菜单配置
+  const [toolMenuConfig] = createSignal<
     {
       onClick: () => void;
       icon: JSX.Element;
+      name: string;
     }[]
-    >([{
+  >([
+    {
       onClick: () => {
         navigate("logicEditor");
       },
       icon: <Icons.Outline.Box2 />,
+      name: "逻辑编辑器",
     },
     {
       onClick: () => {
         navigate("queryBuilder");
       },
       icon: <Icons.Outline.Basketball />,
+      name: "查询构建器",
     },
+    {
+      onClick: () => {
+        navigate("avatarMachine");
+      },
+      icon: <Icons.Outline.Flag />,
+      name: "非酋测试机",
+    },
+  ]);
+
+  // 页面附加功能（右上角按钮组）配置
+  const [extraFunctionConfig] = createSignal<
+    {
+      onClick: () => void;
+      icon: JSX.Element;
+    }[]
+  >([
     {
       onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
       icon: <Icons.Outline.Light />,
@@ -301,22 +322,30 @@ export default function IndexPage() {
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
       >
-        {/* 右上角控件 */}
+        {/* 顶部工具栏 */}
         <div
-          class={`Config absolute top-3 right-3 flex gap-1 duration-700! ${context().searchResultOpened ? `z-0 opacity-0` : `z-10 opacity-100`}`}
+          class={`Config absolute top-6 left-6 flex w-[calc(100%-3rem)] justify-between gap-1 ${context().searchResultOpened ? `z-0 opacity-0` : `z-10 opacity-100`}`}
         >
-          <For each={extraFunctionConfig()}>
-            {(config, index) => {
-              return (
-                <Button
-                  class="outline-hidden focus-within:outline-hidden"
-                  level="quaternary"
-                  onClick={config.onClick}
-                  icon={config.icon}
-                ></Button>
-              );
-            }}
-          </For>
+          <Button
+            class="outline-hidden focus-within:outline-hidden"
+            level="quaternary"
+            onClick={() => send({ type: "TOGGLE_TOOL_MENU" })}
+            icon={<Icons.Outline.Burger />}
+          ></Button>
+          <div class="RightFun flex gap-1">
+            <For each={extraFunctionConfig()}>
+              {(config, index) => {
+                return (
+                  <Button
+                    class="outline-hidden focus-within:outline-hidden"
+                    level="quaternary"
+                    onClick={config.onClick}
+                    icon={config.icon}
+                  ></Button>
+                );
+              }}
+            </For>
+          </div>
         </div>
 
         {/* 顶部 */}
@@ -369,7 +398,7 @@ export default function IndexPage() {
             transition={{
               duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
               delay: 0.3,
-             }}
+            }}
             class={`FunctionBox flex w-full flex-col justify-center landscape:flex-row landscape:justify-between`}
           >
             <div
@@ -716,6 +745,28 @@ export default function IndexPage() {
           </Show>
         </Presence>
       </Portal>
+
+      {/* 小工具菜单 */}
+      <Sheet state={context().toolMenuIsOpen} setState={() => send({ type: "TOGGLE_TOOL_MENU" })}>
+        <div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
+          <Index each={toolMenuConfig()}>
+            {(config, index) => {
+              return (
+                <div class="ButtonContainer bg-area-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded">
+                  <Button
+                    class="outline-hidden focus-within:outline-hidden"
+                    level="quaternary"
+                    onClick={config().onClick}
+                    icon={config().icon}
+                  ></Button>
+                  <span>{config().name}</span>
+                </div>
+              );
+            }}
+          </Index>
+        </div>
+      </Sheet>
+
       <Filing />
       <LoginDialog state={() => context().loginDialogIsOpen} setState={() => handleCloseLoginDialog()} />
     </MetaProvider>

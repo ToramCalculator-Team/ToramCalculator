@@ -22,10 +22,10 @@ export function Sheet(props: { children: JSX.Element; state: boolean; setState: 
     <Presence exitBeforeEnter>
       <Show when={props.state}>
         <Motion.div
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          animate={{ opacity: [0, 1] }}
+          exit={{ opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SheetBox bg-primary-color-90 fixed flex top-0 left-0 w-dvw h-dvh z-50 opacity-0`}
+          class={`SheetBox bg-primary-color-90 fixed flex top-0 left-0 w-dvw h-dvh z-50`}
         >
           <div class="SheetBg bg-area-color flex h-full w-full flex-col justify-center landscape:flex-row">
             <div class={`SheetCloseBtn block flex-1 cursor-pointer backdrop-blur-xl`} onClick={handleClose}></div>

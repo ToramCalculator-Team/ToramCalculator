@@ -1300,7 +1300,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
     },
 
     anticipate: {
-      displayName: "看穿",
+      displayName: "识破",
       expression: "0",
       noBaseValue: true,
     },

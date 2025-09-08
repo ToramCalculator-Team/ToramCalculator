@@ -62,6 +62,16 @@ export const OutlineIcons = {
     );
   },
 
+  Burger: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path d="M20 6L4 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M20 12L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M20 18H4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+    );
+  },
+
   Calculactor: (props: JSX.IntrinsicElements["svg"]) => {
     return (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -147,6 +157,23 @@ export const OutlineIcons = {
         <rect x="4" y="11.5" width="7" height="10" rx="2.5" stroke="currentColor" stroke-width="1.5" />
         <rect x="14" y="4.5" width="7" height="10" rx="2.5" stroke="currentColor" stroke-width="1.5" />
         <rect x="14" y="17.5" width="7" height="4" rx="2" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+    );
+  },
+
+  Chart: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="1.5" />
+        <path d="M8 17L8 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M12 17L12 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <path
+          d="M16 17L16 10"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
       </svg>
     );
   },

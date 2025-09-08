@@ -30,6 +30,7 @@ export interface IndexPageContext {
   // UI 状态
   searchResultOpened: boolean;     // 是否显示搜索结果面板
   loginDialogIsOpen: boolean;      // 登录对话框是否打开
+  toolMenuIsOpen: boolean;         // 小工具菜单是否打开
   
   // 动画相关状态
   isAnimationEnabled: boolean;     // 是否启用动画效果
@@ -53,6 +54,7 @@ export type IndexPageEvent =
   | { type: 'UPDATE_RESULT_LIST_STATE'; resultListState: boolean[] }  // 更新结果列表状态
   | { type: 'OPEN_LOGIN_DIALOG' }                   // 打开登录对话框
   | { type: 'CLOSE_LOGIN_DIALOG' }                  // 关闭登录对话框
+  | { type: 'TOGGLE_TOOL_MENU' }                    // 切换小工具菜单显示
   | { type: 'TOGGLE_ANIMATION' }                    // 切换动画开关
   | { type: 'RESET' };                              // 重置所有状态
 
@@ -79,6 +81,7 @@ export const indexPageMachine = createMachine({
     resultListState: [],
     searchResultOpened: false,
     loginDialogIsOpen: false,
+    toolMenuIsOpen: false,
     isAnimationEnabled: true,
     error: null,
   } as IndexPageContext,
@@ -120,20 +123,6 @@ export const indexPageMachine = createMachine({
           target: 'searching',
         },
         
-        // 打开登录对话框事件
-        OPEN_LOGIN_DIALOG: {
-          actions: assign({
-            loginDialogIsOpen: true,
-          }),
-        },
-        
-        // 切换动画设置事件
-        TOGGLE_ANIMATION: {
-          actions: assign({
-            // 取反当前值
-            isAnimationEnabled: ({ context }) => !context.isAnimationEnabled,
-          }),
-        },
       },
     },
 
@@ -299,19 +288,6 @@ export const indexPageMachine = createMachine({
           ],
         },
         
-        // 打开登录对话框
-        OPEN_LOGIN_DIALOG: {
-          actions: assign({
-            loginDialogIsOpen: true,
-          }),
-        },
-        
-        // 切换动画设置
-        TOGGLE_ANIMATION: {
-          actions: assign({
-            isAnimationEnabled: ({ context }) => !context.isAnimationEnabled,
-          }),
-        },
       },
     },
 
@@ -372,10 +348,31 @@ export const indexPageMachine = createMachine({
    * 这些事件不依赖于当前状态，可以在任何时候触发
    */
   on: {
+    // 打开登录对话框
+    OPEN_LOGIN_DIALOG: {
+      actions: assign({
+        loginDialogIsOpen: true,
+      }),
+    },
+    
     // 关闭登录对话框
     CLOSE_LOGIN_DIALOG: {
       actions: assign({
         loginDialogIsOpen: false,
+      }),
+    },
+    
+    // 切换小工具菜单显示状态
+    TOGGLE_TOOL_MENU: {
+      actions: assign({
+        toolMenuIsOpen: ({ context }) => !context.toolMenuIsOpen,
+      }),
+    },
+    
+    // 切换动画设置
+    TOGGLE_ANIMATION: {
+      actions: assign({
+        isAnimationEnabled: ({ context }) => !context.isAnimationEnabled,
       }),
     },
   },
