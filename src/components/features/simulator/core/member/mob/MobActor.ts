@@ -51,6 +51,13 @@ interface MobSkillAnimationEndEvent extends EventObject {
   type: "skill_animation_end";
   data: { skillId: string };
 }
+interface 收到快照请求事件 extends EventObject {
+  type: "收到快照请求事件";
+}
+interface 收到技能 extends EventObject {
+  type: "收到技能";
+  data: { targetId: string };
+}
 type MobEventType =
   | MemberEventType
   | MobCastEndEvent
@@ -60,7 +67,9 @@ type MobEventType =
   | MobControlEndEvent
   | MobSkillPressEvent
   | MobCheckAvailabilityEvent
-  | MobSkillAnimationEndEvent;
+  | MobSkillAnimationEndEvent
+  | 收到快照请求事件
+  | 收到技能;
 
 export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrType, MobEventType> => {
   const machineId = member.id;
@@ -74,7 +83,7 @@ export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrTy
     actions: {
       // 初始化 Mob 的基础上下文
       initializeMobState: assign({
-        rs: ({ context }) => context.statContainer,
+        statContainer: ({ context }) => context.statContainer,
         engine: ({ context }) => context.engine,
         id: ({ context }) => context.id,
         campId: ({ context }) => context.campId,

@@ -10,27 +10,55 @@ import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
  * Player特有的事件类型
  * 扩展MemberEventType，包含Player特有的状态机事件
  */
-// 技能按下
-interface 受到控制 extends EventObject {
-  type: "受到控制";
-  data: { origin: string; skillId: string };
+interface 复活 extends EventObject {
+  type: "复活";
 }
-interface 受到致命伤害 extends EventObject {
-  type: "受到致命伤害";
-  data: { origin: string; skillId: string };
-}
-interface 控制时间结束 extends EventObject {
-  type: "控制时间结束";
-}
-interface 复活倒计时清零 extends EventObject {
-  type: "复活倒计时清零";
+interface 移动 extends EventObject {
+  type: "移动";
 }
 interface 使用技能 extends EventObject {
   type: "使用技能";
   data: { target: string; skillId: string };
 }
+interface 使用格挡 extends EventObject {
+  type: "使用格挡";
+}
+interface 使用闪躲 extends EventObject {
+  type: "使用闪躲";
+}
+interface 闪躲持续时间结束 extends EventObject {
+  type: "闪躲持续时间结束";
+}
+interface 停止移动 extends EventObject {
+  type: "停止移动";
+}
+interface 受到控制 extends EventObject {
+  type: "受到控制";
+  data: { origin: string; skillId: string };
+}
+interface 收到异常抵抗结果 extends EventObject {
+  type: "收到异常抵抗结果";
+  data: { origin: string; skillId: string };
+}
+interface 死亡事件 extends EventObject {
+  type: "死亡事件";
+  data: { origin: string; skillId: string };
+}
+interface 结束格挡 extends EventObject {
+  type: "结束格挡";
+}
+interface 控制时间结束 extends EventObject {
+  type: "控制时间结束";
+}
+interface 不可操作时长结束 extends EventObject {
+  type: "不可操作时长结束";
+}
 interface 收到前摇结束通知 extends EventObject {
   type: "收到前摇结束通知";
+  data: { skillId: string };
+}
+interface 收到咏唱结束事件 extends EventObject {
+  type: "收到咏唱结束事件";
   data: { skillId: string };
 }
 interface 收到蓄力结束通知 extends EventObject {
@@ -41,24 +69,35 @@ interface 收到后摇结束通知 extends EventObject {
   type: "收到后摇结束通知";
   data: { skillId: string };
 }
-interface 移动 extends EventObject {
-  type: "移动";
+interface 收到快照请求事件 extends EventObject {
+  type: "收到快照请求事件";
 }
-interface 停止 extends EventObject {
-  type: "停止";
+interface 收到技能 extends EventObject {
+  type: "收到技能";
+  data: { targetId: string };
 }
+
 type PlayerEventType =
   | MemberEventType
-  | 停止
+  | 复活
   | 移动
+  | 停止移动
   | 使用技能
+  | 使用格挡
+  | 结束格挡
+  | 使用闪躲
+  | 闪躲持续时间结束
   | 受到控制
-  | 受到致命伤害
+  | 不可操作时长结束
+  | 收到异常抵抗结果
+  | 死亡事件
   | 控制时间结束
-  | 复活倒计时清零
   | 收到前摇结束通知
   | 收到蓄力结束通知
-  | 收到后摇结束通知;
+  | 收到咏唱结束事件
+  | 收到快照请求事件
+  | 收到后摇结束通知
+  | 收到技能;
 
 // 从 XState 导入必要的类型
 import type { ActionFunction } from "xstate";
@@ -111,71 +150,29 @@ export const playerActions = {
       (globalThis as any).__SIM_RENDER__?.(spawnCmd);
     }
   },
-  休息动画: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 休息动画`, event);
+  启用站立动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用站立动画`, event);
   },
-  前摇动画: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 前摇动画`, event);
+  启用移动动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用移动动画`, event);
   },
-  扣除技能消耗: enqueueActions(({ context, event, enqueue }) => {
-    const e = event as 使用技能;
-    const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-      return;
-    }
-
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
-      return;
-    }
-
-    enqueue.assign({
-      currentSkillEffect: effect,
-    });
-
-    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-
-    context.statContainer.addModifiers([
-      {
-        attr: "hp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -hpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-      {
-        attr: "mp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -mpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-    ]);
-    console.log(
-      `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
-    );
-  }),
-  写入前摇结束通知事件: function ({ context, event }) {
+  启用前摇动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用前摇动画`, event);
+  },
+  计算前摇时长: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 计算前摇时长`, event);
+  },
+  创建前摇结束通知: function ({ context, event }) {
+    // Add your action code here
+    // ...
     console.log("🎮 写入前摇结束通知事件", event);
 
     const e = event as 收到前摇结束通知;
@@ -256,23 +253,126 @@ export const playerActions = {
       `👤 [${context.name}] 前摇开始，${startupFrames}帧后结束 (当前帧: ${currentFrame}, 目标帧: ${targetFrame})`,
     );
   },
-  蓄力动画: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 蓄力动画`, event);
+  启用蓄力动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用蓄力动画`, event);
   },
-  写入蓄力结束通知事件: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 写入蓄力结束通知事件`, event);
+  计算蓄力时长: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 计算蓄力时长`, event);
   },
-  后摇动画: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 后摇动画`, event);
+  创建蓄力结束通知: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 创建蓄力结束通知`, event);
   },
-  写入后摇结束通知事件: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 写入后摇结束通知事件`, event);
+  启用咏唱动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用咏唱动画`, event);
   },
-  在当前帧写入技能效果事件: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 在当前帧写入技能效果事件`, event);
+  计算咏唱时长: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 计算咏唱时长`, event);
   },
-  重置角色状态: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 重置角色状态`, event);
+  创建咏唱结束通知: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 创建咏唱结束通知`, event);
+  },
+  启用技能发动动画: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 启用技能发动动画`, event);
+  },
+  计算发动时长: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 计算发动时长`, event);
+  },
+  创建发动结束通知: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 创建发动结束通知`, event);
+  },
+  技能消耗执行管线: enqueueActions(({ context, event, enqueue }) => {
+    const e = event as 使用技能;
+    const skillId = e.data.skillId;
+    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+
+    const skill = context.skillList.find((s) => s.id === skillId);
+    if (!skill) {
+      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+      return;
+    }
+
+    const effect = skill.template?.effects.find((e) => {
+      const result = context.engine.evaluateExpression(e.condition, {
+        currentFrame,
+        casterId: context.id,
+        skillLv: skill?.lv ?? 0,
+      });
+      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+      return !!result; // 明确返回布尔值进行比较
+    });
+    if (!effect) {
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+      return;
+    }
+
+    enqueue.assign({
+      currentSkillEffect: effect,
+    });
+
+    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
+      currentFrame,
+      casterId: context.id,
+      skillLv: skill?.lv ?? 0,
+    });
+    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
+      currentFrame,
+      casterId: context.id,
+      skillLv: skill?.lv ?? 0,
+    });
+
+    context.statContainer.addModifiers([
+      {
+        attr: "hp.current",
+        targetType: ModifierType.STATIC_FIXED,
+        value: -hpCost,
+        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+      },
+      {
+        attr: "mp.current",
+        targetType: ModifierType.STATIC_FIXED,
+        value: -mpCost,
+        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+      },
+    ]);
+    console.log(
+      `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+    );
+  }),
+  技能效果管线: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 技能效果管线`, event);
+  },
+  中断当前行为: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 中断当前行为`, event);
+  },
+  重置状态: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 重置状态`, event);
+  },
+  logEvent: function ({ context, event }) {
+    console.log(`👤 [${context.name}] 日志事件`, event);
   },
 } as const satisfies Record<
   string,
@@ -280,7 +380,86 @@ export const playerActions = {
 >;
 
 export const playerGuards = {
-  没有可用效果: function ({ context, event }) {
+  技能带有心眼: function ({ context, event }) {
+    return true;
+  },
+  技能没有心眼: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  存在蓄力阶段: function ({ context, event }) {
+    console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
+
+    const effect = context.currentSkillEffect;
+    if (!effect) {
+      console.error(`👤 [${context.name}] 技能效果不存在`);
+      return false;
+    }
+
+    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+
+    // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
+    const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+      currentFrame,
+      casterId: context.id,
+    });
+    const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+      currentFrame,
+      casterId: context.id,
+    });
+
+    // 咏唱阶段相关属性
+    const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+      currentFrame,
+      casterId: context.id,
+    });
+    const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
+      currentFrame,
+      casterId: context.id,
+    });
+
+    const chargeType = reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段";
+    const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段";
+
+    // 使用字符串拼接来创建唯一标识符
+    const actionType = `${chargeType}_${chantingType}`;
+
+    switch (actionType) {
+      case "有蓄力阶段_有咏唱阶段":
+        console.log(`👤 [${context.name}] 技能有蓄力阶段和咏唱阶段`);
+        return true;
+      case "有蓄力阶段_没有咏唱阶段":
+        console.log(`👤 [${context.name}] 技能有蓄力阶段，没有咏唱阶段`);
+        return true;
+      case "没有蓄力阶段_有咏唱阶段":
+        console.log(`👤 [${context.name}] 技能没有蓄力阶段，有咏唱阶段`);
+        return true;
+      case "没有蓄力动作_没有咏唱动作":
+        console.log(`👤 [${context.name}] 技能没有蓄力阶段，没有咏唱阶段`);
+        return false;
+      default:
+        console.log(`👤 [${context.name}] 技能没有蓄力阶段和没有咏唱阶段`);
+        return false;
+    }
+  },
+  存在咏唱阶段: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  存在后续连击: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  目标不抵抗此技能的控制效果: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  目标抵抗此技能的控制效果: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  没有可用技能效果: function ({ context, event }) {
+    // Add your guard condition here
     const e = event as 使用技能;
     const skillId = e.data.skillId;
     const currentFrame = context.engine.getFrameLoop().getFrameNumber();
@@ -364,7 +543,7 @@ main();`,
     );
     return false;
   },
-  技能未冷却: function ({ context, event }) {
+  还未冷却: function ({ context, event }) {
     const e = event as 使用技能;
     const res = context.skillCooldowns[context.currentSkillIndex];
     if (res == undefined) {
@@ -378,7 +557,7 @@ main();`,
     console.log(`该技能未冷却，剩余冷却时间：${res}`);
     return true;
   },
-  不满足施法消耗: function ({ context, event }) {
+  施法资源不足: function ({ context, event }) {
     // 此守卫通过后说明技能可发动，则更新当前技能数据
     const e = event as 使用技能;
     const skillId = e.data.skillId;
@@ -423,63 +602,8 @@ main();`,
     console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
     return false;
   },
-  有蓄力动作: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 判断技能是否有蓄力动作`, event);
-
-    const effect = context.currentSkillEffect;
-    if (!effect) {
-      console.error(`👤 [${context.name}] 技能效果不存在`);
-      return false;
-    }
-
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    // 蓄力动作相关属性（假设使用chargeFixed和chargeModified）
-    const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-    const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-
-    // 咏唱动作相关属性
-    const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-    const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-
-    const chargeType = reservoirFixed + reservoirModified > 0 ? "有蓄力动作" : "没有蓄力动作";
-    const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱动作" : "没有咏唱动作";
-
-    // 使用字符串拼接来创建唯一标识符
-    const actionType = `${chargeType}_${chantingType}`;
-
-    switch (actionType) {
-      case "有蓄力动作_有咏唱动作":
-        console.log(`👤 [${context.name}] 技能有蓄力动作和咏唱动作`);
-        return true;
-      case "有蓄力动作_没有咏唱动作":
-        console.log(`👤 [${context.name}] 技能有蓄力动作，没有咏唱动作`);
-        return true;
-      case "没有蓄力动作_有咏唱动作":
-        console.log(`👤 [${context.name}] 技能没有蓄力动作，有咏唱动作`);
-        return true;
-      case "没有蓄力动作_没有咏唱动作":
-        console.log(`👤 [${context.name}] 技能没有蓄力动作，没有咏唱动作`);
-        return false;
-      default:
-        console.log(`👤 [${context.name}] 技能没有蓄力动作和没有咏唱动作`);
-        return false;
-    }
-  },
-  没有后续技能: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 判断技能是否没有后续技能`, event);
+  可以执行: function ({ context, event }) {
+    // Add your guard condition here
     return true;
   },
 } as const satisfies Record<string, GuardPredicate<PlayerStateContext, PlayerEventType, any, any>>;
@@ -515,9 +639,11 @@ export const playerStateMachine = (player: Player) => {
       存活: {
         initial: "可操作状态",
         on: {
-          受到致命伤害: {
+          死亡事件: {
             target: "死亡",
           },
+          接受外部消息: {},
+          收到快照请求事件: {},
         },
         description: "玩家存活状态，此时可操作且可影响上下文",
         states: {
@@ -526,124 +652,240 @@ export const playerStateMachine = (player: Player) => {
             on: {
               受到控制: {
                 target: "控制类异常状态",
+                actions: {
+                  type: "中断当前行为",
+                },
               },
             },
             description: "可响应输入操作",
             states: {
               空闲状态: {
+                initial: "静止",
                 on: {
-                  移动: {
-                    target: "移动中",
+                  使用格挡: {
+                    target: "格挡状态",
+                  },
+                  使用闪躲: {
+                    target: "闪躲中",
                   },
                   使用技能: {
-                    target: "判断技能可用性",
+                    target: "技能处理状态",
                   },
                 },
-                entry: {
-                  type: "休息动画",
+                states: {
+                  静止: {
+                    on: {
+                      移动: {
+                        target: "移动中",
+                      },
+                    },
+                    entry: {
+                      type: "启用站立动画",
+                    },
+                  },
+                  移动中: {
+                    on: {
+                      停止移动: {
+                        target: "静止",
+                      },
+                    },
+                    entry: {
+                      type: "启用移动动画",
+                    },
+                  },
                 },
               },
-              移动中: {
+              格挡状态: {
                 on: {
-                  停止: {
+                  结束格挡: {
                     target: "空闲状态",
                   },
                 },
               },
-              判断技能可用性: {
-                always: [
-                  {
-                    target: `#${machineId}.存活.控制类异常状态`,
-                    guard: {
-                      type: "没有可用效果",
-                    },
+              闪躲中: {
+                on: {
+                  闪躲持续时间结束: {
+                    target: "空闲状态",
                   },
-                  {
-                    target: `#${machineId}.存活.控制类异常状态`,
-                    guard: {
-                      type: "技能未冷却",
-                    },
-                  },
-                  {
-                    target: `#${machineId}.存活.控制类异常状态`,
-                    guard: {
-                      type: "不满足施法消耗",
-                    },
-                  },
-                  {
-                    target: "发动技能中",
-                  },
-                ],
+                },
               },
-              发动技能中: {
-                initial: "前摇",
+              技能处理状态: {
+                initial: "技能初始化",
                 states: {
-                  前摇: {
-                    on: {
-                      收到前摇结束通知: [
-                        {
-                          target: "蓄力动作",
-                          guard: {
-                            type: "有蓄力动作",
-                          },
-                        },
-                        {
-                          target: "后摇",
-                        },
-                      ],
-                    },
-                    entry: [
+                  技能初始化: {
+                    always: [
                       {
-                        type: "前摇动画",
+                        target: "等待目标异常抵抗状态检测结果",
+                        guard: {
+                          type: "技能带有心眼",
+                        },
                       },
                       {
-                        type: "扣除技能消耗",
-                      },
-                      {
-                        type: "写入前摇结束通知事件",
+                        target: "技能可用性检测",
+                        guard: {
+                          type: "技能没有心眼",
+                        },
                       },
                     ],
                   },
-                  蓄力动作: {
+                  等待目标异常抵抗状态检测结果: {
                     on: {
-                      收到蓄力结束通知: {
-                        target: "后摇",
-                      },
-                    },
-                    entry: [
-                      {
-                        type: "蓄力动画",
-                      },
-                      {
-                        type: "写入蓄力结束通知事件",
-                      },
-                    ],
-                  },
-                  后摇: {
-                    on: {
-                      收到后摇结束通知: [
+                      收到异常抵抗结果: [
                         {
-                          target: `#${machineId}.存活.可操作状态.空闲状态`,
+                          target: "技能可用性检测",
                           guard: {
-                            type: "没有后续技能",
+                            type: "目标不抵抗此技能的控制效果",
                           },
                         },
                         {
-                          target: `#${machineId}.存活.可操作状态.判断技能可用性`,
+                          target: `#${machineId}.存活.警告状态`,
+                          guard: {
+                            type: "目标抵抗此技能的控制效果",
+                          },
                         },
                       ],
                     },
-                    entry: [
+                  },
+                  技能可用性检测: {
+                    always: [
                       {
-                        type: "后摇动画",
+                        target: `#${machineId}.存活.警告状态`,
+                        guard: {
+                          type: "没有可用技能效果",
+                        },
                       },
                       {
-                        type: "写入后摇结束通知事件",
+                        target: `#${machineId}.存活.警告状态`,
+                        guard: {
+                          type: "还未冷却",
+                        },
                       },
                       {
-                        type: "在当前帧写入技能效果事件",
+                        target: `#${machineId}.存活.警告状态`,
+                        guard: {
+                          type: "施法资源不足",
+                        },
+                      },
+                      {
+                        target: "执行技能中",
+                        actions: {
+                          type: "技能消耗执行管线",
+                        },
+                        guard: {
+                          type: "可以执行",
+                        },
                       },
                     ],
+                  },
+                  执行技能中: {
+                    initial: "前摇中",
+                    states: {
+                      前摇中: {
+                        on: {
+                          收到前摇结束事件: [
+                            {
+                              target: "蓄力中",
+                              guard: {
+                                type: "存在蓄力阶段",
+                              },
+                            },
+                            {
+                              target: "咏唱中",
+                              guard: {
+                                type: "存在咏唱阶段",
+                              },
+                            },
+                            {
+                              target: "发动中",
+                            },
+                          ],
+                        },
+                        entry: [
+                          {
+                            type: "启用前摇动画",
+                          },
+                          {
+                            type: "计算前摇时长",
+                          },
+                          {
+                            type: "创建前摇结束通知",
+                          },
+                        ],
+                      },
+                      蓄力中: {
+                        on: {
+                          收到蓄力结束事件: [
+                            {
+                              target: "咏唱中",
+                              guard: {
+                                type: "存在咏唱阶段",
+                              },
+                            },
+                            {
+                              target: "发动中",
+                            },
+                          ],
+                        },
+                        entry: [
+                          {
+                            type: "启用蓄力动画",
+                          },
+                          {
+                            type: "计算蓄力时长",
+                          },
+                          {
+                            type: "创建蓄力结束通知",
+                          },
+                        ],
+                      },
+                      咏唱中: {
+                        on: {
+                          收到咏唱结束事件: {
+                            target: "发动中",
+                          },
+                        },
+                        entry: [
+                          {
+                            type: "启用咏唱动画",
+                          },
+                          {
+                            type: "计算咏唱时长",
+                          },
+                          {
+                            type: "创建咏唱结束通知",
+                          },
+                        ],
+                      },
+                      发动中: {
+                        on: {
+                          收到后摇结束通知: [
+                            {
+                              target: `#${machineId}.存活.可操作状态.技能处理状态`,
+                              guard: {
+                                type: "存在后续连击",
+                              },
+                            },
+                            {
+                              target: `#${machineId}.存活.可操作状态.空闲状态`,
+                            },
+                          ],
+                        },
+                        entry: [
+                          {
+                            type: "启用技能发动动画",
+                          },
+                          {
+                            type: "计算发动时长",
+                          },
+                          {
+                            type: "创建发动结束通知",
+                          },
+                          {
+                            type: "技能效果管线",
+                          },
+                        ],
+                      },
+                    },
                   },
                 },
               },
@@ -656,18 +898,25 @@ export const playerStateMachine = (player: Player) => {
               },
             },
           },
+          警告状态: {
+            on: {
+              不可操作时长结束: {
+                target: "可操作状态",
+              },
+            },
+          },
         },
       },
       死亡: {
         on: {
-          复活倒计时清零: {
+          复活: {
             target: `#${machineId}.存活.可操作状态`,
             actions: {
-              type: "重置角色状态",
+              type: "重置状态",
             },
           },
         },
-        description: "不可操作，中断当前行为，且移出上下文",
+        description: "不可操作，中断当前行为",
       },
     },
   });
