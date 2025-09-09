@@ -46,12 +46,17 @@ export const ServiceWorkerManager = () => {
     setLocalSwConfig({ ...store.sw });
   });
 
-  // 配置变更处理
+  // 配置变更处理（精简：启停直接走指令；间隔通过 setConfig 下发）
   const handleSwConfigChange = (key: keyof typeof store.sw, value: any) => {
     setStore("sw", key, value);
-    // 可选：通过 swClient 通知 SW 配置变更（需确保 setConfig 存在）
-    if (typeof swClient.setConfig === "function") {
-      swClient.setConfig({ ...store.sw, [key]: value });
+    if (key === "periodicCheckEnabled") {
+      if (value) swClient.startPeriodicCheck();
+      else swClient.stopPeriodicCheck();
+    } else if (key === "periodicCheckInterval") {
+      swClient.setConfig({ periodicCheckInterval: value });
+      swClient.getCheckStatus();
+    } else if (key === "cacheStrategy") {
+      swClient.setConfig({ cacheStrategy: value });
     }
   };
 
@@ -59,22 +64,77 @@ export const ServiceWorkerManager = () => {
     try {
       setIsLoading(true);
 
-      // 检查Service Worker是否可用
       const available = "serviceWorker" in navigator;
       setIsAvailable(available);
 
       if (available) {
-        // 获取初始状态
-        const initialState = swClient.getState();
-        setState(initialState ?? defaultSWContext); // 明确兜底
-
-        // 订阅状态变化
-        const subscription = swClient.subscribe((newState: SWContext) => {
-          setState(newState ?? defaultSWContext);
+        // 订阅 SW 消息流（返回取消订阅函数）
+        const unsubscribe = swClient.subscribe((msg: any) => {
+          if (!msg || !msg.type) return;
+          switch (msg.type) {
+            case "CHECK_STATUS": {
+              setState((prev) => ({
+                ...prev,
+                periodicCheck: {
+                  ...prev.periodicCheck,
+                  isRunning: !!msg.data?.isRunning,
+                  lastCheckTime: msg.data?.lastCheckTime ?? prev.periodicCheck.lastCheckTime,
+                  currentInterval: msg.data?.currentInterval ?? prev.periodicCheck.currentInterval,
+                  nextCheckTime: msg.data?.nextCheckTime ?? prev.periodicCheck.nextCheckTime,
+                  consecutiveFailures: prev.periodicCheck.consecutiveFailures,
+                },
+              }));
+              break;
+            }
+            case "VERSION_STATUS": {
+              setState((prev) => ({
+                ...prev,
+                cacheStatus: {
+                  ...prev.cacheStatus,
+                  manifestVersion: msg.data?.version ?? prev.cacheStatus.manifestVersion,
+                  lastUpdate: new Date().toISOString(),
+                },
+              }));
+              break;
+            }
+            case "CACHE_UPDATED":
+            case "FORCE_UPDATE_COMPLETED":
+            case "CACHE_CLEARED":
+            case "PERIODIC_CHECK_COMPLETED":
+            case "PERIODIC_CHECK_FAILED": {
+              swClient.getVersionStatus();
+              swClient.getCheckStatus();
+              swClient.getCacheStatus();
+              break;
+            }
+            case "PERIODIC_CHECK_STARTED":
+            case "PERIODIC_CHECK_STOPPED": {
+              swClient.getCheckStatus();
+              swClient.getCacheStatus();
+              break;
+            }
+            case "CACHE_STATUS": {
+              setState((prev) => ({
+                ...prev,
+                cacheStatus: {
+                  ...prev.cacheStatus,
+                  core: !!msg.data?.core,
+                  assets: msg.data?.assets ? new Map(msg.data.assets) : prev.cacheStatus.assets,
+                  data: prev.cacheStatus.data,
+                  pages: prev.cacheStatus.pages,
+                },
+              }));
+              break;
+            }
+            default:
+              break;
+          }
         });
+        onCleanup(unsubscribe);
 
-        // 保存取消订阅函数
-        onCleanup(() => subscription.unsubscribe());
+        // 主动拉取当前状态
+        swClient.getVersionStatus();
+        swClient.getCheckStatus();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -303,7 +363,7 @@ export const ServiceWorkerManager = () => {
           <label class="flex items-center gap-2">
             <input
               type="checkbox"
-              checked={localSwConfig().periodicCheckEnabled}
+              checked={state().periodicCheck.isRunning}
               onInput={(e) => handleSwConfigChange("periodicCheckEnabled", e.currentTarget.checked)}
             />
             启用定期检查
@@ -314,7 +374,7 @@ export const ServiceWorkerManager = () => {
               type="number"
               min={60000}
               step={60000}
-              value={localSwConfig().periodicCheckInterval}
+              value={state().periodicCheck.currentInterval || localSwConfig().periodicCheckInterval}
               onInput={(e) => handleSwConfigChange("periodicCheckInterval", Number(e.currentTarget.value))}
             />{" "}
             毫秒

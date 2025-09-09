@@ -13,8 +13,9 @@
  * 维护：架构师/全栈/工具开发
  */
 
-// 版本号 - 用于缓存版本控制
-export const VERSION = "2.1.0";
+// 版本号与构建时间戳（由 esbuild define 注入，开发模式有回退）
+export const VERSION = (typeof __SW_VERSION__ !== 'undefined' ? __SW_VERSION__ : "dev");
+export const BUILD_TIMESTAMP = (typeof __SW_BUILD_TS__ !== 'undefined' ? __SW_BUILD_TS__ : Date.now());
 
 // 定期检查配置
 export const PERIODIC_CHECK_CONFIG = {
@@ -32,4 +33,14 @@ export const CACHE_STRATEGIES = {
   ASSETS: "assets-" + VERSION,    // 构建资源（JS、CSS、图片）
   DATA: "data-" + VERSION,        // 数据资源（API响应等）
   PAGES: "pages-" + VERSION,      // 页面缓存
+  VERSION_META: "version-meta",   // 版本元数据缓存（不包含版本号，用于跨版本比较）
+} as const;
+
+// 版本检查配置
+export const VERSION_CHECK_CONFIG = {
+  MANIFEST_URL: '/chunk-manifest.json',
+  VERSION_META_KEY: 'sw-version-meta',
+  CACHE_KEY_PREFIX: 'toram-sw-',
+  // 检查哪些字段的变化来判断是否需要更新
+  CHECK_FIELDS: ['version', 'buildTime', 'bundleInfo'] as const,
 } as const; 

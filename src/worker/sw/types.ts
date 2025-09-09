@@ -24,8 +24,27 @@ export interface SWMessage {
     | 'STOP_PERIODIC_CHECK'
     | 'IMMEDIATE_CHECK'
     | 'GET_CHECK_STATUS'
-    | 'SET_CONFIG';
+    | 'SET_CONFIG'
+    | 'GET_VERSION_STATUS'
+    | 'FORCE_VERSION_UPDATE';
   data?: any;
+}
+
+// 错误类型定义
+export interface SWError {
+  code: string;
+  message: string;
+  timestamp: number;
+  context?: any;
+}
+
+// 性能指标类型
+export interface PerformanceMetrics {
+  cacheHitRate: number;
+  averageResponseTime: number;
+  totalRequests: number;
+  failedRequests: number;
+  lastResetTime: number;
 }
 
 // 缓存状态类型
@@ -36,6 +55,12 @@ export interface CacheStatus {
   pages: Map<string, boolean>;
   manifestVersion?: string;
   lastUpdate?: string;
+  versionCheck?: {
+    isUpToDate: boolean;
+    lastCheckTime: number;
+    currentVersion?: string;
+    buildTime?: number;
+  };
 }
 
 // Service Worker 状态机上下文

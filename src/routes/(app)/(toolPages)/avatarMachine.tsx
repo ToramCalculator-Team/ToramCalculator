@@ -1,9 +1,8 @@
-import { createEffect, createMemo, createResource, createSignal, For, Index, onMount, Show } from "solid-js";
+import { createSignal, For, Index, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
 import { Card } from "~/components/containers/card";
 import { Button } from "~/components/controls/button";
-import { SchemaFlattener } from "~/components/features/simulator/core/dataSys/SchemaTypes";
 import { PlayerAttrType } from "~/components/features/simulator/core/member/player/Player";
 import Icons from "~/components/icons";
 import { store } from "~/store";
@@ -237,7 +236,7 @@ const attrsMap = {
 const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
   str: "力量",
   int: "智力",
-  vit: "体力",
+  vit: "耐力",
   agi: "敏捷",
   dex: "灵巧",
   "hp.max": "体力值",
@@ -250,13 +249,13 @@ const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
   avoid: "回避",
   "def.p": "物理防御",
   "def.m": "魔法防御",
-  aspd: "攻速",
-  cspd: "咏速",
-  "hp.recovery": "体力值自回",
-  "mp.recovery": "魔法值自回",
-  "mp.atkRegen": "攻回",
+  aspd: "攻击速度",
+  cspd: "咏唱速度",
+  "hp.recovery": "体力值自然回复",
+  "mp.recovery": "魔法值自然回复",
+  "mp.atkRegen": "攻击魔法回复",
   "c.rate.p": "暴击率",
-  "c.dmg.p": "爆伤",
+  "c.dmg.p": "暴击伤害",
   antiVirus: "异常抗性",
   "guard.recharge": "格挡回复",
   "guard.power": "格挡力",
@@ -570,15 +569,15 @@ export default function AvatarMachinePage() {
               class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
               onClick={() => setDisplayHistory(false)}
             >
-              <Card title="属性详情" index={0} total={1} display={displayHistory()}>
+              <Card title="剪刀历史记录" index={0} total={1} display={displayHistory()}>
                 <For each={history()}>
                   {(item, index) => {
                     return (
                       <div class="Field bg-primary-color border-dividing-color flex rounded border-1">
-                        <div class="SerialNumber grid w-12 place-items-center border-dividing-color border-r-1">
+                        <div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r-1">
                           {index() + 1}
                         </div>
-                        <div class="Attrs w-full flex flex-col gap-1">
+                        <div class="Attrs flex w-full flex-col gap-1">
                           <For each={Object.values(item)}>
                             {(item, index) => {
                               return (
