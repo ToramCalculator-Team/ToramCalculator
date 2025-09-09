@@ -1,6 +1,6 @@
 /**
  * main.ts - Service Worker 入口与调度
- *
+ * 
  * 职责：
  * - 绑定 SW 生命周期事件（install/activate）
  * - 统一处理 fetch 与 postMessage 指令
@@ -62,7 +62,7 @@ const IS_DEV = (typeof import.meta !== 'undefined' && (import.meta as any).env &
       if (p === '/chunk-manifest.json') {
         // 开发模式下不处理 manifest（避免 dev server 404）
         if (IS_DEV) return fetch(event.request);
-        const cache = await caches.open(CACHE_STRATEGIES.CORE);
+      const cache = await caches.open(CACHE_STRATEGIES.CORE);
         const cached = await cache.match(event.request);
         if (cached) return cached;
         try {

@@ -1,7 +1,11 @@
 .query-builder {
-  background: rgb(var(--color-accent-color));
-  min-width: 400px;
-  border-radius: 5px;
+  padding: 1.5rem;
+}
+.query-builder button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(var(--color-dividing-color));
+  background-color: rgb(var(--color-brand-color-1st));
 }
 .rule-group {
   padding: 0.5rem;
@@ -12,7 +16,6 @@
   display: flex;
   align-items: center;
   border: 1px solid #333;
-  margin: 5px;
   column-gap: 5px;
   padding: 5px 10px;
 }
@@ -37,7 +40,6 @@
 .shift-actions > button {
   margin: 0;
   padding: 0;
-  background-color: #fff;
   border: none;
   cursor: pointer;
 }

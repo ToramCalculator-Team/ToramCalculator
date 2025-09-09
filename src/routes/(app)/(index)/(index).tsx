@@ -752,14 +752,15 @@ export default function IndexPage() {
           <Index each={toolMenuConfig()}>
             {(config, index) => {
               return (
-                <div class="ButtonContainer bg-area-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded">
+                <div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border-1 border-dashed">
                   <Button
-                    class="outline-hidden focus-within:outline-hidden"
+                    class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
                     level="quaternary"
                     onClick={config().onClick}
                     icon={config().icon}
-                  ></Button>
-                  <span>{config().name}</span>
+                  >
+                    <span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
+                  </Button>
                 </div>
               );
             }}

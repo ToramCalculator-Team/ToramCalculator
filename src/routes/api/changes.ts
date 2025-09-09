@@ -4,6 +4,7 @@ import { jwtVerify } from "jose";
 import { getDB } from "@db/repositories/database";
 import { findUserById } from "@db/repositories/user";
 import { getPrimaryKeys } from "@db/repositories/untils";
+import { z } from "zod";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
@@ -36,6 +37,27 @@ export async function POST(event: APIEvent) {
 
   console.log("用户:" + user.name + " 变更数据,body:", body);
 
+  // -------- 安全校验与约束 --------
+  // 1) 允许的操作（默认禁用删除）
+  const ALLOWED_OPS = new Set(["insert", "update"] as const);
+  // 2) 允许的表名（如需更细可维护一个白名单；这里先允许全部，但执行前做信息架构校验）
+  const SAFE_TABLE_NAME = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
+  // 3) 负载 schema（宽松，但强约束关键字段与类型）
+  const ChangeSchema = z.object({
+    table_name: z.string().regex(SAFE_TABLE_NAME, "非法表名"),
+    operation: z.union([z.literal("insert"), z.literal("update"), z.literal("delete")]),
+    value: z.record(z.any()),
+    write_id: z.string().min(1).optional(),
+    transaction_id: z.string().min(1).optional(),
+  });
+  const TxSchema = z.array(z.object({ id: z.string().optional(), changes: z.array(ChangeSchema) }));
+
+  try {
+    TxSchema.parse(body);
+  } catch (e) {
+    return new Response("请求结构非法", { status: 400 });
+  }
+
   // 示例权限判断（可选）
   // if (user.role !== "admin") {
   //   return new Response("当前用户无权限", { status: 403 });
@@ -56,13 +78,29 @@ try {
           continue;
         }
 
+        // 基础安全策略：禁止未授权操作 & 限制表名格式
+        if (!SAFE_TABLE_NAME.test(change.table_name)) {
+          throw new Error(`非法表名: ${change.table_name}`);
+        }
+
+        if (!ALLOWED_OPS.has(change.operation)) {
+          // 若需要允许删除，可在此添加细粒度白名单或软删除逻辑
+          throw new Error(`禁止的操作: ${change.operation}`);
+        }
+
+        // 值过滤：移除 undefined，避免覆盖为 null/undefined
+        const cleanValue: Record<string, any> = {};
+        for (const [k, v] of Object.entries(change.value ?? {})) {
+          if (v !== undefined) cleanValue[k] = v;
+        }
+
         switch (change.operation) {
           case "insert":
-            await trx.insertInto(change.table_name).values(change.value).execute();
+            await trx.insertInto(change.table_name).values(cleanValue).execute();
             break;
 
           case "update": {
-            let query = trx.updateTable(change.table_name).set(change.value);
+            let query = trx.updateTable(change.table_name).set(cleanValue);
             // 添加所有主键条件
             for (const pk of primaryKeys) {
               query = query.where(pk, "=", change.value[pk]);
