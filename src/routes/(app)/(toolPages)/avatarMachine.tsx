@@ -369,7 +369,7 @@ export default function AvatarMachinePage() {
     // 已生成的属性类型，避免重复
     const usedAttrTypes = new Set<AttrType>();
 
-    // 生成随机属性的辅助函数
+    // 生成随机属性的辅助函数（在所有可选(类型,值)对中等概率抽取）
     const generateRandomAttr = (): { attrType: AttrType; attrValue: AttrValue<AttrType> } | null => {
       // 过滤出未使用的属性类型
       const availableAttrTypes = attrTypes.filter((type) => !usedAttrTypes.has(type));
@@ -379,16 +379,22 @@ export default function AvatarMachinePage() {
         return null;
       }
 
-      const randomAttrType = availableAttrTypes[Math.floor(random() * availableAttrTypes.length)];
-      const availableValues = attrsMap[randomAttrType];
-      const randomValue = availableValues[Math.floor(random() * availableValues.length)];
+      // 将所有可选(类型,值)平铺为统一池，等概率抽取
+      const flatOptions: Array<{ attrType: AttrType; attrValue: string }> = [];
+      for (const type of availableAttrTypes) {
+        const values = attrsMap[type];
+        for (const value of values) {
+          flatOptions.push({ attrType: type, attrValue: value });
+        }
+      }
 
-      // 记录已使用的属性类型
-      usedAttrTypes.add(randomAttrType);
+      const picked = flatOptions[Math.floor(random() * flatOptions.length)];
+      // 记录已使用的属性类型（同一类型不重复出现）
+      usedAttrTypes.add(picked.attrType);
 
       return {
-        attrType: randomAttrType,
-        attrValue: randomValue as AttrValue<AttrType>,
+        attrType: picked.attrType,
+        attrValue: picked.attrValue as AttrValue<AttrType>,
       };
     };
 
