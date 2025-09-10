@@ -621,25 +621,24 @@ model skill_effect {
     // 满足条件时，父技能使用此效果
     condition         String
     // 可用性条件
-    hpCost            String?
-    mpCost            String?
-    castingRange      String?
-    disbleCondition   String?
+    hpCost            String? // hp消耗表达式
+    mpCost            String? // mp消耗表达式
+    castingRange      String? // 施法距离表达式
+    disbleCondition   String? // 额外不可发动条件表达式
     // 动画数据
-    motionFixed       String
-    motionModified    String
-    chantingFixed     String
-    chantingModified  String
-    reservoirFixed    String
-    reservoirModified String
-    startupProportion Int
+    motionFixed       String // 固定动画帧数
+    motionModified    String // 可加速动画帧数
+    chantingFixed     String // 固定咏唱时间
+    chantingModified  String // 可加速咏唱时间
+    reservoirFixed    String // 固定蓄力时间
+    reservoirModified String // 可加速蓄力时间
+    startupProportion Int    // 前摇比例
     // 效果数据
     controlType       String // Enum CONTROL_EFFECT
-    effectScope       String?
-    damageExpression  String?
-    buffEffectHook    String?
-    buffEffectFun     String?
-    logic             String // 压缩后的Json，base64编码
+    effectScopeFun    String? // 效果范围计算函数
+    damageExpression  String? // 伤害计算表达式
+    buffEffectHook    String? // buff效果钩子
+    buffEffectFun     String? // buff效果函数
     // 描述
     description       String
     details           String?
