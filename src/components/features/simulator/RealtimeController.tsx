@@ -17,8 +17,6 @@ import {
   SkillPanel,
   ActionPanel,
 } from "./controller/components";
-import { Portal } from "solid-js/web";
-import { GameView } from "./core/render/Renderer";
 
 export default function RealtimeController() {
   // 初始化控制器

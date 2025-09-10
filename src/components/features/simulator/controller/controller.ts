@@ -60,6 +60,7 @@ export class Controller {
       await this.refreshMembers();
     } catch (error) {
       this.setError(error instanceof Error ? error.message : "启动失败");
+      throw error;
     } finally {
       this.setLoading(false);
     }

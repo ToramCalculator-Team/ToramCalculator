@@ -1,8 +1,11 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
-import { NestedSchema } from "../../dataSys/StatContainer";
-import { MobAttrType, createMobStateMachine } from "./MobActor";
+import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
 import GameEngine from "../../GameEngine";
+import { createMobStateMachine } from "./MobStateMachine";
+import { MobAttrSchema } from "./MobData";
+
+export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
 export class Mob extends Member<MobAttrType> {
   constructor(

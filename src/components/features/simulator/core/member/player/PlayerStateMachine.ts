@@ -1,4 +1,6 @@
 import { assign, enqueueActions, EventObject, setup } from "xstate";
+import type { ActionFunction } from "xstate";
+import type { GuardPredicate } from "xstate/guards";
 import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
@@ -16,64 +18,85 @@ interface 复活 extends EventObject {
 interface 移动 extends EventObject {
   type: "移动";
 }
-interface 使用技能 extends EventObject {
-  type: "使用技能";
-  data: { target: string; skillId: string };
+interface 停止移动 extends EventObject {
+  type: "停止移动";
 }
 interface 使用格挡 extends EventObject {
   type: "使用格挡";
 }
-interface 使用闪躲 extends EventObject {
-  type: "使用闪躲";
-}
-interface 闪躲持续时间结束 extends EventObject {
-  type: "闪躲持续时间结束";
-}
-interface 停止移动 extends EventObject {
-  type: "停止移动";
-}
-interface 受到控制 extends EventObject {
-  type: "受到控制";
-  data: { origin: string; skillId: string };
-}
-interface 收到异常抵抗结果 extends EventObject {
-  type: "收到异常抵抗结果";
-  data: { origin: string; skillId: string };
-}
-interface 死亡事件 extends EventObject {
-  type: "死亡事件";
-  data: { origin: string; skillId: string };
-}
 interface 结束格挡 extends EventObject {
   type: "结束格挡";
 }
-interface 控制时间结束 extends EventObject {
-  type: "控制时间结束";
+interface 使用闪躲 extends EventObject {
+  type: "使用闪躲";
 }
-interface 不可操作时长结束 extends EventObject {
-  type: "不可操作时长结束";
+interface 收到闪躲持续时间结束通知 extends EventObject {
+  type: "收到闪躲持续时间结束通知";
+}
+interface 使用技能 extends EventObject {
+  type: "使用技能";
+  data: { target: string; skillId: string };
 }
 interface 收到前摇结束通知 extends EventObject {
   type: "收到前摇结束通知";
-  data: { skillId: string };
-}
-interface 收到咏唱结束事件 extends EventObject {
-  type: "收到咏唱结束事件";
   data: { skillId: string };
 }
 interface 收到蓄力结束通知 extends EventObject {
   type: "收到蓄力结束通知";
   data: { skillId: string };
 }
-interface 收到后摇结束通知 extends EventObject {
-  type: "收到后摇结束通知";
+interface 收到咏唱结束事件 extends EventObject {
+  type: "收到咏唱结束事件";
   data: { skillId: string };
 }
-interface 收到快照请求事件 extends EventObject {
-  type: "收到快照请求事件";
+interface 收到发动结束通知 extends EventObject {
+  type: "收到发动结束通知";
+  data: { skillId: string };
 }
-interface 收到技能 extends EventObject {
-  type: "收到技能";
+interface 收到警告结束通知 extends EventObject {
+  type: "收到警告结束通知";
+}
+interface 修改buff extends EventObject {
+  type: "修改buff";
+  data: { buffId: string; value: number };
+}
+interface 修改属性 extends EventObject {
+  type: "修改属性";
+  data: { attr: string; value: number };
+}
+interface 应用控制 extends EventObject {
+  type: "应用控制";
+}
+interface 闪躲持续时间结束 extends EventObject {
+  type: "闪躲持续时间结束";
+}
+interface 进行伤害计算 extends EventObject {
+  type: "进行伤害计算";
+}
+interface 进行命中判定 extends EventObject {
+  type: "进行命中判定";
+}
+interface 进行控制判定 extends EventObject {
+  type: "进行控制判定";
+}
+
+interface 受到攻击 extends EventObject {
+  type: "受到攻击";
+  data: { origin: string; skillId: string };
+}
+interface 受到治疗 extends EventObject {
+  type: "受到治疗";
+  data: { origin: string; skillId: string };
+}
+interface 收到buff增删事件 extends EventObject {
+  type: "收到buff增删事件";
+  data: { buffId: string; value: number };
+}
+interface 收到快照请求 extends EventObject {
+  type: "收到快照请求";
+}
+interface 收到目标快照 extends EventObject {
+  type: "收到目标快照";
   data: { targetId: string };
 }
 
@@ -82,26 +105,28 @@ type PlayerEventType =
   | 复活
   | 移动
   | 停止移动
-  | 使用技能
   | 使用格挡
   | 结束格挡
   | 使用闪躲
-  | 闪躲持续时间结束
-  | 受到控制
-  | 不可操作时长结束
-  | 收到异常抵抗结果
-  | 死亡事件
-  | 控制时间结束
+  | 收到闪躲持续时间结束通知
+  | 使用技能
   | 收到前摇结束通知
   | 收到蓄力结束通知
   | 收到咏唱结束事件
-  | 收到快照请求事件
-  | 收到后摇结束通知
-  | 收到技能;
-
-// 从 XState 导入必要的类型
-import type { ActionFunction } from "xstate";
-import type { GuardPredicate } from "xstate/guards";
+  | 收到发动结束通知
+  | 收到警告结束通知
+  | 修改buff
+  | 修改属性
+  | 应用控制
+  | 闪躲持续时间结束
+  | 进行伤害计算
+  | 进行命中判定
+  | 进行控制判定
+  | 受到攻击
+  | 受到治疗
+  | 收到buff增删事件
+  | 收到快照请求
+  | 收到目标快照;
 
 // 定义 PlayerStateContext 类型（提前声明）
 interface PlayerStateContext extends Player {
@@ -160,6 +185,84 @@ export const playerActions = {
     // ...
     console.log(`👤 [${context.name}] 启用移动动画`, event);
   },
+  显示警告: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 显示警告`, event);
+  },
+  创建警告结束通知: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 创建警告结束通知`, event);
+  },
+  发送快照获取请求: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送快照获取请求`, event);
+  },
+  等待目标回复: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 等待目标回复`, event);
+  },
+  技能消耗扣除: enqueueActions(({ context, event, enqueue }) => {
+    const e = event as 使用技能;
+    const skillId = e.data.skillId;
+    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+
+    const skill = context.skillList.find((s) => s.id === skillId);
+    if (!skill) {
+      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+      return;
+    }
+
+    const effect = skill.template?.effects.find((e) => {
+      const result = context.engine.evaluateExpression(e.condition, {
+        currentFrame,
+        casterId: context.id,
+        skillLv: skill?.lv ?? 0,
+      });
+      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+      return !!result; // 明确返回布尔值进行比较
+    });
+    if (!effect) {
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+      return;
+    }
+
+    enqueue.assign({
+      currentSkillEffect: effect,
+    });
+
+    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
+      currentFrame,
+      casterId: context.id,
+      skillLv: skill?.lv ?? 0,
+    });
+    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
+      currentFrame,
+      casterId: context.id,
+      skillLv: skill?.lv ?? 0,
+    });
+
+    context.statContainer.addModifiers([
+      {
+        attr: "hp.current",
+        targetType: ModifierType.STATIC_FIXED,
+        value: -hpCost,
+        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+      },
+      {
+        attr: "mp.current",
+        targetType: ModifierType.STATIC_FIXED,
+        value: -mpCost,
+        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
+      },
+    ]);
+    console.log(
+      `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+    );
+  }),
   启用前摇动画: function ({ context, event }) {
     // Add your action code here
     // ...
@@ -298,78 +401,95 @@ export const playerActions = {
     // ...
     console.log(`👤 [${context.name}] 创建发动结束通知`, event);
   },
-  技能消耗执行管线: enqueueActions(({ context, event, enqueue }) => {
-    const e = event as 使用技能;
-    const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-      return;
-    }
-
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
-      return;
-    }
-
-    enqueue.assign({
-      currentSkillEffect: effect,
-    });
-
-    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-
-    context.statContainer.addModifiers([
-      {
-        attr: "hp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -hpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-      {
-        attr: "mp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -mpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-    ]);
-    console.log(
-      `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
-    );
-  }),
   技能效果管线: function ({ context, event }) {
     // Add your action code here
     // ...
     console.log(`👤 [${context.name}] 技能效果管线`, event);
+  },
+  重置控制抵抗时间: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 重置控制抵抗时间`, event);
   },
   中断当前行为: function ({ context, event }) {
     // Add your action code here
     // ...
     console.log(`👤 [${context.name}] 中断当前行为`, event);
   },
-  重置状态: function ({ context, event }) {
+  启动受控动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👤 [${context.name}] 重置状态`, event);
+    console.log(`👤 [${context.name}] 启动受控动画`, event);
+  },
+  重置到复活状态: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 重置到复活状态`, event);
+  },
+  发送快照到请求者: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送快照到请求者`, event);
+  },
+  发送命中判定事件给自己: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
+  },
+  反馈命中结果给施法者: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 反馈命中结果给施法者`, event);
+  },
+  发送控制判定事件给自己: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
+  },
+  命中计算管线: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 命中计算管线`, event);
+  },
+  根据命中结果进行下一步: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
+  },
+  控制判定管线: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 控制判定管线`, event);
+  },
+  反馈控制结果给施法者: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 反馈控制结果给施法者`, event);
+  },
+  发送伤害计算事件给自己: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
+  },
+  伤害计算管线: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 伤害计算管线`, event);
+  },
+  反馈伤害结果给施法者: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 反馈伤害结果给施法者`, event);
+  },
+  发送属性修改事件给自己: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
+  },
+  发送buff修改事件给自己: function ({ context, event }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
   },
   logEvent: function ({ context, event }) {
     console.log(`👤 [${context.name}] 日志事件`, event);
@@ -380,13 +500,6 @@ export const playerActions = {
 >;
 
 export const playerGuards = {
-  技能带有心眼: function ({ context, event }) {
-    return true;
-  },
-  技能没有心眼: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
   存在蓄力阶段: function ({ context, event }) {
     console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
 
@@ -450,14 +563,6 @@ export const playerGuards = {
     // Add your guard condition here
     return true;
   },
-  目标不抵抗此技能的控制效果: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  目标抵抗此技能的控制效果: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
   没有可用技能效果: function ({ context, event }) {
     // Add your guard condition here
     const e = event as 使用技能;
@@ -484,63 +589,63 @@ export const playerGuards = {
     }
     console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
     // 测试内容
-    context.engine.evaluateExpression(
-      `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+//     context.engine.evaluateExpression(
+//       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
 
-// 计算造成的伤害
-function damage() {
-_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
-_E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
-_E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
-return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-}
+// // 计算造成的伤害
+// function damage() {
+// _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
+// _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
+// _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
+// return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+// }
 
-function mathRandomInt(a, b) {
-if (a > b) {
-// Swap a and b to ensure a is smaller.
-var c = a;
-a = b;
-b = c;
-}
-return Math.floor(Math.random() * (b - a + 1) + a);
-}
+// function mathRandomInt(a, b) {
+// if (a > b) {
+// // Swap a and b to ensure a is smaller.
+// var c = a;
+// a = b;
+// b = c;
+// }
+// return Math.floor(Math.random() * (b - a + 1) + a);
+// }
 
-// 判断是否命中
-function isHit() {
-_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
-console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
-return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
-}
+// // 判断是否命中
+// function isHit() {
+// _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
+// console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
+// return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
+// }
 
-// 描述该功能...
-function main() {
-if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
-console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
-self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
-console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
-if (isHit() == true) {
-console.log("命中成功, 伤害:",damage())
-console.log("命中前血量:",target.statContainer.getValue("hp.current"))
-target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-console.log("命中后血量:",target.statContainer.getValue("hp.current"))
-} else {
-console.log("miss")
-}
-}
-}
-
-
-_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
+// // 描述该功能...
+// function main() {
+// if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+// console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
+// self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
+// console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
+// if (isHit() == true) {
+// console.log("命中成功, 伤害:",damage())
+// console.log("命中前血量:",target.statContainer.getValue("hp.current"))
+// target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
+// console.log("命中后血量:",target.statContainer.getValue("hp.current"))
+// } else {
+// console.log("miss")
+// }
+// }
+// }
 
 
-main();`,
-      {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-        targetId: "defaultMember2Id",
-      },
-    );
+// _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
+
+
+// main();`,
+//       {
+//         currentFrame,
+//         casterId: context.id,
+//         skillLv: skill?.lv ?? 0,
+//         targetId: "defaultMember2Id",
+//       },
+//     );
     return false;
   },
   还未冷却: function ({ context, event }) {
@@ -554,10 +659,10 @@ main();`,
       console.log(`- 该技能处于冷却状态`);
       return false;
     }
-    console.log(`该技能未冷却，剩余冷却时间：${res}`);
+    console.log(`- 该技能未冷却，剩余冷却时间：${res}`);
     return true;
   },
-  施法资源不足: function ({ context, event }) {
+  施法条件不满足: function ({ context, event }) {
     // 此守卫通过后说明技能可发动，则更新当前技能数据
     const e = event as 使用技能;
     const skillId = e.data.skillId;
@@ -602,7 +707,26 @@ main();`,
     console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
     return false;
   },
-  可以执行: function ({ context, event }) {
+  技能带有心眼: function ({ context, event }) {
+    return true;
+  },
+  技能没有心眼: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  目标不抵抗此技能的控制效果: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  目标抵抗此技能的控制效果: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  是物理伤害: function ({ context, event }) {
+    // Add your guard condition here
+    return true;
+  },
+  满足存活条件: function ({ context, event }) {
     // Add your guard condition here
     return true;
   },
@@ -639,22 +763,103 @@ export const playerStateMachine = (player: Player) => {
       存活: {
         initial: "可操作状态",
         on: {
-          死亡事件: {
-            target: "死亡",
+          收到快照请求: {
+            actions: {
+              type: "发送快照到请求者",
+            },
           },
-          接受外部消息: {},
-          收到快照请求事件: {},
+          受到攻击: [
+            {
+              actions: {
+                type: "发送命中判定事件给自己",
+              },
+              guard: {
+                type: "是物理伤害",
+              },
+            },
+            {
+              actions: [
+                {
+                  type: "反馈命中结果给施法者",
+                },
+                {
+                  type: "发送控制判定事件给自己",
+                },
+              ],
+            },
+          ],
+          进行命中判定: {
+            actions: [
+              {
+                type: "命中计算管线",
+              },
+              {
+                type: "反馈命中结果给施法者",
+              },
+              {
+                type: "根据命中结果进行下一步",
+              },
+            ],
+          },
+          进行控制判定: {
+            actions: [
+              {
+                type: "控制判定管线",
+              },
+              {
+                type: "反馈控制结果给施法者",
+              },
+              {
+                type: "发送伤害计算事件给自己",
+              },
+            ],
+          },
+          进行伤害计算: {
+            actions: [
+              {
+                type: "伤害计算管线",
+              },
+              {
+                type: "反馈伤害结果给施法者",
+              },
+              {
+                type: "发送属性修改事件给自己",
+              },
+            ],
+          },
+          收到buff增删事件: {
+            actions: [
+              {
+                type: "发送buff修改事件给自己",
+              },
+            ],
+          },
+          受到治疗: {
+            target: "存活",
+            actions: {
+              type: "发送属性修改事件给自己",
+            },
+          },
+          修改属性: [
+            {
+              target: "存活",
+              guard: {
+                type: "满足存活条件",
+              },
+            },
+            {
+              target: "死亡",
+            },
+          ],
+          修改buff: {},
         },
         description: "玩家存活状态，此时可操作且可影响上下文",
         states: {
           可操作状态: {
             initial: "空闲状态",
             on: {
-              受到控制: {
-                target: "控制类异常状态",
-                actions: {
-                  type: "中断当前行为",
-                },
+              应用控制: {
+                target: "控制状态",
               },
             },
             description: "可响应输入操作",
@@ -704,85 +909,95 @@ export const playerStateMachine = (player: Player) => {
               },
               闪躲中: {
                 on: {
-                  闪躲持续时间结束: {
+                  收到闪躲持续时间结束通知: {
                     target: "空闲状态",
                   },
                 },
               },
               技能处理状态: {
-                initial: "技能初始化",
+                initial: "初始化技能",
                 states: {
-                  技能初始化: {
+                  初始化技能: {
                     always: [
                       {
-                        target: "等待目标异常抵抗状态检测结果",
+                        target: "警告状态",
+                        guard: {
+                          type: "没有可用技能效果",
+                        },
+                      },
+                      {
+                        target: "警告状态",
+                        guard: {
+                          type: "还未冷却",
+                        },
+                      },
+                      {
+                        target: "警告状态",
+                        guard: {
+                          type: "施法条件不满足",
+                        },
+                      },
+                      {
+                        target: "目标数据检查状态",
                         guard: {
                           type: "技能带有心眼",
                         },
                       },
                       {
-                        target: "技能可用性检测",
-                        guard: {
-                          type: "技能没有心眼",
-                        },
+                        target: "执行技能中",
                       },
                     ],
                   },
-                  等待目标异常抵抗状态检测结果: {
+                  警告状态: {
                     on: {
-                      收到异常抵抗结果: [
+                      收到警告结束通知: {
+                        target: `#${machineId}.存活.可操作状态.空闲状态`,
+                      },
+                    },
+                    entry: [
+                      {
+                        type: "显示警告",
+                      },
+                      {
+                        type: "创建警告结束通知",
+                      },
+                    ],
+                  },
+                  目标数据检查状态: {
+                    on: {
+                      收到目标快照: [
                         {
-                          target: "技能可用性检测",
+                          target: "执行技能中",
                           guard: {
                             type: "目标不抵抗此技能的控制效果",
                           },
                         },
                         {
-                          target: `#${machineId}.存活.警告状态`,
+                          target: "警告状态",
                           guard: {
                             type: "目标抵抗此技能的控制效果",
                           },
                         },
                       ],
                     },
-                  },
-                  技能可用性检测: {
-                    always: [
+                    entry: [
                       {
-                        target: `#${machineId}.存活.警告状态`,
-                        guard: {
-                          type: "没有可用技能效果",
-                        },
+                        type: "发送快照获取请求",
                       },
                       {
-                        target: `#${machineId}.存活.警告状态`,
-                        guard: {
-                          type: "还未冷却",
-                        },
-                      },
-                      {
-                        target: `#${machineId}.存活.警告状态`,
-                        guard: {
-                          type: "施法资源不足",
-                        },
-                      },
-                      {
-                        target: "执行技能中",
-                        actions: {
-                          type: "技能消耗执行管线",
-                        },
-                        guard: {
-                          type: "可以执行",
-                        },
+                        type: "等待目标回复",
                       },
                     ],
                   },
                   执行技能中: {
                     initial: "前摇中",
+                    entry: {
+                      type: "技能消耗扣除",
+                    },
                     states: {
                       前摇中: {
                         on: {
-                          收到前摇结束事件: [
+                          收到前摇结束通知: [
                             {
                               target: "蓄力中",
                               guard: {
@@ -814,7 +1029,7 @@ export const playerStateMachine = (player: Player) => {
                       },
                       蓄力中: {
                         on: {
-                          收到蓄力结束事件: [
+                          收到蓄力结束通知: [
                             {
                               target: "咏唱中",
                               guard: {
@@ -840,7 +1055,7 @@ export const playerStateMachine = (player: Player) => {
                       },
                       咏唱中: {
                         on: {
-                          收到咏唱结束事件: {
+                          收到咏唱结束通知: {
                             target: "发动中",
                           },
                         },
@@ -858,9 +1073,10 @@ export const playerStateMachine = (player: Player) => {
                       },
                       发动中: {
                         on: {
-                          收到后摇结束通知: [
+                          收到发动结束通知: [
                             {
-                              target: `#${machineId}.存活.可操作状态.技能处理状态`,
+                              target:
+                                `#${machineId}.存活.可操作状态.技能处理状态.初始化技能`,
                               guard: {
                                 type: "存在后续连击",
                               },
@@ -891,19 +1107,23 @@ export const playerStateMachine = (player: Player) => {
               },
             },
           },
-          控制类异常状态: {
+          控制状态: {
             on: {
               控制时间结束: {
                 target: `#${machineId}.存活.可操作状态.空闲状态`,
               },
             },
-          },
-          警告状态: {
-            on: {
-              不可操作时长结束: {
-                target: "可操作状态",
+            entry: [
+              {
+                type: "重置控制抵抗时间",
               },
-            },
+              {
+                type: "中断当前行为",
+              },
+              {
+                type: "启动受控动画",
+              },
+            ],
           },
         },
       },
@@ -912,7 +1132,7 @@ export const playerStateMachine = (player: Player) => {
           复活: {
             target: `#${machineId}.存活.可操作状态`,
             actions: {
-              type: "重置状态",
+              type: "重置到复活状态",
             },
           },
         },

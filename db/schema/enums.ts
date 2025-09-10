@@ -38,6 +38,14 @@ export type SkillDistanceType = (typeof SKILL_DISTANCE_TYPE)[number];
 export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
 export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
 
+// 技能效果标签类型枚举
+export const SKILL_EFFECT_TAG = ["DamageSkill", "ControlSkill", "BuffSkill"] as const;
+export type SkillEffectTag = (typeof SKILL_EFFECT_TAG)[number];
+
+// 控制效果枚举（胆怯，翻覆，昏厥）
+export const CONTROL_EFFECT = ["None", "Cowardly", "Turn", "Dizzy"] as const;
+export type ControlEffect = (typeof CONTROL_EFFECT)[number];
+
 // 怪物难度标识
 export const MOB_DIFFICULTY_FLAG = ["Easy", "Normal", "Hard", "Lunatic", "Ultimate"] as const;
 export type MobDifficultyFlag = (typeof MOB_DIFFICULTY_FLAG)[number];
