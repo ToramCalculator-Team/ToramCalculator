@@ -13,6 +13,7 @@ import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
 import { type MemberSerializeData } from "../core/member/Member";
 import { EngineView } from "../core/GameEngine";
+import { FrameSnapshot } from "../core/GameEngine";
 
 export class Controller {
   // ==================== 状态管理 (展示) ====================
@@ -122,16 +123,31 @@ export class Controller {
   async selectMember(memberId: string) {
     try {
       this.setError(null);
-      
-      const result = await controllerCommunication.selectMember(memberId);
-      if (!result.success) {
-        throw new Error("选择成员失败");
-      }
-      
       this.setSelectedMemberId(memberId);
       await this.refreshSelectedMember();
     } catch (error) {
       this.setError(error instanceof Error ? error.message : "选择成员失败");
+    }
+  }
+
+  async selectTarget(targetMemberId: string) {
+    const sourceMemberId = this.getSelectedMemberId();
+    if (!sourceMemberId) {
+      this.setError("请先选择一个成员");
+      return;
+    }
+    
+    try {
+      this.setError(null);
+      
+      const result = await controllerCommunication.selectTarget(sourceMemberId, targetMemberId);
+      if (!result.success) {
+        throw new Error(result.error || "选择目标失败");
+      }
+      
+      console.log(`成员 ${sourceMemberId} 选择目标 ${targetMemberId}`);
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : "选择目标失败");
     }
   }
 
@@ -220,7 +236,7 @@ export class Controller {
       // console.log("🔧 收到帧快照:", data);
       
       if (data.event) {
-        const snapshot = data.event;
+        const snapshot = data.event as FrameSnapshot;
         
         // 更新引擎视图（包含FPS和帧数信息）
         if (snapshot.engine) {
@@ -245,9 +261,9 @@ export class Controller {
         // 更新成员数据（包含状态机状态和属性）
         if (snapshot.members && Array.isArray(snapshot.members)) {
           // 将帧快照中的成员数据转换为 MemberSerializeData 格式
-          const members: MemberSerializeData[] = snapshot.members.map((member: any) => ({
+          const members: MemberSerializeData[] = snapshot.members.map((member) => ({
             id: member.id,
-            type: member.type as any,
+            type: member.type,
             name: member.name,
             attrs: member.attrs,
             isAlive: member.isAlive,

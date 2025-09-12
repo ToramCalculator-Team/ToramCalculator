@@ -26,20 +26,62 @@ import { sanitizeForPostMessage } from "./thread/MessageSerializer";
 
 /**
  * 意图消息类型枚举
- * 注意：状态机目前处于测试状态，状态名不一定稳定
+ * 基于 Member FSM 的通用事件类型，支持 Player 和 Mob 的所有事件
+ * 
+ * 事件分类：
+ * 1. 基础成员事件 (MemberEventType)
+ * 2. 玩家/怪物共通事件
+ * 3. 玩家特有事件
  */
 export const IntentMessageTypeEnum = z.enum([
-  "使用技能",
-  "move_command",
-  "stop_move",
-  "cast_end",
-  "controlled",
-  "charge_end",
-  "hp_zero",
-  "control_end",
-  "skill_animation_end",
-  "check_availability",
+  // === 基础成员事件 (MemberEventType) ===
+  "create",
+  "destroy", 
+  "update",
   "custom",
+  
+  // === 生命周期事件 ===
+  "复活",
+  
+  // === 移动相关事件 ===
+  "移动",
+  "停止移动",
+  
+  // === 技能相关事件 ===
+  "使用技能",
+  "收到前摇结束通知", 
+  "收到蓄力结束通知",
+  "收到咏唱结束事件",
+  "收到发动结束通知",
+  
+  // === 防御相关事件 (Player 特有) ===
+  "使用格挡",
+  "结束格挡", 
+  "使用闪躲",
+  "收到闪躲持续时间结束通知",
+  "闪躲持续时间结束",
+  
+  // === 控制相关事件 ===
+  "应用控制",
+  "控制时间结束",
+  "收到警告结束通知",
+  
+  // === 战斗计算事件 ===
+  "进行伤害计算",
+  "进行命中判定", 
+  "进行控制判定",
+  "受到攻击",
+  "受到治疗",
+  
+  // === 状态管理事件 ===
+  "修改buff",
+  "修改属性",
+  "收到buff增删事件",
+  
+  // === 快照和目标事件 ===
+  "收到快照请求",
+  "收到目标快照",
+  "切换目标",
 ]);
 
 export type IntentMessageType = z.infer<typeof IntentMessageTypeEnum>;
@@ -152,7 +194,14 @@ export class MessageRouter {
 
       // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
       try {
-        targetMember.actor.send(message);
+        // 转换 IntentMessage 为 FSM 事件格式
+        // 移除路由信息(id, timestamp, targetMemberId)，只保留业务数据
+        const fsmEvent: { type: string; data?: any } = {
+          type: message.type,
+          ...(message.data && Object.keys(message.data).length > 0 ? { data: message.data } : {})
+        };
+        
+        targetMember.actor.send(fsmEvent);
 
         this.stats.successfulMessages++;
 
@@ -238,19 +287,8 @@ export class MessageRouter {
    * @returns 支持的消息类型数组
    */
   getSupportedMessageTypes(): IntentMessageType[] {
-    return [
-      "使用技能",
-      "move_command",
-      "stop_move",
-      "cast_end",
-      "controlled",
-      "charge_end",
-      "hp_zero",
-      "control_end",
-      "skill_animation_end",
-      "check_availability",
-      "custom",
-    ];
+    // 返回所有支持的事件类型（基于当前的 IntentMessageTypeEnum）
+    return IntentMessageTypeEnum.options;
   }
 
   /**

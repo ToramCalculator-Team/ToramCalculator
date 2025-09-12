@@ -502,7 +502,7 @@ export class FrameLoop {
       // 2. 更新成员状态
       const members = this.engine.getMemberManager().getAllMembers();
       for (const m of members) {
-        m.buffManager?.update(this.frameNumber);
+        m.update()
         membersUpdated++;
       }
 

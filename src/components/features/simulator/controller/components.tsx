@@ -138,6 +138,7 @@ interface MemberSelectProps {
   members: MemberSerializeData[];
   selectedId: string | null;
   onSelect: (memberId: string) => void;
+  placeholder?: string;
 }
 
 /**
@@ -166,7 +167,7 @@ export function MemberSelect(props: MemberSelectProps) {
               value: member.id,
             })),
           ]}
-          placeholder="请选择成员"
+          placeholder={props.placeholder || "请选择成员"}
           optionPosition="top"
         />
       </Show>
@@ -248,16 +249,26 @@ export function ActionPanel(props: ActionPanelProps) {
     <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
       <Show when={props.selectedEngineMember()}>
         <h3 class="mb-2 text-lg font-semibold">动作</h3>
-        <div class="flex gap-2">
-          <Button onClick={() => props.onMove(100, 100)} class="bg-green-600 hover:bg-green-700" size="sm">
-            移动到 (100, 100)
-          </Button>
-          <Button onClick={props.onStopAction} class="bg-red-600 hover:bg-red-700" size="sm">
-            停止动作
-          </Button>
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2 items-center">
+            <span class="text-sm text-gray-600">选择目标:</span>
+            <MemberSelect
+              members={controller.members[0]() || []}
+              selectedId={null} // 目标选择不需要保持状态
+              onSelect={controller.selectTarget.bind(controller)}
+              placeholder="选择目标成员"
+            />
+          </div>
+          {/* <div class="flex gap-2">
+            <Button onClick={() => props.onMove(100, 100)} class="">
+              移动到 (100, 100)
+            </Button>
+            <Button onClick={props.onStopAction} class="">
+              停止动作
+            </Button>
+          </div> */}
         </div>
       </Show>
     </div>
   );
 }
-

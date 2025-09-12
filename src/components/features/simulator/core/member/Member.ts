@@ -39,17 +39,6 @@ export interface MemberCreateEvent extends EventObject {
 export interface MemberDestroyEvent extends EventObject {
   type: "destroy";
 }
-export interface MemberMoveEvent extends EventObject {
-  type: "move";
-  position: { x: number; y: number };
-}
-export interface MemberMoveCommandEvent extends EventObject {
-  type: "move_command";
-  data: { position: { x: number; y: number } };
-}
-export interface MemberStopMoveEvent extends EventObject {
-  type: "stop_move";
-}
 export interface MemberUpdateEvent extends EventObject {
   type: "update";
   timestamp: number;
@@ -61,9 +50,6 @@ export interface MemberCustomEvent extends EventObject {
 export type MemberEventType =
   | MemberCreateEvent // 创建事件
   | MemberDestroyEvent // 销毁事件
-  | MemberMoveEvent // 移动事件
-  | MemberMoveCommandEvent // 移动指令（UI/Router → FSM）
-  | MemberStopMoveEvent // 停止移动
   | MemberUpdateEvent // 更新事件
   | MemberCustomEvent; // 自定义事件
 
@@ -133,7 +119,7 @@ export class Member<TAttrKey extends string = string> {
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 序列化方法 */
-  public serialize(): MemberSerializeData {
+  serialize(): MemberSerializeData {
     return {
       attrs: this.statContainer.exportNestedValues(),
       id: this.id,
@@ -145,6 +131,11 @@ export class Member<TAttrKey extends string = string> {
       isAlive: this.isAlive,
       position: this.position,
     };
+  }
+
+  update(): void {
+    this.actor.send({ type: "更新" });
+    this.buffManager.update(this.engine.getFrameLoop().getFrameNumber());
   }
 
   constructor(

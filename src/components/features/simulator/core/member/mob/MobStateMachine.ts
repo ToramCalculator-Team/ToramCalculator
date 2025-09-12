@@ -5,6 +5,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../dataSys/StatContainer";
+import { GameEngine } from "../../GameEngine";
 /**
  * Mob特有的事件类型
  * 扩展MemberEventType，包含Mob特有的状态机事件
@@ -46,6 +47,11 @@ interface 控制时间结束 extends EventObject {
 }
 interface 收到快照请求 extends EventObject {
   type: "收到快照请求";
+  data: { senderId: string };
+}
+interface 收到目标快照 extends EventObject {
+  type: "收到目标快照";
+  data: { senderId: string };
 }
 interface 进行伤害计算 extends EventObject {
   type: "进行伤害计算";
@@ -85,7 +91,6 @@ type MobEventType =
   | 受到治疗
   | 应用控制
   | 控制时间结束
-  | 收到快照请求
   | 进行伤害计算
   | 进行命中判定
   | 进行控制判定
@@ -93,9 +98,31 @@ type MobEventType =
   | 收到前摇结束通知
   | 收到发动结束通知
   | 收到咏唱结束通知
-  | 收到蓄力结束通知;
+  | 收到蓄力结束通知
+  | 收到快照请求
+  | 收到目标快照;
 
-interface MobStateContext extends Mob {
+interface MobStateContext {
+  /** 成员ID */
+  id: string;
+  /** 成员类型 */
+  type: "Mob";
+  /** 成员名称 */
+  name: string;
+  /** 所属阵营ID */
+  campId: string;
+  /** 所属队伍ID */
+  teamId: string;
+  /** 成员目标ID */
+  targetId: string;
+  /** 是否存活 */
+  isAlive: boolean;
+  /** 引擎引用 */
+  engine: GameEngine;
+  /** 位置信息 */
+  position: { x: number; y: number; z: number };
+  /** 当前帧 */
+  currentFrame: number;
   /** 技能列表 */
   skillList: [];
   /** 技能冷却 */
@@ -186,8 +213,17 @@ export const mobActions = {
     // ...
   },
   发送快照到请求者: function ({ context, event }) {
-    // Add your action code here
-    // ...
+    const e = event as 收到快照请求;
+    const senderId = e.data.senderId;
+    const sender = context.engine.getMember(senderId);
+    if (!sender) {
+      console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
+      return;
+    }
+    sender.actor.send({
+      type: "收到目标快照",
+      data: { senderId: context.id },
+    });
   },
   发送命中判定事件给自己: function ({ context, event }) {
     // Add your action code here
@@ -281,11 +317,19 @@ export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrTy
   }).createMachine({
     id: machineId,
     context: {
-      ...member,
+      id: member.id,
+      type: "Mob",
+      name: member.name,
+      campId: member.campId,
+      teamId: member.teamId,
+      targetId: member.targetId,
+      isAlive: member.isAlive,
+      engine: member.engine,
+      position: member.position,
+      currentFrame: 0,
       skillList: [],
       skillCooldowns: [],
       currentSkillIndex: 0,
-      serialize: () => ({}) as MemberSerializeData, // 状态机不应该处理此方法，只是为了通过类型检查
     },
     initial: "存活",
     entry: {

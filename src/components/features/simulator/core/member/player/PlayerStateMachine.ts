@@ -4,9 +4,11 @@ import type { GuardPredicate } from "xstate/guards";
 import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
-import { ModifierType } from "../../dataSys/StatContainer";
+import { ModifierType, StatContainer } from "../../dataSys/StatContainer";
 import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
 import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
+import { ExpressionContext, GameEngine } from "../../GameEngine";
+import { MemberType } from "@db/schema/enums";
 
 /**
  * Player特有的事件类型
@@ -94,9 +96,14 @@ interface 收到buff增删事件 extends EventObject {
 }
 interface 收到快照请求 extends EventObject {
   type: "收到快照请求";
+  data: { senderId: string };
 }
 interface 收到目标快照 extends EventObject {
   type: "收到目标快照";
+  data: { senderId: string };
+}
+interface 切换目标 extends EventObject {
+  type: "切换目标";
   data: { targetId: string };
 }
 
@@ -126,22 +133,57 @@ type PlayerEventType =
   | 受到治疗
   | 收到buff增删事件
   | 收到快照请求
-  | 收到目标快照;
+  | 收到目标快照
+  | 切换目标;
 
 // 定义 PlayerStateContext 类型（提前声明）
-interface PlayerStateContext extends Player {
-  /** 技能列表 */
-  skillList: CharacterSkillWithRelations[];
+interface PlayerStateContext {
+  /** 成员ID */
+  id: string;
+  /** 成员类型 */
+  type: "Player";
+  /** 成员名称 */
+  name: string;
+  /** 所属阵营ID */
+  campId: string;
+  /** 所属队伍ID */
+  teamId: string;
+  /** 成员目标ID */
+  targetId: string;
+  /** 是否存活 */
+  isAlive: boolean;
+  /** 引擎引用 */
+  engine: GameEngine;
+  /** 属性容器引用 */
+  statContainer: StatContainer<PlayerAttrType>;
+  /** 位置信息 */
+  position: { x: number; y: number; z: number };
+  /** 当前帧 */
+  currentFrame: number;
   /** 技能冷却 */
   skillCooldowns: number[];
-  /** 正在施放的技能效果 */
-  currentSkillEffect: SkillEffectWithRelations | null;
   /** 正在施放的技能序号 */
   currentSkillIndex: number;
   /** 技能开始帧 */
   skillStartFrame: number;
   /** 技能结束帧 */
   skillEndFrame: number;
+  /** 技能列表 */
+  skillList: CharacterSkillWithRelations[];
+  /** 正在执行的技能ID */
+  currentSkillId: string;
+  /** 正在施放的技能效果 */
+  currentSkillEffect: SkillEffectWithRelations | null;
+  /** 前摇长度帧 */
+  currentSkillStartupFrames: number;
+  /** 蓄力长度帧 */
+  currentSkillChargingFrames: number;
+  /** 咏唱长度帧 */
+  currentSkillChantingFrames: number;
+  /** 发动长度帧 */
+  currentSkillActionFrames: number;
+  /** 状态标签组 */
+  statusTags: string[];
 }
 
 // 使用 XState 的 ActionFunction 类型定义 actions
@@ -175,6 +217,9 @@ export const playerActions = {
       (globalThis as any).__SIM_RENDER__?.(spawnCmd);
     }
   },
+  更新玩家状态: assign({
+    currentFrame: ({ context }) => context.engine.getFrameLoop().getFrameNumber(),
+  }),
   启用站立动画: function ({ context, event }) {
     // Add your action code here
     // ...
@@ -196,23 +241,40 @@ export const playerActions = {
     console.log(`👤 [${context.name}] 创建警告结束通知`, event);
   },
   发送快照获取请求: function ({ context, event }) {
-    // Add your action code here
-    // ...
+    const e = event as 使用技能;
     console.log(`👤 [${context.name}] 发送快照获取请求`, event);
+    const targetId = context.targetId;
+    const target = context.engine.getMember(targetId);
+    if (!target) {
+      console.error(`👤 [${context.name}] 目标不存在: ${targetId}`);
+      return;
+    }
+    target.actor.send({
+      type: "收到快照请求",
+      data: { senderId: context.id },
+    });
   },
-  等待目标回复: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 等待目标回复`, event);
-  },
-  技能消耗扣除: enqueueActions(({ context, event, enqueue }) => {
+  添加待处理技能: function ({ context, event }) {
+    console.log(`👤 [${context.name}] 添加待处理技能`, event);
     const e = event as 使用技能;
     const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+    context.currentSkillId = skillId;
+  },
+  清空待处理技能: function ({ context, event }) {  
+    console.log(`👤 [${context.name}] 清空待处理技能`, event);
+    context.currentSkillId = "";
+  },
+  技能消耗扣除: enqueueActions(({ context, event, enqueue }, params: {
+    expressionEvaluator: (expression: string, context: ExpressionContext) => number;
+    statContainer: StatContainer<PlayerAttrType>;
+  }) => {
+    console.log(`👤 [${context.name}] 技能消耗扣除`, event);
+    const e = event as 收到目标快照;
+    const currentFrame = context.currentFrame;
 
-    const skill = context.skillList.find((s) => s.id === skillId);
+    const skill = context.skillList.find((s) => s.id === context.currentSkillId);
     if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+      console.error(`🎮 [${context.name}] 技能不存在: ${context.currentSkillId}`);
       return;
     }
 
@@ -226,7 +288,7 @@ export const playerActions = {
       return !!result; // 明确返回布尔值进行比较
     });
     if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkillId}`);
       return;
     }
 
@@ -268,38 +330,15 @@ export const playerActions = {
     // ...
     console.log(`👤 [${context.name}] 启用前摇动画`, event);
   },
-  计算前摇时长: function ({ context, event }) {
-    // Add your action code here
-    // ...
+  计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
-  },
-  创建前摇结束通知: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log("🎮 写入前摇结束通知事件", event);
-
-    const e = event as 收到前摇结束通知;
-    const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      throw new Error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-    }
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-
+    const skill = context.skillList.find((s) => s.id === context.currentSkillId);
+    const effect = context.currentSkillEffect;
+    const currentFrame = context.currentFrame;
     if (!effect) {
-      throw new Error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkillId}`);
+      return;
     }
-
     const motionFixed = Math.floor(
       context.engine.evaluateExpression(effect.motionFixed ?? "0", {
         currentFrame,
@@ -333,9 +372,16 @@ export const playerActions = {
     console.log(`👤 [${context.name}] 前摇比例：`, startupRatio);
     const startupFrames = Math.floor(startupRatio * totalMotion);
     console.log(`👤 [${context.name}] 前摇帧数：`, startupFrames);
+    enqueue.assign({
+      currentSkillStartupFrames: startupFrames,
+    });
+  }),
+  创建前摇结束通知: function ({ context, event }) {
+    console.log("🎮 创建前摇结束通知", event);
+
 
     // 计算前摇结束的目标帧
-    const targetFrame = currentFrame + startupFrames;
+    const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
 
     // 向事件队列写入定时事件
     // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
@@ -347,13 +393,13 @@ export const playerActions = {
       payload: {
         targetMemberId: context.id, // 目标成员ID
         fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
-        skillId: skillId, // 技能ID
+        skillId: context.currentSkillId, // 技能ID
         source: "skill_front_swing", // 事件来源
       },
     });
 
     console.log(
-      `👤 [${context.name}] 前摇开始，${startupFrames}帧后结束 (当前帧: ${currentFrame}, 目标帧: ${targetFrame})`,
+      `👤 [${context.name}] 前摇开始，${context.currentSkillStartupFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
     );
   },
   启用蓄力动画: function ({ context, event }) {
@@ -361,11 +407,11 @@ export const playerActions = {
     // ...
     console.log(`👤 [${context.name}] 启用蓄力动画`, event);
   },
-  计算蓄力时长: function ({ context, event }) {
+  计算蓄力时长: enqueueActions(({ context, event, enqueue }) => {
     // Add your action code here
     // ...
     console.log(`👤 [${context.name}] 计算蓄力时长`, event);
-  },
+  }),
   创建蓄力结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
@@ -491,6 +537,12 @@ export const playerActions = {
     // ...
     console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
   },
+  修改目标Id: function ({ context, event }, params: { targetId: string }) {
+    // Add your action code here
+    // ...
+    console.log(`👤 [${context.name}] 修改目标Id`, event);
+    context.targetId = params.targetId;
+  },
   logEvent: function ({ context, event }) {
     console.log(`👤 [${context.name}] 日志事件`, event);
   },
@@ -565,6 +617,7 @@ export const playerGuards = {
   },
   没有可用技能效果: function ({ context, event }) {
     // Add your guard condition here
+    console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
     const e = event as 使用技能;
     const skillId = e.data.skillId;
     const currentFrame = context.engine.getFrameLoop().getFrameNumber();
@@ -745,17 +798,39 @@ export const playerStateMachine = (player: Player) => {
     guards: playerGuards,
   }).createMachine({
     context: {
-      ...player,
+      id: player.id,
+      type: "Player",
+      name: player.name,
+      campId: player.campId,
+      teamId: player.teamId,
+      targetId: player.targetId,
+      isAlive: player.isAlive,
+      engine: player.engine,
+      statContainer: player.statContainer,
+      position: player.position,
+      currentFrame: 0,
+      currentSkillStartupFrames: 0,
+      currentSkillChargingFrames: 0,
+      currentSkillChantingFrames: 0,
+      currentSkillActionFrames: 0,
       skillList: player.data.player?.character?.skills ?? [],
       skillCooldowns: player.data.player?.character?.skills?.map((s) => 0) ?? [],
       currentSkillEffect: null,
       currentSkillIndex: 0,
       skillStartFrame: 0,
       skillEndFrame: 0,
-      serialize: () => ({}) as MemberSerializeData, // 状态机不应该处理此方法，只是为了通过类型检查
+      currentSkillId: "",
+      statusTags: [],
     },
     id: machineId,
     initial: "存活",
+    on: {
+      更新: {
+        actions: {
+          type: "更新玩家状态",
+        },
+      },
+    },
     entry: {
       type: "根据角色配置生成初始状态",
     },
@@ -852,6 +927,15 @@ export const playerStateMachine = (player: Player) => {
             },
           ],
           修改buff: {},
+          切换目标: {
+            actions: {
+              type: "修改目标Id",
+              params: ({ event }) => {
+                const e = event as 切换目标;
+                return { targetId: e.data.targetId };
+              },
+            },
+          },
         },
         description: "玩家存活状态，此时可操作且可影响上下文",
         states: {
@@ -916,6 +1000,12 @@ export const playerStateMachine = (player: Player) => {
               },
               技能处理状态: {
                 initial: "初始化技能",
+                entry: {
+                  type: "添加待处理技能",
+                },
+                exit: {
+                  type: "清空待处理技能",
+                },
                 states: {
                   初始化技能: {
                     always: [
@@ -984,16 +1074,21 @@ export const playerStateMachine = (player: Player) => {
                       {
                         type: "发送快照获取请求",
                       },
-                      {
-                        type: "等待目标回复",
-                      },
                     ],
                   },
                   执行技能中: {
                     initial: "前摇中",
-                    entry: {
-                      type: "技能消耗扣除",
-                    },
+                    entry: [
+                      {
+                        type: "技能消耗扣除",
+                        params: ({ context }) => {
+                          return {
+                            expressionEvaluator: context.engine.evaluateExpression,
+                            statContainer: context.statContainer,
+                          };
+                        },
+                      },
+                    ],
                     states: {
                       前摇中: {
                         on: {
@@ -1076,7 +1171,7 @@ export const playerStateMachine = (player: Player) => {
                           收到发动结束通知: [
                             {
                               target:
-                                `#${machineId}.存活.可操作状态.技能处理状态.初始化技能`,
+                                `#${machineId}.存活.可操作状态.技能处理状态`,
                               guard: {
                                 type: "存在后续连击",
                               },

@@ -593,7 +593,7 @@ export class GameEngine {
    * @param memberId 成员ID
    * @returns 成员实例
    */
-  findMember(memberId: string) {
+  getMember(memberId: string) {
     return this.memberManager.getMember(memberId);
   }
 

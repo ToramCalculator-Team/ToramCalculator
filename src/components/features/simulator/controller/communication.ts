@@ -6,6 +6,7 @@
  * - 管理连接状态
  */
 
+import { IntentMessage } from "../core/MessageRouter";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 
@@ -49,17 +50,24 @@ export class ControllerCommunication {
   }
 
   // ==================== 成员操作 ====================
-  
-  async selectMember(memberId: string) {
-    // 不再需要订阅成员状态，因为每帧都会发送完整的帧快照
-    return { success: true };
+
+
+  async selectTarget(sourceMemberId: string, targetMemberId: string) {
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "切换目标",
+      targetMemberId: sourceMemberId, // 接收事件的成员（施法者）
+      data: { targetId: targetMemberId } // 被选择的目标ID
+    };
+    return await realtimeSimulatorPool.sendIntent(intent);
   }
 
   async castSkill(memberId: string, skillId: string) {
-    const intent = {
+    const intent: IntentMessage = {
       id: Date.now().toString(),
       timestamp: Date.now(),
-      type: "使用技能" as const,
+      type: "使用技能",
       targetMemberId: memberId,
       data: { skillId }
     };
@@ -67,10 +75,10 @@ export class ControllerCommunication {
   }
 
   async moveMember(memberId: string, x: number, y: number) {
-    const intent = {
+    const intent: IntentMessage = {
       id: Date.now().toString(),
       timestamp: Date.now(),
-      type: "move_command" as const,
+      type: "移动",
       targetMemberId: memberId,
       data: { position: { x, y } }
     };
@@ -78,10 +86,10 @@ export class ControllerCommunication {
   }
 
   async stopMemberAction(memberId: string) {
-    const intent = {
+    const intent: IntentMessage = {
       id: Date.now().toString(),
       timestamp: Date.now(),
-      type: "stop_move" as const,
+      type: "停止移动",
       targetMemberId: memberId,
       data: {}
     };

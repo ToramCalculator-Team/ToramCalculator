@@ -107,7 +107,7 @@ export class MemberDamageHandler implements EventHandler {
           type: 'member_fsm_event',
           payload: {
             targetMemberId: payload.targetId,
-            fsmEventType: 'hp_zero',
+            fsmEventType: '修改属性',
             data: { sourceId: payload.sourceId },
           },
           source: event.source,
