@@ -17,6 +17,8 @@ import {
   SkillPanel,
   ActionPanel,
 } from "./controller/components";
+import { Portal } from "solid-js/web";
+import { GameView } from "./core/render/Renderer";
 
 export default function RealtimeController() {
   // 初始化控制器
@@ -109,11 +111,11 @@ export default function RealtimeController() {
       </div>
 
       {/* 背景游戏视图显示 */}
-      {/* <Portal>
+      <Portal>
         <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
           <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
         </div>
-      </Portal> */}
+      </Portal>
     </div>
   );
 }

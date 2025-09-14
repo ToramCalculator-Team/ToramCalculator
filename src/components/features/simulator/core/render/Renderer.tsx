@@ -587,7 +587,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
       </canvas>
       {/* <Portal> */}
       <div
-        class={`LoadingBG bg-accent-color pointer-events-none absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
+        class={`LoadingBG bg-primary-color pointer-events-none absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
           !loaderState() ? "visible opacity-100" : "invisible opacity-0"
         }`}
       ></div>

@@ -73,7 +73,7 @@ export function Select(props: SelectProps) {
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
-        class={`border-dividing-color bg-primary-color text-main-text-color flex w-full items-center justify-between rounded-md border-1 p-1 ${
+        class={`border-dividing-color text-main-text-color flex w-full items-center justify-between rounded-md border-1 p-1 ${
           props.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         }`}
       >
