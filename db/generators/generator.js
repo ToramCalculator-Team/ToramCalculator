@@ -691,7 +691,6 @@ ${generatedSchemas}
         return "z.date()";
       case "JsonValue":
       case "InputJsonValue":
-      case "unknown":
         return `z.lazy(() => z.union([
           z.string(),
           z.number(),
@@ -700,6 +699,8 @@ ${generatedSchemas}
           z.record(z.lazy(() => z.union([z.any(), z.literal(null)]))),
           z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
         ]))`;
+      case "unknown":
+        return `z.unknown()`;
       default:
         // 检查是否是枚举类型
         if (type.endsWith("Type")) {

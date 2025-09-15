@@ -3,7 +3,7 @@
 #strokeMiterlimit-host,
 #inspector-host  {
   /* position: fixed !important; */
-  z-index: 100;
+  z-index: 999999;
 }
 
 #inspector-host * {
@@ -19,7 +19,6 @@
 #scene-explorer-host,
 #inspector-host {
   position: fixed !important;
-  z-index: 100;
   top: 0;
   height: 100%;
 }

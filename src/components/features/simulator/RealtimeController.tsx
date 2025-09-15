@@ -48,7 +48,7 @@ export default function RealtimeController() {
         }))}
       />
 
-      {/* 游戏视图区域 */}
+      {/* 可视区域，不能在这里放置组件影响场景可见性 */}
       <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
         <div class="flex h-full w-full flex-col overflow-hidden rounded"></div>
       </div>

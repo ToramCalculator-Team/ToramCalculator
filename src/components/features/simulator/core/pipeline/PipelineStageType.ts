@@ -74,7 +74,11 @@ type AccumulateStageOutputs<StageSchemaPairs extends readonly any[]> = {
     ? OutputKey extends keyof any
       ? OutputKey
       : never
-    : never]: K extends readonly [any, any, infer Schema] ? (Schema extends z.ZodTypeAny ? z.infer<Schema> : Schema) : never;
+    : never]: K extends readonly [any, any, infer Schema]
+    ? Schema extends z.ZodTypeAny
+      ? z.infer<Schema>
+      : Schema
+    : never;
 };
 
 /**
@@ -82,10 +86,10 @@ type AccumulateStageOutputs<StageSchemaPairs extends readonly any[]> = {
  * @param TStage - 目标阶段的事件名称
  * @param TStageDefinitions - 阶段定义数组
  */
-type StageDefinitionSchema<TStage extends string, TStageDefinitions extends readonly (readonly [string, string, any])[]> = Extract<
-  TStageDefinitions[number],
-  readonly [TStage, any, any]
->[2];
+type StageDefinitionSchema<
+  TStage extends string,
+  TStageDefinitions extends readonly (readonly [string, string, any])[],
+> = Extract<TStageDefinitions[number], readonly [TStage, any, any]>[2];
 
 /**
  * 获取指定阶段的运行时上下文类型。
@@ -93,9 +97,10 @@ type StageDefinitionSchema<TStage extends string, TStageDefinitions extends read
  * @param TStage - 目标阶段的事件名称
  * @param TStageDefinitions - 阶段定义数组
  */
-type StageExecutionContext<TStage extends string, TStageDefinitions extends readonly (readonly [string, string, any])[]> = AccumulateStageOutputs<
-  GetPreviousStageDefs<TStageDefinitions, TStage>  
->;
+type StageExecutionContext<
+  TStage extends string,
+  TStageDefinitions extends readonly (readonly [string, string, any])[],
+> = AccumulateStageOutputs<GetPreviousStageDefs<TStageDefinitions, TStage>>;
 
 /**
  * 获取指定阶段的运行时输出类型。
@@ -103,14 +108,15 @@ type StageExecutionContext<TStage extends string, TStageDefinitions extends read
  * @param TStageDefinitions - 阶段定义数组
  */
 type StageRuntimeOutput<TStage extends string, TStageDefinitions extends readonly (readonly [string, string, any])[]> =
-  StageDefinitionSchema<TStage, TStageDefinitions> extends z.ZodTypeAny 
-    ? z.infer<StageDefinitionSchema<TStage, TStageDefinitions>> 
+  StageDefinitionSchema<TStage, TStageDefinitions> extends z.ZodTypeAny
+    ? z.infer<StageDefinitionSchema<TStage, TStageDefinitions>>
     : never;
 
 /**
  * 从阶段定义数组中提取所有阶段名称的联合类型
  */
-type ExtractStageNames<TStageDefinitions extends readonly (readonly [string, string, any])[]> = TStageDefinitions[number][0];
+type ExtractStageNames<TStageDefinitions extends readonly (readonly [string, string, any])[]> =
+  TStageDefinitions[number][0];
 
 /**
  * 定义游戏引擎中每个计算阶段的处理函数接口。
@@ -119,7 +125,7 @@ type ExtractStageNames<TStageDefinitions extends readonly (readonly [string, str
  */
 export type PipelineStageHandlers<
   TStageDefinitions extends readonly (readonly [string, string, any])[],
-  TExternalContext = {}
+  TExternalContext = {},
 > = {
   [StageName in ExtractStageNames<TStageDefinitions>]: (
     context: TExternalContext & StageExecutionContext<StageName, TStageDefinitions>,
@@ -127,4 +133,18 @@ export type PipelineStageHandlers<
       ? z.infer<StageDefinitionSchema<StageName, TStageDefinitions>>
       : never,
   ) => StageRuntimeOutput<StageName, TStageDefinitions>;
+};
+
+// 从actions定义
+export type ActionsPipelineDefinitions<TActions extends string> = Record<
+  TActions,
+  readonly (readonly [string, string, any])[]
+>;
+
+export type ActionsPipelineHanders<
+  TActions extends string,
+  TPipelineDefinitions extends ActionsPipelineDefinitions<TActions>,
+  TExternalContext = {},
+> = {
+  [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>
 };

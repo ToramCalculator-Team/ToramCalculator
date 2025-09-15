@@ -8,7 +8,7 @@
  */
 
 import { createSignal, createEffect, onCleanup } from "solid-js";
-import { controllerCommunication } from "./communication";
+import { controllerInputCommunication } from "./communication";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
 import { type MemberSerializeData } from "../core/member/Member";
@@ -52,7 +52,7 @@ export class Controller {
         throw new Error("无法获取模拟器数据");
       }
       
-      const result = await controllerCommunication.startSimulation(simulatorData);
+      const result = await controllerInputCommunication.startSimulation(simulatorData);
       if (!result.success) {
         throw new Error(result.error || "启动失败");
       }
@@ -71,7 +71,7 @@ export class Controller {
     try {
       this.setLoading(true);
       
-      const result = await controllerCommunication.stopSimulation();
+      const result = await controllerInputCommunication.stopSimulation();
       if (!result.success) {
         throw new Error(result.error || "停止失败");
       }
@@ -89,7 +89,7 @@ export class Controller {
     try {
       this.setLoading(true);
       
-      const result = await controllerCommunication.pauseSimulation();
+      const result = await controllerInputCommunication.pauseSimulation();
       if (!result.success) {
         throw new Error(result.error || "暂停失败");
       }
@@ -106,7 +106,7 @@ export class Controller {
     try {
       this.setLoading(true);
       
-      const result = await controllerCommunication.resumeSimulation();
+      const result = await controllerInputCommunication.resumeSimulation();
       if (!result.success) {
         throw new Error(result.error || "恢复失败");
       }
@@ -140,7 +140,7 @@ export class Controller {
     try {
       this.setError(null);
       
-      const result = await controllerCommunication.selectTarget(sourceMemberId, targetMemberId);
+      const result = await controllerInputCommunication.selectTarget(sourceMemberId, targetMemberId);
       if (!result.success) {
         throw new Error(result.error || "选择目标失败");
       }
@@ -156,7 +156,7 @@ export class Controller {
     if (!memberId) return;
     
     try {
-      const result = await controllerCommunication.castSkill(memberId, skillId);
+      const result = await controllerInputCommunication.castSkill(memberId, skillId);
       if (!result.success) {
         throw new Error(result.error || "释放技能失败");
       }
@@ -170,7 +170,7 @@ export class Controller {
     if (!memberId) return;
     
     try {
-      const result = await controllerCommunication.moveMember(memberId, x, y);
+      const result = await controllerInputCommunication.moveMember(memberId, x, y);
       if (!result.success) {
         throw new Error(result.error || "移动失败");
       }
@@ -184,7 +184,7 @@ export class Controller {
     if (!memberId) return;
     
     try {
-      const result = await controllerCommunication.stopMemberAction(memberId);
+      const result = await controllerInputCommunication.stopMemberAction(memberId);
       if (!result.success) {
         throw new Error(result.error || "停止动作失败");
       }
@@ -220,7 +220,7 @@ export class Controller {
 
   // 检查连接
   private checkConnection() {
-    const connected = controllerCommunication.checkConnection();
+    const connected = controllerInputCommunication.checkConnection();
     this.setConnected(connected);
     
     if (!connected && this.getRunning()) {
@@ -232,7 +232,7 @@ export class Controller {
   // 设置Worker监听器
   private setupWorkerListeners() {
     // 帧快照更新 - 每帧包含完整的引擎和成员状态
-    controllerCommunication.on("frame_snapshot", (data: any) => {
+    controllerInputCommunication.on("frame_snapshot", (data: any) => {
       // console.log("🔧 收到帧快照:", data);
       
       if (data.event) {
@@ -284,7 +284,7 @@ export class Controller {
   // 刷新数据
   private async refreshMembers() {
     try {
-      const result = await controllerCommunication.getMembers();
+      const result = await controllerInputCommunication.getMembers();
       
       // 确保结果是 MemberSerializeData[] 类型
       if (Array.isArray(result)) {

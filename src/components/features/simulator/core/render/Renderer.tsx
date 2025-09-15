@@ -18,10 +18,12 @@ import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
+import { rendererCommunication } from "./RendererCommunication";
 import { Portal } from "solid-js/web";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { GridMaterial, SkyMaterial } from "@babylonjs/materials";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Inspector } from '@babylonjs/inspector';
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题是定义
@@ -44,7 +46,9 @@ const cssColors = {
 };
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
-export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
+export function GameView(props: { 
+  followEntityId?: EntityId;
+}): JSX.Element {
   const themeColors = createMemo(
     () =>
       ({
@@ -232,11 +236,10 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
   };
 
   // 测试模式配置函数
-  // function testModelOpen() {
+  // async function testModelOpen() {
+  //   const AxesViewer = await import("@babylonjs/core/Debug/axesViewer").then((module) => module.AxesViewer);
   //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-  //   void scene.debugLayer.show({
-  //     // embedMode: true
-  //   });
+  //   Inspector.Show(scene, {});
   //   // 世界坐标轴显示
   //   new AxesViewer(scene, 0.1);
   // }
@@ -275,7 +278,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
         scene.fogColor = new Color3(0.3, 0.3, 0.3);
       }
     });
-    // testModelOpen();
+    // await testModelOpen();
 
     // 摄像机
     camera = new UniversalCamera("Camera", new Vector3(0, 1, 0), scene);
@@ -465,8 +468,9 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
       // 初始化渲染控制器
       const controller = createRendererController(scene);
 
-      // 提供全局入口，供主线程消息调度处转发渲染指令
-      (globalThis as any).__SIM_RENDER__ = (payload: any) => {
+      // 初始化渲染通信并设置处理器
+      rendererCommunication.initialize();
+      rendererCommunication.setRenderHandler((payload: any) => {
         try {
           if (!payload) return;
           if (Array.isArray(payload)) {
@@ -483,9 +487,9 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
             controller.send(payload as any);
           }
         } catch (e) {
-          console.warn("__SIM_RENDER__ 处理渲染指令失败", e);
+          console.error("RendererCommunication: 处理渲染指令失败", e);
         }
-      };
+      });
 
       // 注册循环渲染函数
       engine.runRenderLoop(() => {
@@ -511,14 +515,6 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
       // 通知loading
       setLoaderState(true);
-
-      // 组件卸载时清理控制器与全局入口
-      // onCleanup(() => {
-      //   try {
-      //     if ((globalThis as any).__SIM_RENDER__) delete (globalThis as any).__SIM_RENDER__;
-      //   } catch {}
-      //   controller.dispose();
-      // });
     });
 
     // 在场景渲染循环中添加相机更新（仅在未跟随实体时启用本地FPS控制）
@@ -571,9 +567,13 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
   });
 
   onCleanup(() => {
+    // 清理渲染通信
+    rendererCommunication.dispose();
+    
+    // 清理Babylon.js资源
     scene.dispose();
     engine.dispose();
-    console.log("内存已清理");
+    console.log("渲染器资源已清理");
   });
 
   return (

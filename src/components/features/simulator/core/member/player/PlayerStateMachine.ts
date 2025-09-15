@@ -159,6 +159,8 @@ export interface PlayerStateContext {
   statContainer: StatContainer<PlayerAttrType>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
+  /** 创建帧 */
+  createdAtFrame: number;
   /** 当前帧 */
   currentFrame: number;
   /** 技能冷却 */
@@ -171,8 +173,9 @@ export interface PlayerStateContext {
   skillEndFrame: number;
   /** 技能列表 */
   skillList: CharacterSkillWithRelations[];
-  /** 正在执行的技能ID */
-  currentSkillId: string;
+  /** 正在执行的技能 */
+  currentSkill: CharacterSkillWithRelations | null;
+
   /** 正在施放的技能效果 */
   currentSkillEffect: SkillEffectWithRelations | null;
   /** 前摇长度帧 */
@@ -216,8 +219,10 @@ export const playerActions = {
       console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
     }
   },
-  更新玩家状态: assign({
-    currentFrame: ({ context }) => context.engine.getFrameLoop().getFrameNumber(),
+  更新玩家状态: enqueueActions(({ context, event, enqueue }) => { 
+    enqueue.assign({
+      currentFrame: ({ context }) => context.currentFrame + 1,
+    }); 
   }),
   启用站立动画: function ({ context, event }) {
     // Add your action code here
@@ -257,11 +262,16 @@ export const playerActions = {
     console.log(`👤 [${context.name}] 添加待处理技能`, event);
     const e = event as 使用技能;
     const skillId = e.data.skillId;
-    context.currentSkillId = skillId;
+    const skill = context.skillList.find((s) => s.id === skillId);
+    if (!skill) {
+      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+      return;
+    }
+    context.currentSkill = skill;
   },
   清空待处理技能: function ({ context, event }) {  
     console.log(`👤 [${context.name}] 清空待处理技能`, event);
-    context.currentSkillId = "";
+    context.currentSkill = null;
   },
   技能消耗扣除: enqueueActions(({ context, event, enqueue }, params: {
     expressionEvaluator: (expression: string, context: ExpressionContext) => number;
@@ -271,9 +281,9 @@ export const playerActions = {
     const e = event as 收到目标快照;
     const currentFrame = context.currentFrame;
 
-    const skill = context.skillList.find((s) => s.id === context.currentSkillId);
+    const skill = context.currentSkill;
     if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${context.currentSkillId}`);
+      console.error(`🎮 [${context.name}] 技能不存在: ${context.currentSkill?.id}`);
       return;
     }
 
@@ -287,7 +297,7 @@ export const playerActions = {
       return !!result; // 明确返回布尔值进行比较
     });
     if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkillId}`);
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
       return;
     }
 
@@ -331,11 +341,11 @@ export const playerActions = {
   },
   计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
-    const skill = context.skillList.find((s) => s.id === context.currentSkillId);
+    const skill = context.currentSkill;
     const effect = context.currentSkillEffect;
     const currentFrame = context.currentFrame;
     if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkillId}`);
+      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
       return;
     }
     const motionFixed = Math.floor(
@@ -392,7 +402,7 @@ export const playerActions = {
       payload: {
         targetMemberId: context.id, // 目标成员ID
         fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
-        skillId: context.currentSkillId, // 技能ID
+        skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
         source: "skill_front_swing", // 事件来源
       },
     });
@@ -472,9 +482,17 @@ export const playerActions = {
     console.log(`👤 [${context.name}] 重置到复活状态`, event);
   },
   发送快照到请求者: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送快照到请求者`, event);
+    const e = event as 收到快照请求;
+    const senderId = e.data.senderId;
+    const sender = context.engine.getMember(senderId);
+    if (!sender) {
+      console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
+      return;
+    }
+    sender.actor.send({
+      type: "收到目标快照",
+      data: { senderId: context.id },
+    });
   },
   发送命中判定事件给自己: function ({ context, event }) {
     // Add your action code here
@@ -807,6 +825,7 @@ export const playerStateMachine = (player: Player) => {
       engine: player.engine,
       statContainer: player.statContainer,
       position: player.position,
+      createdAtFrame: player.engine.getFrameLoop().getFrameNumber(),
       currentFrame: 0,
       currentSkillStartupFrames: 0,
       currentSkillChargingFrames: 0,
@@ -818,7 +837,7 @@ export const playerStateMachine = (player: Player) => {
       currentSkillIndex: 0,
       skillStartFrame: 0,
       skillEndFrame: 0,
-      currentSkillId: "",
+      currentSkill: null,
       statusTags: [],
       character: player.data.player!.character,
     },

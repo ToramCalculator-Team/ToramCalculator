@@ -1,9 +1,10 @@
 /**
- * 简化的控制器通信层
+ * 控制器输入通信层
  * 
  * 职责：
- * - 与Worker通信
- * - 管理连接状态
+ * - 处理玩家输入指令 → Worker
+ * - 管理模拟器控制
+ * - 获取状态数据
  */
 
 import { IntentMessage } from "../core/MessageRouter";
@@ -12,7 +13,7 @@ import type { SimulatorWithRelations } from "@db/repositories/simulator";
 
 // ============================== 简化的通信管理器 ==============================
 
-export class ControllerCommunication {
+export class ControllerInputCommunication {
   private isConnected = false;
 
   // ==================== 连接管理 ====================
@@ -120,4 +121,4 @@ export class ControllerCommunication {
 
 // ============================== 导出单例 ==============================
 
-export const controllerCommunication = new ControllerCommunication();
+export const controllerInputCommunication = new ControllerInputCommunication();
