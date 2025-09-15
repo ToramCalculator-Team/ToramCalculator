@@ -308,6 +308,11 @@ export class GameEngine {
     totalMessagesProcessed: 0,
   };
 
+  // ==================== 渲染通信 ====================
+
+  /** 渲染消息发送器 - 用于发送渲染指令到主线程 */
+  private renderMessageSender: ((payload: any) => void) | null = null;
+
   // ==================== 静态方法 ====================
 
   /**
@@ -460,6 +465,34 @@ export class GameEngine {
   }
 
   /**
+   * 设置渲染消息发送器
+   * 
+   * @param sender 渲染消息发送函数，通常由Worker环境中的MessagePort提供
+   */
+  setRenderMessageSender(sender: (payload: any) => void): void {
+    this.renderMessageSender = sender;
+    console.log("GameEngine: 渲染消息发送器已设置");
+  }
+
+  /**
+   * 发送渲染指令到主线程
+   * 
+   * @param payload 渲染指令负载，可以是单个指令或指令数组
+   */
+  postRenderMessage(payload: any): void {
+    if (!this.renderMessageSender) {
+      console.warn("GameEngine: 渲染消息发送器未设置，无法发送渲染指令");
+      return;
+    }
+
+    try {
+      this.renderMessageSender(payload);
+    } catch (error) {
+      console.error("GameEngine: 发送渲染指令失败:", error);
+    }
+  }
+
+  /**
    * 清理引擎资源
    */
   cleanup(): void {
@@ -471,6 +504,9 @@ export class GameEngine {
 
     // 清理事件队列
     this.eventQueue.clear();
+
+    // 清理渲染消息发送器
+    this.renderMessageSender = null;
 
     // 重置统计
     this.stats = {
@@ -536,6 +572,7 @@ export class GameEngine {
   }
 
   /**
+   * 事件处理器现在似乎是插入到成员状态机的update事件中
    * 注册事件处理器
    *
    * @param eventType 事件类型
@@ -906,10 +943,6 @@ export class GameEngine {
     console.log("🧹 JS编译缓存已清理");
   }
 
-
-
-
-
   // ==================== 私有方法 ====================
 
   /**
@@ -957,8 +990,6 @@ export class GameEngine {
       console.log("🛡️ GameEngine在测试环境中运行（已标记允许）");
     }
   }
-
-
 
   /**
    * 创建当前帧的完整快照
@@ -1016,6 +1047,7 @@ export class GameEngine {
   }
 
   /**
+   * 事件处理器现在似乎是插入到成员状态机的update事件中
    * 初始化默认事件处理器
    */
   private initializeDefaultEventHandlers(): void {

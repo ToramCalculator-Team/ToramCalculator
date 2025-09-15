@@ -265,7 +265,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                     portResult = { success: false, error: "memberId required" };
                     break;
                   }
-                  const member = gameEngine.findMember(memberId);
+                  const member = gameEngine.getMember(memberId);
                   if (!member) {
                     portResult = { success: false, error: "member not found" };
                     break;
@@ -342,16 +342,15 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 
 
 
-        // 提供渲染通道的统一出口：用于FSM发送渲染指令（透传到主线程）
-        (gameEngine as any).postRenderMessage = (payload: any) => {
+        // 设置渲染消息发送器：用于FSM发送渲染指令（透传到主线程）
+        gameEngine.setRenderMessageSender((payload: any) => {
           try {
             messagePort.postMessage(payload);
-          } catch {}
-        };
+          } catch (error) {
+            console.error("Worker: 发送渲染消息失败:", error);
+          }
+        });
 
-        // 周期性全量 EngineStats 推送改为在 start_simulation 后启动
-
-        // Worker初始化完成，不需要通知主线程
         return;
 
       default:

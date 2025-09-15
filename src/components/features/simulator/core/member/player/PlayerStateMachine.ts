@@ -9,6 +9,7 @@ import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
 import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
+import { CharacterWithRelations } from "@db/repositories/character";
 
 /**
  * Player特有的事件类型
@@ -137,7 +138,7 @@ type PlayerEventType =
   | 切换目标;
 
 // 定义 PlayerStateContext 类型（提前声明）
-interface PlayerStateContext {
+export interface PlayerStateContext {
   /** 成员ID */
   id: string;
   /** 成员类型 */
@@ -184,6 +185,8 @@ interface PlayerStateContext {
   currentSkillActionFrames: number;
   /** 状态标签组 */
   statusTags: string[];
+  /** 机体配置信息 */
+  character: CharacterWithRelations;
 }
 
 // 使用 XState 的 ActionFunction 类型定义 actions
@@ -191,30 +194,26 @@ export const playerActions = {
   根据角色配置生成初始状态: function ({ context, event }) {
     console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, event);
     // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
-    const engine: any = context.engine as any;
-    const memberId = context.id;
-    const name = context.name;
     const spawnCmd = {
       type: "render:cmd" as const,
       cmd: {
         type: "spawn" as const,
-        entityId: memberId,
-        name,
+        entityId: context.id,
+        name: context.name,
         position: { x: 0, y: 0, z: 0 },
         seq: 0,
         ts: Date.now(),
       },
     };
-    // 引擎统一出口：借用现有系统消息发送工具（engine 暴露内部端口发送方法）
-    if (engine?.postRenderMessage) {
-      engine.postRenderMessage(spawnCmd);
-    } else if (typeof (engine as any)?.getMessagePort === "function") {
-      // 兜底：如果引擎暴露了 messagePort 获取方法
-      const port: MessagePort | undefined = (engine as any).getMessagePort?.();
-      port?.postMessage(spawnCmd);
+    // 引擎统一出口：通过已建立的MessageChannel发送渲染指令
+    if (context.engine.postRenderMessage) {
+      // 首选方案：使用引擎提供的统一渲染消息接口
+      // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
+      context.engine.postRenderMessage(spawnCmd);
     } else {
-      // 最简单 fallback：直接挂到 window 入口（主线程会转发到控制器）
-      (globalThis as any).__SIM_RENDER__?.(spawnCmd);
+      // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
+      // 这确保我们只使用正确的通信通道，避免依赖全局变量
+      console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
     }
   },
   更新玩家状态: assign({
@@ -821,6 +820,7 @@ export const playerStateMachine = (player: Player) => {
       skillEndFrame: 0,
       currentSkillId: "",
       statusTags: [],
+      character: player.data.player!.character,
     },
     id: machineId,
     initial: "存活",
