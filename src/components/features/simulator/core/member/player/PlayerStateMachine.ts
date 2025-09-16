@@ -10,6 +10,8 @@ import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
 import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/repositories/character";
+import { PipelineManager } from "../../pipeline/PipelineManager";
+import { PlayerPipelineDefinitions } from "./PlayerActionPipelines";
 
 /**
  * Player特有的事件类型
@@ -157,6 +159,8 @@ export interface PlayerStateContext {
   engine: GameEngine;
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
+  /** 管线管理器引用 */
+  pipelineManager: PipelineManager<keyof typeof playerActions, typeof PlayerPipelineDefinitions, PlayerStateContext>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */
@@ -175,7 +179,6 @@ export interface PlayerStateContext {
   skillList: CharacterSkillWithRelations[];
   /** 正在执行的技能 */
   currentSkill: CharacterSkillWithRelations | null;
-
   /** 正在施放的技能效果 */
   currentSkillEffect: SkillEffectWithRelations | null;
   /** 前摇长度帧 */
@@ -341,49 +344,51 @@ export const playerActions = {
   },
   计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
-    const skill = context.currentSkill;
-    const effect = context.currentSkillEffect;
-    const currentFrame = context.currentFrame;
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
-      return;
-    }
-    const motionFixed = Math.floor(
-      context.engine.evaluateExpression(effect.motionFixed ?? "0", {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      }),
-    );
-    const motionModified = Math.floor(
-      context.engine.evaluateExpression(effect.motionModified ?? "0", {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      }),
-    );
-    const mspd = Math.min(0.5, Math.floor(context.statContainer.getValue("mspd")));
-    console.log(`👤 [${context.name}] 固定帧：`, motionFixed);
-    console.log(`👤 [${context.name}] 可加速帧：`, motionModified);
-    console.log(`👤 [${context.name}] 当前行动速度：`, mspd);
+    const startupFrames = context.pipelineManager.executePipeline("计算前摇时长", context, {});
+    console.log(`👤 [${context.name}] 计算前摇时长结果:`,startupFrames);
+    // const skill = context.currentSkill;
+    // const effect = context.currentSkillEffect;
+    // const currentFrame = context.currentFrame;
+    // if (!effect) {
+    //   console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
+    //   return;
+    // }
+    // const motionFixed = Math.floor(
+    //   context.engine.evaluateExpression(effect.motionFixed ?? "0", {
+    //     currentFrame,
+    //     casterId: context.id,
+    //     skillLv: skill?.lv ?? 0,
+    //   }),
+    // );
+    // const motionModified = Math.floor(
+    //   context.engine.evaluateExpression(effect.motionModified ?? "0", {
+    //     currentFrame,
+    //     casterId: context.id,
+    //     skillLv: skill?.lv ?? 0,
+    //   }),
+    // );
+    // const mspd = Math.min(0.5, Math.floor(context.statContainer.getValue("mspd")));
+    // console.log(`👤 [${context.name}] 固定帧：`, motionFixed);
+    // console.log(`👤 [${context.name}] 可加速帧：`, motionModified);
+    // console.log(`👤 [${context.name}] 当前行动速度：`, mspd);
 
-    const totalMotion = motionFixed + motionModified * (1 - mspd);
-    console.log(`👤 [${context.name}] 总帧数：`, totalMotion);
+    // const totalMotion = motionFixed + motionModified * (1 - mspd);
+    // console.log(`👤 [${context.name}] 总帧数：`, totalMotion);
 
-    const startupRatio = context.engine.evaluateExpression(
-      effect?.startupFrames ?? "throw new Error('前摇时长表达式不存在')",
-      {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      },
-    );
-    console.log(`👤 [${context.name}] 前摇比例：`, startupRatio);
-    const startupFrames = Math.floor(startupRatio * totalMotion);
-    console.log(`👤 [${context.name}] 前摇帧数：`, startupFrames);
-    enqueue.assign({
-      currentSkillStartupFrames: startupFrames,
-    });
+    // const startupRatio = context.engine.evaluateExpression(
+    //   effect?.startupFrames ?? "throw new Error('前摇时长表达式不存在')",
+    //   {
+    //     currentFrame,
+    //     casterId: context.id,
+    //     skillLv: skill?.lv ?? 0,
+    //   },
+    // );
+    // console.log(`👤 [${context.name}] 前摇比例：`, startupRatio);
+    // const startupFrames = Math.floor(startupRatio * totalMotion);
+    // console.log(`👤 [${context.name}] 前摇帧数：`, startupFrames);
+    // enqueue.assign({
+    //   currentSkillStartupFrames: startupFrames,
+    // });
   }),
   创建前摇结束通知: function ({ context, event }) {
     console.log("🎮 创建前摇结束通知", event);
@@ -824,6 +829,7 @@ export const playerStateMachine = (player: Player) => {
       isAlive: player.isAlive,
       engine: player.engine,
       statContainer: player.statContainer,
+      pipelineManager: player.pipelineManager,
       position: player.position,
       createdAtFrame: player.engine.getFrameLoop().getFrameNumber(),
       currentFrame: 0,

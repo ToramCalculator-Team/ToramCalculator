@@ -4,7 +4,8 @@ import { StatContainer } from "../dataSys/StatContainer";
 import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
-import BuffManager from "../buff/BuffManager";
+import { BuffManager } from "../buff/BuffManager";
+import { PipelineManager } from "../pipeline/PipelineManager";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -105,11 +106,13 @@ export class Member<TAttrKey extends string = string> {
   /** 是否活跃 */
   isAlive: boolean;
   /** 属性Schema（用于编译表达式等） */
-  schema: NestedSchema;
+  dataSchema: NestedSchema;
   /** 响应式系统实例（用于稳定导出属性） */
   statContainer: StatContainer<TAttrKey>;
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
+  /** 管线管理器（固定+动态管线阶段管理） */
+  pipelineManager: PipelineManager<any, any, any>;
   /** 成员Actor引用 */
   actor: MemberActor<TAttrKey>;
   /** 引擎引用 */
@@ -135,7 +138,6 @@ export class Member<TAttrKey extends string = string> {
 
   update(): void {
     this.actor.send({ type: "更新" });
-    this.buffManager.update(this.engine.getFrameLoop().getFrameNumber());
   }
 
   constructor(
@@ -145,7 +147,7 @@ export class Member<TAttrKey extends string = string> {
     teamId: string,
     targetId: string,
     memberData: MemberWithRelations,
-    schema: NestedSchema,
+    dataSchema: NestedSchema,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -156,10 +158,16 @@ export class Member<TAttrKey extends string = string> {
     this.teamId = teamId;
     this.targetId = targetId;
     this.isAlive = true;
-    this.schema = schema;
+    this.dataSchema = dataSchema;
     this.data = memberData;
-    this.statContainer = new StatContainer<TAttrKey>(schema);
-    this.buffManager = new BuffManager(this);
+    this.statContainer = new StatContainer<TAttrKey>(dataSchema);
+    // 初始化管线管理器（简单挂件，由子类自行配置）
+    this.pipelineManager = new PipelineManager({}, {});
+    
+    // 初始化Buff管理器并关联管线管理器
+    this.buffManager = new BuffManager();
+    this.buffManager.setPipelineManager(this.pipelineManager);
+    
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.actor = createActor(stateMachine(this), {
       id: memberData.id,

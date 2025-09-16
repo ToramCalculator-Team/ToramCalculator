@@ -372,12 +372,8 @@ export class GameEngine {
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
-
-
     // 初始化默认事件处理器
     this.initializeDefaultEventHandlers();
-
-    console.log("GameEngine: 初始化完成");
   }
 
   // ==================== 生命周期管理 ====================
@@ -397,8 +393,6 @@ export class GameEngine {
 
     // 启动帧循环
     this.frameLoop.start();
-
-    console.log("GameEngine: 引擎已启动");
   }
 
   /**
@@ -414,8 +408,6 @@ export class GameEngine {
 
     // 停止帧循环
     this.frameLoop.stop();
-
-    console.log("GameEngine: 引擎已停止");
   }
 
   /**
@@ -431,8 +423,6 @@ export class GameEngine {
 
     // 暂停帧循环
     this.frameLoop.pause();
-
-    console.log("GameEngine: 引擎已暂停");
   }
 
   /**
@@ -448,8 +438,6 @@ export class GameEngine {
 
     // 恢复帧循环
     this.frameLoop.resume();
-
-    console.log("GameEngine: 引擎已恢复");
   }
 
   /**
@@ -471,7 +459,6 @@ export class GameEngine {
    */
   setRenderMessageSender(sender: (payload: any) => void): void {
     this.renderMessageSender = sender;
-    console.log("GameEngine: 渲染消息发送器已设置");
   }
 
   /**
@@ -813,7 +800,7 @@ export class GameEngine {
     if (!member) {
       throw new Error(`成员不存在: ${memberId}`);
     }
-    const schema = member.schema;
+    const schema = member.dataSchema;
 
     const context: CompilationContext = {
       memberId,
@@ -899,7 +886,7 @@ export class GameEngine {
       const compiledResult = this.jsProcessor.compile(expression, {
         memberId,
         targetId: context.targetId,
-        schema: member.schema,
+        schema: member.dataSchema,
         options: { enableValidation: true }
       });
       

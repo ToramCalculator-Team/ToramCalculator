@@ -1,5 +1,6 @@
 import { skill_effectSchema } from "@db/generated/zod";
 import { z } from "zod/v3";
+import { playerActions } from "../member/player/PlayerStateMachine";
 
 /**
  * 将Zod Schema转换为一个具有默认值的JavaScript对象。
@@ -97,7 +98,7 @@ type StageDefinitionSchema<
  * @param TStage - 目标阶段的事件名称
  * @param TStageDefinitions - 阶段定义数组
  */
-type StageExecutionContext<
+export type StageExecutionContext<
   TStage extends string,
   TStageDefinitions extends readonly (readonly [string, string, any])[],
 > = AccumulateStageOutputs<GetPreviousStageDefs<TStageDefinitions, TStage>>;
@@ -146,5 +147,26 @@ export type ActionsPipelineHanders<
   TPipelineDefinitions extends ActionsPipelineDefinitions<TActions>,
   TExternalContext = {},
 > = {
-  [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>
+  [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>;
 };
+
+export type PipelineDefinitions<
+  TConfig extends Record<string, readonly (readonly [string, string, any])[]>,
+  TExternalContext = {},
+> = {
+  [K in keyof TConfig]: {
+    definitions: TConfig[K];
+    handlers: PipelineStageHandlers<TConfig[K], TExternalContext>;
+  };
+};
+
+export function createPipeline<
+  TActions extends Record<string, any>,
+  TConfig extends Record<keyof TActions, readonly (readonly [string, string, any])[]>,
+  TExternalContext = {},
+  >(
+  actions: TActions,
+  config: PipelineDefinitions<TConfig, TExternalContext>,
+): PipelineDefinitions<TConfig, TExternalContext> {
+  return config;
+}

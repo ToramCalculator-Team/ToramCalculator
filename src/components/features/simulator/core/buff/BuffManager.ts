@@ -1,193 +1,328 @@
-import type { Member } from "../member/Member";
-import { ModifierType } from "../dataSys/StatContainer";
-
-export type StackRule = "stack" | "refresh" | "replace";
-
-export type BuffModifier = {
-  attr: string;
-  kind:
-    | ModifierType.BASE_VALUE
-    | ModifierType.STATIC_FIXED
-    | ModifierType.STATIC_PERCENTAGE
-    | ModifierType.DYNAMIC_FIXED
-    | ModifierType.DYNAMIC_PERCENTAGE;
-  value: number;
-};
-
-export type BuffHooks = {
-  onResourceSpendAttempt?: (
-    ctx: any,
-    plan: { hp?: number; mp?: number; [k: string]: number | undefined },
-  ) => Partial<{ hp: number; mp: number }> | void;
-  onBeforeDamage?: (
-    ctx: any,
-    io: { mul?: number; add?: number; flags?: { invul?: boolean } },
-  ) => Partial<{ mul: number; add: number; flags: { invul?: boolean } }> | void;
-  onAfterDamage?: (
-    ctx: any,
-    io: { final?: number },
-  ) => Partial<{ final: number }> | void;
-  onApplyDamage?: (
-    ctx: any,
-    io: { applied?: number },
-  ) => Partial<{ applied: number }> | void;
-};
-
-export interface BuffInstance {
-  id: string;
-  name: string;
-  source: { id: string; name: string; type: "skill" | "item" | "system" };
-  stacks: number;
-  stackRule: StackRule;
-  startFrame: number;
-  endFrame?: number;
-  modifiers?: BuffModifier[];
-  hooks?: BuffHooks;
-  // runtime
-  nextTickFrame?: number;
-}
-
 /**
- * 轻量 BuffManager：
- * - 管理 buff 生命周期（仅到期移除）
- * - 将修饰落入/撤出 StatContainer（StatContainer）
- * - 提供钩子聚合 API 给同步流水线调用
- * - 提供 mechanicState（成员私有机制状态）存取
+ * Buff管理器 - 简化版本，专注于生命周期管理
+ * 
+ * 核心职责：
+ * 1. 管理buff的基本生命周期（添加、移除、更新）
+ * 2. 与技能效果数据库集成
+ * 3. 通知PipelineManager进行管线插入/移除
+ * 4. 通知Member的StateContainer进行状态修改
  */
+
+import type { PipelineManager, CustomPipelineStage } from "../pipeline/PipelineManager";
+
+// 简单的ID生成实现
+function generateId(): string {
+  return `buff_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// ==================== BuffManager 实现 ====================
+
 export class BuffManager {
-  private readonly member: Member<any>;
-  private readonly active: Map<string, BuffInstance> = new Map();
-  private readonly mechanicState: Map<string, number> = new Map();
+  private buffs = new Map<string, BuffInstance>();
+  private skillEffectService: SkillEffectService | null = null;
+  private pipelineManager: PipelineManager<any, any> | null = null;
+  private changeListeners = new Set<() => void>();
+  private currentFrame: number = 0;
 
-  constructor(member: Member<any>) {
-    this.member = member;
-  }
+  constructor() {}
 
-  // ======== Mechanic State ========
-  getMech(key: string): number {
-    return this.mechanicState.get(key) ?? 0;
-  }
-  setMech(key: string, value: number): void {
-    this.mechanicState.set(key, value);
-  }
-  incMech(key: string, delta = 1): number {
-    const v = (this.mechanicState.get(key) ?? 0) + delta;
-    this.mechanicState.set(key, v);
-    return v;
-  }
-  consumeMech(key: string, amount: number): number {
-    const cur = this.mechanicState.get(key) ?? 0;
-    const used = Math.min(cur, amount);
-    this.mechanicState.set(key, cur - used);
-    return used;
+  // ==================== 依赖注入 ====================
+
+  /**
+   * 设置技能效果服务
+   */
+  setSkillEffectService(service: SkillEffectService): void {
+    this.skillEffectService = service;
   }
 
-  // ======== Lifecycle ========
-  apply(buff: BuffInstance): void {
-    // stacking policy
-    const existing = this.active.get(buff.id);
-    if (existing) {
-      switch (buff.stackRule) {
-        case "stack":
-          existing.stacks += buff.stacks;
-          break;
-        case "refresh":
-          existing.endFrame = buff.endFrame ?? existing.endFrame;
-          break;
-        case "replace":
-          this.remove(existing.id);
-          this.active.set(buff.id, buff);
-          this.applyModifiers(buff);
-          return;
+  /**
+   * 设置管线管理器
+   */
+  setPipelineManager(manager: PipelineManager<any, any>): void {
+    this.pipelineManager = manager;
+  }
+
+  // ==================== 核心生命周期管理 ====================
+
+  /**
+   * 添加buff
+   */
+  addBuff(
+    skillEffectId: string, 
+    source: string, 
+    options: {
+      stacks?: number;
+      duration?: Duration;
+      data?: Record<string, any>;
+    } = {}
+  ): string | null {
+    if (!this.skillEffectService) {
+      console.error("❌ BuffManager: SkillEffectService未设置");
+      return null;
+    }
+
+    // 1. 从缓存获取技能效果（同步操作）
+    const skillEffect = this.skillEffectService.getSkillEffectSync(skillEffectId);
+    if (!skillEffect) {
+      console.error(`❌ BuffManager: 未找到技能效果: ${skillEffectId}`);
+      return null;
+    }
+
+    // 2. 检查是否已存在相同buff
+    const existingBuff = this.findBuffBySkillEffect(skillEffectId, source);
+    if (existingBuff && skillEffect.buffConfig?.refreshable) {
+      // 刷新现有buff
+      this.refreshBuff(existingBuff.id, options.duration);
+      if (options.stacks) {
+        existingBuff.currentStacks = Math.min(
+          existingBuff.maxStacks,
+          existingBuff.currentStacks + options.stacks
+        );
       }
-      // re-apply modifiers according to new stacks (simple: remove old then add new)
-      this.removeModifiers(existing);
-      if (existing.modifiers && existing.modifiers.length > 0) {
-        this.applyModifiers(existing);
+      this.notifyChange();
+      return existingBuff.id;
+    } else if (existingBuff) {
+      console.warn(`⚠️ BuffManager: buff不可刷新: ${skillEffect.name}`);
+      return null;
+    }
+
+    // 3. 创建新buff实例
+    const buffId = generateId();
+    const now = Date.now();
+    const duration = options.duration ?? skillEffect.buffConfig?.duration ?? -1;
+    
+    const buffInstance: BuffInstance = {
+      id: buffId,
+      skillEffectId,
+      name: skillEffect.name,
+      source,
+      remainingTime: this.convertDurationToSeconds(duration),
+      duration: duration,
+      startTime: now,
+      startFrame: this.currentFrame,
+      currentStacks: options.stacks || 1,
+      maxStacks: skillEffect.buffConfig?.maxStacks || 1,
+      refreshable: skillEffect.buffConfig?.refreshable ?? false,
+      active: true,
+      data: { ...options.data }
+    };
+
+    this.buffs.set(buffId, buffInstance);
+
+    // 4. 通知PipelineManager插入管线
+    if (this.pipelineManager && skillEffect.pipelineInsertions) {
+      for (const insertion of skillEffect.pipelineInsertions) {
+        if (insertion.insertTime === "skill_use") {
+          // 将PipelineInsertion转换为CustomPipelineStage
+          // 生命周期属性由BuffManager管理，不传递给管线阶段
+          const customStage: CustomPipelineStage = {
+            id: `${buffId}_${insertion.hook}`,
+            source: buffId,
+            logic: insertion.logic,
+            priority: insertion.priority || 100,
+            description: insertion.description
+          };
+          
+          this.pipelineManager.insertStage(insertion.hook, customStage);
+        }
       }
-      return;
     }
 
-    this.active.set(buff.id, buff);
-    this.applyModifiers(buff);
+    // 5. 应用状态修改器（这里需要与Member.stateContainer集成）
+    if (skillEffect.stateModifiers) {
+      // TODO: 通知Member应用状态修改器
+      // member.stateContainer.addModifier(buffId, skillEffect.stateModifiers);
+    }
+
+    this.notifyChange();
+    console.log(`✅ BuffManager: 添加buff: ${skillEffect.name} (${buffId})`);
+    
+    return buffId;
   }
 
-  remove(buffId: string): void {
-    const b = this.active.get(buffId);
-    if (!b) return;
-    this.removeModifiers(b);
-    this.active.delete(buffId);
+  /**
+   * 移除buff
+   */
+  removeBuff(buffId: string): boolean {
+    const buff = this.buffs.get(buffId);
+    if (!buff) {
+      return false;
+    }
+
+    // 1. 通知PipelineManager移除管线
+    if (this.pipelineManager) {
+      this.pipelineManager.removeStagesBySource(buffId);
+    }
+
+    // 2. 移除状态修改器
+    // TODO: 通知Member移除状态修改器
+    // member.stateContainer.removeModifier(buffId);
+
+    // 3. 删除buff记录
+    this.buffs.delete(buffId);
+    this.notifyChange();
+
+    console.log(`🗑️ BuffManager: 移除buff: ${buff.name} (${buffId})`);
+    return true;
   }
 
-  update(currentFrame: number): void {
-    // minimal: handle expire only (periodic could be added later via events)
-    for (const [id, b] of [...this.active.entries()]) {
-      if (b.endFrame !== undefined && currentFrame >= b.endFrame) {
-        this.remove(id);
+  /**
+   * 刷新buff持续时间
+   */
+  refreshBuff(buffId: string, newDuration?: Duration): boolean {
+    const buff = this.buffs.get(buffId);
+    if (!buff || !buff.refreshable) {
+      return false;
+    }
+
+    if (newDuration !== undefined) {
+      buff.remainingTime = this.convertDurationToSeconds(newDuration);
+    }
+    buff.startTime = Date.now();
+
+    this.notifyChange();
+    console.log(`🔄 BuffManager: 刷新buff: ${buff.name} (${buffId})`);
+    return true;
+  }
+
+
+  // ==================== 查询方法 ====================
+
+  /**
+   * 获取所有激活的buff
+   */
+  getActiveBuffs(): BuffInstance[] {
+    return Array.from(this.buffs.values()).filter(buff => buff.active);
+  }
+
+  /**
+   * 获取buff详情
+   */
+  getBuff(buffId: string): BuffInstance | undefined {
+    return this.buffs.get(buffId);
+  }
+
+  /**
+   * 根据技能效果查找buff
+   */
+  findBuffBySkillEffect(skillEffectId: string, source?: string): BuffInstance | undefined {
+    for (const buff of this.buffs.values()) {
+      if (buff.skillEffectId === skillEffectId && (!source || buff.source === source)) {
+        return buff;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * 更新buff状态（由Member调用）
+   */
+  updateBuffs(currentFrame: number): void {
+    this.currentFrame = currentFrame;
+    
+    // 检查并移除过期的buff
+    const expiredBuffs: string[] = [];
+    
+    for (const [buffId, buff] of this.buffs) {
+      if (this.isBuffExpired(buff, currentFrame)) {
+        expiredBuffs.push(buffId);
+      }
+    }
+    
+    // 移除过期的buff
+    for (const buffId of expiredBuffs) {
+      this.removeBuff(buffId);
+    }
+    
+    if (expiredBuffs.length > 0) {
+      console.log(`⏰ BuffManager: 移除 ${expiredBuffs.length} 个过期buff`);
+    }
+  }
+
+  /**
+   * 清除所有buff
+   */
+  clearAllBuffs(): void {
+    const buffIds = Array.from(this.buffs.keys());
+    for (const buffId of buffIds) {
+      this.removeBuff(buffId);
+    }
+    console.log(`🧹 BuffManager: 清除所有buff, 移除数量: ${buffIds.length}`);
+  }
+
+  // ==================== 内部方法 ====================
+
+  /**
+   * 检查buff是否过期
+   */
+  private isBuffExpired(buff: BuffInstance, currentFrame: number): boolean {
+    if (buff.duration === -1) return false; // 永久buff
+    if (buff.duration === 0) return true;   // 一次性buff，应该立即过期
+    
+    const elapsedFrames = currentFrame - buff.startFrame;
+    const durationFrames = buff.duration * 60; // 假设60FPS
+    return elapsedFrames >= durationFrames;
+  }
+
+  /**
+   * 转换持续时间到秒数
+   */
+  private convertDurationToSeconds(duration: Duration): number {
+    if (duration === -1) return -1; // 永久
+    if (duration === 0) return 0;   // 一次性
+    return duration; // 秒数
+  }
+
+  /**
+   * 通知状态变化
+   */
+  private notifyChange(): void {
+    for (const listener of this.changeListeners) {
+      try {
+        listener();
+      } catch (error) {
+        console.error("BuffManager: 通知监听器失败:", error);
       }
     }
   }
 
-  // ======== Hooks Aggregation ========
-  applyResourceSpendAttempt(ctx: any, plan: { hp?: number; mp?: number; [k: string]: number | undefined }): void {
-    for (const b of this.active.values()) {
-      const delta = b.hooks?.onResourceSpendAttempt?.(ctx, plan);
-      if (delta) {
-        if (typeof delta.hp === "number") plan.hp = delta.hp;
-        if (typeof delta.mp === "number") plan.mp = delta.mp;
-      }
-    }
+  /**
+   * 监听buff状态变化
+   */
+  onBuffChange(callback: () => void): () => void {
+    this.changeListeners.add(callback);
+    return () => this.changeListeners.delete(callback);
   }
 
-  applyBeforeDamage(ctx: any, io: { mul?: number; add?: number; flags?: { invul?: boolean } }): void {
-    for (const b of this.active.values()) {
-      const d = b.hooks?.onBeforeDamage?.(ctx, io);
-      if (d) {
-        if (typeof d.mul === "number") io.mul = (io.mul ?? 1) * d.mul;
-        if (typeof d.add === "number") io.add = (io.add ?? 0) + d.add;
-        if (d.flags?.invul) io.flags = { ...(io.flags ?? {}), invul: true };
-      }
+  // ==================== 调试和统计 ====================
+
+  /**
+   * 获取统计信息
+   */
+  getStats() {
+    const activeBuffs = this.getActiveBuffs();
+    const buffsByEffect = new Map<string, number>();
+
+    for (const buff of activeBuffs) {
+      buffsByEffect.set(buff.skillEffectId, (buffsByEffect.get(buff.skillEffectId) || 0) + 1);
     }
+
+    return {
+      totalBuffs: activeBuffs.length,
+      buffsByEffect: Object.fromEntries(buffsByEffect)
+    };
   }
 
-  applyAfterDamage(ctx: any, io: { final?: number }): void {
-    for (const b of this.active.values()) {
-      const d = b.hooks?.onAfterDamage?.(ctx, io);
-      if (d && typeof d.final === "number") io.final = d.final;
-    }
-  }
-
-  applyApplyDamage(ctx: any, io: { applied?: number }): void {
-    for (const b of this.active.values()) {
-      const d = b.hooks?.onApplyDamage?.(ctx, io);
-      if (d && typeof d.applied === "number") io.applied = d.applied;
-    }
-  }
-
-  // ======== Internal: RS bridge ========
-  private applyModifiers(buff: BuffInstance): void {
-    if (!buff.modifiers || buff.modifiers.length === 0) return;
-    for (const m of buff.modifiers) {
-      this.member.statContainer.addModifier(m.attr as any, m.kind, m.value, {
-        id: this.sourceId(buff, m.attr),
-        name: buff.name,
-        type: "buff",
-      });
-    }
-  }
-  private removeModifiers(buff: BuffInstance): void {
-    if (!buff.modifiers || buff.modifiers.length === 0) return;
-    for (const m of buff.modifiers) {
-      this.member.statContainer.removeModifier(m.attr as any, m.kind, this.sourceKey(buff, m.attr));
-    }
-  }
-  private sourceId(buff: BuffInstance, attr: string): { id: string; name: string; type: "buff" } {
-    return { id: this.sourceKey(buff, attr), name: buff.name, type: "buff" };
-  }
-  private sourceKey(buff: BuffInstance, attr: string): string {
-    return `buff:${buff.id}:${attr}`;
+  /**
+   * 销毁管理器
+   */
+  dispose(): void {
+    this.clearAllBuffs();
+    this.changeListeners.clear();
   }
 }
 
-export default BuffManager;
+// ==================== 单例导出 ====================
 
+/** 全局buff管理器实例 */
+export const buffManager = new BuffManager();
