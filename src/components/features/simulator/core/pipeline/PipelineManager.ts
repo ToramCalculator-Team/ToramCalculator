@@ -11,7 +11,7 @@
 import { z } from "zod";
 import type { 
   PipelineStageHandlers, 
-  ActionsPipelineDefinitions 
+  ActionPipelineConfig 
 } from "./PipelineStageType";
 
 // ==================== 类型定义 ====================
@@ -78,6 +78,7 @@ export class PipelineManager<
       [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>
     }
   ) {
+    console.log(basePipelineDefinitions, basePipelineHandlers)
     this.basePipelineDefinitions = basePipelineDefinitions;
     this.basePipelineHandlers = basePipelineHandlers;
   }

@@ -5,7 +5,7 @@ import { playerStateMachine } from "./PlayerStateMachine";
 import GameEngine from "../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerData";
 import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
-import { PlayerPipelineDefinitions, PlayerPipelineHanders } from "./PlayerActionPipelines";
+import { PlayerPipelines } from "./PlayerActionPipelines";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
@@ -20,10 +20,17 @@ export class Player extends Member<PlayerAttrType> {
     schema: NestedSchema,
     position?: { x: number; y: number; z: number },
   ) {
-    super(playerStateMachine, engine, campId, teamId, targetId, memberData, schema, position);
-    
-    // Player特有的管线管理器配置
-    this.initializePlayerPipelines();
+    super(
+      playerStateMachine, 
+      engine, 
+      campId, 
+      teamId, 
+      targetId, 
+      memberData, 
+      schema, 
+      PlayerPipelines,
+      position
+    );
     
     // Player特有的被动技能初始化
     this.initializePassiveSkills(memberData);
@@ -34,21 +41,6 @@ export class Player extends Member<PlayerAttrType> {
     console.log(`🎮 Player [${this.name}] 初始化完成`);
   }
 
-  /**
-   * 初始化Player的管线系统
-   */
-  private initializePlayerPipelines(): void {
-    // 重新配置管线管理器为Player专用的管线定义
-    this.pipelineManager = new PipelineManager(
-      PlayerPipelineDefinitions,
-      PlayerPipelineHanders
-    );
-    
-    // 关联BuffManager
-    this.buffManager.setPipelineManager(this.pipelineManager);
-    
-    console.log(`🔧 Player [${this.name}] 管线系统已配置`);
-  }
 
   /**
    * 初始化Player的被动技能

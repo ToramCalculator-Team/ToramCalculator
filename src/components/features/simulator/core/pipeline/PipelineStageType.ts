@@ -1,6 +1,5 @@
-import { skill_effectSchema } from "@db/generated/zod";
 import { z } from "zod/v3";
-import { playerActions } from "../member/player/PlayerStateMachine";
+import { ParameterizedObject, EventObject, ActionFunction } from "xstate";
 
 /**
  * 将Zod Schema转换为一个具有默认值的JavaScript对象。
@@ -8,7 +7,7 @@ import { playerActions } from "../member/player/PlayerStateMachine";
  * @param schema Zod Schema实例
  * @returns 对应Schema的默认值对象
  */
-function schemaToObject(schema: z.ZodTypeAny): any {
+export function schemaToObject(schema: z.ZodTypeAny): any {
   // 处理可选/可空字段，如果设置了default，优先使用default
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
     if ("defaultValue" in schema && typeof schema.defaultValue === "function") {
@@ -46,6 +45,8 @@ function schemaToObject(schema: z.ZodTypeAny): any {
   // TODO: 扩展对其他Zod类型的支持 (z.enum, z.union, z.literal etc.)
   return null; // 其它类型，如果没有明确默认值，返回null
 }
+
+export type PipelineStageDefinition = readonly [string, string, z.ZodTypeAny];
 
 /**
  * 泛型工具类型：截取管道定义中直到指定阶段的所有前置阶段的定义。
@@ -87,10 +88,10 @@ type AccumulateStageOutputs<StageSchemaPairs extends readonly any[]> = {
  * @param TStage - 目标阶段的事件名称
  * @param TStageDefinitions - 阶段定义数组
  */
-type StageDefinitionSchema<
-  TStage extends string,
-  TStageDefinitions extends readonly (readonly [string, string, any])[],
-> = Extract<TStageDefinitions[number], readonly [TStage, any, any]>[2];
+type StageDefinitionSchema<TStage extends string, TStageDefinitions extends PipelineStageDefinition[]> = Extract<
+  TStageDefinitions[number],
+  readonly [TStage, any, any]
+>[2];
 
 /**
  * 获取指定阶段的运行时上下文类型。
@@ -100,7 +101,7 @@ type StageDefinitionSchema<
  */
 export type StageExecutionContext<
   TStage extends string,
-  TStageDefinitions extends readonly (readonly [string, string, any])[],
+  TStageDefinitions extends PipelineStageDefinition[],
 > = AccumulateStageOutputs<GetPreviousStageDefs<TStageDefinitions, TStage>>;
 
 /**
@@ -108,7 +109,7 @@ export type StageExecutionContext<
  * @param TStage - 目标阶段的事件名称
  * @param TStageDefinitions - 阶段定义数组
  */
-type StageRuntimeOutput<TStage extends string, TStageDefinitions extends readonly (readonly [string, string, any])[]> =
+type StageRuntimeOutput<TStage extends string, TStageDefinitions extends PipelineStageDefinition[]> =
   StageDefinitionSchema<TStage, TStageDefinitions> extends z.ZodTypeAny
     ? z.infer<StageDefinitionSchema<TStage, TStageDefinitions>>
     : never;
@@ -116,18 +117,14 @@ type StageRuntimeOutput<TStage extends string, TStageDefinitions extends readonl
 /**
  * 从阶段定义数组中提取所有阶段名称的联合类型
  */
-type ExtractStageNames<TStageDefinitions extends readonly (readonly [string, string, any])[]> =
-  TStageDefinitions[number][0];
+type ExtractStageNames<TStageDefinitions extends PipelineStageDefinition[]> = TStageDefinitions[number][0];
 
 /**
  * 定义游戏引擎中每个计算阶段的处理函数接口。
  * @template TStageDefinitions - 阶段定义数组类型，格式为 [阶段名称, 输出属性名, Schema]
  * @template TExternalContext - 外部通用的上下文类型，会被合并到每个阶段的特定上下文中
  */
-export type PipelineStageHandlers<
-  TStageDefinitions extends readonly (readonly [string, string, any])[],
-  TExternalContext = {},
-> = {
+export type PipelineStageHandlers<TStageDefinitions extends PipelineStageDefinition[], TExternalContext = {}> = {
   [StageName in ExtractStageNames<TStageDefinitions>]: (
     context: TExternalContext & StageExecutionContext<StageName, TStageDefinitions>,
     stageInput: StageDefinitionSchema<StageName, TStageDefinitions> extends z.ZodTypeAny
@@ -136,37 +133,70 @@ export type PipelineStageHandlers<
   ) => StageRuntimeOutput<StageName, TStageDefinitions>;
 };
 
-// 从actions定义
-export type ActionsPipelineDefinitions<TActions extends string> = Record<
-  TActions,
-  readonly (readonly [string, string, any])[]
->;
-
-export type ActionsPipelineHanders<
-  TActions extends string,
-  TPipelineDefinitions extends ActionsPipelineDefinitions<TActions>,
-  TExternalContext = {},
-> = {
-  [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>;
+/**
+ * 动作管线类型
+ * @param TDefs 阶段定义数组
+ * @param TExContext 外部上下文类型
+ */
+type ActionPipline<TDefs extends PipelineStageDefinition[], TExContext extends Record<string, any>> = {
+  definitions: TDefs;
+  handlers: PipelineStageHandlers<TDefs, TExContext>;
 };
 
-export type PipelineDefinitions<
-  TConfig extends Record<string, readonly (readonly [string, string, any])[]>,
-  TExternalContext = {},
+// 实际管线类型
+export type ActionPipelineConfig<
+  TAction extends ParameterizedObject,
+  TExContext extends Record<string, any>,
+  TEventType extends EventObject,
 > = {
-  [K in keyof TConfig]: {
-    definitions: TConfig[K];
-    handlers: PipelineStageHandlers<TConfig[K], TExternalContext>;
+  [K in TAction["type"]]: {
+      // pipeline: ActionPipline<PipelineStageDefinition[], TExContext>; // any 是为了从definitions推导类型
+    pipeline: any;
+    action: ActionFunction<
+      TExContext,
+      any,
+      TEventType,
+      TAction extends { type: K } ? TAction["params"] : any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >;
   };
 };
 
-export function createPipeline<
-  TActions extends Record<string, any>,
-  TConfig extends Record<keyof TActions, readonly (readonly [string, string, any])[]>,
-  TExternalContext = {},
-  >(
-  actions: TActions,
-  config: PipelineDefinitions<TConfig, TExternalContext>,
-): PipelineDefinitions<TConfig, TExternalContext> {
+/**
+ * 创建管道配置的工厂函数
+ * 这个函数确保 definitions 的类型能被正确推导
+ */
+export function createPipelineConfig<
+  TDefs extends PipelineStageDefinition[],
+  TExContext extends Record<string, any>,
+>(config: {
+  definitions: TDefs;
+  handlers: PipelineStageHandlers<TDefs, TExContext>;
+}): {
+  definitions: TDefs;
+  handlers: PipelineStageHandlers<TDefs, TExContext>;
+} {
+  return config;
+}
+
+// 柯里化
+export function createPipelineConfigCurry<TExContext extends Record<string, any>>() {
+  return function <TDefs extends PipelineStageDefinition[]>(config: {
+    definitions: TDefs;
+    handlers: PipelineStageHandlers<TDefs, TExContext>;
+  }) {
+    return createPipelineConfig(config);
+  };
+}
+
+export function defineActionPipelines<
+  TAction extends ParameterizedObject,
+  TExContext extends Record<string, any>,
+  TEventType extends EventObject,
+>(config: ActionPipelineConfig<TAction, TExContext, TEventType>) {
   return config;
 }

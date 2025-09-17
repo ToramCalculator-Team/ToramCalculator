@@ -1,11 +1,12 @@
 import { MemberWithRelations } from "@db/repositories/member";
-import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
+import { Actor, createActor, EventObject, NonReducibleUnknown, ParameterizedObject, StateMachine } from "xstate";
 import { StatContainer } from "../dataSys/StatContainer";
 import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
 import { PipelineManager } from "../pipeline/PipelineManager";
+import { ActionPipelineConfig } from "../pipeline/PipelineStageType";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -90,7 +91,12 @@ export type MemberStateMachine<
  */
 export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
 
-export class Member<TAttrKey extends string = string> {
+export class Member<
+  TAttrKey extends string = string,
+  TAction extends ParameterizedObject = { type: string, params?: any },
+  TExContext extends Record<string, any> = {},
+  TEventType extends EventObject = { type: string },
+> {
   /** 成员ID */
   id: string;
   /** 成员类型 */
@@ -112,7 +118,7 @@ export class Member<TAttrKey extends string = string> {
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<any, any, any>;
+  pipelineManager: PipelineManager<TAction["type"], TExContext, TEventType>;
   /** 成员Actor引用 */
   actor: MemberActor<TAttrKey>;
   /** 引擎引用 */
@@ -121,6 +127,7 @@ export class Member<TAttrKey extends string = string> {
   data: MemberWithRelations;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
+
   /** 序列化方法 */
   serialize(): MemberSerializeData {
     return {
@@ -148,6 +155,7 @@ export class Member<TAttrKey extends string = string> {
     targetId: string,
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
+    pipelines: ActionPipelineConfig<TAction, TExContext, TEventType>,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -161,18 +169,20 @@ export class Member<TAttrKey extends string = string> {
     this.dataSchema = dataSchema;
     this.data = memberData;
     this.statContainer = new StatContainer<TAttrKey>(dataSchema);
-    // 初始化管线管理器（简单挂件，由子类自行配置）
-    this.pipelineManager = new PipelineManager({}, {});
-    
+
+    // 使用传入的配置直接初始化管线管理器
+    this.pipelineManager = new PipelineManager(pipelines);
+
     // 初始化Buff管理器并关联管线管理器
     this.buffManager = new BuffManager();
     this.buffManager.setPipelineManager(this.pipelineManager);
-    
+
     this.position = position ?? { x: 0, y: 0, z: 0 };
+
+    // 创建并启动状态机
     this.actor = createActor(stateMachine(this), {
       id: memberData.id,
     });
     this.actor.start();
-
   }
 }
