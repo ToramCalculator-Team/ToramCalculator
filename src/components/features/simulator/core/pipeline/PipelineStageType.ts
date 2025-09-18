@@ -76,6 +76,20 @@ type _BuildStageFns<Stages extends readonly staticStageTuple[], PrevCtx, PrevOut
             context: PrevCtx & OutputOfSchema<First[1]>,
             stageInput: PrevOut,
           ) => OutputOfSchema<First[1]>;
+          // 以下是Xstate中setup内的actions类型定义
+          // [K in TActions]: ActionFunction<
+          // TContext,
+          // TEvent,
+          // TEvent,
+          // TActions[K],
+          // ToProvidedActor<
+          //     TChildrenMap,
+          //     TActors
+          // >,
+          // ToParameterizedObject<TActions>,
+          // ToParameterizedObject<TGuards>,
+          // TDelay,
+          // TEmitted>;
         } & _BuildStageFns<Rest, PrevCtx & OutputOfSchema<First[1]>, OutputOfSchema<First[1]>>
       : never
     : never
@@ -92,9 +106,5 @@ export type PipeStageFunDef<
   TDef extends PipeLineDef<TActionUnion["type"]>,
   TContext extends Record<string, any>,
 > = {
-  [A in TActionUnion as A["type"]]: _BuildStageFns<
-    TDef[A["type"]],
-    TContext,
-    A["params"]
-  >;
+  [A in TActionUnion as A["type"]]: _BuildStageFns<TDef[A["type"]], TContext, A["params"]>;
 };

@@ -193,18 +193,14 @@ export const playerPipDef = {
   技能消耗扣除: [
     ["技能HP消耗计算", z.object({ skillHpCostResult: z.number() })],
     ["技能MP消耗计算", z.object({ skillMpCostResult: z.number() })],
-    ["仇恨值计算", z.object({ aggressionResult: z.number() })],
-    ["仇恨值增加", z.object({ aggressionIncreaseResult: z.number() })],
-    ["打印技能消耗结果", z.void()],
+    ["仇恨值计算", z.object({ aggroResult: z.number() })],
   ],
   计算前摇时长: [
-    ["技能效果选择", z.object({ skillEffectResult: skill_effectSchema })],
     ["技能固定动作时长计算", z.object({ skillFixedMotionResult: z.number() })],
     ["技能可变动作时长计算", z.object({ skillModifiedMotionResult: z.number() })],
     ["行动速度计算", z.object({ mspdResult: z.number() })],
-    ["前摇比例计算", z.object({ startupRatioResult: z.number() })],
+    ["前摇比例计算", z.object({ startupProportion: z.number() })],
     ["前摇帧数计算", z.object({ startupFramesResult: z.number() })],
-    ["打印前摇帧结果", z.void()],
   ],
   根据角色配置生成初始状态: [],
   更新玩家状态: [],
@@ -256,48 +252,46 @@ export type PlayerPipelineDef = typeof playerPipDef;
 export const playerPipFunDef: PipeStageFunDef<PlayerAction, PlayerPipelineDef, PlayerStateContext> = {
   技能消耗扣除: {
     技能HP消耗计算: (context, stageInput) => {
-      console.log(`👤 [${context.name}] 技能HP消耗计算`, stageInput);
+      console.log(`👤 [${context.name}] 技能HP消耗计算`);
+      const hpCostExpression = context.currentSkillEffect?.hpCost;
+      if (!hpCostExpression) {
+        throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
+      }
+      const hpCost = context.engine.evaluateExpression(hpCostExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+        skillLv: context.currentSkill?.lv ?? 0,
+      });
       return {
-        skillHpCostResult: 0,
+        skillHpCostResult: hpCost,
       };
     },
     技能MP消耗计算: (context, stageInput) => {
+      const mpCostExpression = context.currentSkillEffect?.mpCost;
+      if (!mpCostExpression) {
+        throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
+      }
+      const mpCost = context.engine.evaluateExpression(mpCostExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+        skillLv: context.currentSkill?.lv ?? 0,
+      });
       return {
-        skillMpCostResult: stageInput.skillHpCostResult,
+        skillMpCostResult: mpCost,
       };
     },
     仇恨值计算: (context, stageInput) => {
-      context.skillHpCostResult;
+      const aggro = context.skillMpCostResult * context.statContainer.getValue("aggro.rate");
       return {
-        aggressionResult: stageInput.skillMpCostResult,
+        aggroResult: aggro,
       };
-    },
-    仇恨值增加: (context, stageInput) => {
-      return {
-        aggressionIncreaseResult: stageInput.aggressionResult,
-      };
-    },
-    打印技能消耗结果: (context, stageInput) => {
-      console.log(`👤 [${context.name}] 技能HP消耗：`, context.skillHpCostResult);
-      console.log(`👤 [${context.name}] 技能MP消耗：`, context.skillMpCostResult);
-      console.log(`👤 [${context.name}] 仇恨值：`, context.aggressionResult);
-      console.log(`👤 [${context.name}] 仇恨值增加：`, context.aggressionIncreaseResult);
     },
   },
   计算前摇时长: {
-    技能效果选择: (context, stageInput) => {
-      const skillEffect = context.currentSkillEffect;
-      if (!skillEffect) {
-        throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
-      }
-      return {
-        skillEffectResult: skillEffect,
-      };
-    },
     技能固定动作时长计算: (context, stageInput) => {
-      const fixedMotionExpression = context.skillEffectResult.motionFixed;
+      const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
       const skill = context.currentSkill;
-      if (!skill) {
+      if (!skill || !fixedMotionExpression) {
         throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
       }
       const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
@@ -310,11 +304,11 @@ export const playerPipFunDef: PipeStageFunDef<PlayerAction, PlayerPipelineDef, P
       };
     },
     技能可变动作时长计算: (context, stageInput) => {
+      const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
       const skill = context.currentSkill;
-      if (!skill) {
+      if (!skill || !modifiedMotionExpression) {
         throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
       }
-      const modifiedMotionExpression = context.skillEffectResult.motionModified;
       const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
         currentFrame: context.currentFrame,
         casterId: context.id,
@@ -331,29 +325,21 @@ export const playerPipFunDef: PipeStageFunDef<PlayerAction, PlayerPipelineDef, P
       };
     },
     前摇比例计算: (context, stageInput) => {
-      const startupRatioExpression = context.skillEffectResult.startupFrames;
-      const startupRatio = context.engine.evaluateExpression(startupRatioExpression, {
-        currentFrame: context.currentFrame,
-        casterId: context.id,
-        skillLv: context.currentSkill?.lv ?? 0,
-      });
+      const startupProportion = context.currentSkillEffect?.startupProportion;
+      console.log(`👤 [${context.name}] 当前技能效果的启动比例：`, startupProportion);
+      debugger
+      if (!startupProportion) {
+        throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
+      }
       return {
-        startupRatioResult: startupRatio,
+        startupProportion: startupProportion,
       };
     },
     前摇帧数计算: (context, stageInput) => {
-      const startupFramesExpression = context.skillEffectResult.startupFrames;
-      const startupFrames = context.engine.evaluateExpression(startupFramesExpression, {
-        currentFrame: context.currentFrame,
-        casterId: context.id,
-        skillLv: context.currentSkill?.lv ?? 0,
-      });
+      const startupFrames = (context.skillFixedMotionResult + context.skillModifiedMotionResult * context.mspdResult) * context.startupProportion;
       return {
         startupFramesResult: startupFrames,
       };
-    },
-    打印前摇帧结果: (context, stageInput) => {
-      console.log(`👤 [${context.name}] 前摇帧数：`, stageInput.startupFramesResult);
     },
   },
   根据角色配置生成初始状态: {},

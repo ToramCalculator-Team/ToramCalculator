@@ -169,92 +169,154 @@ export class PipelineManager<
     return (this.dynamicStages[action]?.[stage] ?? []) as DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
   }
 
-  /**
-   * 编译某个 action 的执行链
-   * - 返回闭包函数：接受 ctx + params，返回完整 ctx + 每个阶段输出
-   * - 步骤：
-   *   1) 按 pipelineDef[action] 顺序遍历每个静态阶段
-   *   2) 调用静态实现函数，得到阶段输出
-   *   3) 使用 zod schema 校验阶段输出并合并到 ctx
-   *   4) 执行当前阶段之后的所有动态 handlers
-   *   5) 更新 prevOutput 用于下一阶段
-   */
-  private compile<A extends TActionName>(
-    action: A,
-  ): (
-    ctx: TCtx,
-    params?: TParams,
-  ) => {
-    ctx: TCtx;
-    stageOutputs: StageOutputsOf<TActionName, TDef, A>;
-  } {
-    const staticStages = this.pipelineDef[action]; // readonly staticStageTuple[]
-    const pipeFnsForAction = (this.pipeFunDef as any)[action] as Record<string, Function> | undefined;
+  /* ---------------------- compile ---------------------- */
+/**
+ * 编译某个 action 的同步执行链（支持两种静态实现：纯函数或 XState ActionFunction）
+ *
+ * 返回值类型： (ctx, params?) => { ctx: TCtx, stageOutputs: StageOutputsOf<...> }
+ */
+private compile<A extends TActionName>(
+  action: A
+): (ctx: TCtx, params?: TParams) => { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
+  const staticStages = this.pipelineDef[action]; // readonly staticStageTuple[]
+  const pipeFnsForAction = (this.pipeFunDef as any)[action] as Record<string, Function> | undefined;
 
-    // 返回闭包执行函数
-    return (ctx: TCtx, params?: TParams) => {
-      const currentCtx: any = Object.assign({}, ctx);
-      let prevOutput: any = params ?? {};
-      const stageOutputs = {} as StageOutputsOf<TActionName, TDef, A>;
+  return (ctx: TCtx, params?: TParams) => {
+    // working copy of ctx so we don't mutate caller's object unexpectedly
+    const currentCtx: any = Object.assign({}, ctx);
+    let prevOutput: any = params ?? {};
+    const stageOutputs = {} as StageOutputsOf<TActionName, TDef, A>;
 
-      for (const [stageName, schema] of staticStages) {
-        const typedStageName = stageName as StageNamesOf<TActionName, TDef, A>;
+    // iterate each static stage in order
+    for (const [stageName, schema] of staticStages) {
+      const typedStageName = stageName as StageNamesOf<TActionName, TDef, A>;
 
-        // ---------- 执行静态阶段函数 ----------
-        let stageOut = prevOutput;
-        const staticImpl = pipeFnsForAction?.[stageName];
-        if (staticImpl) {
-          stageOut = staticImpl(currentCtx, prevOutput);
+      // ---------- 静态实现：先当作纯函数调用 ----------
+      let stageOut: any = prevOutput;
+      const staticImpl = pipeFnsForAction?.[stageName];
+
+      if (staticImpl) {
+        // 1) 首先以纯函数签名尝试调用 (ctx, input) => out
+        //    这涵盖最常见的纯计算函数实现
+        try {
+          const maybeOut = staticImpl(currentCtx, prevOutput);
+          stageOut = maybeOut;
+        } catch (e) {
+          // 如果实现内部抛错，直接抛出（与之前行为一致）
+          throw e;
         }
 
-        // 校验并合并阶段输出
-        if (schema) {
-          const parsed = (schema as any).safeParse(stageOut);
-          if (!parsed.success) throw parsed.error;
-          Object.assign(currentCtx, parsed.data);
-          stageOut = parsed.data;
-        } else if (stageOut && typeof stageOut === "object") {
-          Object.assign(currentCtx, stageOut);
-        }
+        // 2) 如果返回的是 undefined（常见于 action-style impl），
+        //    那么我们认为它可能是 XState 的 ActionFunction（enqueueActions 返回的函数）
+        //    我们构造简单的 ActionArgs 提供给它（enqueue.assign 等会同步修改 currentCtx）。
+        if (stageOut === undefined) {
+          // Minimal ActionArgs-like object for enqueueActions / ActionFunction compatibility
+          const actionArgs: any = {
+            // XState 的 ActionArgs 包含 context, event, and helpers like enqueue/assign/check
+            context: currentCtx,
+            event: { type: '__PIPE__' }, // synthetic event
+            // enqueue: provide helpers expected by enqueueActions: assign, maybe enqueue(...) - keep minimal
+            enqueue: {
+              // assign 支持传对象或 updater function (ctx => patch)
+              assign: (patchOrFn: any) => {
+                if (typeof patchOrFn === 'function') {
+                  // patch function: receives context-like arg
+                  const patch = patchOrFn({ context: currentCtx });
+                  if (patch && typeof patch === 'object') Object.assign(currentCtx, patch);
+                } else if (patchOrFn && typeof patchOrFn === 'object') {
+                  Object.assign(currentCtx, patchOrFn);
+                }
+                // return nothing (like xstate enqueue.assign)
+              },
+              // Allow enqueue(action) to be a no-op or store for later — for simplicity it's no-op
+              // If you need to actually enqueue actions, you'd provide a more complete implementation.
+              call: (action: any) => {
+                // no-op in this minimal shim
+              }
+            },
+            // check helper (used in your examples like if (check('someGuard')) ...)
+            check: (guardName: string) => {
+              // minimal; you can wire real guard lookup if desired
+              return false;
+            }
+          };
 
-        // ---------- 保存阶段输出 ----------
-        stageOutputs[typedStageName] = stageOut;
-
-        prevOutput = stageOut; // 下一阶段输入
-
-        // ---------- 执行动态阶段 handlers ----------
-        const dyns = this.dynamicStages[action]?.[typedStageName] ?? [];
-        for (const dyn of dyns) {
-          const dynOut = (dyn as any)(currentCtx, prevOutput);
-          if (!dynOut) continue;
-          if (typeof dynOut === "object") {
-            Object.assign(currentCtx, dynOut);
-            prevOutput = dynOut;
-          } else {
-            prevOutput = dynOut;
+          // Call as an action: actionFn(ActionArgs, params)
+          // For enqueueActions, the returned ActionFunction expects (args, params)
+          try {
+            const maybeVoid = (staticImpl as any)(actionArgs, prevOutput);
+            // if it returns object despite being action-style, use it as stageOut
+            if (maybeVoid !== undefined) {
+              stageOut = maybeVoid;
+            } else {
+              // action mutated currentCtx via enqueue.assign; we keep prevOutput as-is
+              stageOut = prevOutput;
+            }
+          } catch (e) {
+            throw e;
           }
         }
+      } // end if staticImpl
+
+      // ---------- 校验并合并静态阶段输出 ----------
+      if (schema) {
+        const parsed = (schema as any).safeParse(stageOut);
+        if (!parsed.success) {
+          // throw zod parse error
+          throw parsed.error;
+        }
+        // merge parsed data into context
+        Object.assign(currentCtx, parsed.data);
+        // set prevOutput to the structured parsed.data so next stage sees typed output
+        prevOutput = parsed.data;
+      } else {
+        // no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
+        if (stageOut && typeof stageOut === 'object') {
+          Object.assign(currentCtx, stageOut);
+        }
+        prevOutput = stageOut;
       }
 
-      return { ctx: currentCtx, stageOutputs };
-    };
-  }
+      // ---------- 保存阶段输出（类型断言为 StageOutputsOf） ----------
+      // TS 需要断言键类型，因为 stageName 是运行时字符串
+      (stageOutputs as any)[typedStageName] = prevOutput;
 
-  /**
-   * 对外执行接口
-   * - action: 要执行的 action
-   * - ctx: 基础上下文
-   * - params: 初始输入（第一阶段的 stageInput）
-   * - 返回：{ ctx, stageOutputs }，包含最终上下文及每个阶段输出
-   */
-  run<A extends TActionName>(
-    action: A,
-    ctx: TCtx,
-    params?: TParams,
-  ): { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
-    if (!this.compiledChains[action]) {
-      this.compiledChains[action] = this.compile(action);
-    }
-    return this.compiledChains[action](ctx, params);
+      // ---------- 执行该静态阶段之后注册的动态 handlers ----------
+      const dyns = this.dynamicStages[action]?.[typedStageName] ?? [];
+      for (const dyn of dyns) {
+        const dynOut = (dyn as any)(currentCtx, prevOutput);
+        if (!dynOut) continue;
+        if (typeof dynOut === 'object') {
+          Object.assign(currentCtx, dynOut);
+          prevOutput = dynOut;
+        } else {
+          prevOutput = dynOut;
+        }
+        // 同样把动态阶段的结果视为该阶段最终输出（覆盖）
+        (stageOutputs as any)[typedStageName] = prevOutput;
+      }
+    } // end for stages
+
+    // 返回最终 context 与每个阶段输出
+    return { ctx: currentCtx as TCtx, stageOutputs };
+  };
+}
+
+/* ---------------------- run ---------------------- */
+/**
+ * 对外同步执行入口（使用缓存的已编译闭包）
+ * 返回：{ ctx, stageOutputs }，其中 stageOutputs 类型由 StageOutputsOf 推导
+ */
+run<A extends TActionName>(
+  action: A,
+  ctx: TCtx,
+  params?: TParams
+): { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
+  // ensure compiled chain exists for action (typed per-action)
+  if (!this.compiledChains[action]) {
+    // Note: compile(action) returns a function with exact return type that uses StageOutputsOf<A>
+    this.compiledChains[action] = this.compile(action);
   }
+  return this.compiledChains[action](ctx, params);
+}
 }

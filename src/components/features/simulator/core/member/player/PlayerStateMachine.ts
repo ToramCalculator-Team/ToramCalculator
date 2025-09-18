@@ -191,6 +191,8 @@ export interface PlayerStateContext {
   currentSkillActionFrames: number;
   /** 状态标签组 */
   statusTags: string[];
+  /** 仇恨值 */
+  aggro: number;
   /** 机体配置信息 */
   character: CharacterWithRelations;
 }
@@ -222,10 +224,10 @@ export const playerActions = {
       console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
     }
   },
-  更新玩家状态: enqueueActions(({ context, event, enqueue }) => { 
+  更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
     enqueue.assign({
       currentFrame: ({ context }) => context.currentFrame + 1,
-    }); 
+    });
   }),
   启用站立动画: function ({ context, event }) {
     // Add your action code here
@@ -261,7 +263,7 @@ export const playerActions = {
       data: { senderId: context.id },
     });
   },
-  添加待处理技能: function ({ context, event }) {
+  添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 添加待处理技能`, event);
     const e = event as 使用技能;
     const skillId = e.data.skillId;
@@ -270,25 +272,50 @@ export const playerActions = {
       console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
       return;
     }
-    context.currentSkill = skill;
-  },
-  清空待处理技能: function ({ context, event }) {  
+    enqueue.assign({
+      currentSkill: skill,
+    });
+  }),
+  清空待处理技能: function ({ context, event }) {
     console.log(`👤 [${context.name}] 清空待处理技能`, event);
     context.currentSkill = null;
   },
-  技能消耗扣除: enqueueActions(({ context, event, enqueue }, params: {
-    expressionEvaluator: (expression: string, context: ExpressionContext) => number;
-    statContainer: StatContainer<PlayerAttrType>;
-  }) => {
-    console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-    const res = context.pipelineManager.run("技能消耗扣除", context, {});
-    enqueue.assign({
-      currentSkillEffect: res.stageOutputs.仇恨值增加.aggressionIncreaseResult,
-    });
-    console.log(
-      `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
-    );
+  添加待处理技能效果: assign({
+    currentSkillEffect: ({ context }) => {
+      const skillEffect = context.currentSkill?.template?.effects.find((e) =>
+        context.engine.evaluateExpression(e.condition, {
+          currentFrame: context.currentFrame,
+          casterId: context.id,
+          skillLv: context.currentSkill?.lv ?? 0,
+        }),
+      );
+      if (!skillEffect) {
+        console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
+        return null;
+      }
+      return skillEffect;
+    },
   }),
+  技能消耗扣除: enqueueActions(
+    (
+      { context, event, enqueue },
+      params: {
+        expressionEvaluator: (expression: string, context: ExpressionContext) => number;
+        statContainer: StatContainer<PlayerAttrType>;
+      },
+    ) => {
+      const e = event as 收到目标快照;
+      console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
+      console.log(`👤 [${context.name}] 技能消耗扣除`, event);
+      const res = context.pipelineManager.run("技能消耗扣除", context, {});
+      enqueue.assign({
+        aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
+      });
+      console.log(
+        `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+      );
+    },
+  ),
   启用前摇动画: function ({ context, event }) {
     // Add your action code here
     // ...
@@ -297,12 +324,10 @@ export const playerActions = {
   计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
     const res = context.pipelineManager.run("计算前摇时长", context, {});
-    const startupFrames = res;
-    console.log(`👤 [${context.name}] 计算前摇时长结果:`,startupFrames);
+    console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
   }),
   创建前摇结束通知: function ({ context, event }) {
     console.log("🎮 创建前摇结束通知", event);
-
 
     // 计算前摇结束的目标帧
     const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
@@ -574,63 +599,61 @@ export const playerGuards = {
     }
     console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
     // 测试内容
-//     context.engine.evaluateExpression(
-//       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+    //     context.engine.evaluateExpression(
+    //       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
 
-// // 计算造成的伤害
-// function damage() {
-// _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
-// _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
-// _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
-// return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-// }
+    // // 计算造成的伤害
+    // function damage() {
+    // _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
+    // _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
+    // _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
+    // return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+    // }
 
-// function mathRandomInt(a, b) {
-// if (a > b) {
-// // Swap a and b to ensure a is smaller.
-// var c = a;
-// a = b;
-// b = c;
-// }
-// return Math.floor(Math.random() * (b - a + 1) + a);
-// }
+    // function mathRandomInt(a, b) {
+    // if (a > b) {
+    // // Swap a and b to ensure a is smaller.
+    // var c = a;
+    // a = b;
+    // b = c;
+    // }
+    // return Math.floor(Math.random() * (b - a + 1) + a);
+    // }
 
-// // 判断是否命中
-// function isHit() {
-// _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
-// console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
-// return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
-// }
+    // // 判断是否命中
+    // function isHit() {
+    // _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
+    // console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
+    // return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
+    // }
 
-// // 描述该功能...
-// function main() {
-// if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
-// console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
-// self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
-// console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
-// if (isHit() == true) {
-// console.log("命中成功, 伤害:",damage())
-// console.log("命中前血量:",target.statContainer.getValue("hp.current"))
-// target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-// console.log("命中后血量:",target.statContainer.getValue("hp.current"))
-// } else {
-// console.log("miss")
-// }
-// }
-// }
+    // // 描述该功能...
+    // function main() {
+    // if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+    // console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
+    // self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
+    // console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
+    // if (isHit() == true) {
+    // console.log("命中成功, 伤害:",damage())
+    // console.log("命中前血量:",target.statContainer.getValue("hp.current"))
+    // target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
+    // console.log("命中后血量:",target.statContainer.getValue("hp.current"))
+    // } else {
+    // console.log("miss")
+    // }
+    // }
+    // }
 
+    // _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
 
-// _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
-
-
-// main();`,
-//       {
-//         currentFrame,
-//         casterId: context.id,
-//         skillLv: skill?.lv ?? 0,
-//         targetId: "defaultMember2Id",
-//       },
-//     );
+    // main();`,
+    //       {
+    //         currentFrame,
+    //         casterId: context.id,
+    //         skillLv: skill?.lv ?? 0,
+    //         targetId: "defaultMember2Id",
+    //       },
+    //     );
     return false;
   },
   还未冷却: function ({ context, event }) {
@@ -755,6 +778,7 @@ export const playerStateMachine = (player: Player) => {
       skillEndFrame: 0,
       currentSkill: null,
       statusTags: [],
+      aggro: 0,
       character: player.data.player!.character,
     },
     id: machineId,
@@ -1014,6 +1038,7 @@ export const playerStateMachine = (player: Player) => {
                   执行技能中: {
                     initial: "前摇中",
                     entry: [
+                      { type: "添加待处理技能效果" },
                       {
                         type: "技能消耗扣除",
                         params: ({ context }) => {
@@ -1105,8 +1130,7 @@ export const playerStateMachine = (player: Player) => {
                         on: {
                           收到发动结束通知: [
                             {
-                              target:
-                                `#${machineId}.存活.可操作状态.技能处理状态`,
+                              target: `#${machineId}.存活.可操作状态.技能处理状态`,
                               guard: {
                                 type: "存在后续连击",
                               },
