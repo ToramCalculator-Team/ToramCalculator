@@ -6,7 +6,7 @@ import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
 import { PipelineManager } from "../pipeline/PipelineManager";
-import { ActionPipelineConfig } from "../pipeline/PipelineStageType";
+import { PipeLineDef, PipeStageFunDef } from "../pipeline/PipelineStageType";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -65,6 +65,9 @@ export type MemberEventType =
 export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
+  TActionTypeAndParams extends ParameterizedObject = { type: string; params?: undefined },
+  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]> = PipeLineDef<TActionTypeAndParams["type"]>,
+  TExContext extends Record<string, any> = {},
 > = StateMachine<
   any, // TContext - 状态机上下文
   TEvent, // TEvent - 事件类型（可扩展）
@@ -76,7 +79,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey>, // TOutput - 输出类型（当状态机完成时）
+  Member<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -89,13 +92,20 @@ export type MemberStateMachine<
  *
  * @template TAttrKey 属性键的字符串联合类型
  */
-export type MemberActor<TAttrKey extends string = string> = Actor<MemberStateMachine<TAttrKey>>;
+export type MemberActor<
+  TAttrKey extends string = string,
+  TEvent extends EventObject = MemberEventType,
+  TActionTypeAndParams extends ParameterizedObject = { type: string; params?: undefined },
+  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]> = PipeLineDef<TActionTypeAndParams["type"]>,
+  TExContext extends Record<string, any> = {},
+> = Actor<MemberStateMachine<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>>;
 
 export class Member<
-  TAttrKey extends string = string,
-  TAction extends ParameterizedObject = { type: string, params?: any },
-  TExContext extends Record<string, any> = {},
-  TEventType extends EventObject = { type: string },
+  TAttrKey extends string,
+  TEvent extends EventObject,
+  TActionTypeAndParams extends ParameterizedObject,
+  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]>,
+  TExContext extends Record<string, any>,
 > {
   /** 成员ID */
   id: string;
@@ -118,9 +128,9 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<TAction["type"], TExContext, TEventType>;
+  pipelineManager: PipelineManager<TActionTypeAndParams, TPipelineDef, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey>;
+  actor: MemberActor<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -144,18 +154,19 @@ export class Member<
   }
 
   update(): void {
-    this.actor.send({ type: "更新" });
+    this.actor.send({ type: "update", timestamp: Date.now() } as unknown as TEvent);
   }
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey>,
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
     targetId: string,
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
-    pipelines: ActionPipelineConfig<TAction, TExContext, TEventType>,
+    pipelineDef: TPipelineDef,
+    pipeFunDef: PipeStageFunDef<TActionTypeAndParams, TPipelineDef, TExContext>,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -171,7 +182,7 @@ export class Member<
     this.statContainer = new StatContainer<TAttrKey>(dataSchema);
 
     // 使用传入的配置直接初始化管线管理器
-    this.pipelineManager = new PipelineManager(pipelines);
+    this.pipelineManager = new PipelineManager(pipelineDef, pipeFunDef);
 
     // 初始化Buff管理器并关联管线管理器
     this.buffManager = new BuffManager();

@@ -1,16 +1,16 @@
 import { MemberWithRelations } from "@db/repositories/member";
 import { Member } from "../Member";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
-import { playerStateMachine } from "./PlayerStateMachine";
+import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./PlayerStateMachine";
 import GameEngine from "../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerData";
 import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
-import { PlayerPipelines } from "./PlayerActionPipelines";
+import { PlayerAction, PlayerPipelineDef, playerPipDef, playerPipFunDef } from "./PlayerPipelines";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
-export class Player extends Member<PlayerAttrType> {
+export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerAction, PlayerPipelineDef, PlayerStateContext> {
   constructor(
     engine: GameEngine,
     memberData: MemberWithRelations,
@@ -28,7 +28,8 @@ export class Player extends Member<PlayerAttrType> {
       targetId, 
       memberData, 
       schema, 
-      PlayerPipelines,
+      playerPipDef,
+      playerPipFunDef,
       position
     );
     

@@ -11,7 +11,7 @@ import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
-import { PlayerPipelineDefinitions } from "./PlayerActionPipelines";
+import { PlayerAction, playerPipDef, PlayerPipelineDef } from "./PlayerPipelines";
 
 /**
  * Player特有的事件类型
@@ -110,7 +110,7 @@ interface 切换目标 extends EventObject {
   data: { targetId: string };
 }
 
-type PlayerEventType =
+export type PlayerEventType =
   | MemberEventType
   | 复活
   | 移动
@@ -160,7 +160,7 @@ export interface PlayerStateContext {
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
-  pipelineManager: PipelineManager<keyof typeof playerActions, typeof PlayerPipelineDefinitions, PlayerStateContext>;
+  pipelineManager: PipelineManager<PlayerAction, PlayerPipelineDef, PlayerStateContext>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */
@@ -281,58 +281,10 @@ export const playerActions = {
     statContainer: StatContainer<PlayerAttrType>;
   }) => {
     console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-    const e = event as 收到目标快照;
-    const currentFrame = context.currentFrame;
-
-    const skill = context.currentSkill;
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${context.currentSkill?.id}`);
-      return;
-    }
-
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
-      return;
-    }
-
+    const res = context.pipelineManager.run("技能消耗扣除", context, {});
     enqueue.assign({
-      currentSkillEffect: effect,
+      currentSkillEffect: res.stageOutputs.仇恨值增加.aggressionIncreaseResult,
     });
-
-    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "0", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-
-    context.statContainer.addModifiers([
-      {
-        attr: "hp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -hpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-      {
-        attr: "mp.current",
-        targetType: ModifierType.STATIC_FIXED,
-        value: -mpCost,
-        source: { id: skill.id, name: skill.template?.name ?? "", type: "skill" },
-      },
-    ]);
     console.log(
       `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
     );
@@ -344,51 +296,9 @@ export const playerActions = {
   },
   计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
-    const startupFrames = context.pipelineManager.executePipeline("计算前摇时长", context, {});
+    const res = context.pipelineManager.run("计算前摇时长", context, {});
+    const startupFrames = res;
     console.log(`👤 [${context.name}] 计算前摇时长结果:`,startupFrames);
-    // const skill = context.currentSkill;
-    // const effect = context.currentSkillEffect;
-    // const currentFrame = context.currentFrame;
-    // if (!effect) {
-    //   console.error(`🎮 [${context.name}] 技能效果不存在: ${context.currentSkill?.id}`);
-    //   return;
-    // }
-    // const motionFixed = Math.floor(
-    //   context.engine.evaluateExpression(effect.motionFixed ?? "0", {
-    //     currentFrame,
-    //     casterId: context.id,
-    //     skillLv: skill?.lv ?? 0,
-    //   }),
-    // );
-    // const motionModified = Math.floor(
-    //   context.engine.evaluateExpression(effect.motionModified ?? "0", {
-    //     currentFrame,
-    //     casterId: context.id,
-    //     skillLv: skill?.lv ?? 0,
-    //   }),
-    // );
-    // const mspd = Math.min(0.5, Math.floor(context.statContainer.getValue("mspd")));
-    // console.log(`👤 [${context.name}] 固定帧：`, motionFixed);
-    // console.log(`👤 [${context.name}] 可加速帧：`, motionModified);
-    // console.log(`👤 [${context.name}] 当前行动速度：`, mspd);
-
-    // const totalMotion = motionFixed + motionModified * (1 - mspd);
-    // console.log(`👤 [${context.name}] 总帧数：`, totalMotion);
-
-    // const startupRatio = context.engine.evaluateExpression(
-    //   effect?.startupFrames ?? "throw new Error('前摇时长表达式不存在')",
-    //   {
-    //     currentFrame,
-    //     casterId: context.id,
-    //     skillLv: skill?.lv ?? 0,
-    //   },
-    // );
-    // console.log(`👤 [${context.name}] 前摇比例：`, startupRatio);
-    // const startupFrames = Math.floor(startupRatio * totalMotion);
-    // console.log(`👤 [${context.name}] 前摇帧数：`, startupFrames);
-    // enqueue.assign({
-    //   currentSkillStartupFrames: startupFrames,
-    // });
   }),
   创建前摇结束通知: function ({ context, event }) {
     console.log("🎮 创建前摇结束通知", event);

@@ -1,18 +1,14 @@
 /**
  * 管线管理器 - 实例化版本，支持Member级别的管线管理
- * 
+ *
  * 设计思路：
  * 1. 每个Member都有自己的PipelineManager实例
  * 2. 固定管线阶段来自各自的ActionPipelines定义
- * 3. 动态管线阶段由技能效果插入，存储格式：{stageName: CustomPipelineStage[]}
- * 4. 执行时：基础阶段 -> 动态阶段（按priority排序）
  */
 
-import { z } from "zod";
-import type { 
-  PipelineStageHandlers, 
-  ActionPipelineConfig 
-} from "./PipelineStageType";
+import { ZodTypeAny } from "zod/v3";
+import { OutputOfSchema, PipeLineDef, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
+import { ParameterizedObject } from "xstate";
 
 // ==================== 类型定义 ====================
 
@@ -33,297 +29,232 @@ export interface CustomPipelineStage {
   description?: string;
 }
 
-/**
- * 管线执行结果
- */
-export interface PipelineExecutionResult {
-  success: boolean;
-  result?: any;
-  error?: Error;
-  stageResults: Record<string, any>;
-  executionTime: number;
-}
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 
-// ==================== 管线管理器  ====================
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 
+/* ---------- 获取到某阶段（含当前）的前序定义 ---------- */
+type GetPreviousAndCurrentStageDefs<
+  TStages extends readonly staticStageTuple[],
+  StopStage extends string,
+  Acc extends readonly staticStageTuple[] = [],
+> = TStages extends readonly [infer First, ...infer Rest]
+  ? First extends readonly [infer Name extends string, infer Schema extends ZodTypeAny] // ← 关键：约束 Schema 为 ZodTypeAny
+    ? Rest extends readonly staticStageTuple[]
+      ? Equal<Name, StopStage> extends true
+        ? [...Acc, First] // include current
+        : GetPreviousAndCurrentStageDefs<Rest, StopStage, [...Acc, First]>
+      : Acc
+    : Acc
+  : Acc;
+
+/* ---------- 累积输出为交叉类型 ---------- */
+type OutputsUnionFromDefs<TDefs extends readonly staticStageTuple[]> = TDefs[number] extends readonly [any, infer S]
+  ? S extends ZodTypeAny
+    ? OutputOfSchema<S>
+    : never
+  : never;
+
+type AccumulateStageOutputs<TDefs extends readonly staticStageTuple[]> = UnionToIntersection<
+  OutputsUnionFromDefs<TDefs>
+>;
+
+/* ---------- 阶段名 / schema / 输出 提取 ---------- */
+type StageNamesOf<
+  TActionName extends string,
+  TDef extends PipeLineDef<TActionName>,
+  A extends TActionName,
+> = TDef[A][number] extends readonly [infer N extends string, any] ? N : never;
+
+type StageSchemaOf<
+  TActionName extends string,
+  TDef extends PipeLineDef<TActionName>,
+  A extends TActionName,
+  S extends StageNamesOf<TActionName, TDef, A>,
+> = Extract<TDef[A][number], readonly [S, any]>[1];
+
+type StageOutputOf<
+  TActionName extends string,
+  TDef extends PipeLineDef<TActionName>,
+  A extends TActionName,
+  S extends StageNamesOf<TActionName, TDef, A>,
+> =
+  StageSchemaOf<TActionName, TDef, A, S> extends ZodTypeAny
+    ? OutputOfSchema<StageSchemaOf<TActionName, TDef, A, S>>
+    : never;
+
+/* ---------- 执行上下文到该阶段（含） ---------- */
+type StageExecutionContextAfter<
+  TActionName extends string,
+  TDef extends PipeLineDef<TActionName>,
+  A extends TActionName,
+  S extends StageNamesOf<TActionName, TDef, A>,
+  TCtx extends Record<string, any>,
+> = TCtx & AccumulateStageOutputs<GetPreviousAndCurrentStageDefs<TDef[A], S>>;
+
+/* ----------------- 动态阶段 handler 类型 ----------------- */
 /**
- * 实例化的管线管理器
- * 每个Member都有自己的实例，管理固定+动态管线阶段
+ * 动态阶段通常期望：
+ *  - ctx: 能看到基础 ctx + 到该阶段（含）的所有前序输出
+ *  - input: 是所插入点对应静态阶段的输出类型（I = 输出类型）
+ *  - 返回值可以是该输出类型（替换/修改），也可以部分更新 ctx（Partial），或 void
  */
+type DynamicHandlerForStage<
+  TActionName extends string,
+  TDef extends PipeLineDef<TActionName>,
+  A extends TActionName,
+  S extends StageNamesOf<TActionName, TDef, A>,
+  TCtx extends Record<string, any>,
+> = (
+  ctx: StageExecutionContextAfter<TActionName, TDef, A, S, TCtx>,
+  input: StageOutputOf<TActionName, TDef, A, S>,
+) => StageOutputOf<TActionName, TDef, A, S> | Partial<StageExecutionContextAfter<TActionName, TDef, A, S, TCtx>> | void;
+
+/** 获取某 action 的每个阶段对应输出类型映射 */
+type StageOutputsOf<TActionName extends string, TDef extends PipeLineDef<TActionName>, A extends TActionName> = {
+  [S in StageNamesOf<TActionName, TDef, A>]: StageOutputOf<TActionName, TDef, A, S>;
+};
+
+/* ----------------- PipelineManager ----------------- */
 export class PipelineManager<
-  TActions extends string,
-  TPipelineDefinitions extends ActionsPipelineDefinitions<TActions>,
-  TExternalContext = {}
-  > {
-  /** 固定管线阶段定义 */
-  private basePipelineDefinitions: TPipelineDefinitions;
-  
-  /** 固定管线阶段处理器 */
-  private basePipelineHandlers: {
-    [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>
-  };
-  
-  /** 动态管线阶段存储：{stageName: CustomPipelineStage[]} */
-  private dynamicStages: Map<string, CustomPipelineStage[]> = new Map();
-  
-  /** 管线缓存：{actionName: CompiledPipeline} */
-  private pipelineCache: Map<string, CompiledPipeline> = new Map();
-  
-  /** 缓存版本，用于失效检测 */
-  private cacheVersion: number = 0;
+  TActionTypeAndParams extends ParameterizedObject,
+  TDef extends PipeLineDef<TActionTypeAndParams["type"]>,
+  TCtx extends Record<string, any>,
+  TActionName extends string = TActionTypeAndParams["type"],
+  TParams = TActionTypeAndParams["params"],
+> {
+  /** 动态阶段存储：action -> stageName -> list of dynamic handlers */
+  private dynamicStages: {
+    [A in TActionName]?: {
+      [S in StageNamesOf<TActionName, TDef, A>]?: DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
+    };
+  } = {} as any;
+
+  /** 缓存已编译的执行链：action -> compiled chain */
+  private compiledChains: {
+    [A in TActionName]?: (ctx: TCtx, params?: TParams) => {
+      ctx: TCtx;
+      stageOutputs: StageOutputsOf<TActionName, TDef, A>;
+    }
+  } = {} as any;
 
   constructor(
-    basePipelineDefinitions: TPipelineDefinitions,
-    basePipelineHandlers: {
-      [K in TActions]: PipelineStageHandlers<TPipelineDefinitions[K], TExternalContext>
-    }
+    /** 管线定义：每个 action 对应静态阶段数组 */
+    public readonly pipelineDef: TDef,
+    /** 静态阶段实际执行函数集合 */
+    public readonly pipeFunDef: PipeStageFunDef<{ type: TActionName; params: TParams }, TDef, TCtx>,
+  ) {}
+
+  /**
+   * 插入动态阶段
+   * - afterStage: 该动态 handler 插入到哪个静态阶段之后
+   * - handler: 动态 handler 函数（类型安全，可访问累积 ctx）
+   * - 插入后清空缓存 compiledChains[action]，保证下一次运行使用最新链
+   */
+  insertDynamicStage<A extends TActionName, S extends StageNamesOf<TActionName, TDef, A>>(
+    action: A,
+    afterStage: S,
+    handler: DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>,
   ) {
-    console.log(basePipelineDefinitions, basePipelineHandlers)
-    this.basePipelineDefinitions = basePipelineDefinitions;
-    this.basePipelineHandlers = basePipelineHandlers;
+    const map = (this.dynamicStages[action] ??= {} as any);
+    const list = (map[afterStage] ??= [] as any) as DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
+    list.push(handler);
+
+    // 动态阶段变动时清空缓存
+    delete this.compiledChains[action];
   }
 
-  // ==================== 动态管线阶段管理 ====================
-
-  /**
-   * 插入动态管线阶段
-   */
-  insertStage(stageName: string, customStage: CustomPipelineStage): void {
-    const stages = this.dynamicStages.get(stageName) || [];
-    stages.push(customStage);
-    
-    // 按优先级排序
-    stages.sort((a, b) => a.priority - b.priority);
-    
-    this.dynamicStages.set(stageName, stages);
-    this.invalidateCache();
-    
-    console.log(`📝 PipelineManager: 插入动态阶段 ${stageName}:${customStage.id}`);
+  /** 获取某 action 某静态阶段之后的动态 handler 列表 */
+  getDynamicHandlersForStage<A extends TActionName, S extends StageNamesOf<TActionName, TDef, A>>(action: A, stage: S) {
+    return (this.dynamicStages[action]?.[stage] ?? []) as DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
   }
 
   /**
-   * 移除指定来源的所有动态管线阶段
+   * 编译某个 action 的执行链
+   * - 返回闭包函数：接受 ctx + params，返回完整 ctx + 每个阶段输出
+   * - 步骤：
+   *   1) 按 pipelineDef[action] 顺序遍历每个静态阶段
+   *   2) 调用静态实现函数，得到阶段输出
+   *   3) 使用 zod schema 校验阶段输出并合并到 ctx
+   *   4) 执行当前阶段之后的所有动态 handlers
+   *   5) 更新 prevOutput 用于下一阶段
    */
-  removeStagesBySource(source: string): void {
-    let removed = 0;
-    
-    for (const [stageName, stages] of this.dynamicStages) {
-      const filteredStages = stages.filter(stage => stage.source !== source);
-      if (filteredStages.length !== stages.length) {
-        removed += stages.length - filteredStages.length;
-        if (filteredStages.length === 0) {
-          this.dynamicStages.delete(stageName);
-        } else {
-          this.dynamicStages.set(stageName, filteredStages);
+  private compile<A extends TActionName>(
+    action: A,
+  ): (
+    ctx: TCtx,
+    params?: TParams,
+  ) => {
+    ctx: TCtx;
+    stageOutputs: StageOutputsOf<TActionName, TDef, A>;
+  } {
+    const staticStages = this.pipelineDef[action]; // readonly staticStageTuple[]
+    const pipeFnsForAction = (this.pipeFunDef as any)[action] as Record<string, Function> | undefined;
+
+    // 返回闭包执行函数
+    return (ctx: TCtx, params?: TParams) => {
+      const currentCtx: any = Object.assign({}, ctx);
+      let prevOutput: any = params ?? {};
+      const stageOutputs = {} as StageOutputsOf<TActionName, TDef, A>;
+
+      for (const [stageName, schema] of staticStages) {
+        const typedStageName = stageName as StageNamesOf<TActionName, TDef, A>;
+
+        // ---------- 执行静态阶段函数 ----------
+        let stageOut = prevOutput;
+        const staticImpl = pipeFnsForAction?.[stageName];
+        if (staticImpl) {
+          stageOut = staticImpl(currentCtx, prevOutput);
+        }
+
+        // 校验并合并阶段输出
+        if (schema) {
+          const parsed = (schema as any).safeParse(stageOut);
+          if (!parsed.success) throw parsed.error;
+          Object.assign(currentCtx, parsed.data);
+          stageOut = parsed.data;
+        } else if (stageOut && typeof stageOut === "object") {
+          Object.assign(currentCtx, stageOut);
+        }
+
+        // ---------- 保存阶段输出 ----------
+        stageOutputs[typedStageName] = stageOut;
+
+        prevOutput = stageOut; // 下一阶段输入
+
+        // ---------- 执行动态阶段 handlers ----------
+        const dyns = this.dynamicStages[action]?.[typedStageName] ?? [];
+        for (const dyn of dyns) {
+          const dynOut = (dyn as any)(currentCtx, prevOutput);
+          if (!dynOut) continue;
+          if (typeof dynOut === "object") {
+            Object.assign(currentCtx, dynOut);
+            prevOutput = dynOut;
+          } else {
+            prevOutput = dynOut;
+          }
         }
       }
-    }
-    
-    if (removed > 0) {
-      this.invalidateCache();
-      console.log(`🗑️ PipelineManager: 移除来源 ${source} 的 ${removed} 个动态阶段`);
-    }
-  }
 
-  /**
-   * 获取指定阶段的动态管线阶段
-   */
-  getDynamicStages(stageName: string): CustomPipelineStage[] {
-    return this.dynamicStages.get(stageName) || [];
-  }
-
-  /**
-   * 获取动态阶段统计信息
-   */
-  getDynamicStageStats(): { totalStages: number; stagesBySource: Record<string, number> } {
-    const stagesBySource: Record<string, number> = {};
-    let totalStages = 0;
-    
-    for (const stages of this.dynamicStages.values()) {
-      totalStages += stages.length;
-      for (const stage of stages) {
-        stagesBySource[stage.source] = (stagesBySource[stage.source] || 0) + 1;
-      }
-    }
-    
-    return { totalStages, stagesBySource };
-  }
-
-  // ==================== 管线执行 ====================
-
-  /**
-   * 执行完整管线
-   */
-  executePipeline(
-    actionName: TActions,
-    context: any,
-    input: any
-  ): PipelineExecutionResult {
-    const startTime = performance.now();
-    
-    try {
-      // 获取或编译管线
-      const pipeline = this.getOrCompilePipeline(actionName);
-      
-      if (!pipeline) {
-        return {
-          success: false,
-          error: new Error(`未找到管线定义: ${actionName}`),
-          stageResults: {},
-          executionTime: performance.now() - startTime
-        };
-      }
-
-      // 执行管线
-      const stageResults: Record<string, any> = {};
-      let currentInput = input;
-      
-      for (const stage of pipeline.stages) {
-        try {
-          // 构建阶段上下文（包含之前阶段的输出）
-          const stageContext = { ...context, ...stageResults };
-          
-          console.log(`🔧 执行管线阶段: ${actionName}.${stage.name}`);
-          
-          // 执行基础处理器
-          if (stage.baseHandler) {
-            currentInput = stage.baseHandler(stageContext, currentInput);
-          }
-          
-          // 执行动态阶段
-          for (const customStage of stage.dynamicStages) {
-            console.log(`  └─ 动态阶段: ${customStage.id} (${customStage.description})`);
-            currentInput = customStage.logic(stageContext, currentInput);
-          }
-          
-          // 保存阶段结果
-          stageResults[stage.outputKey] = currentInput;
-          
-        } catch (error) {
-          console.error(`❌ 管线阶段执行失败: ${actionName}.${stage.name}`, error);
-          return {
-            success: false,
-            error: error as Error,
-            stageResults,
-            executionTime: performance.now() - startTime
-          };
-        }
-      }
-      
-      console.log(`✅ 管线执行完成: ${actionName}`, stageResults);
-      
-      return {
-        success: true,
-        result: currentInput,
-        stageResults,
-        executionTime: performance.now() - startTime
-      };
-      
-    } catch (error) {
-      console.error(`❌ 管线执行失败: ${actionName}`, error);
-      return {
-        success: false,
-        error: error as Error,
-        stageResults: {},
-        executionTime: performance.now() - startTime
-      };
-    }
-  }
-
-  // ==================== 管线编译和缓存 ====================
-
-  private getOrCompilePipeline(actionName: TActions): CompiledPipeline | null {
-    // 检查缓存
-    const cached = this.pipelineCache.get(actionName);
-    if (cached && cached.version === this.cacheVersion) {
-      return cached;
-    }
-    
-    // 编译新管线
-    const compiled = this.compilePipeline(actionName);
-    if (compiled) {
-      this.pipelineCache.set(actionName, compiled);
-    }
-    
-    return compiled;
-  }
-
-  private compilePipeline(actionName: TActions): CompiledPipeline | null {
-    console.log(this.basePipelineDefinitions, actionName, this.basePipelineDefinitions[actionName])
-    const pipelineDefinition = this.basePipelineDefinitions[actionName];
-    if (!pipelineDefinition || pipelineDefinition.length === 0) {
-      throw new Error(`未找到管线定义: ${actionName}`);
-    }
-    
-    const baseHandlers = this.basePipelineHandlers[actionName];
-    const stages: CompiledStage[] = [];
-    
-    for (const [stageName, outputKey, schema] of pipelineDefinition) {
-      const fullStageName = `${actionName}.${stageName}`;
-      const dynamicStages = this.getDynamicStages(fullStageName);
-      
-      stages.push({
-        name: stageName,
-        outputKey,
-        schema,
-        baseHandler: baseHandlers ? (baseHandlers as any)[stageName] : undefined,
-        dynamicStages
-      });
-    }
-    
-    return {
-      actionName,
-      stages,
-      version: this.cacheVersion
-    };
-  }
-
-  private invalidateCache(): void {
-    this.cacheVersion++;
-    this.pipelineCache.clear();
-    console.log(`🔄 PipelineManager: 缓存已失效，版本: ${this.cacheVersion}`);
-  }
-
-  // ==================== 调试和状态查询 ====================
-
-  /**
-   * 获取调试信息
-   */
-  getDebugInfo(): any {
-    return {
-      dynamicStagesCount: Array.from(this.dynamicStages.values())
-        .reduce((sum, stages) => sum + stages.length, 0),
-      cacheVersion: this.cacheVersion,
-      cachedPipelines: Array.from(this.pipelineCache.keys()),
-      dynamicStagesByStage: Object.fromEntries(
-        Array.from(this.dynamicStages.entries()).map(([stageName, stages]) => [
-          stageName,
-          stages.map(s => ({ id: s.id, source: s.source, priority: s.priority }))
-        ])
-      )
+      return { ctx: currentCtx, stageOutputs };
     };
   }
 
   /**
-   * 获取所有动态阶段
+   * 对外执行接口
+   * - action: 要执行的 action
+   * - ctx: 基础上下文
+   * - params: 初始输入（第一阶段的 stageInput）
+   * - 返回：{ ctx, stageOutputs }，包含最终上下文及每个阶段输出
    */
-  getAllDynamicStages(): Map<string, CustomPipelineStage[]> {
-    return new Map(this.dynamicStages);
+  run<A extends TActionName>(
+    action: A,
+    ctx: TCtx,
+    params?: TParams,
+  ): { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
+    if (!this.compiledChains[action]) {
+      this.compiledChains[action] = this.compile(action);
+    }
+    return this.compiledChains[action](ctx, params);
   }
-}
-
-// ==================== 编译后的管线结构 ====================
-
-interface CompiledStage {
-  name: string;
-  outputKey: string;
-  schema: z.ZodType<any>;
-  baseHandler?: (context: any, input: any) => any;
-  dynamicStages: CustomPipelineStage[];
-}
-
-interface CompiledPipeline {
-  actionName: string;
-  stages: CompiledStage[];
-  version: number;
 }

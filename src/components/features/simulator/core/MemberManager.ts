@@ -14,7 +14,7 @@
  * - 类型安全：强类型检查和错误处理
  */
 
-import type { Actor, AnyActorLogic } from "xstate";
+import type { Actor, AnyActorLogic, EventObject, ParameterizedObject } from "xstate";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";
 import type GameEngine from "./GameEngine";
@@ -26,8 +26,11 @@ import { Player } from "./member/player/Player";
 import { Member } from "./member/Member";
 import { Mob } from "./member/mob/Mob";
 import { NestedSchema } from "./dataSys/SchemaTypes";
+import { PipeLineDef } from "./pipeline/PipelineStageType";
 
 // ============================== 类型定义 ==============================
+
+export type AnyMemberEntry = Member<string,any,any,PipeLineDef<string>,any>;
 
 /**
  * 成员管理条目
@@ -64,7 +67,7 @@ export class MemberManager {
   // ==================== 私有属性 ====================
 
   /** 所有成员的管理表 - 主存储（存储Actor与元数据） */
-  private members: Map<string, Member<any>> = new Map();
+  private members: Map<string, AnyMemberEntry> = new Map();
   /** 阵营注册表（仅存基础信息） */
   private camps: Map<string, Team[]> = new Map();
   /** 队伍注册表（仅存基础信息） */
@@ -150,7 +153,7 @@ export class MemberManager {
    * @returns 注册是否成功
    */
   registerMember(
-    member: Member<any>,
+    member: AnyMemberEntry,
     campId: string,
     teamId: string,
     memberData: MemberWithRelations,
@@ -200,7 +203,7 @@ export class MemberManager {
    * @param memberId 成员ID
    * @returns 成员实例，如果不存在则返回null
    */
-  getMember(memberId: string): Member<any> | null {
+  getMember(memberId: string): AnyMemberEntry | null {
     return this.members.get(memberId) || null;
   }
 
@@ -209,7 +212,7 @@ export class MemberManager {
    *
    * @returns 所有成员实例的数组
    */
-  getAllMembers(): Member<any>[] {
+  getAllMembers(): AnyMemberEntry[] {
     return Array.from(this.members.values());
   }
 
@@ -228,7 +231,7 @@ export class MemberManager {
    * @param type 成员类型
    * @returns 指定类型的成员数组
    */
-  getMembersByType(type: MemberType): Member<any>[] {
+  getMembersByType(type: MemberType): AnyMemberEntry[] {
     return Array.from(this.members.values())
       .filter((member) => member.type === type)
       .map((member) => member);
@@ -240,10 +243,10 @@ export class MemberManager {
    * @param campId 阵营ID
    * @returns 指定阵营的成员数组
    */
-  getMembersByCamp(campId: string): Member<any>[] {
+  getMembersByCamp(campId: string): AnyMemberEntry[] {
     const idSet = this.membersByCamp.get(campId);
     if (!idSet) return [];
-    const result: Member<any>[] = [];
+    const result: AnyMemberEntry[] = [];
     for (const id of idSet) {
       const member = this.members.get(id);
       if (member) result.push(member);
@@ -257,10 +260,10 @@ export class MemberManager {
    * @param teamId 队伍ID
    * @returns 指定队伍的成员数组
    */
-  getMembersByTeam(teamId: string): Member<any>[] {
+  getMembersByTeam(teamId: string): AnyMemberEntry[] {
     const idSet = this.membersByTeam.get(teamId);
     if (!idSet) return [];
-    const result: Member<any>[] = [];
+    const result: AnyMemberEntry[] = [];
     for (const id of idSet) {
       const member = this.members.get(id);
       if (member) result.push(member);

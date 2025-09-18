@@ -2,10 +2,11 @@ import { assign, enqueueActions, EventObject, setup } from "xstate";
 import type { ActionFunction } from "xstate";
 import type { GuardPredicate } from "xstate/guards";
 import { createId } from "@paralleldrive/cuid2";
-import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
+import { Member, MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../dataSys/StatContainer";
 import { GameEngine } from "../../GameEngine";
+import { mobPipDef } from "./MobPipelines";
 /**
  * Mob特有的事件类型
  * 扩展MemberEventType，包含Mob特有的状态机事件
@@ -79,7 +80,7 @@ interface 收到蓄力结束通知 extends EventObject {
   type: "收到蓄力结束通知";
 }
 
-type MobEventType =
+export type MobEventType =
   | MemberEventType
   | 复活
   | 移动
@@ -102,7 +103,7 @@ type MobEventType =
   | 收到快照请求
   | 收到目标快照;
 
-interface MobStateContext {
+export interface MobStateContext {
   /** 成员ID */
   id: string;
   /** 成员类型 */
@@ -130,6 +131,42 @@ interface MobStateContext {
   /** 正在施放的技能序号 */
   currentSkillIndex: number;
 }
+
+// action的源定义，将用来约束状态机逻辑和管线树结构
+export type MobAction =
+  | { type: "根据配置生成初始状态"; params: {} }
+  | { type: "启用站立动画"; params: {} }
+  | { type: "启用移动动画"; params: {} }
+  | { type: "启用前摇动画"; params: {} }
+  | { type: "计算前摇时长"; params: {} }
+  | { type: "创建前摇结束通知"; params: {} }
+  | { type: "启用蓄力动画"; params: {} }
+  | { type: "计算蓄力时长"; params: {} }
+  | { type: "创建蓄力结束通知"; params: {} }
+  | { type: "启用咏唱动画"; params: {} }
+  | { type: "计算咏唱时长"; params: {} }
+  | { type: "创建咏唱结束通知"; params: {} }
+  | { type: "启用技能发动动画"; params: {} }
+  | { type: "计算发动时长"; params: {} }
+  | { type: "创建发动结束通知"; params: {} }
+  | { type: "技能效果管线"; params: {} }
+  | { type: "重置控制抵抗时间"; params: {} }
+  | { type: "中断当前行为"; params: {} }
+  | { type: "启动受控动画"; params: {} }
+  | { type: "重置到复活状态"; params: {} }
+  | { type: "发送快照到请求者"; params: {} }
+  | { type: "发送命中判定事件给自己"; params: {} }
+  | { type: "反馈命中结果给施法者"; params: {} }
+  | { type: "发送控制判定事件给自己"; params: {} }
+  | { type: "命中计算管线"; params: {} }
+  | { type: "根据命中结果进行下一步"; params: {} }
+  | { type: "控制判定管线"; params: {} }
+  | { type: "反馈控制结果给施法者"; params: {} }
+  | { type: "发送伤害计算事件给自己"; params: {} }
+  | { type: "伤害计算管线"; params: {} }
+  | { type: "反馈伤害结果给施法者"; params: {} }
+  | { type: "发送属性修改事件给自己"; params: {} }
+  | { type: "发送buff修改事件给自己"; params: {} };
 
 export const mobActions = {
   根据配置生成初始状态: function ({ context, event }) {
@@ -303,7 +340,7 @@ export const mobGuards = {
   },
 } as const satisfies Record<string, GuardPredicate<MobStateContext, MobEventType, any, any>>;
 
-export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrType, MobEventType> => {
+export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrType, MobEventType, MobAction, typeof mobPipDef, MobStateContext> => {
   const machineId = member.id;
 
   return setup({
