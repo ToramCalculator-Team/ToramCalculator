@@ -111,14 +111,12 @@ export default function RealtimeController() {
       {/* 控制栏 + 成员选择 */}
       <div class="col-span-12 row-span-1 flex flex-wrap items-center gap-x-8 gap-y-2 portrait:row-span-2">
         <ControlPanel 
-          isReady={isReady}
-          isRunning={isRunning}
-          isPaused={isPaused}
-          canStart={() => isReady() && !isRunning()}
+          engineActor={controller.engineActor}
           onStart={() => controller.startSimulation()}
-          onStop={() => controller.stopSimulation()}
+          onReset={() => controller.resetSimulation()}
           onPause={() => controller.pauseSimulation()}
           onResume={() => controller.resumeSimulation()}
+          onStep={() => controller.stepSimulation()}
         />
 
         <MemberSelect

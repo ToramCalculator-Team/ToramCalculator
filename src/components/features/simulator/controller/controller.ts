@@ -14,13 +14,15 @@ import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
 import { EngineView, FrameSnapshot } from "../core/GameEngine";
 import { createActor } from "xstate";
-import { engineMachine, type EngineCommand } from "../core/GameEngineSM";
+import { gameEngineSM, type EngineCommand } from "../core/GameEngineSM";
+import { type WorkerMessageEvent } from "../core/thread/messages";
+import { type WorkerWrapper } from "../core/thread/WorkerPool";
 
 export class Controller {
   // ==================== 核心状态机 ====================
 
   // 唯一的状态源 - 引擎状态机
-  private engineActor: ReturnType<typeof createActor<typeof engineMachine>>;
+  public engineActor: ReturnType<typeof createActor<typeof gameEngineSM>>;
 
   // ==================== 数据状态 (非控制状态) ====================
 
@@ -31,7 +33,7 @@ export class Controller {
   selectedMemberSkills = createSignal<Array<{ id: string; name: string; level: number }>>([]);
 
   // 引擎数据快照
-  engineView = createSignal<EngineView | null>(null);
+  engineView = createSignal<FrameSnapshot | null>(null);
   engineStats = createSignal<any | null>(null);
 
   // 连接状态（外部系统状态）
@@ -41,15 +43,13 @@ export class Controller {
 
   constructor() {
     // 创建状态机，包含所有通信逻辑
-    this.engineActor = createActor(engineMachine, {
+    this.engineActor = createActor(gameEngineSM, {
       input: {
         mirror: {
-          send: async (msg: EngineCommand) => {
-            try {
-              await controllerInputCommunication.sendEngineCommand(msg);
-            } catch (error) {
+          send: (msg: EngineCommand) => {
+            controllerInputCommunication.sendEngineCommand(msg).catch((error) => {
               console.error("Controller: 发送引擎命令失败:", error);
-            }
+            });
           },
         },
         engine: undefined,
@@ -81,6 +81,14 @@ export class Controller {
 
   resumeSimulation() {
     this.engineActor.send({ type: "RESUME" });
+  }
+
+  resetSimulation() {
+    this.engineActor.send({ type: "RESET" });
+  }
+
+  stepSimulation() {
+    this.engineActor.send({ type: "STEP" });
   }
 
   // 成员操作 - 保持原有逻辑
@@ -127,7 +135,7 @@ export class Controller {
     this.autoInitializeEngine();
   }
 
-  private handleWorkerMessage(message: any) {
+  private handleWorkerMessage(message: { worker: WorkerWrapper; event: WorkerMessageEvent }) {
     // message 结构: { worker, event: { type, data, ... } }
     const event = message?.event;
     if (!event) {
@@ -143,24 +151,27 @@ export class Controller {
     }
 
     // 忽略渲染相关的消息
-    if (type.startsWith("render:")) {
+    if (type.startsWith("render:") || type === "render_cmd") {
       return;
     }
 
     switch (type) {
       case "engine_state_machine":
-        // 转发状态机消息
-        console.log("🔄 收到worker状态机消息:", data);
-        this.engineActor.send(data);
+        // 转发状态机消息 - data 应该是 EngineCommand
+        if (data && typeof data === 'object' && 'type' in data) {
+          this.engineActor.send(data as EngineCommand);
+        }
         break;
 
       case "frame_snapshot":
-        // 更新引擎视图数据
-        this.engineView[1](data);
+        // 更新引擎视图数据 - data 应该是 FrameSnapshot
+        if (data && typeof data === 'object' && 'frameNumber' in data) {
+          this.engineView[1](data as FrameSnapshot);
+        }
         break;
 
       case "system_event":
-        // 更新引擎统计数据
+        // 更新引擎统计数据 - data 应该是 EngineStats
         this.engineStats[1](data);
         break;
 
@@ -178,12 +189,8 @@ export class Controller {
         throw new Error("无法获取默认模拟器配置");
       }
 
-      // 2. 初始化引擎数据
-      await controllerInputCommunication.initSimulation(simulatorData);
-
-      // 3. 通过状态机进入ready状态
-      console.log("🔄 发送INIT命令到状态机");
-      this.engineActor.send({ type: "INIT" });
+      // 2. 通过状态机进入ready状态（包含数据）
+      this.engineActor.send({ type: "INIT", data: simulatorData });
 
       // 等待一下让状态机处理
       await new Promise((resolve) => setTimeout(resolve, 100));

@@ -8,6 +8,7 @@
  */
 
 import { realtimeSimulatorPool } from "../thread/SimulatorPool";
+import { WorkerMessageEvent } from "../thread/messages";
 
 export class RendererCommunication {
   private renderHandler: ((payload: any) => void) | null = null;
@@ -28,7 +29,7 @@ export class RendererCommunication {
     realtimeSimulatorPool.on("render_cmd", this.handleRenderCommand.bind(this));
     
     this.isInitialized = true;
-    console.log("RendererCommunication: 初始化完成");
+    // console.log("RendererCommunication: 初始化完成");
   }
 
   /**
@@ -55,7 +56,7 @@ export class RendererCommunication {
    */
   setRenderHandler(handler: (payload: any) => void) {
     this.renderHandler = handler;
-    console.log("RendererCommunication: 渲染处理器已设置");
+    // console.log("RendererCommunication: 渲染处理器已设置");
   }
 
   /**
@@ -69,21 +70,25 @@ export class RendererCommunication {
   /**
    * 处理从Worker接收到的渲染指令
    */
-  private handleRenderCommand(data: any) {
+  private handleRenderCommand(data: { workerId: string; event: any }) {
     if (!this.renderHandler) {
       console.warn("RendererCommunication: 收到渲染指令但没有设置处理器");
       return;
     }
 
     try {
+      // 新的统一格式：渲染指令通过系统消息传递
+      // data.event 包含实际的渲染指令数据
+      const renderData = data.event;
+      
       // 解析不同格式的渲染指令
-      if (data.type === "render:cmd" && data.cmd) {
-        this.renderHandler(data.cmd);
-      } else if (data.type === "render:cmds" && Array.isArray(data.cmds)) {
-        this.renderHandler(data.cmds);
+      if (renderData.type === "render:cmd" && renderData.cmd) {
+        this.renderHandler(renderData.cmd);
+      } else if (renderData.type === "render:cmds" && Array.isArray(renderData.cmds)) {
+        this.renderHandler(renderData.cmds);
       } else {
         // 兼容直接传递的格式
-        this.renderHandler(data);
+        this.renderHandler(renderData);
       }
     } catch (error) {
       console.error("RendererCommunication: 渲染指令处理失败:", error);

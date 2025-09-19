@@ -296,6 +296,7 @@ export class FrameLoop {
       return;
     }
 
+    // 允许在 paused 或 stopped 状态下执行单步
     const currentTime = performance.now();
     const deltaTime = currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;

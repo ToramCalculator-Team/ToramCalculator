@@ -9,48 +9,16 @@ import type { IntentMessage } from "../MessageRouter";
 
 import { prepareForTransfer, sanitizeForPostMessage } from "./MessageSerializer";
 import { createActor } from "xstate";
-import { engineMachine, type EngineCommand } from "../GameEngineSM";
-
-// ==================== 消息类型定义 ====================
-
-/**
- * Worker任务结果类型
- */
-interface WorkerTaskResult<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-/**
- * Worker响应消息类型 - 与SimulatorPool期望的格式一致
- */
-type WorkerResponse<T = unknown> = {
-  taskId: string;
-  result: WorkerTaskResult<T> | null;
-  error: string | null;
-  metrics: {
-    duration: number;
-    memoryUsage: number;
-  };
-};
-
-/**
- * 主线程到Worker的初始化消息类型
- */
-interface MainThreadMessage {
-  type: "init";
-  port?: MessagePort;
-}
-
-/**
- * MessageChannel端口消息类型 - 与SimulatorPool保持一致
- */
-interface PortMessage {
-  taskId: string;
-  type: string;
-  data?: any;
-}
+import { gameEngineSM, type EngineCommand } from "../GameEngineSM";
+import {
+  WorkerMessage,
+  WorkerResponse,
+  MainThreadMessage,
+  SystemMessage,
+  isStateMachineCommand,
+  isDataQueryCommand,
+  DataQueryCommand,
+} from "./messages";
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -124,6 +92,64 @@ function sendFrameSnapshot(snapshot: any) {
 
 // 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
 
+// ==================== 数据查询处理函数 ====================
+
+/**
+ * 处理数据查询命令
+ */
+async function handleDataQuery(command: DataQueryCommand): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    switch (command.type) {
+      case "get_members":
+        const members = gameEngine.getAllMemberData();
+        return { success: true, data: members };
+
+      case "get_stats":
+        const stats = gameEngine.getStats();
+        return { success: true, data: stats };
+
+      case "get_snapshot":
+        const snapshot = gameEngine.getCurrentSnapshot();
+        return { success: true, data: snapshot };
+
+      case "get_member_state": {
+        const memberId = command.memberId;
+        if (!memberId) {
+          return { success: false, error: "memberId required" };
+        }
+        const member = gameEngine.getMember(memberId);
+        if (!member) {
+          return { success: false, error: "member not found" };
+        }
+        try {
+          const snap: any = member.actor.getSnapshot();
+          const value = String(snap?.value ?? "");
+          return { success: true, data: { memberId, value } };
+        } catch (e) {
+          return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
+        }
+      }
+
+      case "send_intent": {
+        const intent = command.intent;
+        if (!intent || !intent.type) {
+          return { success: false, error: "Invalid intent data" };
+        }
+        try {
+          const result = await gameEngine.processIntent(intent);
+          return { success: result.success, error: result.error };
+        } catch (error) {
+          return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+        }
+      }
+
+      default:
+        return { success: false, error: `未知数据查询类型: ${(command as any).type}` };
+    }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
 
 // 处理主线程消息 - 只处理初始化
 self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
@@ -140,7 +166,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 
         // 设置全局messagePort供事件发射器使用
         globalMessagePort = messagePort;
-        
+
         // 设置引擎的镜像通信发送器
         gameEngine.setMirrorSender((msg: EngineCommand) => {
           try {
@@ -149,162 +175,70 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
             console.error("Worker: 发送镜像消息失败:", error);
           }
         });
-        {
-          // 设置MessageChannel端口用于任务通信
-          messagePort.onmessage = async (portEvent: MessageEvent<PortMessage>) => {
-            const { taskId: portTaskId, type: portType, data: portData } = portEvent.data;
-            const startTime = performance.now();
 
-            try {
-              let portResult: WorkerTaskResult<any>;
+        // 设置MessageChannel端口用于任务通信
+        messagePort.onmessage = async (portEvent: MessageEvent<WorkerMessage>) => {
+          const { taskId: portTaskId, command, priority } = portEvent.data;
+          const startTime = performance.now();
 
-              switch (portType) {
-                case "engine_state_machine": {
-                  // 处理来自主线程的状态机命令
-                  gameEngine.sendCommand(portData as EngineCommand);
-                  portResult = { success: true };
-                  break;
-                }
-                case "init_simulation":
-                  // 初始化战斗数据（不启动引擎）
-                  const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-
-                  // 添加阵营A
-                  gameEngine.addCamp("campA");
-                  simulatorData.campA.forEach((team, index) => {
-                    gameEngine.addTeam("campA", team);
-                    team.members.forEach((member) => {
-                      gameEngine.addMember("campA", team.id, member);
-                    });
-                  });
-
-                  // 添加阵营B
-                  gameEngine.addCamp("campB");
-                  simulatorData.campB.forEach((team, index) => {
-                    gameEngine.addTeam("campB", team);
-                    team.members.forEach((member) => {
-                      gameEngine.addMember("campB", team.id, member);
-                    });
-                  });
-
-                  // 只初始化，不启动
-                  portResult = { success: true };
-                  break;
-
-                // start_simulation 已移除，启动现在完全通过 engine_state_machine 处理
-
-                case "stop_simulation":
-                  // 通过状态机停止引擎
-                  gameEngine.sendCommand({ type: "STOP" });
-                  gameEngine.cleanup();
-
-                  portResult = { success: true };
-                  break;
-
-                case "get_snapshot":
-                  const snapshot = gameEngine.getCurrentSnapshot();
-                  portResult = { success: true, data: snapshot };
-                  break;
-
-                case "get_stats":
-                  const stats = gameEngine.getStats();
-                  portResult = { success: true, data: stats };
-                  break;
-
-                case "get_members":
-                  // 获取所有成员数据（使用序列化接口）
-                  try {
-                    const members = gameEngine.getAllMemberData();
-                    portResult = { success: true, data: members };
-                  } catch (error) {
-                    portResult = { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-                    console.error(`Worker: 获取成员数据失败:`, error);
-                  }
-                  break;
-
-                case "get_member_state": {
-                  const memberId = String(portData?.memberId || "");
-                  if (!memberId) {
-                    portResult = { success: false, error: "memberId required" };
-                    break;
-                  }
-                  const member = gameEngine.getMember(memberId);
-                  if (!member) {
-                    portResult = { success: false, error: "member not found" };
-                    break;
-                  }
-                  try {
-                    const snap: any = member.actor.getSnapshot();
-                    const value = String(snap?.value ?? "");
-                    portResult = { success: true, data: { memberId, value } };
-                  } catch (e) {
-                    portResult = { success: false, error: e instanceof Error ? e.message : "Unknown error" };
-                  }
-                  break;
-                }
-
-                case "send_intent":
-                  // 处理意图消息（可能包含JS片段）
-                  const intent = portData as IntentMessage;
-                  // console.log(`🛡️ Worker: 在沙盒中处理意图消息:`, intent);
-                  if (intent && intent.type) {
-                    try {
-                      const result = await gameEngine.processIntent(intent);
-                      portResult = { success: result.success, error: result.error };
-                      console.log(`Worker: 处理意图消息成功: ${intent.type}`);
-                    } catch (error) {
-                      portResult = { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-                      console.error(`Worker: 处理意图消息失败:`, error);
-                    }
-                  } else {
-                    portResult = { success: false, error: "Invalid intent data" };
-                    console.error(`Worker: 意图数据无效:`, intent);
-                  }
-                  break;
-
-                default:
-                  throw new Error(`未知消息类型: ${portType}`);
-              }
-
-              // 计算执行时间
-              const endTime = performance.now();
-              const duration = endTime - startTime;
-
-              // 返回结果给SimulatorPool
-              const response: WorkerResponse = {
-                taskId: portTaskId,
-                result: portResult,
-                error: null,
-                metrics: {
-                  duration,
-                  memoryUsage: 0, // 浏览器环境无法获取精确内存使用
-                },
-              };
-              messagePort.postMessage(response);
-            } catch (error) {
-              // 计算执行时间
-              const endTime = performance.now();
-              const duration = endTime - startTime;
-
-              // 返回错误给SimulatorPool
-              const errorResponse: WorkerResponse = {
-                taskId: portTaskId,
-                result: null,
-                error: error instanceof Error ? error.message : String(error),
-                metrics: {
-                  duration,
-                  memoryUsage: 0,
-                },
-              };
-              messagePort.postMessage(errorResponse);
+          try {
+            // 检查命令是否存在
+            if (!command) {
+              throw new Error("命令不能为空");
             }
-          };
-        }
 
-        // 设置渲染消息发送器：用于FSM发送渲染指令（透传到主线程）
+            let portResult: { success: boolean; data?: any; error?: string };
+
+            // 使用类型守卫分离处理逻辑
+            if (isStateMachineCommand(command)) {
+              // 状态机命令直接转发给引擎
+              gameEngine.sendCommand(command);
+              portResult = { success: true };
+            } else if (isDataQueryCommand(command)) {
+              // 数据查询命令处理
+              portResult = await handleDataQuery(command);
+            } else {
+              throw new Error(`未知命令类型: ${(command as any)?.type || 'undefined'}`);
+            }
+
+            // 计算执行时间
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+
+            // 返回结果给SimulatorPool
+            const response: WorkerResponse = {
+              taskId: portTaskId,
+              result: portResult,
+              error: null,
+              metrics: {
+                duration,
+                memoryUsage: 0, // 浏览器环境无法获取精确内存使用
+              },
+            };
+            messagePort.postMessage(response);
+          } catch (error) {
+            // 计算执行时间
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+
+            // 返回错误给SimulatorPool
+            const errorResponse: WorkerResponse = {
+              taskId: portTaskId,
+              result: null,
+              error: error instanceof Error ? error.message : String(error),
+              metrics: {
+                duration,
+                memoryUsage: 0,
+              },
+            };
+            messagePort.postMessage(errorResponse);
+          }
+        };
+
+        // 设置渲染消息发送器：用于FSM发送渲染指令（通过系统消息格式）
         gameEngine.setRenderMessageSender((payload: any) => {
           try {
-            messagePort.postMessage(payload);
+            postSystemMessage(messagePort, "render_cmd", payload);
           } catch (error) {
             console.error("Worker: 发送渲染消息失败:", error);
           }
@@ -327,7 +261,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 };
 
 // ==================== 统一系统消息出口 ====================
-function postSystemMessage(port: MessagePort, type: "system_event" | "frame_snapshot", data: any) {
+function postSystemMessage(port: MessagePort, type: "system_event" | "frame_snapshot" | "render_cmd", data: any) {
   // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
   const sanitizedData = sanitizeForPostMessage(data);
   const msg = { taskId: type, type, data: sanitizedData } as const;

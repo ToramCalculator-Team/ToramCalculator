@@ -1,13 +1,16 @@
 import { setup, createMachine } from "xstate";
 import GameEngine from "./GameEngine";
+import { SimulatorWithRelations } from "@db/repositories/simulator";
 
 // 指令事件类型
-export type EngineCommand =
-  | { type: "INIT"; origin?: "source" | "mirror" }
+export type EngineCommand = 
+  | { type: "INIT"; data: SimulatorWithRelations; origin?: "source" | "mirror" }
   | { type: "START"; origin?: "source" | "mirror" }
   | { type: "PAUSE"; origin?: "source" | "mirror" }
   | { type: "RESUME"; origin?: "source" | "mirror" }
   | { type: "STOP"; origin?: "source" | "mirror" }
+  | { type: "RESET"; origin?: "source" | "mirror" }
+  | { type: "STEP"; origin?: "source" | "mirror" }
   | { type: "RESULT"; command: string; success: boolean; error?: string; origin?: "source" | "mirror" };
 
 type Command = EngineCommand;
@@ -19,7 +22,7 @@ export interface EngineSMContext {
   controller?: { showPaused?: () => void }; // 控制器UI（可选，不强依赖）
 }
 
-export const engineMachine = setup({
+export const gameEngineSM = setup({
   types: {} as {
     context: EngineSMContext;
     events: Command;
@@ -29,10 +32,13 @@ export const engineMachine = setup({
     forwardToMirror: ({ context, event }) => {
       context.mirror.send({ ...event, origin: "mirror" });
     },
-    doInit: ({ context }) => {
+    doInit: ({ context, event }) => {
       // worker 内部执行引擎初始化逻辑（不启动）
-      // 主线程镜像只做状态转换
-      // 初始化完成，引擎准备就绪但未启动
+      if (event.type === "INIT" && event.data) {
+        context.engine?.initialize(event.data);
+      } else {
+        throw new Error("INIT 命令必须提供数据");
+      }
       context.mirror.send({ type: "RESULT", command: "INIT", success: true });
     },
     doStart: ({ context }) => {
@@ -52,6 +58,26 @@ export const engineMachine = setup({
     doStop: ({ context }) => {
       context.engine?.stop();
       context.mirror.send({ type: "RESULT", command: "STOP", success: true });
+    },
+    doReset: ({ context }) => {
+      // worker 内部重置引擎到初始状态（使用存储的初始化参数）
+      context.engine?.reset?.();
+      context.mirror.send({ type: "RESULT", command: "RESET", success: true });
+    },
+    doResetAndReady: ({ context }) => {
+      // worker 内部重置引擎到初始状态（使用存储的初始化参数）
+      context.engine?.reset?.();
+      context.mirror.send({ type: "RESULT", command: "RESET", success: true });
+      // 重置后自动转换到 ready 状态
+      const initData = context.engine?.getInitializationData?.();
+      if (initData) {
+        context.mirror.send({ type: "INIT", data: initData });
+      }
+    },
+    doStep: ({ context }) => {
+      // worker 内部执行单步
+      context.engine?.step?.();
+      context.mirror.send({ type: "RESULT", command: "STEP", success: true });
     },
   },
 }).createMachine({
@@ -99,6 +125,18 @@ export const engineMachine = setup({
             actions: ["doStart"],
           },
         ],
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -108,6 +146,18 @@ export const engineMachine = setup({
           guard: ({ event }) => event.command === "START" && event.success,
           target: "running",
         },
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -137,6 +187,18 @@ export const engineMachine = setup({
             actions: ["doStop"],
           },
         ],
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -146,6 +208,18 @@ export const engineMachine = setup({
           guard: ({ event }) => event.command === "PAUSE" && event.success,
           target: "paused",
         },
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -163,6 +237,18 @@ export const engineMachine = setup({
             actions: ["doResume"],
           },
         ],
+        STEP: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "paused",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "paused",
+            actions: ["doStep"],
+          },
+        ],
         STOP: [
           {
             guard: ({ event }) => event.origin !== "mirror",
@@ -175,6 +261,18 @@ export const engineMachine = setup({
             actions: ["doStop"],
           },
         ],
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -184,6 +282,18 @@ export const engineMachine = setup({
           guard: ({ event }) => event.command === "RESUME" && event.success,
           target: "running",
         },
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
@@ -193,11 +303,42 @@ export const engineMachine = setup({
           guard: ({ event }) => event.command === "STOP" && event.success,
           target: "stopped",
         },
+        RESET: [
+          {
+            guard: ({ event }) => event.origin !== "mirror",
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => event.origin === "mirror",
+            target: "idle",
+            actions: ["doReset"],
+          },
+        ],
       },
     },
 
     stopped: {
-      type: "final",
+      on: {
+        RESET: [
+          {
+            guard: ({ event }) => {
+              console.log("GameEngineSM: RESET guard 1 - event.origin:", event.origin);
+              return event.origin !== "mirror";
+            },
+            target: "idle",
+            actions: ["forwardToMirror"],
+          },
+          {
+            guard: ({ event }) => {
+              console.log("GameEngineSM: RESET guard 2 - event.origin:", event.origin);
+              return event.origin === "mirror";
+            },
+            target: "ready",
+            actions: ["doResetAndReady"],
+          },
+        ],
+      },
     },
   },
 });

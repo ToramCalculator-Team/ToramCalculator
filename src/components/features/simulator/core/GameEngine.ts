@@ -28,7 +28,8 @@ import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
 import { z } from "zod";
 import { createActor } from "xstate";
-import { engineMachine, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
+import { gameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
+import { SimulatorWithRelations } from "@db/repositories/simulator";
 
 // ============================== 类型定义 ==============================
 
@@ -293,7 +294,7 @@ export class GameEngine {
   // ==================== 引擎状态 ====================
 
   /** 引擎状态机 */
-  private stateMachine: ReturnType<typeof createActor<typeof engineMachine>>;
+  private stateMachine: ReturnType<typeof createActor<typeof gameEngineSM>>;
 
   /** 获取当前引擎状态（通过状态机）*/
   public getState(): EngineState {
@@ -317,6 +318,13 @@ export class GameEngine {
       default:
         return "unInitialized";
     }
+  }
+
+  /**
+   * 获取初始化数据
+   */
+  getInitializationData(): SimulatorWithRelations | null {
+    return this.initializationData;
   }
 
   /** 引擎配置 */
@@ -403,7 +411,7 @@ export class GameEngine {
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
     // 创建状态机 - 使用动态获取mirror sender的方式
-    this.stateMachine = createActor(engineMachine, {
+    this.stateMachine = createActor(gameEngineSM, {
       input: {
         mirror: { 
           send: (command: EngineCommand) => {
@@ -425,18 +433,45 @@ export class GameEngine {
   }
 
   // ==================== 生命周期管理 ====================
+  
+  /** 存储初始化参数，用于重置时复用 */
+  private initializationData: SimulatorWithRelations | null = null;
+
   /**
-   * 初始化引擎
+   * 初始化引擎（必须提供数据）
    */
-  initialize(): void {
+  initialize(data: SimulatorWithRelations): void {
     if (this.getState() === "initialized") {
       console.warn("GameEngine: 引擎已初始化");
       return;
     }
-
-    // 注释：状态现在由状态机管理，不需要手动设置
+    
+    // 存储初始化参数
+    this.initializationData = data;
+    
+    // 设置基本状态
     this.startTime = performance.now();
     this.snapshots = [];
+    
+    // 添加阵营A
+    this.addCamp("campA");
+    data.campA.forEach((team) => {
+      this.addTeam("campA", team);
+      team.members.forEach((member) => {
+        this.addMember("campA", team.id, member);
+      });
+    });
+
+    // 添加阵营B
+    this.addCamp("campB");
+    data.campB.forEach((team) => {
+      this.addTeam("campB", team);
+      team.members.forEach((member) => {
+        this.addMember("campB", team.id, member);
+      });
+    });
+    
+    console.log("GameEngine: 数据初始化完成");
   }
 
   /**
@@ -482,6 +517,22 @@ export class GameEngine {
   }
 
   /**
+   * 重置引擎到初始状态
+   */
+  reset(): void {
+    this.stop();
+    
+    // 使用存储的初始化参数重新初始化
+    if (this.initializationData) {
+      this.initialize(this.initializationData);
+    } else {
+      console.warn("GameEngine: 没有存储的初始化参数，无法重置");
+    }
+    
+    console.log("GameEngine: 引擎已重置");
+  }
+
+  /**
    * 暂停引擎
    */
   pause(): void {
@@ -506,6 +557,8 @@ export class GameEngine {
     // 恢复帧循环
     this.frameLoop.resume();
   }
+
+  
 
   /**
    * 单步执行
@@ -1042,7 +1095,7 @@ export class GameEngine {
    */
   public createFrameSnapshot(): FrameSnapshot {
     const currentFrame = this.frameLoop.getFrameNumber();
-    const currentTime = Date.now();
+    const currentTime = performance.now();
 
     // 获取引擎状态
     const frameLoopStats = this.frameLoop.getPerformanceStats();
@@ -1072,7 +1125,7 @@ export class GameEngine {
       timestamp: currentTime,
       engine: {
         frameNumber: currentFrame,
-        runTime: currentFrame,
+        runTime: frameLoopStats.totalRunTime / 1000, // 使用frameLoop的总运行时间（秒）
         frameLoop: frameLoopStats,
         eventQueue: eventQueueStats,
         memberCount: members.length,
@@ -1087,8 +1140,10 @@ export class GameEngine {
    * 直接通过Worker线程发送，不需要回调
    */
   public sendFrameSnapshot(snapshot: FrameSnapshot): void {
-    // 这里可以通过全局变量或其他方式发送
-    // 暂时为空，由Worker线程直接调用
+    // 通过全局变量发送帧快照
+    if (typeof (globalThis as any).sendFrameSnapshot === "function") {
+      (globalThis as any).sendFrameSnapshot(snapshot);
+    }
   }
 
   /**

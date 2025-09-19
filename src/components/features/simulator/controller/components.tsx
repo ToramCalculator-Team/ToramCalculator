@@ -7,13 +7,13 @@
  * - 可复用的UI组件
  */
 
-import { Show, For, Switch, Match, type Accessor, type Setter, createEffect } from "solid-js";
+import { Show, For, Switch, Match, type Accessor, type Setter, createEffect, createSignal } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import MemberStatusPanel from "../core/member/MemberStatusPanel";
 import type { MemberSerializeData } from "../core/member/Member";
-import { Controller } from "./controller";
+import type { FrameSnapshot } from "../core/GameEngine";
 
 // ============================== 状态栏组件 ==============================
 
@@ -23,7 +23,7 @@ interface StatusBarProps {
   isPaused: Accessor<boolean>;
   isInitialized: Accessor<boolean>;
   connectionStatus: Accessor<boolean>;
-  engineView: Accessor<any>;
+  engineView: Accessor<FrameSnapshot | null>;
   engineStats: Accessor<any>;
 }
 
@@ -56,17 +56,19 @@ export function StatusBar(props: StatusBarProps) {
                   : "运行中"
                 : props.isReady()
                   ? "就绪"
-                  : "初始化中"}
+                  : props.isInitialized()
+                    ? "已停止"
+                    : "初始化中"}
           </span>
         </div>
-        <Show when={props.isRunning()}>
+        <Show when={props.isRunning() || props.isPaused()}>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">帧数</span>
-            <span class="text-sm">{props.engineView()?.frameNumber || 0}</span>
+            <span class="text-sm">{props.engineView()?.engine.frameNumber || 0}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">运行时间</span>
-            <span class="text-sm">{(props.engineView()?.runTime || 0).toFixed(1)}s</span>
+            <span class="text-sm">{(props.engineView()?.engine.runTime || 0).toFixed(1)}s</span>
           </div>
           <div class="flex items-center gap-2 portrait:hidden">
             <span class="text-sm font-medium">连接</span>
@@ -74,7 +76,7 @@ export function StatusBar(props: StatusBarProps) {
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">成员</span>
-            <span class="text-sm">{props.engineView()?.memberCount || 0}</span>
+            <span class="text-sm">{props.engineView()?.engine.memberCount || 0}</span>
           </div>
         </Show>
       </div>
@@ -85,49 +87,93 @@ export function StatusBar(props: StatusBarProps) {
 // ============================== 控制面板组件 ==============================
 
 interface ControlPanelProps {
-  isReady: Accessor<boolean>;
-  isRunning: Accessor<boolean>;
-  isPaused: Accessor<boolean>;
-  canStart: () => boolean;
+  engineActor: any; // 状态机 Actor
   onStart: () => void;
-  onStop: () => void;
+  onReset: () => void;
   onPause: () => void;
   onResume: () => void;
+  onStep: () => void;
 }
 
 /**
  * 控制面板组件 - 模拟器控制按钮
  */
 export function ControlPanel(props: ControlPanelProps) {
+  // 使用响应式信号来跟踪按钮状态
+  const [canStart, setCanStart] = createSignal(false);
+  const [canReset, setCanReset] = createSignal(false);
+  const [canPause, setCanPause] = createSignal(false);
+  const [canResume, setCanResume] = createSignal(false);
+  const [canStep, setCanStep] = createSignal(false);
+
+  // 监听状态机变化并更新按钮状态
+  createEffect(() => {
+    const snapshot = props.engineActor.getSnapshot();
+    setCanStart(snapshot.can({ type: "START" }));
+    setCanReset(snapshot.can({ type: "RESET" }));
+    setCanPause(snapshot.can({ type: "PAUSE" }));
+    setCanResume(snapshot.can({ type: "RESUME" }));
+    setCanStep(snapshot.can({ type: "STEP" }));
+  });
+
+  // 订阅状态机变化
+  createEffect(() => {
+    const subscription = props.engineActor.subscribe(() => {
+      const snapshot = props.engineActor.getSnapshot();
+      setCanStart(snapshot.can({ type: "START" }));
+      setCanReset(snapshot.can({ type: "RESET" }));
+      setCanPause(snapshot.can({ type: "PAUSE" }));
+      setCanResume(snapshot.can({ type: "RESUME" }));
+      setCanStep(snapshot.can({ type: "STEP" }));
+    });
+
+    return () => subscription.unsubscribe();
+  });
+
   return (
     <div class="ControlPanel flex gap-2">
-      <Button
-        onClick={props.onStart}
-        disabled={!props.canStart()}
-        class="bg-green-600 hover:bg-green-700"
-      >
-        启动模拟
-      </Button>
+      {/* 启动/暂停/恢复按钮 - 互斥 */}
+      <Show when={canStart()}>
+        <Button
+          onClick={props.onStart}
+          class="bg-green-600 hover:bg-green-700"
+        >
+          启动模拟
+        </Button>
+      </Show>
+      <Show when={canPause()}>
+        <Button
+          onClick={props.onPause}
+          class="bg-brand-color-1st hover:brightness-110"
+        >
+          暂停
+        </Button>
+      </Show>
+      <Show when={canResume()}>
+        <Button 
+          onClick={props.onResume} 
+          class="bg-blue-600 hover:bg-blue-700"
+        >
+          恢复
+        </Button>
+      </Show>
+      
+      {/* 重置按钮 - 启动后才可用 */}
       <Button 
-        onClick={props.onStop} 
-        disabled={!props.isRunning()} 
+        onClick={props.onReset} 
+        disabled={!canReset()} 
         class="bg-red-600 hover:bg-red-700"
       >
-        停止模拟
+        重置模拟
       </Button>
+      
+      {/* 单步按钮 - 仅在暂停状态下可用 */}
       <Button
-        onClick={props.onPause}
-        disabled={!props.isRunning() || props.isPaused()}
-        class="bg-brand-color-1st hover:brightness-110"
+        onClick={props.onStep}
+        disabled={!canStep()}
+        class="bg-purple-600 hover:bg-purple-700"
       >
-        暂停
-      </Button>
-      <Button 
-        onClick={props.onResume} 
-        disabled={!props.isPaused()} 
-        class="bg-blue-600 hover:bg-blue-700"
-      >
-        恢复
+        单步推进
       </Button>
     </div>
   );
@@ -203,10 +249,6 @@ interface SkillPanelProps {
  * 技能面板组件
  */
 export function SkillPanel(props: SkillPanelProps) {
-  createEffect(() => {
-    console.log("SelectedMember", props.selectedMember());
-    console.log("SelectedMemberSkills", props.selectedMemberSkills());
-  });
   return (
     <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
       <Show when={props.selectedMember()}>

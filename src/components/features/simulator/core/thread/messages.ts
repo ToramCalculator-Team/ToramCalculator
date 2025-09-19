@@ -1,78 +1,185 @@
 /**
- * 通信协议定义
- * 定义Worker线程和主线程之间的通信消息结构
+ * 统一的通信消息类型定义
  * 
- * 重构说明：
- * - 只保留通信层相关的类型定义
- * - 业务逻辑类型由各自的模块定义
- * - 引擎状态类型由引擎模块定义
- * - 保持向后兼容
+ * 设计原则：
+ * 1. 所有消息都通过统一的格式传递
+ * 2. 状态机命令和数据查询命令分离
+ * 3. 类型安全，避免字符串硬编码
  */
 
-import { z } from "zod";
 import { EngineCommand } from "../GameEngineSM";
+import { IntentMessage } from "../MessageRouter";
+import { FrameSnapshot, EngineStats } from "../GameEngine";
+import { RendererCmd } from "../render/RendererProtocol";
+import { z } from "zod";
 
-// ==================== 通信协议类型 ====================
+// ==================== 基础消息类型 ====================
 
 /**
- * 基础通信消息接口
+ * 任务执行结果
  */
-export interface CommunicationMessage<T = any> {
-  id: string;
-  type: string;
-  timestamp: number;
-  data: T;
-  metadata?: Record<string, any>;
+export interface TaskResult {
+  success: boolean;
+  data?: any;
+  error?: string;
 }
 
 /**
- * Worker到主线程的消息
+ * 任务执行结果（包含指标）
  */
-export interface WorkerToMainMessage<T = any> extends CommunicationMessage<T> {
-  workerId: string;
-  taskId?: string;
+export interface TaskExecutionResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+  metrics?: {
+    duration: number;
+    memoryUsage: number;
+  };
+}
+
+// ==================== 数据查询命令 ====================
+
+/**
+ * 数据查询命令类型
+ */
+export type DataQueryCommand = 
+  | { type: "get_members" }
+  | { type: "get_stats" }
+  | { type: "get_snapshot" }
+  | { type: "get_member_state"; memberId: string }
+  | { type: "send_intent"; intent: IntentMessage };
+
+// ==================== 渲染指令类型 ====================
+
+/**
+ * 渲染指令包装类型
+ */
+export type RenderCommand = 
+  | { type: "render:cmd"; cmd: RendererCmd }
+  | { type: "render:cmds"; cmds: RendererCmd[] };
+
+// ==================== 消息类型定义 ====================
+
+/**
+ * Worker任务结果类型
+ */
+export interface WorkerTaskResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 /**
- * 主线程到Worker的消息
+ * Worker响应消息类型 - 与SimulatorPool期望的格式一致
  */
-export interface MainToWorkerMessage<T = any> extends CommunicationMessage<T> {
+export interface WorkerResponse<T = unknown> {
   taskId: string;
-  priority: "high" | "medium" | "low";
+  result: WorkerTaskResult<T> | null;
+  error: string | null;
+  metrics: {
+    duration: number;
+    memoryUsage: number;
+  };
+};
+
+/**
+ * Worker 消息事件类型 - 用于 WorkerPool 内部事件传递
+ */
+export interface WorkerMessageEvent {
+  taskId: string;
+  result?: WorkerTaskResult | null;
+  error?: string | null;
+  metrics?: {
+    duration: number;
+    memoryUsage: number;
+  };
+  type?: "system_event" | "frame_snapshot" | "render_cmd" | "engine_state_machine";
+  data?: FrameSnapshot | EngineStats | EngineCommand | RenderCommand | any;
+  cmd?: EngineCommand | DataQueryCommand | RendererCmd;
+  cmds?: (EngineCommand | DataQueryCommand | RendererCmd)[];
 }
 
-// ==================== 系统事件类型 ====================
-
 /**
- * 系统事件类型
- * 只包含通信层相关的系统事件
- */
-export type SystemEventType =
-  | "system_event"
-  | "frame_snapshot"
-  | "engine_state_machine";
-
-/**
- * 系统事件消息
- */
-export interface SystemEventMessage<T = any> extends CommunicationMessage<T> {
-  type: SystemEventType;
+ * 主线程到Worker的初始化消息类型
+ */ 
+export interface MainThreadMessage {
+  type: "init";
+  port?: MessagePort;
 }
 
 /**
- * Worker系统消息Schema
- * 用于验证Worker发送的系统事件消息
+ * MessageChannel端口消息类型 - 与SimulatorPool保持一致
+ */
+export interface PortMessage {
+  taskId: string;
+  type: string;
+  data?: any;
+}
+
+
+/**
+ * Worker 消息类型 - 统一的消息格式
+ */
+export interface WorkerMessage {
+  taskId: string;
+  command: EngineCommand | DataQueryCommand;
+  priority: "low" | "medium" | "high";
+}
+
+/**
+ * 系统消息类型
+ */
+export interface SystemMessage {
+  type: "system_event" | "frame_snapshot" | "render_cmd";
+  data: FrameSnapshot | EngineStats | RenderCommand | any; // 根据type确定具体类型
+}
+
+/**
+ * Worker系统消息Schema - 用于解析系统消息
  */
 export const WorkerSystemMessageSchema = z.object({
-  type: z.enum(["system_event", "frame_snapshot", "engine_state_machine"]),
+  type: z.enum(["system_event", "frame_snapshot", "render_cmd"]),
   data: z.any(),
   taskId: z.string().optional(),
 });
 
-// 引擎状态机消息接口
-export interface EngineStateMachineMessage extends SystemEventMessage {
-  type: "engine_state_machine";
-  data: {
-    command: EngineCommand;
-  };
+// ==================== 类型守卫 ====================
+
+/**
+ * 检查是否为状态机命令
+ */
+export function isStateMachineCommand(command: EngineCommand | DataQueryCommand): command is EngineCommand {
+  return command && typeof command === 'object' && 'type' in command && 
+         ["INIT", "START", "STOP", "PAUSE", "RESUME", "RESET", "RESULT"].includes(command.type);
 }
+
+/**
+ * 检查是否为数据查询命令
+ */
+export function isDataQueryCommand(command: EngineCommand | DataQueryCommand): command is DataQueryCommand {
+  return command && typeof command === 'object' && 'type' in command && 
+         ["get_members", "get_stats", "get_snapshot", "get_member_state", "send_intent"].includes(command.type);
+}
+
+// ==================== 消息序列化 ====================
+
+/**
+ * 消息序列化配置
+ */
+export const MessageSerializer = {
+  /**
+   * 准备消息用于传输
+   */
+  prepareForTransfer<T>(message: T): { message: T; transferables: Transferable[] } {
+    // 这里可以添加 Transferable 对象的处理
+    return { message, transferables: [] };
+  },
+
+  /**
+   * 清理消息用于 postMessage
+   */
+  sanitizeForPostMessage<T>(data: T): T {
+    // 这里可以添加数据清理逻辑
+    return data;
+  }
+};

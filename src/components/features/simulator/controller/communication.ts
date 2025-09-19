@@ -23,10 +23,6 @@ export class ControllerInputCommunication {
   }
 
   // ==================== 引擎操作 - 纯代理 ====================
-  
-  async initSimulation(simulatorData: SimulatorWithRelations) {
-    return realtimeSimulatorPool.initSimulation(simulatorData);
-  }
 
   async sendEngineCommand(command: EngineCommand) {
     return realtimeSimulatorPool.sendEngineCommand(command);
