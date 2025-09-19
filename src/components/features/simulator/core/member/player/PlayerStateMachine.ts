@@ -200,7 +200,7 @@ export interface PlayerStateContext {
 // 使用 XState 的 ActionFunction 类型定义 actions
 export const playerActions = {
   根据角色配置生成初始状态: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, event);
+    console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
     // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
     const spawnCmd = {
       type: "render:cmd" as const,
@@ -716,10 +716,6 @@ export const playerGuards = {
     return false;
   },
   技能带有心眼: function ({ context, event }) {
-    return true;
-  },
-  技能没有心眼: function ({ context, event }) {
-    // Add your guard condition here
     return true;
   },
   目标不抵抗此技能的控制效果: function ({ context, event }) {

@@ -7,10 +7,9 @@ import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../G
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "../MessageRouter";
 
-import { 
-  prepareForTransfer, 
-  sanitizeForPostMessage
-} from "./MessageSerializer";
+import { prepareForTransfer, sanitizeForPostMessage } from "./MessageSerializer";
+import { createActor } from "xstate";
+import { engineMachine, type EngineCommand } from "../GameEngineSM";
 
 // ==================== 消息类型定义 ====================
 
@@ -115,7 +114,7 @@ let globalMessagePort: MessagePort | null = null;
 
 // 帧快照发送函数 - 直接在帧循环中调用
 function sendFrameSnapshot(snapshot: any) {
-  if (globalMessagePort && typeof postSystemMessage === 'function') {
+  if (globalMessagePort && typeof postSystemMessage === "function") {
     postSystemMessage(globalMessagePort, "frame_snapshot", snapshot);
   }
 }
@@ -123,37 +122,8 @@ function sendFrameSnapshot(snapshot: any) {
 // 将发送函数挂载到引擎上，供FrameLoop调用
 (gameEngine as any).sendFrameSnapshot = sendFrameSnapshot;
 
+// 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
 
-
-
-
-// EngineView类型已从messages.ts导入，无需重复定义
-
-function projectEngineView(stats: EngineStats): EngineView {
-  // 构建EngineView数据，使用EngineViewSchema进行验证
-  const engineView = {
-    frameNumber: stats.currentFrame,
-    runTime: stats.runTime,
-    frameLoop: {
-      averageFPS: stats.frameLoopStats?.averageFPS ?? 0,
-      averageFrameTime: stats.frameLoopStats?.averageFrameTime ?? 0,
-      totalFrames: stats.frameLoopStats?.totalFrames ?? 0,
-      totalRunTime: stats.frameLoopStats?.totalRunTime ?? 0,
-      clockKind: stats.frameLoopStats?.clockKind,
-      skippedFrames: stats.frameLoopStats?.skippedFrames,
-      frameBudgetMs: stats.frameLoopStats?.frameBudgetMs,
-    },
-    eventQueue: {
-      currentSize: stats.eventQueueStats?.currentSize ?? 0,
-      totalProcessed: stats.eventQueueStats?.totalProcessed ?? 0,
-      totalInserted: stats.eventQueueStats?.totalInserted ?? 0,
-      overflowCount: stats.eventQueueStats?.overflowCount ?? 0,
-    },
-  };
-  
-  // 使用EngineViewSchema验证数据
-  return EngineViewSchema.parse(engineView);
-}
 
 // 处理主线程消息 - 只处理初始化
 self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
@@ -167,9 +137,18 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           throw new Error("初始化失败，缺少MessagePort");
         }
         const messagePort: MessagePort = port;
-        
+
         // 设置全局messagePort供事件发射器使用
         globalMessagePort = messagePort;
+        
+        // 设置引擎的镜像通信发送器
+        gameEngine.setMirrorSender((msg: EngineCommand) => {
+          try {
+            messagePort.postMessage({ taskId: "engine_state_machine", type: "engine_state_machine", data: msg });
+          } catch (error) {
+            console.error("Worker: 发送镜像消息失败:", error);
+          }
+        });
         {
           // 设置MessageChannel端口用于任务通信
           messagePort.onmessage = async (portEvent: MessageEvent<PortMessage>) => {
@@ -180,10 +159,15 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
               let portResult: WorkerTaskResult<any>;
 
               switch (portType) {
-                case "start_simulation":
-                  // 初始化战斗数据
+                case "engine_state_machine": {
+                  // 处理来自主线程的状态机命令
+                  gameEngine.sendCommand(portData as EngineCommand);
+                  portResult = { success: true };
+                  break;
+                }
+                case "init_simulation":
+                  // 初始化战斗数据（不启动引擎）
                   const simulatorData: SimulatorWithRelations = portData as SimulatorWithRelations;
-                  // console.log("🛡️ Worker: 在沙盒中启动模拟，数据:", simulatorData);
 
                   // 添加阵营A
                   gameEngine.addCamp("campA");
@@ -203,38 +187,17 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                     });
                   });
 
-                  // 启动引擎
-                  gameEngine.start();
-
-
-
-
-
+                  // 只初始化，不启动
                   portResult = { success: true };
                   break;
+
+                // start_simulation 已移除，启动现在完全通过 engine_state_machine 处理
 
                 case "stop_simulation":
-
-
-
-
-
-
-                  // 停止并清理引擎
-                  gameEngine.stop();
+                  // 通过状态机停止引擎
+                  gameEngine.sendCommand({ type: "STOP" });
                   gameEngine.cleanup();
 
-
-                  portResult = { success: true };
-                  break;
-
-                case "pause_simulation":
-                  gameEngine.pause();
-                  portResult = { success: true };
-                  break;
-
-                case "resume_simulation":
-                  gameEngine.resume();
                   portResult = { success: true };
                   break;
 
@@ -279,8 +242,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
                   }
                   break;
                 }
-
-
 
                 case "send_intent":
                   // 处理意图消息（可能包含JS片段）
@@ -340,8 +301,6 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
           };
         }
 
-
-
         // 设置渲染消息发送器：用于FSM发送渲染指令（透传到主线程）
         gameEngine.setRenderMessageSender((payload: any) => {
           try {
@@ -368,15 +327,11 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
 };
 
 // ==================== 统一系统消息出口 ====================
-function postSystemMessage(
-  port: MessagePort,
-  type: "system_event" | "frame_snapshot",
-  data: any,
-) {
+function postSystemMessage(port: MessagePort, type: "system_event" | "frame_snapshot", data: any) {
   // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
   const sanitizedData = sanitizeForPostMessage(data);
   const msg = { taskId: type, type, data: sanitizedData } as const;
-  
+
   try {
     const { message, transferables } = prepareForTransfer(msg);
     port?.postMessage(message, transferables);
@@ -390,4 +345,3 @@ function postSystemMessage(
     }
   }
 }
-

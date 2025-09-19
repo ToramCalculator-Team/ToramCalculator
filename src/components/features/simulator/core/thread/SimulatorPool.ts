@@ -103,6 +103,7 @@ class EventEmitter {
  * 5. 保持通用性，不包含业务逻辑
  */
 import { prepareForTransfer } from "./MessageSerializer";
+import { EngineCommand } from "../GameEngineSM";
 
 /**
  * 通用任务类型 - 使用泛型保持类型安全
@@ -545,6 +546,13 @@ export class WorkerPool extends EventEmitter {
       this.taskToWorkerId.delete(taskId);
     }
     this.processNextTask(); // 立即尝试处理队列中的下一个任务
+  }
+
+  /**
+   * 发送引擎状态机命令（使用标准任务协议）
+   */
+  async sendEngineCommand(command: EngineCommand): Promise<TaskExecutionResult> {
+    return this.executeTask("engine_state_machine", command, "high");
   }
 
   private handleWorkerError(worker: WorkerWrapper, error: ErrorEvent): void {
@@ -1049,11 +1057,13 @@ export class SimulatorPool extends WorkerPool {
   }
 
   /**
-   * 启动模拟
+   * 初始化模拟（传递数据，不启动）
    */
-  async startSimulation(simulatorData: SimulatorWithRelations): Promise<TaskExecutionResult> {
-    return this.executeTask("start_simulation", simulatorData, "high");
+  async initSimulation(simulatorData: SimulatorWithRelations): Promise<TaskExecutionResult> {
+    return this.executeTask("init_simulation", simulatorData, "high");
   }
+
+  // startSimulation 已移除，启动现在完全通过状态机处理
 
   /**
    * 停止模拟

@@ -1,443 +1,300 @@
 /**
- * 简化的控制器
- * 
- * 只做3件事：
- * 1. 展示 - 管理UI状态
- * 2. 输入 - 处理用户操作
- * 3. 通信 - 与Worker交互
+ * 重构后的控制器
+ *
+ * 核心理念：状态机驱动，控制器只做桥接
+ * 1. 状态读取 - 直接从状态机获取
+ * 2. 用户操作 - 直接发送到状态机
+ * 3. 简化通信 - 统一通过状态机处理
  */
 
-import { createSignal, createEffect, onCleanup } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { controllerInputCommunication } from "./communication";
-import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
+import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
-import { EngineView } from "../core/GameEngine";
-import { FrameSnapshot } from "../core/GameEngine";
+import { EngineView, FrameSnapshot } from "../core/GameEngine";
+import { createActor } from "xstate";
+import { engineMachine, type EngineCommand } from "../core/GameEngineSM";
 
 export class Controller {
-  // ==================== 状态管理 (展示) ====================
-  
-  // 基础状态 - 直接暴露信号
-  isConnected = createSignal(false);
-  isLoading = createSignal(false);
-  error = createSignal<string | null>(null);
-  
-  // 模拟器状态
-  isRunning = createSignal(false);
-  isPaused = createSignal(false);
-  
-  // 成员数据
+  // ==================== 核心状态机 ====================
+
+  // 唯一的状态源 - 引擎状态机
+  private engineActor: ReturnType<typeof createActor<typeof engineMachine>>;
+
+  // ==================== 数据状态 (非控制状态) ====================
+
+  // 只保留真正的数据状态，移除所有控制状态
   members = createSignal<MemberSerializeData[]>([]);
   selectedMemberId = createSignal<string | null>(null);
   selectedMember = createSignal<MemberWithRelations | null>(null);
-  
-  // 技能数据 - 确保响应式更新
   selectedMemberSkills = createSignal<Array<{ id: string; name: string; level: number }>>([]);
-  
-  // 引擎数据 - 分别存储高频和低频数据
-  engineView = createSignal<EngineView | null>(null);      // 高频KPI数据
-  engineStats = createSignal<any | null>(null);    // 低频全量数据
 
-  // ==================== 输入处理 ====================
-  
-  // 模拟控制
-  async startSimulation() {
-    try {
-      this.setLoading(true);
-      this.setError(null);
-      
-      const simulatorData = await findSimulatorWithRelations("defaultSimulatorId");
-      if (!simulatorData) {
-        throw new Error("无法获取模拟器数据");
-      }
-      
-      const result = await controllerInputCommunication.startSimulation(simulatorData);
-      if (!result.success) {
-        throw new Error(result.error || "启动失败");
-      }
-      
-      this.setRunning(true);
-      await this.refreshMembers();
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "启动失败");
-      throw error;
-    } finally {
-      this.setLoading(false);
-    }
+  // 引擎数据快照
+  engineView = createSignal<EngineView | null>(null);
+  engineStats = createSignal<any | null>(null);
+
+  // 连接状态（外部系统状态）
+  isConnected = createSignal(false);
+
+  // ==================== 构造函数 - 简化初始化 ====================
+
+  constructor() {
+    // 创建状态机，包含所有通信逻辑
+    this.engineActor = createActor(engineMachine, {
+      input: {
+        mirror: {
+          send: async (msg: EngineCommand) => {
+            try {
+              await controllerInputCommunication.sendEngineCommand(msg);
+            } catch (error) {
+              console.error("Controller: 发送引擎命令失败:", error);
+            }
+          },
+        },
+        engine: undefined,
+        controller: undefined,
+      },
+    });
+
+    // 启动状态机（内部会处理所有初始化）
+    this.engineActor.start();
+
+    // 设置数据同步
+    this.setupDataSync();
   }
 
-  async stopSimulation() {
-    try {
-      this.setLoading(true);
-      
-      const result = await controllerInputCommunication.stopSimulation();
-      if (!result.success) {
-        throw new Error(result.error || "停止失败");
-      }
-      
-      this.setRunning(false);
-      this.setPaused(false);
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "停止失败");
-    } finally {
-      this.setLoading(false);
-    }
+  // ==================== 输入处理 - 直接转发到状态机 ====================
+
+  // 模拟控制 - 简化为纯状态机操作
+  startSimulation() {
+    this.engineActor.send({ type: "START" });
   }
 
-  async pauseSimulation() {
-    try {
-      this.setLoading(true);
-      
-      const result = await controllerInputCommunication.pauseSimulation();
-      if (!result.success) {
-        throw new Error(result.error || "暂停失败");
-      }
-      
-      this.setPaused(true);
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "暂停失败");
-    } finally {
-      this.setLoading(false);
-    }
+  stopSimulation() {
+    this.engineActor.send({ type: "STOP" });
   }
 
-  async resumeSimulation() {
-    try {
-      this.setLoading(true);
-      
-      const result = await controllerInputCommunication.resumeSimulation();
-      if (!result.success) {
-        throw new Error(result.error || "恢复失败");
-      }
-      
-      this.setPaused(false);
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "恢复失败");
-    } finally {
-      this.setLoading(false);
-    }
+  pauseSimulation() {
+    this.engineActor.send({ type: "PAUSE" });
   }
 
-  // 成员操作
+  resumeSimulation() {
+    this.engineActor.send({ type: "RESUME" });
+  }
+
+  // 成员操作 - 保持原有逻辑
   async selectMember(memberId: string) {
-    try {
-      this.setError(null);
-      this.setSelectedMemberId(memberId);
-      await this.refreshSelectedMember();
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "选择成员失败");
-    }
+    this.selectedMemberId[1](memberId);
+    await this.refreshSelectedMember();
   }
 
   async selectTarget(targetMemberId: string) {
-    const sourceMemberId = this.getSelectedMemberId();
-    if (!sourceMemberId) {
-      this.setError("请先选择一个成员");
-      return;
-    }
-    
-    try {
-      this.setError(null);
-      
-      const result = await controllerInputCommunication.selectTarget(sourceMemberId, targetMemberId);
-      if (!result.success) {
-        throw new Error(result.error || "选择目标失败");
-      }
-      
-      console.log(`成员 ${sourceMemberId} 选择目标 ${targetMemberId}`);
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "选择目标失败");
-    }
+    const sourceMemberId = this.selectedMemberId[0]();
+    if (!sourceMemberId) return;
+
+    await controllerInputCommunication.selectTarget(sourceMemberId, targetMemberId);
   }
 
   async castSkill(skillId: string) {
-    const memberId = this.getSelectedMemberId();
+    const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
-    
-    try {
-      const result = await controllerInputCommunication.castSkill(memberId, skillId);
-      if (!result.success) {
-        throw new Error(result.error || "释放技能失败");
-      }
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "释放技能失败");
-    }
+
+    await controllerInputCommunication.castSkill(memberId, skillId);
   }
 
   async moveMember(x: number, y: number) {
-    const memberId = this.getSelectedMemberId();
+    const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
-    
-    try {
-      const result = await controllerInputCommunication.moveMember(memberId, x, y);
-      if (!result.success) {
-        throw new Error(result.error || "移动失败");
-      }
-    } catch (error) {
-      this.setError(error instanceof Error ? error.message : "移动失败");
-    }
+
+    await controllerInputCommunication.moveMember(memberId, x, y);
   }
 
   async stopMemberAction() {
-    const memberId = this.getSelectedMemberId();
+    const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
-    
+
+    await controllerInputCommunication.stopMemberAction(memberId);
+  }
+
+  // ==================== 数据同步设置 ====================
+
+  private setupDataSync() {
+    // 设置来自Worker的消息监听
+    controllerInputCommunication.on("worker-message", this.handleWorkerMessage.bind(this));
+
+    // 自动初始化引擎
+    this.autoInitializeEngine();
+  }
+
+  private handleWorkerMessage(message: any) {
+    // message 结构: { worker, event: { type, data, ... } }
+    const event = message?.event;
+    if (!event) {
+      console.warn("Controller: 消息格式无效:", message);
+      return;
+    }
+
+    const { type, data } = event;
+
+    // 忽略没有type的消息（可能是任务完成消息）
+    if (!type) {
+      return;
+    }
+
+    // 忽略渲染相关的消息
+    if (type.startsWith("render:")) {
+      return;
+    }
+
+    switch (type) {
+      case "engine_state_machine":
+        // 转发状态机消息
+        console.log("🔄 收到worker状态机消息:", data);
+        this.engineActor.send(data);
+        break;
+
+      case "frame_snapshot":
+        // 更新引擎视图数据
+        this.engineView[1](data);
+        break;
+
+      case "system_event":
+        // 更新引擎统计数据
+        this.engineStats[1](data);
+        break;
+
+      default:
+        console.warn("Controller: 未知消息类型:", type);
+    }
+  }
+
+  // 自动初始化引擎
+  private async autoInitializeEngine() {
     try {
-      const result = await controllerInputCommunication.stopMemberAction(memberId);
-      if (!result.success) {
-        throw new Error(result.error || "停止动作失败");
+      // 1. 加载默认配置
+      const simulatorData = await findSimulatorWithRelations("defaultSimulatorId");
+      if (!simulatorData) {
+        throw new Error("无法获取默认模拟器配置");
       }
+
+      // 2. 初始化引擎数据
+      await controllerInputCommunication.initSimulation(simulatorData);
+
+      // 3. 通过状态机进入ready状态
+      console.log("🔄 发送INIT命令到状态机");
+      this.engineActor.send({ type: "INIT" });
+
+      // 等待一下让状态机处理
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 4. 预加载成员数据
+      await this.refreshMembers();
+
+      console.log("✅ 引擎初始化完成，当前状态:", this.engineActor.getSnapshot().value);
     } catch (error) {
-      this.setError(error instanceof Error ? error.message : "停止动作失败");
+      console.error("❌ 引擎初始化失败:", error);
     }
   }
 
-  // 错误处理
-  clearError() {
-    this.setError(null);
+  // ==================== 状态访问器 - 直接从状态机读取 ====================
+
+  // 状态检查方法 - 直接查询状态机
+  isInitialized(): boolean {
+    return (
+      this.engineActor.getSnapshot().matches("ready") ||
+      this.engineActor.getSnapshot().matches("running") ||
+      this.engineActor.getSnapshot().matches("paused") ||
+      this.engineActor.getSnapshot().matches("stopped")
+    );
   }
 
-  // ==================== 通信管理 ====================
-  
-  // 初始化通信
-  initialize() {
-    // 检查连接状态
-    this.checkConnection();
-    
-    // 监听Worker事件
-    this.setupWorkerListeners();
-    
-    // 定期检查连接
-    const interval = setInterval(() => {
-      this.checkConnection();
-    }, 1000);
-    
-    onCleanup(() => {
-      clearInterval(interval);
+  isReady(): boolean {
+    return this.engineActor.getSnapshot().matches("ready");
+  }
+
+  isRunning(): boolean {
+    return this.engineActor.getSnapshot().matches("running");
+  }
+
+  isPaused(): boolean {
+    return this.engineActor.getSnapshot().matches("paused");
+  }
+
+  canStart(): boolean {
+    const ready = this.isReady();
+    const running = this.isRunning();
+    const canStart = ready && !running;
+
+    // 调试信息
+    console.log("🔍 canStart 检查:", {
+      ready,
+      running,
+      canStart,
+      currentState: this.engineActor.getSnapshot().value,
     });
+
+    return canStart;
   }
 
-  // 检查连接
-  private checkConnection() {
-    const connected = controllerInputCommunication.checkConnection();
-    this.setConnected(connected);
-    
-    if (!connected && this.getRunning()) {
-      this.setRunning(false);
-      this.setPaused(false);
-    }
+  getConnectionStatus(): boolean {
+    return controllerInputCommunication.isReady();
   }
 
-  // 设置Worker监听器
-  private setupWorkerListeners() {
-    // 帧快照更新 - 每帧包含完整的引擎和成员状态
-    controllerInputCommunication.on("frame_snapshot", (data: any) => {
-      // console.log("🔧 收到帧快照:", data);
-      
-      if (data.event) {
-        const snapshot = data.event as FrameSnapshot;
-        
-        // 更新引擎视图（包含FPS和帧数信息）
-        if (snapshot.engine) {
-          this.setEngineView({
-            frameNumber: snapshot.engine.frameNumber,
-            runTime: snapshot.engine.runTime,
-            frameLoop: snapshot.engine.frameLoop,
-            eventQueue: snapshot.engine.eventQueue,
-          });
-          
-          // 同时更新引擎统计信息（用于显示FPS等）
-          this.setEngineStats({
-            frameNumber: snapshot.engine.frameNumber,
-            runTime: snapshot.engine.runTime,
-            frameLoop: snapshot.engine.frameLoop,
-            eventQueue: snapshot.engine.eventQueue,
-            memberCount: snapshot.engine.memberCount,
-            activeMemberCount: snapshot.engine.activeMemberCount,
-          });
-        }
-        
-        // 更新成员数据（包含状态机状态和属性）
-        if (snapshot.members && Array.isArray(snapshot.members)) {
-          // 将帧快照中的成员数据转换为 MemberSerializeData 格式
-          const members: MemberSerializeData[] = snapshot.members.map((member) => ({
-            id: member.id,
-            type: member.type,
-            name: member.name,
-            attrs: member.attrs,
-            isAlive: member.isAlive,
-            position: member.position,
-            campId: member.campId,
-            teamId: member.teamId,
-            targetId: member.targetId,
-            // 添加状态机状态信息
-            state: member.state,
-          }));
-          
-          this.setMembers(members);
-        }
-      }
-    });
-  }
+  // ==================== 数据刷新方法 ====================
 
-  // 刷新数据
   private async refreshMembers() {
     try {
       const result = await controllerInputCommunication.getMembers();
-      
-      // 确保结果是 MemberSerializeData[] 类型
+
       if (Array.isArray(result)) {
-        // 验证每个成员的数据结构
-        const validMembers = result.filter(member => 
-          member && 
-          typeof member === 'object' && 
-          'id' in member && 
-          'type' in member && 
-          'name' in member
+        const validMembers = result.filter(
+          (member) => member && typeof member === "object" && "id" in member && "type" in member && "name" in member,
         ) as MemberSerializeData[];
-        
-        this.setMembers(validMembers);
+
+        this.members[1](validMembers);
       } else {
         console.warn("获取成员列表失败: 结果不是数组", result);
-        this.setMembers([]);
+        this.members[1]([]);
       }
     } catch (error) {
-      console.warn("获取成员列表失败:", error);
-      this.setMembers([]);
+      console.error("刷新成员列表失败:", error);
+      this.members[1]([]);
     }
   }
 
   private async refreshSelectedMember() {
-    const memberId = this.getSelectedMemberId();
-    if (!memberId) return;
-    
-    try {
-      const member = await findMemberWithRelations(memberId);
-      this.setSelectedMember(member);
-    } catch (error) {
-      console.warn("获取成员详情失败:", error);
-    }
-  }
-
-  // ==================== 状态设置器 ====================
-  
-  private setConnected(value: boolean) {
-    this.isConnected[1](value);
-  }
-
-  private setLoading(value: boolean) {
-    this.isLoading[1](value);
-  }
-
-  private setError(value: string | null) {
-    this.error[1](value);
-  }
-
-  private setRunning(value: boolean) {
-    this.isRunning[1](value);
-  }
-
-  private setPaused(value: boolean) {
-    this.isPaused[1](value);
-  }
-
-  private setMembers(value: MemberSerializeData[]) {
-    this.members[1](value);
-  }
-
-  private setSelectedMemberId(value: string | null) {
-    this.selectedMemberId[1](value);
-  }
-
-  private setSelectedMember(value: MemberWithRelations | null) {
-    this.selectedMember[1](value);
-    // 当选中成员变化时，同时更新技能数据
-    this.updateSelectedMemberSkills(value);
-  }
-
-  private setEngineView(value: EngineView | null) {
-    this.engineView[1](value);
-  }
-
-  private setEngineStats(value: any | null) {
-    this.engineStats[1](value);
-  }
-
-
-
-  // 更新选中成员的技能数据
-  private updateSelectedMemberSkills(member: MemberWithRelations | null) {
-    if (!member) {
+    const memberId = this.selectedMemberId[0]();
+    if (!memberId) {
+      this.selectedMember[1](null);
       this.selectedMemberSkills[1]([]);
       return;
     }
 
-    // 从成员数据中提取技能信息
-    const skills = this.extractSkillsFromMember(member);
-    this.selectedMemberSkills[1](skills);
-  }
+    try {
+      const member = await findMemberWithRelations(memberId);
+      this.selectedMember[1](member);
 
-  // 从成员数据中提取技能信息
-  private extractSkillsFromMember(member: MemberWithRelations): Array<{ id: string; name: string; level: number }> {
-    // 尝试从不同来源获取技能数据
-    let skills: any[] = [];
-
-    // 1. 从 player.character.skills 中获取（如果是玩家）
-    if (member.player?.character?.skills && Array.isArray(member.player.character.skills)) {
-      skills = member.player.character.skills;
+      if (member?.player?.character?.skills) {
+        const skills = member.player.character.skills.map((skill) => ({
+          id: skill.id,
+          name: skill.template?.name || "未知技能",
+          level: skill.lv,
+        }));
+        this.selectedMemberSkills[1](skills);
+      } else {
+        this.selectedMemberSkills[1]([]);
+      }
+    } catch (error) {
+      console.error("刷新选中成员失败:", error);
+      this.selectedMember[1](null);
+      this.selectedMemberSkills[1]([]);
     }
-    // // 2. 从 mercenary.skills 中获取（如果是佣兵）
-    // else if (member.mercenary?.skills && Array.isArray(member.mercenary.skills)) {
-    //   skills = member.mercenary.skills;
-    // }
-    // // 3. 从 mob.skills 中获取（如果是怪物）
-    // else if (member.mob?.skills && Array.isArray(member.mob.skills)) {
-    //   skills = member.mob.skills;
-    // }
-
-    // 转换技能数据格式
-    return skills.map(skill => ({
-      id: skill.id || skill.skillId || String(Math.random()),
-      name: skill.name || skill.skillName || skill.template?.name || "未知技能",
-      level: skill.level || skill.lv || 1
-    }));
   }
 
-  // ==================== 状态获取器 ====================
-  
-  getConnected() { return this.isConnected[0](); }
-  getLoading() { return this.isLoading[0](); }
-  getError() { return this.error[0](); }
-  getRunning() { return this.isRunning[0](); }
-  getPaused() { return this.isPaused[0](); }
-  getMembers() { return this.members[0](); }
-  getSelectedMemberId() { return this.selectedMemberId[0](); }
-  getSelectedMember() { return this.selectedMember[0](); }
-  getSelectedMemberSkills() { return this.selectedMemberSkills[0](); }
-  getEngineView() { return this.engineView[0](); }
-  getEngineStats() { return this.engineStats[0](); }
+  // ==================== 清理 ====================
 
-  // ==================== 计算属性 ====================
-  
-  canStart() {
-    return this.getConnected() && !this.getRunning();
-  }
-
-  canPause() {
-    return this.getRunning() && !this.getPaused();
-  }
-
-  canResume() {
-    return this.getRunning() && this.getPaused();
-  }
-
-  canStop() {
-    return this.getRunning();
+  destroy() {
+    this.engineActor.stop();
   }
 }
-
-// ============================== 导出单例 ==============================
-
-export const controller = new Controller();
-

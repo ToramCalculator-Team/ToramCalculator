@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { EngineCommand } from "../GameEngineSM";
 
 // ==================== 通信协议类型 ====================
 
@@ -48,7 +49,8 @@ export interface MainToWorkerMessage<T = any> extends CommunicationMessage<T> {
  */
 export type SystemEventType =
   | "system_event"
-  | "frame_snapshot";
+  | "frame_snapshot"
+  | "engine_state_machine";
 
 /**
  * 系统事件消息
@@ -62,7 +64,15 @@ export interface SystemEventMessage<T = any> extends CommunicationMessage<T> {
  * 用于验证Worker发送的系统事件消息
  */
 export const WorkerSystemMessageSchema = z.object({
-  type: z.enum(["system_event", "frame_snapshot"]),
+  type: z.enum(["system_event", "frame_snapshot", "engine_state_machine"]),
   data: z.any(),
   taskId: z.string().optional(),
 });
+
+// 引擎状态机消息接口
+export interface EngineStateMachineMessage extends SystemEventMessage {
+  type: "engine_state_machine";
+  data: {
+    command: EngineCommand;
+  };
+}

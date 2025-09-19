@@ -7,8 +7,8 @@
  * 3. 通信 - 与Worker交互
  */
 
-import { createEffect, createMemo } from "solid-js";
-import { controller } from "./controller/controller";
+import { createSignal, createMemo, createEffect } from "solid-js";
+import { Controller } from "./controller/controller";
 import {
   StatusBar,
   ControlPanel,
@@ -21,10 +21,33 @@ import { Portal } from "solid-js/web";
 import { GameView } from "./core/render/Renderer";
 
 export default function RealtimeController() {
-  // 初始化控制器
+  // 创建控制器实例（自动初始化）
+  const controller = new Controller();
+  
+  // 创建响应式状态信号
+  const [isReady, setIsReady] = createSignal(false);
+  const [isRunning, setIsRunning] = createSignal(false);
+  const [isPaused, setIsPaused] = createSignal(false);
+  const [isInitialized, setIsInitialized] = createSignal(false);
+  const [connectionStatus, setConnectionStatus] = createSignal(false);
+  
+  // 监听状态机变化并更新UI状态
   createEffect(() => {
-    console.log("初始化控制器");
-    controller.initialize();
+    const checkStatus = () => {
+      setIsReady(controller.isReady());
+      setIsRunning(controller.isRunning());
+      setIsPaused(controller.isPaused());
+      setIsInitialized(controller.isInitialized());
+      setConnectionStatus(controller.getConnectionStatus());
+    };
+    
+    // 立即检查一次
+    checkStatus();
+    
+    // 定期检查状态变化（因为Controller方法不是响应式的）
+    const interval = setInterval(checkStatus, 100);
+    
+    return () => clearInterval(interval);
   });
 
   // ==================== UI 渲染 ====================
@@ -32,20 +55,13 @@ export default function RealtimeController() {
     <div class="grid h-full w-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
       {/* 状态栏 */}
       <StatusBar
-        isLoading={controller.isLoading[0]}
-        isError={controller.error[0]}
-        isRunning={controller.isRunning[0]}
-        isPaused={controller.isPaused[0]}
-        currentFrame={createMemo(() => ({ currentFrame: controller.engineView[0]()?.frameNumber || 0 }))}
-        averageFPS={createMemo(() => ({
-          frameLoopStats: { averageFPS: controller.engineView[0]()?.frameLoop?.averageFPS || 0 },
-        }))}
-        clockKind={createMemo(() => ({
-          frameLoopStats: { clockKind: controller.engineView[0]()?.frameLoop?.clockKind || "raf" },
-        }))}
-        queueSize={createMemo(() => ({
-          eventQueueStats: { currentSize: controller.engineView[0]()?.eventQueue?.currentSize || 0 },
-        }))}
+        isReady={isReady}
+        isRunning={isRunning}
+        isPaused={isPaused}
+        isInitialized={isInitialized}
+        connectionStatus={connectionStatus}
+        engineView={controller.engineView[0]}
+        engineStats={controller.engineStats[0]}
       />
 
       {/* 可视区域，不能在这里放置组件影响场景可见性 */}
@@ -73,7 +89,8 @@ export default function RealtimeController() {
           const foundMember = memberList.find((m) => m.id === memberId);
           return foundMember || null;
         })}
-        onCastSkill={controller.castSkill.bind(controller)}
+        selectedMemberSkills={controller.selectedMemberSkills[0]}
+        onCastSkill={(skillId) => controller.castSkill(skillId)}
       />
 
       {/* 动作面板 */}
@@ -85,28 +102,29 @@ export default function RealtimeController() {
           const foundMember = memberList.find((m) => m.id === memberId);
           return foundMember || null;
         })}
-        onMove={controller.moveMember.bind(controller)}
-        onStopAction={controller.stopMemberAction.bind(controller)}
+        members={controller.members[0]}
+        onSelectTarget={(targetMemberId) => controller.selectTarget(targetMemberId)}
+        onMove={(x, y) => controller.moveMember(x, y)}
+        onStopAction={() => controller.stopMemberAction()}
       />
 
       {/* 控制栏 + 成员选择 */}
       <div class="col-span-12 row-span-1 flex flex-wrap items-center gap-x-8 gap-y-2 portrait:row-span-2">
-        <ControlPanel
-          canStart={controller.canStart()}
-          isLoading={controller.isLoading[0]()}
-          isRunning={controller.isRunning[0]()}
-          isPaused={controller.isPaused[0]()}
-          onStart={controller.startSimulation.bind(controller)}
-          onStop={controller.stopSimulation.bind(controller)}
-          onPause={controller.pauseSimulation.bind(controller)}
-          onResume={controller.resumeSimulation.bind(controller)}
-          onClearError={controller.clearError.bind(controller)}
+        <ControlPanel 
+          isReady={isReady}
+          isRunning={isRunning}
+          isPaused={isPaused}
+          canStart={() => isReady() && !isRunning()}
+          onStart={() => controller.startSimulation()}
+          onStop={() => controller.stopSimulation()}
+          onPause={() => controller.pauseSimulation()}
+          onResume={() => controller.resumeSimulation()}
         />
 
         <MemberSelect
           members={controller.members[0]() || []}
           selectedId={controller.selectedMemberId[0]()}
-          onSelect={controller.selectMember.bind(controller)}
+          onSelect={(memberId) => controller.selectMember(memberId)}
         />
       </div>
 

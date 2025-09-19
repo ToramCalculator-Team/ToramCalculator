@@ -327,9 +327,8 @@ export const playerPipFunDef: PipeStageFunDef<PlayerAction, PlayerPipelineDef, P
     前摇比例计算: (context, stageInput) => {
       const startupProportion = context.currentSkillEffect?.startupProportion;
       console.log(`👤 [${context.name}] 当前技能效果的启动比例：`, startupProportion);
-      debugger
       if (!startupProportion) {
-        throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
+        throw new Error(`🎮 [${context.name}] 的当前技能前摇比例数据不存在`);
       }
       return {
         startupProportion: startupProportion,

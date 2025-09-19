@@ -15,7 +15,7 @@
 
 import type { EventHandler } from "../core/EventQueue";
 import type GameEngine from "../core/GameEngine";
-import type { MemberManager } from "../core/MemberManager";
+import type { MemberManager } from "../core/member/MemberManager";
 
 // 导入所有处理器
 import {

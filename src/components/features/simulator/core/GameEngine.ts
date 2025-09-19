@@ -16,7 +16,7 @@
 
 import type { Team } from "@db/repositories/team";
 import type { MemberWithRelations } from "@db/repositories/member";
-import { MemberManager } from "./MemberManager";
+import { MemberManager } from "./member/MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
@@ -27,6 +27,8 @@ import { type MemberSerializeData } from "./member/Member";
 import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
 import { z } from "zod";
+import { createActor } from "xstate";
+import { engineMachine, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
 
 // ============================== 类型定义 ==============================
 
@@ -52,10 +54,11 @@ export interface ExpressionContext {
  * 引擎状态枚举
  */
 export type EngineState =
+  | "unInitialized" // 未初始化
   | "initialized" // 已初始化
-  | "running"     // 运行中
-  | "paused"      // 已暂停
-  | "stopped";    // 已停止
+  | "running" // 运行中
+  | "paused" // 已暂停
+  | "stopped"; // 已停止
 
 /**
  * 引擎配置接口
@@ -205,22 +208,24 @@ export const FrameSnapshotSchema = z.object({
     memberCount: z.number(),
     activeMemberCount: z.number(),
   }),
-  members: z.array(z.object({
-    id: z.string(),
-    type: z.string(), // 这里保持 z.string() 因为 Zod 不支持从外部类型推断
-    name: z.string(),
-    state: z.any(),
-    attrs: z.record(z.string(), z.unknown()),
-    isAlive: z.boolean(),
-    position: z.object({
-      x: z.number(),
-      y: z.number(),
-      z: z.number(),
+  members: z.array(
+    z.object({
+      id: z.string(),
+      type: z.string(), // 这里保持 z.string() 因为 Zod 不支持从外部类型推断
+      name: z.string(),
+      state: z.any(),
+      attrs: z.record(z.string(), z.unknown()),
+      isAlive: z.boolean(),
+      position: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }),
+      campId: z.string(),
+      teamId: z.string(),
+      targetId: z.string(),
     }),
-    campId: z.string(),
-    teamId: z.string(),
-    targetId: z.string(),
-  })),
+  ),
 });
 
 /**
@@ -285,12 +290,34 @@ export class GameEngine {
   /** 编译缓存 - 存储编译后的JS代码 */
   private compiledScripts: Map<string, string> = new Map();
 
-
-
   // ==================== 引擎状态 ====================
 
-  /** 引擎状态 */
-  private state: EngineState = "initialized";
+  /** 引擎状态机 */
+  private stateMachine: ReturnType<typeof createActor<typeof engineMachine>>;
+
+  /** 获取当前引擎状态（通过状态机）*/
+  public getState(): EngineState {
+    const machineState = this.stateMachine.getSnapshot().value;
+
+    // 映射状态机状态到引擎状态
+    switch (machineState) {
+      case "idle":
+        return "unInitialized";
+      case "initializing":
+        return "initialized";
+      case "running":
+        return "running";
+      case "paused":
+      case "pausing":
+      case "resuming":
+        return "paused";
+      case "stopped":
+      case "stopping":
+        return "stopped";
+      default:
+        return "unInitialized";
+    }
+  }
 
   /** 引擎配置 */
   private config: EngineConfig;
@@ -312,6 +339,9 @@ export class GameEngine {
 
   /** 渲染消息发送器 - 用于发送渲染指令到主线程 */
   private renderMessageSender: ((payload: any) => void) | null = null;
+
+  /** 镜像通信发送器 - 用于向镜像状态机发送消息 */
+  private sendToMirror?: (command: EngineCommand) => void;
 
   // ==================== 静态方法 ====================
 
@@ -372,24 +402,67 @@ export class GameEngine {
     this.eventHandlerFactory = new EventHandlerFactory(this); // 注入引擎
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
+    // 创建状态机 - 使用动态获取mirror sender的方式
+    this.stateMachine = createActor(engineMachine, {
+      input: {
+        mirror: { 
+          send: (command: EngineCommand) => {
+            if (this.sendToMirror) {
+              this.sendToMirror(command);
+            } else {
+              console.warn("GameEngine: sendToMirror 未设置，忽略命令:", command);
+            }
+          }
+        },
+        engine: this,
+        controller: undefined,
+      },
+    });
+    this.stateMachine.start();
+
     // 初始化默认事件处理器
     this.initializeDefaultEventHandlers();
   }
 
   // ==================== 生命周期管理 ====================
+  /**
+   * 初始化引擎
+   */
+  initialize(): void {
+    if (this.getState() === "initialized") {
+      console.warn("GameEngine: 引擎已初始化");
+      return;
+    }
+
+    // 注释：状态现在由状态机管理，不需要手动设置
+    this.startTime = performance.now();
+    this.snapshots = [];
+  }
+
+  /**
+   * 发送命令到引擎状态机
+   */
+  sendCommand(command: EngineCommand): void {
+    this.stateMachine.send(command);
+  }
+
+  /**
+   * 设置镜像通信发送器
+   */
+  setMirrorSender(sender: (command: EngineCommand) => void): void {
+    this.sendToMirror = sender;
+  }
 
   /**
    * 启动引擎
    */
   start(): void {
-    if (this.state === "running") {
+    if (this.getState() === "running") {
       console.warn("GameEngine: 引擎已在运行中");
       return;
     }
 
-    this.state = "running";
     this.startTime = performance.now();
-    this.snapshots = [];
 
     // 启动帧循环
     this.frameLoop.start();
@@ -399,12 +472,10 @@ export class GameEngine {
    * 停止引擎
    */
   stop(): void {
-    if (this.state === "stopped") {
+    if (this.getState() === "stopped") {
       console.log("GameEngine: 引擎已停止");
       return;
     }
-
-    this.state = "stopped";
 
     // 停止帧循环
     this.frameLoop.stop();
@@ -414,12 +485,10 @@ export class GameEngine {
    * 暂停引擎
    */
   pause(): void {
-    if (this.state === "paused") {
+    if (this.getState() === "paused") {
       console.warn("GameEngine: 引擎已暂停");
       return;
     }
-
-    this.state = "paused";
 
     // 暂停帧循环
     this.frameLoop.pause();
@@ -429,12 +498,10 @@ export class GameEngine {
    * 恢复引擎
    */
   resume(): void {
-    if (this.state === "running") {
+    if (this.getState() === "running") {
       console.warn("GameEngine: 引擎已在运行中");
       return;
     }
-
-    this.state = "running";
 
     // 恢复帧循环
     this.frameLoop.resume();
@@ -444,7 +511,7 @@ export class GameEngine {
    * 单步执行
    */
   step(): void {
-    if (this.state === "running") {
+    if (this.getState() === "running") {
       console.warn("GameEngine: 引擎正在运行，无法单步执行");
       return;
     }
@@ -454,7 +521,7 @@ export class GameEngine {
 
   /**
    * 设置渲染消息发送器
-   * 
+   *
    * @param sender 渲染消息发送函数，通常由Worker环境中的MessagePort提供
    */
   setRenderMessageSender(sender: (payload: any) => void): void {
@@ -463,7 +530,7 @@ export class GameEngine {
 
   /**
    * 发送渲染指令到主线程
-   * 
+   *
    * @param payload 渲染指令负载，可以是单个指令或指令数组
    */
   postRenderMessage(payload: any): void {
@@ -507,14 +574,7 @@ export class GameEngine {
 
   // ==================== 状态查询 ====================
 
-  /**
-   * 获取引擎状态
-   *
-   * @returns 当前状态
-   */
-  getState(): EngineState {
-    return this.state;
-  }
+  // getState() 方法已在上面定义，这里是重复定义，需要删除
 
   /**
    * 检查引擎是否正在运行
@@ -522,7 +582,7 @@ export class GameEngine {
    * @returns 是否运行中
    */
   isRunning(): boolean {
-    return this.state === "running";
+    return this.getState() === "running";
   }
 
   /**
@@ -534,7 +594,7 @@ export class GameEngine {
     const runTime = performance.now() - this.startTime;
 
     return {
-      state: this.state,
+      state: this.getState(),
       currentFrame: this.frameLoop.getFrameNumber(),
       runTime,
       members: this.getAllMemberData(),
@@ -543,8 +603,6 @@ export class GameEngine {
       messageRouterStats: this.messageRouter.getStats(),
     };
   }
-
-
 
   /**
    * 插入事件到队列
@@ -844,16 +902,16 @@ export class GameEngine {
 
       // 在安全的沙盒环境中执行编译后的代码
       const runner = new Function("ctx", compiledCode);
-      
+
       // 确保 context 包含 engine 引用，供生成的代码使用
       const executionContext = {
         ...context,
-        engine: this
+        engine: this,
       };
-      
+
       const result = runner.call(null, executionContext);
-      
-      console.log(`✅ JS脚本执行成功: ${memberId}, 结果:`, result);
+
+      // console.log(`✅ JS脚本执行成功: ${memberId}, 结果:`, result);
       return result;
     } catch (error) {
       console.error("JS脚本执行失败:", error);
@@ -887,22 +945,22 @@ export class GameEngine {
         memberId,
         targetId: context.targetId,
         schema: member.dataSchema,
-        options: { enableValidation: true }
+        options: { enableValidation: true },
       });
-      
+
       if (!compiledResult.success) {
         throw new Error(`表达式编译失败: ${compiledResult.error}`);
       }
-      
+
       // 执行编译后的表达式，确保 context 包含 engine 引用
       const executionContext = {
         ...context,
-        engine: this
+        engine: this,
       };
-      
+
       const result = this.executeScript(compiledResult.compiledCode, executionContext);
-      console.log(`🔧 GameEngine.evaluateExpression: 执行结果: ${result} (类型: ${typeof result})`);
-      
+      // console.log(`🔧 GameEngine.evaluateExpression: 执行结果: ${result} (类型: ${typeof result})`);
+
       return result;
     } catch (error) {
       console.error("表达式计算失败:", error);
@@ -985,16 +1043,16 @@ export class GameEngine {
   public createFrameSnapshot(): FrameSnapshot {
     const currentFrame = this.frameLoop.getFrameNumber();
     const currentTime = Date.now();
-    
+
     // 获取引擎状态
     const frameLoopStats = this.frameLoop.getPerformanceStats();
     const eventQueueStats = this.eventQueue.getStats();
-    
+
     // 获取所有成员数据
-    const members = this.memberManager.getAllMembers().map(member => {
+    const members = this.memberManager.getAllMembers().map((member) => {
       const actorSnapshot = member.actor.getSnapshot();
       const memberData = member.serialize();
-      
+
       return {
         id: member.id,
         type: member.type,
@@ -1018,7 +1076,7 @@ export class GameEngine {
         frameLoop: frameLoopStats,
         eventQueue: eventQueueStats,
         memberCount: members.length,
-        activeMemberCount: members.filter(m => m.isAlive).length,
+        activeMemberCount: members.filter((m) => m.isAlive).length,
       },
       members,
     };

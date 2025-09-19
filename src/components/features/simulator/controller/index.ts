@@ -10,13 +10,11 @@
 // 简化的控制器
 export {
   Controller,
-  controller,
 } from "./controller";
 
 // 简化的通信层
 export {
-  ControllerCommunication,
-  controllerCommunication,
+  ControllerInputCommunication,
 } from "./communication";
 
 // UI组件
@@ -27,5 +25,4 @@ export {
   MemberStatus,
   SkillPanel,
   ActionPanel,
-  GameViewArea,
 } from "./components";

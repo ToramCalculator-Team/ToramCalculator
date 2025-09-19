@@ -1,113 +1,84 @@
 /**
- * 控制器输入通信层
+ * 重构后的通信层
  * 
- * 职责：
- * - 处理玩家输入指令 → Worker
- * - 管理模拟器控制
- * - 获取状态数据
+ * 核心理念：纯粹的代理层，不做任何业务逻辑
+ * 1. 状态机命令 - 直接转发
+ * 2. 成员操作 - 直接转发
+ * 3. 数据获取 - 直接转发
  */
 
-import { IntentMessage } from "../core/MessageRouter";
+import { EngineCommand } from "../core/GameEngineSM";
+import { IntentMessage, IntentMessageType } from "../core/MessageRouter";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 
-// ============================== 简化的通信管理器 ==============================
+// ============================== 纯代理通信层 ==============================
 
 export class ControllerInputCommunication {
-  private isConnected = false;
 
-  // ==================== 连接管理 ====================
+  // ==================== 连接管理 - 纯代理 ====================
   
-  checkConnection(): boolean {
-    try {
-      this.isConnected = realtimeSimulatorPool.isReady();
-      return this.isConnected;
-    } catch {
-      this.isConnected = false;
-      return false;
-    }
+  isReady(): boolean {
+    return realtimeSimulatorPool.isReady();
   }
 
-  getConnectionStatus(): boolean {
-    return this.isConnected;
-  }
-
-  // ==================== 模拟控制 ====================
+  // ==================== 引擎操作 - 纯代理 ====================
   
-  async startSimulation(simulatorData: SimulatorWithRelations) {
-    return await realtimeSimulatorPool.startSimulation(simulatorData);
+  async initSimulation(simulatorData: SimulatorWithRelations) {
+    return realtimeSimulatorPool.initSimulation(simulatorData);
   }
 
-  async stopSimulation() {
-    return await realtimeSimulatorPool.stopSimulation();
+  async sendEngineCommand(command: EngineCommand) {
+    return realtimeSimulatorPool.sendEngineCommand(command);
   }
 
-  async pauseSimulation() {
-    return await realtimeSimulatorPool.pauseSimulation();
-  }
+  // ==================== 成员操作 - 统一Intent处理 ====================
 
-  async resumeSimulation() {
-    return await realtimeSimulatorPool.resumeSimulation();
-  }
-
-  // ==================== 成员操作 ====================
-
-
-  async selectTarget(sourceMemberId: string, targetMemberId: string) {
-    const intent: IntentMessage = {
+  private createIntent(type: IntentMessageType, targetMemberId: string, data: any = {}): IntentMessage {
+    return {
       id: Date.now().toString(),
       timestamp: Date.now(),
-      type: "切换目标",
-      targetMemberId: sourceMemberId, // 接收事件的成员（施法者）
-      data: { targetId: targetMemberId } // 被选择的目标ID
+      type,
+      targetMemberId,
+      data
     };
-    return await realtimeSimulatorPool.sendIntent(intent);
+  }
+
+  async selectTarget(sourceMemberId: string, targetMemberId: string) {
+    return realtimeSimulatorPool.sendIntent(
+      this.createIntent("切换目标", sourceMemberId, { targetId: targetMemberId })
+    );
   }
 
   async castSkill(memberId: string, skillId: string) {
-    const intent: IntentMessage = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      type: "使用技能",
-      targetMemberId: memberId,
-      data: { skillId }
-    };
-    return await realtimeSimulatorPool.sendIntent(intent);
+    return realtimeSimulatorPool.sendIntent(
+      this.createIntent("使用技能", memberId, { skillId })
+    );
   }
 
   async moveMember(memberId: string, x: number, y: number) {
-    const intent: IntentMessage = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      type: "移动",
-      targetMemberId: memberId,
-      data: { position: { x, y } }
-    };
-    return await realtimeSimulatorPool.sendIntent(intent);
+    return realtimeSimulatorPool.sendIntent(
+      this.createIntent("移动", memberId, { position: { x, y } })
+    );
   }
 
   async stopMemberAction(memberId: string) {
-    const intent: IntentMessage = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      type: "停止移动",
-      targetMemberId: memberId,
-      data: {}
-    };
-    return await realtimeSimulatorPool.sendIntent(intent);
+    return realtimeSimulatorPool.sendIntent(
+      this.createIntent("停止移动", memberId)
+    );
   }
 
-  // ==================== 数据获取 ====================
+  // ==================== 数据获取 - 纯代理 ====================
   
   async getMembers() {
-    return await realtimeSimulatorPool.getMembers();
+    return realtimeSimulatorPool.getMembers();
   }
 
   async getMemberState(memberId: string) {
-    return await realtimeSimulatorPool.getMemberState(memberId);
+    return realtimeSimulatorPool.getMemberState(memberId);
   }
 
-  // ==================== 事件监听 ====================
+  // ==================== 事件监听 - 纯代理 ====================
   
   on(event: string, callback: Function) {
     realtimeSimulatorPool.on(event, callback);

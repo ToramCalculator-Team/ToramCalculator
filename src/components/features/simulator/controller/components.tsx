@@ -7,27 +7,24 @@
  * - 可复用的UI组件
  */
 
-import { Show, For, Switch, Match, type Accessor, type Setter } from "solid-js";
+import { Show, For, Switch, Match, type Accessor, type Setter, createEffect } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import MemberStatusPanel from "../core/member/MemberStatusPanel";
 import type { MemberSerializeData } from "../core/member/Member";
-import { controller } from "./controller";
-import { Portal } from "solid-js/web";
-import { GameView } from "../core/render/Renderer";
+import { Controller } from "./controller";
 
 // ============================== 状态栏组件 ==============================
 
 interface StatusBarProps {
-  isLoading: Accessor<boolean>;
-  isError: Accessor<string | null>;
+  isReady: Accessor<boolean>;
   isRunning: Accessor<boolean>;
   isPaused: Accessor<boolean>;
-  currentFrame: Accessor<{ currentFrame: number }>;
-  averageFPS: Accessor<{ frameLoopStats: { averageFPS: number } }>;
-  clockKind: Accessor<{ frameLoopStats: { clockKind: string } }>;
-  queueSize: Accessor<{ eventQueueStats: { currentSize: number } }>;
+  isInitialized: Accessor<boolean>;
+  connectionStatus: Accessor<boolean>;
+  engineView: Accessor<any>;
+  engineStats: Accessor<any>;
 }
 
 /**
@@ -41,43 +38,43 @@ export function StatusBar(props: StatusBarProps) {
           <span class="text-sm font-medium">状态:</span>
           <div
             class={`h-2 w-2 rounded-full ${
-              props.isLoading()
-                ? "bg-brand-color-1st"
-                : props.isError()
-                  ? "bg-brand-color-2nd"
-                  : props.isRunning()
-                    ? "bg-brand-color-3rd"
-                    : "bg-brand-color-4th"
+              !props.connectionStatus()
+                ? "bg-brand-color-2nd"
+                : props.isRunning()
+                  ? "bg-brand-color-3rd"
+                  : props.isReady()
+                    ? "bg-brand-color-4th"
+                    : "bg-brand-color-1st"
             }`}
           ></div>
           <span class="text-sm">
-            {props.isLoading()
-              ? "加载中..."
-              : props.isError()
-                ? "错误"
-                : props.isRunning()
-                  ? props.isPaused()
-                    ? "已暂停"
-                    : "运行中"
-                  : "就绪"}
+            {!props.connectionStatus()
+              ? "连接断开"
+              : props.isRunning()
+                ? props.isPaused()
+                  ? "已暂停"
+                  : "运行中"
+                : props.isReady()
+                  ? "就绪"
+                  : "初始化中"}
           </span>
         </div>
         <Show when={props.isRunning()}>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">帧数</span>
-            <span class="text-sm">{props.currentFrame()?.currentFrame || 0}</span>
+            <span class="text-sm">{props.engineView()?.frameNumber || 0}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium">FPS</span>
-            <span class="text-sm">{props.averageFPS()?.frameLoopStats?.averageFPS?.toFixed(1) || "0.0"}</span>
+            <span class="text-sm font-medium">运行时间</span>
+            <span class="text-sm">{(props.engineView()?.runTime || 0).toFixed(1)}s</span>
           </div>
           <div class="flex items-center gap-2 portrait:hidden">
-            <span class="text-sm font-medium">时钟</span>
-            <span class="text-sm">{props.clockKind()?.frameLoopStats?.clockKind || "raf"}</span>
+            <span class="text-sm font-medium">连接</span>
+            <span class="text-sm">{props.connectionStatus() ? "正常" : "断开"}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium">队列</span>
-            <span class="text-sm">{props.queueSize()?.eventQueueStats?.currentSize || 0}</span>
+            <span class="text-sm font-medium">成员</span>
+            <span class="text-sm">{props.engineView()?.memberCount || 0}</span>
           </div>
         </Show>
       </div>
@@ -88,15 +85,14 @@ export function StatusBar(props: StatusBarProps) {
 // ============================== 控制面板组件 ==============================
 
 interface ControlPanelProps {
-  canStart: boolean;
-  isLoading: boolean;
-  isRunning: boolean;
-  isPaused: boolean;
+  isReady: Accessor<boolean>;
+  isRunning: Accessor<boolean>;
+  isPaused: Accessor<boolean>;
+  canStart: () => boolean;
   onStart: () => void;
   onStop: () => void;
   onPause: () => void;
   onResume: () => void;
-  onClearError: () => void;
 }
 
 /**
@@ -106,26 +102,31 @@ export function ControlPanel(props: ControlPanelProps) {
   return (
     <div class="ControlPanel flex gap-2">
       <Button
-        onClick={() => {
-          props.onClearError();
-          props.onStart();
-        }}
-        disabled={!props.canStart}
+        onClick={props.onStart}
+        disabled={!props.canStart()}
         class="bg-green-600 hover:bg-green-700"
       >
         启动模拟
       </Button>
-      <Button onClick={props.onStop} disabled={props.isLoading || !props.isRunning} class="bg-red-600 hover:bg-red-700">
+      <Button 
+        onClick={props.onStop} 
+        disabled={!props.isRunning()} 
+        class="bg-red-600 hover:bg-red-700"
+      >
         停止模拟
       </Button>
       <Button
         onClick={props.onPause}
-        disabled={!props.isRunning || props.isPaused}
+        disabled={!props.isRunning() || props.isPaused()}
         class="bg-brand-color-1st hover:brightness-110"
       >
         暂停
       </Button>
-      <Button onClick={props.onResume} disabled={!props.isPaused} class="bg-blue-600 hover:bg-blue-700">
+      <Button 
+        onClick={props.onResume} 
+        disabled={!props.isPaused()} 
+        class="bg-blue-600 hover:bg-blue-700"
+      >
         恢复
       </Button>
     </div>
@@ -194,6 +195,7 @@ export function MemberStatus(props: MemberStatusProps) {
 
 interface SkillPanelProps {
   selectedMember: Accessor<MemberSerializeData | null>;
+  selectedMemberSkills: Accessor<Array<{ id: string; name: string; level: number }>>;
   onCastSkill: (skillId: string) => void;
 }
 
@@ -201,6 +203,10 @@ interface SkillPanelProps {
  * 技能面板组件
  */
 export function SkillPanel(props: SkillPanelProps) {
+  createEffect(() => {
+    console.log("SelectedMember", props.selectedMember());
+    console.log("SelectedMemberSkills", props.selectedMemberSkills());
+  });
   return (
     <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
       <Show when={props.selectedMember()}>
@@ -208,8 +214,8 @@ export function SkillPanel(props: SkillPanelProps) {
         <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
           <Switch fallback={<div class="text-sm text-gray-500">暂无技能</div>}>
             <Match when={props.selectedMember()?.type === "Player"}>
-              {/* 玩家技能 - 使用控制器中的技能信号 */}
-              <For each={controller.getSelectedMemberSkills()}>
+              {/* 玩家技能 - 使用传入的技能信号 */}
+              <For each={props.selectedMemberSkills()}>
                 {(skill) => (
                   <Button
                     onClick={() => props.onCastSkill(skill.id)}
@@ -237,6 +243,8 @@ export function SkillPanel(props: SkillPanelProps) {
 
 interface ActionPanelProps {
   selectedEngineMember: Accessor<MemberSerializeData | null>;
+  members: Accessor<MemberSerializeData[]>;
+  onSelectTarget: (targetMemberId: string) => void;
   onMove: (x: number, y: number) => void;
   onStopAction: () => void;
 }
@@ -253,9 +261,9 @@ export function ActionPanel(props: ActionPanelProps) {
           <div class="flex gap-2 items-center">
             <span class="text-sm text-gray-600">选择目标:</span>
             <MemberSelect
-              members={controller.members[0]() || []}
+              members={props.members()}
               selectedId={null} // 目标选择不需要保持状态
-              onSelect={controller.selectTarget.bind(controller)}
+              onSelect={props.onSelectTarget}
               placeholder="选择目标成员"
             />
           </div>

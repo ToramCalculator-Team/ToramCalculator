@@ -17,16 +17,16 @@
 import type { Actor, AnyActorLogic, EventObject, ParameterizedObject } from "xstate";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/repositories/member";
-import type GameEngine from "./GameEngine";
-import { StatContainer } from "./dataSys/StatContainer";
-import { PlayerAttrSchema } from "./member/player/PlayerData";
-import { MobAttrSchema } from "./member/mob/MobData";
+import type GameEngine from "../GameEngine";
+import { StatContainer } from "../dataSys/StatContainer";
+import { PlayerAttrSchema } from "./player/PlayerData";
+import { MobAttrSchema } from "./mob/MobData";
 import { Team } from "@db/repositories/team";
-import { Player } from "./member/player/Player";
-import { Member } from "./member/Member";
-import { Mob } from "./member/mob/Mob";
-import { NestedSchema } from "./dataSys/SchemaTypes";
-import { PipeLineDef } from "./pipeline/PipelineStageType";
+import { Player } from "./player/Player";
+import { Member } from "./Member";
+import { Mob } from "./mob/Mob";
+import { NestedSchema } from "../dataSys/SchemaTypes";
+import { PipeLineDef } from "../pipeline/PipelineStageType";
 
 // ============================== 类型定义 ==============================
 
