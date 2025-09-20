@@ -1,8 +1,8 @@
+import { expression } from "mathjs";
 
-
-const skillEffectTest = {
-  id: "djalsdjaisdjasu",
-  condition: "mainWepon.type == 'Rod' || mainWepon.type == 'Magictool'",
+const testSkillEffect = {
+  id: "testSkillEffect",
+  condition: "mainWepon.type == 'Rod' || mainWepon.type == 'Magictool'", // 启用此效果的条件
   // 可用性条件
   hpCost: "", // hp消耗表达式
   mpCost: "100", // mp消耗表达式
@@ -11,8 +11,27 @@ const skillEffectTest = {
   // 时间线
   timeline: [
     {
-      
-    }
+      type: "buff", // damage, buff
+      piplineEffects: [
+        {
+          hook: "伤害计算管线.有效攻击力计算", // buff效果钩子
+          fun: `(actAtk) => {
+                  有效巫师ATK = context.p.atk * 25% + context.m.Atk * 75%
+                  return 有效巫师ATK
+                }`,
+        },
+        {
+          hook: "伤害计算管线.距离威力计算", // buff效果钩子
+          fun: `(distanceRate) => {
+                  return 100
+                }`,
+        },
+      ],
+    },
+    {
+      type: "damage", // damage, buff
+      expression: "有效巫師ATK+100*150%", // 伤害计算表达式
+    },
   ],
   // 效果数据
   effectScope: {

@@ -580,16 +580,13 @@ model task_reward {
 model skill {
     id String @id
 
-    treeType     String // Enum SKILL_TREE_TYPE
-    posX         Int
-    posY         Int
-    tier         Int
-    name         String
-    isPassive    Boolean
-    chargingType String // Enum SKILL_CHARGING_TYPE
-    distanceType String // Enum SKILL_DISTANCE_TYPE
-    targetType   String // Enum SKILL_TARGET_TYPE
-    effect       skill_effect[]
+    treeType  String // Enum SKILL_TREE_TYPE
+    posX      Int
+    posY      Int
+    tier      Int
+    name      String
+    isPassive Boolean
+    effect    skill_effect[]
 
     details     String
     dataSources String
@@ -632,8 +629,11 @@ model skill_effect {
     chantingModified  String // 可加速咏唱时间
     reservoirFixed    String // 固定蓄力时间
     reservoirModified String // 可加速蓄力时间
-    startupProportion Int    // 前摇比例
+    startupProportion Int // 前摇比例
     // 效果数据
+    chargingType      String // Enum SKILL_CHARGING_TYPE
+    distanceType      String // Enum SKILL_DISTANCE_TYPE
+    targetType        String // Enum SKILL_TARGET_TYPE
     controlType       String // Enum CONTROL_EFFECT
     effectScopeFun    String? // 效果范围计算函数
     damageExpression  String? // 伤害计算表达式

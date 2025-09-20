@@ -133,9 +133,10 @@ export function ControlPanel(props: ControlPanelProps) {
   return (
     <div class="ControlPanel flex gap-2">
       {/* 启动/暂停/恢复按钮 - 互斥 */}
-      <Show when={canStart()}>
+      <Show when={!canPause() && !canResume()}>
         <Button
           onClick={props.onStart}
+          disabled={!canStart()}
           class="bg-green-600 hover:bg-green-700"
         >
           启动模拟
