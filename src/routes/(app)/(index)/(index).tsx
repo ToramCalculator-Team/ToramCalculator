@@ -687,7 +687,7 @@ export default function IndexPage() {
                               <IconComponent
                                 class={`text-brand-color-${brandColor} group-hover:text-primary-color dark:group-hover:text-accent-color h-10 w-10 landscape:h-6 landscape:w-6`}
                               />
-                              <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-base lg:landscape:block">
+                              <span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-xl lg:landscape:block">
                                 {menuItem.groupType === "wiki"
                                   ? dictionary().db[menuItem.title as keyof DB].selfName
                                   : dictionary().ui.nav[menuItem.title as keyof dictionary["ui"]["nav"]]}

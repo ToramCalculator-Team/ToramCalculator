@@ -125,7 +125,7 @@ export const Card = (props: CardProps) => {
           opacity: [1, 0],
         }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-        class={`Card drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl`}
+        class={`Card drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] lg:max-w-[960px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl`}
         style={{
           "z-index": props.index,
         }}

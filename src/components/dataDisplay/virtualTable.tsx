@@ -102,7 +102,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
     return createVirtualizer({
       count: table()?.getRowCount() ?? 0,
       getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
-      estimateSize: () => props.measure?.estimateSize ?? 73,
+      estimateSize: () => props.measure?.estimateSize ?? 96,
       overscan: 5,
       measureElement: (element) => element.getBoundingClientRect().height,
     });
@@ -404,7 +404,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                                   ...getCommonPinningStyles(cell.column),
                                   width: getCommonPinningStyles(cell.column).width + "px",
                                 }}
-                                class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-3 text-ellipsis`}
+                                class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-6 text-ellipsis`}
                               >
                                 <Show when={hasFieldGenerator} fallback={String(columnKey)}>
                                   {fieldGenerator({ cell, dic: props.dictionary })}

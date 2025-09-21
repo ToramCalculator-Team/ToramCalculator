@@ -6,7 +6,7 @@ import { A, useLocation, useNavigate } from "@solidjs/router";
 import Icons from "~/components/icons/index";
 import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
-import { Button  } from "~/components/controls/button";
+import { Button } from "~/components/controls/button";
 import { MediaContext } from "~/lib/contexts/Media";
 import { DB } from "@db/generated/kysely/kyesely";
 
@@ -46,6 +46,7 @@ const Divider = () => (
 );
 
 const Nav = () => {
+  const [display, setDisplay] = createSignal(false);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.language));
   const navigate = useNavigate();
@@ -93,41 +94,36 @@ const Nav = () => {
   return (
     <Motion.div
       animate={{
-        transform: [media.orientation === "landscape" ? "translateX(-30%)" : "translateY(100%)", "translateY(0)"],
+        transform: [media.orientation === "landscape" ? "" : "translateY(100%)", "translateY(0)"],
         opacity: [0, 1],
       }}
+      onMouseEnter={() => setDisplay(true)}
+      onMouseLeave={() => setDisplay(false)}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav lg:landscape:bg-area-color flex w-dvw items-center py-2 landscape:h-dvh landscape:w-24 landscape:flex-col landscape:gap-2 landscape:py-5 lg:landscape:gap-8`}
+      class={`Nav w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-[1px] lg:landscape:bg-transparent"} landscape:py-5`}
     >
-      <a href={"/"} class="Home group hidden landscape:block" tabIndex={1}>
-        <Icons.Outline.Logo />
-      </a>
-      <OverlayScrollbarsComponent
-        element="div"
-        options={{ scrollbars: { autoHide: "scroll" } }}
-        defer
-        class="h-full w-full!"
+      <div
+        class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8`}
       >
-        <div class="NavBtnGroup item-center flex shrink landscape:flex-col">
-          <NavBtn
-            config={{
-              btnName: dictionary().ui.nav.home,
-              icon: <Icons.Outline.Home />,
-              url: "/",
-            }}
-            active={active}
-            class="Home landscape:hidden"
-          />
-          <NavBtn
-            config={{
-              btnName: dictionary().db.mob.selfName,
-              icon: <Icons.Outline.Calendar />,
-              url: "/wiki/mob",
-            }}
-            active={active}
-            class="Home landscape:hidden"
-          />
-          <div class="WikiGroup hidden items-center landscape:flex landscape:flex-col">
+        <a href={"/"} class="Home hidden landscape:flex items-center justify-center" tabIndex={1}>
+          <Icons.Outline.Logo />
+        </a>
+        <OverlayScrollbarsComponent
+          element="div"
+          options={{ scrollbars: { autoHide: "scroll" } }}
+          defer
+          class="h-full w-full!"
+        >
+          <div class="NavBtnGroup item-center flex shrink landscape:flex-col">
+            <NavBtn
+              config={{
+                btnName: dictionary().ui.nav.home,
+                icon: <Icons.Outline.Home />,
+                url: "/",
+              }}
+              active={active}
+              class="Home landscape:hidden"
+            />
             <NavBtn
               config={{
                 btnName: dictionary().db.mob.selfName,
@@ -135,98 +131,109 @@ const Nav = () => {
                 url: "/wiki/mob",
               }}
               active={active}
-              class="hidden landscape:flex landscape:w-auto"
+              class="Home landscape:hidden"
             />
-            <NavBtn
-              config={{
-                btnName: dictionary().db.skill.selfName,
-                icon: <Icons.Outline.Basketball />,
-                url: "/wiki/skill",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().db.weapon.selfName,
-                icon: <Icons.Outline.Category2 />,
-                url: "/wiki/weapon",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().db.crystal.selfName,
-                icon: <Icons.Outline.Box2 />,
-                url: "/wiki/crystal",
-              }}
-              active={active}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().db.player_pet.selfName,
-                icon: <Icons.Outline.Money />,
-                url: "/wiki/player_pet",
-              }}
-              active={active}
-            />
-          </div>
-          <Divider />
-          <div class="CalculatorGroup flex items-center landscape:flex-col landscape:gap-0">
-            <div
-              class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}
-              onClick={() => console.log("/simulator/defaultSimulatorId")}
-            >
-              <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
-                <div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
-                  53
+            <div class="WikiGroup hidden items-center landscape:flex landscape:flex-col">
+              <NavBtn
+                config={{
+                  btnName: dictionary().db.mob.selfName,
+                  icon: <Icons.Outline.Calendar />,
+                  url: "/wiki/mob",
+                }}
+                active={active}
+                class="hidden landscape:flex landscape:w-auto"
+              />
+              <NavBtn
+                config={{
+                  btnName: dictionary().db.skill.selfName,
+                  icon: <Icons.Outline.Basketball />,
+                  url: "/wiki/skill",
+                }}
+                active={active}
+              />
+              <NavBtn
+                config={{
+                  btnName: dictionary().db.weapon.selfName,
+                  icon: <Icons.Outline.Category2 />,
+                  url: "/wiki/weapon",
+                }}
+                active={active}
+              />
+              <NavBtn
+                config={{
+                  btnName: dictionary().db.crystal.selfName,
+                  icon: <Icons.Outline.Box2 />,
+                  url: "/wiki/crystal",
+                }}
+                active={active}
+              />
+              <NavBtn
+                config={{
+                  btnName: dictionary().db.player_pet.selfName,
+                  icon: <Icons.Outline.Money />,
+                  url: "/wiki/player_pet",
+                }}
+                active={active}
+              />
+            </div>
+            <Divider />
+            <div class="CalculatorGroup flex items-center landscape:flex-col landscape:gap-0">
+              <div
+                class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}
+                onClick={() => console.log("/simulator/defaultSimulatorId")}
+              >
+                <div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
+                  <div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
+                    53
+                  </div>
                 </div>
               </div>
+              <NavBtn
+                config={{
+                  btnName: dictionary().ui.nav.character,
+                  icon: <Icons.Outline.Gamepad />,
+                  url: "/character/defaultCharacterId",
+                }}
+                active={active}
+                class={`w-[20dvw] landscape:w-auto`}
+              />
+              <NavBtn
+                config={{
+                  btnName: dictionary().ui.nav.simulator,
+                  icon: <Icons.Outline.Filter />,
+                  url: "/simulator/defaultSimulatorId",
+                }}
+                active={active}
+                class={`hidden w-[20dvw] landscape:flex landscape:w-auto`}
+              />
             </div>
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.character,
-                icon: <Icons.Outline.Gamepad />,
-                url: "/character/defaultCharacterId",
-              }}
-              active={active}
-              class={`w-[20dvw] landscape:w-auto`}
-            />
-            <NavBtn
-              config={{
-                btnName: dictionary().ui.nav.simulator,
-                icon: <Icons.Outline.Filter />,
-                url: "/simulator/defaultSimulatorId",
-              }}
-              active={active}
-              class={`hidden w-[20dvw] landscape:flex landscape:w-auto`}
-            />
           </div>
-        </div>
-      </OverlayScrollbarsComponent>
-      <div class={`FunBtnGroup lanscape:flex lanscape:flex-col items-center justify-center gap-3`}>
-        {/* <Button
+        </OverlayScrollbarsComponent>
+        <div class={`FunBtnGroup lanscape:flex lanscape:flex-col items-center justify-center gap-3`}>
+          {/* <Button
           level="quaternary"
           class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
           onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
         >
           <Icons.Outline.Light />
         </Button> */}
-        <NavBtn
-          config={{
-            btnName: dictionary().ui.nav.profile,
-            icon: <Icons.Outline.User />,
-            url: "/profile",
-          }}
-          active={active}
-          class="w-[20dvw] landscape:hidden"
-        />
-        <Button
-          level="quaternary"
-          class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
-          onClick={() => setStore("settingsDialogState", true)}
-        >
-          <Icons.Outline.Settings />
-        </Button>
+          <NavBtn
+            config={{
+              btnName: dictionary().ui.nav.profile,
+              icon: <Icons.Outline.User />,
+              url: "/profile",
+            }}
+            active={active}
+            class="w-[20dvw] landscape:hidden"
+          />
+          <Button
+            level="quaternary"
+            class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
+            onClick={() => setStore("settingsDialogState", true)}
+          >
+            <Icons.Outline.Settings />
+          </Button>
+        </div>
       </div>
     </Motion.div>
   );

@@ -527,7 +527,7 @@ export const OutlineIcons = {
 
   Logo: (props: JSX.IntrinsicElements["svg"]) => {
     return (
-      <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" fill="none" {...props}>
+      <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" class="fill-primary-color" {...props}>
         <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" />
         <rect x="0.75" y="0.75" width="48.5" height="48.5" rx="24.25" stroke-width="1.5" class="stroke-accent-color" />
         <rect x="12.3611" y="12.2222" width="8.61111" height="27.7778" rx="4.30556" class="fill-accent-color" />

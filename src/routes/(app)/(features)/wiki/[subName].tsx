@@ -189,7 +189,7 @@ export default function WikiSubPage() {
           <Presence exitBeforeEnter>
             <Show when={!isMainContentFullscreen()}>
               <Motion.div
-                class="Title flex flex-col lg:pt-12 landscape:p-3"
+                class="Title flex flex-col landscape:p-3 lg:landscape:pt-12"
                 animate={{ opacity: [0, 1] }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
@@ -202,7 +202,7 @@ export default function WikiSubPage() {
                     id="DataSearchBox"
                     type="search"
                     placeholder={dictionary().ui.searchPlaceholder}
-                    class="border-dividing-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                    class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                     onInput={(e) => {
                       setWikiStore("table", {
                         globalFilterStr: e.target.value,
@@ -268,7 +268,7 @@ export default function WikiSubPage() {
                         <Presence exitBeforeEnter>
                           <Show when={!isMainContentFullscreen()}>
                             <Motion.div
-                              class={`Banner-${index} flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
+                              class={`Banner-${index} flex-none overflow-hidden bg-primary-color rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
                               onMouseEnter={() => setActiveBannerIndex(index())}
                               style={{
                                 // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,

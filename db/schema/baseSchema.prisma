@@ -576,17 +576,19 @@ model task_reward {
     taskId       String
 }
 
-// 技能
 model skill {
     id String @id
 
-    treeType  String // Enum SKILL_TREE_TYPE
-    posX      Int
-    posY      Int
-    tier      Int
-    name      String
-    isPassive Boolean
-    effect    skill_effect[]
+    treeType     String // Enum SKILL_TREE_TYPE
+    posX         Int
+    posY         Int
+    tier         Int
+    name         String
+    isPassive    Boolean
+    chargingType String // Enum SKILL_CHARGING_TYPE
+    distanceType String // Enum SKILL_DISTANCE_TYPE
+    targetType   String // Enum SKILL_TARGET_TYPE
+    effect       skill_effect[]
 
     details     String
     dataSources String
@@ -602,45 +604,25 @@ model skill {
     createdByAccountId String?
 }
 
-// 启用此效果的条件（比如：主手剑副手盾）
-// 可用性条件（Mp/Hp是否足够、使魔存在与否、射程）
-// 动画数据（固定帧数、可加速帧数、固定蓄力/咏唱时长、可加速蓄力\咏唱时长）
-// 技能效果数据：
-// - 效果标签（属性修改\buff添加）
-// - 范围函数（条形、圆形、弧形等）
-// - 效果内容（伤害计算表达式、buff逻辑）
-// - 控制类型
-
 // 技能效果
 model skill_effect {
     id String @id
 
-    // 满足条件时，父技能使用此效果
     condition         String
-    // 可用性条件
-    hpCost            String? // hp消耗表达式
-    mpCost            String? // mp消耗表达式
-    castingRange      String? // 施法距离表达式
-    disbleCondition   String? // 额外不可发动条件表达式
-    // 动画数据
-    motionFixed       String // 固定动画帧数
-    motionModified    String // 可加速动画帧数
-    chantingFixed     String // 固定咏唱时间
-    chantingModified  String // 可加速咏唱时间
-    reservoirFixed    String // 固定蓄力时间
-    reservoirModified String // 可加速蓄力时间
-    startupProportion Int // 前摇比例
-    // 效果数据
-    chargingType      String // Enum SKILL_CHARGING_TYPE
-    distanceType      String // Enum SKILL_DISTANCE_TYPE
-    targetType        String // Enum SKILL_TARGET_TYPE
-    controlType       String // Enum CONTROL_EFFECT
-    effectScopeFun    String? // 效果范围计算函数
-    damageExpression  String? // 伤害计算表达式
-    buffEffectHook    String? // buff效果钩子
-    buffEffectFun     String? // buff效果函数
-    // 描述
+    elementLogic      String
+    castingRange      String
+    effectiveRange    Int
+    motionFixed       String
+    motionModified    String
+    chantingFixed     String
+    chantingModified  String
+    reservoirFixed    String
+    reservoirModified String
+    startupFrames     String
+    hpCost            String?
+    mpCost            String?
     description       String
+    logic             Json
     details           String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
