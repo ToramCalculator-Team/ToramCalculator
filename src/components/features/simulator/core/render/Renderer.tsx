@@ -21,7 +21,6 @@ import type { EntityId } from "./RendererProtocol";
 import { rendererCommunication } from "./RendererCommunication";
 import { Portal } from "solid-js/web";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { GridMaterial, SkyMaterial } from "@babylonjs/materials";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Inspector } from '@babylonjs/inspector';
 
@@ -287,21 +286,7 @@ export function GameView(props: {
     camera.fov = 1;
     camera.inputs.addMouseWheel();
 
-    // skybox
-    // const envTexture = new CubeTexture("/models/skybox.dds", scene);
-    // scene.createDefaultSkybox(envTexture, true, 1000);
     // -----------------------------------天空盒-----------------------------------
-    const skyboxMaterial = new SkyMaterial("skyMaterial", scene);
-    const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
-    skyboxMaterial.backFaceCulling = false;
-    skyboxMaterial.turbidity = 5; //nigori
-    skyboxMaterial.rayleigh = 2; //rayleigh sanran
-    skyboxMaterial.luminance = 0.8; //blightness
-    skyboxMaterial.inclination = 0;
-    skyboxMaterial.mieCoefficient = 0.005;
-    skyboxMaterial.mieDirectionalG = 0.9999;
-    skyboxMaterial.azimuth = 0.2147;
-    skybox.material = skyboxMaterial;
 
     // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
@@ -363,12 +348,6 @@ export function GameView(props: {
     const root = scene.getMeshByName("__root__");
     if (root) {
       root.rotationQuaternion = null;
-      const gridMaterial = new GridMaterial("grid", scene);
-      gridMaterial.mainColor = new Color3(0, 0, 0);
-      gridMaterial.lineColor = new Color3(0.2, 0.4, 1.0);
-      gridMaterial.opacity = 0.98;
-      gridMaterial.backFaceCulling = false;
-      root.material = gridMaterial;
       scene.onBeforeRenderObservable.add(() => {
         root.position.x = Math.round(camera.position.x / stepX) * stepX;
         root.position.z = Math.round(camera.position.z / stepZ) * stepZ;
