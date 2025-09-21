@@ -131,13 +131,13 @@ export function ControlPanel(props: ControlPanelProps) {
   });
 
   return (
-    <div class="ControlPanel flex gap-2">
+    <div class="ControlPanel w-full flex flex-1 gap-2">
       {/* 启动/暂停/恢复按钮 - 互斥 */}
       <Show when={!canPause() && !canResume()}>
         <Button
           onClick={props.onStart}
           disabled={!canStart()}
-          class="bg-green-600 hover:bg-green-700"
+          class="w-full"
         >
           启动模拟
         </Button>
@@ -145,7 +145,7 @@ export function ControlPanel(props: ControlPanelProps) {
       <Show when={canPause()}>
         <Button
           onClick={props.onPause}
-          class="bg-brand-color-1st hover:brightness-110"
+          class="bg-brand-color-1st w-full"
         >
           暂停
         </Button>
@@ -153,7 +153,7 @@ export function ControlPanel(props: ControlPanelProps) {
       <Show when={canResume()}>
         <Button 
           onClick={props.onResume} 
-          class="bg-blue-600 hover:bg-blue-700"
+          class="w-full"
         >
           恢复
         </Button>
@@ -163,7 +163,7 @@ export function ControlPanel(props: ControlPanelProps) {
       <Button 
         onClick={props.onReset} 
         disabled={!canReset()} 
-        class="bg-red-600 hover:bg-red-700"
+        class="w-full"
       >
         重置模拟
       </Button>
@@ -172,7 +172,7 @@ export function ControlPanel(props: ControlPanelProps) {
       <Button
         onClick={props.onStep}
         disabled={!canStep()}
-        class="bg-purple-600 hover:bg-purple-700"
+        class="w-full"
       >
         单步推进
       </Button>
@@ -194,7 +194,7 @@ interface MemberSelectProps {
  */
 export function MemberSelect(props: MemberSelectProps) {
   return (
-    <div class="MemberSelect ml-auto flex flex-1 items-center gap-2">
+    <div class="MemberSelect w-full flex flex-1 items-center gap-2">
       <Show
         when={props.members.length > 0}
         fallback={

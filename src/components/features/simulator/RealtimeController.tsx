@@ -109,7 +109,7 @@ export default function RealtimeController() {
       />
 
       {/* 控制栏 + 成员选择 */}
-      <div class="col-span-12 row-span-1 flex flex-wrap items-center gap-x-8 gap-y-2 portrait:row-span-2">
+      <div class="col-span-12 row-span-1 flex items-center gap-x-4 gap-y-2 portrait:row-span-2 portrait:flex-col">
         <ControlPanel 
           engineActor={controller.engineActor}
           onStart={() => controller.startSimulation()}

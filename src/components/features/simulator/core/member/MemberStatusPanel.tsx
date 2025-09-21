@@ -7,7 +7,7 @@
  * - 展示成员属性、位置、状态等数据
  */
 
-import { Accessor, Show, createMemo, createSignal,onMount } from "solid-js";
+import { Accessor, Show, createMemo, createSignal, onMount } from "solid-js";
 import { MemberSerializeData } from "./Member";
 import { DataStorage, isDataStorageType } from "../dataSys/StatContainer";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -43,19 +43,22 @@ const StatsRenderer = (props: { data?: object }) => {
       if (typeof value === "object" && value !== null) {
         if (!isDataStorageType(value)) {
           return (
-            <div
-              class={`key=${currentPath} Object border-boundary-color flex gap-1 border-b-1 p-1 ${!currentPath.includes(".") && columnsWidth}`}
-            >
-              <span
-                class="bg-area-color text-main-text-color w-8 text-center font-bold"
-                style={{ "writing-mode": "sideways-lr", "text-orientation": "mixed" }}
+            <>
+              <div
+                class={`key=${currentPath} Object border-boundary-color flex gap-1 ${!currentPath.includes(".") && columnsWidth}`}
               >
-                {key}
-              </span>
-              <div class="flex w-full flex-col gap-1">
-                {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
+                <span
+                  class="bg-area-color text-main-text-color w-8 text-center font-bold rounded-sm"
+                  style={{ "writing-mode": "sideways-lr", "text-orientation": "mixed" }}
+                >
+                  {key}
+                </span>
+                <div class="flex w-full flex-col gap-1">
+                  {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
+                </div>
               </div>
-            </div>
+              <div class="bg-boundary-color h-[1px] w-full"></div>
+            </>
           );
         }
         return (
@@ -230,7 +233,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //             path: currentPath,
 //             displayData: d[key]
 //           });
-          
+
 //           // 递归添加子项
 //           items.push(...flattenData(value, currentPath, level + 1, d[key] as Record<string, string | number | object> | undefined));
 //         } else {
@@ -270,14 +273,14 @@ const StatsRenderer = (props: { data?: object }) => {
 //     const parent = parentRef();
 //     const items = virtualItems();
 //     const ready = isReady();
-    
-//     console.log('Creating virtualizer:', { 
-//       parent, 
-//       itemCount: items.length, 
+
+//     console.log('Creating virtualizer:', {
+//       parent,
+//       itemCount: items.length,
 //       ready,
-//       parentHeight: parent?.clientHeight 
+//       parentHeight: parent?.clientHeight
 //     });
-    
+
 //     if (!parent || items.length === 0 || !ready) return null;
 
 //     const v = createVirtualizer({
@@ -289,9 +292,9 @@ const StatsRenderer = (props: { data?: object }) => {
 //         if (item.type === 'object') return 60;
 //         if (item.type === 'modifier') {
 //           // 根据修正值数量估算高度
-//           const hasModifiers = item.value?.static?.fixed?.length > 0 || 
-//                               item.value?.static?.percentage?.length > 0 || 
-//                               item.value?.dynamic?.fixed?.length > 0 || 
+//           const hasModifiers = item.value?.static?.fixed?.length > 0 ||
+//                               item.value?.static?.percentage?.length > 0 ||
+//                               item.value?.dynamic?.fixed?.length > 0 ||
 //                               item.value?.dynamic?.percentage?.length > 0;
 //           return hasModifiers ? 200 : 80;
 //         }
@@ -299,7 +302,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //       },
 //       overscan: 5,
 //     });
-    
+
 //     console.log('Virtualizer created:', v);
 //     return v;
 //   });
@@ -316,11 +319,11 @@ const StatsRenderer = (props: { data?: object }) => {
 
 //     if (item.type === 'object') {
 //       return (
-//         <div 
+//         <div
 //           class={`key=${currentPath} Object border-boundary-color flex gap-1 border-b-1 p-1 ${!currentPath.includes(".") && "columnsWidth"}`}
 //           style={indentStyle}
 //         >
-//           <span class="bg-area-color text-main-text-color w-8 text-center font-bold" 
+//           <span class="bg-area-color text-main-text-color w-8 text-center font-bold"
 //                 style={{ "writing-mode": "sideways-lr", "text-orientation": "mixed" }}>
 //             {key}
 //           </span>
@@ -329,32 +332,32 @@ const StatsRenderer = (props: { data?: object }) => {
 //     }
 
 //     if (item.type === 'modifier') {
-//       const hasModifiers = value.static.fixed.length > 0 || 
-//                           value.static.percentage.length > 0 || 
-//                           value.dynamic.fixed.length > 0 || 
+//       const hasModifiers = value.static.fixed.length > 0 ||
+//                           value.static.percentage.length > 0 ||
+//                           value.dynamic.fixed.length > 0 ||
 //                           value.dynamic.percentage.length > 0;
 
 //       return (
-//         <div 
+//         <div
 //           class={`key=${currentPath} Modifiers bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 ${!hasModifiers && !currentPath.includes(".") && "columnsWidth"}`}
 //           style={indentStyle}
 //         >
 //           <div class="Key w-full p-1 text-sm font-bold">
 //             {value.displayName ?? (displayData as string | number) ?? key}：
 //           </div>
-          
+
 //           {hasModifiers ? (
 //             <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-[1px] lg:gap-4">
 //               <div class={`TotalValue flex flex-col rounded-sm p-1 ${!hasModifiers && "w-full"}`}>
 //                 <div class="Key text-accent-color-70 text-sm">实际值</div>
 //                 <div class="actualValueClass">{value.actValue}</div>
 //               </div>
-              
+
 //               <div class="BaseVlaue flex w-[25%] flex-col rounded-sm p-1 lg:w-[10%]">
 //                 <span class="BaseValueName text-accent-color-70 text-sm">基础值</span>
 //                 <span class="baseValueClass">{value.baseValue}</span>
 //               </div>
-              
+
 //               <div class="ModifierVlaue flex w-full flex-1 flex-col rounded-sm p-1">
 //                 <span class="ModifierValueName text-accent-color-70 px-1 text-sm">修正值</span>
 //                 <div class="ModifierValueContent flex gap-1">
@@ -385,7 +388,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //                       </div>
 //                     </div>
 //                   )}
-                  
+
 //                   {(value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && (
 //                     <div class="ModifierDynamicBox flex flex-1 items-center px-1">
 //                       <span class="ModifierDynamicName text-accent-color-70 text-sm">动态修正值</span>
@@ -425,7 +428,7 @@ const StatsRenderer = (props: { data?: object }) => {
 
 //     // 字符串类型
 //     return (
-//       <div 
+//       <div
 //         class={`String bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 lg:gap-4 ${!currentPath.includes(".") && "columnsWidth"}`}
 //         style={indentStyle}
 //       >
@@ -438,10 +441,10 @@ const StatsRenderer = (props: { data?: object }) => {
 //   };
 
 //   return (
-//     <div 
+//     <div
 //       ref={setParentRef}
 //       class="RenderObject flex w-full flex-col gap-1"
-//       style={{ 
+//       style={{
 //         height: '400px',
 //         'overflow-y': 'auto',
 //         'overflow-x': 'hidden'
@@ -450,19 +453,19 @@ const StatsRenderer = (props: { data?: object }) => {
 //       {(() => {
 //         const v = virtualizer();
 //         const items = virtualItems();
-        
+
 //         if (!v) {
 //           return <div class="p-4">Loading virtualizer...</div>;
 //         }
-        
+
 //         const renderedItems = v.getVirtualItems();
-//         console.log('Render check:', { 
-//           virtualizerExists: !!v, 
+//         console.log('Render check:', {
+//           virtualizerExists: !!v,
 //           itemsLength: items.length,
 //           virtualItemsLength: renderedItems.length,
 //           totalSize: v.getTotalSize()
 //         });
-        
+
 //         return (
 //           <div
 //             style={{
@@ -475,7 +478,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //               console.log('Rendering virtual item:', virtualItem);
 //               const item = items[virtualItem.index];
 //               if (!item) return null;
-              
+
 //               return (
 //                 <div
 //                   style={{
