@@ -59,7 +59,6 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 │   ├── repositories/         # 数据访问层
 │   ├── schema/               # 数据库架构定义
 │   └── scripts/              # 数据库脚本
-├── docs/                      # 项目文档
 ├── public/                    # 静态资源
 └── src/                       # 应用逻辑源代码
     ├── components/            # UI 组件
