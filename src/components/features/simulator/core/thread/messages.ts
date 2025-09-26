@@ -150,7 +150,7 @@ export const WorkerSystemMessageSchema = z.object({
  */
 export function isStateMachineCommand(command: EngineCommand | DataQueryCommand): command is EngineCommand {
   return command && typeof command === 'object' && 'type' in command && 
-         ["INIT", "START", "STOP", "PAUSE", "RESUME", "RESET", "RESULT"].includes(command.type);
+         ["INIT", "START", "STOP", "PAUSE", "RESUME", "RESET", "STEP", "RESULT"].includes(command.type);
 }
 
 /**
