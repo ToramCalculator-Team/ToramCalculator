@@ -1,0 +1,132 @@
+{
+  "name": "test-once",
+  "root": {
+    "id": 1,
+    "name": "Sequence",
+    "children": [
+      {
+        "id": 2,
+        "name": "Log",
+        "args": {
+          "message": "-------------> Once",
+          "level": "info"
+        }
+      },
+      {
+        "id": 3,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 4,
+            "name": "Once",
+            "debug": true,
+            "children": [
+              {
+                "id": 5,
+                "name": "RetryUntilSuccess",
+                "args": {
+                  "count": 2
+                },
+                "input": [
+                  ""
+                ],
+                "children": [
+                  {
+                    "id": 6,
+                    "name": "AlwaysFailure",
+                    "children": [
+                      {
+                        "id": 7,
+                        "name": "Log",
+                        "args": {
+                          "message": "log once1",
+                          "level": "info"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 9,
+            "name": "Once",
+            "debug": true,
+            "children": [
+              {
+                "id": 10,
+                "name": "Log",
+                "args": {
+                  "message": "log once2",
+                  "level": "info"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 12,
+            "name": "Once",
+            "debug": true,
+            "children": [
+              {
+                "id": 13,
+                "name": "Sequence",
+                "children": [
+                  {
+                    "id": 14,
+                    "name": "Log",
+                    "args": {
+                      "message": "log once3",
+                      "level": "info"
+                    }
+                  },
+                  {
+                    "id": 15,
+                    "name": "Wait",
+                    "args": {
+                      "time": 1
+                    },
+                    "input": [
+                      ""
+                    ]
+                  },
+                  {
+                    "id": 16,
+                    "name": "Log",
+                    "args": {
+                      "message": "log once4",
+                      "level": "info"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "name": "Log",
+        "args": {
+          "message": "<------------- Once",
+          "level": "info"
+        }
+      }
+    ]
+  },
+  "export": true,
+  "desc": ""
+}

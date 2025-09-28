@@ -1,0 +1,52 @@
+{
+  "files": [
+    {
+      "path": "hero.json",
+      "desc": "英雄测试AI"
+    },
+    {
+      "path": "monster.json",
+      "desc": "怪物测试AI"
+    },
+    {
+      "path": "test-array.json",
+      "desc": ""
+    },
+    {
+      "path": "test-listen.json",
+      "desc": ""
+    },
+    {
+      "path": "test-once.json",
+      "desc": ""
+    },
+    {
+      "path": "test-parallel.json",
+      "desc": ""
+    },
+    {
+      "path": "test-race.json",
+      "desc": ""
+    },
+    {
+      "path": "test-repeat-until-failure.json",
+      "desc": ""
+    },
+    {
+      "path": "test-repeat-until-success.json",
+      "desc": ""
+    },
+    {
+      "path": "test-sequence.json",
+      "desc": ""
+    },
+    {
+      "path": "test-switch-case.json",
+      "desc": ""
+    },
+    {
+      "path": "test-timeout.json",
+      "desc": ""
+    }
+  ]
+}

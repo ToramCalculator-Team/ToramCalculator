@@ -1,0 +1,205 @@
+{
+  "name": "test-timeout",
+  "root": {
+    "id": 1,
+    "name": "Sequence",
+    "children": [
+      {
+        "id": 2,
+        "name": "Log",
+        "args": {
+          "message": "-------------> Timeout",
+          "level": "info"
+        }
+      },
+      {
+        "id": 3,
+        "name": "Now",
+        "output": [
+          "start_time"
+        ]
+      },
+      {
+        "id": 4,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 5,
+            "name": "Timeout",
+            "args": {
+              "time": 3
+            },
+            "debug": true,
+            "children": [
+              {
+                "id": 6,
+                "name": "RetryUntilSuccess",
+                "args": {
+                  "count": 10
+                },
+                "input": [
+                  ""
+                ],
+                "children": [
+                  {
+                    "id": 7,
+                    "name": "AlwaysFailure",
+                    "children": [
+                      {
+                        "id": 8,
+                        "name": "Log",
+                        "args": {
+                          "message": "log timeout",
+                          "level": "info"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "name": "Now",
+        "output": [
+          "curr_time"
+        ]
+      },
+      {
+        "id": 10,
+        "name": "Assert",
+        "args": {
+          "message": "timeout error"
+        },
+        "children": [
+          {
+            "id": 11,
+            "name": "Check",
+            "args": {
+              "value": "curr_time - start_time == 3"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 13,
+            "name": "Timeout",
+            "args": {
+              "time": 3
+            },
+            "debug": true,
+            "children": [
+              {
+                "id": 14,
+                "name": "RetryUntilSuccess",
+                "args": {
+                  "count": 10
+                },
+                "input": [
+                  ""
+                ],
+                "children": [
+                  {
+                    "id": 15,
+                    "name": "Sequence",
+                    "children": [
+                      {
+                        "id": 16,
+                        "name": "Wait",
+                        "args": {
+                          "time": 1
+                        },
+                        "input": [
+                          ""
+                        ]
+                      },
+                      {
+                        "id": 17,
+                        "name": "Log",
+                        "args": {
+                          "message": "log wait",
+                          "level": "info"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 19,
+            "name": "Timeout",
+            "args": {
+              "time": 3
+            },
+            "debug": true,
+            "children": [
+              {
+                "id": 20,
+                "name": "Log",
+                "args": {
+                  "message": "log success",
+                  "level": "info"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "name": "AlwaysSuccess",
+        "children": [
+          {
+            "id": 22,
+            "name": "Timeout",
+            "args": {
+              "time": 3
+            },
+            "debug": true,
+            "children": [
+              {
+                "id": 23,
+                "name": "AlwaysFailure",
+                "children": [
+                  {
+                    "id": 24,
+                    "name": "Log",
+                    "args": {
+                      "message": "log failure",
+                      "level": "info"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "name": "Log",
+        "args": {
+          "message": "<------------- Timeout",
+          "level": "info"
+        }
+      }
+    ]
+  },
+  "export": true,
+  "desc": ""
+}
