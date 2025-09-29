@@ -76,6 +76,11 @@ export class MemberManager {
   private membersByCamp: Map<string, Set<string>> = new Map();
   /** 队伍 -> 成员ID集合 索引 */
   private membersByTeam: Map<string, Set<string>> = new Map();
+  
+  // ==================== 主控目标系统 ====================
+  
+  /** 当前主控目标ID - 用户操作的成员，相机跟随的目标 */
+  private primaryTargetId: string | null = null;
 
   // ==================== 构造函数 ====================
 
@@ -171,6 +176,12 @@ export class MemberManager {
       this.membersByTeam.set(teamId, new Set());
     }
     this.membersByTeam.get(teamId)!.add(memberData.id);
+
+    // 自动选择主控目标（如果还没有设置的话）
+    if (!this.primaryTargetId) {
+      this.autoSelectPrimaryTarget();
+    }
+
     return true;
   }
 
@@ -194,6 +205,13 @@ export class MemberManager {
     this.membersByTeam.forEach((value) => {
       value.delete(memberId);
     });
+
+    // 如果被删除的成员是当前主控目标，重新选择目标
+    if (this.primaryTargetId === memberId) {
+      console.log(`🎯 当前主控目标被删除，重新选择目标`);
+      this.autoSelectPrimaryTarget();
+    }
+
     return true;
   }
 
@@ -347,6 +365,9 @@ export class MemberManager {
     this.membersByTeam.clear();
     this.camps.clear();
     this.teams.clear();
+
+    // 清空主控目标
+    this.primaryTargetId = null;
   }
 
   /**
@@ -419,6 +440,73 @@ export class MemberManager {
   /** 查询队伍是否存在 */
   hasTeam(teamId: string): boolean {
     return this.teams.has(teamId);
+  }
+
+  // ==================== 主控目标管理 ====================
+  
+  /** 获取当前主控目标 */
+  getPrimaryTarget(): string | null {
+    return this.primaryTargetId;
+  }
+  
+  /** 设置主控目标 */
+  setPrimaryTarget(memberId: string | null): void {
+    const oldTarget = this.primaryTargetId;
+    
+    // 验证目标成员是否存在
+    if (memberId && !this.members.has(memberId)) {
+      console.warn(`🎯 主控目标设置失败: 成员 ${memberId} 不存在`);
+      return;
+    }
+    
+    this.primaryTargetId = memberId;
+    
+    if (oldTarget !== memberId) {
+      console.log(`🎯 主控目标切换: ${oldTarget} -> ${memberId}`);
+      
+      // 通知渲染层相机跟随新目标
+      if (memberId) {
+        this.engine.postRenderMessage({
+          type: "render:cmd",
+          cmd: {
+            type: "camera_follow",
+            entityId: memberId,
+            distance: 8,
+            verticalAngle: Math.PI / 6,
+            seq: Date.now(),
+            ts: Date.now(),
+          },
+        });
+      }
+    }
+  }
+  
+  /** 自动选择主控目标：优先Player，其次第一个成员 */
+  autoSelectPrimaryTarget(): void {
+    const allMembers = Array.from(this.members.values());
+    
+    // 优先选择Player类型的成员
+    const playerMember = allMembers.find(member => member.type === 'Player');
+    if (playerMember) {
+      this.setPrimaryTarget(playerMember.id);
+      return;
+    }
+    
+    // 如果没有Player，选择第一个成员
+    const firstMember = allMembers[0];
+    if (firstMember) {
+      this.setPrimaryTarget(firstMember.id);
+      return;
+    }
+    
+    // 没有成员时清空目标
+    this.setPrimaryTarget(null);
+  }
+  
+  /** 获取主控目标的成员信息 */
+  getPrimaryTargetMember(): AnyMemberEntry | null {
+    if (!this.primaryTargetId) return null;
+    return this.members.get(this.primaryTargetId) || null;
   }
 }
 

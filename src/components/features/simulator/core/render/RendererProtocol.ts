@@ -76,6 +76,13 @@ export interface ReconcileCmd extends CmdBase {
   hard?: boolean; // true 硬校正；false 平滑靠拢（当前实现为硬校正）
 }
 
+export interface CameraFollowCmd extends CmdBase {
+  type: "camera_follow";
+  entityId: EntityId;
+  distance?: number;
+  verticalAngle?: number;
+}
+
 export type RendererCmd =
   | SpawnCmd
   | DestroyCmd
@@ -87,6 +94,7 @@ export type RendererCmd =
   | ActionCmd
   | SetPropsCmd
   | ReconcileCmd
+  | CameraFollowCmd
   | { type: "batch"; cmds: RendererCmd[] };
 
 export interface RendererController {

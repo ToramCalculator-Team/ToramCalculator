@@ -21,7 +21,7 @@ export class RendererCommunication {
    */
   initialize() {
     if (this.isInitialized) {
-      console.warn("RendererCommunication: 已经初始化过了");
+      console.warn("RendererCommunication: 已经初始化过了", new Date().toLocaleTimeString());
       return;
     }
 
@@ -29,7 +29,7 @@ export class RendererCommunication {
     realtimeSimulatorPool.on("render_cmd", this.handleRenderCommand.bind(this));
     
     this.isInitialized = true;
-    // console.log("RendererCommunication: 初始化完成");
+    console.log("RendererCommunication: 初始化完成", new Date().toLocaleTimeString());
   }
 
   /**
@@ -45,7 +45,7 @@ export class RendererCommunication {
     this.renderHandler = null;
     this.isInitialized = false;
     
-    console.log("RendererCommunication: 已清理");
+    console.log("RendererCommunication: 已清理", new Date().toLocaleTimeString());
   }
 
   // ==================== 渲染指令处理 ====================
@@ -56,7 +56,7 @@ export class RendererCommunication {
    */
   setRenderHandler(handler: (payload: any) => void) {
     this.renderHandler = handler;
-    // console.log("RendererCommunication: 渲染处理器已设置");
+    console.log("RendererCommunication: 渲染处理器已设置", new Date().toLocaleTimeString());
   }
 
   /**
@@ -80,7 +80,7 @@ export class RendererCommunication {
       // 新的统一格式：渲染指令通过系统消息传递
       // data.event 包含实际的渲染指令数据
       const renderData = data.event;
-      
+      console.log("RendererCommunication: 收到渲染指令", renderData);
       // 解析不同格式的渲染指令
       if (renderData.type === "render:cmd" && renderData.cmd) {
         this.renderHandler(renderData.cmd);

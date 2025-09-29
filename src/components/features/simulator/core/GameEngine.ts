@@ -471,6 +471,9 @@ export class GameEngine {
       });
     });
     
+    // 自动选择主控目标
+    this.memberManager.autoSelectPrimaryTarget();
+    
     console.log("GameEngine: 数据初始化完成");
   }
 

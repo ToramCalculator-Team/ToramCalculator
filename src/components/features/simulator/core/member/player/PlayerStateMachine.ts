@@ -208,7 +208,7 @@ export const playerActions = {
         type: "spawn" as const,
         entityId: context.id,
         name: context.name,
-        position: { x: 0, y: 0, z: 0 },
+        position: { x: 0, y: 1, z: 0 },
         seq: 0,
         ts: Date.now(),
       },
@@ -217,6 +217,7 @@ export const playerActions = {
     if (context.engine.postRenderMessage) {
       // 首选方案：使用引擎提供的统一渲染消息接口
       // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
+      console.log(`👤 [${context.name}] 发送渲染指令`, spawnCmd);
       context.engine.postRenderMessage(spawnCmd);
     } else {
       // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback

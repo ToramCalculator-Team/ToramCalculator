@@ -238,6 +238,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
         // 设置渲染消息发送器：用于FSM发送渲染指令（通过系统消息格式）
         gameEngine.setRenderMessageSender((payload: any) => {
           try {
+            console.log("🔌 Worker: 发送渲染消息到主线程", payload);
             postSystemMessage(messagePort, "render_cmd", payload);
           } catch (error) {
             console.error("Worker: 发送渲染消息失败:", error);
