@@ -24,6 +24,60 @@ export default function RealtimeController() {
   const [isPaused, setIsPaused] = createSignal(false);
   const [isInitialized, setIsInitialized] = createSignal(false);
   const [connectionStatus, setConnectionStatus] = createSignal(false);
+  
+  // 鼠标控制相关变量
+  let canvasRef: HTMLElement | null = null;
+  let isMouseControlEnabled = false;
+  const mouseSensitivity = 0.002; // 鼠标灵敏度
+
+  // 鼠标控制函数
+  const enableMouseControl = (enable: boolean) => {
+    isMouseControlEnabled = enable;
+    if (enable) {
+      console.log("🎮 FPS风格鼠标控制已启用");
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('pointerlockchange', handlePointerLockChange);
+    } else {
+      console.log("🎮 FPS风格鼠标控制已禁用");
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.exitPointerLock();
+    }
+  };
+
+  // 处理鼠标移动
+  const handleMouseMove = (event: MouseEvent) => {
+    if (!isMouseControlEnabled || document.pointerLockElement !== canvasRef) return;
+
+    const deltaX = event.movementX * mouseSensitivity;
+    const deltaY = event.movementY * mouseSensitivity;
+
+    // 发送相机旋转指令
+    window.dispatchEvent(
+      new CustomEvent("cameraControl", {
+        detail: {
+          type: "camera_control",
+          subType: "setAngle",
+          data: {
+            horizontalAngle: deltaX, // 水平旋转（左右）
+            verticalAngle: -deltaY,  // 垂直旋转（上下，注意反向）
+            smooth: false,           // FPS风格需要立即响应
+            delta: true,             // 增量模式：累加到当前角度
+          },
+        },
+      }),
+    );
+  };
+
+  // 处理pointer lock状态变化
+  const handlePointerLockChange = () => {
+    if (document.pointerLockElement === canvasRef) {
+      console.log("🎮 鼠标已锁定，FPS控制激活");
+    } else {
+      console.log("🎮 鼠标锁定已取消");
+      enableMouseControl(false);
+    }
+  };
 
   // 监听状态机变化并更新UI状态
   createEffect(() => {
@@ -92,6 +146,14 @@ export default function RealtimeController() {
       if (selectedMember) {
         controller.castSkill("skill_1"); // 假设技能ID
         event.preventDefault();
+      }
+    });
+
+    // ESC键退出鼠标控制
+    hotkeys("escape", (event) => {
+      event.preventDefault();
+      if (isMouseControlEnabled) {
+        enableMouseControl(false);
       }
     });
 
@@ -216,8 +278,11 @@ export default function RealtimeController() {
       hotkeys.unbind("r");
       hotkeys.unbind("t");
       hotkeys.unbind("space");
+      hotkeys.unbind("escape");
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);
+      // 清理鼠标控制
+      enableMouseControl(false);
       for (let i = 1; i <= 9; i++) {
         hotkeys.unbind(`${i}`);
       }
@@ -239,35 +304,61 @@ export default function RealtimeController() {
       />
 
       {/* 可视区域 - 点击启用第三人称控制 */}
-      <div class="col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
+      <div class="ViewArea col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6 hover:bg-area-color">
         <div
-          class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded"
-          onClick={() => {
-            // 发送相机跟随指令
+          class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded bg-gray-900/20 border-2 border-dashed border-gray-500"
+          ref={(el) => {
+            // 保存canvas引用用于pointer lock
+            canvasRef = el;
+          }}
+          onClick={async () => {
+            console.log("🎮 ViewArea 被点击了！");
+            // 启用FPS风格的鼠标控制
             const selectedMember = controller.selectedMemberId[0]();
-            if (selectedMember) {
-              window.dispatchEvent(
-                new CustomEvent("cameraControl", {
-                  detail: {
-                    cmd: {
-                      type: "camera_control",
-                      entityId: selectedMember,
-                      subType: "follow",
-                      data: {
-                        followEntityId: selectedMember,
-                        distance: 8,
-                        verticalAngle: Math.PI / 6,
+            console.log("🎮 选中的成员ID:", selectedMember);
+            console.log("🎮 canvasRef:", canvasRef);
+            if (selectedMember && canvasRef) {
+              try {
+                // 请求鼠标锁定
+                await canvasRef.requestPointerLock();
+                console.log("🎮 鼠标锁定已启用");
+                
+                // 发送相机跟随指令
+                window.dispatchEvent(
+                  new CustomEvent("cameraControl", {
+                    detail: {
+                      cmd: {
+                        type: "camera_control",
+                        entityId: selectedMember,
+                        subType: "follow",
+                        data: {
+                          followEntityId: selectedMember,
+                          distance: 8,
+                          verticalAngle: Math.PI / 6,
+                        },
+                        seq: Date.now(),
+                        ts: Date.now(),
                       },
-                      seq: Date.now(),
-                      ts: Date.now(),
                     },
-                  },
-                }),
-              );
+                  }),
+                );
+                
+                // 启用鼠标控制
+                enableMouseControl(true);
+                
+              } catch (error) {
+                console.error("🎮 鼠标锁定失败:", error);
+              }
+            } else {
+              console.warn("🎮 无法启用鼠标控制:");
+              console.warn("  - selectedMember:", selectedMember);
+              console.warn("  - canvasRef:", canvasRef);
             }
           }}
         >
-          <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
+          <div class="flex items-center justify-center h-full text-white/50 text-sm">
+            点击启用FPS控制
+          </div>
         </div>
       </div>
 
@@ -351,7 +442,9 @@ export default function RealtimeController() {
 
       {/* 背景游戏视图显示 */}
       <Portal>
-        <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw"></div>
+        <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
+          <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
+        </div>
       </Portal>
     </div>
   );

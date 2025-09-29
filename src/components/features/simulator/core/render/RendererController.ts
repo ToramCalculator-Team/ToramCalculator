@@ -31,7 +31,7 @@ type EntityId = string;
 
 // ==================== 动画系统类型定义 ====================
 
-/** 
+/**
  * 内置动画类型 - GLB文件中包含的基础运动动画
  * 这些动画应该在character.glb模型文件中预定义
  */
@@ -44,7 +44,7 @@ enum BuiltinAnimationType {
   LAND = "land",
 }
 
-/** 
+/**
  * 自定义动画数据 - 从数据库获取的关键帧数据
  * 用于技能动画、表情动画等动态生成的动画
  */
@@ -93,7 +93,7 @@ interface AnimationState {
 
 // ==================== 实体系统类型定义 ====================
 
-/** 
+/**
  * 实体运行时数据基类
  * 所有渲染实体的通用属性和物理状态
  */
@@ -123,7 +123,7 @@ interface BaseEntityRuntime {
 };
 }
 
-/** 
+/**
  * 角色实体 - 支持动画的GLB模型
  * 包含完整的动画系统和自定义动画支持
  */
@@ -139,7 +139,7 @@ interface CharacterEntityRuntime extends BaseEntityRuntime {
   animationController: CharacterAnimationController;
 }
 
-/** 
+/**
  * 简单实体 - 球体等基础几何体
  * 用于测试和向后兼容
  */
@@ -327,46 +327,122 @@ class EntityFactory {
       throw new Error("角色模型加载失败：没有找到网格");
     }
 
-    // 找到根网格（通常是第一个有几何体的网格）
-    const originalRootMesh =
-      modelData.meshes.find((mesh) => mesh instanceof Mesh && mesh.geometry !== null) || modelData.meshes[0];
+    // 调试：打印模型信息
+    console.log(`🔍 模型信息: meshes数量=${modelData.meshes.length}, 动画数量=${modelData.animationGroups.length}`);
+    modelData.meshes.forEach((mesh, index) => {
+      console.log(`  Mesh[${index}]: ${mesh.name}, 类型=${mesh.constructor.name}, enabled=${mesh.isEnabled()}, visible=${mesh.isVisible}`);
+    });
 
-    // 使用克隆而非实例化，确保动画正确工作
-    const rootMesh = originalRootMesh.clone(`character:${id}`, null, true);
+    // 使用instantiateHierarchy来正确复制整个层级结构
+    // 选择理由：
+    // 1. createInstance() - 只能共享几何体，无法独立动画
+    // 2. clone() - 只复制单个网格，丢失骨骼层级  
+    // 3. instantiateHierarchy() - 完整复制层级，支持独立动画
+    const instantiatedMeshes = modelData.meshes[0].instantiateHierarchy(null, {
+      doNotInstantiate: false, // 创建真正的副本，不是GPU实例
+    });
+    
+    if (!instantiatedMeshes) {
+      throw new Error("角色层级实例化失败");
+    }
+
+    // 重命名实例化的网格
+    const rootMesh = instantiatedMeshes;
+    rootMesh.name = `character:${id}`;
+    rootMesh.id = `character:${id}`;
+    
     if (rootMesh) {
+      // 设置位置
       rootMesh.position.copyFrom(position);
-      rootMesh.setEnabled(true);
+      
+      // 启用实例化的网格层级（优化版：只处理可见网格和关键骨骼）
+      const enableInstantiatedMeshes = (mesh: any, depth: number = 0) => {
+        const meshType = mesh.constructor.name;
+        const hasGeometry = (mesh.geometry && mesh.geometry.getTotalVertices && mesh.geometry.getTotalVertices() > 0);
+        const isVisibleMesh = hasGeometry || meshType.includes("InstancedMesh");
+        
+        // 启用网格
+        mesh.setEnabled(true);
+        if (mesh.isVisible !== undefined) {
+          mesh.isVisible = true;
+        }
+        
+        // 递归处理子网格
+        const children = mesh.getChildren();
+        
+        children.forEach((child: any) => {
+          enableInstantiatedMeshes(child, depth + 1);
+        });
+      };
+      
+      enableInstantiatedMeshes(rootMesh);
     }
 
     // 克隆动画组，去除重复
     const builtinAnimations = new Map<string, AnimationGroup>();
     const processedAnimations = new Set<string>(); // 防止重复动画
-
-    modelData.animationGroups.forEach((originalGroup) => {
+    
+    modelData.animationGroups.forEach((originalGroup, index) => {
       // 跳过已处理的动画（防止重复）
       if (processedAnimations.has(originalGroup.name)) {
-        console.warn(`跳过重复动画: ${originalGroup.name}`);
+        console.warn(`⚠️ 跳过重复动画: ${originalGroup.name}`);
         return;
       }
       processedAnimations.add(originalGroup.name);
-
-      // 克隆动画组
+      
+      // 统计动画目标映射情况
+      let mappedTargets = 0;
+      let unmappedTargets = 0;
+      
+      // 克隆动画组，重新映射到实例化的网格
       const clonedGroup = originalGroup.clone(`${originalGroup.name}_${id}`, (oldTarget) => {
-        // 重新定位动画目标到克隆的网格
-        if (oldTarget === originalRootMesh) {
-          return rootMesh;
-        }
-        // 查找对应的克隆子网格
         const targetName = (oldTarget as any).name;
-        const clonedTarget = rootMesh?.getChildren().find((child) => (child as any).name === targetName);
-        return clonedTarget || rootMesh;
+        
+        // 使用场景的getNodeByName来查找实例化的骨骼
+        const clonedTarget = this.scene.getNodeByName(targetName);
+        
+        if (clonedTarget) {
+          mappedTargets++;
+          return clonedTarget;
+        }
+        
+        // 如果场景中找不到，再尝试递归查找
+        const findInHierarchy = (parentMesh: any, targetName: string): any => {
+          if (parentMesh.name === targetName) {
+            return parentMesh;
+          }
+          
+          if (parentMesh.getChildren) {
+            for (const child of parentMesh.getChildren()) {
+              const found = findInHierarchy(child, targetName);
+              if (found) return found;
+            }
+          }
+          
+          return null;
+        };
+        
+        const hierarchyTarget = findInHierarchy(rootMesh, targetName);
+        
+        if (hierarchyTarget) {
+          mappedTargets++;
+          return hierarchyTarget;
+        }
+        
+        unmappedTargets++;
+        if (unmappedTargets <= 3) { // 只显示前3个未找到的目标
+          console.warn(`⚠️ 动画目标未找到: ${targetName}`);
+        }
+        return rootMesh;
       });
-
+    
       if (clonedGroup) {
         builtinAnimations.set(originalGroup.name, clonedGroup);
+      } else {
+        console.error(`❌ 动画克隆失败: ${originalGroup.name}`);
       }
     });
-
+    
     // 创建标签
     const { label, texture } = this.createLabel(id, name, position, 0.2);
 
@@ -404,11 +480,6 @@ class EntityFactory {
 
     // 播放默认idle动画
     entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
-
-    console.log(
-      `✅ 角色实例创建成功: ${id}, 动画组数量: ${builtinAnimations.size}`,
-      Array.from(builtinAnimations.keys()),
-    );
     return entity;
   }
 
@@ -513,10 +584,6 @@ class EntityFactory {
         animationGroups: uniqueAnimationGroups, // 使用去重后的动画组
       };
       this.characterModelCache.set(cacheKey, modelData);
-      console.log(
-        `✅ 角色模型加载成功，去重后动画组数量: ${uniqueAnimationGroups.length}`,
-        uniqueAnimationGroups.map((g) => g.name),
-      );
 
       return modelData;
     } catch (error) {
@@ -595,7 +662,7 @@ class CommandHandler {
   /** 生成实体 - 优先创建角色模型，失败则回退到球体 */
   private async handleSpawn(cmd: SpawnCmd): Promise<void> {
     console.log(`🎬 处理spawn命令:`, cmd);
-    
+
     const exists = this.entities.get(cmd.entityId);
     if (exists && exists.lastSeq > cmd.seq) {
       console.log(`🎬 跳过旧序列号的spawn命令: ${cmd.entityId}`);
@@ -608,7 +675,7 @@ class CommandHandler {
     }
 
     const pos = new Vector3(cmd.position.x, cmd.position.y, cmd.position.z);
-    
+
     try {
       console.log(`🎬 开始创建角色: ${cmd.entityId}`);
       // 默认创建角色，如果失败则回退到球体
@@ -625,7 +692,7 @@ class CommandHandler {
     }
   }
 
-  /** 
+  /**
    * 开始移动 - 仅处理动画切换
    * 物理状态应该由GameEngine更新，这里只处理视觉效果
    */
@@ -633,7 +700,7 @@ class CommandHandler {
     if (!entity || entity.lastSeq > cmd.seq) return;
 
     entity.lastSeq = cmd.seq;
-    
+
     // 只更新朝向，其他物理状态由GameEngine管理
     entity.physics.yaw = Math.atan2(cmd.dir.x, cmd.dir.z);
 
@@ -645,7 +712,7 @@ class CommandHandler {
     }
   }
 
-  /** 
+  /**
    * 停止移动 - 仅处理动画切换
    * 物理状态由GameEngine管理，这里只处理视觉效果
    */
@@ -670,7 +737,7 @@ class CommandHandler {
     // 处理角色动作
     if (entity.type === "character") {
       const charEntity = entity as CharacterEntityRuntime;
-      
+
       // 根据动作名称映射到动画
       switch (cmd.name) {
         case "jump":
@@ -713,17 +780,17 @@ class CommandHandler {
     entity.physics.yaw = cmd.yaw;
   }
 
-  /** 
+  /**
    * 瞬移传送 - 立即更新实体位置
    * 这是一个立即生效的位置更新，不经过物理系统
    */
   private handleTeleport(cmd: TeleportCmd, entity?: EntityRuntime): void {
     if (!entity || entity.lastSeq > cmd.seq) return;
     entity.lastSeq = cmd.seq;
-    
+
     // 直接更新位置（瞬移是立即生效的）
     entity.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
-    
+
     // 立即同步到渲染网格
     entity.mesh.position.copyFrom(entity.physics.pos);
     if (entity.label) {
@@ -779,21 +846,21 @@ class CommandHandler {
     }
   }
 
-  /** 
+  /**
    * 位置校正 - 同步权威状态
    * 用于修正客户端与服务端的位置差异
    */
   private handleReconcile(cmd: ReconcileCmd, entity?: EntityRuntime): void {
     if (!entity || entity.lastSeq > cmd.seq) return;
     entity.lastSeq = cmd.seq;
-    
+
     // 更新实体的物理状态
     entity.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
-    
+
     if (cmd.velocity) {
       entity.physics.vel.copyFromFloats(cmd.velocity.x, cmd.velocity.y, cmd.velocity.z);
     }
-    
+
     if (cmd.hard) {
       // 硬校正：立即同步到渲染
       entity.mesh.position.copyFrom(entity.physics.pos);
@@ -826,7 +893,7 @@ class CommandHandler {
     }
   }
 
-  /** 
+  /**
    * 销毁实体并清理所有相关资源
    * 包括动画组、网格、标签和纹理
    */
@@ -862,10 +929,10 @@ class CommandHandler {
     // 清理UI相关资源
     entity.label?.dispose(false, true);
     entity.labelTexture?.dispose();
-    
+
     // 从实体映射中移除
     this.entities.delete(id);
-    
+
     console.log(`✅ 实体清理完成: ${id}`);
   }
 }
@@ -875,7 +942,7 @@ class CommandHandler {
 /**
  * 渲染同步系统 - 仅负责将实体状态同步到渲染网格
  * 不进行物理计算，只根据实体的状态更新Babylon.js网格位置和朝向
- * 
+ *
  * 注意：物理计算应该在GameEngine中完成，这里只做显示同步
  */
 class RenderSyncSystem {
@@ -898,12 +965,12 @@ class RenderSyncSystem {
 
     // 同步网格位置（直接使用physics.pos，不进行任何计算）
     entity.mesh.position.copyFrom(physics.pos);
-    
+
     // 同步网格旋转
     if (entity.mesh instanceof Mesh || entity.mesh instanceof TransformNode) {
       entity.mesh.rotation.y = physics.yaw;
     }
-    
+
     // 更新标签位置（在实体上方）
     if (entity.label) {
       entity.label.position = physics.pos.add(new Vector3(0, 0.6, 0));
@@ -916,7 +983,7 @@ class RenderSyncSystem {
 /**
  * 渲染控制器工厂函数
  * 创建并返回渲染控制器实例，集成所有子系统
- * 
+ *
  * 架构说明：
  * - 物理计算在GameEngine中进行，这里只负责渲染同步
  * - 通过MessageChannel接收渲染命令，不直接使用window.dispatchEvent
@@ -944,7 +1011,7 @@ export function createRendererController(scene: Scene): RendererController {
     }
   }
 
-  /** 
+  /**
    * 渲染帧更新 - 仅同步实体状态到渲染网格
    * 不进行物理计算，物理计算应该在GameEngine中完成
    */

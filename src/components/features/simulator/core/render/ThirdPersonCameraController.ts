@@ -39,6 +39,7 @@ export interface CameraSetAngleCmd extends CameraControlCmd {
     horizontalAngle?: number;
     verticalAngle?: number;
     smooth?: boolean;
+    delta?: boolean; // 是否为增量模式（用于FPS风格鼠标控制）
   };
 }
 
@@ -84,7 +85,7 @@ const defaultCameraState: CameraState = {
   horizontalAngle: 0,
   verticalAngle: Math.PI / 6, // 30度俯视角
   target: new Vector3(0, 0, 0),
-  smoothTransition: true,
+  smoothTransition: false, // 暂时禁用平滑过渡，提高响应性
   minDistance: 2,
   maxDistance: 20,
   minVerticalAngle: -Math.PI / 2 + 0.1,
@@ -164,8 +165,8 @@ export class ThirdPersonCameraController {
       this.updateTransition(deltaTime);
     }
     
-    // 更新相机位置
-    this.updateCameraPosition(this.state.smoothTransition);
+    // 暂时禁用每帧更新，只在状态改变时更新相机
+    // this.updateCameraPosition(this.state.smoothTransition);
   }
 
   /** 获取当前相机状态 */
@@ -175,10 +176,16 @@ export class ThirdPersonCameraController {
 
   /** 设置相机状态 */
   setCameraState(newState: Partial<CameraState>, smooth = true): void {
+    console.log(`🎥 setCameraState:`, { newState, smooth, smoothTransition: this.state.smoothTransition });
+    
     if (smooth && this.state.smoothTransition) {
+      console.log(`🎥 使用平滑过渡`);
       this.startTransition(newState);
     } else {
+      console.log(`🎥 直接设置状态`);
+      const oldState = { ...this.state };
       Object.assign(this.state, newState);
+      console.log(`🎥 状态更新: ${JSON.stringify(oldState)} -> ${JSON.stringify(this.state)}`);
       this.updateCameraPosition(false);
     }
   }
@@ -209,14 +216,58 @@ export class ThirdPersonCameraController {
   }
 
   private handleSetAngleCommand(cmd: CameraSetAngleCmd): void {
-    const { horizontalAngle, verticalAngle, smooth = true } = cmd.data;
+    const { horizontalAngle, verticalAngle, smooth = true, delta = false } = cmd.data;
+    
+    console.log(`🎥 handleSetAngleCommand:`, {
+      horizontalAngle,
+      verticalAngle,
+      smooth,
+      delta,
+      currentState: {
+        horizontalAngle: this.state.horizontalAngle,
+        verticalAngle: this.state.verticalAngle
+      }
+    });
     
     const newState: Partial<CameraState> = {};
-    if (horizontalAngle !== undefined) newState.horizontalAngle = horizontalAngle;
-    if (verticalAngle !== undefined) {
-      newState.verticalAngle = Math.max(this.state.minVerticalAngle, Math.min(this.state.maxVerticalAngle, verticalAngle));
+    
+    if (horizontalAngle !== undefined) {
+      if (delta) {
+        // 增量模式：用于FPS风格的鼠标控制
+        newState.horizontalAngle = this.state.horizontalAngle + horizontalAngle;
+        console.log(`🎥 水平角度增量: ${this.state.horizontalAngle} + ${horizontalAngle} = ${newState.horizontalAngle}`);
+      } else {
+        // 绝对模式：直接设置角度
+        newState.horizontalAngle = horizontalAngle;
+        console.log(`🎥 水平角度绝对: ${horizontalAngle}`);
+      }
     }
     
+    if (verticalAngle !== undefined) {
+      let newVerticalAngle;
+      if (delta) {
+        // 增量模式：累加当前角度
+        newVerticalAngle = this.state.verticalAngle + verticalAngle;
+        console.log(`🎥 垂直角度增量: ${this.state.verticalAngle} + ${verticalAngle} = ${newVerticalAngle}`);
+      } else {
+        // 绝对模式：直接设置角度
+        newVerticalAngle = verticalAngle;
+        console.log(`🎥 垂直角度绝对: ${verticalAngle}`);
+      }
+      
+      // 限制垂直角度范围
+      const clampedAngle = Math.max(
+        this.state.minVerticalAngle, 
+        Math.min(this.state.maxVerticalAngle, newVerticalAngle)
+      );
+      newState.verticalAngle = clampedAngle;
+      
+      if (clampedAngle !== newVerticalAngle) {
+        console.log(`🎥 垂直角度被限制: ${newVerticalAngle} -> ${clampedAngle}`);
+      }
+    }
+    
+    console.log(`🎥 新状态:`, newState);
     this.setCameraState(newState, smooth);
   }
 
@@ -247,19 +298,13 @@ export class ThirdPersonCameraController {
     const y = target.y + distance * Math.sin(verticalAngle);
     const z = target.z + distance * Math.cos(horizontalAngle) * Math.cos(verticalAngle);
     
-    if (smooth) {
-      // 平滑移动相机
-      const lerpFactor = 0.1;
-      this.camera.position.x += (x - this.camera.position.x) * lerpFactor;
-      this.camera.position.y += (y - this.camera.position.y) * lerpFactor;
-      this.camera.position.z += (z - this.camera.position.z) * lerpFactor;
-    } else {
-      // 直接设置相机位置
-      this.camera.position.set(x, y, z);
-    }
+    // 直接设置相机位置（禁用平滑过渡）
+    this.camera.position.set(x, y, z);
     
     // 更新相机目标
     this.camera.setTarget(target);
+    
+    console.log(`🎥 相机位置更新: (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}) 角度: H${horizontalAngle.toFixed(3)} V${verticalAngle.toFixed(3)}`);
   }
 
   private startTransition(newState: Partial<CameraState>): void {

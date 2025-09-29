@@ -89,13 +89,13 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
   let rendererController: ReturnType<typeof createRendererController>;
 
   // 测试模式配置函数
-  async function testModelOpen() {
-    const AxesViewer = await import("@babylonjs/core/Debug/axesViewer").then((module) => module.AxesViewer);
-    // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-    Inspector.Show(scene, {});
-    // 世界坐标轴显示
-    new AxesViewer(scene, 0.1);
-  }
+  // async function testModelOpen() {
+  //   const AxesViewer = await import("@babylonjs/core/Debug/axesViewer").then((module) => module.AxesViewer);
+  //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //   Inspector.Show(scene, {});
+  //   // 世界坐标轴显示
+  //   new AxesViewer(scene, 0.1);
+  // }
 
   // 主场景内容
 
@@ -131,7 +131,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
         scene.fogColor = new Color3(0.3, 0.3, 0.3);
       }
     });
-    await testModelOpen();
+    // await testModelOpen();
 
     // 初始化渲染控制器
     rendererController = createRendererController(scene);
@@ -271,8 +271,14 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     // 监听来自RealtimeController的相机控制事件
     const handleCameraControl = (event: CustomEvent) => {
       if (thirdPersonController && event.detail) {
-        console.log('📹 收到相机控制事件:', event.detail);
-        thirdPersonController.handleCameraCommand(event.detail);
+        // 检查事件结构，提取正确的命令对象
+        const command = event.detail.cmd || event.detail;
+        
+        if (command && command.type === 'camera_control') {
+          thirdPersonController.handleCameraCommand(command);
+        } else {
+          console.warn('📹 相机控制事件格式不正确:', event.detail);
+        }
       }
     };
 
