@@ -13,10 +13,10 @@
  */
 
 
-import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
-import type GameEngine from "../core/GameEngine";
-import type { MemberManager } from "../core/member/MemberManager";
-import { ModifierType } from "../core/dataSys/StatContainer";
+import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../EventQueue";
+import type GameEngine from "../GameEngine";
+import type { MemberManager } from "../member/MemberManager";
+import { ModifierType } from "../dataSys/StatContainer";
 
 // ============================== 战斗事件处理器 ==============================
 

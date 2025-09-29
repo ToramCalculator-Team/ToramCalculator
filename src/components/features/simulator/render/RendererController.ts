@@ -880,8 +880,10 @@ class CommandHandler {
         subType: "follow",
         data: {
           followEntityId: cmd.entityId,
-          distance: cmd.distance || 8,
-          verticalAngle: cmd.verticalAngle || Math.PI / 6,
+          // 只有明确指定了才发送距离，否则保持当前距离
+          ...(cmd.distance !== undefined && { distance: cmd.distance }),
+          // 不发送默认角度，让相机控制器保持当前角度
+          ...(cmd.verticalAngle !== undefined && { verticalAngle: cmd.verticalAngle }),
         },
       };
       window.dispatchEvent(
@@ -889,7 +891,7 @@ class CommandHandler {
           detail: cameraCmd,
         }),
       );
-      console.log(`📹 发送相机跟随命令: ${cmd.entityId}`, cameraCmd);
+      console.log(`📹 发送相机跟随命令: ${cmd.entityId}，保持当前视角`, cameraCmd);
     }
   }
 

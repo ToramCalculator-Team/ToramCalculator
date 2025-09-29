@@ -125,7 +125,7 @@ export class ThirdPersonCameraController {
     this.state = { ...defaultCameraState, ...initialState };
     
     // 初始化相机位置
-    this.updateCameraPosition(false);
+    this.updateCameraAngle();
     
     // 设置无限地面逻辑
     this.setupInfiniteGround();
@@ -177,16 +177,11 @@ export class ThirdPersonCameraController {
   /** 设置相机状态 */
   setCameraState(newState: Partial<CameraState>, smooth = true): void {
     console.log(`🎥 setCameraState:`, { newState, smooth, smoothTransition: this.state.smoothTransition });
-    
     if (smooth && this.state.smoothTransition) {
-      console.log(`🎥 使用平滑过渡`);
       this.startTransition(newState);
     } else {
-      console.log(`🎥 直接设置状态`);
-      const oldState = { ...this.state };
       Object.assign(this.state, newState);
-      console.log(`🎥 状态更新: ${JSON.stringify(oldState)} -> ${JSON.stringify(this.state)}`);
-      this.updateCameraPosition(false);
+      this.updateCameraAngle();
     }
   }
 
@@ -199,13 +194,21 @@ export class ThirdPersonCameraController {
       followEntityId,
     };
     
+    // 只有明确提供了新值才更新，否则保持当前角度
     if (distance !== undefined) newState.distance = Math.max(this.state.minDistance, Math.min(this.state.maxDistance, distance));
-    if (verticalAngle !== undefined) newState.verticalAngle = Math.max(this.state.minVerticalAngle, Math.min(this.state.maxVerticalAngle, verticalAngle));
-    if (horizontalAngle !== undefined) newState.horizontalAngle = horizontalAngle;
+    
+    // 重要修改：只有在明确提供角度且不是默认值时才更新角度
+    // 这样可以保持用户当前的视角，避免重置到固定角度
+    if (verticalAngle !== undefined && verticalAngle !== Math.PI / 6) {
+      newState.verticalAngle = Math.max(this.state.minVerticalAngle, Math.min(this.state.maxVerticalAngle, verticalAngle));
+    }
+    if (horizontalAngle !== undefined && horizontalAngle !== 0) {
+      newState.horizontalAngle = horizontalAngle;
+    }
     
     this.setCameraState(newState, true);
     
-    console.log(`🎥 相机开始跟随实体: ${followEntityId}`);
+    console.log(`🎥 相机开始跟随实体: ${followEntityId}，保持当前角度: H${this.state.horizontalAngle.toFixed(3)} V${this.state.verticalAngle.toFixed(3)}`);
   }
 
   private handleSetDistanceCommand(cmd: CameraSetDistanceCmd): void {
@@ -218,28 +221,15 @@ export class ThirdPersonCameraController {
   private handleSetAngleCommand(cmd: CameraSetAngleCmd): void {
     const { horizontalAngle, verticalAngle, smooth = true, delta = false } = cmd.data;
     
-    console.log(`🎥 handleSetAngleCommand:`, {
-      horizontalAngle,
-      verticalAngle,
-      smooth,
-      delta,
-      currentState: {
-        horizontalAngle: this.state.horizontalAngle,
-        verticalAngle: this.state.verticalAngle
-      }
-    });
-    
     const newState: Partial<CameraState> = {};
     
     if (horizontalAngle !== undefined) {
       if (delta) {
         // 增量模式：用于FPS风格的鼠标控制
         newState.horizontalAngle = this.state.horizontalAngle + horizontalAngle;
-        console.log(`🎥 水平角度增量: ${this.state.horizontalAngle} + ${horizontalAngle} = ${newState.horizontalAngle}`);
       } else {
         // 绝对模式：直接设置角度
         newState.horizontalAngle = horizontalAngle;
-        console.log(`🎥 水平角度绝对: ${horizontalAngle}`);
       }
     }
     
@@ -248,7 +238,6 @@ export class ThirdPersonCameraController {
       if (delta) {
         // 增量模式：累加当前角度
         newVerticalAngle = this.state.verticalAngle + verticalAngle;
-        console.log(`🎥 垂直角度增量: ${this.state.verticalAngle} + ${verticalAngle} = ${newVerticalAngle}`);
       } else {
         // 绝对模式：直接设置角度
         newVerticalAngle = verticalAngle;
@@ -267,7 +256,7 @@ export class ThirdPersonCameraController {
       }
     }
     
-    console.log(`🎥 新状态:`, newState);
+    console.log(`🎥 v&h:`, newState.verticalAngle, newState.horizontalAngle);
     this.setCameraState(newState, smooth);
   }
 
@@ -290,21 +279,10 @@ export class ThirdPersonCameraController {
     }
   }
 
-  private updateCameraPosition(smooth = true): void {
-    const { distance, horizontalAngle, verticalAngle, target } = this.state;
-    
-    // 计算相机位置
-    const x = target.x + distance * Math.sin(horizontalAngle) * Math.cos(verticalAngle);
-    const y = target.y + distance * Math.sin(verticalAngle);
-    const z = target.z + distance * Math.cos(horizontalAngle) * Math.cos(verticalAngle);
-    
-    // 直接设置相机位置（禁用平滑过渡）
-    this.camera.position.set(x, y, z);
-    
-    // 更新相机目标
-    this.camera.setTarget(target);
-    
-    console.log(`🎥 相机位置更新: (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}) 角度: H${horizontalAngle.toFixed(3)} V${verticalAngle.toFixed(3)}`);
+  private updateCameraAngle(): void {
+    const { horizontalAngle, verticalAngle } = this.state;
+    this.camera.alpha = horizontalAngle;
+    this.camera.beta = verticalAngle;
   }
 
   private startTransition(newState: Partial<CameraState>): void {

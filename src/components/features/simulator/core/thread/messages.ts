@@ -10,7 +10,7 @@
 import { EngineCommand } from "../GameEngineSM";
 import { IntentMessage } from "../MessageRouter";
 import { FrameSnapshot, EngineStats } from "../GameEngine";
-import { RendererCmd } from "../render/RendererProtocol";
+import { RendererCmd } from "../../render/RendererProtocol";
 import { z } from "zod";
 
 // ==================== 基础消息类型 ====================

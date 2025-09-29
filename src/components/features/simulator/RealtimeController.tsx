@@ -12,7 +12,7 @@ import hotkeys from "hotkeys-js";
 import { Controller } from "./controller/controller";
 import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, ActionPanel } from "./controller/components";
 import { Portal } from "solid-js/web";
-import { GameView } from "./core/render/Renderer";
+import { GameView } from "./render/Renderer";
 
 export default function RealtimeController() {
   // 创建控制器实例（自动初始化）

@@ -12,10 +12,10 @@
  * - 错误处理：提供详细的错误信息和回滚机制
  */
 
-import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../core/EventQueue";
-import type GameEngine from "../core/GameEngine";
-import type MemberManager from "../core/member/MemberManager";
-import { ModifierType } from "../core/dataSys/StatContainer";
+import type { BaseEvent, EventHandler, ExecutionContext, EventResult } from "../EventQueue";
+import type GameEngine from "../GameEngine";
+import type MemberManager from "../member/MemberManager";
+import { ModifierType } from "../dataSys/StatContainer";
 
 // ============================== 自定义事件处理器 ==============================
 

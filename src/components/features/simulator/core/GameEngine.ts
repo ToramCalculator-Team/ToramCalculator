@@ -20,7 +20,7 @@ import { MemberManager } from "./member/MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
-import { EventHandlerFactory } from "../handlers/EventHandlerFactory";
+import { EventHandlerFactory } from "./handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
 import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";

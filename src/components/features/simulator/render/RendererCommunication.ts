@@ -7,8 +7,7 @@
  * - 处理渲染状态同步
  */
 
-import { realtimeSimulatorPool } from "../thread/SimulatorPool";
-import { WorkerMessageEvent } from "../thread/messages";
+import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 
 export class RendererCommunication {
   private renderHandler: ((payload: any) => void) | null = null;
