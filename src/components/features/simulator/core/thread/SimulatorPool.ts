@@ -1,50 +1,112 @@
 // ==================== 模拟器专用扩展 ====================
 
 import { SimulatorWithRelations } from "@db/repositories/simulator";
-import { PoolConfig, TaskExecutionResult, WorkerPool, WorkerWrapper } from "./WorkerPool";
+import simulationWorker from "./Simulation.worker?worker&url";
+import { PoolConfig, WorkerPool, WorkerWrapper } from "./WorkerPool";
 import { IntentMessage } from "../MessageRouter";
 import { MemberSerializeData } from "../member/Member";
 import { EngineStats } from "../GameEngine";
 import { EngineCommand } from "../GameEngineSM";
-import { DataQueryCommand, WorkerMessage, TaskResult, WorkerSystemMessageSchema, WorkerMessageEvent } from "./messages";
+import { RendererCmd } from "../../render/RendererProtocol";
+import { Result, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+
+/**
+ * 通用任务优先级
+ */
+export const SimulatorTaskPriority = ["high", "medium", "low"] as const;
+export type SimulatorTaskPriority = (typeof SimulatorTaskPriority)[number];
+
+// ==================== 数据查询命令 ====================
+
+/**
+ * 数据查询命令类型
+ */
+export type DataQueryCommand =
+  | { type: "get_members" }
+  | { type: "get_stats" }
+  | { type: "get_snapshot" }
+  | { type: "get_member_state"; memberId: string }
+  | { type: "send_intent"; intent: IntentMessage };
+
+// ==================== 渲染指令类型 ====================
+
+/**
+ * 渲染指令包装类型
+ */
+export type RenderCommand = { type: "render:cmd"; cmd: RendererCmd } | { type: "render:cmds"; cmds: RendererCmd[] };
+
+// ===================== 任务类型映射 ====================
+
+/**
+ * 任务类型映射表 - 建立任务类型和 Payload 的一一对应关系
+ *
+ * 设计原则：
+ * - 类型安全：编译时确保 type 和 payload 匹配
+ * - 集中管理：所有任务类型在一处定义
+ * - 易于扩展：新增任务类型只需添加一行
+ */
+export interface SimulatorTaskMap {
+  engine_command: EngineCommand;
+  data_query: DataQueryCommand;
+}
+
+export type SimulatorTaskTypeMapKey = keyof SimulatorTaskMap;
+export type SimulatorTaskTypeMapValue = SimulatorTaskMap[SimulatorTaskTypeMapKey];
+
+/**
+ * Worker 主动发送回主线程的系统消息类型
+ */
+type SystemMessageType = "system_event" | "frame_snapshot" | "render_cmd" | "engine_state_machine";
 
 /**
  * 模拟器线程池 - 基于通用 WorkerPool 的模拟器专用实现
  *
  * 提供模拟器业务特定的 API，同时保持通用线程池的核心功能
  */
-export class SimulatorPool extends WorkerPool {
-  constructor(config: PoolConfig = {}) {
+export class SimulatorPool extends WorkerPool<
+  SimulatorTaskTypeMapKey,
+  SimulatorTaskMap,
+  SimulatorTaskPriority
+> {
+  constructor(config: PoolConfig<SimulatorTaskPriority>) {
     super(config);
 
     // 设置模拟器专用的事件处理器
-    this.on("worker-message", (data: { worker: WorkerWrapper; event: WorkerMessageEvent }) => {
-      // 检查是否是系统消息（通过 schema 验证）
-      const parsed = WorkerSystemMessageSchema.safeParse(data.event);
-      if (parsed.success) {
-        const { type, data: eventData } = parsed.data;
+    this.on(
+      "worker-message",
+      (data: {
+        worker: WorkerWrapper;
+        event: WorkerMessageEvent<any, SimulatorTaskMap, any>;
+      }) => {
+        // 检查是否是系统消息（通过 schema 验证）
+        const parsed = WorkerSystemMessageSchema.safeParse(data.event);
+        if (parsed.success) {
+          const { type, data: eventData } = parsed.data;
 
-      // 处理系统事件
-      if (type === "system_event") {
-        this.emit("system_event", { workerId: data.worker.id, event: eventData });
-      }
-      // 帧快照事件 - 每帧包含完整的引擎和成员状态
-      else if (type === "frame_snapshot") {
-        this.emit("frame_snapshot", { workerId: data.worker.id, event: eventData });
-      }
-        // 渲染指令事件 - 统一通过系统消息格式传递
-        else if (type === "render_cmd") {
-          this.emit("render_cmd", { workerId: data.worker.id, event: eventData });
+          // 处理系统事件
+          if (type === "system_event") {
+            this.emit("system_event", { workerId: data.worker.id, event: eventData });
+          }
+          // 帧快照事件 - 每帧包含完整的引擎和成员状态
+          else if (type === "frame_snapshot") {
+            this.emit("frame_snapshot", { workerId: data.worker.id, event: eventData });
+          }
+          // 渲染指令事件 - 统一通过系统消息格式传递
+          else if (type === "render_cmd") {
+            this.emit("render_cmd", { workerId: data.worker.id, event: eventData });
+          }
         }
-      }
-      // 其他消息（如任务结果）不需要特殊处理，由 WorkerPool 处理
-    });
+        // 其他消息（如任务结果）不需要特殊处理，由 WorkerPool 处理
+      },
+    );
   }
 
   /**
    * 发送引擎状态机命令
+   * 
+   * @returns Promise<Result<void>> - 状态机命令不返回数据，只返回成功/失败状态
    */
-  async sendEngineCommand(command: EngineCommand): Promise<TaskExecutionResult> {
+  async sendEngineCommand(command: EngineCommand): Promise<Result<void>> {
     return this.executeTask("engine_command", command, "high");
   }
 
@@ -89,8 +151,6 @@ export class SimulatorPool extends WorkerPool {
     };
   }
 
-
-
   /** 拉取单个成员的当前 FSM 状态（即时同步一次） */
   async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
     const command: DataQueryCommand = { type: "get_member_state", memberId };
@@ -106,6 +166,8 @@ export class SimulatorPool extends WorkerPool {
 
 // 实时模拟实例 - 单Worker，适合实时控制
 export const realtimeSimulatorPool = new SimulatorPool({
+  workerUrl: simulationWorker,
+  priority: [...SimulatorTaskPriority],
   maxWorkers: 1, // 单Worker用于实时模拟
   taskTimeout: 30000, // 实时模拟需要更快的响应
   maxRetries: 1, // 实时模拟减少重试次数
@@ -115,6 +177,8 @@ export const realtimeSimulatorPool = new SimulatorPool({
 
 // 批量计算实例 - 多Worker，适合并行计算
 export const batchSimulatorPool = new SimulatorPool({
+  workerUrl: simulationWorker,
+  priority: [...SimulatorTaskPriority],
   maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 多Worker用于并行计算
   taskTimeout: 60000, // 增加超时时间，战斗模拟可能需要更长时间
   maxRetries: 2, // 减少重试次数

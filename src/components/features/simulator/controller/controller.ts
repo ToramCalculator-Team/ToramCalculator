@@ -13,7 +13,7 @@ import { findMemberWithRelations, type MemberWithRelations } from "@db/repositor
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
 import { EngineView, FrameSnapshot } from "../core/GameEngine";
-import { createActor } from "xstate";
+import { createActor, waitFor } from "xstate";
 import { gameEngineSM, type EngineCommand } from "../core/GameEngineSM";
 import { type WorkerMessageEvent } from "../core/thread/messages";
 import { type WorkerWrapper } from "../core/thread/WorkerPool";
@@ -147,25 +147,27 @@ export class Controller {
 
     // 忽略没有type的消息（可能是任务完成消息）
     if (!type) {
+      console.warn("Controller: 消息格式无效:", message);
       return;
     }
 
     // 忽略渲染相关的消息
     if (type.startsWith("render:") || type === "render_cmd") {
+      console.warn("Controller: 忽略渲染相关的消息:", message);
       return;
     }
 
     switch (type) {
       case "engine_state_machine":
         // 转发状态机消息 - data 应该是 EngineCommand
-        if (data && typeof data === 'object' && 'type' in data) {
+        if (data && typeof data === "object" && "type" in data) {
           this.engineActor.send(data as EngineCommand);
         }
         break;
 
       case "frame_snapshot":
         // 更新引擎视图数据 - data 应该是 FrameSnapshot
-        if (data && typeof data === 'object' && 'frameNumber' in data) {
+        if (data && typeof data === "object" && "frameNumber" in data) {
           this.engineView[1](data as FrameSnapshot);
         }
         break;
@@ -192,8 +194,8 @@ export class Controller {
       // 2. 通过状态机进入ready状态（包含数据）
       this.engineActor.send({ type: "INIT", data: simulatorData });
 
-      // 等待一下让状态机处理
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // 3. 等待一下让状态机处理
+      await waitFor(this.engineActor, (state) => state.matches("ready"), { timeout: 5000 });
 
       // 4. 预加载成员数据
       await this.refreshMembers();

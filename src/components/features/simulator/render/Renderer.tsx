@@ -268,7 +268,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
       engine.resize();
     });
 
-    // 监听来自RealtimeController的相机控制事件
+    // 监听来自RealtimeSimulator的相机控制事件
     const handleCameraControl = (event: CustomEvent) => {
       if (thirdPersonController && event.detail) {
         // 检查事件结构，提取正确的命令对象

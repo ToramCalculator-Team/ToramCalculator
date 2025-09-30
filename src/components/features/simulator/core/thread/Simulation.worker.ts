@@ -10,15 +10,9 @@ import type { IntentMessage } from "../MessageRouter";
 import { prepareForTransfer, sanitizeForPostMessage } from "./MessageSerializer";
 import { createActor } from "xstate";
 import { gameEngineSM, type EngineCommand } from "../GameEngineSM";
-import {
-  WorkerMessage,
-  WorkerResponse,
-  MainThreadMessage,
-  SystemMessage,
-  isStateMachineCommand,
-  isDataQueryCommand,
-  DataQueryCommand,
-} from "./messages";
+import { DataQueryCommand, SimulatorTaskMap, SimulatorTaskTypeMapValue, SimulatorTaskPriority } from "./SimulatorPool";
+import { isStateMachineCommand, isDataQueryCommand } from "./messages";
+import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -152,7 +146,7 @@ async function handleDataQuery(command: DataQueryCommand): Promise<{ success: bo
 }
 
 // 处理主线程消息 - 只处理初始化
-self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
+self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }>) => {
   const { type, port } = event.data;
 
   try {
@@ -177,28 +171,29 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
         });
 
         // 设置MessageChannel端口用于任务通信
-        messagePort.onmessage = async (portEvent: MessageEvent<WorkerMessage>) => {
-          const { taskId: portTaskId, command, priority } = portEvent.data;
+        messagePort.onmessage = async (portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>) => {
+          console.log("🔌 Worker: 收到消息", portEvent.data);
+          const { taskId: portTaskId, payload, priority } = portEvent.data;
           const startTime = performance.now();
 
           try {
             // 检查命令是否存在
-            if (!command) {
+            if (!payload) {
               throw new Error("命令不能为空");
             }
 
             let portResult: { success: boolean; data?: any; error?: string };
 
             // 使用类型守卫分离处理逻辑
-            if (isStateMachineCommand(command)) {
+            if (isStateMachineCommand(payload)) {
               // 状态机命令直接转发给引擎
-              gameEngine.sendCommand(command);
+              gameEngine.sendCommand(payload);
               portResult = { success: true };
-            } else if (isDataQueryCommand(command)) {
+            } else if (isDataQueryCommand(payload)) {
               // 数据查询命令处理
-              portResult = await handleDataQuery(command);
+              portResult = await handleDataQuery(payload);
             } else {
-              throw new Error(`未知命令类型: ${(command as any)?.type || 'undefined'}`);
+              throw new Error(`未知命令类型: ${(payload as any)?.type || 'undefined'}`);
             }
 
             // 计算执行时间
@@ -206,7 +201,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
             const duration = endTime - startTime;
 
             // 返回结果给SimulatorPool
-            const response: WorkerResponse = {
+            const response: WorkerMessageEvent<any, SimulatorTaskMap, any> = {
               taskId: portTaskId,
               result: portResult,
               error: null,
@@ -222,7 +217,7 @@ self.onmessage = async (event: MessageEvent<MainThreadMessage>) => {
             const duration = endTime - startTime;
 
             // 返回错误给SimulatorPool
-            const errorResponse: WorkerResponse = {
+            const errorResponse: WorkerMessageEvent<any, SimulatorTaskMap, any> = {
               taskId: portTaskId,
               result: null,
               error: error instanceof Error ? error.message : String(error),

@@ -147,16 +147,22 @@ export const WorkerSystemMessageSchema = z.object({
 
 /**
  * 检查是否为状态机命令
+ * 
+ * @param command 待检查的命令（任意类型）
+ * @returns 是否为 EngineCommand
  */
-export function isStateMachineCommand(command: EngineCommand | DataQueryCommand): command is EngineCommand {
+export function isStateMachineCommand(command: any): command is EngineCommand {
   return command && typeof command === 'object' && 'type' in command && 
          ["INIT", "START", "STOP", "PAUSE", "RESUME", "RESET", "STEP", "RESULT"].includes(command.type);
 }
 
 /**
  * 检查是否为数据查询命令
+ * 
+ * @param command 待检查的命令（任意类型）
+ * @returns 是否为 DataQueryCommand
  */
-export function isDataQueryCommand(command: EngineCommand | DataQueryCommand): command is DataQueryCommand {
+export function isDataQueryCommand(command: any): command is DataQueryCommand {
   return command && typeof command === 'object' && 'type' in command && 
          ["get_members", "get_stats", "get_snapshot", "get_member_state", "send_intent"].includes(command.type);
 }

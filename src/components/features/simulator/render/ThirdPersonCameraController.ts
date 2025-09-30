@@ -176,7 +176,6 @@ export class ThirdPersonCameraController {
 
   /** 设置相机状态 */
   setCameraState(newState: Partial<CameraState>, smooth = true): void {
-    console.log(`🎥 setCameraState:`, { newState, smooth, smoothTransition: this.state.smoothTransition });
     if (smooth && this.state.smoothTransition) {
       this.startTransition(newState);
     } else {
@@ -252,11 +251,10 @@ export class ThirdPersonCameraController {
       newState.verticalAngle = clampedAngle;
       
       if (clampedAngle !== newVerticalAngle) {
-        console.log(`🎥 垂直角度被限制: ${newVerticalAngle} -> ${clampedAngle}`);
+        // console.log(`🎥 垂直角度被限制: ${newVerticalAngle} -> ${clampedAngle}`);
       }
     }
     
-    console.log(`🎥 v&h:`, newState.verticalAngle, newState.horizontalAngle);
     this.setCameraState(newState, smooth);
   }
 

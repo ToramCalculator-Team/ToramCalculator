@@ -1,191 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
-import { WorkerSystemMessageSchema, WorkerMessageEvent, WorkerMessage, DataQueryCommand } from "./messages";
-import { EngineCommand } from "../GameEngineSM";
-
-import simulationWorker from "./Simulation.worker?worker&url";
-
-// ==================== 类型定义 ====================
-
-/**
- * 通用任务结果接口
- */
-export interface TaskResult {
-  success: boolean; // 任务是否成功
-  data?: any; // 任务返回的数据
-  error?: string; // 错误信息
-}
-
-/**
- * 通用任务执行结果
- */
-export interface TaskExecutionResult {
-  success: boolean; // 任务是否成功
-  data?: any; // 任务返回的数据
-  error?: string; // 错误信息
-  metrics?: {
-    duration: number; // 执行时长（毫秒）
-    memoryUsage: number; // 内存使用量
-  };
-}
-
-/**
- * 事件发射器 - 基于Node.js ThreadPool的EventEmitter思路
- *
- * 提供事件订阅/发布机制，用于监听线程池的各种状态变化：
- * - task-completed: 任务完成
- * - task-failed: 任务失败
- * - task-retry: 任务重试
- * - queue-full: 队列满载
- * - worker-replaced: Worker替换
- * - metrics: 性能指标更新
- * - shutdown: 池关闭
- */
-class EventEmitter {
-  private events: { [key: string]: Function[] } = {}; // 事件监听器映射表
-
-  /**
-   * 注册事件监听器
-   * @param event 事件名称
-   * @param listener 监听器函数
-   */
-  on(event: string, listener: Function): void {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(listener);
-    // console.log(`📡 EventEmitter: 注册事件监听器 "${event}"，当前监听器数量: ${this.events[event].length}`);
-  }
-
-  /**
-   * 发射事件，触发所有监听器
-   * @param event 事件名称
-   * @param args 事件参数
-   */
-  emit(event: string, ...args: any[]): void {
-    // 减少引擎状态更新事件的日志噪音
-    if (event !== "engine_state_update") {
-      // console.log(`📡 EventEmitter: 发射事件 "${event}"，监听器数量: ${this.events[event]?.length || 0}`);
-    }
-    if (this.events[event]) {
-      this.events[event].forEach((listener) => listener(...args));
-    }
-  }
-
-  /**
-   * 移除事件监听器
-   * @param event 事件名称
-   * @param listener 可选的特定监听器，不传则移除所有
-   */
-  off(event: string, listener?: Function): void {
-    if (!this.events[event]) return;
-
-    if (listener) {
-      this.events[event] = this.events[event].filter((l) => l !== listener);
-    } else {
-      delete this.events[event];
-    }
-  }
-}
-
-// Semaphore 类已移除 - 遵循 YAGNI 原则，线程池本身已提供并发控制
-
-/**
- * 类型安全的消息序列化器
- *
- * 使用泛型提供类型安全的Worker消息序列化功能，确保：
- * 1. 消息结构可预测
- * 2. 类型信息不丢失
- * 3. Transferable对象正确处理
- * 4. 编译时类型检查
- * 5. 保持通用性，不包含业务逻辑
- */
 import { prepareForTransfer } from "./MessageSerializer";
-
-/**
- * 通用任务类型 - 使用泛型保持类型安全
- *
- * 设计原则：
- * - 类型安全：通过泛型保持payload类型信息
- * - 通用性：不包含特定业务逻辑
- * - 可扩展性：支持任意任务类型
- * - 可预测性：任务结构明确
- */
-interface Task<TType extends string = string, TPayload = unknown> {
-  id: string; // 任务唯一标识
-  type: TType; // 任务类型（类型安全）
-  payload: TPayload; // 任务数据（类型安全）
-  priority: "high" | "medium" | "low"; // 任务优先级
-  timestamp: number; // 任务创建时间戳
-  timeout: number; // 任务超时时间（毫秒）
-  retriesLeft: number; // 剩余重试次数
-  originalRetries: number; // 原始重试次数（用于统计）
-}
-
-/**
- * 优先级任务队列
- *
- * 实现三级优先级的任务队列：高优先级 > 中优先级 > 低优先级
- * 确保重要任务能够优先执行，提高系统响应性能。
- *
- * 核心算法：
- * - enqueue: 根据优先级将任务添加到对应队列末尾
- * - dequeue: 按优先级顺序从队列头部取出任务
- * - unshift: 将任务添加到对应优先级队列头部（用于重试）
- */
-class PriorityTaskQueue {
-  private queues = {
-    high: [] as Task<string, unknown>[], // 高优先级队列
-    medium: [] as Task<string, unknown>[], // 中优先级队列
-    low: [] as Task<string, unknown>[], // 低优先级队列
-  };
-
-  /**
-   * 将任务加入队列
-   * @param task 要加入的任务
-   */
-  enqueue(task: Task<string, unknown>): void {
-    this.queues[task.priority].push(task); // 添加到对应优先级队列末尾
-  }
-
-  /**
-   * 从队列中取出下一个任务
-   * 按优先级顺序：high -> medium -> low
-   * @returns 下一个要执行的任务，如果队列为空则返回null
-   */
-  dequeue(): Task<string, unknown> | null {
-    for (const priority of ["high", "medium", "low"] as const) {
-      if (this.queues[priority].length > 0) {
-        return this.queues[priority].shift() || null; // 从队列头部取出任务
-      }
-    }
-    return null; // 所有队列都为空
-  }
-
-  /**
-   * 将任务添加到对应优先级队列头部
-   * 主要用于任务重试，确保重试任务能够优先执行
-   * @param task 要添加的任务
-   */
-  unshift(task: Task<string, unknown>): void {
-    this.queues[task.priority].unshift(task); // 添加到队列头部
-  }
-
-  /**
-   * 检查是否有待处理任务
-   * @returns 是否有任务在队列中
-   */
-  hasTask(): boolean {
-    return Object.values(this.queues).some((queue) => queue.length > 0); // 检查任意队列是否有任务
-  }
-
-  /**
-   * 获取队列中任务总数
-   * @returns 所有优先级队列的任务总数
-   */
-  size(): number {
-    return Object.values(this.queues).reduce((sum, queue) => sum + queue.length, 0); // 计算所有队列的任务总数
-  }
-}
+import { PriorityTaskQueue } from "~/lib/WorkerPool/PriorityTaskQueue";
+import { Result, Task, WorkerMessage, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
 
 // Worker性能指标
 interface WorkerMetrics {
@@ -222,7 +38,9 @@ export interface PoolHealthMetrics {
 }
 
 // 配置接口
-export interface PoolConfig {
+export interface PoolConfig<TPriority extends string> {
+  priority: TPriority[]; // 任务优先级
+  workerUrl: string; // Worker URL
   maxWorkers?: number; // 最大Worker数量
   taskTimeout?: number; // 任务超时时间
   idleTimeout?: number; // 空闲超时时间
@@ -248,27 +66,19 @@ export interface PoolConfig {
  * - 实现响应式任务分配（Node.js ThreadPool模式）
  * - 支持多Worker并行处理
  * - 提供类型安全的API接口
- *
- * 设计原则：
- * - 遵循 KISS 原则：保持设计简洁
- * - 遵循 YAGNI 原则：只实现当前需要的功能
- * - 遵循 SOLID 原则：单一职责，开闭原则
- * - 容错性：Worker故障自动替换
- * - 性能优化：零拷贝传输和优先级调度
- *
- * 使用场景：
- * - 通用计算任务处理
- * - 高性能并行计算
- * - 实时任务调度
+ * 
+ * 泛型参数：
+ * - TTaskTypeMap: 任务类型映射表 { [taskType: string]: PayloadType }
+ * - TPriority: 优先级类型
  */
-export class WorkerPool extends EventEmitter {
+export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTaskType, any>, TPriority extends string> extends EventEmitter {
   // ==================== 私有属性 ====================
 
   /** Worker包装器数组 - 管理所有活跃的Worker实例 */
   private workers: WorkerWrapper[] = [];
 
   /** 优先级任务队列 - 实现三级优先级调度 */
-  private taskQueue = new PriorityTaskQueue();
+  private taskQueue: PriorityTaskQueue<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>;
 
   /**
    * 任务映射表 - 跟踪所有正在执行的任务
@@ -280,7 +90,7 @@ export class WorkerPool extends EventEmitter {
       resolve: (result: any) => void; // Promise解析函数
       reject: (error: Error) => void; // Promise拒绝函数
       timeout: NodeJS.Timeout; // 超时定时器
-      task: Task<string, unknown>; // 任务对象
+      task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>; // 任务对象
     }
   >();
 
@@ -288,7 +98,7 @@ export class WorkerPool extends EventEmitter {
   private taskToWorkerId = new Map<string, string>();
 
   /** 线程池配置 - 运行时不可变，确保配置一致性 */
-  private readonly config: Required<PoolConfig>;
+  private readonly config: Required<PoolConfig<TPriority>>;
 
   /** 资源清理定时器 - 定期清理超时任务和空闲Worker */
   private cleanupInterval?: NodeJS.Timeout;
@@ -314,12 +124,15 @@ export class WorkerPool extends EventEmitter {
    * - 配置验证：确保所有配置参数有效
    * - 后台服务：启动监控和清理进程，确保系统健康
    */
-  constructor(config: PoolConfig = {}) {
+  constructor(config: PoolConfig<TPriority>) {
     super();
+    // 验证配置参数
     this.validateConfig(config);
 
+    // 根据传入对象确定优先级队列
+    this.taskQueue = new PriorityTaskQueue<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>(config.priority);
+
     // 合并用户配置和默认配置
-    // 应用KISS原则：保持配置简单
     this.config = {
       maxWorkers: config.maxWorkers || 1, // 默认单Worker
       taskTimeout: config.taskTimeout || 30000, // 30秒超时
@@ -331,12 +144,10 @@ export class WorkerPool extends EventEmitter {
     };
 
     // 启动后台服务（不依赖Worker初始化）
-    // 应用KISS原则：分离关注点，简化初始化流程
     this.startCleanupProcess(); // 资源清理服务
     this.startMonitoring(); // 性能监控服务
 
     // 延迟初始化Worker
-    // 应用YAGNI原则：只在需要时创建资源
     this.workersInitialized = false;
   }
 
@@ -354,7 +165,7 @@ export class WorkerPool extends EventEmitter {
    * - maxRetries: 必须为非负整数
    * - maxQueueSize: 必须为正整数
    */
-  private validateConfig(config: PoolConfig): void {
+  private validateConfig(config: PoolConfig<TPriority>): void {
     // 验证Worker数量
     if (config.maxWorkers !== undefined && (config.maxWorkers < 1 || !Number.isInteger(config.maxWorkers))) {
       throw new Error("无效的maxWorkers：必须为正整数");
@@ -380,7 +191,6 @@ export class WorkerPool extends EventEmitter {
    * 确保Worker已初始化
    *
    * 实现延迟初始化模式，只在首次使用时创建Worker
-   * 应用YAGNI原则：避免不必要的资源消耗
    */
   private ensureWorkersInitialized(): void {
     if (!this.workersInitialized) {
@@ -416,7 +226,7 @@ export class WorkerPool extends EventEmitter {
    */
   private createWorker(): WorkerWrapper {
     // 创建Web Worker实例
-    const worker = new Worker(simulationWorker, { type: "module" });
+    const worker = new Worker(this.config.workerUrl, { type: "module" });
 
     // 创建MessageChannel用于专用通信
     const channel = new MessageChannel();
@@ -454,7 +264,6 @@ export class WorkerPool extends EventEmitter {
     };
 
     // 统一使用 MessageChannel 处理所有消息
-    // 遵循 Artem 的设计原则：单层通信
 
     // 设置错误处理
     worker.onerror = (error) => {
@@ -486,27 +295,30 @@ export class WorkerPool extends EventEmitter {
    * - 性能监控：收集处理时间和成功率指标
    * - 事件驱动：通过事件通知外部系统状态变化
    */
-  private handleWorkerMessage(worker: WorkerWrapper, event: MessageEvent): void {
-    
+  private handleWorkerMessage<TResult, TData>(
+    worker: WorkerWrapper,
+    event: MessageEvent<WorkerMessageEvent<TResult, TTaskTypeMap, TData>>,
+  ): void {
+    console.log("收到worker消息", event.data);
     // 使用类型约束解析消息数据
-    const messageData = event.data as WorkerMessageEvent;
+    const messageData = event.data;
     const { taskId, result, error, metrics } = messageData;
 
     // 发射原始消息事件，让子类处理业务逻辑
     // 只传递实际需要的字段，避免传递未定义的字段
-    this.emit("worker-message", { 
-      worker, 
-      event: { 
-        taskId, 
-        result, 
-        error, 
+    this.emit("worker-message", {
+      worker,
+      event: {
+        taskId,
+        result,
+        error,
         metrics,
         // 系统消息相关字段（可选）
         type: messageData.type,
         data: messageData.data,
         cmd: messageData.cmd,
-        cmds: messageData.cmds
-      } 
+        cmds: messageData.cmds,
+      },
     });
 
     // 处理任务结果
@@ -544,7 +356,7 @@ export class WorkerPool extends EventEmitter {
         success: true,
         data: result,
         metrics,
-      } as TaskExecutionResult;
+      } as Result<TResult>;
 
       resolve(taskResult);
       this.emit("task-completed", { taskId, result, metrics });
@@ -625,7 +437,7 @@ export class WorkerPool extends EventEmitter {
     }
   }
 
-  private getWorkerForTask(task: Task<string, unknown>): WorkerWrapper | null {
+  private getWorkerForTask(task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>): WorkerWrapper | null {
     // 通过 taskToWorkerId 映射进行精确查找
     const workerId = this.taskToWorkerId.get(task.id);
     if (!workerId) return null;
@@ -647,16 +459,35 @@ export class WorkerPool extends EventEmitter {
   }
 
   /**
-   * 执行通用任务
+   * 执行任务（类型安全版本）
+   * 
+   * 通过泛型约束确保任务类型和 payload 类型匹配
+   * 
+   * @param type 任务类型（必须是 TTaskTypeMap 的键）
+   * @param payload 任务数据（类型与 TTaskTypeMap[type] 匹配）
+   * @param priority 任务优先级
+   * @returns 任务执行结果
+   * 
+   * @example
+   * // ✅ 类型安全：只能发送 EngineCommand
+   * pool.executeTask("engine_command", engineCmd, "high");
+   * 
+   * // ❌ 编译错误：类型不匹配
+   * pool.executeTask("engine_command", dataQueryCmd, "high");
    */
-  async executeTask(type: string, payload: any, priority: Task["priority"] = "medium"): Promise<TaskExecutionResult> {
+  async executeTask<K extends TTaskType, TResult = any>(
+    type: K,
+    payload: TTaskTypeMap[K],
+    priority: TPriority
+  ): Promise<Result<TResult>> {
     if (!this.accepting) {
-      throw new Error("Pool is shutting down");
+      throw new Error("线程池已关闭");
     }
 
-    const task: Task = {
+    // 构建任务对象
+    const task: Task<K, TTaskTypeMap[K], TPriority> = {
       id: createId(),
-      type,
+      type: type as K,
       payload,
       priority,
       timestamp: Date.now(),
@@ -686,7 +517,7 @@ export class WorkerPool extends EventEmitter {
    * - 容错机制：超时重试和错误恢复
    * - 资源管理：防止内存溢出和资源泄漏
    */
-  private async processTask(task: Task<string, unknown>): Promise<TaskExecutionResult> {
+  private async processTask<TResult>(task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>): Promise<Result<TResult>> {
     return new Promise((resolve, reject) => {
       // 设置任务超时处理机制
       const timeout = setTimeout(() => {
@@ -710,7 +541,6 @@ export class WorkerPool extends EventEmitter {
       this.taskMap.set(task.id, { resolve, reject, timeout, task });
 
       // 队列大小检查，防止内存溢出
-      // 应用防御性编程原则，确保系统稳定性
       if (this.taskQueue.size() > this.config.maxQueueSize) {
         this.emit("queue-full", this.taskQueue.size());
       }
@@ -788,22 +618,23 @@ export class WorkerPool extends EventEmitter {
    * - 响应性：即使失败也要继续处理其他任务
    * - 性能优化：使用Transferable对象实现零拷贝传输
    */
-  private assignTaskToWorker(worker: WorkerWrapper, task: Task<string, unknown>): void {
+  private assignTaskToWorker(worker: WorkerWrapper, task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>): void {
     // 标记Worker为忙碌状态，防止重复分配
     worker.busy = true;
 
-    // 准备消息传输，处理Transferable对象
-    // 应用性能优化原则，实现零拷贝传输
-    const workerMessage: WorkerMessage = {
+    // 构建类型安全的 Worker 消息
+    const workerMessage: WorkerMessage<TTaskTypeMap[keyof TTaskTypeMap], TPriority> = {
       taskId: task.id,
-      command: task.payload as EngineCommand | DataQueryCommand,
+      payload: task.payload,
       priority: task.priority,
     };
+
+    // 准备消息传输，处理Transferable对象
     const { message, transferables } = prepareForTransfer(workerMessage);
 
     try {
       // 通过MessageChannel发送任务到Worker
-      // console.log("🔄 SimulatorPool: 发送任务到Worker", message);
+      console.log("🔄 线程池: 发送任务到Worker", message);
       // 记录绑定关系
       this.taskToWorkerId.set(task.id, worker.id);
       worker.port.postMessage(message, transferables);
@@ -815,7 +646,6 @@ export class WorkerPool extends EventEmitter {
       const errorObj = error instanceof Error ? error : new Error(errorMessage);
 
       // 任务发送失败重试机制
-      // 应用容错原则，提高系统可靠性
       if (task.retriesLeft > 0) {
         task.retriesLeft--;
         this.taskQueue.unshift(task); // 重试任务优先执行
@@ -832,7 +662,6 @@ export class WorkerPool extends EventEmitter {
       this.taskToWorkerId.delete(task.id);
 
       // 关键：即使发送失败也要尝试处理下一个任务
-      // 应用响应性原则，确保系统的持续响应性
       this.processNextTask();
     }
   }
@@ -971,7 +800,6 @@ export class WorkerPool extends EventEmitter {
     this.accepting = false;
 
     // 等待所有活跃任务完成
-    // 应用优雅关闭原则，不强制中断正在执行的任务
     const activePromises = Array.from(this.taskMap.values()).map(
       (callback) =>
         new Promise<void>((resolve) => {
@@ -995,7 +823,6 @@ export class WorkerPool extends EventEmitter {
     await Promise.all(activePromises);
 
     // 清理后台服务
-    // 应用资源管理原则，确保定时器被正确清理
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
@@ -1005,7 +832,6 @@ export class WorkerPool extends EventEmitter {
     }
 
     // 终止所有Worker实例
-    // 应用防御性编程原则，确保Worker被正确终止
     await Promise.all(
       this.workers.map((worker) => {
         try {
@@ -1018,7 +844,6 @@ export class WorkerPool extends EventEmitter {
     );
 
     // 清理内存和状态
-    // 应用状态一致性原则，确保所有状态被正确清理
     this.workers.length = 0;
     this.taskMap.clear();
 

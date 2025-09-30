@@ -14,7 +14,7 @@ import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, Action
 import { Portal } from "solid-js/web";
 import { GameView } from "./render/Renderer";
 
-export default function RealtimeController() {
+export default function RealtimeSimulator() {
   // 创建控制器实例（自动初始化）
   const controller = new Controller();
 
@@ -289,6 +289,52 @@ export default function RealtimeController() {
     });
   });
 
+  // 启用鼠标控制
+  const allowMouseControl = async () => {
+    console.log("🎮 ViewArea 被点击了！");
+    // 启用FPS风格的鼠标控制
+    const selectedMember = controller.selectedMemberId[0]();
+    console.log("🎮 选中的成员ID:", selectedMember);
+    console.log("🎮 canvasRef:", canvasRef);
+    if (selectedMember && canvasRef) {
+      try {
+        // 请求鼠标锁定
+        await canvasRef.requestPointerLock();
+        console.log("🎮 鼠标锁定已启用");
+        
+        // 发送相机跟随指令
+        window.dispatchEvent(
+          new CustomEvent("cameraControl", {
+            detail: {
+              cmd: {
+                type: "camera_control",
+                entityId: selectedMember,
+                subType: "follow",
+                data: {
+                  followEntityId: selectedMember,
+                  distance: 8,
+                  verticalAngle: Math.PI / 6,
+                },
+                seq: Date.now(),
+                ts: Date.now(),
+              },
+            },
+          }),
+        );
+        
+        // 启用鼠标控制
+        enableMouseControl(true);
+        
+      } catch (error) {
+        console.error("🎮 鼠标锁定失败:", error);
+      }
+    } else {
+      console.warn("🎮 无法启用鼠标控制:");
+      console.warn("  - selectedMember:", selectedMember);
+      console.warn("  - canvasRef:", canvasRef);
+    }
+  }
+
   // ==================== UI 渲染 ====================
   return (
     <div class="grid h-full w-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
@@ -304,61 +350,15 @@ export default function RealtimeController() {
       />
 
       {/* 可视区域 - 点击启用第三人称控制 */}
-      <div class="ViewArea col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6 hover:bg-area-color">
+      <div class="ViewArea col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
         <div
-          class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded bg-gray-900/20 border-2 border-dashed border-gray-500"
+          class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded"
           ref={(el) => {
             // 保存canvas引用用于pointer lock
             canvasRef = el;
           }}
-          onClick={async () => {
-            console.log("🎮 ViewArea 被点击了！");
-            // 启用FPS风格的鼠标控制
-            const selectedMember = controller.selectedMemberId[0]();
-            console.log("🎮 选中的成员ID:", selectedMember);
-            console.log("🎮 canvasRef:", canvasRef);
-            if (selectedMember && canvasRef) {
-              try {
-                // 请求鼠标锁定
-                await canvasRef.requestPointerLock();
-                console.log("🎮 鼠标锁定已启用");
-                
-                // 发送相机跟随指令
-                window.dispatchEvent(
-                  new CustomEvent("cameraControl", {
-                    detail: {
-                      cmd: {
-                        type: "camera_control",
-                        entityId: selectedMember,
-                        subType: "follow",
-                        data: {
-                          followEntityId: selectedMember,
-                          distance: 8,
-                          verticalAngle: Math.PI / 6,
-                        },
-                        seq: Date.now(),
-                        ts: Date.now(),
-                      },
-                    },
-                  }),
-                );
-                
-                // 启用鼠标控制
-                enableMouseControl(true);
-                
-              } catch (error) {
-                console.error("🎮 鼠标锁定失败:", error);
-              }
-            } else {
-              console.warn("🎮 无法启用鼠标控制:");
-              console.warn("  - selectedMember:", selectedMember);
-              console.warn("  - canvasRef:", canvasRef);
-            }
-          }}
+          onClick={allowMouseControl}
         >
-          <div class="flex items-center justify-center h-full text-white/50 text-sm">
-            点击启用FPS控制
-          </div>
         </div>
       </div>
 
@@ -405,7 +405,10 @@ export default function RealtimeController() {
       <div class="col-span-12 row-span-1 flex items-center gap-x-4 gap-y-2 portrait:row-span-2 portrait:flex-col">
         <ControlPanel
           engineActor={controller.engineActor}
-          onStart={() => controller.startSimulation()}
+          onStart={() => {
+            allowMouseControl();
+            controller.startSimulation()
+          }}
           onReset={() => controller.resetSimulation()}
           onPause={() => controller.pauseSimulation()}
           onResume={() => controller.resumeSimulation()}
@@ -441,11 +444,11 @@ export default function RealtimeController() {
       </div>
 
       {/* 背景游戏视图显示 */}
-      <Portal>
+      {/* <Portal>
         <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
           <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
         </div>
-      </Portal>
+      </Portal> */}
     </div>
   );
 }
