@@ -1,5 +1,3 @@
-import { expression } from "mathjs";
-
 // 帝王之光技能效果
 const testSkillEffect = {
   id: "testSkillEffect",

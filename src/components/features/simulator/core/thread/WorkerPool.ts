@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { prepareForTransfer } from "./MessageSerializer";
 import { PriorityTaskQueue } from "~/lib/WorkerPool/PriorityTaskQueue";
 import { Result, Task, WorkerMessage, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+import { EventEmitter } from "~/lib/WorkerPool/EventEmitter";
 
 // Worker性能指标
 interface WorkerMetrics {

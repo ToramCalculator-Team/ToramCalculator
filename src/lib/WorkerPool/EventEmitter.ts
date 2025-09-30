@@ -10,7 +10,7 @@
  * - metrics: 性能指标更新
  * - shutdown: 池关闭
  */
-class EventEmitter {
+export class EventEmitter {
     private events: { [key: string]: Function[] } = {}; // 事件监听器映射表
   
     /**
