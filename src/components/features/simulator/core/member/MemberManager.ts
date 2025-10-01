@@ -478,6 +478,16 @@ export class MemberManager {
           },
         });
       }
+      
+      // 通知控制器主控目标变化
+      this.engine.postSystemMessage({
+        type: "primary_target_changed",
+        data: {
+          memberId: memberId,
+          oldMemberId: oldTarget,
+          timestamp: Date.now(),
+        },
+      });
     }
   }
   

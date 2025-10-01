@@ -94,7 +94,22 @@ export class Controller {
 
   // 成员操作 - 保持原有逻辑
   async selectMember(memberId: string) {
+    console.log(`🎯 Controller: 用户选择成员 ${memberId}`);
+    
+    // 更新控制器选中的成员ID
     this.selectedMemberId[1](memberId);
+    
+    // 通知引擎设置主控目标
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "设置主控成员",
+      targetMemberId: memberId,
+      data: { memberId }
+    };
+    await realtimeSimulatorPool.sendIntent(intent);
+    
+    // 刷新选中成员的相关数据
     await this.refreshSelectedMember();
   }
 
@@ -173,8 +188,17 @@ export class Controller {
     });
 
     realtimeSimulatorPool.on("system_event", (data: { workerId: string; event: any }) => {
-      // 更新引擎统计数据
-      this.engineStats[1](data.event);
+      // 处理系统事件
+      if (data.event && typeof data.event === "object") {
+        // 处理主控目标变化事件
+        if (data.event.type === "primary_target_changed") {
+          console.log("🎯 Controller: 收到主控目标变化事件", data.event.data);
+          this.handlePrimaryTargetChanged(data.event.data);
+        } else {
+          // 更新引擎统计数据（其他系统事件）
+          this.engineStats[1](data.event);
+        }
+      }
     });
 
     realtimeSimulatorPool.on("render_cmd", (data: { workerId: string; event: any }) => {
@@ -267,6 +291,20 @@ export class Controller {
   }
 
   // ==================== 数据刷新方法 ====================
+
+  /**
+   * 处理主控目标变化事件
+   * @param data 主控目标变化数据
+   */
+  private handlePrimaryTargetChanged(data: { memberId: string | null; oldMemberId: string | null; timestamp: number }) {
+    console.log(`🎯 Controller: 主控目标变化 ${data.oldMemberId} -> ${data.memberId}`);
+    
+    // 更新控制器选中的成员ID
+    this.selectedMemberId[1](data.memberId);
+    
+    // 刷新选中成员的相关数据
+    this.refreshSelectedMember();
+  }
 
   private async refreshMembers() {
     try {

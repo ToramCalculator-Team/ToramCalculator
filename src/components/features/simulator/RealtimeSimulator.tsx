@@ -444,11 +444,11 @@ export default function RealtimeSimulator() {
       </div>
 
       {/* 背景游戏视图显示 */}
-      {/* <Portal>
+      <Portal>
         <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
           <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
         </div>
-      </Portal> */}
+      </Portal>
     </div>
   );
 }

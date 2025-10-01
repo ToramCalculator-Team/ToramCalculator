@@ -26,62 +26,35 @@ import { sanitizeForPostMessage } from "../../../../lib/WorkerPool/MessageSerial
 
 /**
  * 意图消息类型枚举
- * 基于 Member FSM 的通用事件类型，支持 Player 和 Mob 的所有事件
  * 
- * 事件分类：
- * 1. 基础成员事件 (MemberEventType)
- * 2. 玩家/怪物共通事件
- * 3. 玩家特有事件
+ * 用户可输入的意图消息类型：
+ * 1. 生命周期事件 - 复活
+ * 2. 移动控制事件 - 移动、停止移动
+ * 3. 技能使用事件 - 使用技能
+ * 4. 防御操作事件 - 格挡、闪躲 (Player 特有)
+ * 5. 目标管理事件 - 切换目标
  */
 export const IntentMessageTypeEnum = z.enum([
-  // === 基础成员事件 (MemberEventType) ===
-  "create",
-  "destroy", 
-  "update",
-  "custom",
-  
   // === 生命周期事件 ===
   "复活",
   
-  // === 移动相关事件 ===
+  // === 移动控制事件 ===
   "移动",
   "停止移动",
   
-  // === 技能相关事件 ===
+  // === 技能使用事件 ===
   "使用技能",
-  "收到前摇结束通知", 
-  "收到蓄力结束通知",
-  "收到咏唱结束事件",
-  "收到发动结束通知",
   
-  // === 防御相关事件 (Player 特有) ===
+  // === 防御操作事件 (Player 特有) ===
   "使用格挡",
   "结束格挡", 
   "使用闪躲",
-  "收到闪躲持续时间结束通知",
-  "闪躲持续时间结束",
   
-  // === 控制相关事件 ===
-  "应用控制",
-  "控制时间结束",
-  "收到警告结束通知",
-  
-  // === 战斗计算事件 ===
-  "进行伤害计算",
-  "进行命中判定", 
-  "进行控制判定",
-  "受到攻击",
-  "受到治疗",
-  
-  // === 状态管理事件 ===
-  "修改buff",
-  "修改属性",
-  "收到buff增删事件",
-  
-  // === 快照和目标事件 ===
-  "收到快照请求",
-  "收到目标快照",
+  // === 目标管理事件 ===
   "切换目标",
+  
+  // === 主控目标管理事件 ===
+  "设置主控成员",
 ]);
 
 export type IntentMessageType = z.infer<typeof IntentMessageTypeEnum>;
@@ -180,6 +153,39 @@ export class MessageRouter {
           message: "消息格式无效",
           error: "Invalid message format",
         };
+      }
+
+      // 处理系统级意图（不需要发送到特定成员）
+      if (message.type === "设置主控成员") {
+        try {
+          const memberId = message.data?.memberId;
+          if (!memberId) {
+            return {
+              success: false,
+              message: "设置主控成员失败: 缺少成员ID",
+              error: "Missing member ID",
+            };
+          }
+          
+          this.engine.getMemberManager().setPrimaryTarget(memberId);
+          
+          this.stats.successfulMessages++;
+          
+          return {
+            success: true,
+            message: `主控目标已设置为 ${memberId}`,
+            error: undefined,
+          };
+        } catch (error: any) {
+          this.stats.failedMessages++;
+          console.warn(`MessageRouter: 设置主控成员失败:`, error);
+          
+          return {
+            success: false,
+            message: `设置主控成员失败: ${error.message}`,
+            error: error.message,
+          };
+        }
       }
 
       // 获取目标成员

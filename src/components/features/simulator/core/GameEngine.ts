@@ -347,6 +347,7 @@ export class GameEngine {
 
   /** 渲染消息发送器 - 用于发送渲染指令到主线程 */
   private renderMessageSender: ((payload: any) => void) | null = null;
+  private systemMessageSender: ((payload: any) => void) | null = null;
 
   /** 镜像通信发送器 - 用于向镜像状态机发送消息 */
   private sendToMirror?: (command: EngineCommand) => void;
@@ -585,6 +586,15 @@ export class GameEngine {
   }
 
   /**
+   * 设置系统消息发送器
+   *
+   * @param sender 系统消息发送函数，用于发送系统级事件到控制器
+   */
+  setSystemMessageSender(sender: (payload: any) => void): void {
+    this.systemMessageSender = sender;
+  }
+
+  /**
    * 发送渲染指令到主线程
    *
    * @param payload 渲染指令负载，可以是单个指令或指令数组
@@ -603,6 +613,24 @@ export class GameEngine {
   }
 
   /**
+   * 发送系统消息到主线程
+   *
+   * @param payload 系统消息负载
+   */
+  postSystemMessage(payload: any): void {
+    if (!this.systemMessageSender) {
+      console.warn("GameEngine: 系统消息发送器未设置，无法发送系统消息");
+      return;
+    }
+
+    try {
+      this.systemMessageSender(payload);
+    } catch (error) {
+      console.error("GameEngine: 发送系统消息失败:", error);
+    }
+  }
+
+  /**
    * 清理引擎资源
    */
   cleanup(): void {
@@ -617,6 +645,7 @@ export class GameEngine {
 
     // 清理渲染消息发送器
     this.renderMessageSender = null;
+    this.systemMessageSender = null;
 
     // 重置统计
     this.stats = {

@@ -244,6 +244,16 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
           }
         });
 
+        // 设置系统消息发送器：用于发送系统级事件到控制器
+        gameEngine.setSystemMessageSender((payload: any) => {
+          try {
+            console.log("🔌 Worker: 发送系统消息到主线程", payload);
+            postSystemMessage(messagePort, "system_event", payload);
+          } catch (error) {
+            console.error("Worker: 发送系统消息失败:", error);
+          }
+        });
+
         return;
 
       default:
