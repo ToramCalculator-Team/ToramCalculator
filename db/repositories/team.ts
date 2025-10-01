@@ -3,9 +3,9 @@ import { getDB } from "./database";
 import { DB, team } from "../generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { playerSubRelations } from "./player";
-import { mercenarySubRelations } from "./mercenary";
-import { memberSubRelations } from "./member";
+import { MemberRelationsSchema, memberSubRelations } from "./member";
+import { z } from "zod/v3";
+import { teamSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Team = Selectable<team>;
@@ -13,6 +13,10 @@ export type TeamInsert = Insertable<team>;
 export type TeamUpdate = Updateable<team>;
 // 关联查询类型
 export type TeamWithRelations = Awaited<ReturnType<typeof findTeamWithRelations>>;
+export const TeamRelationsSchema = z.object({
+  ...teamSchema.shape,
+  members: z.array(MemberRelationsSchema),
+});
 
 // 2. 关联查询定义
 export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expression<string>) {

@@ -33,18 +33,36 @@ export class EnumProcessor {
       // 直接导入 enums.ts 模块，让 JS 引擎处理所有展开操作符
       const enumsModule = require(PATHS.enums);
       
+      // LogUtils.logInfo("开始处理枚举，模块导出的键值对：");
+      // for (const [key, value] of Object.entries(enumsModule)) {
+      //   LogUtils.logInfo(`  - ${key}: ${Array.isArray(value) ? `[${value.join(', ')}]` : typeof value}`);
+      // }
+      
       // 处理所有导出的枚举
       for (const [key, value] of Object.entries(enumsModule)) {
         // 跳过类型定义（以 Type 结尾的）
-        if (key.endsWith('Type')) continue;
+        if (key.endsWith('Type')) {
+          // LogUtils.logInfo(`跳过类型定义: ${key}`);
+          continue;
+        }
         
         const enumName = StringUtils.toPascalCase(key);
+        // LogUtils.logInfo(`处理枚举: ${key} -> ${enumName}`);
+        
         if (Array.isArray(value)) {
           // 直接使用数组值，JS 引擎已经处理了所有展开操作符
           this.extractedEnums.set(enumName, value);
+          // LogUtils.logInfo(`  ✓ 已添加枚举: ${enumName} = [${value.join(', ')}]`);
+        } else {
+          // LogUtils.logInfo(`  ✗ 跳过非数组值: ${key} (${typeof value})`);
         }
       }
+      
       LogUtils.logSuccess(`成功解析 ${this.extractedEnums.size} 个枚举（使用模块导入方式）`);
+      // LogUtils.logInfo("提取的枚举列表：");
+      // for (const [enumName, values] of this.extractedEnums) {
+      //   LogUtils.logInfo(`  - ${enumName}: [${values.join(', ')}]`);
+      // }
       
     } catch (error) {
       LogUtils.logError("无法导入 enums.ts 模块", error);
@@ -123,18 +141,26 @@ export class EnumProcessor {
         const [, fieldName, originalEnumName] = enumMatch;
         const pascalCaseEnum = StringUtils.toPascalCase(originalEnumName);
 
+        // LogUtils.logInfo(`发现枚举字段: ${currentModel}.${fieldName} -> ${originalEnumName} (${pascalCaseEnum})`);
+
         if (this.extractedEnums.has(pascalCaseEnum)) {
           newLine = line.replace("String", pascalCaseEnum);
+          // LogUtils.logInfo(`  ✓ 成功替换: ${line.trim()} -> ${newLine.trim()}`);
+          
           if (!this.enumDefinitions.has(pascalCaseEnum)) {
             this.enumDefinitions.set(
               pascalCaseEnum,
               `enum ${pascalCaseEnum} {\n  ${this.extractedEnums.get(pascalCaseEnum).join("\n  ")}\n}`,
             );
+            // LogUtils.logInfo(`  ✓ 添加枚举定义: ${pascalCaseEnum}`);
           }
           this.enumModels.get(currentModel).set(fieldName, originalEnumName);
           
           // 建立枚举类型名到枚举名的映射
           this.enumTypeToNameMap.set(originalEnumName, pascalCaseEnum);
+        } else {
+          // LogUtils.logError(`  ✗ 未找到枚举定义: ${pascalCaseEnum} (原始: ${originalEnumName})`);
+          // LogUtils.logInfo(`  可用枚举: ${Array.from(this.extractedEnums.keys()).join(', ')}`);
         }
       }
 

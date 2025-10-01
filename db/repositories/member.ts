@@ -1,11 +1,13 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, member } from "../generated/kysely/kyesely";
-import { playerSubRelations } from "./player";
+import { PlayerRelationsSchema, playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { mercenarySubRelations } from "./mercenary";
-import { mobSubRelations } from "./mob";
+import { MercenaryRelationsSchema, mercenarySubRelations } from "./mercenary";
+import { MobRelationsSchema, mobSubRelations } from "./mob";
+import { memberSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
 
 // 1. 类型定义
 export type Member = Selectable<member>;
@@ -13,6 +15,13 @@ export type MemberInsert = Insertable<member>;
 export type MemberUpdate = Updateable<member>;
 // 关联查询类型
 export type MemberWithRelations = Awaited<ReturnType<typeof findMemberWithRelations>>;
+export const MemberRelationsSchema = z.object({
+  ...memberSchema.shape,
+  player: PlayerRelationsSchema.nullable(),
+  mercenary: MercenaryRelationsSchema.nullable(),
+  partner: MercenaryRelationsSchema.nullable(),
+  mob: MobRelationsSchema.nullable(),
+});
 
 // 2. 关联查询定义
 export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {

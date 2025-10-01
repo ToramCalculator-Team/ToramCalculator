@@ -20,7 +20,7 @@ import { z } from "zod";
 import type { EventPriority, EventHandler, BaseEvent } from "./EventQueue";
 import type { Member } from "./member/Member";
 // 类型定义已移动到本文件，不再需要从messages.ts导入
-import { sanitizeForPostMessage } from "./thread/MessageSerializer";
+import { sanitizeForPostMessage } from "../../../../lib/WorkerPool/MessageSerializer";
 
 // ==================== 消息路由核心类型定义 ====================
 

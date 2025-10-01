@@ -640,7 +640,7 @@ ${generatedSchemas}
     const parsedTypes = this.parseTypes(kyselyTypes);
     
     // 生成 Zod schemas
-    return Object.entries(parsedTypes)
+    const modelSchemas = Object.entries(parsedTypes)
       .map(([typeName, fields]) => {
         const schemaName = `${typeName.toLowerCase()}Schema`;
         const fieldsStr = Object.entries(fields)
@@ -650,6 +650,94 @@ ${generatedSchemas}
         return `export const ${schemaName} = z.object({\n${fieldsStr}\n});`;
       })
       .join("\n\n");
+
+    // 生成 dbSchema
+    const dbSchema = this.generateDbSchema(kyselyTypes);
+    
+    return modelSchemas + "\n\n" + dbSchema;
+  }
+
+  /**
+   * 生成 dbSchema
+   * @param {string} kyselyTypes - Kysely 类型内容
+   * @returns {string} dbSchema 内容
+   */
+  static generateDbSchema(kyselyTypes) {
+    // 查找 DB 类型定义
+    const dbTypeRegex = /export\s+type\s+DB\s*=\s*\{([\s\S]*?)\};/g;
+    const dbMatch = dbTypeRegex.exec(kyselyTypes);
+    
+    if (!dbMatch) {
+      return "";
+    }
+
+    const dbFieldsStr = dbMatch[1];
+    const dbFields = this.parseFields(dbFieldsStr);
+    
+    // 生成 dbSchema
+    const fieldsStr = Object.entries(dbFields)
+      .map(([fieldName, zodType]) => `  ${fieldName}: ${zodType}`)
+      .join(",\n");
+
+    return `export const dbSchema = z.object({\n${fieldsStr}\n});`;
+  }
+
+  /**
+   * 检查类型是否是关联类型
+   * @param {string} type - TypeScript 类型
+   * @returns {boolean} 是否是关联类型
+   */
+  static isRelationType(type) {
+    // 检查是否是关联类型（包含 To 的类型，如 armorTocrystal, avatarTocharacter 等）
+    if (type.includes('To') || type.includes('Relation')) {
+      return true;
+    }
+    
+    // 检查是否在 Kysely 类型文件中定义（如 campA, campB 等）
+    if (fs.existsSync(PATHS.kysely.types)) {
+      const typesContent = FileUtils.safeReadFile(PATHS.kysely.types);
+      const escapedType = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const typeRegex = new RegExp(`export\\s+type\\s+${escapedType}\\s*=\\s*\\{`);
+      return typeRegex.test(typesContent);
+    }
+    
+    return false;
+  }
+
+  /**
+   * 检查类型是否是枚举类型
+   * @param {string} type - TypeScript 类型
+   * @returns {boolean} 是否是枚举类型
+   */
+  static isEnumType(type) {
+    // LogUtils.logInfo(`    🔍 检查枚举类型: "${type}"`);
+    
+    // 从 Kysely enums.ts 文件中读取枚举定义
+    if (fs.existsSync(PATHS.kysely.enums)) {
+      // LogUtils.logInfo(`    📁 Kysely enums 文件存在: ${PATHS.kysely.enums}`);
+      const enumsContent = FileUtils.safeReadFile(PATHS.kysely.enums);
+      
+      // 检查是否存在对应的枚举定义
+      const enumRegex = new RegExp(`export const ${type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} = \\{`);
+      // LogUtils.logInfo(`    🔍 搜索模式: export const ${type} = {`);
+      
+      const isMatch = enumRegex.test(enumsContent);
+      // LogUtils.logInfo(`    ${isMatch ? '✅' : '❌'} 枚举匹配结果: ${isMatch}`);
+      
+      // if (!isMatch) {
+      //   // 显示文件中的前几行来帮助调试
+      //   const lines = enumsContent.split('\n').slice(0, 10);
+      //   LogUtils.logInfo(`    📄 文件前10行:`);
+      //   lines.forEach((line, index) => {
+      //     LogUtils.logInfo(`      ${index + 1}: ${line}`);
+      //   });
+      // }
+      
+      return isMatch;
+    } else {
+      // LogUtils.logInfo(`    ❌ Kysely enums 文件不存在: ${PATHS.kysely.enums}`);
+      return false;
+    }
   }
 
   /**
@@ -658,39 +746,59 @@ ${generatedSchemas}
    * @returns {string} Zod 类型
    */
   static convertTypeToZod(type) {
+    // LogUtils.logInfo(`🔄 转换类型: "${type}"`);
+    
     // 处理联合类型
     if (type.includes("|")) {
+      // LogUtils.logInfo(`  📋 检测到联合类型: ${type}`);
       const types = type.split("|").map((t) => t.trim());
       // 如果包含 null，使用 nullable()
       if (types.includes("null")) {
         const nonNullTypes = types.filter((t) => t !== "null");
         if (nonNullTypes.length === 1) {
-          return `${this.convertTypeToZod(nonNullTypes[0])}.nullable()`;
+          const result = `${this.convertTypeToZod(nonNullTypes[0])}.nullable()`;
+          // LogUtils.logInfo(`  ✅ 联合类型结果: ${result}`);
+          return result;
         }
-        return `z.union([${nonNullTypes.map((t) => this.convertTypeToZod(t)).join(", ")}]).nullable()`;
+        const result = `z.union([${nonNullTypes.map((t) => this.convertTypeToZod(t)).join(", ")}]).nullable()`;
+        // LogUtils.logInfo(`  ✅ 联合类型结果: ${result}`);
+        return result;
       }
-      return `z.union([${types.map((t) => this.convertTypeToZod(t)).join(", ")}])`;
+      const result = `z.union([${types.map((t) => this.convertTypeToZod(t)).join(", ")}])`;
+      // LogUtils.logInfo(`  ✅ 联合类型结果: ${result}`);
+      return result;
     }
 
     // 处理数组类型
     if (type.endsWith("[]")) {
+      // LogUtils.logInfo(`  📋 检测到数组类型: ${type}`);
       const baseType = type.slice(0, -2);
-      return `z.array(${this.convertTypeToZod(baseType)})`;
+      const result = `z.array(${this.convertTypeToZod(baseType)}).nullable()`;
+      // LogUtils.logInfo(`  ✅ 数组类型结果: ${result}`);
+      return result;
     }
 
     // 处理基本类型
+    // LogUtils.logInfo(`  🔍 检查基本类型: "${type}"`);
     switch (type) {
       case "string":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: string -> z.string()`);
         return "z.string()";
       case "number":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: number -> z.number()`);
         return "z.number()";
       case "boolean":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: boolean -> z.boolean()`);
         return "z.boolean()";
       case "Date":
-      case "Timestamp":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: ${type} -> z.date()`);
         return "z.date()";
+      case "Timestamp":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: ${type} -> z.date()`);
+        return "z.any()"; // 从数据库查询返回的 Timestamp 类型是 Date
       case "JsonValue":
       case "InputJsonValue":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: ${type} -> JSON类型`);
         return `z.lazy(() => z.union([
           z.string(),
           z.number(),
@@ -700,21 +808,50 @@ ${generatedSchemas}
           z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
         ]))`;
       case "unknown":
+        // LogUtils.logInfo(`  ✅ 匹配基本类型: unknown -> z.unknown()`);
         return `z.unknown()`;
       default:
-        // 检查是否是枚举类型
+        // LogUtils.logInfo(`  ❌ 未匹配基本类型，进入默认处理: "${type}"`);
+        
+        // 检查是否是枚举类型（以 Type 结尾）
         if (type.endsWith("Type")) {
+          // LogUtils.logInfo(`  🔍 检测到枚举类型（Type结尾）: ${type}`);
           const enumName = type.replace("Type", "");
           // 确保枚举名称首字母大写
           const pascalCaseEnum = enumName.charAt(0).toUpperCase() + enumName.slice(1);
-          return `${pascalCaseEnum}TypeSchema`;
+          const result = `${pascalCaseEnum}TypeSchema`;
+          // LogUtils.logInfo(`  ✅ 枚举类型结果: ${result}`);
+          return result;
         }
+        
+        // 检查是否是直接的枚举类型（如 MobDifficultyFlag）
+        // LogUtils.logInfo(`  🔍 检查是否是直接枚举类型: ${type}`);
+        if (this.isEnumType(type)) {
+          const result = `${type}Schema`;
+          // LogUtils.logInfo(`  ✅ 直接枚举类型结果: ${result}`);
+          return result;
+        } else {
+          // LogUtils.logInfo(`  ❌ 不是直接枚举类型: ${type}`);
+        }
+        
+        // 检查是否是关联类型（如 armorTocrystal, avatarTocharacter 等）
+        if (this.isRelationType(type)) {
+          const result = `${type.toLowerCase()}Schema`;
+          // LogUtils.logInfo(`  ✅ 关联类型结果: ${result}`);
+          return result;
+        }
+        
         // 检查是否是字面量类型
         if (type.startsWith('"') && type.endsWith('"')) {
-          return `z.literal(${type})`;
+          // LogUtils.logInfo(`  ✅ 检测到字面量类型: ${type}`);
+          const result = `z.literal(${type})`;
+          // LogUtils.logInfo(`  ✅ 字面量类型结果: ${result}`);
+          return result;
         }
+        
         // 对于未知类型，使用更安全的 JSON 类型
-        return `z.lazy(() => z.union([
+        // LogUtils.logInfo(`  ⚠️  未知类型，使用通用JSON类型: ${type}`);
+        const result = `z.lazy(() => z.union([
           z.string(),
           z.number(),
           z.boolean(),
@@ -722,6 +859,8 @@ ${generatedSchemas}
           z.record(z.lazy(() => z.union([z.any(), z.literal(null)]))),
           z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
         ]))`;
+        // LogUtils.logInfo(`  ✅ 通用JSON类型结果: ${result}`);
+        return result;
     }
   }
 
@@ -761,10 +900,7 @@ ${generatedSchemas}
       if (
         typeName === "Generated" ||
         typeName === "Timestamp" ||
-        typeName.includes("Relation") ||
-        typeName.includes("To") ||
-        typeName.includes("_create_data") ||
-        typeName.includes("_update_data")
+        typeName === "DB"
       ) {
         continue;
       }

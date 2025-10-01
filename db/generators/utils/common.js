@@ -228,6 +228,14 @@ export const LogUtils = {
   },
 
   /**
+   * 打印信息
+   * @param {string} message - 信息消息
+   */
+  logInfo: (message) => {
+    console.log(`ℹ️  ${message}`);
+  },
+
+  /**
    * 打印成功信息
    * @param {string} message - 成功消息
    */

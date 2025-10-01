@@ -2,12 +2,14 @@ import { ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } fr
 import { getDB } from "./database";
 import { character, DB, mercenary, player } from "../generated/kysely/kyesely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { characterSubRelations } from "./character";
+import { CharacterRelationsSchema, characterSubRelations } from "./character";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createCharacter } from "./character";
 import { createPlayer } from "./player";
 import { store } from "~/store";
+import { z } from "zod/v3";
+import { mercenarySchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Mercenary = Selectable<mercenary>;
@@ -15,6 +17,10 @@ export type MercenaryInsert = Insertable<mercenary>;
 export type MercenaryUpdate = Updateable<mercenary>;
 // 关联查询类型
 export type MercenaryWithRelations = Awaited<ReturnType<typeof findMercenaryWithRelations>>;
+export const MercenaryRelationsSchema = z.object({
+  ...mercenarySchema.shape,
+  template: CharacterRelationsSchema,
+});
 
 // 2. 关联查询定义
 export function mercenarySubRelations(eb: ExpressionBuilder<DB, "mercenary">) {

@@ -4,12 +4,21 @@ import { DB, character } from "../generated/kysely/kyesely";
 import { createStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { comboSubRelations } from "./combo";
-import { playerWeaponSubRelations } from "./playerWeapon";
-import { playerArmorSubRelations } from "./playerArmor";
-import { playerOptionSubRelations } from "./playerOption";
-import { playerSpecialSubRelations } from "./playerSpecial";
+import { PlayerWeaponRelationsSchema, playerWeaponSubRelations } from "./playerWeapon";
+import { PlayerArmorRelationsSchema, playerArmorSubRelations } from "./playerArmor";
+import { PlayerOptionRelationsSchema, playerOptionSubRelations } from "./playerOption";
+import { PlayerSpecialRelationsSchema, playerSpecialSubRelations } from "./playerSpecial";
 import { createId } from "@paralleldrive/cuid2";
 import { character_skillSubRelations } from "./characterSkill";
+import { z } from "zod/v3";
+import {
+  avatarSchema,
+  characterSchema,
+  consumableSchema,
+  comboSchema,
+  character_skillSchema,
+  statisticSchema,
+} from "@db/generated/zod";
 
 // 1. 类型定义
 export type Character = Selectable<character>;
@@ -17,6 +26,19 @@ export type CharacterInsert = Insertable<character>;
 export type CharacterUpdate = Updateable<character>;
 // 关联查询类型
 export type CharacterWithRelations = Awaited<ReturnType<typeof findCharacterWithRelations>>;
+export const CharacterRelationsSchema = z.object({
+  ...characterSchema.shape,
+  avatars: z.array(avatarSchema),
+  consumables: z.array(consumableSchema),
+  combos: z.array(comboSchema),
+  skills: z.array(character_skillSchema),
+  weapon: PlayerWeaponRelationsSchema,
+  subWeapon: PlayerWeaponRelationsSchema,
+  armor: PlayerArmorRelationsSchema,
+  optEquip: PlayerOptionRelationsSchema,
+  speEquip: PlayerSpecialRelationsSchema,
+  statistic: statisticSchema,
+});
 
 // 2. 关联查询定义
 export function characterSubRelations(eb: ExpressionBuilder<DB, "character">, id: Expression<string>) {

@@ -4,6 +4,9 @@ import { DB, player_armor } from "../generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { player_armorSchema } from "@db/generated/zod";
+import { CrystalRelationsSchema } from "./crystal";
 
 // 1. 类型定义
 export type PlayerArmor = Selectable<player_armor>;
@@ -11,6 +14,10 @@ export type PlayerArmorInsert = Insertable<player_armor>;
 export type PlayerArmorUpdate = Updateable<player_armor>;
 // 关联查询类型
 export type PlayerArmorWithRelations = Awaited<ReturnType<typeof findPlayerArmorWithRelations>>;
+export const PlayerArmorRelationsSchema = z.object({
+  ...player_armorSchema.shape,
+  crystalList: z.array(CrystalRelationsSchema),
+});
 
 // 2. 关联查询定义
 export function playerArmorSubRelations(eb: ExpressionBuilder<DB, "player_armor">, id: Expression<string>) {

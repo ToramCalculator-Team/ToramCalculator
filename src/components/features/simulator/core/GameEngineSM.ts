@@ -1,17 +1,59 @@
 import { setup, createMachine } from "xstate";
 import GameEngine from "./GameEngine";
-import { SimulatorWithRelations } from "@db/repositories/simulator";
+import { SimulatorRelationsSchema } from "@db/repositories/simulator";
+import { z } from "zod/v3";
+
+export const EngineCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("INIT"),
+    data: SimulatorRelationsSchema,
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("START"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("PAUSE"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("RESUME"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("STOP"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("RESET"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("STEP"),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+  z.object({
+    type: z.literal("RESULT"),
+    command: z.string(),
+    success: z.boolean(),
+    error: z.string().optional(),
+    origin: z.enum(["source", "mirror"]).optional(),
+  }),
+]);
+
+export type EngineCommand = z.infer<typeof EngineCommandSchema>;
 
 // 指令事件类型
-export type EngineCommand = 
-  | { type: "INIT"; data: SimulatorWithRelations; origin?: "source" | "mirror" }
-  | { type: "START"; origin?: "source" | "mirror" }
-  | { type: "PAUSE"; origin?: "source" | "mirror" }
-  | { type: "RESUME"; origin?: "source" | "mirror" }
-  | { type: "STOP"; origin?: "source" | "mirror" }
-  | { type: "RESET"; origin?: "source" | "mirror" }
-  | { type: "STEP"; origin?: "source" | "mirror" }
-  | { type: "RESULT"; command: string; success: boolean; error?: string; origin?: "source" | "mirror" };
+// export type EngineCommand = 
+//   | { type: "INIT"; data: SimulatorWithRelations; origin?: "source" | "mirror" }
+//   | { type: "START"; origin?: "source" | "mirror" }
+//   | { type: "PAUSE"; origin?: "source" | "mirror" }
+//   | { type: "RESUME"; origin?: "source" | "mirror" }
+//   | { type: "STOP"; origin?: "source" | "mirror" }
+//   | { type: "RESET"; origin?: "source" | "mirror" }
+//   | { type: "STEP"; origin?: "source" | "mirror" }
+//   | { type: "RESULT"; command: string; success: boolean; error?: string; origin?: "source" | "mirror" };
 
 type Command = EngineCommand;
 

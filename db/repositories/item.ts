@@ -6,6 +6,8 @@ import { getDB } from "./database";
 import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
+import { z } from "zod/v3";
+import { itemSchema, statisticSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Item = Selectable<item>;
@@ -13,6 +15,10 @@ export type ItemInsert = Insertable<item>;
 export type ItemUpdate = Updateable<item>;
 // 关联查询类型
 export type ItemWithRelations = Awaited<ReturnType<typeof findItemWithRelations>>;
+export const ItemRelationsSchema = z.object({
+  ...itemSchema.shape,
+  statistic: statisticSchema,
+});
 
 // 2. 关联查询定义
 export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
@@ -55,28 +61,16 @@ export function itemSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expressi
 // 3. 基础 CRUD 方法
 export async function findItemById(id: string): Promise<Item | null> {
   const db = await getDB();
-  return await db
-    .selectFrom("item")
-    .where("id", "=", id)
-    .selectAll("item")
-    .executeTakeFirst() || null;
+  return (await db.selectFrom("item").where("id", "=", id).selectAll("item").executeTakeFirst()) || null;
 }
 
 export async function findItems(params: { type: item["itemType"] }): Promise<Item[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("item")
-    .where("itemType", "=", params.type)
-    .selectAll("item")
-    .execute();
+  return await db.selectFrom("item").where("itemType", "=", params.type).selectAll("item").execute();
 }
 
 export async function insertItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
-  return await trx
-    .insertInto("item")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("item").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
@@ -96,20 +90,11 @@ export async function createItem(trx: Transaction<DB>, data: ItemInsert): Promis
 }
 
 export async function updateItem(trx: Transaction<DB>, id: string, data: ItemUpdate): Promise<Item> {
-  return await trx
-    .updateTable("item")
-    .set(data)
-    .where("item.id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.updateTable("item").set(data).where("item.id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteItem(trx: Transaction<DB>, id: string): Promise<Item | null> {
-  return await trx
-    .deleteFrom("item")
-    .where("item.id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法

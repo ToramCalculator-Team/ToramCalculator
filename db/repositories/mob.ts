@@ -12,6 +12,12 @@ export type MobInsert = Insertable<mob>;
 export type MobUpdate = Updateable<mob>;
 // 关联查询类型
 export type MobWithRelations = Awaited<ReturnType<typeof findMobWithRelations>>;
+export const MobRelationsSchema = z.object({
+  ...mobSchema.shape,
+  belongToZones: z.array(zoneSchema),
+  dropItems: z.array(drop_itemSchema),
+  statistic: statisticSchema,
+});
 
 // 1. 定义一个映射表：每一项都包含字段名、builder 函数 和 对应的 Zod schema
 const mobSubRelationDefs = {
@@ -64,36 +70,21 @@ export const mobCardSchema = mobSchema.extend(subRelationZodShape);
 // 3. 基础 CRUD 方法
 export async function findMobById(id: string): Promise<Mob | null> {
   const db = await getDB();
-  return await db
-    .selectFrom("mob")
-    .where("id", "=", id)
-    .selectAll("mob")
-    .executeTakeFirst() || null;
+  return (await db.selectFrom("mob").where("id", "=", id).selectAll("mob").executeTakeFirst()) || null;
 }
 
 export async function findMobs(): Promise<Mob[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("mob")
-    .selectAll("mob")
-    .execute();
+  return await db.selectFrom("mob").selectAll("mob").execute();
 }
 
 export async function findMobsLike(searchString: string): Promise<Mob[]> {
   const db = await getDB();
-  return await db
-    .selectFrom("mob")
-    .where("name", "like", `%${searchString}%`)
-    .selectAll("mob")
-    .execute();
+  return await db.selectFrom("mob").where("name", "like", `%${searchString}%`).selectAll("mob").execute();
 }
 
 export async function insertMob(trx: Transaction<DB>, data: MobInsert): Promise<Mob> {
-  return await trx
-    .insertInto("mob")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("mob").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createMob(trx: Transaction<DB>, data: MobInsert): Promise<Mob> {
@@ -109,32 +100,23 @@ export async function createMob(trx: Transaction<DB>, data: MobInsert): Promise<
     })
     .returningAll()
     .executeTakeFirstOrThrow();
-  
+
   // 2. 创建 mob 记录（复用 insertMob）
   const mob = await insertMob(trx, {
     ...data,
     id: data.id || createId(),
     statisticId: statistic.id,
   });
-  
+
   return mob;
 }
 
 export async function updateMob(trx: Transaction<DB>, id: string, data: MobUpdate): Promise<Mob> {
-  return await trx
-    .updateTable("mob")
-    .set(data)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.updateTable("mob").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteMob(trx: Transaction<DB>, id: string): Promise<Mob | null> {
-  return await trx
-    .deleteFrom("mob")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("mob").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法

@@ -2,13 +2,14 @@
 
 import { SimulatorWithRelations } from "@db/repositories/simulator";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { PoolConfig, WorkerPool, WorkerWrapper } from "./WorkerPool";
-import { IntentMessage } from "../MessageRouter";
+import { PoolConfig, WorkerPool, WorkerWrapper } from "../../../../../lib/WorkerPool/WorkerPool";
+import { IntentMessage, IntentMessageSchema } from "../MessageRouter";
 import { MemberSerializeData } from "../member/Member";
 import { EngineStats } from "../GameEngine";
-import { EngineCommand } from "../GameEngineSM";
+import { EngineCommand, EngineCommandSchema } from "../GameEngineSM";
 import { RendererCmd } from "../../render/RendererProtocol";
 import { Result, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+import { z } from "zod/v3";
 
 /**
  * 通用任务优先级
@@ -19,14 +20,33 @@ export type SimulatorTaskPriority = (typeof SimulatorTaskPriority)[number];
 // ==================== 数据查询命令 ====================
 
 /**
+ * 数据查询命令 Schema
+ */
+export const DataQueryCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("get_members"),
+  }),
+  z.object({
+    type: z.literal("get_stats"),
+  }),
+  z.object({
+    type: z.literal("get_snapshot"),
+  }),
+  z.object({
+    type: z.literal("get_member_state"),
+    memberId: z.string(),
+  }),
+  z.object({
+    type: z.literal("send_intent"),
+    intent: IntentMessageSchema,
+  }),
+]);
+
+/**
  * 数据查询命令类型
  */
-export type DataQueryCommand =
-  | { type: "get_members" }
-  | { type: "get_stats" }
-  | { type: "get_snapshot" }
-  | { type: "get_member_state"; memberId: string }
-  | { type: "send_intent"; intent: IntentMessage };
+export type DataQueryCommand = z.infer<typeof DataQueryCommandSchema>;
+
 
 // ==================== 渲染指令类型 ====================
 
@@ -95,20 +115,16 @@ export class SimulatorPool extends WorkerPool<
           else if (type === "render_cmd") {
             this.emit("render_cmd", { workerId: data.worker.id, event: eventData });
           }
+          // 引擎状态机消息 - 镜像通信
+          else if (type === "engine_state_machine") {
+            this.emit("engine_state_machine", { workerId: data.worker.id, event: eventData });
+          }
         }
         // 其他消息（如任务结果）不需要特殊处理，由 WorkerPool 处理
       },
     );
   }
 
-  /**
-   * 发送引擎状态机命令
-   * 
-   * @returns Promise<Result<void>> - 状态机命令不返回数据，只返回成功/失败状态
-   */
-  async sendEngineCommand(command: EngineCommand): Promise<Result<void>> {
-    return this.executeTask("engine_command", command, "high");
-  }
 
   /**
    * 发送意图消息

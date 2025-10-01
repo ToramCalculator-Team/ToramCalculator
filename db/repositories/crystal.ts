@@ -4,8 +4,10 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystal, DB, item, recipe, recipe_ingredient } from "../generated/kysely/kyesely";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
-import { createItem } from "./item";
+import { createItem, ItemRelationsSchema } from "./item";
 import { store } from "~/store";
+import { z } from "zod/v3";
+import { crystalSchema, itemSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Crystal = Selectable<crystal>;
@@ -13,6 +15,11 @@ export type CrystalInsert = Insertable<crystal>;
 export type CrystalUpdate = Updateable<crystal>;
 // 关联查询类型
 export type CrystalWithRelations = Awaited<ReturnType<typeof findCrystalWithRelations>>;
+export const CrystalRelationsSchema = z.object({
+  ...crystalSchema.shape,
+  backs: z.array(itemSchema),
+  fronts: z.array(itemSchema)
+});
 
 // 2. 关联查询定义
 export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {

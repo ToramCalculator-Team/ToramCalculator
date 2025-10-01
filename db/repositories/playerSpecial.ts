@@ -4,6 +4,9 @@ import { DB, player_special } from "../generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { player_specialSchema } from "@db/generated/zod";
+import { CrystalRelationsSchema } from "./crystal";
 
 // 1. 类型定义
 export type PlayerSpecial = Selectable<player_special>;
@@ -11,6 +14,10 @@ export type PlayerSpecialInsert = Insertable<player_special>;
 export type PlayerSpecialUpdate = Updateable<player_special>;
 // 关联查询类型
 export type PlayerSpecialWithRelations = Awaited<ReturnType<typeof findPlayerSpecialWithRelations>>;
+export const PlayerSpecialRelationsSchema = z.object({
+  ...player_specialSchema.shape,
+  crystalList: z.array(CrystalRelationsSchema),
+});
 
 // 2. 关联查询定义
 export function playerSpecialSubRelations(eb: ExpressionBuilder<DB, "player_special">, id: Expression<string>) {

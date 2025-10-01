@@ -2,9 +2,12 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, player_weapon } from "../generated/kysely/kyesely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { crystalSubRelations } from "./crystal";
+import { CrystalRelationsSchema, crystalSubRelations } from "./crystal";
 import { weaponSubRelations } from "./weapon";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { player_weaponSchema } from "@db/generated/zod";
+import { crystalSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type PlayerWeapon = Selectable<player_weapon>;
@@ -12,6 +15,10 @@ export type PlayerWeaponInsert = Insertable<player_weapon>;
 export type PlayerWeaponUpdate = Updateable<player_weapon>;
 // 关联查询类型
 export type PlayerWeaponWithRelations = Awaited<ReturnType<typeof findPlayerWeaponWithRelations>>;
+export const PlayerWeaponRelationsSchema = z.object({
+  ...player_weaponSchema.shape,
+  crystalList: z.array(CrystalRelationsSchema),
+});
 
 // 2. 关联查询定义
 export function playerWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {

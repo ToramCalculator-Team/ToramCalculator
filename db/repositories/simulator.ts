@@ -3,8 +3,10 @@ import { getDB } from "./database";
 import { DB, simulator } from "../generated/kysely/kyesely";
 import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { teamSubRelations } from "./team";
+import { TeamRelationsSchema, teamSubRelations } from "./team";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { simulatorSchema, statisticSchema, teamSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Simulator = Selectable<simulator>;
@@ -12,6 +14,12 @@ export type SimulatorInsert = Insertable<simulator>;
 export type SimulatorUpdate = Updateable<simulator>;
 // 关联查询类型
 export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorWithRelations>>;
+export const SimulatorRelationsSchema = z.object({
+  ...simulatorSchema.shape,
+  statistic: statisticSchema,
+  campA: z.array(TeamRelationsSchema),
+  campB: z.array(TeamRelationsSchema),
+});
 
 // 2. 关联查询定义
 export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {

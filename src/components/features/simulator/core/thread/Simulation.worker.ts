@@ -7,11 +7,10 @@ import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../G
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "../MessageRouter";
 
-import { prepareForTransfer, sanitizeForPostMessage } from "./MessageSerializer";
+import { prepareForTransfer, sanitizeForPostMessage } from "../../../../../lib/WorkerPool/MessageSerializer";
 import { createActor } from "xstate";
-import { gameEngineSM, type EngineCommand } from "../GameEngineSM";
-import { DataQueryCommand, SimulatorTaskMap, SimulatorTaskTypeMapValue, SimulatorTaskPriority } from "./SimulatorPool";
-import { isStateMachineCommand, isDataQueryCommand } from "./messages";
+import { gameEngineSM, type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import { DataQueryCommand, SimulatorTaskMap, SimulatorTaskTypeMapValue, SimulatorTaskPriority, DataQueryCommandSchema } from "./SimulatorPool";
 import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 
 // ==================== 沙盒环境初始化 ====================
@@ -184,15 +183,20 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 
             let portResult: { success: boolean; data?: any; error?: string };
 
-            // 使用类型守卫分离处理逻辑
-            if (isStateMachineCommand(payload)) {
+            // 使用 Zod Schema 验证命令类型
+            const engineCommandResult = EngineCommandSchema.safeParse(payload);
+              const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
+            if (engineCommandResult.success) {
               // 状态机命令直接转发给引擎
-              gameEngine.sendCommand(payload);
+              gameEngine.sendCommand(engineCommandResult.data);
               portResult = { success: true };
-            } else if (isDataQueryCommand(payload)) {
+            } else if(dataQueryResult.success) {
               // 数据查询命令处理
-              portResult = await handleDataQuery(payload);
+              portResult = await handleDataQuery(dataQueryResult.data);
             } else {
+              console.error(payload)
+              console.error(engineCommandResult.error)
+              console.error(dataQueryResult.error)
               throw new Error(`未知命令类型: ${(payload as any)?.type || 'undefined'}`);
             }
 

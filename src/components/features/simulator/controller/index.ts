@@ -3,7 +3,6 @@
  * 
  * 只保留核心功能：
  * - 简化的控制器
- * - 简化的通信层
  * - UI组件
  */
 
@@ -11,11 +10,6 @@
 export {
   Controller,
 } from "./controller";
-
-// 简化的通信层
-export {
-  ControllerInputCommunication,
-} from "./communication";
 
 // UI组件
 export {

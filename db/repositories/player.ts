@@ -1,9 +1,11 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, player } from "../generated/kysely/kyesely";
-import { characterSubRelations } from "./character";
+import { CharacterRelationsSchema, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { playerSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type Player = Selectable<player>;
@@ -11,6 +13,10 @@ export type PlayerInsert = Insertable<player>;
 export type PlayerUpdate = Updateable<player>;
 // 关联查询类型
 export type PlayerWithRelations = Awaited<ReturnType<typeof findPlayerWithRelations>>;
+export const PlayerRelationsSchema = z.object({
+  ...playerSchema.shape,
+  character: CharacterRelationsSchema,
+});
 
 // 2. 关联查询定义
 export function playerSubRelations(eb: ExpressionBuilder<DB, "player">, id: Expression<string>) {

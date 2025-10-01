@@ -97,7 +97,7 @@ export interface WorkerMessage<TPayload, TPriority extends string> {
  * Worker系统消息Schema - 用于解析系统消息
  */
 export const WorkerSystemMessageSchema = z.object({
-    type: z.enum(["system_event", "frame_snapshot", "render_cmd"]),
+    type: z.enum(["system_event", "frame_snapshot", "render_cmd", "engine_state_machine"]),
     data: z.any(),
     taskId: z.string().optional(),
   });

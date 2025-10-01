@@ -7,16 +7,17 @@
  * 3. 简化通信 - 统一通过状态机处理
  */
 
-import { createSignal, onCleanup } from "solid-js";
-import { controllerInputCommunication } from "./communication";
+import { createSignal } from "solid-js";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
 import { findSimulatorWithRelations } from "@db/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
-import { EngineView, FrameSnapshot } from "../core/GameEngine";
+import { FrameSnapshot } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
 import { gameEngineSM, type EngineCommand } from "../core/GameEngineSM";
-import { type WorkerMessageEvent } from "../core/thread/messages";
-import { type WorkerWrapper } from "../core/thread/WorkerPool";
+import { type WorkerMessageEvent } from "~/lib/WorkerPool/type";
+import { type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
+import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import { IntentMessage } from "../core/MessageRouter";
 
 export class Controller {
   // ==================== 核心状态机 ====================
@@ -42,12 +43,12 @@ export class Controller {
   // ==================== 构造函数 - 简化初始化 ====================
 
   constructor() {
-    // 创建状态机，包含所有通信逻辑
+    // 创建状态机，直接使用 SimulatorPool
     this.engineActor = createActor(gameEngineSM, {
       input: {
         mirror: {
           send: (msg: EngineCommand) => {
-            controllerInputCommunication.sendEngineCommand(msg).catch((error) => {
+            realtimeSimulatorPool.executeTask("engine_command", msg, "high").catch((error) => {
               console.error("Controller: 发送引擎命令失败:", error);
             });
           },
@@ -101,86 +102,90 @@ export class Controller {
     const sourceMemberId = this.selectedMemberId[0]();
     if (!sourceMemberId) return;
 
-    await controllerInputCommunication.selectTarget(sourceMemberId, targetMemberId);
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "切换目标",
+      targetMemberId: sourceMemberId,
+      data: { targetId: targetMemberId }
+    };
+    await realtimeSimulatorPool.sendIntent(intent);
   }
 
   async castSkill(skillId: string) {
     const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
 
-    await controllerInputCommunication.castSkill(memberId, skillId);
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "使用技能",
+      targetMemberId: memberId,
+      data: { skillId }
+    };
+    await realtimeSimulatorPool.sendIntent(intent);
   }
 
   async moveMember(x: number, y: number) {
     const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
 
-    await controllerInputCommunication.moveMember(memberId, x, y);
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "移动",
+      targetMemberId: memberId,
+      data: { position: { x, y } }
+    };
+    await realtimeSimulatorPool.sendIntent(intent);
   }
 
   async stopMemberAction() {
     const memberId = this.selectedMemberId[0]();
     if (!memberId) return;
 
-    await controllerInputCommunication.stopMemberAction(memberId);
+    const intent: IntentMessage = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type: "停止移动",
+      targetMemberId: memberId,
+      data: {}
+    };
+    await realtimeSimulatorPool.sendIntent(intent);
   }
 
   // ==================== 数据同步设置 ====================
 
   private setupDataSync() {
-    // 设置来自Worker的消息监听
-    controllerInputCommunication.on("worker-message", this.handleWorkerMessage.bind(this));
+    // 监听 SimulatorPool 分发的业务消息
+    realtimeSimulatorPool.on("engine_state_machine", (data: { workerId: string; event: any }) => {
+      // 转发状态机消息 - data.event 应该是 EngineCommand
+      if (data.event && typeof data.event === "object" && "type" in data.event) {
+        this.engineActor.send(data.event as EngineCommand);
+      }
+    });
+
+    realtimeSimulatorPool.on("frame_snapshot", (data: { workerId: string; event: any }) => {
+      // 更新引擎视图数据
+      if (data.event && typeof data.event === "object" && "frameNumber" in data.event) {
+        this.engineView[1](data.event as FrameSnapshot);
+      }
+    });
+
+    realtimeSimulatorPool.on("system_event", (data: { workerId: string; event: any }) => {
+      // 更新引擎统计数据
+      this.engineStats[1](data.event);
+    });
+
+    realtimeSimulatorPool.on("render_cmd", (data: { workerId: string; event: any }) => {
+      // 渲染命令由 UI 层处理，这里可以忽略或转发
+      console.log("Controller: 收到渲染命令:", data.event);
+    });
 
     // 自动初始化引擎
     this.autoInitializeEngine();
   }
 
-  private handleWorkerMessage(message: { worker: WorkerWrapper; event: WorkerMessageEvent }) {
-    // message 结构: { worker, event: { type, data, ... } }
-    const event = message?.event;
-    if (!event) {
-      console.warn("Controller: 消息格式无效:", message);
-      return;
-    }
-
-    const { type, data } = event;
-
-    // 忽略没有type的消息（可能是任务完成消息）
-    if (!type) {
-      console.warn("Controller: 消息格式无效:", message);
-      return;
-    }
-
-    // 忽略渲染相关的消息
-    if (type.startsWith("render:") || type === "render_cmd") {
-      console.warn("Controller: 忽略渲染相关的消息:", message);
-      return;
-    }
-
-    switch (type) {
-      case "engine_state_machine":
-        // 转发状态机消息 - data 应该是 EngineCommand
-        if (data && typeof data === "object" && "type" in data) {
-          this.engineActor.send(data as EngineCommand);
-        }
-        break;
-
-      case "frame_snapshot":
-        // 更新引擎视图数据 - data 应该是 FrameSnapshot
-        if (data && typeof data === "object" && "frameNumber" in data) {
-          this.engineView[1](data as FrameSnapshot);
-        }
-        break;
-
-      case "system_event":
-        // 更新引擎统计数据 - data 应该是 EngineStats
-        this.engineStats[1](data);
-        break;
-
-      default:
-        console.warn("Controller: 未知消息类型:", type);
-    }
-  }
 
   // 自动初始化引擎
   private async autoInitializeEngine() {
@@ -192,7 +197,18 @@ export class Controller {
       }
 
       // 2. 通过状态机进入ready状态（包含数据）
-      this.engineActor.send({ type: "INIT", data: simulatorData });
+      this.engineActor.send({ 
+        type: "INIT", 
+        data: {
+          ...simulatorData,
+          statistic: {
+            ...simulatorData.statistic,
+            usageTimestamps: simulatorData.statistic.usageTimestamps as unknown as Date[],
+            viewTimestamps: simulatorData.statistic.viewTimestamps as unknown as Date[]
+          }
+        } as any,
+        origin: "source"
+      });
 
       // 3. 等待一下让状态机处理
       await waitFor(this.engineActor, (state) => state.matches("ready"), { timeout: 5000 });
@@ -247,14 +263,14 @@ export class Controller {
   }
 
   getConnectionStatus(): boolean {
-    return controllerInputCommunication.isReady();
+    return realtimeSimulatorPool.isReady();
   }
 
   // ==================== 数据刷新方法 ====================
 
   private async refreshMembers() {
     try {
-      const result = await controllerInputCommunication.getMembers();
+      const result = await realtimeSimulatorPool.getMembers();
 
       if (Array.isArray(result)) {
         const validMembers = result.filter(
