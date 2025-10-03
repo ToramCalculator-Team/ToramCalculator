@@ -25,6 +25,8 @@ pnpm-lock.yaml
 
 # Temp
 gitignore
+db/temp_server_schema.prisma
+db/temp_client_schema.prisma
 
 # Build artifacts
 public/chunk-manifest.json

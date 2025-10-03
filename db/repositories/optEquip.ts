@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations } from "./crystal";
-import { DB, option, item } from "../generated/kysely/kyesely";
+import { DB, option, item } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";

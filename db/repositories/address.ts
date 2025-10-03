@@ -1,36 +1,61 @@
-import { DB, address } from "../generated/kysely/kyesely";
+import { DB, address } from "../generated/kysely/kysely";
 import { getDB } from "./database";
 import { createId } from "@paralleldrive/cuid2";
 import { Transaction, Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { jsonObjectFrom, jsonArrayFrom } from "kysely/helpers/postgres";
+import { addressSchema, worldSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Address = Selectable<address>;
 export type AddressInsert = Insertable<address>;
 export type AddressUpdate = Updateable<address>;
-// 关联查询类型
-export type AddressWithRelations = Awaited<ReturnType<typeof findAddressWithRelations>>;
 
-// 2. 关联查询定义
-export function addressSubRelations(eb: ExpressionBuilder<DB, "address">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb.selectFrom("world")
-        .where("world.id", "=", eb.ref("address.worldId"))
-        .selectAll("world")
-    ).as("world"),
-    jsonObjectFrom(
-      eb.selectFrom("statistic")
-        .where("statistic.id", "=", eb.ref("address.statisticId"))
-        .selectAll("statistic")
-    ).as("statistic"),
-    jsonArrayFrom(
-      eb.selectFrom("zone")
-        .where("zone.addressId", "=", id)
-        .selectAll("zone")
-    ).as("zones"),
-  ];
-}
+// 子关系定义
+const addressSubRelationDefs = defineRelations({
+  world: {
+    build: (eb, id) =>
+      jsonObjectFrom(
+        eb.selectFrom("world")
+          .where("world.id", "=", eb.ref("address.worldId"))
+          .selectAll("world")
+      ).as("world"),
+    schema: worldSchema.describe("所属世界"),
+  },
+  statistic: {
+    build: (eb, id) =>
+      jsonObjectFrom(
+        eb.selectFrom("statistic")
+          .where("statistic.id", "=", eb.ref("address.statisticId"))
+          .selectAll("statistic")
+      ).as("statistic"),
+    schema: statisticSchema.describe("统计信息"),
+  },
+  zones: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb.selectFrom("zone")
+          .where("zone.addressId", "=", id)
+          .selectAll("zone")
+      ).as("zones"),
+    schema: z.array(zoneSchema).describe("所属区域列表"),
+  },
+});
+
+// 生成 factory
+export const addressRelationsFactory = makeRelations<"address", typeof addressSubRelationDefs>(
+  addressSubRelationDefs
+);
+
+// 构造关系Schema
+export const AddressWithRelationsSchema = z.object({
+  ...addressSchema.shape,
+  ...addressRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const addressSubRelations = addressRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findAddressById(id: string): Promise<Address | null> {
@@ -86,7 +111,7 @@ export async function deleteAddress(trx: Transaction<DB>, id: string): Promise<A
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findAddressWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -96,3 +121,6 @@ export async function findAddressWithRelations(id: string) {
     .select((eb) => addressSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type AddressWithRelations = Awaited<ReturnType<typeof findAddressWithRelations>>;

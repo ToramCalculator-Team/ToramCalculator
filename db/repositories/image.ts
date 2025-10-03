@@ -1,6 +1,6 @@
 import { Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, image } from "../generated/kysely/kyesely";
+import { DB, image } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 
 // 1. 类型定义

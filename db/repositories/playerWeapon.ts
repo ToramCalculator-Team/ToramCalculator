@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, player_weapon } from "../generated/kysely/kyesely";
+import { DB, player_weapon } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { CrystalRelationsSchema, crystalSubRelations } from "./crystal";
 import { weaponSubRelations } from "./weapon";

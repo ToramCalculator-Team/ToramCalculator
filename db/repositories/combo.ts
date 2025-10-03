@@ -1,8 +1,10 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, combo } from "../generated/kysely/kyesely";
+import { DB, combo } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { z } from "zod/v3";
+import { comboSchema, combo_stepSchema } from "../generated/zod";
 
 // 1. 类型定义
 export type Combo = Selectable<combo>;
@@ -10,6 +12,10 @@ export type ComboInsert = Insertable<combo>;
 export type ComboUpdate = Updateable<combo>;
 // 关联查询类型
 export type ComboWithRelations = Awaited<ReturnType<typeof findComboWithRelations>>;
+export const ComboRelationsSchema = z.object({
+  ...comboSchema.shape,
+  steps: z.array(combo_stepSchema),
+});
 
 // 2. 关联查询定义
 export function comboSubRelations(eb: ExpressionBuilder<DB, "combo">, id: Expression<string>) {

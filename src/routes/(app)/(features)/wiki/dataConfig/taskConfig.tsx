@@ -7,7 +7,7 @@ import {
   task_kill_requirementSchema,
   task_rewardSchema,
 } from "@db/generated/zod/index";
-import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "@db/generated/kysely/kyesely";
+import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
@@ -21,7 +21,7 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
-import { TaskRewardType } from "@db/generated/kysely/enums";
+import { TaskRewardType } from "@db/schema/enums";
 import { createStatistic } from "@db/repositories/statistic";
 import { store } from "~/store";
 import Icons from "~/components/icons/index";

@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "dev:init": "tsx db/generators/generator.js",
+    "dev:init": "tsx db/generators/main.ts",
     "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:restore",
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
@@ -30,11 +30,11 @@
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.2.1",
-    "prisma-kysely": "^1.8.0",
+    "prisma-kysely": "^2.2.1",
+    "prisma-zod-generator": "^1.26.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0",
-    "vite-plugin-top-level-await": "^1.5.0",
-    "zod-prisma-types": "latest"
+    "vite-plugin-top-level-await": "^1.5.0"
   },
   "dependencies": {
     "@auth/core": "^0.38.0",
@@ -51,6 +51,7 @@
     "@electric-sql/pglite": "latest",
     "@electric-sql/pglite-sync": "latest",
     "@paralleldrive/cuid2": "^2.2.2",
+    "@prisma/client": "6.16.3",
     "@query-builder/solid-query-builder": "^1.0.1",
     "@solid-primitives/scheduled": "^1.5.0",
     "@solidjs/meta": "^0.28.0",

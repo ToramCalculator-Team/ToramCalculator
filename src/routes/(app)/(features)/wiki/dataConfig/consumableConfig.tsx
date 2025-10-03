@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { consumableSchema } from "@db/generated/zod/index";
-import { DB, item, consumable } from "@db/generated/kysely/kyesely";
+import { DB, item, consumable } from "@db/generated/kysely/kysely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -29,7 +29,7 @@ import { CardSharedSection, getSpriteIcon } from "./utils";
 import pick from "lodash-es/pick";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { ConsumableType } from "@db/generated/kysely/enums";
+import { ConsumableType } from "@db/schema/enums";
 
 type ConsumableWithRelated = consumable & {};
 

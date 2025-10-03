@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, character } from "../generated/kysely/kyesely";
+import { DB, character } from "../generated/kysely/kysely";
 import { createStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { comboSubRelations } from "./combo";
@@ -19,6 +19,8 @@ import {
   character_skillSchema,
   statisticSchema,
 } from "@db/generated/zod";
+import { CharacterSkillRelationsSchema } from "./characterSkill";
+import { ComboRelationsSchema } from "./combo";
 
 // 1. 类型定义
 export type Character = Selectable<character>;
@@ -30,8 +32,8 @@ export const CharacterRelationsSchema = z.object({
   ...characterSchema.shape,
   avatars: z.array(avatarSchema),
   consumables: z.array(consumableSchema),
-  combos: z.array(comboSchema),
-  skills: z.array(character_skillSchema),
+  combos: z.array(ComboRelationsSchema),
+  skills: z.array(CharacterSkillRelationsSchema),
   weapon: PlayerWeaponRelationsSchema,
   subWeapon: PlayerWeaponRelationsSchema,
   armor: PlayerArmorRelationsSchema,

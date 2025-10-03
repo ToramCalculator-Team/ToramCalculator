@@ -1,5 +1,5 @@
 import { Transaction } from "kysely";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 import { getPrimaryKeys } from "@db/repositories/untils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";

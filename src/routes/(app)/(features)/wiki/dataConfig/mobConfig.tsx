@@ -4,7 +4,7 @@ import Icons from "~/components/icons/index";
 import { drop_itemSchema, mobSchema, zoneSchema } from "@db/generated/zod/index";
 import { Input } from "~/components/controls/input";
 import { z } from "zod";
-import { DB, drop_item, mob, zone } from "@db/generated/kysely/kyesely";
+import { DB, drop_item, mob, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { getDB } from "@db/repositories/database";
@@ -17,7 +17,7 @@ import {
   ElementType,
   BossPartType,
   BossPartBreakRewardType,
-} from "@db/generated/kysely/enums";
+} from "@db/schema/enums";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { CardSection } from "~/components/dataDisplay/cardSection";
 import { defaultData } from "@db/defaultData";

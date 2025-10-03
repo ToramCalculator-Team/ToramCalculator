@@ -4,7 +4,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { insertStatistic } from "./statistic";
 import { crystalSubRelations, insertCrystal } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
-import { special, crystal, DB, image, item, recipe, recipe_ingredient } from "../generated/kysely/kyesely";
+import { special, crystal, DB, image, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
 import { insertRecipe } from "./recipe";
 import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";

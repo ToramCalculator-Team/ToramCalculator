@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { weapon, crystal, DB, image, item, recipe, recipe_ingredient } from "../generated/kysely/kyesely";
+import { weapon, crystal, DB, image, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";

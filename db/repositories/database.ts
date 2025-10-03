@@ -1,5 +1,5 @@
 import { Kysely } from "kysely";
-import { DB } from "../generated/kysely/kyesely";
+import { DB } from "../generated/kysely/kysely";
 
 let cachedDB: Kysely<DB> | undefined;
 

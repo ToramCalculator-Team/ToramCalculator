@@ -24,7 +24,7 @@ import { Portal } from "solid-js/web";
 import { Sheet } from "~/components/containers/sheet";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { defaultData } from "@db/defaultData";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 import { dataDisplayConfig } from "./dataConfig/dataConfig";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { MediaContext } from "~/lib/contexts/Media";

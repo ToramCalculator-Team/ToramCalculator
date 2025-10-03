@@ -1,5 +1,5 @@
 import { getDB } from "./database";
-import { user, DB } from "../generated/kysely/kyesely";
+import { user, DB } from "../generated/kysely/kysely";
 import { Selectable, Insertable, Updateable } from "kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { Expression, ExpressionBuilder, Transaction } from "kysely";

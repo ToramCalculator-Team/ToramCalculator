@@ -1,29 +1,46 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, npc } from "../generated/kysely/kyesely";
+import { DB, npc } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { store } from "~/store";
+import { npcSchema, taskSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Npc = Selectable<npc>;
 export type NpcInsert = Insertable<npc>;
 export type NpcUpdate = Updateable<npc>;
-// 关联查询类型
-export type NpcWithRelations = Awaited<ReturnType<typeof findNpcWithRelations>>;
 
-// 2. 关联查询定义
-export function npcSubRelations(eb: ExpressionBuilder<DB, "npc">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("task")
-        .where("task.npcId", "=", id)
-        .selectAll("task")
-    ).as("tasks"),
-  ];
-}
+// 子关系定义
+const npcSubRelationDefs = defineRelations({
+  tasks: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("task")
+          .where("task.npcId", "=", id)
+          .selectAll("task")
+      ).as("tasks"),
+    schema: z.array(taskSchema).describe("任务列表"),
+  },
+});
+
+// 生成 factory
+export const npcRelationsFactory = makeRelations<"npc", typeof npcSubRelationDefs>(
+  npcSubRelationDefs
+);
+
+// 构造关系Schema
+export const NpcWithRelationsSchema = z.object({
+  ...npcSchema.shape,
+  ...npcRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const npcSubRelations = npcRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findNpcById(id: string): Promise<Npc | null> {
@@ -84,7 +101,7 @@ export async function deleteNpc(trx: Transaction<DB>, id: string): Promise<Npc |
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findNpcWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -94,3 +111,6 @@ export async function findNpcWithRelations(id: string) {
     .select((eb) => npcSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type NpcWithRelations = Awaited<ReturnType<typeof findNpcWithRelations>>;

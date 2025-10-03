@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, statistic } from "../generated/kysely/kyesely";
+import { DB, statistic } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 
 // 1. 类型定义

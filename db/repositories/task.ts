@@ -1,27 +1,44 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, task } from "../generated/kysely/kyesely";
+import { DB, task } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { taskSchema, task_rewardSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Task = Selectable<task>;
 export type TaskInsert = Insertable<task>;
 export type TaskUpdate = Updateable<task>;
-// 关联查询类型
-export type TaskWithRelations = Awaited<ReturnType<typeof findTaskWithRelations>>;
 
-// 2. 关联查询定义
-export function taskSubRelations(eb: ExpressionBuilder<DB, "task">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("task_reward")
-        .where("task_reward.taskId", "=", id)
-        .selectAll("task_reward")
-    ).as("rewards"),
-  ];
-}
+// 子关系定义
+const taskSubRelationDefs = defineRelations({
+  rewards: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("task_reward")
+          .where("task_reward.taskId", "=", id)
+          .selectAll("task_reward")
+      ).as("rewards"),
+    schema: z.array(task_rewardSchema).describe("任务奖励列表"),
+  },
+});
+
+// 生成 factory
+export const taskRelationsFactory = makeRelations<"task", typeof taskSubRelationDefs>(
+  taskSubRelationDefs
+);
+
+// 构造关系Schema
+export const TaskWithRelationsSchema = z.object({
+  ...taskSchema.shape,
+  ...taskRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const taskSubRelations = taskRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findTaskById(id: string): Promise<Task | null> {
@@ -80,7 +97,7 @@ export async function deleteTask(trx: Transaction<DB>, id: string): Promise<Task
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findTaskWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -90,3 +107,6 @@ export async function findTaskWithRelations(id: string) {
     .select((eb) => taskSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type TaskWithRelations = Awaited<ReturnType<typeof findTaskWithRelations>>;

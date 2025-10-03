@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { armorSchema } from "@db/generated/zod/index";
-import { DB, item, armor } from "@db/generated/kysely/kyesely";
+import { DB, item, armor } from "@db/generated/kysely/kysely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";

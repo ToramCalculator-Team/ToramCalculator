@@ -4,7 +4,7 @@ import { setStore, store } from "~/store";
 import Icons from "~/components/icons/index";
 import { Button  } from "~/components/controls/button";
 import { Motion, Presence } from "solid-motionone";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 
 export default function WikiPage(props: ParentProps) {
   // UI文本字典

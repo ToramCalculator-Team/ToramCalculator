@@ -1,7 +1,7 @@
 import { ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { character, DB, mercenary, player } from "../generated/kysely/kyesely";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { character, DB, mercenary, player } from "../generated/kysely/kysely";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { CharacterRelationsSchema, characterSubRelations } from "./character";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
@@ -25,13 +25,13 @@ export const MercenaryRelationsSchema = z.object({
 // 2. 关联查询定义
 export function mercenarySubRelations(eb: ExpressionBuilder<DB, "mercenary">) {
   return [
-    jsonArrayFrom(
+    jsonObjectFrom(
       eb
         .selectFrom("character")
         .whereRef("character.id", "=", "mercenary.templateId")
         .selectAll("character")
         .select((subEb) => characterSubRelations(subEb, subEb.val("character.id"))),
-    ).as("template"),
+    ).$notNull().as("template"),
   ];
 }
 

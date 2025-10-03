@@ -2,7 +2,7 @@ import { Accessor, createMemo, createResource, createSignal, For, JSX, Setter, S
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { addressSchema, zoneSchema } from "@db/generated/zod/index";
-import { address, DB, zone } from "@db/generated/kysely/kyesely";
+import { address, DB, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";

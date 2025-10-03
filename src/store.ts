@@ -1,8 +1,8 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
 import * as _ from "lodash-es";
-import { type DB } from "@db/generated/kysely/kyesely";
-import { AccountType } from "@db/generated/kysely/enums";
+import { type DB } from "@db/generated/kysely/kysely";
+import { AccountType } from "@db/schema/enums";
 
 export type DialogType = "form" | "card";
 

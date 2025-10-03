@@ -8,7 +8,7 @@ import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { MediaContext } from "~/lib/contexts/Media";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 
 const NavBtn = (props: {
   config: {

@@ -1,10 +1,13 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, skill } from "../generated/kysely/kyesely";
+import { DB, skill } from "../generated/kysely/kysely";
 import { insertStatistic, statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { skillEffectSubRelations } from "./skillEffect";
 import { createId } from "@paralleldrive/cuid2";
+import { z } from "zod/v3";
+import { skillSchema, statisticSchema } from "../generated/zod";
+import { SkillEffectRelationsSchema } from "./skillEffect";
 
 // 1. 类型定义
 export type Skill = Selectable<skill>;
@@ -12,6 +15,11 @@ export type SkillInsert = Insertable<skill>;
 export type SkillUpdate = Updateable<skill>;
 // 关联查询类型
 export type SkillWithRelations = Awaited<ReturnType<typeof findSkillWithRelations>>;
+export const SkillRelationsSchema = z.object({
+  ...skillSchema.shape,
+  effects: z.array(SkillEffectRelationsSchema),
+  statistic: statisticSchema,
+});
 
 // 2. 关联查询定义
 export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {

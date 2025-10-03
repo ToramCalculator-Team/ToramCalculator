@@ -1,5 +1,5 @@
 /**
- * @file config.js
+ * @file config.ts
  * @description 生成器配置文件
  * @version 1.0.0
  */
@@ -32,13 +32,13 @@ export const PATHS = {
     schemas: path.join(__dirname, "../../generated/zod/index.ts"),
   },
   kysely: {
-    types: path.join(__dirname, "../../generated/kysely/kyesely.ts"),
-    enums: path.join(__dirname, "../../generated/kysely/enums.ts"),
+    types: path.join(__dirname, "../../generated/kysely/kysely.ts"),
+    enums: path.join(__dirname, "../../schema/enums.ts"),
   },
   queryBuilder: {
     rules: path.join(__dirname, "../../generated/queryBuilderRules.ts"),
   },
-};
+} as const;
 
 /**
  * 生成器配置
@@ -57,4 +57,4 @@ export const GENERATOR_CONFIG = {
     path.dirname(PATHS.zod.schemas),
     path.dirname(PATHS.queryBuilder.rules),
   ],
-}; 
+};

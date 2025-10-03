@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { weaponSchema } from "@db/generated/zod/index";
-import { DB, item, weapon } from "@db/generated/kysely/kyesely";
+import { DB, item, weapon } from "@db/generated/kysely/kysely";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -25,7 +25,7 @@ import {
 } from "./item";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { ElementType, WeaponType } from "@db/generated/kysely/enums";
+import { ElementType, WeaponType } from "@db/schema/enums";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import pick from "lodash-es/pick";
 

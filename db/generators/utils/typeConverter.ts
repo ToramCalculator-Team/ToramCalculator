@@ -1,9 +1,22 @@
 /**
- * @file typeConverter.js
+ * @file typeConverter.ts
  * @description 类型转换器
  * 负责将 Prisma 类型转换为 QueryBuilder 和其他系统所需的类型
  * @version 1.0.0
  */
+
+interface Operator {
+  name: string;
+  value: string;
+  label: string;
+}
+
+interface TypeConfig {
+  valueEditorType: string;
+  inputType: string;
+  comparator: string;
+  operators: readonly Operator[];
+}
 
 /**
  * QueryBuilder 通用操作符配置
@@ -50,7 +63,7 @@ export const COMMON_OPERATORS = {
     { name: "in", value: "in", label: "In" },
     { name: "not_in", value: "not_in", label: "Not In" },
   ],
-};
+} as const;
 
 /**
  * 类型转换器
@@ -59,11 +72,11 @@ export const COMMON_OPERATORS = {
 export const TypeConverter = {
   /**
    * 将 Prisma 类型转换为 QueryBuilder 配置
-   * @param {string} prismaType - Prisma 类型
-   * @param {boolean} isOptional - 是否为可选字段
-   * @returns {Object} QueryBuilder 配置对象
+   * @param prismaType - Prisma 类型
+   * @param isOptional - 是否为可选字段
+   * @returns QueryBuilder 配置对象
    */
-  prismaToQueryBuilder: (prismaType, isOptional = false) => {
+  prismaToQueryBuilder: (prismaType: string, isOptional: boolean = false): TypeConfig => {
     const baseType = TypeConverter.extractBaseType(prismaType);
     
     // 枚举类型处理
@@ -127,7 +140,7 @@ export const TypeConverter = {
       case "DateTime":
         return {
           valueEditorType: "text",
-          inputType: "datetime-local",
+          inputType: "text",
           comparator: "date",
           operators: COMMON_OPERATORS.date,
         };
@@ -141,7 +154,6 @@ export const TypeConverter = {
         };
         
       default:
-        // 默认作为字符串处理
         return {
           valueEditorType: "text",
           inputType: "text",
@@ -150,85 +162,52 @@ export const TypeConverter = {
         };
     }
   },
-  
-  /**
-   * 检查是否为枚举类型
-   * @param {string} type - 类型字符串
-   * @returns {boolean} 是否为枚举类型
-   */
-  isEnumType: (type) => {
-    if (!type) return false;
-    return type.includes("Enum") || type.includes("enum");
-  },
-  
-  /**
-   * 检查是否为关系类型
-   * @param {string} type - 类型字符串
-   * @returns {boolean} 是否为关系类型
-   */
-  isRelationType: (type) => {
-    if (!type) return false;
-    return type.includes("Relation") || type.includes("relation");
-  },
-  
-  /**
-   * 检查是否为数组类型
-   * @param {string} type - 类型字符串
-   * @returns {boolean} 是否为数组类型
-   */
-  isArrayType: (type) => {
-    if (!type) return false;
-    return type.includes("[]") || type.includes("Array");
-  },
-  
+
   /**
    * 提取基础类型
-   * 移除可选标记、数组标记等，提取核心类型
-   * @param {string} type - 类型字符串
-   * @returns {string} 基础类型
+   * 从 Prisma 类型中提取基础类型名称
+   * @param prismaType - Prisma 类型
+   * @returns 基础类型名称
    */
-  extractBaseType: (type) => {
-    if (!type) return "String";
+  extractBaseType: (prismaType: string): string => {
+    // 移除可选标记
+    let type = prismaType.replace(/\?$/, "");
     
-    // 移除可选标记和数组标记
-    let baseType = type.replace(/\?$/, "").replace(/\[\]$/, "");
+    // 移除数组标记
+    type = type.replace(/\[\]$/, "");
     
-    // 如果是枚举类型，提取基础类型
-    if (baseType.includes("Enum")) {
-      return "Enum";
-    }
+    // 移除关系标记
+    type = type.replace(/\[\]$/, "");
     
-    // 如果是关系类型，返回 String
-    if (baseType.includes("Relation")) {
-      return "String";
-    }
-    
-    return baseType;
+    return type;
   },
-  
+
   /**
-   * 获取类型信息
-   * 返回类型的详细信息，包括是否为可选、数组等
-   * @param {string} type - 类型字符串
-   * @returns {Object} 类型信息对象
+   * 检查是否为枚举类型
+   * @param prismaType - Prisma 类型
+   * @returns 是否为枚举类型
    */
-  getTypeInfo: (type) => {
-    if (!type) {
-      return {
-        baseType: "String",
-        isOptional: false,
-        isArray: false,
-        isEnum: false,
-        isRelation: false,
-      };
-    }
-    
-    return {
-      baseType: TypeConverter.extractBaseType(type),
-      isOptional: type.includes("?"),
-      isArray: TypeConverter.isArrayType(type),
-      isEnum: TypeConverter.isEnumType(type),
-      isRelation: TypeConverter.isRelationType(type),
-    };
+  isEnumType: (prismaType: string): boolean => {
+    // 检查是否包含枚举类型标识
+    return /^[A-Z][a-zA-Z]*$/.test(prismaType.replace(/\?$/, "").replace(/\[\]$/, ""));
   },
-}; 
+
+  /**
+   * 检查是否为关系类型
+   * @param prismaType - Prisma 类型
+   * @returns 是否为关系类型
+   */
+  isRelationType: (prismaType: string): boolean => {
+    // 检查是否包含关系类型标识
+    return prismaType.includes("[]") && !prismaType.includes("String") && !prismaType.includes("Int");
+  },
+
+  /**
+   * 检查是否为数组类型
+   * @param prismaType - Prisma 类型
+   * @returns 是否为数组类型
+   */
+  isArrayType: (prismaType: string): boolean => {
+    return prismaType.endsWith("[]");
+  },
+};

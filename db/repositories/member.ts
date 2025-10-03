@@ -1,11 +1,11 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, member } from "../generated/kysely/kyesely";
+import { DB, member } from "../generated/kysely/kysely";
 import { PlayerRelationsSchema, playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { MercenaryRelationsSchema, mercenarySubRelations } from "./mercenary";
-import { MobRelationsSchema, mobSubRelations } from "./mob";
+import { MobWithRelationsSchema, mobSubRelations } from "./mob";
 import { memberSchema } from "@db/generated/zod";
 import { z } from "zod/v3";
 
@@ -20,7 +20,7 @@ export const MemberRelationsSchema = z.object({
   player: PlayerRelationsSchema.nullable(),
   mercenary: MercenaryRelationsSchema.nullable(),
   partner: MercenaryRelationsSchema.nullable(),
-  mob: MobRelationsSchema.nullable(),
+  mob: MobWithRelationsSchema.nullable(),
 });
 
 // 2. 关联查询定义

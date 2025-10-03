@@ -2,7 +2,7 @@ import { Accessor, createResource, createSignal, For, Index, JSX, Setter, Show }
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema, zoneSchema } from "@db/generated/zod/index";
-import { activity, DB, zone } from "@db/generated/kysely/kyesely";
+import { activity, DB, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";

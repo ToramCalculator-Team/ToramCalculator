@@ -1,37 +1,54 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable, Selectable } from "kysely";
 import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { account, DB } from "../generated/kysely/kyesely";
+import { account, DB } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
+import { accountSchema, account_create_dataSchema, account_update_dataSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Account = Selectable<account>;
 export type AccountInsert = Insertable<account>;
 export type AccountUpdate = Updateable<account>;
-// 关联查询类型
-export type AccountWithRelations = Awaited<ReturnType<typeof findAccountWithRelations>>;
 
-// 2. 关联查询定义
-export function accountSubRelations(eb: ExpressionBuilder<DB, "account">, accountId: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("account_create_data")
-        .where("account_create_data.accountId", "=", accountId)
-        .selectAll("account_create_data"),
-    )
-      .$notNull()
-      .as("create"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("account_update_data")
-        .where("account_update_data.accountId", "=", accountId)
-        .selectAll("account_update_data"),
-    )
-      .$notNull()
-      .as("update"),
-  ];
-}
+// 子关系定义
+const accountSubRelationDefs = defineRelations({
+  create: {
+    build: (eb, accountId) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("account_create_data")
+          .where("account_create_data.accountId", "=", accountId)
+          .selectAll("account_create_data")
+      ).$notNull().as("create"),
+    schema: account_create_dataSchema.describe("账户创建数据"),
+  },
+  update: {
+    build: (eb, accountId) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("account_update_data")
+          .where("account_update_data.accountId", "=", accountId)
+          .selectAll("account_update_data")
+      ).$notNull().as("update"),
+    schema: account_update_dataSchema.describe("账户更新数据"),
+  },
+});
+
+// 生成 factory
+export const accountRelationsFactory = makeRelations<"account", typeof accountSubRelationDefs>(
+  accountSubRelationDefs
+);
+
+// 构造关系Schema
+export const AccountWithRelationsSchema = z.object({
+  ...accountSchema.shape,
+  ...accountRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const accountSubRelations = accountRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findAccountById(id: string): Promise<Account | null> {
@@ -101,7 +118,7 @@ export async function deleteAccount(trx: Transaction<DB>, id: string): Promise<A
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findAccountWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -111,3 +128,6 @@ export async function findAccountWithRelations(id: string) {
     .select((eb) => accountSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type AccountWithRelations = Awaited<ReturnType<typeof findAccountWithRelations>>;

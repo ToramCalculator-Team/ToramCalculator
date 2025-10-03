@@ -1,5 +1,5 @@
 import { getDB } from "./database";
-import { activity, DB } from "../generated/kysely/kyesely";
+import { activity, DB } from "../generated/kysely/kysely";
 import { Selectable, Insertable, Updateable } from "kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";

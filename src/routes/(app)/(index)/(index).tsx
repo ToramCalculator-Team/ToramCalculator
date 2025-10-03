@@ -27,7 +27,7 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/type";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 import { MediaContext } from "~/lib/contexts/Media";
 import { setStore, store } from "~/store";
 import { LoginDialog } from "~/components/features/loginDialog";

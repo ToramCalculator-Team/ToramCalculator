@@ -1,4 +1,4 @@
-import { DB } from "./generated/kysely/kyesely";
+import { DB } from "./generated/kysely/kysely";
 
 export const defaultData: DB = {
   _armorTocrystal: {

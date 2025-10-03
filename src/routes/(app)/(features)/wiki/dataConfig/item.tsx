@@ -11,7 +11,7 @@ import {
   Setter,
   Show,
 } from "solid-js";
-import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "@db/generated/kysely/enums";
+import { BossPartBreakRewardType, BossPartType, ItemType, RecipeIngredientType } from "@db/schema/enums";
 import {
   DB,
   drop_item,
@@ -22,7 +22,7 @@ import {
   task,
   task_collect_require,
   task_reward,
-} from "@db/generated/kysely/kyesely";
+} from "@db/generated/kysely/kysely";
 import { CardSection } from "~/components/dataDisplay/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "@db/repositories/database";

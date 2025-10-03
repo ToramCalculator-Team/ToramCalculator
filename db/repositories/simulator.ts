@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, simulator } from "../generated/kysely/kyesely";
+import { DB, simulator } from "../generated/kysely/kysely";
 import { statisticSubRelations } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { TeamRelationsSchema, teamSubRelations } from "./team";

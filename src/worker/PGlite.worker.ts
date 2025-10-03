@@ -6,7 +6,7 @@ import { electricSync } from "@electric-sql/pglite-sync";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import initSQL from "@db/generated/clientDB/init.sql?raw";
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
 import { ChangeLogSynchronizer } from "~/lib/ChangeLogSynchronizer";
 
 const ELECTRIC_HOST =

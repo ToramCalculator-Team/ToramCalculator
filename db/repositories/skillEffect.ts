@@ -1,7 +1,9 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, skill_effect } from "../generated/kysely/kyesely";
+import { DB, skill_effect } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
+import { skill_effectSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
 
 // 1. 类型定义
 export type SkillEffect = Selectable<skill_effect>;
@@ -9,6 +11,9 @@ export type SkillEffectInsert = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
 // 关联查询类型
 export type SkillEffectWithRelations = Awaited<ReturnType<typeof findSkillEffectWithRelations>>;
+export const SkillEffectRelationsSchema = z.object({
+  ...skill_effectSchema.shape,
+});
 
 // 2. 关联查询定义
 export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect">, id: Expression<string>) {

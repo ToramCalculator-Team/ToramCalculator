@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { DB, item } from "../generated/kysely/kyesely";
-import { ItemType } from "../generated/kysely/enums";
+import { DB, item } from "../generated/kysely/kysely";
+import { ItemType } from "../schema/enums";
 import { getDB } from "./database";
 import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";

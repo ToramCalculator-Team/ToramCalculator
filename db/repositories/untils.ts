@@ -1,5 +1,5 @@
 import { Transaction, sql } from "kysely";
-import { DB } from "../generated/kysely/kyesely";
+import { DB } from "../generated/kysely/kysely";
 
 /**
  * 根据指定的属性类型映射来调整类型
