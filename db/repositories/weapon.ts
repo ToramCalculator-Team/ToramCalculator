@@ -7,27 +7,38 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { crystalSubRelations } from "./crystal";
+import { CrystalWithRelationsSchema } from "./crystal";
+import { weaponSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Weapon = Selectable<weapon>;
 export type WeaponInsert = Insertable<weapon>;
 export type WeaponUpdate = Updateable<weapon>;
-// 关联查询类型
-export type WeaponWithRelations = Awaited<ReturnType<typeof findWeaponWithRelations>>;
 
-// 2. 关联查询定义
-export function weaponSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_crystalToplayer_weapon")
-        .innerJoin("crystal", "_crystalToplayer_weapon.A", "crystal.itemId")
-        .where("_crystalToplayer_weapon.B", "=", id)
-        .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
-    ).as("defaultCrystals"),
-  ];
-}
+// 2. 关联查询定义  
+const weaponSubRelationDefs = defineRelations({
+  defaultCrystals: {
+    build: (eb: ExpressionBuilder<DB, "item">, id: Expression<string>) => 
+      jsonArrayFrom(
+        eb
+          .selectFrom("_crystalToplayer_weapon")
+          .innerJoin("crystal", "_crystalToplayer_weapon.A", "crystal.itemId")
+          .where("_crystalToplayer_weapon.B", "=", id)
+          .selectAll("crystal")
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId")))
+      ).as("defaultCrystals"),
+    schema: z.array(CrystalWithRelationsSchema).describe("默认水晶列表"),
+  },
+});
+
+const weaponRelationsFactory = makeRelations(weaponSubRelationDefs);
+export const WeaponWithRelationsSchema = z.object({
+  ...weaponSchema.shape,
+  ...weaponRelationsFactory.schema.shape,
+});
+export const weaponSubRelations = weaponRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findWeaponById(id: string): Promise<Weapon | null> {
@@ -116,3 +127,6 @@ export async function findItemWithWeaponById(itemId: string) {
     .selectAll(["item", "weapon"])
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type WeaponWithRelations = Awaited<ReturnType<typeof findWeaponWithRelations>>;

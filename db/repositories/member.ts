@@ -1,61 +1,74 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, member } from "../generated/kysely/kysely";
-import { PlayerRelationsSchema, playerSubRelations } from "./player";
+import { PlayerWithRelationsSchema, playerSubRelations } from "./player";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { MercenaryRelationsSchema, mercenarySubRelations } from "./mercenary";
+import { MercenaryWithRelationsSchema, mercenarySubRelations } from "./mercenary";
 import { MobWithRelationsSchema, mobSubRelations } from "./mob";
 import { memberSchema } from "@db/generated/zod";
 import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Member = Selectable<member>;
 export type MemberInsert = Insertable<member>;
 export type MemberUpdate = Updateable<member>;
-// 关联查询类型
-export type MemberWithRelations = Awaited<ReturnType<typeof findMemberWithRelations>>;
-export const MemberRelationsSchema = z.object({
-  ...memberSchema.shape,
-  player: PlayerRelationsSchema.nullable(),
-  mercenary: MercenaryRelationsSchema.nullable(),
-  partner: MercenaryRelationsSchema.nullable(),
-  mob: MobWithRelationsSchema.nullable(),
-});
 
 // 2. 关联查询定义
-export function memberSubRelations(eb: ExpressionBuilder<DB, "member">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("player")
-        .whereRef("id", "=", "member.playerId")
-        .selectAll("player")
-        .select((subEb) => playerSubRelations(subEb, subEb.val("player.id"))),
-    ).as("player"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("mercenary")
-        .whereRef("id", "=", "member.mercenaryId")
-        .selectAll("mercenary")
-        .select((subEb) => mercenarySubRelations(subEb)),
-    ).as("mercenary"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("mercenary")
-        .whereRef("id", "=", "member.partnerId")
-        .selectAll("mercenary")
-        .select((subEb) => mercenarySubRelations(subEb)),
-    ).as("partner"),
-    jsonObjectFrom(
-      eb
-        .selectFrom("mob")
-        .whereRef("id", "=", "member.mobId")
-        .selectAll("mob")
-        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-    ).as("mob"),
-  ];
-}
+const memberSubRelationDefs = defineRelations({
+  player: {
+    build: (eb: ExpressionBuilder<DB, "member">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("player")
+          .whereRef("id", "=", "member.playerId")
+          .selectAll("player")
+          .select((subEb) => playerSubRelations(subEb, subEb.val("player.id")))
+      ).as("player"),
+    schema: PlayerWithRelationsSchema.nullable().describe("玩家"),
+  },
+  mercenary: {
+    build: (eb: ExpressionBuilder<DB, "member">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("mercenary")
+          .whereRef("id", "=", "member.mercenaryId")
+          .selectAll("mercenary")
+          .select((subEb) => mercenarySubRelations(subEb, subEb.val("mercenary.templateId")))
+      ).as("mercenary"),
+    schema: MercenaryWithRelationsSchema.nullable().describe("佣兵"),
+  },
+  partner: {
+    build: (eb: ExpressionBuilder<DB, "member">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("mercenary")
+          .whereRef("id", "=", "member.partnerId")
+          .selectAll("mercenary")
+          .select((subEb) => mercenarySubRelations(subEb, subEb.val("mercenary.templateId")))
+      ).as("partner"),
+    schema: MercenaryWithRelationsSchema.nullable().describe("合作伙伴"),
+  },
+  mob: {
+    build: (eb: ExpressionBuilder<DB, "member">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("mob")
+          .whereRef("id", "=", "member.mobId")
+          .selectAll("mob")
+          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id")))
+      ).as("mob"),
+    schema: MobWithRelationsSchema.nullable().describe("怪物"),
+  },
+});
+
+const memberRelationsFactory = makeRelations(memberSubRelationDefs);
+export const MemberWithRelationsSchema = z.object({
+  ...memberSchema.shape,
+  ...memberRelationsFactory.schema.shape,
+});
+export const memberSubRelations = memberRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findMemberById(id: string): Promise<Member | null> {
@@ -121,3 +134,6 @@ export async function findMemberWithRelations(id: string) {
     .select((eb) => memberSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type MemberWithRelations = Awaited<ReturnType<typeof findMemberWithRelations>>;

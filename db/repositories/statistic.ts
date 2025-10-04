@@ -2,18 +2,33 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, statistic } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
+import { statisticSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Statistic = Selectable<statistic>;
 export type StatisticInsert = Insertable<statistic>;
 export type StatisticUpdate = Updateable<statistic>;
-// 关联查询类型
-export type StatisticWithRelations = Awaited<ReturnType<typeof findStatisticWithRelations>>;
 
-// 2. 关联查询定义
-export function statisticSubRelations(eb: ExpressionBuilder<DB, "statistic">, statisticId: Expression<string>) {
-  return [];
-}
+// 2. 子关系定义
+const statisticSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const statisticRelationsFactory = makeRelations<"statistic", typeof statisticSubRelationDefs>(
+  statisticSubRelationDefs
+);
+
+// 构造关系Schema
+export const StatisticWithRelationsSchema = z.object({
+  ...statisticSchema.shape,
+  ...statisticRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const statisticSubRelations = statisticRelationsFactory.subRelations;
+
+// 3. 基础 CRUD 方法
 
 // 3. 基础 CRUD 方法
 export async function findStatisticById(id: string): Promise<Statistic | null> {
@@ -69,7 +84,7 @@ export async function deleteStatistic(trx: Transaction<DB>, id: string): Promise
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findStatisticWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -79,6 +94,9 @@ export async function findStatisticWithRelations(id: string) {
     .select((eb) => statisticSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type StatisticWithRelations = Awaited<ReturnType<typeof findStatisticWithRelations>>;
 
 // statistic 只做关联，不应该发生更新
 // export async function updateStatistic(id: string, updateWith: StatisticUpdate) {

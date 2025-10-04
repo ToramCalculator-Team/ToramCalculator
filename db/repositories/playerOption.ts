@@ -3,36 +3,44 @@ import { getDB } from "./database";
 import { DB, player_option } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { crystalSubRelations } from "./crystal";
+import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { z } from "zod/v3";
-import { player_optionSchema } from "@db/generated/zod";
-import { CrystalRelationsSchema } from "./crystal";
+import { player_optionSchema, itemSchema } from "@db/generated/zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type PlayerOption = Selectable<player_option>;
 export type PlayerOptionInsert = Insertable<player_option>;
 export type PlayerOptionUpdate = Updateable<player_option>;
-// 关联查询类型
-export type PlayerOptionWithRelations = Awaited<ReturnType<typeof findPlayerOptionWithRelations>>;
-export const PlayerOptionRelationsSchema = z.object({
-  ...player_optionSchema.shape,
-  crystalList: z.array(CrystalRelationsSchema),
-});
 
 // 2. 关联查询定义
-export function playerOptionSubRelations(eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("item")
-        .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalToplayer_option", "item.id", "_crystalToplayer_option.A")
-        .whereRef("_crystalToplayer_option.B", "=", "player_option.id")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll(["item", "crystal"]),
-    ).as("crystalList"),
-  ];
-}
+const playerOptionSubRelationDefs = defineRelations({
+  crystalList: {
+    build: (eb: ExpressionBuilder<DB, "player_option">, id: Expression<string>) => 
+      jsonArrayFrom(
+        eb
+          .selectFrom("item")
+          .innerJoin("crystal", "item.id", "crystal.itemId")
+          .innerJoin("_crystalToplayer_option", "item.id", "_crystalToplayer_option.A")
+          .whereRef("_crystalToplayer_option.B", "=", "player_option.id")
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
+          .selectAll(["item", "crystal"])
+      ).as("crystalList"),
+    schema: z.array(
+      z.object({
+        ...itemSchema.shape,
+        ...CrystalWithRelationsSchema.shape,
+      })
+    ).describe("水晶列表"),
+  },
+});
+
+const playerOptionRelationsFactory = makeRelations(playerOptionSubRelationDefs);
+export const PlayerOptionWithRelationsSchema = z.object({
+  ...player_optionSchema.shape,
+  ...playerOptionRelationsFactory.schema.shape,
+});
+export const playerOptionSubRelations = playerOptionRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findPlayerOptionById(id: string): Promise<PlayerOption | null> {
@@ -101,3 +109,6 @@ export async function findPlayerOptionWithRelations(id: string) {
     .select((eb) => playerOptionSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type PlayerOptionWithRelations = Awaited<ReturnType<typeof findPlayerOptionWithRelations>>;

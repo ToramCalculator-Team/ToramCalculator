@@ -2,48 +2,59 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, player_weapon } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { CrystalRelationsSchema, crystalSubRelations } from "./crystal";
-import { weaponSubRelations } from "./weapon";
+import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
+import { WeaponWithRelationsSchema, weaponSubRelations } from "./weapon";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v3";
 import { player_weaponSchema } from "@db/generated/zod";
-import { crystalSchema } from "@db/generated/zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
+import { itemSchema, crystalSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type PlayerWeapon = Selectable<player_weapon>;
 export type PlayerWeaponInsert = Insertable<player_weapon>;
 export type PlayerWeaponUpdate = Updateable<player_weapon>;
-// 关联查询类型
-export type PlayerWeaponWithRelations = Awaited<ReturnType<typeof findPlayerWeaponWithRelations>>;
-export const PlayerWeaponRelationsSchema = z.object({
-  ...player_weaponSchema.shape,
-  crystalList: z.array(CrystalRelationsSchema),
-});
 
 // 2. 关联查询定义
-export function playerWeaponSubRelations(eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("item")
-        .innerJoin("crystal", "item.id", "crystal.itemId")
-        .innerJoin("_crystalToplayer_weapon", "item.id", "_crystalToplayer_weapon.A")
-        .whereRef("_crystalToplayer_weapon.B", "=", "player_weapon.id")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
-        .selectAll(["item", "crystal"]),
-    ).as("crystalList"),
-    // jsonObjectFrom(
-    //   eb
-    //     .selectFrom("item")
-    //     .innerJoin("weapon", "item.id", "weapon.itemId")
-    //     .whereRef("weapon.itemId", "=", "player_weapon.templateId")
-    //     .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
-    //     .selectAll(["weapon", "item"]),
-    // )
-    //   .$notNull()
-    //   .as("template"),
-  ];
-}
+const playerWeaponSubRelationDefs = defineRelations({
+  crystalList: {
+    build: (eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) => 
+      jsonArrayFrom(
+        eb
+          .selectFrom("item")
+          .innerJoin("crystal", "item.id", "crystal.itemId")
+          .innerJoin("_crystalToplayer_weapon", "item.id", "_crystalToplayer_weapon.A")
+          .whereRef("_crystalToplayer_weapon.B", "=", "player_weapon.id")
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("item.id")))
+          .selectAll(["item", "crystal"])
+      ).as("crystalList"),
+    schema: z.array(
+      z.object({
+        ...itemSchema.shape,
+        ...CrystalWithRelationsSchema.shape,
+      })
+    ).describe("水晶列表"),
+  },
+  // template: {
+  //   build: (eb: ExpressionBuilder<DB, "player_weapon">, id: Expression<string>) => 
+  //     jsonObjectFrom(
+  //       eb
+  //         .selectFrom("item")
+  //         .innerJoin("weapon", "item.id", "weapon.itemId")
+  //         .whereRef("weapon.itemId", "=", "player_weapon.templateId")
+  //         .select((subEb) => weaponSubRelations(subEb, subEb.val("weapon.itemId")))
+  //         .selectAll(["weapon", "item"])
+  //     ).$notNull().as("template"),
+  //   schema: WeaponWithRelationsSchema.describe("武器模板"),
+  // },
+});
+
+const playerWeaponRelationsFactory = makeRelations(playerWeaponSubRelationDefs);
+export const PlayerWeaponWithRelationsSchema = z.object({
+  ...player_weaponSchema.shape,
+  ...playerWeaponRelationsFactory.schema.shape,
+});
+export const playerWeaponSubRelations = playerWeaponRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findPlayerWeaponById(id: string): Promise<PlayerWeapon | null> {
@@ -112,3 +123,6 @@ export async function findPlayerWeaponWithRelations(id: string) {
     .select((eb) => playerWeaponSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type PlayerWeaponWithRelations = Awaited<ReturnType<typeof findPlayerWeaponWithRelations>>;

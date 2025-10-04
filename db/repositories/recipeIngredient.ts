@@ -3,25 +3,31 @@ import { getDB } from "./database";
 import { DB, recipe_ingredient } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { recipe_ingredientSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type RecipeIngredient = Selectable<recipe_ingredient>;
 export type RecipeIngredientInsert = Insertable<recipe_ingredient>;
 export type RecipeIngredientUpdate = Updateable<recipe_ingredient>;
-// 关联查询类型
-export type RecipeIngredientWithRelations = Awaited<ReturnType<typeof findRecipeIngredientWithRelations>>;
 
-// 2. 关联查询定义
-export function recipeIngredientSubRelations(eb: ExpressionBuilder<DB, "recipe_ingredient">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("recipe_ingredient")
-        .where("recipe_ingredient.recipeId", "=", id)
-        .selectAll("recipe_ingredient"),
-    ).as("recipeEntries"),
-  ];
-}
+// 子关系定义
+const recipeIngredientSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const recipeIngredientRelationsFactory = makeRelations<"recipe_ingredient", typeof recipeIngredientSubRelationDefs>(
+  recipeIngredientSubRelationDefs
+);
+
+// 构造关系Schema
+export const RecipeIngredientWithRelationsSchema = z.object({
+  ...recipe_ingredientSchema.shape,
+  ...recipeIngredientRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const recipeIngredientSubRelations = recipeIngredientRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findRecipeIngredientById(id: string): Promise<RecipeIngredient | null> {
@@ -80,7 +86,7 @@ export async function deleteRecipeIngredient(trx: Transaction<DB>, id: string): 
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findRecipeIngredientWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -90,3 +96,6 @@ export async function findRecipeIngredientWithRelations(id: string) {
     .select((eb) => recipeIngredientSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type RecipeIngredientWithRelations = Awaited<ReturnType<typeof findRecipeIngredientWithRelations>>;

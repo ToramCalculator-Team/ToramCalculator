@@ -4,21 +4,29 @@ import { DB, skill_effect } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { skill_effectSchema } from "@db/generated/zod";
 import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type SkillEffect = Selectable<skill_effect>;
 export type SkillEffectInsert = Insertable<skill_effect>;
 export type SkillEffectUpdate = Updateable<skill_effect>;
-// 关联查询类型
-export type SkillEffectWithRelations = Awaited<ReturnType<typeof findSkillEffectWithRelations>>;
-export const SkillEffectRelationsSchema = z.object({
+
+// 子关系定义
+const skillEffectSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const skillEffectRelationsFactory = makeRelations<"skill_effect", typeof skillEffectSubRelationDefs>(
+  skillEffectSubRelationDefs
+);
+
+// 构造关系Schema
+export const SkillEffectWithRelationsSchema = z.object({
   ...skill_effectSchema.shape,
+  ...skillEffectRelationsFactory.schema.shape,
 });
 
-// 2. 关联查询定义
-export function skillEffectSubRelations(eb: ExpressionBuilder<DB, "skill_effect">, id: Expression<string>) {
-  return [];
-}
+// 构造子关系查询器
+export const skillEffectSubRelations = skillEffectRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSkillEffectById(id: string): Promise<SkillEffect | null> {
@@ -77,7 +85,7 @@ export async function deleteSkillEffect(trx: Transaction<DB>, id: string): Promi
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findSkillEffectWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -87,3 +95,6 @@ export async function findSkillEffectWithRelations(id: string) {
     .select((eb) => skillEffectSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type SkillEffectWithRelations = Awaited<ReturnType<typeof findSkillEffectWithRelations>>;

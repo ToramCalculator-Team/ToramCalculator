@@ -1,43 +1,37 @@
 import { Accessor, createResource, createSignal, For, Index, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { activitySchema, zoneSchema } from "@db/generated/zod/index";
+import { activitySchema } from "@db/generated/zod/index";
 import { activity, DB, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
+import {
+  ActivityWithRelationsSchema,
+  ActivityWithRelations,
+  findActivityWithRelations,
+  findActivities,
+  createActivity,
+  updateActivity,
+  deleteActivity,
+} from "@db/repositories/activity";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
 import { CardSection } from "~/components/dataDisplay/cardSection";
-import { z } from "zod";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
-import Icons from "~/components/icons/index";
-import { store } from "~/store";
-import { createStatistic } from "@db/repositories/statistic";
-import { createId } from "@paralleldrive/cuid2";
-import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 
-type ActivityWithRelated = activity & {
-  zones: zone[];
-};
-
-const activityWithRelatedSchema = z.object({
-  ...activitySchema.shape,
-  zones: z.array(zoneSchema),
-});
-
-const defaultActivityWithRelated: ActivityWithRelated = {
+const defaultActivityWithRelations: ActivityWithRelations = {
   ...defaultData.activity,
+  statistic: defaultData.statistic,
   zones: [],
 };
 
-const ActivityWithRelatedDic = (dic: dictionary) => ({
+const ActivityWithRelationsDic = (dic: dictionary) => ({
   ...dic.db.activity,
   fields: {
     ...dic.db.activity.fields,
@@ -47,68 +41,17 @@ const ActivityWithRelatedDic = (dic: dictionary) => ({
       tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
       formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
     },
+    statistic: {
+      key: "statistic",
+      ...dic.db.statistic.fields,
+      tableFieldDescription: '统计',
+      formFieldDescription: '统计',
+    },
   },
 });
 
-const ActivityWithRelatedFetcher = async (id: string): Promise<ActivityWithRelated> => {
-  const db = await getDB();
-  const res = await db
-    .selectFrom("activity")
-    .where("id", "=", id)
-    .selectAll("activity")
-    .select((eb) => [
-      jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
-    ])
-    .executeTakeFirstOrThrow();
-  return res;
-};
-
-const ActivitiesFetcher = async () => {
-  const db = await getDB();
-  const res = await db.selectFrom("activity").selectAll("activity").execute();
-  return res;
-};
-
-const createActivity = async (trx: Transaction<DB>, activity: activity) => {
-  const statistic = await createStatistic(trx);
-  return trx
-    .insertInto("activity")
-    .values({
-      ...activity,
-      id: createId(),
-      statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-};
-
-const updateActivity = async (trx: Transaction<DB>, activity: activity) => {
-  return trx
-    .updateTable("activity")
-    .set({
-      ...activity,
-      updatedByAccountId: store.session.user.account?.id,
-    })
-    .where("id", "=", activity.id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-};
-
-const deleteActivity = async (trx: Transaction<DB>, activity: activity) => {
-  // 将用到此活动的zone的activityId设为null
-  await trx.updateTable("zone").set({ activityId: null }).where("activityId", "=", activity.id).execute();
-  // 将用到此活动的recipe的activityId设为null
-  await trx.updateTable("recipe").set({ activityId: null }).where("activityId", "=", activity.id).execute();
-  // 删除活动
-  await trx.deleteFrom("activity").where("id", "=", activity.id).executeTakeFirstOrThrow();
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", activity.statisticId).executeTakeFirstOrThrow();
-};
-
-const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRelated) => {
-  const formInitialValues = oldActivity ?? defaultActivityWithRelated;
+const ActivityWithRelationsForm = (dic: dictionary, oldActivity?: ActivityWithRelations) => {
+  const formInitialValues = oldActivity ?? defaultActivityWithRelations;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newActivity }) => {
@@ -164,9 +107,9 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultActivityWithRelated)}>
+        <For each={Object.entries(defaultActivityWithRelations)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof ActivityWithRelated;
+            const fieldKey = _field[0] as keyof ActivityWithRelations;
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
@@ -180,7 +123,7 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: activityWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: ActivityWithRelationsSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -245,14 +188,14 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
 
               default:
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
-                const simpleFieldKey = _field[0] as keyof ActivityWithRelated;
+                const simpleFieldKey = _field[0] as keyof ActivityWithRelations;
                 const simpleFieldValue = _field[1];
-                return renderField<ActivityWithRelated, keyof ActivityWithRelated>(
+                return renderField<ActivityWithRelations, keyof ActivityWithRelations>(
                   form,
                   simpleFieldKey,
                   simpleFieldValue,
-                  ActivityWithRelatedDic(dic),
-                  activityWithRelatedSchema,
+                  ActivityWithRelationsDic(dic),
+                  ActivityWithRelationsSchema,
                 );
             }
           }}
@@ -277,16 +220,13 @@ const ActivityWithRelatedForm = (dic: dictionary, oldActivity?: ActivityWithRela
   );
 };
 
-export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated, ActivityWithRelated> = {
-  defaultData: {
-    ...defaultData.activity,
-    zones: [],
-  },
-  dataFetcher: ActivityWithRelatedFetcher,
-  datasFetcher: ActivitiesFetcher,
-  dataSchema: activityWithRelatedSchema,
+export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelations, ActivityWithRelations> = {
+  defaultData: defaultActivityWithRelations,
+  dataFetcher: findActivityWithRelations,
+  datasFetcher: findActivities,
+  dataSchema: ActivityWithRelationsSchema,
   table: {
-    dataFetcher: ActivitiesFetcher,
+    dataFetcher: findActivities,
     columnsDef: [
       {
         accessorKey: "id",
@@ -299,12 +239,12 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
         size: 220,
       },
     ],
-    dictionary: (dic) => ActivityWithRelatedDic(dic),
+    dictionary: (dic) => ActivityWithRelationsDic(dic),
     hiddenColumnDef: ["id"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => ActivityWithRelatedForm(dic, data),
+  form: ({ data, dic }) => ActivityWithRelationsForm(dic, data),
   card: ({ data, dic }) => {
     const [zonesData] = createResource(data.id, async (activityId) => {
       const db = await getDB();
@@ -314,10 +254,10 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
     return (
       <>
         <div class="ActivityImage bg-area-color h-[18vh] w-full rounded"></div>
-        {ObjRender<ActivityWithRelated>({
+        {ObjRender<ActivityWithRelations>({
           data,
-          dictionary: ActivityWithRelatedDic(dic),
-          dataSchema: activityWithRelatedSchema,
+          dictionary: ActivityWithRelationsDic(dic),
+          dataSchema: ActivityWithRelationsSchema,
           hiddenFields: ["id"],
           fieldGroupMap: {
             基本信息: ["name"],
@@ -335,7 +275,7 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelated
             );
           }}
         />
-        <CardSharedSection<ActivityWithRelated> dic={dic} data={data} delete={deleteActivity} />
+        <CardSharedSection<ActivityWithRelations> dic={dic} data={data} delete={deleteActivity} />
       </>
     );
   },

@@ -4,44 +4,58 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { crystal, DB, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
-import { createItem, ItemRelationsSchema } from "./item";
+import { createItem } from "./item";
 import { store } from "~/store";
-import { z } from "zod/v3";
-import { crystalSchema, itemSchema } from "@db/generated/zod";
+import { z } from "zod";
+import { crystalSchema, itemSchema } from "../generated/zod/index";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Crystal = Selectable<crystal>;
 export type CrystalInsert = Insertable<crystal>;
 export type CrystalUpdate = Updateable<crystal>;
-// 关联查询类型
-export type CrystalWithRelations = Awaited<ReturnType<typeof findCrystalWithRelations>>;
-export const CrystalRelationsSchema = z.object({
-  ...crystalSchema.shape,
-  backs: z.array(itemSchema),
-  fronts: z.array(itemSchema)
+
+// 子关系定义
+const crystalSubRelationDefs = defineRelations({
+  backs: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_backRelation")
+          .innerJoin("crystal", "_backRelation.B", "crystal.itemId")
+          .innerJoin("item", "_backRelation.A", "item.id")
+          .whereRef("item.id", "=", "crystal.itemId")
+          .selectAll("item")
+      ).as("backs"),
+    schema: z.array(itemSchema).describe("前置水晶物品列表"),
+  },
+  fronts: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_frontRelation")
+          .innerJoin("crystal", "_frontRelation.B", "crystal.itemId")
+          .innerJoin("item", "_frontRelation.A", "item.id")
+          .whereRef("item.id", "=", "crystal.itemId")
+          .selectAll("item")
+      ).as("fronts"),
+    schema: z.array(itemSchema).describe("后置水晶物品列表"),
+  },
 });
 
-// 2. 关联查询定义
-export function crystalSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_backRelation")
-        .innerJoin("crystal", "_backRelation.B", "crystal.itemId")
-        .innerJoin("item", "_backRelation.A", "item.id")
-        .whereRef("item.id", "=", "crystal.itemId")
-        .selectAll("item"),
-    ).as("backs"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_frontRelation")
-        .innerJoin("crystal", "_frontRelation.B", "crystal.itemId")
-        .innerJoin("item", "_frontRelation.A", "item.id")
-        .whereRef("item.id", "=", "crystal.itemId")
-        .selectAll("item"),
-    ).as("fronts"),
-  ];
-}
+// 生成 factory...
+export const crystalRelationsFactory = makeRelations<"crystal", typeof crystalSubRelationDefs>(
+  crystalSubRelationDefs
+);
+
+// 构造关系Schema
+export const CrystalWithRelationsSchema = z.object({
+  ...crystalSchema.shape,
+  ...crystalRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const crystalSubRelations = crystalRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findCrystalById(id: string): Promise<Crystal | null> {
@@ -109,7 +123,7 @@ export async function deleteCrystal(trx: Transaction<DB>, id: string): Promise<C
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findCrystalWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -120,6 +134,9 @@ export async function findCrystalWithRelations(id: string) {
     .select((eb) => crystalSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type CrystalWithRelations = Awaited<ReturnType<typeof findCrystalWithRelations>>;
 
 export async function findItemWithCrystalById(itemId: string) {
   const db = await getDB();

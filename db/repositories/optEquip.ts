@@ -1,33 +1,44 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { crystalSubRelations } from "./crystal";
+import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { DB, option, item } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
+import { optionSchema, itemSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Option = Selectable<option>;
 export type OptionInsert = Insertable<option>;
 export type OptionUpdate = Updateable<option>;
-// 关联查询类型
-export type OptionWithRelations = Awaited<ReturnType<typeof findOptionWithRelations>>;
 
 // 2. 关联查询定义
-export function optEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_crystalTooption")
-        .innerJoin("crystal", "_crystalTooption.A", "crystal.itemId")
-        .where("_crystalTooption.B", "=", id)
-        .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
-    ).as("defaultCrystals"),
-  ];
-}
+const optEquipSubRelationDefs = defineRelations({
+  defaultCrystals: {
+    build: (eb: ExpressionBuilder<DB, "item">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_crystalTooption")
+          .innerJoin("crystal", "_crystalTooption.A", "crystal.itemId")
+          .where("_crystalTooption.B", "=", id)
+          .selectAll("crystal")
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId")))
+      ).as("defaultCrystals"),
+    schema: z.array(CrystalWithRelationsSchema).describe("默认水晶列表"),
+  },
+});
+
+const optEquipRelationsFactory = makeRelations(optEquipSubRelationDefs);
+export const OptionWithRelationsSchema = z.object({
+  ...optionSchema.shape,
+  ...itemSchema.shape,
+  ...optEquipRelationsFactory.schema.shape,
+});
+export const optEquipSubRelations = optEquipRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findOptionById(id: string): Promise<Option | null> {
@@ -116,3 +127,6 @@ export async function findItemWithOptionById(itemId: string) {
     .selectAll(["item", "option"])
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type OptionWithRelations = Awaited<ReturnType<typeof findOptionWithRelations>>;

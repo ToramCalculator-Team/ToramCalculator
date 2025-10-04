@@ -1,8 +1,8 @@
-import { ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
+import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { character, DB, mercenary, player } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { CharacterRelationsSchema, characterSubRelations } from "./character";
+import { CharacterWithRelationsSchema, characterSubRelations } from "./character";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createCharacter } from "./character";
@@ -10,30 +10,34 @@ import { createPlayer } from "./player";
 import { store } from "~/store";
 import { z } from "zod/v3";
 import { mercenarySchema } from "@db/generated/zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Mercenary = Selectable<mercenary>;
 export type MercenaryInsert = Insertable<mercenary>;
 export type MercenaryUpdate = Updateable<mercenary>;
-// 关联查询类型
-export type MercenaryWithRelations = Awaited<ReturnType<typeof findMercenaryWithRelations>>;
-export const MercenaryRelationsSchema = z.object({
-  ...mercenarySchema.shape,
-  template: CharacterRelationsSchema,
-});
 
 // 2. 关联查询定义
-export function mercenarySubRelations(eb: ExpressionBuilder<DB, "mercenary">) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("character")
-        .whereRef("character.id", "=", "mercenary.templateId")
-        .selectAll("character")
-        .select((subEb) => characterSubRelations(subEb, subEb.val("character.id"))),
-    ).$notNull().as("template"),
-  ];
-}
+const mercenarySubRelationDefs = defineRelations({
+  template: {
+    build: (eb: ExpressionBuilder<DB, "mercenary">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("character")
+          .whereRef("character.id", "=", "mercenary.templateId")
+          .selectAll("character")
+          .select((subEb) => characterSubRelations(subEb, subEb.val("character.id")))
+      ).$notNull().as("template"),
+    schema: CharacterWithRelationsSchema.describe("模板角色"),
+  },
+});
+
+const mercenaryRelationsFactory = makeRelations(mercenarySubRelationDefs);
+export const MercenaryWithRelationsSchema = z.object({
+  ...mercenarySchema.shape,
+  ...mercenaryRelationsFactory.schema.shape,
+});
+export const mercenarySubRelations = mercenaryRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findMercenaryById(id: string): Promise<Mercenary | null> {
@@ -122,6 +126,9 @@ export async function findMercenaryWithRelations(id: string) {
     .selectFrom("mercenary")
     .where("mercenary.templateId", "=", id)
     .selectAll("mercenary")
-    .select((eb) => mercenarySubRelations(eb))
+    .select((eb) => mercenarySubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type MercenaryWithRelations = Awaited<ReturnType<typeof findMercenaryWithRelations>>;

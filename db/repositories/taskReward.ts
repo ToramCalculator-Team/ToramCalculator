@@ -3,25 +3,35 @@ import { getDB } from "./database";
 import { DB, task_reward } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { itemSchema, task_rewardSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type TaskReward = Selectable<task_reward>;
 export type TaskRewardInsert = Insertable<task_reward>;
 export type TaskRewardUpdate = Updateable<task_reward>;
-// 关联查询类型
-export type TaskRewardWithRelations = Awaited<ReturnType<typeof findTaskRewardWithRelations>>;
 
 // 2. 关联查询定义
-export function taskRewardSubRelations(eb: ExpressionBuilder<DB, "task_reward">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("item")
-        .whereRef("item.id", "=", "task_reward.itemId")
-        .selectAll("item")
-    ).as("item"),
-  ];
-}
+const taskRewardSubRelationDefs = defineRelations({
+  item: {
+    build: (eb: ExpressionBuilder<DB, "task_reward">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("item")
+          .whereRef("item.id", "=", "task_reward.itemId")
+          .selectAll("item")
+      ).as("item"),
+    schema: itemSchema.nullable().describe("关联物品"),
+  },
+});
+
+const taskRewardRelationsFactory = makeRelations(taskRewardSubRelationDefs);
+export const TaskRewardWithRelationsSchema = z.object({
+  ...task_rewardSchema.shape,
+  ...taskRewardRelationsFactory.schema.shape,
+});
+export const taskRewardSubRelations = taskRewardRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findTaskRewardById(id: string): Promise<TaskReward | null> {
@@ -90,3 +100,6 @@ export async function findTaskRewardWithRelations(id: string) {
     .select((eb) => taskRewardSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type TaskRewardWithRelations = Awaited<ReturnType<typeof findTaskRewardWithRelations>>;

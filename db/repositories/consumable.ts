@@ -6,18 +6,31 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { consumableSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Consumable = Selectable<consumable>;
 export type ConsumableInsert = Insertable<consumable>;
 export type ConsumableUpdate = Updateable<consumable>;
-// 关联查询类型
-export type ConsumableWithRelations = Awaited<ReturnType<typeof findConsumableWithRelations>>;
 
-// 2. 关联查询定义
-export function consumableSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [];
-}
+// 子关系定义
+const consumableSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const consumableRelationsFactory = makeRelations<"consumable", typeof consumableSubRelationDefs>(
+  consumableSubRelationDefs
+);
+
+// 构造关系Schema
+export const ConsumableWithRelationsSchema = z.object({
+  ...consumableSchema.shape,
+  ...consumableRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const consumableSubRelations = consumableRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findConsumableById(id: string): Promise<Consumable | null> {
@@ -85,7 +98,7 @@ export async function deleteConsumable(trx: Transaction<DB>, id: string): Promis
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findConsumableWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -96,6 +109,9 @@ export async function findConsumableWithRelations(id: string) {
     .select((eb) => consumableSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type ConsumableWithRelations = Awaited<ReturnType<typeof findConsumableWithRelations>>;
 
 export async function findItemWithConsumableById(itemId: string) {
   const db = await getDB();

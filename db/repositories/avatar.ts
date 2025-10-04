@@ -2,18 +2,31 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, avatar } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
+import { avatarSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Avatar = Selectable<avatar>;
 export type AvatarInsert = Insertable<avatar>;
 export type AvatarUpdate = Updateable<avatar>;
-// 关联查询类型
-export type AvatarWithRelations = Awaited<ReturnType<typeof findAvatarWithRelations>>;
 
-// 2. 关联查询定义
-export function avatarSubRelations(eb: ExpressionBuilder<DB, "avatar">, id: Expression<string>) {
-  return [];
-}
+// 子关系定义
+const avatarSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const avatarRelationsFactory = makeRelations<"avatar", typeof avatarSubRelationDefs>(
+  avatarSubRelationDefs
+);
+
+// 构造关系Schema
+export const AvatarWithRelationsSchema = z.object({
+  ...avatarSchema.shape,
+  ...avatarRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const avatarSubRelations = avatarRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findAvatarById(id: string): Promise<Avatar | null> {
@@ -69,7 +82,7 @@ export async function deleteAvatar(trx: Transaction<DB>, id: string): Promise<Av
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findAvatarWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -79,3 +92,6 @@ export async function findAvatarWithRelations(id: string) {
     .select((eb) => avatarSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type AvatarWithRelations = Awaited<ReturnType<typeof findAvatarWithRelations>>;

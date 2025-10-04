@@ -1,47 +1,55 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, skill } from "../generated/kysely/kysely";
-import { insertStatistic, statisticSubRelations } from "./statistic";
+import { insertStatistic } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { skillEffectSubRelations } from "./skillEffect";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod/v3";
-import { skillSchema, statisticSchema } from "../generated/zod";
-import { SkillEffectRelationsSchema } from "./skillEffect";
+import { z } from "zod";
+import { skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Skill = Selectable<skill>;
 export type SkillInsert = Insertable<skill>;
 export type SkillUpdate = Updateable<skill>;
-// 关联查询类型
-export type SkillWithRelations = Awaited<ReturnType<typeof findSkillWithRelations>>;
-export const SkillRelationsSchema = z.object({
-  ...skillSchema.shape,
-  effects: z.array(SkillEffectRelationsSchema),
-  statistic: statisticSchema,
+
+// 子关系定义
+const skillSubRelationDefs = defineRelations({
+  statistic: {
+    build: (eb, id) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("statistic")
+          .whereRef("id", "=", "skill.statisticId")
+          .selectAll("statistic")
+      ).$notNull().as("statistic"),
+    schema: statisticSchema.describe("统计信息"),
+  },
+  effects: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("skill_effect")
+          .whereRef("skill_effect.belongToskillId", "=", "skill.id")
+          .selectAll("skill_effect")
+      ).as("effects"),
+      schema: z.array(skill_effectSchema).describe("技能效果列表"),
+  },
 });
 
-// 2. 关联查询定义
-export function skillSubRelations(eb: ExpressionBuilder<DB, "skill">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("statistic")
-        .whereRef("id", "=", "skill.statisticId")
-        .selectAll("statistic")
-        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
-    )
-      .$notNull()
-      .as("statistic"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("skill_effect")
-        .whereRef("skill_effect.belongToskillId", "=", "skill.id")
-        .selectAll("skill_effect")
-        .select((subEb) => skillEffectSubRelations(subEb, subEb.val(id))),
-    ).as("effects"),
-  ];
-}
+// 生成 factory
+export const skillRelationsFactory = makeRelations<"skill", typeof skillSubRelationDefs>(
+  skillSubRelationDefs
+);
+
+// 构造关系Schema
+export const SkillWithRelationsSchema = z.object({
+  ...skillSchema.shape,
+  ...skillRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const skillSubRelations = skillRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSkillById(id: string): Promise<Skill | null> {
@@ -119,7 +127,7 @@ export async function deleteSkill(trx: Transaction<DB>, id: string): Promise<Ski
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findSkillWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -129,6 +137,9 @@ export async function findSkillWithRelations(id: string) {
     .select((eb) => skillSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type SkillWithRelations = Awaited<ReturnType<typeof findSkillWithRelations>>;
 
 export async function findSkillsLike(searchString: string): Promise<Skill[]> {
   const db = await getDB();

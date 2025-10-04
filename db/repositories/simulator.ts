@@ -1,9 +1,10 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, simulator } from "../generated/kysely/kysely";
-import { statisticSubRelations } from "./statistic";
+import { statisticSubRelations, StatisticWithRelationsSchema } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { TeamRelationsSchema, teamSubRelations } from "./team";
+import { TeamWithRelationsSchema, teamSubRelations } from "./team";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v3";
 import { simulatorSchema, statisticSchema, teamSchema } from "@db/generated/zod";
@@ -12,47 +13,52 @@ import { simulatorSchema, statisticSchema, teamSchema } from "@db/generated/zod"
 export type Simulator = Selectable<simulator>;
 export type SimulatorInsert = Insertable<simulator>;
 export type SimulatorUpdate = Updateable<simulator>;
-// 关联查询类型
-export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorWithRelations>>;
-export const SimulatorRelationsSchema = z.object({
-  ...simulatorSchema.shape,
-  statistic: statisticSchema,
-  campA: z.array(TeamRelationsSchema),
-  campB: z.array(TeamRelationsSchema),
-});
 
 // 2. 关联查询定义
-export function simulatorSubRelations(eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("statistic")
-        .whereRef("id", "=", "simulator.statisticId")
-        .selectAll("statistic")
-        .select((subEb) => statisticSubRelations(subEb, subEb.val(id))),
-    )
-      .$notNull()
-      .as("statistic"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_campA")
-        .innerJoin("team", "_campA.B", "team.id")
-        .whereRef("_campA.A", "=", id)
-        .selectAll("team")
-        .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id"))),
-    )
-      .as("campA"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("_campB")
-        .innerJoin("team", "_campB.B", "team.id")
-        .whereRef("_campB.A", "=", id)
-        .selectAll("team")
-        .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id"))),
-    )
-      .as("campB"),
-  ];
-}
+const simulatorSubRelationDefs = defineRelations({
+  statistic: {
+    build: (eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("statistic")
+          .whereRef("id", "=", "simulator.statisticId")
+          .selectAll("statistic")
+          .select((subEb) => statisticSubRelations(subEb, subEb.val(id)))
+      ).$notNull().as("statistic"),
+    schema: StatisticWithRelationsSchema.describe("战斗统计"),
+  },
+  campA: {
+    build: (eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_campA")
+          .innerJoin("team", "_campA.B", "team.id")
+          .whereRef("_campA.A", "=", id)
+          .selectAll("team")
+          .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id")))
+      ).as("campA"),
+    schema: z.array(TeamWithRelationsSchema).describe("阵营A队伍"),
+  },
+  campB: {
+    build: (eb: ExpressionBuilder<DB, "simulator">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_campB")
+          .innerJoin("team", "_campB.B", "team.id")
+          .whereRef("_campB.A", "=", id)
+          .selectAll("team")
+          .select((subEb) => teamSubRelations(subEb, subEb.ref("team.id")))
+      ).as("campB"),
+    schema: z.array(TeamWithRelationsSchema).describe("阵营B队伍"),
+  },
+});
+
+const simulatorRelationsFactory = makeRelations(simulatorSubRelationDefs);
+export const SimulatorWithRelationsSchema = z.object({
+  ...simulatorSchema.shape,
+  ...simulatorRelationsFactory.schema.shape,
+});
+export const simulatorSubRelations = simulatorRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSimulatorById(id: string): Promise<Simulator | null> {
@@ -121,3 +127,6 @@ export async function findSimulatorWithRelations(id: string) {
     .select((eb) => simulatorSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type SimulatorWithRelations = Awaited<ReturnType<typeof findSimulatorWithRelations>>;

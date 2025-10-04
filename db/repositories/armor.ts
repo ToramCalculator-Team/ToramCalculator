@@ -12,27 +12,44 @@ import { insertItem } from "./item";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
+import { armorSchema, crystalSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Armor = Selectable<armor>;
 export type ArmorInsert = Insertable<armor>;
 export type ArmorUpdate = Updateable<armor>;
-// 关联查询类型
-export type ArmorWithRelations = Awaited<ReturnType<typeof findArmorByItemId>>;
 
-// 2. 关联查询定义
-export function armorSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_armorTocrystal")
-        .innerJoin("crystal", "_armorTocrystal.B", "crystal.itemId")
-        .where("_armorTocrystal.A", "=", id)
-        .selectAll("crystal")
+// 子关系定义
+const armorSubRelationDefs = defineRelations({
+  defaultCrystals: {
+    build: (eb, id) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_armorTocrystal")
+          .innerJoin("crystal", "_armorTocrystal.B", "crystal.itemId")
+          .where("_armorTocrystal.A", "=", id)
+          .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
-    ).as("defaultCrystals"),
-  ];
-}
+      ).as("defaultCrystals"),
+    schema: z.array(crystalSchema).describe("默认水晶列表"),
+  },
+});
+
+// 生成 factory
+export const armorRelationsFactory = makeRelations<"armor", typeof armorSubRelationDefs>(
+  armorSubRelationDefs
+);
+
+// 构造关系Schema
+export const ArmorWithRelationsSchema = z.object({
+  ...armorSchema.shape,
+  ...armorRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const armorSubRelations = armorRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findArmorById(id: string): Promise<Armor | null> {
@@ -100,7 +117,7 @@ export async function deleteArmor(trx: Transaction<DB>, id: string): Promise<Arm
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findArmorByItemId(id: string) {
   const db = await getDB();
   return await db
@@ -111,6 +128,9 @@ export async function findArmorByItemId(id: string) {
     .select((eb) => armorSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type ArmorWithRelations = Awaited<ReturnType<typeof findArmorByItemId>>;
 
 export async function findItemWithArmorById(itemId: string) {
   const db = await getDB();

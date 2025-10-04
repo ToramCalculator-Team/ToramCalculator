@@ -1,12 +1,10 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 import * as Comlink from "comlink";
-import { StateMachine } from "./utils/StateMachine";
 
 const worker = self as unknown as SharedWorkerGlobalScope;
 
 export interface DataWorkerApi {
   getName: typeof getName;
-  stateMachine: StateMachine;
 }
 
 async function getName() {
@@ -21,11 +19,9 @@ async function getName() {
  */
 worker.onconnect = (e: MessageEvent) => {
   const port = e.ports[0];
-  const defaultSM = new StateMachine();
   return Comlink.expose(
     {
       getName,
-      stateMachine: defaultSM,
     } satisfies DataWorkerApi,
     port,
   );

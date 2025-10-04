@@ -2,30 +2,38 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, player_pet } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { mobSubRelations } from "./mob";
+import { mobSubRelations, MobWithRelationsSchema } from "./mob";
 import { createId } from "@paralleldrive/cuid2";
+import { player_petSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type PlayerPet = Selectable<player_pet>;
 export type PlayerPetInsert = Insertable<player_pet>;
 export type PlayerPetUpdate = Updateable<player_pet>;
-// 关联查询类型
-export type PlayerPetWithRelations = Awaited<ReturnType<typeof findPlayerPetWithRelations>>;
 
 // 2. 关联查询定义
-export function playerPetSubRelations(eb: ExpressionBuilder<DB, "player_pet">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("mob")
-        .whereRef("id", "=", "player_pet.templateId")
-        .selectAll("mob")
-        .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id"))),
-    )
-      .$notNull()
-      .as("template"),
-  ];
-}
+const playerPetSubRelationDefs = defineRelations({
+  template: {
+    build: (eb: ExpressionBuilder<DB, "player_pet">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("mob")
+          .whereRef("id", "=", "player_pet.templateId")
+          .selectAll("mob")
+          .select((subEb) => mobSubRelations(subEb, subEb.val("mob.id")))
+      ).$notNull().as("template"),
+    schema: MobWithRelationsSchema.describe("宠物模板"),
+  },
+});
+
+const playerPetRelationsFactory = makeRelations(playerPetSubRelationDefs);
+export const PlayerPetWithRelationsSchema = z.object({
+  ...player_petSchema.shape,
+  ...playerPetRelationsFactory.schema.shape,
+});
+export const playerPetSubRelations = playerPetRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findPlayerPetById(id: string): Promise<PlayerPet | null> {
@@ -94,3 +102,6 @@ export async function findPlayerPetWithRelations(id: string) {
     .select((eb) => playerPetSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type PlayerPetWithRelations = Awaited<ReturnType<typeof findPlayerPetWithRelations>>;

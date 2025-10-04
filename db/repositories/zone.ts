@@ -3,34 +3,50 @@ import { getDB } from "./database";
 import { DB, zone } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { mobSubRelations } from "./mob";
+import { mobSubRelations, MobWithRelationsSchema } from "./mob";
+import { zoneSchema, npcSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
+import { npcSubRelations, NpcWithRelationsSchema } from "./npc";
 
 // 1. 类型定义
 export type Zone = Selectable<zone>;
 export type ZoneInsert = Insertable<zone>;
 export type ZoneUpdate = Updateable<zone>;
-// 关联查询类型
-export type ZoneWithRelations = Awaited<ReturnType<typeof findZoneWithRelations>>;
 
 // 2. 关联查询定义
-export function zoneSubRelations(eb: ExpressionBuilder<DB, "zone">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_mobTozone")
-        .innerJoin("mob", "_mobTozone.A", "mob.id")
-        .where("_mobTozone.B", "=", id)
-        .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
-        .selectAll("mob"),
-    ).as("mobs"),
-    jsonArrayFrom(
-      eb
-        .selectFrom("npc")
-        .where("npc.zoneId", "=", id)
-        .selectAll("npc")
-    ).as("npcs"),
-  ];
-}
+const zoneSubRelationDefs = defineRelations({
+  mobs: {
+    build: (eb: ExpressionBuilder<DB, "zone">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_mobTozone")
+          .innerJoin("mob", "_mobTozone.A", "mob.id")
+          .where("_mobTozone.B", "=", id)
+          .select((eb) => mobSubRelations(eb, eb.val("mob.id")))
+          .selectAll("mob")
+      ).as("mobs"),
+    schema: z.array(MobWithRelationsSchema).describe("区域内怪物"),
+  },
+  npcs: {
+    build: (eb: ExpressionBuilder<DB, "zone">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("npc")
+          .where("npc.zoneId", "=", id)
+          .select((eb) => npcSubRelations(eb, eb.val("npc.id")))
+          .selectAll("npc")
+      ).as("npcs"),
+    schema: z.array(NpcWithRelationsSchema).describe("区域内NPC"),
+  },
+});
+
+const zoneRelationsFactory = makeRelations(zoneSubRelationDefs);
+export const ZoneWithRelationsSchema = z.object({
+  ...zoneSchema.shape,
+  ...zoneRelationsFactory.schema.shape,
+});
+export const zoneSubRelations = zoneRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findZoneById(id: string): Promise<Zone | null> {
@@ -99,6 +115,9 @@ export async function findZoneWithRelations(id: string) {
     .select((eb) => zoneSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type ZoneWithRelations = Awaited<ReturnType<typeof findZoneWithRelations>>;
 
 export async function findZonesByMobId(mobId: string): Promise<Zone[]> {
   const db = await getDB();

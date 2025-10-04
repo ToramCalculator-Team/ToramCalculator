@@ -64,14 +64,17 @@ export class EnumProcessor {
 
   /**
    * 处理 Schema
-   * 将枚举定义注入到 Prisma schema 中
+   * 将枚举定义注入到 Prisma schema 中，并替换字段类型
    * @returns 处理结果
    */
   processSchema(): { updatedSchema: string; kyselyGenerator: string; clientGenerators: string[] } {
     const baseSchema = FileUtils.safeReadFile(PATHS.baseSchema);
     
-    // 生成枚举定义
-    const enumDefinitions = this.generateEnumDefinitions();
+    // 生成枚举定义并存储到实例变量中
+    this.enumDefinitions = this.generateEnumDefinitions();
+    
+    // 处理 Schema 内容，替换枚举字段类型
+    const updatedSchema = this.replaceEnumFieldTypes(baseSchema);
     
     // 生成 Kysely generator 配置
     const kyselyGenerator = this.generateKyselyGenerator();
@@ -80,10 +83,59 @@ export class EnumProcessor {
     const clientGenerators = this.generateClientGenerators();
     
     return {
-      updatedSchema: baseSchema,
+      updatedSchema,
       kyselyGenerator,
       clientGenerators,
     };
+  }
+
+  /**
+   * 替换 Schema 中的枚举字段类型
+   * @param schemaContent - Schema 内容
+   * @returns 处理后的 Schema 内容
+   */
+  replaceEnumFieldTypes(schemaContent: string): string {
+    const lines = schemaContent.split('\n');
+    let updatedSchema = '';
+    let currentModel = '';
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // 处理模型定义
+      const modelMatch = trimmed.match(/^model (\w+) \{$/);
+      if (modelMatch) {
+        currentModel = modelMatch[1];
+        updatedSchema += line + '\n';
+        continue;
+      }
+      
+      // 处理模型结束
+      if (trimmed === '}') {
+        currentModel = '';
+        updatedSchema += line + '\n';
+        continue;
+      }
+      
+      // 处理枚举字段
+      let newLine = line;
+      const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
+      if (enumMatch && currentModel) {
+        const [, fieldName, originalEnumName] = enumMatch;
+        const pascalCaseEnum = StringUtils.toPascalCase(originalEnumName);
+        
+        if (this.extractedEnums.has(pascalCaseEnum)) {
+          newLine = line.replace('String', pascalCaseEnum);
+          
+          // 建立枚举类型名到枚举名的映射
+          this.enumTypeToNameMap.set(originalEnumName, pascalCaseEnum);
+        }
+      }
+      
+      updatedSchema += newLine + '\n';
+    }
+    
+    return updatedSchema;
   }
 
   /**

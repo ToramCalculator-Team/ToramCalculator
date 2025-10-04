@@ -5,7 +5,8 @@
 
 import fs from "fs";
 import { PATHS } from "./utils/config";
-import { CommandUtils, FileUtils, LogUtils } from "./utils/common";
+import { CommandUtils, FileUtils, LogUtils, StringUtils } from "./utils/common";
+import * as enums from "../schema/enums";
 
 interface ParsedFields {
   [fieldName: string]: string;
@@ -55,28 +56,23 @@ ${generatedSchemas}
     let enumSchemas = "";
     const enumMap = new Map<string, string[]>();
 
-    if (fs.existsSync(PATHS.kysely.enums)) {
-      const enumsContent = FileUtils.safeReadFile(PATHS.kysely.enums);
-      const enumConstRegex = /export const (\w+) = \{([\s\S]*?)\} as const;/g;
-      let match;
-
-      while ((match = enumConstRegex.exec(enumsContent)) !== null) {
-        const enumName = match[1];
-        const body = match[2];
-        const valueRegex = /['"]?\w+['"]?\s*:\s*['"]([^'"]+)['"]/g;
-        let valueMatch;
-        const values: string[] = [];
-
-        while ((valueMatch = valueRegex.exec(body)) !== null) {
-          values.push(valueMatch[1]);
-        }
-
-        if (values.length > 0) {
-          enumSchemas += `export const ${enumName}Schema = z.enum([${values.map((v) => `"${v}"`).join(", ")}]);\n`;
-          enumSchemas += `export type ${enumName}Type = z.infer<typeof ${enumName}Schema>;\n\n`;
-          enumMap.set(enumName.toLowerCase(), values);
+    try {
+      // 遍历所有导出的枚举常量
+      for (const [key, value] of Object.entries(enums)) {
+        // 只处理以 _TYPE 结尾的常量（枚举定义）
+        if (key.endsWith('_TYPE') && Array.isArray(value)) {
+          const values = value as string[];
+          if (values.length > 0) {
+            // 使用 StringUtils.toPascalCase 进行正确的转换
+            const pascalCaseEnumName = StringUtils.toPascalCase(key);
+            enumSchemas += `export const ${pascalCaseEnumName}Schema = z.enum([${values.map((v) => `"${v}"`).join(", ")}]);\n`;
+            enumSchemas += `export type ${pascalCaseEnumName}Type = z.infer<typeof ${pascalCaseEnumName}Schema>;\n\n`;
+            enumMap.set(key.toLowerCase(), values);
+          }
         }
       }
+    } catch (error) {
+      LogUtils.logError("导入枚举模块失败", error as Error);
     }
 
     return enumSchemas;

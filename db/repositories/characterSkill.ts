@@ -4,33 +4,47 @@ import { DB, character_skill } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { skillSubRelations } from "./skill";
-import { z } from "zod/v3";
-import { character_skillSchema } from "../generated/zod";
-import { SkillRelationsSchema } from "./skill";
+import { z } from "zod";
+import { character_skillSchema, skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type CharacterSkill = Selectable<character_skill>;
 export type CharacterSkillInsert = Insertable<character_skill>;
 export type CharacterSkillUpdate = Updateable<character_skill>;
-// 关联查询类型
-export type CharacterSkillWithRelations = Awaited<ReturnType<typeof findCharacterSkillWithRelations>>;
-export const CharacterSkillRelationsSchema = z.object({
-  ...character_skillSchema.shape,
-  template: SkillRelationsSchema.nullable(),
+
+// 子关系定义
+const characterSkillSubRelationDefs = defineRelations({
+  template: {
+    build: (eb, id) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("skill")
+          .whereRef("skill.id", "=", "character_skill.templateId")
+          .select((subEb) => skillSubRelations(subEb, subEb.val(id)))
+          .selectAll("skill")
+      ).$notNull().as("template"),
+    schema: z.object({
+      ...skillSchema.shape,
+      statistic: statisticSchema,
+      effects: z.array(skill_effectSchema),
+    }).describe("技能模板"),
+  },
 });
 
-// 2. 关联查询定义
-export function character_skillSubRelations(eb: ExpressionBuilder<DB, "character_skill">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("skill")
-        .whereRef("skill.id", "=", "character_skill.templateId")
-        .select((subEb) => skillSubRelations(subEb, subEb.val(id)))
-        .selectAll("skill"),
-    ).as("template"),
-  ];
-}
+// 生成 factory
+export const characterSkillRelationsFactory = makeRelations<"character_skill", typeof characterSkillSubRelationDefs>(
+  characterSkillSubRelationDefs
+);
+
+// 构造关系Schema
+export const CharacterSkillWithRelationsSchema = z.object({
+  ...character_skillSchema.shape,
+  ...characterSkillRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const characterSkillSubRelations = characterSkillRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findCharacterSkillById(id: string): Promise<CharacterSkill | null> {
@@ -86,13 +100,16 @@ export async function deleteCharacterSkill(trx: Transaction<DB>, id: string): Pr
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findCharacterSkillWithRelations(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("character_skill")
     .where("id", "=", id)
     .selectAll("character_skill")
-    .select((eb) => character_skillSubRelations(eb, eb.val(id)))
+    .select((eb) => characterSkillSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type CharacterSkillWithRelations = Awaited<ReturnType<typeof findCharacterSkillWithRelations>>;

@@ -1,10 +1,19 @@
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Setter, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
-import { addressSchema, zoneSchema } from "@db/generated/zod/index";
+import { addressSchema } from "@db/generated/zod/index";
 import { address, DB, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
+import {
+  AddressWithRelationsSchema,
+  AddressWithRelations,
+  findAddressWithRelations,
+  findAddresses,
+  createAddress,
+  updateAddress,
+  deleteAddress,
+} from "@db/repositories/address";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
@@ -15,33 +24,22 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { createForm } from "@tanstack/solid-form";
-import { createId } from "@paralleldrive/cuid2";
-import { createStatistic } from "@db/repositories/statistic";
-import { store } from "~/store";
 import Icons from "~/components/icons/index";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { Transaction } from "kysely";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
 
-type AddressWithRelated = address & {
-  zones: zone[];
-};
 
-const addressWithRelatedSchema = z.object({
-  ...addressSchema.shape,
-  zones: z.array(zoneSchema),
-});
-
-const defaultAddressWithRelated: AddressWithRelated = {
+const defaultAddressWithRelations: AddressWithRelations = {
   ...defaultData.address,
+  statistic: defaultData.statistic,
   zones: [],
 };
 
-const AddressWithRelatedDic = (dic: dictionary) => ({
+const AddressWithRelationsDic = (dic: dictionary) => ({
   ...dic.db.address,
   fields: {
     ...dic.db.address.fields,
@@ -51,58 +49,18 @@ const AddressWithRelatedDic = (dic: dictionary) => ({
       tableFieldDescription: dic.db.zone.fields.name.tableFieldDescription,
       formFieldDescription: dic.db.zone.fields.name.formFieldDescription,
     },
+    statistic: {
+      key: "statistic",
+      ...dic.db.statistic.fields,
+      tableFieldDescription: '统计',
+      formFieldDescription: '统计',
+    },
   },
 });
 
-const AddressWithRelatedFetcher = async (id: string): Promise<AddressWithRelated> => {
-  const db = await getDB();
-  const res = await db
-    .selectFrom("address")
-    .where("id", "=", id)
-    .selectAll("address")
-    .select((eb) => [
-      jsonArrayFrom(eb.selectFrom("zone").where("zone.addressId", "=", id).selectAll("zone")).as("zones"),
-    ])
-    .executeTakeFirstOrThrow();
-  return res;
-};
 
-const createAddress = async (trx: Transaction<DB>, address: address) => {
-  const statistic = await createStatistic(trx);
-  return trx
-    .insertInto("address")
-    .values({
-      ...address,
-      id: createId(),
-      statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-};
-
-const updateAddress = async (trx: Transaction<DB>, address: address) => {
-  return trx.updateTable("address").set(address).where("id", "=", address.id).returningAll().executeTakeFirstOrThrow();
-};
-
-const deleteAddress = async (trx: Transaction<DB>, address: address) => {
-  // 将相关zones归属调整至defaultAddress
-  await trx.updateTable("zone").set({ addressId: "defaultAddressId" }).where("addressId", "=", address.id).execute();
-  // 删除地址
-  await trx.deleteFrom("address").where("id", "=", address.id).executeTakeFirstOrThrow();
-  // 删除统计
-  await trx.deleteFrom("statistic").where("id", "=", address.statisticId).executeTakeFirstOrThrow();
-};
-
-const AddressesFetcher = async () => {
-  const db = await getDB();
-  const res = await db.selectFrom("address").selectAll("address").execute();
-  return res;
-};
-
-const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated) => {
-  const formInitialValues = oldAddress ?? defaultAddressWithRelated;
+const AddressWithRelationsForm = (dic: dictionary, oldAddress?: AddressWithRelations) => {
+  const formInitialValues = oldAddress ?? defaultAddressWithRelations;
   const form = createForm(() => ({
     defaultValues: formInitialValues,
     onSubmit: async ({ value: newAddress }) => {
@@ -157,9 +115,9 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
         }}
         class={`Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none`}
       >
-        <For each={Object.entries(defaultAddressWithRelated)}>
+        <For each={Object.entries(defaultAddressWithRelations)}>
           {(_field, index) => {
-            const fieldKey = _field[0] as keyof AddressWithRelated;
+            const fieldKey = _field[0] as keyof AddressWithRelations;
             const fieldValue = _field[1];
             switch (fieldKey) {
               case "id":
@@ -173,7 +131,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: addressWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: AddressWithRelationsSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => {
@@ -244,7 +202,7 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                     name={fieldKey}
                     validators={{
                       onChangeAsyncDebounceMs: 500,
-                      onChangeAsync: addressWithRelatedSchema.shape[fieldKey],
+                      onChangeAsync: AddressWithRelationsSchema.shape[fieldKey],
                     }}
                   >
                     {(field) => (
@@ -274,12 +232,12 @@ const AddressWithRelatedForm = (dic: dictionary, oldAddress?: AddressWithRelated
                 // 非基础对象字段，对象，对象数组会单独处理，因此可以断言
                 const simpleFieldKey = _field[0] as keyof address;
                 const simpleFieldValue = _field[1];
-                return renderField<AddressWithRelated, keyof AddressWithRelated>(
+                return renderField<AddressWithRelations, keyof AddressWithRelations>(
                   form,
                   simpleFieldKey,
                   simpleFieldValue,
-                  AddressWithRelatedDic(dic),
-                  addressWithRelatedSchema,
+                  AddressWithRelationsDic(dic),
+                  AddressWithRelationsSchema,
                 );
             }
           }}
@@ -471,14 +429,14 @@ const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => 
   );
 };
 
-export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, AddressWithRelated> = {
-  defaultData: defaultAddressWithRelated,
-  dataFetcher: AddressWithRelatedFetcher,
-  datasFetcher: AddressesFetcher,
-  dataSchema: addressWithRelatedSchema,
+export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelations, AddressWithRelations> = {
+  defaultData: defaultAddressWithRelations,
+  dataFetcher: findAddressWithRelations,
+  datasFetcher: findAddresses,
+  dataSchema: AddressWithRelationsSchema,
   main: AddressPage,
   table: {
-    dataFetcher: AddressesFetcher,
+    dataFetcher: findAddresses,
     columnsDef: [
       { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
       { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
@@ -486,12 +444,12 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
       { accessorKey: "posX", cell: (info: any) => info.getValue(), size: 160 },
       { accessorKey: "posY", cell: (info: any) => info.getValue(), size: 160 },
     ],
-    dictionary: (dic) => AddressWithRelatedDic(dic),
+    dictionary: (dic) => AddressWithRelationsDic(dic),
     hiddenColumnDef: ["id"],
     defaultSort: { id: "name", desc: false },
     tdGenerator: {},
   },
-  form: ({ data, dic }) => AddressWithRelatedForm(dic, data),
+  form: ({ data, dic }) => AddressWithRelationsForm(dic, data),
   card: ({ data, dic }) => {
     const [zonesData] = createResource(data.id, async (addressId) => {
       const db = await getDB();
@@ -501,10 +459,10 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
     return (
       <>
         <div class="AddressImage bg-area-color h-[18vh] w-full rounded"></div>
-        {ObjRender<AddressWithRelated>({
+        {ObjRender<AddressWithRelations>({
           data,
-          dictionary: AddressWithRelatedDic(dic),
-          dataSchema: addressWithRelatedSchema,
+          dictionary: AddressWithRelationsDic(dic),
+          dataSchema: AddressWithRelationsSchema,
           hiddenFields: ["id"],
           fieldGroupMap: {
             基本信息: ["name", "type"],
@@ -519,7 +477,7 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelated, A
             return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
           }}
         />
-        <CardSharedSection<AddressWithRelated> dic={dic} data={data} delete={deleteAddress} />
+        <CardSharedSection<AddressWithRelations> dic={dic} data={data} delete={deleteAddress} />
       </>
     );
   },

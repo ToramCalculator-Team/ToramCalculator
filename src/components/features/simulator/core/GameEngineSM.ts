@@ -1,12 +1,12 @@
 import { setup, createMachine } from "xstate";
 import GameEngine from "./GameEngine";
-import { SimulatorRelationsSchema } from "@db/repositories/simulator";
+import { SimulatorWithRelationsSchema } from "@db/repositories/simulator";
 import { z } from "zod/v3";
 
 export const EngineCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("INIT"),
-    data: SimulatorRelationsSchema,
+    data: SimulatorWithRelationsSchema,
     origin: z.enum(["source", "mirror"]).optional(),
   }),
   z.object({

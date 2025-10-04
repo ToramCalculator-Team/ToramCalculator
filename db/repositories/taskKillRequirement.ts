@@ -3,25 +3,36 @@ import { getDB } from "./database";
 import { DB, task_kill_requirement } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { mobSchema, task_kill_requirementSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
+import { MobWithRelationsSchema } from "./mob";
 
 // 1. 类型定义
 export type TaskKillRequirement = Selectable<task_kill_requirement>;
 export type TaskKillRequirementInsert = Insertable<task_kill_requirement>;
 export type TaskKillRequirementUpdate = Updateable<task_kill_requirement>;
-// 关联查询类型
-export type TaskKillRequirementWithRelations = Awaited<ReturnType<typeof findTaskKillRequirementWithRelations>>;
 
 // 2. 关联查询定义
-export function taskKillRequirementSubRelations(eb: ExpressionBuilder<DB, "task_kill_requirement">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("mob")
-        .whereRef("mob.id", "=", "task_kill_requirement.mobId")
-        .selectAll("mob")
-    ).as("mob"),
-  ];
-}
+const taskKillRequirementSubRelationDefs = defineRelations({
+  mob: {
+    build: (eb: ExpressionBuilder<DB, "task_kill_requirement">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("mob")
+          .whereRef("mob.id", "=", "task_kill_requirement.mobId")
+          .selectAll("mob")
+      ).$notNull().as("mob"),
+    schema: MobWithRelationsSchema.describe("关联怪物"),
+  },
+});
+
+const taskKillRequirementRelationsFactory = makeRelations(taskKillRequirementSubRelationDefs);
+export const TaskKillRequirementWithRelationsSchema = z.object({
+  ...task_kill_requirementSchema.shape,
+  ...taskKillRequirementRelationsFactory.schema.shape,
+});
+export const taskKillRequirementSubRelations = taskKillRequirementRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findTaskKillRequirementById(id: string): Promise<TaskKillRequirement | null> {
@@ -89,4 +100,7 @@ export async function findTaskKillRequirementWithRelations(id: string) {
     .selectAll("task_kill_requirement")
     .select((eb) => taskKillRequirementSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-} 
+}
+
+// 关联查询类型
+export type TaskKillRequirementWithRelations = Awaited<ReturnType<typeof findTaskKillRequirementWithRelations>>; 

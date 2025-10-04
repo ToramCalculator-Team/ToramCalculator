@@ -139,7 +139,7 @@ export const PLAYER_ARMOR_ABILITY_TYPE = ["Normal", "Light", "Heavy"] as const;
 export type PlayerArmorAbilityType = (typeof PLAYER_ARMOR_ABILITY_TYPE)[number];
 
 // 装备
-export const EQUIP_TYPE = [...WEAPON_TYPE, ...SUB_WEAPON_TYPE, "Armor", "Option", "Special"] as const;
+export const EQUIP_TYPE = [...WEAPON_TYPE, "Armor", "Option", "Special"] as const;
 export type EquipType = (typeof EQUIP_TYPE)[number];
 
 // 时装

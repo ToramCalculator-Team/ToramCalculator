@@ -3,33 +3,37 @@ import { getDB } from "./database";
 import { DB, team } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { MemberRelationsSchema, memberSubRelations } from "./member";
+import { MemberWithRelationsSchema, memberSubRelations } from "./member";
 import { z } from "zod/v3";
 import { teamSchema } from "@db/generated/zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Team = Selectable<team>;
 export type TeamInsert = Insertable<team>;
 export type TeamUpdate = Updateable<team>;
-// 关联查询类型
-export type TeamWithRelations = Awaited<ReturnType<typeof findTeamWithRelations>>;
-export const TeamRelationsSchema = z.object({
-  ...teamSchema.shape,
-  members: z.array(MemberRelationsSchema),
-});
 
 // 2. 关联查询定义
-export function teamSubRelations(eb: ExpressionBuilder<DB, "team">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("member")
-        .whereRef("member.teamId", "=", id)
-        .selectAll("member")
-        .select((subEb) => memberSubRelations(subEb, subEb.ref("member.id"))),
-    ).as("members"),
-  ];
-}
+const teamSubRelationDefs = defineRelations({
+  members: {
+    build: (eb: ExpressionBuilder<DB, "team">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("member")
+          .whereRef("member.teamId", "=", id)
+          .selectAll("member")
+          .select((subEb) => memberSubRelations(subEb, subEb.ref("member.id")))
+      ).as("members"),
+    schema: z.array(MemberWithRelationsSchema).describe("队伍成员"),
+  },
+});
+
+const teamRelationsFactory = makeRelations(teamSubRelationDefs);
+export const TeamWithRelationsSchema = z.object({
+  ...teamSchema.shape,
+  ...teamRelationsFactory.schema.shape,
+});
+export const teamSubRelations = teamRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findTeamById(id: string): Promise<Team | null> {
@@ -98,3 +102,6 @@ export async function findTeamWithRelations(id: string) {
     .select((eb) => teamSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type TeamWithRelations = Awaited<ReturnType<typeof findTeamWithRelations>>;

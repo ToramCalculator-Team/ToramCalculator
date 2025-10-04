@@ -1,6 +1,8 @@
 import { DB, address } from "../generated/kysely/kysely";
 import { getDB } from "./database";
 import { createId } from "@paralleldrive/cuid2";
+import { store } from "~/store";
+import { createStatistic } from "./statistic";
 import { Transaction, Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { jsonObjectFrom, jsonArrayFrom } from "kysely/helpers/postgres";
 import { addressSchema, worldSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
@@ -14,22 +16,13 @@ export type AddressUpdate = Updateable<address>;
 
 // 子关系定义
 const addressSubRelationDefs = defineRelations({
-  world: {
-    build: (eb, id) =>
-      jsonObjectFrom(
-        eb.selectFrom("world")
-          .where("world.id", "=", eb.ref("address.worldId"))
-          .selectAll("world")
-      ).as("world"),
-    schema: worldSchema.describe("所属世界"),
-  },
   statistic: {
     build: (eb, id) =>
       jsonObjectFrom(
         eb.selectFrom("statistic")
           .where("statistic.id", "=", eb.ref("address.statisticId"))
           .selectAll("statistic")
-      ).as("statistic"),
+      ).$notNull().as("statistic"),
     schema: statisticSchema.describe("统计信息"),
   },
   zones: {
@@ -83,33 +76,6 @@ export async function insertAddress(trx: Transaction<DB>, data: AddressInsert): 
     .executeTakeFirstOrThrow();
 }
 
-export async function createAddress(trx: Transaction<DB>, data: AddressInsert): Promise<Address> {
-  return await trx
-    .insertInto("address")
-    .values({
-      ...data,
-      id: data.id || createId(),
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-export async function updateAddress(trx: Transaction<DB>, id: string, data: AddressUpdate): Promise<Address> {
-  return await trx
-    .updateTable("address")
-    .set(data)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-export async function deleteAddress(trx: Transaction<DB>, id: string): Promise<Address | null> {
-  return await trx
-    .deleteFrom("address")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
-}
 
 // 特殊查询方法
 export async function findAddressWithRelations(id: string) {
@@ -124,3 +90,49 @@ export async function findAddressWithRelations(id: string) {
 
 // 关联查询类型
 export type AddressWithRelations = Awaited<ReturnType<typeof findAddressWithRelations>>;
+
+// 5. 业务逻辑 CRUD 方法
+export async function createAddress(trx: Transaction<DB>, addressData: AddressInsert): Promise<Address> {
+  const statistic = await createStatistic(trx);
+  return await trx
+    .insertInto("address")
+    .values({
+      ...addressData,
+      id: createId(),
+      statisticId: statistic.id,
+      createdByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function updateAddress(trx: Transaction<DB>, addressData: AddressUpdate): Promise<Address> {
+  return await trx
+    .updateTable("address")
+    .set({
+      ...addressData,
+      updatedByAccountId: store.session.user.account?.id,
+    })
+    .where("id", "=", addressData.id!)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function deleteAddress(trx: Transaction<DB>, addressData: Address): Promise<void> {
+  // 将相关zones归属调整至defaultAddress
+  await trx.updateTable("zone").set({ addressId: "defaultAddressId" }).where("addressId", "=", addressData.id).execute();
+  // 删除地址
+  await trx.deleteFrom("address").where("id", "=", addressData.id).executeTakeFirstOrThrow();
+  // 删除统计
+  await trx.deleteFrom("statistic").where("id", "=", addressData.statisticId).executeTakeFirstOrThrow();
+}
+
+export async function findAddressesWithRelations() {
+  const db = await getDB();
+  return await db
+    .selectFrom("address")
+    .selectAll("address")
+    .select((eb) => addressSubRelations(eb, eb.ref("address.id")))
+    .execute();
+}

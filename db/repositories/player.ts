@@ -1,37 +1,39 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { DB, player } from "../generated/kysely/kysely";
-import { CharacterRelationsSchema, characterSubRelations } from "./character";
+import { CharacterWithRelationsSchema, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v3";
 import { playerSchema } from "@db/generated/zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Player = Selectable<player>;
 export type PlayerInsert = Insertable<player>;
 export type PlayerUpdate = Updateable<player>;
-// 关联查询类型
-export type PlayerWithRelations = Awaited<ReturnType<typeof findPlayerWithRelations>>;
-export const PlayerRelationsSchema = z.object({
-  ...playerSchema.shape,
-  character: CharacterRelationsSchema,
-});
 
 // 2. 关联查询定义
-export function playerSubRelations(eb: ExpressionBuilder<DB, "player">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("character")
-        .whereRef("id", "=", "player.useIn")
-        .selectAll("character")
-        .select((subEb) => characterSubRelations(subEb, subEb.ref("character.id"))),
-    )
-      .$notNull()
-      .as("character"),
-  ];
-}
+const playerSubRelationDefs = defineRelations({
+  character: {
+    build: (eb: ExpressionBuilder<DB, "player">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("character")
+          .whereRef("id", "=", "player.useIn")
+          .selectAll("character")
+          .select((subEb) => characterSubRelations(subEb, subEb.ref("character.id")))
+      ).$notNull().as("character"),
+    schema: CharacterWithRelationsSchema.describe("角色信息"),
+  },
+});
+
+const playerRelationsFactory = makeRelations(playerSubRelationDefs);
+export const PlayerWithRelationsSchema = z.object({
+  ...playerSchema.shape,
+  ...playerRelationsFactory.schema.shape,
+});
+export const playerSubRelations = playerRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findPlayerById(id: string): Promise<Player | null> {
@@ -100,3 +102,6 @@ export async function findPlayerWithRelations(id: string) {
     .select((eb) => playerSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type PlayerWithRelations = Awaited<ReturnType<typeof findPlayerWithRelations>>;

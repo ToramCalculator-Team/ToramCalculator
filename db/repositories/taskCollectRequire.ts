@@ -3,25 +3,35 @@ import { getDB } from "./database";
 import { DB, task_collect_require } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
+import { itemSchema, task_collect_requireSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type TaskCollectRequire = Selectable<task_collect_require>;
 export type TaskCollectRequireInsert = Insertable<task_collect_require>;
 export type TaskCollectRequireUpdate = Updateable<task_collect_require>;
-// 关联查询类型
-export type TaskCollectRequireWithRelations = Awaited<ReturnType<typeof findTaskCollectRequireWithRelations>>;
 
 // 2. 关联查询定义
-export function taskCollectRequireSubRelations(eb: ExpressionBuilder<DB, "task_collect_require">, id: Expression<string>) {
-  return [
-    jsonObjectFrom(
-      eb
-        .selectFrom("item")
-        .whereRef("item.id", "=", "task_collect_require.itemId")
-        .selectAll("item")
-    ).as("item"),
-  ];
-}
+const taskCollectRequireSubRelationDefs = defineRelations({
+  item: {
+    build: (eb: ExpressionBuilder<DB, "task_collect_require">, id: Expression<string>) =>
+      jsonObjectFrom(
+        eb
+          .selectFrom("item")
+          .whereRef("item.id", "=", "task_collect_require.itemId")
+          .selectAll("item")
+      ).$notNull().as("item"),
+    schema: itemSchema.describe("关联物品"),
+  },
+});
+
+const taskCollectRequireRelationsFactory = makeRelations(taskCollectRequireSubRelationDefs);
+export const TaskCollectRequireWithRelationsSchema = z.object({
+  ...task_collect_requireSchema.shape,
+  ...taskCollectRequireRelationsFactory.schema.shape,
+});
+export const taskCollectRequireSubRelations = taskCollectRequireRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findTaskCollectRequireById(id: string): Promise<TaskCollectRequire | null> {
@@ -89,4 +99,7 @@ export async function findTaskCollectRequireWithRelations(id: string) {
     .selectAll("task_collect_require")
     .select((eb) => taskCollectRequireSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
-} 
+}
+
+// 关联查询类型
+export type TaskCollectRequireWithRelations = Awaited<ReturnType<typeof findTaskCollectRequireWithRelations>>; 

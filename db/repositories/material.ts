@@ -5,18 +5,31 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
+import { materialSchema } from "../generated/zod/index";
+import { z } from "zod";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Material = Selectable<material>;
 export type MaterialInsert = Insertable<material>;
 export type MaterialUpdate = Updateable<material>;
-// 关联查询类型
-export type MaterialWithRelations = Awaited<ReturnType<typeof findMaterialWithRelations>>;
 
-// 2. 关联查询定义
-export function materialSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [];
-}
+// 子关系定义
+const materialSubRelationDefs = defineRelations({});
+
+// 生成 factory
+export const materialRelationsFactory = makeRelations<"material", typeof materialSubRelationDefs>(
+  materialSubRelationDefs
+);
+
+// 构造关系Schema
+export const MaterialWithRelationsSchema = z.object({
+  ...materialSchema.shape,
+  ...materialRelationsFactory.schema.shape,
+});
+
+// 构造子关系查询器
+export const materialSubRelations = materialRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findMaterialById(id: string): Promise<Material | null> {
@@ -84,7 +97,7 @@ export async function deleteMaterial(trx: Transaction<DB>, id: string): Promise<
     .executeTakeFirst() || null;
 }
 
-// 4. 特殊查询方法
+// 特殊查询方法
 export async function findMaterialWithRelations(id: string) {
   const db = await getDB();
   return await db
@@ -95,6 +108,9 @@ export async function findMaterialWithRelations(id: string) {
     .select((eb) => materialSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type MaterialWithRelations = Awaited<ReturnType<typeof findMaterialWithRelations>>;
 
 export async function findItemWithMaterialById(itemId: string) {
   const db = await getDB();

@@ -2,34 +2,45 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { insertStatistic } from "./statistic";
-import { crystalSubRelations, insertCrystal } from "./crystal";
+import { crystalSubRelations, insertCrystal, CrystalWithRelationsSchema } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
 import { special, crystal, DB, image, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
 import { insertRecipe } from "./recipe";
 import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
+import { specialSchema, itemSchema } from "@db/generated/zod";
+import { z } from "zod/v3";
+import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
 export type Special = Selectable<special>;
 export type SpecialInsert = Insertable<special>;
 export type SpecialUpdate = Updateable<special>;
-// 关联查询类型
-export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRelations>>;
 
 // 2. 关联查询定义
-export function speEquipSubRelations(eb: ExpressionBuilder<DB, "item">, id: Expression<string>) {
-  return [
-    jsonArrayFrom(
-      eb
-        .selectFrom("_crystalTospecial")
-        .innerJoin("crystal", "_crystalTospecial.A", "crystal.itemId")
-        .where("_crystalTospecial.B", "=", id)
-        .selectAll("crystal")
-        .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
-    ).as("defaultCrystals"),
-  ];
-}
+const speEquipSubRelationDefs = defineRelations({
+  defaultCrystals: {
+    build: (eb: ExpressionBuilder<DB, "item">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("_crystalTospecial")
+          .innerJoin("crystal", "_crystalTospecial.A", "crystal.itemId")
+          .where("_crystalTospecial.B", "=", id)
+          .selectAll("crystal")
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId")))
+      ).as("defaultCrystals"),
+    schema: z.array(CrystalWithRelationsSchema).describe("默认水晶列表"),
+  },
+});
+
+const speEquipRelationsFactory = makeRelations(speEquipSubRelationDefs);
+export const SpecialWithRelationsSchema = z.object({
+  ...specialSchema.shape,
+  ...itemSchema.shape,
+  ...speEquipRelationsFactory.schema.shape,
+});
+export const speEquipSubRelations = speEquipRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSpecialById(id: string): Promise<Special | null> {
@@ -110,6 +121,9 @@ export async function findSpecialByItemId(id: string) {
     .select((eb) => speEquipSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
+
+// 关联查询类型
+export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRelations>>;
 
 // export async function createSpecial(
 //   newSpecial: item & {
