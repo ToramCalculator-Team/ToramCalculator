@@ -61,7 +61,7 @@ export const SimulatorWithRelationsSchema = z.object({
 export const simulatorSubRelations = simulatorRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findSimulatorById(id: string): Promise<Simulator | null> {
+export async function findSimulatorById(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db
     .selectFrom("simulator")

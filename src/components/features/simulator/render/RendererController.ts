@@ -478,8 +478,10 @@ class EntityFactory {
     // 创建动画控制器
     entity.animationController = new CharacterAnimationController(entity, this.scene);
 
-    // 播放默认idle动画
-    entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
+    // 播放默认idle动画（循环）
+    entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE, {
+      mode: "loop",
+    });
     return entity;
   }
 
@@ -555,7 +557,7 @@ class EntityFactory {
     }
 
     try {
-      const result = await ImportMeshAsync("models/character.glb", this.scene);
+      const result = await ImportMeshAsync("/models/character.glb", this.scene);
 
       // 隐藏原始模型，只用作模板
       result.meshes.forEach((mesh) => {
@@ -1054,5 +1056,12 @@ export function createRendererController(scene: Scene): RendererController {
 
 // ==================== 导出接口 ====================
 
-export type { CustomAnimationData, AnimationPlayRequest, CharacterEntityRuntime, BuiltinAnimationType };
-export { CharacterAnimationController };
+export type { 
+  CustomAnimationData, 
+  AnimationPlayRequest, 
+  CharacterEntityRuntime, 
+  SimpleEntityRuntime,
+  EntityRuntime,
+  BaseEntityRuntime
+};
+export { CharacterAnimationController, EntityFactory, BuiltinAnimationType };

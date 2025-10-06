@@ -42,7 +42,6 @@ export function Select(props: SelectProps) {
       // console.log("options:====", options);
       if (options) {
         const option = options.find((opt) => opt.value === props.value);
-        console.log("option:====", option);
         if (option) {
           setSelectedOption(option);
         }

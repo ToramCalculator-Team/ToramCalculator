@@ -86,7 +86,7 @@ export default function CharacterIndexPage(props: ParentProps) {
       console.log("character", character);
       return character;
     });
-    navigate(`/character/${character.id}`);
+    refetchCharacters()
   };
 
   return (
@@ -125,7 +125,7 @@ export default function CharacterIndexPage(props: ParentProps) {
                 textCenter
               />
             </div>
-            <div class="Content h-full w-full flex-1">{props.children}</div>
+            {props.children}
           </Show>
         </div>
       )}

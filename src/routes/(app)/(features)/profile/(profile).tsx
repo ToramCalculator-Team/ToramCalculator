@@ -3,7 +3,7 @@ import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { useNavigate } from "@solidjs/router";
 import Icons from "~/components/icons/index";
-import { Button  } from "~/components/controls/button";
+import { Button } from "~/components/controls/button";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -37,8 +37,8 @@ export default function ProfilePage() {
 
   return (
     <div class="Profile flex flex-col gap-4 p-3">
-      <div class="Top gap-3 p-6 flex flex-col items-center justify-center">
-        <div class="Avatar flex-none bg-accent-color w-32 h-32 overflow-hidden rounded-full"></div>
+      <div class="Top flex flex-col items-center justify-center gap-3 p-6">
+        <div class="Avatar bg-accent-color h-32 w-32 flex-none overflow-hidden rounded-full"></div>
         <span class="text-2xl">{store.session.user.name}</span>
         <div class={`Config absolute top-3 right-3 flex gap-1`}>
           <For each={extraFunctionConfig()}>
@@ -55,7 +55,8 @@ export default function ProfilePage() {
           </For>
         </div>
       </div>
-      <div class="Bottom bg-area-color w-full h-full"></div>
+      <div class="Bottom bg-area-color h-full w-full">
+      </div>
     </div>
   );
 }
