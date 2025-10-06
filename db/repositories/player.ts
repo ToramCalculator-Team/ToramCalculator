@@ -36,7 +36,7 @@ export const PlayerWithRelationsSchema = z.object({
 export const playerSubRelations = playerRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findPlayerById(id: string): Promise<Player | null> {
+export async function findPlayerById(id: string) {
   const db = await getDB();
   return await db
     .selectFrom("player")
@@ -45,7 +45,16 @@ export async function findPlayerById(id: string): Promise<Player | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findPlayers(): Promise<Player[]> {
+export async function findPlayersByAccountId(accountId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db
+    .selectFrom("player")
+    .where("accountId", "=", accountId)
+    .selectAll("player")
+    .execute();
+}
+
+export async function findPlayers() {
   const db = await getDB();
   return await db
     .selectFrom("player")
@@ -53,7 +62,7 @@ export async function findPlayers(): Promise<Player[]> {
     .execute();
 }
 
-export async function insertPlayer(trx: Transaction<DB>, data: PlayerInsert): Promise<Player> {
+export async function insertPlayer(trx: Transaction<DB>, data: PlayerInsert) {
   return await trx
     .insertInto("player")
     .values(data)
@@ -61,7 +70,7 @@ export async function insertPlayer(trx: Transaction<DB>, data: PlayerInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function createPlayer(trx: Transaction<DB>, data: PlayerInsert): Promise<Player> {
+export async function createPlayer(trx: Transaction<DB>, data: PlayerInsert) {
   // 注意：createPlayer 内部自己处理事务，所以我们需要在外部事务中直接插入
   const player = await trx
     .insertInto("player")
@@ -75,7 +84,7 @@ export async function createPlayer(trx: Transaction<DB>, data: PlayerInsert): Pr
   return player;
 }
 
-export async function updatePlayer(trx: Transaction<DB>, id: string, data: PlayerUpdate): Promise<Player> {
+export async function updatePlayer(trx: Transaction<DB>, id: string, data: PlayerUpdate) {
   return await trx
     .updateTable("player")
     .set(data)
@@ -84,7 +93,7 @@ export async function updatePlayer(trx: Transaction<DB>, id: string, data: Playe
     .executeTakeFirstOrThrow();
 }
 
-export async function deletePlayer(trx: Transaction<DB>, id: string): Promise<Player | null> {
+export async function deletePlayer(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("player")
     .where("id", "=", id)
@@ -100,7 +109,7 @@ export async function findPlayerWithRelations(id: string) {
     .where("id", "=", id)
     .selectAll("player")
     .select((eb) => playerSubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
+    .executeTakeFirst();
 }
 
 // 关联查询类型

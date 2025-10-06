@@ -10,9 +10,9 @@ generator client {
 }
 
 generator zod {
-  provider = "prisma-zod-generator"
-  output = "./generated/zod"
-  // optional config = "./zod-generator.config.json" (relative to schema file)
+    provider = "prisma-zod-generator"
+    output   = "./generated/zod"
+    // optional config = "./zod-generator.config.json" (relative to schema file)
 }
 
 generator kysely {
@@ -227,10 +227,10 @@ model image {
 model statistic {
     id String @id
 
-    updatedAt       DateTime   @updatedAt
+    updatedAt       DateTime @updatedAt
     createdAt       DateTime
-    usageTimestamps DateTime[]
-    viewTimestamps  DateTime[]
+    usageTimestamps String[]
+    viewTimestamps  String[]
 
     belongToMob       mob?
     belongToItem      item?
@@ -783,16 +783,16 @@ model character {
     dex               Int
     personalityType   String // Enum CHARACTER_PERSONALITY_TYPE
     personalityValue  Int
-    weapon            player_weapon     @relation("weapon", fields: [weaponId], references: [id])
-    weaponId          String
-    subWeapon         player_weapon     @relation("subWeapon", fields: [subWeaponId], references: [id])
-    subWeaponId       String
-    armor             player_armor      @relation(fields: [armorId], references: [id])
-    armorId           String
-    optEquip          player_option     @relation(fields: [optEquipId], references: [id])
-    optEquipId        String
-    speEquip          player_special    @relation(fields: [speEquipId], references: [id])
-    speEquipId        String
+    weapon            player_weapon?    @relation("weapon", fields: [weaponId], references: [id])
+    weaponId          String?
+    subWeapon         player_weapon?    @relation("subWeapon", fields: [subWeaponId], references: [id])
+    subWeaponId       String?
+    armor             player_armor?     @relation(fields: [armorId], references: [id])
+    armorId           String?
+    optEquip          player_option?    @relation(fields: [optEquipId], references: [id])
+    optEquipId        String?
+    speEquip          player_special?   @relation(fields: [speEquipId], references: [id])
+    speEquipId        String?
     avatars           avatar[]
     cooking           String[]
     modifiers         String[]

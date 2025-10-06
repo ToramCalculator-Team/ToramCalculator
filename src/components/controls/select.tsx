@@ -14,6 +14,8 @@ type SelectProps = {
   optionGenerator?: (option: SelectOption, selected: boolean, onClick: () => void) => JSX.Element;
   placeholder?: string;
   class?: string;
+  textCenter?: boolean;
+  styleLess?: boolean;
   disabled?: boolean;
   optionPosition?: "top" | "bottom";
 };
@@ -40,6 +42,7 @@ export function Select(props: SelectProps) {
       // console.log("options:====", options);
       if (options) {
         const option = options.find((opt) => opt.value === props.value);
+        console.log("option:====", option);
         if (option) {
           setSelectedOption(option);
         }
@@ -73,11 +76,13 @@ export function Select(props: SelectProps) {
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
-        class={`border-dividing-color text-main-text-color flex w-full items-center justify-between rounded-md border-1 p-1 ${
+        class={`${!props.styleLess && "border-dividing-color border-1"} text-main-text-color flex w-full items-center justify-between rounded-md p-1 ${
           props.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         }`}
       >
-        <div class="bg-area-color flex w-full items-center justify-between rounded-md h-12 px-2">
+        <div
+          class={`${!props.styleLess && "bg-area-color rounded-md"} flex h-12 w-full items-center justify-between px-2 ${props.textCenter ? "justify-center" : "justify-between"}`}
+        >
           {hasOptionGenerator ? (
             props.optionGenerator!(
               selectedOption() ??
@@ -93,14 +98,16 @@ export function Select(props: SelectProps) {
           ) : (
             <span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>
           )}
-          <svg
-            class={`h-4 w-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          <Show when={!props.styleLess}>
+            <svg
+              class={`h-4 w-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </Show>
         </div>
       </button>
       <Show when={isOpen()}>
@@ -118,7 +125,7 @@ export function Select(props: SelectProps) {
                   optionGenerator(option, selected, () => handleSelect(option))
                 ) : (
                   <div
-                    class={`flex items-center text-nowrap hover:bg-area-color cursor-pointer px-3 h-12 ${selected ? "bg-area-color" : ""}`}
+                    class={`hover:bg-area-color flex h-12 cursor-pointer items-center px-3 text-nowrap ${selected ? "bg-area-color" : ""}`}
                     onClick={(e) => handleSelect(option)}
                   >
                     {option.label}

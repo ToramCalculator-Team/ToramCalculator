@@ -37,8 +37,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("_avatarTocharacter")
           .innerJoin("avatar", "avatar.id", "_avatarTocharacter.A")
           .whereRef("_avatarTocharacter.B", "=", id)
-          .selectAll("avatar")
-      ).$notNull().as("avatars"),
+          .selectAll("avatar"),
+      )
+        .$notNull()
+        .as("avatars"),
     schema: z.array(avatarSchema).describe("头像列表"),
   },
   consumables: {
@@ -49,8 +51,10 @@ const characterSubRelationDefs = defineRelations({
           .innerJoin("consumable", "consumable.itemId", "_characterToconsumable.A")
           .innerJoin("character", "character.id", "_characterToconsumable.B")
           .whereRef("character.id", "=", id)
-          .selectAll("consumable")
-      ).$notNull().as("consumables"),
+          .selectAll("consumable"),
+      )
+        .$notNull()
+        .as("consumables"),
     schema: z.array(consumableSchema).describe("消耗品列表"),
   },
   combos: {
@@ -60,8 +64,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("combo")
           .whereRef("combo.characterId", "=", "character.id")
           .selectAll("combo")
-          .select((subEb) => comboSubRelations(subEb, subEb.val("combo.id")))
-      ).$notNull().as("combos"),
+          .select((subEb) => comboSubRelations(subEb, subEb.val("combo.id"))),
+      )
+        .$notNull()
+        .as("combos"),
     schema: z.array(ComboWithRelationsSchema).describe("连击列表"),
   },
   skills: {
@@ -71,8 +77,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("character_skill")
           .whereRef("character_skill.characterId", "=", "character.id")
           .selectAll("character_skill")
-          .select((subEb) => characterSkillSubRelations(subEb, subEb.val("character_skill.id")))
-      ).$notNull().as("skills"),
+          .select((subEb) => characterSkillSubRelations(subEb, subEb.val("character_skill.id"))),
+      )
+        .$notNull()
+        .as("skills"),
     schema: z.array(CharacterSkillWithRelationsSchema).describe("技能列表"),
   },
   weapon: {
@@ -82,8 +90,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("player_weapon")
           .whereRef("id", "=", "character.weaponId")
           .selectAll("player_weapon")
-          .select((eb) => playerWeaponSubRelations(eb, eb.val("character.weaponId")))
-      ).$notNull().as("weapon"),
+          .select((eb) => playerWeaponSubRelations(eb, eb.val("character.weaponId"))),
+      )
+        .$notNull()
+        .as("weapon"),
     schema: PlayerWeaponWithRelationsSchema.describe("主武器"),
   },
   subWeapon: {
@@ -93,8 +103,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("player_weapon")
           .whereRef("id", "=", "character.subWeaponId")
           .selectAll("player_weapon")
-          .select((eb) => playerWeaponSubRelations(eb, eb.val("character.subWeaponId")))
-      ).$notNull().as("subWeapon"),
+          .select((eb) => playerWeaponSubRelations(eb, eb.val("character.subWeaponId"))),
+      )
+        .$notNull()
+        .as("subWeapon"),
     schema: PlayerWeaponWithRelationsSchema.describe("副武器"),
   },
   armor: {
@@ -104,8 +116,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("player_armor")
           .whereRef("id", "=", "character.armorId")
           .selectAll("player_armor")
-          .select((eb) => playerArmorSubRelations(eb, eb.val("character.armorId")))
-      ).$notNull().as("armor"),
+          .select((eb) => playerArmorSubRelations(eb, eb.val("character.armorId"))),
+      )
+        .$notNull()
+        .as("armor"),
     schema: PlayerArmorWithRelationsSchema.describe("护甲"),
   },
   optEquip: {
@@ -115,8 +129,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("player_option")
           .whereRef("id", "=", "character.optEquipId")
           .selectAll("player_option")
-          .select((eb) => playerOptionSubRelations(eb, eb.val("character.optEquipId")))
-      ).$notNull().as("optEquip"),
+          .select((eb) => playerOptionSubRelations(eb, eb.val("character.optEquipId"))),
+      )
+        .$notNull()
+        .as("optEquip"),
     schema: PlayerOptionWithRelationsSchema.describe("可选装备"),
   },
   speEquip: {
@@ -126,8 +142,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("player_special")
           .whereRef("id", "=", "character.speEquipId")
           .selectAll("player_special")
-          .select((eb) => playerSpecialSubRelations(eb, eb.val("character.speEquipId")))
-      ).$notNull().as("speEquip"),
+          .select((eb) => playerSpecialSubRelations(eb, eb.val("character.speEquipId"))),
+      )
+        .$notNull()
+        .as("speEquip"),
     schema: PlayerSpecialWithRelationsSchema.describe("特殊装备"),
   },
   statistic: {
@@ -137,8 +155,10 @@ const characterSubRelationDefs = defineRelations({
           .selectFrom("statistic")
           .whereRef("id", "=", "character.statisticId")
           .selectAll("statistic")
-          .select((subEb) => statisticSubRelations(subEb, subEb.val("statistic.id")))
-      ).$notNull().as("statistic"),
+          .select((subEb) => statisticSubRelations(subEb, subEb.val("statistic.id"))),
+      )
+        .$notNull()
+        .as("statistic"),
     schema: StatisticWithRelationsSchema.describe("属性统计"),
   },
 });
@@ -151,21 +171,16 @@ export const CharacterWithRelationsSchema = z.object({
 export const characterSubRelations = characterRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findCharacterById(id: string): Promise<Character | null> {
+export async function findCharacterById(id: string) {
   const db = await getDB();
   return (await db.selectFrom("character").where("id", "=", id).selectAll("character").executeTakeFirst()) || null;
 }
 
-export async function findCharacters(): Promise<Character[]> {
-  const db = await getDB();
-  return await db.selectFrom("character").selectAll("character").execute();
-}
-
-export async function insertCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
+export async function insertCharacter(trx: Transaction<DB>, data: CharacterInsert) {
   return await trx.insertInto("character").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function createCharacter(trx: Transaction<DB>, data: CharacterInsert): Promise<Character> {
+export async function createCharacter(trx: Transaction<DB>, data: CharacterInsert) {
   const statistic = await createStatistic(trx);
   const character = await trx
     .insertInto("character")
@@ -195,7 +210,18 @@ export async function findCharacterWithRelations(id: string) {
     .where("id", "=", id)
     .selectAll("character")
     .select((eb) => characterSubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
+    .executeTakeFirst();
+}
+
+export async function findCharacters(accountId: string) {
+  const db = await getDB();
+  return await db
+    .selectFrom("character")
+    .innerJoin("player", "player.id", "character.masterId")
+    .innerJoin("account", "account.id", "player.accountId")
+    .where("account.id", "=", accountId)
+    .selectAll("character")
+    .execute();
 }
 
 // 关联查询类型

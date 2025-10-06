@@ -51,8 +51,8 @@ export const AccountWithRelationsSchema = z.object({
 export const accountSubRelations = accountRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findAccountById(id: string): Promise<Account | null> {
-  const db = await getDB();
+export async function findAccountById(id: string, trx?: Transaction<DB>): Promise<Account | null> {
+  const db = trx || await getDB();
   return await db
     .selectFrom("account")
     .where("id", "=", id)
