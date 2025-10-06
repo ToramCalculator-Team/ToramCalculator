@@ -40,8 +40,8 @@ export const MercenaryWithRelationsSchema = z.object({
 export const mercenarySubRelations = mercenaryRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findMercenaryById(id: string): Promise<Mercenary | null> {
-  const db = await getDB();
+export async function findMercenaryById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("mercenary")
     .where("mercenary.templateId", "=", id)
@@ -49,15 +49,15 @@ export async function findMercenaryById(id: string): Promise<Mercenary | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findMercenarys(): Promise<Mercenary[]> {
-  const db = await getDB();
+export async function findMercenarys(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("mercenary")
     .selectAll("mercenary")
     .execute();
 }
 
-export async function insertMercenary(trx: Transaction<DB>, data: MercenaryInsert): Promise<Mercenary> {
+export async function insertMercenary(trx: Transaction<DB>, data: MercenaryInsert) {
   return await trx
     .insertInto("mercenary")
     .values(data)
@@ -65,7 +65,7 @@ export async function insertMercenary(trx: Transaction<DB>, data: MercenaryInser
     .executeTakeFirstOrThrow();
 }
 
-export async function createMercenary(trx: Transaction<DB>, data: MercenaryInsert, characterData: Omit<Insertable<character>, 'id' | 'statisticId' | 'masterId'>, playerData: Omit<Insertable<player>, 'id' | 'accountId'>): Promise<Mercenary> {
+export async function createMercenary(trx: Transaction<DB>, data: MercenaryInsert, characterData: Omit<Insertable<character>, 'id' | 'statisticId' | 'masterId'>, playerData: Omit<Insertable<player>, 'id' | 'accountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -102,7 +102,7 @@ export async function createMercenary(trx: Transaction<DB>, data: MercenaryInser
   return mercenary;
 }
 
-export async function updateMercenary(trx: Transaction<DB>, id: string, data: MercenaryUpdate): Promise<Mercenary> {
+export async function updateMercenary(trx: Transaction<DB>, id: string, data: MercenaryUpdate) {
   return await trx
     .updateTable("mercenary")
     .set(data)
@@ -111,7 +111,7 @@ export async function updateMercenary(trx: Transaction<DB>, id: string, data: Me
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteMercenary(trx: Transaction<DB>, id: string): Promise<Mercenary | null> {
+export async function deleteMercenary(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("mercenary")
     .where("mercenary.templateId", "=", id)
@@ -120,8 +120,8 @@ export async function deleteMercenary(trx: Transaction<DB>, id: string): Promise
 }
 
 // 4. 特殊查询方法
-export async function findMercenaryWithRelations(id: string) {
-  const db = await getDB();
+export async function findMercenaryWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("mercenary")
     .where("mercenary.templateId", "=", id)

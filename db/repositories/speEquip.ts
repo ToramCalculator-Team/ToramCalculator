@@ -43,8 +43,8 @@ export const SpecialWithRelationsSchema = z.object({
 export const speEquipSubRelations = speEquipRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findSpecialById(id: string): Promise<Special | null> {
-  const db = await getDB();
+export async function findSpecialById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("special")
     .where("itemId", "=", id)
@@ -52,15 +52,15 @@ export async function findSpecialById(id: string): Promise<Special | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findSpecials(): Promise<Special[]> {
-  const db = await getDB();
+export async function findSpecials(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("special")
     .selectAll("special")
     .execute();
 }
 
-export async function insertSpecial(trx: Transaction<DB>, data: SpecialInsert): Promise<Special> {
+export async function insertSpecial(trx: Transaction<DB>, data: SpecialInsert) {
   return await trx
     .insertInto("special")
     .values(data)
@@ -68,7 +68,7 @@ export async function insertSpecial(trx: Transaction<DB>, data: SpecialInsert): 
     .executeTakeFirstOrThrow();
 }
 
-export async function createSpecial(trx: Transaction<DB>, data: SpecialInsert): Promise<Special> {
+export async function createSpecial(trx: Transaction<DB>, data: SpecialInsert) {
   // 注意：createSpecial 内部自己处理事务，所以我们需要在外部事务中直接插入
   const special = await trx
     .insertInto("special")
@@ -82,7 +82,7 @@ export async function createSpecial(trx: Transaction<DB>, data: SpecialInsert): 
   return special;
 }
 
-export async function updateSpecial(trx: Transaction<DB>, id: string, data: SpecialUpdate): Promise<Special> {
+export async function updateSpecial(trx: Transaction<DB>, id: string, data: SpecialUpdate) {
   return await trx
     .updateTable("special")
     .set(data)
@@ -91,7 +91,7 @@ export async function updateSpecial(trx: Transaction<DB>, id: string, data: Spec
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteSpecial(trx: Transaction<DB>, id: string): Promise<Special | null> {
+export async function deleteSpecial(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("special")
     .where("itemId", "=", id)
@@ -100,8 +100,8 @@ export async function deleteSpecial(trx: Transaction<DB>, id: string): Promise<S
 }
 
 // 4. 特殊查询方法
-export async function findSpecialWithRelations(id: string) {
-  const db = await getDB();
+export async function findSpecialWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("special")
     .innerJoin("item", "item.id", "special.itemId")
@@ -111,8 +111,8 @@ export async function findSpecialWithRelations(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findSpecialByItemId(id: string) {
-  const db = await getDB();
+export async function findSpecialByItemId(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("special")
     .innerJoin("item", "item.id", "special.itemId")
@@ -136,7 +136,7 @@ export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRela
 //     };
 //   },
 // ) {
-//   const db = await getDB();
+//   const db = trx || await getDB();
 //   return await db.transaction().execute(async (trx) => {
 //     const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpecial;
 //     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;

@@ -51,8 +51,8 @@ export const AddressWithRelationsSchema = z.object({
 export const addressSubRelations = addressRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findAddressById(id: string): Promise<Address | null> {
-  const db = await getDB();
+export async function findAddressById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("address")
     .where("id", "=", id)
@@ -60,15 +60,15 @@ export async function findAddressById(id: string): Promise<Address | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findAddresses(): Promise<Address[]> {
-  const db = await getDB();
+export async function findAddresses(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("address")
     .selectAll()
     .execute();
 }
 
-export async function insertAddress(trx: Transaction<DB>, data: AddressInsert): Promise<Address> {
+export async function insertAddress(trx: Transaction<DB>, data: AddressInsert) {
   return await trx
     .insertInto("address")
     .values(data)
@@ -78,8 +78,8 @@ export async function insertAddress(trx: Transaction<DB>, data: AddressInsert): 
 
 
 // 特殊查询方法
-export async function findAddressWithRelations(id: string) {
-  const db = await getDB();
+export async function findAddressWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("address")
     .where("id", "=", id)
@@ -92,7 +92,7 @@ export async function findAddressWithRelations(id: string) {
 export type AddressWithRelations = Awaited<ReturnType<typeof findAddressWithRelations>>;
 
 // 5. 业务逻辑 CRUD 方法
-export async function createAddress(trx: Transaction<DB>, addressData: AddressInsert): Promise<Address> {
+export async function createAddress(trx: Transaction<DB>, addressData: AddressInsert) {
   const statistic = await createStatistic(trx);
   return await trx
     .insertInto("address")
@@ -107,7 +107,7 @@ export async function createAddress(trx: Transaction<DB>, addressData: AddressIn
     .executeTakeFirstOrThrow();
 }
 
-export async function updateAddress(trx: Transaction<DB>, addressData: AddressUpdate): Promise<Address> {
+export async function updateAddress(trx: Transaction<DB>, addressData: AddressUpdate) {
   return await trx
     .updateTable("address")
     .set({
@@ -119,7 +119,7 @@ export async function updateAddress(trx: Transaction<DB>, addressData: AddressUp
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteAddress(trx: Transaction<DB>, addressData: Address): Promise<void> {
+export async function deleteAddress(trx: Transaction<DB>, addressData: Address) {
   // 将相关zones归属调整至defaultAddress
   await trx.updateTable("zone").set({ addressId: "defaultAddressId" }).where("addressId", "=", addressData.id).execute();
   // 删除地址
@@ -128,8 +128,8 @@ export async function deleteAddress(trx: Transaction<DB>, addressData: Address):
   await trx.deleteFrom("statistic").where("id", "=", addressData.statisticId).executeTakeFirstOrThrow();
 }
 
-export async function findAddressesWithRelations() {
-  const db = await getDB();
+export async function findAddressesWithRelations(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("address")
     .selectAll("address")

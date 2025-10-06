@@ -71,8 +71,8 @@ export const MemberWithRelationsSchema = z.object({
 export const memberSubRelations = memberRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findMemberById(id: string): Promise<Member | null> {
-  const db = await getDB();
+export async function findMemberById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("member")
     .where("id", "=", id)
@@ -80,15 +80,15 @@ export async function findMemberById(id: string): Promise<Member | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findMembers(): Promise<Member[]> {
-  const db = await getDB();
+export async function findMembers(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("member")
     .selectAll("member")
     .execute();
 }
 
-export async function insertMember(trx: Transaction<DB>, data: MemberInsert): Promise<Member> {
+export async function insertMember(trx: Transaction<DB>, data: MemberInsert) {
   return await trx
     .insertInto("member")
     .values(data)
@@ -96,7 +96,7 @@ export async function insertMember(trx: Transaction<DB>, data: MemberInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function createMember(trx: Transaction<DB>, data: MemberInsert): Promise<Member> {
+export async function createMember(trx: Transaction<DB>, data: MemberInsert) {
   return await trx
     .insertInto("member")
     .values({
@@ -107,7 +107,7 @@ export async function createMember(trx: Transaction<DB>, data: MemberInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function updateMember(trx: Transaction<DB>, id: string, data: MemberUpdate): Promise<Member> {
+export async function updateMember(trx: Transaction<DB>, id: string, data: MemberUpdate) {
   return await trx
     .updateTable("member")
     .set(data)
@@ -116,7 +116,7 @@ export async function updateMember(trx: Transaction<DB>, id: string, data: Membe
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteMember(trx: Transaction<DB>, id: string): Promise<Member | null> {
+export async function deleteMember(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("member")
     .where("id", "=", id)
@@ -125,8 +125,8 @@ export async function deleteMember(trx: Transaction<DB>, id: string): Promise<Me
 }
 
 // 4. 特殊查询方法
-export async function findMemberWithRelations(id: string) {
-  const db = await getDB();
+export async function findMemberWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("member")
     .where("id", "=", id)

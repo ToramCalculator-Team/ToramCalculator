@@ -34,8 +34,8 @@ export const TaskCollectRequireWithRelationsSchema = z.object({
 export const taskCollectRequireSubRelations = taskCollectRequireRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findTaskCollectRequireById(id: string): Promise<TaskCollectRequire | null> {
-  const db = await getDB();
+export async function findTaskCollectRequireById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_collect_require")
     .where("id", "=", id)
@@ -43,15 +43,15 @@ export async function findTaskCollectRequireById(id: string): Promise<TaskCollec
     .executeTakeFirst() || null;
 }
 
-export async function findTaskCollectRequires(): Promise<TaskCollectRequire[]> {
-  const db = await getDB();
+export async function findTaskCollectRequires(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_collect_require")
     .selectAll("task_collect_require")
     .execute();
 }
 
-export async function insertTaskCollectRequire(trx: Transaction<DB>, data: TaskCollectRequireInsert): Promise<TaskCollectRequire> {
+export async function insertTaskCollectRequire(trx: Transaction<DB>, data: TaskCollectRequireInsert) {
   return await trx
     .insertInto("task_collect_require")
     .values(data)
@@ -59,7 +59,7 @@ export async function insertTaskCollectRequire(trx: Transaction<DB>, data: TaskC
     .executeTakeFirstOrThrow();
 }
 
-export async function createTaskCollectRequire(trx: Transaction<DB>, data: TaskCollectRequireInsert): Promise<TaskCollectRequire> {
+export async function createTaskCollectRequire(trx: Transaction<DB>, data: TaskCollectRequireInsert) {
   // 注意：createTaskCollectRequire 内部自己处理事务，所以我们需要在外部事务中直接插入
   const taskCollectRequire = await trx
     .insertInto("task_collect_require")
@@ -73,7 +73,7 @@ export async function createTaskCollectRequire(trx: Transaction<DB>, data: TaskC
   return taskCollectRequire;
 }
 
-export async function updateTaskCollectRequire(trx: Transaction<DB>, id: string, data: TaskCollectRequireUpdate): Promise<TaskCollectRequire> {
+export async function updateTaskCollectRequire(trx: Transaction<DB>, id: string, data: TaskCollectRequireUpdate) {
   return await trx
     .updateTable("task_collect_require")
     .set(data)
@@ -82,7 +82,7 @@ export async function updateTaskCollectRequire(trx: Transaction<DB>, id: string,
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteTaskCollectRequire(trx: Transaction<DB>, id: string): Promise<TaskCollectRequire | null> {
+export async function deleteTaskCollectRequire(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("task_collect_require")
     .where("id", "=", id)
@@ -91,8 +91,8 @@ export async function deleteTaskCollectRequire(trx: Transaction<DB>, id: string)
 }
 
 // 4. 特殊查询方法
-export async function findTaskCollectRequireWithRelations(id: string) {
-  const db = await getDB();
+export async function findTaskCollectRequireWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_collect_require")
     .where("id", "=", id)

@@ -31,8 +31,8 @@ export const statisticSubRelations = statisticRelationsFactory.subRelations;
 // 3. 基础 CRUD 方法
 
 // 3. 基础 CRUD 方法
-export async function findStatisticById(id: string): Promise<Statistic | null> {
-  const db = await getDB();
+export async function findStatisticById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("statistic")
     .where("statistic.id", "=", id)
@@ -40,15 +40,15 @@ export async function findStatisticById(id: string): Promise<Statistic | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findStatistics(): Promise<Statistic[]> {
-  const db = await getDB();
+export async function findStatistics(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("statistic")
     .selectAll("statistic")
     .execute();
 }
 
-export async function insertStatistic(trx: Transaction<DB>): Promise<Statistic> {
+export async function insertStatistic(trx: Transaction<DB>) {
   return await trx
     .insertInto("statistic")
     .values({
@@ -62,12 +62,12 @@ export async function insertStatistic(trx: Transaction<DB>): Promise<Statistic> 
     .executeTakeFirstOrThrow();
 }
 
-export async function createStatistic(trx: Transaction<DB>): Promise<Statistic> {
+export async function createStatistic(trx: Transaction<DB>) {
   // 注意：createStatistic 内部自己处理事务，所以我们需要在外部事务中直接插入
   return await insertStatistic(trx);
 }
 
-export async function updateStatistic(trx: Transaction<DB>, id: string, data: StatisticUpdate): Promise<Statistic> {
+export async function updateStatistic(trx: Transaction<DB>, id: string, data: StatisticUpdate) {
   return await trx
     .updateTable("statistic")
     .set(data)
@@ -76,7 +76,7 @@ export async function updateStatistic(trx: Transaction<DB>, id: string, data: St
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteStatistic(trx: Transaction<DB>, id: string): Promise<Statistic | null> {
+export async function deleteStatistic(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("statistic")
     .where("id", "=", id)
@@ -85,8 +85,8 @@ export async function deleteStatistic(trx: Transaction<DB>, id: string): Promise
 }
 
 // 特殊查询方法
-export async function findStatisticWithRelations(id: string) {
-  const db = await getDB();
+export async function findStatisticWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("statistic")
     .where("statistic.id", "=", id)

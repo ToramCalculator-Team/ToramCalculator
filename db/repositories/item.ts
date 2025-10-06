@@ -100,21 +100,21 @@ export const ItemWithRelationsSchema = z.object({
 export const itemSubRelations = itemRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findItemById(id: string): Promise<Item | null> {
-  const db = await getDB();
+export async function findItemById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return (await db.selectFrom("item").where("id", "=", id).selectAll("item").executeTakeFirst()) || null;
 }
 
-export async function findItems(params: { type: item["itemType"] }): Promise<Item[]> {
-  const db = await getDB();
+export async function findItems(params: { type: item["itemType"] }, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db.selectFrom("item").where("itemType", "=", params.type).selectAll("item").execute();
 }
 
-export async function insertItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
+export async function insertItem(trx: Transaction<DB>, data: ItemInsert) {
   return await trx.insertInto("item").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function createItem(trx: Transaction<DB>, data: ItemInsert): Promise<Item> {
+export async function createItem(trx: Transaction<DB>, data: ItemInsert) {
   const statistic = await createStatistic(trx);
   const item = await trx
     .insertInto("item")
@@ -130,17 +130,17 @@ export async function createItem(trx: Transaction<DB>, data: ItemInsert): Promis
   return item;
 }
 
-export async function updateItem(trx: Transaction<DB>, id: string, data: ItemUpdate): Promise<Item> {
+export async function updateItem(trx: Transaction<DB>, id: string, data: ItemUpdate) {
   return await trx.updateTable("item").set(data).where("item.id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function deleteItem(trx: Transaction<DB>, id: string): Promise<Item | null> {
+export async function deleteItem(trx: Transaction<DB>, id: string) {
   return (await trx.deleteFrom("item").where("item.id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 特殊查询方法
-export async function findItemWithRelations(id: string) {
-  const db = await getDB();
+export async function findItemWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .where("id", "=", id)

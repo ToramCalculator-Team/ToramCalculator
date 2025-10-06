@@ -13,26 +13,26 @@ export type MobInsert = Insertable<mob>;
 export type MobUpdate = Updateable<mob>;
 
 // 3. 基础 CRUD 方法
-export async function findMobById(id: string): Promise<Mob | null> {
-  const db = await getDB();
+export async function findMobById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return (await db.selectFrom("mob").where("id", "=", id).selectAll("mob").executeTakeFirst()) || null;
 }
 
-export async function findMobs(): Promise<Mob[]> {
-  const db = await getDB();
+export async function findMobs(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db.selectFrom("mob").selectAll("mob").execute();
 }
 
-export async function findMobsLike(searchString: string): Promise<Mob[]> {
-  const db = await getDB();
+export async function findMobsLike(searchString: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db.selectFrom("mob").where("name", "like", `%${searchString}%`).selectAll("mob").execute();
 }
 
-export async function insertMob(trx: Transaction<DB>, data: MobInsert): Promise<Mob> {
+export async function insertMob(trx: Transaction<DB>, data: MobInsert) {
   return await trx.insertInto("mob").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function createMob(trx: Transaction<DB>, data: MobInsert): Promise<Mob> {
+export async function createMob(trx: Transaction<DB>, data: MobInsert) {
   // 1. 创建 statistic 记录
   const statistic = await trx
     .insertInto("statistic")
@@ -56,11 +56,11 @@ export async function createMob(trx: Transaction<DB>, data: MobInsert): Promise<
   return mob;
 }
 
-export async function updateMob(trx: Transaction<DB>, id: string, data: MobUpdate): Promise<Mob> {
+export async function updateMob(trx: Transaction<DB>, id: string, data: MobUpdate) {
   return await trx.updateTable("mob").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function deleteMob(trx: Transaction<DB>, id: string): Promise<Mob | null> {
+export async function deleteMob(trx: Transaction<DB>, id: string) {
   return (await trx.deleteFrom("mob").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
@@ -112,8 +112,8 @@ export const MobWithRelationsSchema = z.object({
 export const mobSubRelations = mobRelationsFactory.subRelations;
 
 // 特殊查询方法
-export async function findMobWithRelations(id: string) {
-  const db = await getDB();
+export async function findMobWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("mob")
     .where("id", "=", id)

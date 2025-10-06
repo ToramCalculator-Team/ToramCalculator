@@ -33,8 +33,8 @@ export const ConsumableWithRelationsSchema = z.object({
 export const consumableSubRelations = consumableRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findConsumableById(id: string): Promise<Consumable | null> {
-  const db = await getDB();
+export async function findConsumableById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("consumable")
     .where("itemId", "=", id)
@@ -42,8 +42,8 @@ export async function findConsumableById(id: string): Promise<Consumable | null>
     .executeTakeFirst() || null;
 }
 
-export async function findConsumables(): Promise<Consumable[]> {
-  const db = await getDB();
+export async function findConsumables(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("consumable")
     .innerJoin("item", "item.id", "consumable.itemId")
@@ -51,7 +51,7 @@ export async function findConsumables(): Promise<Consumable[]> {
     .execute();
 }
 
-export async function insertConsumable(trx: Transaction<DB>, data: ConsumableInsert): Promise<Consumable> {
+export async function insertConsumable(trx: Transaction<DB>, data: ConsumableInsert) {
   return await trx
     .insertInto("consumable")
     .values(data)
@@ -59,7 +59,7 @@ export async function insertConsumable(trx: Transaction<DB>, data: ConsumableIns
     .executeTakeFirstOrThrow();
 }
 
-export async function createConsumable(trx: Transaction<DB>, data: ConsumableInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>): Promise<Consumable> {
+export async function createConsumable(trx: Transaction<DB>, data: ConsumableInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -81,7 +81,7 @@ export async function createConsumable(trx: Transaction<DB>, data: ConsumableIns
   return consumable;
 }
 
-export async function updateConsumable(trx: Transaction<DB>, id: string, data: ConsumableUpdate): Promise<Consumable> {
+export async function updateConsumable(trx: Transaction<DB>, id: string, data: ConsumableUpdate) {
   return await trx
     .updateTable("consumable")
     .set(data)
@@ -90,7 +90,7 @@ export async function updateConsumable(trx: Transaction<DB>, id: string, data: C
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteConsumable(trx: Transaction<DB>, id: string): Promise<Consumable | null> {
+export async function deleteConsumable(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("consumable")
     .where("itemId", "=", id)
@@ -99,8 +99,8 @@ export async function deleteConsumable(trx: Transaction<DB>, id: string): Promis
 }
 
 // 特殊查询方法
-export async function findConsumableWithRelations(id: string) {
-  const db = await getDB();
+export async function findConsumableWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("consumable")
     .innerJoin("item", "item.id", "consumable.itemId")
@@ -113,8 +113,8 @@ export async function findConsumableWithRelations(id: string) {
 // 关联查询类型
 export type ConsumableWithRelations = Awaited<ReturnType<typeof findConsumableWithRelations>>;
 
-export async function findItemWithConsumableById(itemId: string) {
-  const db = await getDB();
+export async function findItemWithConsumableById(itemId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .innerJoin("consumable", "consumable.itemId", "item.id")

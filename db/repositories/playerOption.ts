@@ -43,8 +43,8 @@ export const PlayerOptionWithRelationsSchema = z.object({
 export const playerOptionSubRelations = playerOptionRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findPlayerOptionById(id: string): Promise<PlayerOption | null> {
-  const db = await getDB();
+export async function findPlayerOptionById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_option")
     .where("id", "=", id)
@@ -52,15 +52,15 @@ export async function findPlayerOptionById(id: string): Promise<PlayerOption | n
     .executeTakeFirst() || null;
 }
 
-export async function findPlayerOptions(): Promise<PlayerOption[]> {
-  const db = await getDB();
+export async function findPlayerOptions(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_option")
     .selectAll("player_option")
     .execute();
 }
 
-export async function insertPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert): Promise<PlayerOption> {
+export async function insertPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert) {
   return await trx
     .insertInto("player_option")
     .values(data)
@@ -68,7 +68,7 @@ export async function insertPlayerOption(trx: Transaction<DB>, data: PlayerOptio
     .executeTakeFirstOrThrow();
 }
 
-export async function createPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert): Promise<PlayerOption> {
+export async function createPlayerOption(trx: Transaction<DB>, data: PlayerOptionInsert) {
   // 注意：createPlayerOption 内部自己处理事务，所以我们需要在外部事务中直接插入
   const playerOption = await trx
     .insertInto("player_option")
@@ -82,7 +82,7 @@ export async function createPlayerOption(trx: Transaction<DB>, data: PlayerOptio
   return playerOption;
 }
 
-export async function updatePlayerOption(trx: Transaction<DB>, id: string, data: PlayerOptionUpdate): Promise<PlayerOption> {
+export async function updatePlayerOption(trx: Transaction<DB>, id: string, data: PlayerOptionUpdate) {
   return await trx
     .updateTable("player_option")
     .set(data)
@@ -91,7 +91,7 @@ export async function updatePlayerOption(trx: Transaction<DB>, id: string, data:
     .executeTakeFirstOrThrow();
 }
 
-export async function deletePlayerOption(trx: Transaction<DB>, id: string): Promise<PlayerOption | null> {
+export async function deletePlayerOption(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("player_option")
     .where("id", "=", id)
@@ -100,8 +100,8 @@ export async function deletePlayerOption(trx: Transaction<DB>, id: string): Prom
 }
 
 // 4. 特殊查询方法
-export async function findPlayerOptionWithRelations(id: string) {
-  const db = await getDB();
+export async function findPlayerOptionWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_option")
     .where("id", "=", id)

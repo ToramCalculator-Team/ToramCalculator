@@ -49,8 +49,8 @@ export const ZoneWithRelationsSchema = z.object({
 export const zoneSubRelations = zoneRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findZoneById(id: string): Promise<Zone | null> {
-  const db = await getDB();
+export async function findZoneById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("zone")
     .where("id", "=", id)
@@ -58,15 +58,15 @@ export async function findZoneById(id: string): Promise<Zone | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findZones(): Promise<Zone[]> {
-  const db = await getDB();
+export async function findZones(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("zone")
     .selectAll("zone")
     .execute();
 }
 
-export async function insertZone(trx: Transaction<DB>, data: ZoneInsert): Promise<Zone> {
+export async function insertZone(trx: Transaction<DB>, data: ZoneInsert) {
   return await trx
     .insertInto("zone")
     .values(data)
@@ -74,7 +74,7 @@ export async function insertZone(trx: Transaction<DB>, data: ZoneInsert): Promis
     .executeTakeFirstOrThrow();
 }
 
-export async function createZone(trx: Transaction<DB>, data: ZoneInsert): Promise<Zone> {
+export async function createZone(trx: Transaction<DB>, data: ZoneInsert) {
   // 注意：createZone 内部自己处理事务，所以我们需要在外部事务中直接插入
   const zone = await trx
     .insertInto("zone")
@@ -88,7 +88,7 @@ export async function createZone(trx: Transaction<DB>, data: ZoneInsert): Promis
   return zone;
 }
 
-export async function updateZone(trx: Transaction<DB>, id: string, data: ZoneUpdate): Promise<Zone> {
+export async function updateZone(trx: Transaction<DB>, id: string, data: ZoneUpdate) {
   return await trx
     .updateTable("zone")
     .set(data)
@@ -97,7 +97,7 @@ export async function updateZone(trx: Transaction<DB>, id: string, data: ZoneUpd
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteZone(trx: Transaction<DB>, id: string): Promise<Zone | null> {
+export async function deleteZone(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("zone")
     .where("id", "=", id)
@@ -106,8 +106,8 @@ export async function deleteZone(trx: Transaction<DB>, id: string): Promise<Zone
 }
 
 // 4. 特殊查询方法
-export async function findZoneWithRelations(id: string) {
-  const db = await getDB();
+export async function findZoneWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("zone")
     .where("id", "=", id)
@@ -119,8 +119,8 @@ export async function findZoneWithRelations(id: string) {
 // 关联查询类型
 export type ZoneWithRelations = Awaited<ReturnType<typeof findZoneWithRelations>>;
 
-export async function findZonesByMobId(mobId: string): Promise<Zone[]> {
-  const db = await getDB();
+export async function findZonesByMobId(mobId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("zone")
     .innerJoin("_mobTozone", "zone.id", "_mobTozone.B")

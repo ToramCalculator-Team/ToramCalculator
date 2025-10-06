@@ -41,8 +41,8 @@ export const TaskWithRelationsSchema = z.object({
 export const taskSubRelations = taskRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findTaskById(id: string): Promise<Task | null> {
-  const db = await getDB();
+export async function findTaskById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task")
     .where("id", "=", id)
@@ -50,15 +50,15 @@ export async function findTaskById(id: string): Promise<Task | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findTasks(): Promise<Task[]> {
-  const db = await getDB();
+export async function findTasks(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task")
     .selectAll("task")
     .execute();
 }
 
-export async function insertTask(trx: Transaction<DB>, data: TaskInsert): Promise<Task> {
+export async function insertTask(trx: Transaction<DB>, data: TaskInsert) {
   return await trx
     .insertInto("task")
     .values(data)
@@ -66,7 +66,7 @@ export async function insertTask(trx: Transaction<DB>, data: TaskInsert): Promis
     .executeTakeFirstOrThrow();
 }
 
-export async function createTask(trx: Transaction<DB>, data: TaskInsert): Promise<Task> {
+export async function createTask(trx: Transaction<DB>, data: TaskInsert) {
   // 注意：createTask 内部自己处理事务，所以我们需要在外部事务中直接插入
   const task = await trx
     .insertInto("task")
@@ -80,7 +80,7 @@ export async function createTask(trx: Transaction<DB>, data: TaskInsert): Promis
   return task;
 }
 
-export async function updateTask(trx: Transaction<DB>, id: string, data: TaskUpdate): Promise<Task> {
+export async function updateTask(trx: Transaction<DB>, id: string, data: TaskUpdate) {
   return await trx
     .updateTable("task")
     .set(data)
@@ -89,7 +89,7 @@ export async function updateTask(trx: Transaction<DB>, id: string, data: TaskUpd
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteTask(trx: Transaction<DB>, id: string): Promise<Task | null> {
+export async function deleteTask(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("task")
     .where("id", "=", id)
@@ -98,8 +98,8 @@ export async function deleteTask(trx: Transaction<DB>, id: string): Promise<Task
 }
 
 // 特殊查询方法
-export async function findTaskWithRelations(id: string) {
-  const db = await getDB();
+export async function findTaskWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task")
     .where("id", "=", id)

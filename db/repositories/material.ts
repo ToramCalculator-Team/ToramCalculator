@@ -32,8 +32,8 @@ export const MaterialWithRelationsSchema = z.object({
 export const materialSubRelations = materialRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findMaterialById(id: string): Promise<Material | null> {
-  const db = await getDB();
+export async function findMaterialById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("material")
     .where("itemId", "=", id)
@@ -41,8 +41,8 @@ export async function findMaterialById(id: string): Promise<Material | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findMaterials(): Promise<Material[]> {
-  const db = await getDB();
+export async function findMaterials(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("material")
     .innerJoin("item", "item.id", "material.itemId")
@@ -50,7 +50,7 @@ export async function findMaterials(): Promise<Material[]> {
     .execute();
 }
 
-export async function insertMaterial(trx: Transaction<DB>, data: MaterialInsert): Promise<Material> {
+export async function insertMaterial(trx: Transaction<DB>, data: MaterialInsert) {
   return await trx
     .insertInto("material")
     .values(data)
@@ -58,7 +58,7 @@ export async function insertMaterial(trx: Transaction<DB>, data: MaterialInsert)
     .executeTakeFirstOrThrow();
 }
 
-export async function createMaterial(trx: Transaction<DB>, data: MaterialInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>): Promise<Material> {
+export async function createMaterial(trx: Transaction<DB>, data: MaterialInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -80,7 +80,7 @@ export async function createMaterial(trx: Transaction<DB>, data: MaterialInsert,
   return material;
 }
 
-export async function updateMaterial(trx: Transaction<DB>, id: string, data: MaterialUpdate): Promise<Material> {
+export async function updateMaterial(trx: Transaction<DB>, id: string, data: MaterialUpdate) {
   return await trx
     .updateTable("material")
     .set(data)
@@ -89,7 +89,7 @@ export async function updateMaterial(trx: Transaction<DB>, id: string, data: Mat
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteMaterial(trx: Transaction<DB>, id: string): Promise<Material | null> {
+export async function deleteMaterial(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("material")
     .where("itemId", "=", id)
@@ -98,8 +98,8 @@ export async function deleteMaterial(trx: Transaction<DB>, id: string): Promise<
 }
 
 // 特殊查询方法
-export async function findMaterialWithRelations(id: string) {
-  const db = await getDB();
+export async function findMaterialWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("material")
     .innerJoin("item", "item.id", "material.itemId")
@@ -112,8 +112,8 @@ export async function findMaterialWithRelations(id: string) {
 // 关联查询类型
 export type MaterialWithRelations = Awaited<ReturnType<typeof findMaterialWithRelations>>;
 
-export async function findItemWithMaterialById(itemId: string) {
-  const db = await getDB();
+export async function findItemWithMaterialById(itemId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .innerJoin("material", "material.itemId", "item.id")

@@ -58,8 +58,8 @@ export const CrystalWithRelationsSchema = z.object({
 export const crystalSubRelations = crystalRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findCrystalById(id: string): Promise<Crystal | null> {
-  const db = await getDB();
+export async function findCrystalById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("crystal")
     .where("itemId", "=", id)
@@ -67,8 +67,8 @@ export async function findCrystalById(id: string): Promise<Crystal | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findCrystals(): Promise<Crystal[]> {
-  const db = await getDB();
+export async function findCrystals(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("crystal")
     .innerJoin("item", "item.id", "crystal.itemId")
@@ -76,7 +76,7 @@ export async function findCrystals(): Promise<Crystal[]> {
     .execute();
 }
 
-export async function insertCrystal(trx: Transaction<DB>, data: CrystalInsert): Promise<Crystal> {
+export async function insertCrystal(trx: Transaction<DB>, data: CrystalInsert) {
   return await trx
     .insertInto("crystal")
     .values(data)
@@ -84,7 +84,7 @@ export async function insertCrystal(trx: Transaction<DB>, data: CrystalInsert): 
     .executeTakeFirstOrThrow();
 }
 
-export async function createCrystal(trx: Transaction<DB>, data: CrystalInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>): Promise<Crystal> {
+export async function createCrystal(trx: Transaction<DB>, data: CrystalInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -106,7 +106,7 @@ export async function createCrystal(trx: Transaction<DB>, data: CrystalInsert, i
   return crystal;
 }
 
-export async function updateCrystal(trx: Transaction<DB>, id: string, data: CrystalUpdate): Promise<Crystal> {
+export async function updateCrystal(trx: Transaction<DB>, id: string, data: CrystalUpdate) {
   return await trx
     .updateTable("crystal")
     .set(data)
@@ -115,7 +115,7 @@ export async function updateCrystal(trx: Transaction<DB>, id: string, data: Crys
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteCrystal(trx: Transaction<DB>, id: string): Promise<Crystal | null> {
+export async function deleteCrystal(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("crystal")
     .where("itemId", "=", id)
@@ -124,8 +124,8 @@ export async function deleteCrystal(trx: Transaction<DB>, id: string): Promise<C
 }
 
 // 特殊查询方法
-export async function findCrystalWithRelations(id: string) {
-  const db = await getDB();
+export async function findCrystalWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("crystal")
     .innerJoin("item", "item.id", "crystal.itemId")
@@ -138,8 +138,8 @@ export async function findCrystalWithRelations(id: string) {
 // 关联查询类型
 export type CrystalWithRelations = Awaited<ReturnType<typeof findCrystalWithRelations>>;
 
-export async function findItemWithCrystalById(itemId: string) {
-  const db = await getDB();
+export async function findItemWithCrystalById(itemId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .innerJoin("crystal", "crystal.itemId", "item.id")

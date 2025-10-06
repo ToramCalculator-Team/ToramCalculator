@@ -47,8 +47,8 @@ export const CharacterSkillWithRelationsSchema = z.object({
 export const characterSkillSubRelations = characterSkillRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findCharacterSkillById(id: string): Promise<CharacterSkill | null> {
-  const db = await getDB();
+export async function findCharacterSkillById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("character_skill")
     .where("id", "=", id)
@@ -56,15 +56,15 @@ export async function findCharacterSkillById(id: string): Promise<CharacterSkill
     .executeTakeFirst() || null;
 }
 
-export async function findCharacterSkills(): Promise<CharacterSkill[]> {
-  const db = await getDB();
+export async function findCharacterSkills(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("character_skill")
     .selectAll("character_skill")
     .execute();
 }
 
-export async function insertCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert): Promise<CharacterSkill> {
+export async function insertCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert) {
   return await trx
     .insertInto("character_skill")
     .values(data)
@@ -72,7 +72,7 @@ export async function insertCharacterSkill(trx: Transaction<DB>, data: Character
     .executeTakeFirstOrThrow();
 }
 
-export async function createCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert): Promise<CharacterSkill> {
+export async function createCharacterSkill(trx: Transaction<DB>, data: CharacterSkillInsert) {
   return await trx
     .insertInto("character_skill")
     .values({
@@ -83,7 +83,7 @@ export async function createCharacterSkill(trx: Transaction<DB>, data: Character
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCharacterSkill(trx: Transaction<DB>, id: string, data: CharacterSkillUpdate): Promise<CharacterSkill> {
+export async function updateCharacterSkill(trx: Transaction<DB>, id: string, data: CharacterSkillUpdate) {
   return await trx
     .updateTable("character_skill")
     .set(data)
@@ -92,7 +92,7 @@ export async function updateCharacterSkill(trx: Transaction<DB>, id: string, dat
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteCharacterSkill(trx: Transaction<DB>, id: string): Promise<CharacterSkill | null> {
+export async function deleteCharacterSkill(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("character_skill")
     .where("id", "=", id)
@@ -101,8 +101,8 @@ export async function deleteCharacterSkill(trx: Transaction<DB>, id: string): Pr
 }
 
 // 特殊查询方法
-export async function findCharacterSkillWithRelations(id: string) {
-  const db = await getDB();
+export async function findCharacterSkillWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("character_skill")
     .where("id", "=", id)

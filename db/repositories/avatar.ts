@@ -29,8 +29,8 @@ export const AvatarWithRelationsSchema = z.object({
 export const avatarSubRelations = avatarRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findAvatarById(id: string): Promise<Avatar | null> {
-  const db = await getDB();
+export async function findAvatarById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("avatar")
     .where("id", "=", id)
@@ -38,15 +38,15 @@ export async function findAvatarById(id: string): Promise<Avatar | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findAvatars(): Promise<Avatar[]> {
-  const db = await getDB();
+export async function findAvatars(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("avatar")
     .selectAll("avatar")
     .execute();
 }
 
-export async function insertAvatar(trx: Transaction<DB>, data: AvatarInsert): Promise<Avatar> {
+export async function insertAvatar(trx: Transaction<DB>, data: AvatarInsert) {
   return await trx
     .insertInto("avatar")
     .values(data)
@@ -54,7 +54,7 @@ export async function insertAvatar(trx: Transaction<DB>, data: AvatarInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function createAvatar(trx: Transaction<DB>, data: AvatarInsert): Promise<Avatar> {
+export async function createAvatar(trx: Transaction<DB>, data: AvatarInsert) {
   return await trx
     .insertInto("avatar")
     .values({
@@ -65,7 +65,7 @@ export async function createAvatar(trx: Transaction<DB>, data: AvatarInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function updateAvatar(trx: Transaction<DB>, id: string, data: AvatarUpdate): Promise<Avatar> {
+export async function updateAvatar(trx: Transaction<DB>, id: string, data: AvatarUpdate) {
   return await trx
     .updateTable("avatar")
     .set(data)
@@ -74,7 +74,7 @@ export async function updateAvatar(trx: Transaction<DB>, id: string, data: Avata
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteAvatar(trx: Transaction<DB>, id: string): Promise<Avatar | null> {
+export async function deleteAvatar(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("avatar")
     .where("id", "=", id)
@@ -83,8 +83,8 @@ export async function deleteAvatar(trx: Transaction<DB>, id: string): Promise<Av
 }
 
 // 特殊查询方法
-export async function findAvatarWithRelations(id: string) {
-  const db = await getDB();
+export async function findAvatarWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("avatar")
     .where("id", "=", id)

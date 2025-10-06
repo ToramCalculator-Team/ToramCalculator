@@ -41,8 +41,8 @@ export const WeaponWithRelationsSchema = z.object({
 export const weaponSubRelations = weaponRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findWeaponById(id: string): Promise<Weapon | null> {
-  const db = await getDB();
+export async function findWeaponById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();  
   return await db
     .selectFrom("weapon")
     .where("itemId", "=", id)
@@ -50,8 +50,8 @@ export async function findWeaponById(id: string): Promise<Weapon | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findWeapons(): Promise<Weapon[]> {
-  const db = await getDB();
+export async function findWeapons(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("weapon")
     .innerJoin("item", "item.id", "weapon.itemId")
@@ -59,7 +59,7 @@ export async function findWeapons(): Promise<Weapon[]> {
     .execute();
 }
 
-export async function insertWeapon(trx: Transaction<DB>, data: WeaponInsert): Promise<Weapon> {
+export async function insertWeapon(trx: Transaction<DB>, data: WeaponInsert) {
   return await trx
     .insertInto("weapon")
     .values(data)
@@ -67,7 +67,7 @@ export async function insertWeapon(trx: Transaction<DB>, data: WeaponInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function createWeapon(trx: Transaction<DB>, data: WeaponInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>): Promise<Weapon> {
+export async function createWeapon(trx: Transaction<DB>, data: WeaponInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -89,7 +89,7 @@ export async function createWeapon(trx: Transaction<DB>, data: WeaponInsert, ite
   return weapon;
 }
 
-export async function updateWeapon(trx: Transaction<DB>, id: string, data: WeaponUpdate): Promise<Weapon> {
+export async function updateWeapon(trx: Transaction<DB>, id: string, data: WeaponUpdate) {
   return await trx
     .updateTable("weapon")
     .set(data)
@@ -98,7 +98,7 @@ export async function updateWeapon(trx: Transaction<DB>, id: string, data: Weapo
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteWeapon(trx: Transaction<DB>, id: string): Promise<Weapon | null> {
+export async function deleteWeapon(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("weapon")
     .where("itemId", "=", id)
@@ -107,8 +107,8 @@ export async function deleteWeapon(trx: Transaction<DB>, id: string): Promise<We
 }
 
 // 4. 特殊查询方法
-export async function findWeaponWithRelations(id: string) {
-  const db = await getDB();
+export async function findWeaponWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("weapon")
     .innerJoin("item", "item.id", "weapon.itemId")
@@ -118,8 +118,8 @@ export async function findWeaponWithRelations(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findItemWithWeaponById(itemId: string) {
-  const db = await getDB();
+export async function findItemWithWeaponById(itemId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .innerJoin("weapon", "weapon.itemId", "item.id")

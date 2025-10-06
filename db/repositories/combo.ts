@@ -41,8 +41,8 @@ export const ComboWithRelationsSchema = z.object({
 export const comboSubRelations = comboRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findComboById(id: string): Promise<Combo | null> {
-  const db = await getDB();
+export async function findComboById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("combo")
     .where("id", "=", id)
@@ -50,15 +50,15 @@ export async function findComboById(id: string): Promise<Combo | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findCombos(): Promise<Combo[]> {
-  const db = await getDB();
+export async function findCombos(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("combo")
     .selectAll("combo")
     .execute();
 }
 
-export async function insertCombo(trx: Transaction<DB>, data: ComboInsert): Promise<Combo> {
+export async function insertCombo(trx: Transaction<DB>, data: ComboInsert) {
   return await trx
     .insertInto("combo")
     .values(data)
@@ -66,7 +66,7 @@ export async function insertCombo(trx: Transaction<DB>, data: ComboInsert): Prom
     .executeTakeFirstOrThrow();
 }
 
-export async function createCombo(trx: Transaction<DB>, data: ComboInsert): Promise<Combo> {
+export async function createCombo(trx: Transaction<DB>, data: ComboInsert) {
   return await trx
     .insertInto("combo")
     .values({
@@ -77,7 +77,7 @@ export async function createCombo(trx: Transaction<DB>, data: ComboInsert): Prom
     .executeTakeFirstOrThrow();
 }
 
-export async function updateCombo(trx: Transaction<DB>, id: string, data: ComboUpdate): Promise<Combo> {
+export async function updateCombo(trx: Transaction<DB>, id: string, data: ComboUpdate) {
   return await trx
     .updateTable("combo")
     .set(data)
@@ -86,7 +86,7 @@ export async function updateCombo(trx: Transaction<DB>, id: string, data: ComboU
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteCombo(trx: Transaction<DB>, id: string): Promise<Combo | null> {
+export async function deleteCombo(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("combo")
     .where("id", "=", id)
@@ -95,8 +95,8 @@ export async function deleteCombo(trx: Transaction<DB>, id: string): Promise<Com
 }
 
 // 特殊查询方法
-export async function findComboWithRelations(id: string) {
-  const db = await getDB();
+export async function findComboWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("combo")
     .where("id", "=", id)

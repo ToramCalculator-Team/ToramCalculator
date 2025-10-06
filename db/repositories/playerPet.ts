@@ -36,8 +36,8 @@ export const PlayerPetWithRelationsSchema = z.object({
 export const playerPetSubRelations = playerPetRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findPlayerPetById(id: string): Promise<PlayerPet | null> {
-  const db = await getDB();
+export async function findPlayerPetById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_pet")
     .where("id", "=", id)
@@ -45,15 +45,15 @@ export async function findPlayerPetById(id: string): Promise<PlayerPet | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findPlayerPets(): Promise<PlayerPet[]> {
-  const db = await getDB();
+export async function findPlayerPets(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_pet")
     .selectAll("player_pet")
     .execute();
 }
 
-export async function insertPlayerPet(trx: Transaction<DB>, data: PlayerPetInsert): Promise<PlayerPet> {
+export async function insertPlayerPet(trx: Transaction<DB>, data: PlayerPetInsert) {
   return await trx
     .insertInto("player_pet")
     .values(data)
@@ -61,7 +61,7 @@ export async function insertPlayerPet(trx: Transaction<DB>, data: PlayerPetInser
     .executeTakeFirstOrThrow();
 }
 
-export async function createPlayerPet(trx: Transaction<DB>, data: PlayerPetInsert): Promise<PlayerPet> {
+export async function createPlayerPet(trx: Transaction<DB>, data: PlayerPetInsert) {
   // 注意：createPlayerPet 内部自己处理事务，所以我们需要在外部事务中直接插入
   const player_pet = await trx
     .insertInto("player_pet")
@@ -75,7 +75,7 @@ export async function createPlayerPet(trx: Transaction<DB>, data: PlayerPetInser
   return player_pet;
 }
 
-export async function updatePlayerPet(trx: Transaction<DB>, id: string, data: PlayerPetUpdate): Promise<PlayerPet> {
+export async function updatePlayerPet(trx: Transaction<DB>, id: string, data: PlayerPetUpdate) {
   return await trx
     .updateTable("player_pet")
     .set(data)
@@ -84,7 +84,7 @@ export async function updatePlayerPet(trx: Transaction<DB>, id: string, data: Pl
     .executeTakeFirstOrThrow();
 }
 
-export async function deletePlayerPet(trx: Transaction<DB>, id: string): Promise<PlayerPet | null> {
+export async function deletePlayerPet(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("player_pet")
     .where("id", "=", id)
@@ -93,8 +93,8 @@ export async function deletePlayerPet(trx: Transaction<DB>, id: string): Promise
 }
 
 // 4. 特殊查询方法
-export async function findPlayerPetWithRelations(id: string) {
-  const db = await getDB();
+export async function findPlayerPetWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player_pet")
     .where("id", "=", id)

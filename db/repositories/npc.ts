@@ -43,8 +43,8 @@ export const NpcWithRelationsSchema = z.object({
 export const npcSubRelations = npcRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findNpcById(id: string): Promise<Npc | null> {
-  const db = await getDB();
+export async function findNpcById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("npc")
     .where("id", "=", id)
@@ -52,15 +52,15 @@ export async function findNpcById(id: string): Promise<Npc | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findNpcs(): Promise<Npc[]> {
-  const db = await getDB();
+export async function findNpcs(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("npc")
     .selectAll("npc")
     .execute();
 }
 
-export async function insertNpc(trx: Transaction<DB>, data: NpcInsert): Promise<Npc> {
+export async function insertNpc(trx: Transaction<DB>, data: NpcInsert) {
   return await trx
     .insertInto("npc")
     .values(data)
@@ -68,7 +68,7 @@ export async function insertNpc(trx: Transaction<DB>, data: NpcInsert): Promise<
     .executeTakeFirstOrThrow();
 }
 
-export async function createNpc(trx: Transaction<DB>, data: NpcInsert): Promise<Npc> {
+export async function createNpc(trx: Transaction<DB>, data: NpcInsert) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -84,7 +84,7 @@ export async function createNpc(trx: Transaction<DB>, data: NpcInsert): Promise<
   return npc;
 }
 
-export async function updateNpc(trx: Transaction<DB>, id: string, data: NpcUpdate): Promise<Npc> {
+export async function updateNpc(trx: Transaction<DB>, id: string, data: NpcUpdate) {
   return await trx
     .updateTable("npc")
     .set(data)
@@ -93,7 +93,7 @@ export async function updateNpc(trx: Transaction<DB>, id: string, data: NpcUpdat
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteNpc(trx: Transaction<DB>, id: string): Promise<Npc | null> {
+export async function deleteNpc(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("npc")
     .where("id", "=", id)
@@ -102,8 +102,8 @@ export async function deleteNpc(trx: Transaction<DB>, id: string): Promise<Npc |
 }
 
 // 特殊查询方法
-export async function findNpcWithRelations(id: string) {
-  const db = await getDB();
+export async function findNpcWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("npc")
     .where("id", "=", id)

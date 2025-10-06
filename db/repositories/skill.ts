@@ -52,8 +52,8 @@ export const SkillWithRelationsSchema = z.object({
 export const skillSubRelations = skillRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findSkillById(id: string): Promise<Skill | null> {
-  const db = await getDB();
+export async function findSkillById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill")
     .where("id", "=", id)
@@ -61,15 +61,15 @@ export async function findSkillById(id: string): Promise<Skill | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findSkills(): Promise<Skill[]> {
-  const db = await getDB();
+export async function findSkills(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill")
     .selectAll("skill")
     .execute();
 }
 
-export async function insertSkill(trx: Transaction<DB>, data: SkillInsert): Promise<Skill> {
+export async function insertSkill(trx: Transaction<DB>, data: SkillInsert) {
   const statistic = await insertStatistic(trx);
   const skill = await trx
     .insertInto("skill")
@@ -83,7 +83,7 @@ export async function insertSkill(trx: Transaction<DB>, data: SkillInsert): Prom
   return skill;
 }
 
-export async function createSkill(trx: Transaction<DB>, data: SkillInsert): Promise<Skill> {
+export async function createSkill(trx: Transaction<DB>, data: SkillInsert) {
   // 注意：createSkill 内部自己处理事务，所以我们需要在外部事务中直接插入
   const statistic = await trx
     .insertInto("statistic")
@@ -110,7 +110,7 @@ export async function createSkill(trx: Transaction<DB>, data: SkillInsert): Prom
   return skill;
 }
 
-export async function updateSkill(trx: Transaction<DB>, id: string, data: SkillUpdate): Promise<Skill> {
+export async function updateSkill(trx: Transaction<DB>, id: string, data: SkillUpdate) {
   return await trx
     .updateTable("skill")
     .set(data)
@@ -119,7 +119,7 @@ export async function updateSkill(trx: Transaction<DB>, id: string, data: SkillU
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteSkill(trx: Transaction<DB>, id: string): Promise<Skill | null> {
+export async function deleteSkill(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("skill")
     .where("id", "=", id)
@@ -128,8 +128,8 @@ export async function deleteSkill(trx: Transaction<DB>, id: string): Promise<Ski
 }
 
 // 特殊查询方法
-export async function findSkillWithRelations(id: string) {
-  const db = await getDB();
+export async function findSkillWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill")
     .where("id", "=", id)
@@ -141,8 +141,8 @@ export async function findSkillWithRelations(id: string) {
 // 关联查询类型
 export type SkillWithRelations = Awaited<ReturnType<typeof findSkillWithRelations>>;
 
-export async function findSkillsLike(searchString: string): Promise<Skill[]> {
-  const db = await getDB();
+export async function findSkillsLike(searchString: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill")
     .where("name", "like", `%${searchString}%`)

@@ -35,8 +35,8 @@ export const TaskKillRequirementWithRelationsSchema = z.object({
 export const taskKillRequirementSubRelations = taskKillRequirementRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findTaskKillRequirementById(id: string): Promise<TaskKillRequirement | null> {
-  const db = await getDB();
+export async function findTaskKillRequirementById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_kill_requirement")
     .where("id", "=", id)
@@ -44,15 +44,15 @@ export async function findTaskKillRequirementById(id: string): Promise<TaskKillR
     .executeTakeFirst() || null;
 }
 
-export async function findTaskKillRequirements(): Promise<TaskKillRequirement[]> {
-  const db = await getDB();
+export async function findTaskKillRequirements(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_kill_requirement")
     .selectAll("task_kill_requirement")
     .execute();
 }
 
-export async function insertTaskKillRequirement(trx: Transaction<DB>, data: TaskKillRequirementInsert): Promise<TaskKillRequirement> {
+export async function insertTaskKillRequirement(trx: Transaction<DB>, data: TaskKillRequirementInsert) {
   return await trx
     .insertInto("task_kill_requirement")
     .values(data)
@@ -60,7 +60,7 @@ export async function insertTaskKillRequirement(trx: Transaction<DB>, data: Task
     .executeTakeFirstOrThrow();
 }
 
-export async function createTaskKillRequirement(trx: Transaction<DB>, data: TaskKillRequirementInsert): Promise<TaskKillRequirement> {
+export async function createTaskKillRequirement(trx: Transaction<DB>, data: TaskKillRequirementInsert) {
   // 注意：createTaskKillRequirement 内部自己处理事务，所以我们需要在外部事务中直接插入
   const taskKillRequirement = await trx
     .insertInto("task_kill_requirement")
@@ -74,7 +74,7 @@ export async function createTaskKillRequirement(trx: Transaction<DB>, data: Task
   return taskKillRequirement;
 }
 
-export async function updateTaskKillRequirement(trx: Transaction<DB>, id: string, data: TaskKillRequirementUpdate): Promise<TaskKillRequirement> {
+export async function updateTaskKillRequirement(trx: Transaction<DB>, id: string, data: TaskKillRequirementUpdate) {
   return await trx
     .updateTable("task_kill_requirement")
     .set(data)
@@ -83,7 +83,7 @@ export async function updateTaskKillRequirement(trx: Transaction<DB>, id: string
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteTaskKillRequirement(trx: Transaction<DB>, id: string): Promise<TaskKillRequirement | null> {
+export async function deleteTaskKillRequirement(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("task_kill_requirement")
     .where("id", "=", id)
@@ -92,8 +92,8 @@ export async function deleteTaskKillRequirement(trx: Transaction<DB>, id: string
 }
 
 // 4. 特殊查询方法
-export async function findTaskKillRequirementWithRelations(id: string) {
-  const db = await getDB();
+export async function findTaskKillRequirementWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_kill_requirement")
     .where("id", "=", id)

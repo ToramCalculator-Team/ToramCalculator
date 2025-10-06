@@ -36,8 +36,8 @@ export const PlayerWithRelationsSchema = z.object({
 export const playerSubRelations = playerRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findPlayerById(id: string) {
-  const db = await getDB();
+export async function findPlayerById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player")
     .where("id", "=", id)
@@ -54,8 +54,8 @@ export async function findPlayersByAccountId(accountId: string, trx?: Transactio
     .execute();
 }
 
-export async function findPlayers() {
-  const db = await getDB();
+export async function findPlayers(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player")
     .selectAll("player")
@@ -102,8 +102,8 @@ export async function deletePlayer(trx: Transaction<DB>, id: string) {
 }
 
 // 4. 特殊查询方法
-export async function findPlayerWithRelations(id: string) {
-  const db = await getDB();
+export async function findPlayerWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("player")
     .where("id", "=", id)

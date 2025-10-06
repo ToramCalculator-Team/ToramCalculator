@@ -41,8 +41,8 @@ export const OptionWithRelationsSchema = z.object({
 export const optEquipSubRelations = optEquipRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findOptionById(id: string): Promise<Option | null> {
-  const db = await getDB();
+export async function findOptionById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("option")
     .where("itemId", "=", id)
@@ -50,8 +50,8 @@ export async function findOptionById(id: string): Promise<Option | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findOptions(): Promise<Option[]> {
-  const db = await getDB();
+export async function findOptions(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("option")
     .innerJoin("item", "item.id", "option.itemId")
@@ -59,7 +59,7 @@ export async function findOptions(): Promise<Option[]> {
     .execute();
 }
 
-export async function insertOption(trx: Transaction<DB>, data: OptionInsert): Promise<Option> {
+export async function insertOption(trx: Transaction<DB>, data: OptionInsert) {
   return await trx
     .insertInto("option")
     .values(data)
@@ -67,7 +67,7 @@ export async function insertOption(trx: Transaction<DB>, data: OptionInsert): Pr
     .executeTakeFirstOrThrow();
 }
 
-export async function createOption(trx: Transaction<DB>, data: OptionInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>): Promise<Option> {
+export async function createOption(trx: Transaction<DB>, data: OptionInsert, itemData: Omit<Insertable<item>, 'id' | 'statisticId' | 'createdByAccountId' | 'updatedByAccountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
@@ -89,7 +89,7 @@ export async function createOption(trx: Transaction<DB>, data: OptionInsert, ite
   return option;
 }
 
-export async function updateOption(trx: Transaction<DB>, id: string, data: OptionUpdate): Promise<Option> {
+export async function updateOption(trx: Transaction<DB>, id: string, data: OptionUpdate) {
   return await trx
     .updateTable("option")
     .set(data)
@@ -98,7 +98,7 @@ export async function updateOption(trx: Transaction<DB>, id: string, data: Optio
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteOption(trx: Transaction<DB>, id: string): Promise<Option | null> {
+export async function deleteOption(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("option")
     .where("itemId", "=", id)
@@ -107,8 +107,8 @@ export async function deleteOption(trx: Transaction<DB>, id: string): Promise<Op
 }
 
 // 4. 特殊查询方法
-export async function findOptionWithRelations(id: string) {
-  const db = await getDB();
+export async function findOptionWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("option")
     .innerJoin("item", "item.id", "option.itemId")
@@ -118,8 +118,8 @@ export async function findOptionWithRelations(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findItemWithOptionById(itemId: string) {
-  const db = await getDB();
+export async function findItemWithOptionById(itemId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("item")
     .innerJoin("option", "option.itemId", "item.id")

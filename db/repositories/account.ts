@@ -51,7 +51,7 @@ export const AccountWithRelationsSchema = z.object({
 export const accountSubRelations = accountRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findAccountById(id: string, trx?: Transaction<DB>): Promise<Account | null> {
+export async function findAccountById(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db
     .selectFrom("account")
@@ -60,15 +60,15 @@ export async function findAccountById(id: string, trx?: Transaction<DB>): Promis
     .executeTakeFirst() || null;
 }
 
-export async function findAccounts(): Promise<Account[]> {
-  const db = await getDB();
+export async function findAccounts(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("account")
     .selectAll()
     .execute();
 }
 
-export async function insertAccount(trx: Transaction<DB>, data: AccountInsert): Promise<Account> {
+export async function insertAccount(trx: Transaction<DB>, data: AccountInsert) {
   return await trx
     .insertInto("account")
     .values(data)
@@ -76,7 +76,7 @@ export async function insertAccount(trx: Transaction<DB>, data: AccountInsert): 
     .executeTakeFirstOrThrow();
 }
 
-export async function createAccount(trx: Transaction<DB>, data: AccountInsert): Promise<Account> {
+export async function createAccount(trx: Transaction<DB>, data: AccountInsert) {
   const account = await trx
     .insertInto("account")
     .values({
@@ -101,7 +101,7 @@ export async function createAccount(trx: Transaction<DB>, data: AccountInsert): 
   return account;
 }
 
-export async function updateAccount(trx: Transaction<DB>, id: string, data: AccountUpdate): Promise<Account> {
+export async function updateAccount(trx: Transaction<DB>, id: string, data: AccountUpdate) {
   return await trx
     .updateTable("account")
     .set(data)
@@ -110,7 +110,7 @@ export async function updateAccount(trx: Transaction<DB>, id: string, data: Acco
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteAccount(trx: Transaction<DB>, id: string): Promise<Account | null> {
+export async function deleteAccount(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("account")
     .where("id", "=", id)
@@ -119,8 +119,8 @@ export async function deleteAccount(trx: Transaction<DB>, id: string): Promise<A
 }
 
 // 特殊查询方法
-export async function findAccountWithRelations(id: string) {
-  const db = await getDB();
+export async function findAccountWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("account")
     .where("id", "=", id)

@@ -34,8 +34,8 @@ export const TaskRewardWithRelationsSchema = z.object({
 export const taskRewardSubRelations = taskRewardRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findTaskRewardById(id: string): Promise<TaskReward | null> {
-  const db = await getDB();
+export async function findTaskRewardById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_reward")
     .where("id", "=", id)
@@ -43,15 +43,15 @@ export async function findTaskRewardById(id: string): Promise<TaskReward | null>
     .executeTakeFirst() || null;
 }
 
-export async function findTaskRewards(): Promise<TaskReward[]> {
-  const db = await getDB();
+export async function findTaskRewards(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_reward")
     .selectAll("task_reward")
     .execute();
 }
 
-export async function insertTaskReward(trx: Transaction<DB>, data: TaskRewardInsert): Promise<TaskReward> {
+export async function insertTaskReward(trx: Transaction<DB>, data: TaskRewardInsert) {
   return await trx
     .insertInto("task_reward")
     .values(data)
@@ -59,7 +59,7 @@ export async function insertTaskReward(trx: Transaction<DB>, data: TaskRewardIns
     .executeTakeFirstOrThrow();
 }
 
-export async function createTaskReward(trx: Transaction<DB>, data: TaskRewardInsert): Promise<TaskReward> {
+export async function createTaskReward(trx: Transaction<DB>, data: TaskRewardInsert) {
   // 注意：createTaskReward 内部自己处理事务，所以我们需要在外部事务中直接插入
   const taskReward = await trx
     .insertInto("task_reward")
@@ -73,7 +73,7 @@ export async function createTaskReward(trx: Transaction<DB>, data: TaskRewardIns
   return taskReward;
 }
 
-export async function updateTaskReward(trx: Transaction<DB>, id: string, data: TaskRewardUpdate): Promise<TaskReward> {
+export async function updateTaskReward(trx: Transaction<DB>, id: string, data: TaskRewardUpdate) {
   return await trx
     .updateTable("task_reward")
     .set(data)
@@ -82,7 +82,7 @@ export async function updateTaskReward(trx: Transaction<DB>, id: string, data: T
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteTaskReward(trx: Transaction<DB>, id: string): Promise<TaskReward | null> {
+export async function deleteTaskReward(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("task_reward")
     .where("id", "=", id)
@@ -91,8 +91,8 @@ export async function deleteTaskReward(trx: Transaction<DB>, id: string): Promis
 }
 
 // 4. 特殊查询方法
-export async function findTaskRewardWithRelations(id: string) {
-  const db = await getDB();
+export async function findTaskRewardWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("task_reward")
     .where("id", "=", id)

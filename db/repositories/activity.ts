@@ -43,8 +43,8 @@ export const ActivityWithRelationsSchema = z.object({
 export const activitySubRelations = activityRelationsFactory.subRelations;
 
 // 2. 基础 CRUD 方法
-export async function findActivityById(id: string): Promise<Activity | null> {
-  const db = await getDB();
+export async function findActivityById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("activity")
     .where("id", "=", id)
@@ -52,15 +52,15 @@ export async function findActivityById(id: string): Promise<Activity | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findActivities(): Promise<Activity[]> {
-  const db = await getDB();
+export async function findActivities(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("activity")
     .selectAll()
     .execute();
 }
 
-export async function insertActivity(trx: Transaction<DB>, data: ActivityInsert): Promise<Activity> {
+export async function insertActivity(trx: Transaction<DB>, data: ActivityInsert) {
   return await trx
     .insertInto("activity")
     .values(data)
@@ -70,8 +70,8 @@ export async function insertActivity(trx: Transaction<DB>, data: ActivityInsert)
 
 
 // 4. 特殊查询方法
-export async function findActivityWithRelations(id: string) {
-  const db = await getDB();
+export async function findActivityWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("activity")
     .where("id", "=", id)
@@ -80,8 +80,8 @@ export async function findActivityWithRelations(id: string) {
     .executeTakeFirstOrThrow();
 }
 
-export async function findActivitiesWithRelations() {
-  const db = await getDB();
+export async function findActivitiesWithRelations(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("activity")
     .selectAll("activity")
@@ -93,7 +93,7 @@ export async function findActivitiesWithRelations() {
 export type ActivityWithRelations = Awaited<ReturnType<typeof findActivityWithRelations>>;
 
 // 5. 业务逻辑 CRUD 方法
-export async function createActivity(trx: Transaction<DB>, activityData: ActivityInsert): Promise<Activity> {
+export async function createActivity(trx: Transaction<DB>, activityData: ActivityInsert) {
   const statistic = await createStatistic(trx);
   return await trx
     .insertInto("activity")
@@ -108,7 +108,7 @@ export async function createActivity(trx: Transaction<DB>, activityData: Activit
     .executeTakeFirstOrThrow();
 }
 
-export async function updateActivity(trx: Transaction<DB>, activityData: ActivityUpdate): Promise<Activity> {
+export async function updateActivity(trx: Transaction<DB>, activityData: ActivityUpdate) {
   return await trx
     .updateTable("activity")
     .set({
@@ -120,7 +120,7 @@ export async function updateActivity(trx: Transaction<DB>, activityData: Activit
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteActivity(trx: Transaction<DB>, activityData: Activity): Promise<void> {
+export async function deleteActivity(trx: Transaction<DB>, activityData: Activity) {
   // 将用到此活动的zone的activityId设为null
   await trx.updateTable("zone").set({ activityId: null }).where("activityId", "=", activityData.id).execute();
   // 将用到此活动的recipe的activityId设为null

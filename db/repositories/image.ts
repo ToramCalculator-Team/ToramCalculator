@@ -29,8 +29,8 @@ export const ImageWithRelationsSchema = z.object({
 export const imageSubRelations = imageRelationsFactory.subRelations;
 
 // 2. 基础 CRUD 方法
-export async function findImageById(id: string): Promise<Image | null> {
-  const db = await getDB();
+export async function findImageById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("image")
     .where("id", "=", id)
@@ -38,15 +38,15 @@ export async function findImageById(id: string): Promise<Image | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findImages(): Promise<Image[]> {
-  const db = await getDB();
+export async function findImages(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("image")
     .selectAll()
     .execute();
 }
 
-export async function insertImage(trx: Transaction<DB>, data: ImageInsert): Promise<Image> {
+export async function insertImage(trx: Transaction<DB>, data: ImageInsert) {
   return await trx
     .insertInto("image")
     .values(data)
@@ -54,7 +54,7 @@ export async function insertImage(trx: Transaction<DB>, data: ImageInsert): Prom
     .executeTakeFirstOrThrow();
 }
 
-export async function createImage(trx: Transaction<DB>, data: ImageInsert): Promise<Image> {
+export async function createImage(trx: Transaction<DB>, data: ImageInsert) {
   return await trx
     .insertInto("image")
     .values({
@@ -65,7 +65,7 @@ export async function createImage(trx: Transaction<DB>, data: ImageInsert): Prom
     .executeTakeFirstOrThrow();
 }
 
-export async function updateImage(trx: Transaction<DB>, id: string, data: ImageUpdate): Promise<Image> {
+export async function updateImage(trx: Transaction<DB>, id: string, data: ImageUpdate) {
   return await trx
     .updateTable("image")
     .set(data)
@@ -74,7 +74,7 @@ export async function updateImage(trx: Transaction<DB>, id: string, data: ImageU
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteImage(trx: Transaction<DB>, id: string): Promise<Image | null> {
+export async function deleteImage(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("image")
     .where("id", "=", id)
@@ -83,8 +83,8 @@ export async function deleteImage(trx: Transaction<DB>, id: string): Promise<Ima
 }
 
 // 特殊查询方法
-export async function findImageWithRelations(id: string) {
-  const db = await getDB();
+export async function findImageWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("image")
     .where("id", "=", id)

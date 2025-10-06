@@ -29,8 +29,8 @@ export const SkillEffectWithRelationsSchema = z.object({
 export const skillEffectSubRelations = skillEffectRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findSkillEffectById(id: string): Promise<SkillEffect | null> {
-  const db = await getDB();
+export async function findSkillEffectById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill_effect")
     .where("id", "=", id)
@@ -38,15 +38,15 @@ export async function findSkillEffectById(id: string): Promise<SkillEffect | nul
     .executeTakeFirst() || null;
 }
 
-export async function findSkillEffects(): Promise<SkillEffect[]> {
-  const db = await getDB();
+export async function findSkillEffects(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill_effect")
     .selectAll("skill_effect")
     .execute();
 }
 
-export async function insertSkillEffect(trx: Transaction<DB>, data: SkillEffectInsert): Promise<SkillEffect> {
+export async function insertSkillEffect(trx: Transaction<DB>, data: SkillEffectInsert) {
   return await trx
     .insertInto("skill_effect")
     .values(data)
@@ -54,7 +54,7 @@ export async function insertSkillEffect(trx: Transaction<DB>, data: SkillEffectI
     .executeTakeFirstOrThrow();
 }
 
-export async function createSkillEffect(trx: Transaction<DB>, data: SkillEffectInsert): Promise<SkillEffect> {
+export async function createSkillEffect(trx: Transaction<DB>, data: SkillEffectInsert) {
   // 注意：createSkillEffect 内部自己处理事务，所以我们需要在外部事务中直接插入
   const skillEffect = await trx
     .insertInto("skill_effect")
@@ -68,7 +68,7 @@ export async function createSkillEffect(trx: Transaction<DB>, data: SkillEffectI
   return skillEffect;
 }
 
-export async function updateSkillEffect(trx: Transaction<DB>, id: string, data: SkillEffectUpdate): Promise<SkillEffect> {
+export async function updateSkillEffect(trx: Transaction<DB>, id: string, data: SkillEffectUpdate) {
   return await trx
     .updateTable("skill_effect")
     .set(data)
@@ -77,7 +77,7 @@ export async function updateSkillEffect(trx: Transaction<DB>, id: string, data: 
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteSkillEffect(trx: Transaction<DB>, id: string): Promise<SkillEffect | null> {
+export async function deleteSkillEffect(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("skill_effect")
     .where("id", "=", id)
@@ -86,8 +86,8 @@ export async function deleteSkillEffect(trx: Transaction<DB>, id: string): Promi
 }
 
 // 特殊查询方法
-export async function findSkillEffectWithRelations(id: string) {
-  const db = await getDB();
+export async function findSkillEffectWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("skill_effect")
     .where("id", "=", id)

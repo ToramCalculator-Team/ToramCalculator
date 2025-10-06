@@ -36,8 +36,8 @@ export const TeamWithRelationsSchema = z.object({
 export const teamSubRelations = teamRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findTeamById(id: string): Promise<Team | null> {
-  const db = await getDB();
+export async function findTeamById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("team")
     .where("id", "=", id)
@@ -45,15 +45,15 @@ export async function findTeamById(id: string): Promise<Team | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findTeams(): Promise<Team[]> {
-  const db = await getDB();
+export async function findTeams(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("team")
     .selectAll("team")
     .execute();
 }
 
-export async function insertTeam(trx: Transaction<DB>, data: TeamInsert): Promise<Team> {
+export async function insertTeam(trx: Transaction<DB>, data: TeamInsert) {
   return await trx
     .insertInto("team")
     .values(data)
@@ -61,7 +61,7 @@ export async function insertTeam(trx: Transaction<DB>, data: TeamInsert): Promis
     .executeTakeFirstOrThrow();
 }
 
-export async function createTeam(trx: Transaction<DB>, data: TeamInsert): Promise<Team> {
+export async function createTeam(trx: Transaction<DB>, data: TeamInsert) {
   // 注意：createTeam 内部自己处理事务，所以我们需要在外部事务中直接插入
   const team = await trx
     .insertInto("team")
@@ -75,7 +75,7 @@ export async function createTeam(trx: Transaction<DB>, data: TeamInsert): Promis
   return team;
 }
 
-export async function updateTeam(trx: Transaction<DB>, id: string, data: TeamUpdate): Promise<Team> {
+export async function updateTeam(trx: Transaction<DB>, id: string, data: TeamUpdate) {
   return await trx
     .updateTable("team")
     .set(data)
@@ -84,7 +84,7 @@ export async function updateTeam(trx: Transaction<DB>, id: string, data: TeamUpd
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteTeam(trx: Transaction<DB>, id: string): Promise<Team | null> {
+export async function deleteTeam(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("team")
     .where("id", "=", id)
@@ -93,8 +93,8 @@ export async function deleteTeam(trx: Transaction<DB>, id: string): Promise<Team
 }
 
 // 4. 特殊查询方法
-export async function findTeamWithRelations(id: string) {
-  const db = await getDB();
+export async function findTeamWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("team")
     .where("id", "=", id)

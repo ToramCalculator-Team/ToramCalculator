@@ -30,8 +30,8 @@ export const RecipeIngredientWithRelationsSchema = z.object({
 export const recipeIngredientSubRelations = recipeIngredientRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findRecipeIngredientById(id: string): Promise<RecipeIngredient | null> {
-  const db = await getDB();
+export async function findRecipeIngredientById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("recipe_ingredient")
     .where("id", "=", id)
@@ -39,15 +39,15 @@ export async function findRecipeIngredientById(id: string): Promise<RecipeIngred
     .executeTakeFirst() || null;
 }
 
-export async function findRecipeIngredients(): Promise<RecipeIngredient[]> {
-  const db = await getDB();
+export async function findRecipeIngredients(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("recipe_ingredient")
     .selectAll("recipe_ingredient")
     .execute();
 }
 
-export async function insertRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert): Promise<RecipeIngredient> {
+export async function insertRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert) {
   return await trx
     .insertInto("recipe_ingredient")
     .values(data)
@@ -55,7 +55,7 @@ export async function insertRecipeIngredient(trx: Transaction<DB>, data: RecipeI
     .executeTakeFirstOrThrow();
 }
 
-export async function createRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert): Promise<RecipeIngredient> {
+export async function createRecipeIngredient(trx: Transaction<DB>, data: RecipeIngredientInsert) {
   // 注意：createRecipeIngredient 内部自己处理事务，所以我们需要在外部事务中直接插入
   const recipeIngredient = await trx
     .insertInto("recipe_ingredient")
@@ -69,7 +69,7 @@ export async function createRecipeIngredient(trx: Transaction<DB>, data: RecipeI
   return recipeIngredient;
 }
 
-export async function updateRecipeIngredient(trx: Transaction<DB>, id: string, data: RecipeIngredientUpdate): Promise<RecipeIngredient> {
+export async function updateRecipeIngredient(trx: Transaction<DB>, id: string, data: RecipeIngredientUpdate) {
   return await trx
     .updateTable("recipe_ingredient")
     .set(data)
@@ -78,7 +78,7 @@ export async function updateRecipeIngredient(trx: Transaction<DB>, id: string, d
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteRecipeIngredient(trx: Transaction<DB>, id: string): Promise<RecipeIngredient | null> {
+export async function deleteRecipeIngredient(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("recipe_ingredient")
     .where("id", "=", id)
@@ -87,8 +87,8 @@ export async function deleteRecipeIngredient(trx: Transaction<DB>, id: string): 
 }
 
 // 特殊查询方法
-export async function findRecipeIngredientWithRelations(id: string) {
-  const db = await getDB();
+export async function findRecipeIngredientWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("recipe_ingredient")
     .where("id", "=", id)

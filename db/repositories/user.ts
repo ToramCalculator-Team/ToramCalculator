@@ -26,8 +26,8 @@ export function userSubRelations(eb: ExpressionBuilder<DB, "user">, id: Expressi
 }
 
 // 3. 基础 CRUD 方法
-export async function findUserById(id: string): Promise<User | null> {
-  const db = await getDB();
+export async function findUserById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("user")
     .where("id", "=", id)
@@ -35,8 +35,8 @@ export async function findUserById(id: string): Promise<User | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findUserByEmail(email: string): Promise<User | null> {
-  const db = await getDB();
+export async function findUserByEmail(email: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("user")
     .where("email", "=", email)
@@ -44,15 +44,15 @@ export async function findUserByEmail(email: string): Promise<User | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findUsers(): Promise<User[]> {
-  const db = await getDB();
+export async function findUsers(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("user")
     .selectAll()
     .execute();
 }
 
-export async function insertUser(trx: Transaction<DB>, data: UserInsert): Promise<User> {
+export async function insertUser(trx: Transaction<DB>, data: UserInsert) {
   return await trx
     .insertInto("user")
     .values(data)
@@ -60,7 +60,7 @@ export async function insertUser(trx: Transaction<DB>, data: UserInsert): Promis
     .executeTakeFirstOrThrow();
 }
 
-export async function createUser(trx: Transaction<DB>, data: UserInsert): Promise<User> {
+export async function createUser(trx: Transaction<DB>, data: UserInsert) {
   // 1. 插入用户数据
   const user = await trx
     .insertInto("user")
@@ -82,7 +82,7 @@ export async function createUser(trx: Transaction<DB>, data: UserInsert): Promis
   return user;
 }
 
-export async function updateUser(trx: Transaction<DB>, id: string, data: UserUpdate): Promise<User> {
+export async function updateUser(trx: Transaction<DB>, id: string, data: UserUpdate) {
   return await trx
     .updateTable("user")
     .set(data)
@@ -91,7 +91,7 @@ export async function updateUser(trx: Transaction<DB>, id: string, data: UserUpd
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteUser(trx: Transaction<DB>, id: string): Promise<User | null> {
+export async function deleteUser(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("user")
     .where("id", "=", id)
@@ -100,8 +100,8 @@ export async function deleteUser(trx: Transaction<DB>, id: string): Promise<User
 }
 
 // 4. 特殊查询方法
-export async function findUserWithRelations(id: string) {
-  const db = await getDB();
+export async function findUserWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("user")
     .where("id", "=", id)

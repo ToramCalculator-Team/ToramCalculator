@@ -171,8 +171,8 @@ export const CharacterWithRelationsSchema = z.object({
 export const characterSubRelations = characterRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
-export async function findCharacterById(id: string) {
-  const db = await getDB();
+export async function findCharacterById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return (await db.selectFrom("character").where("id", "=", id).selectAll("character").executeTakeFirst()) || null;
 }
 
@@ -194,17 +194,17 @@ export async function createCharacter(trx: Transaction<DB>, data: CharacterInser
   return character;
 }
 
-export async function updateCharacter(trx: Transaction<DB>, id: string, data: CharacterUpdate): Promise<Character> {
+export async function updateCharacter(trx: Transaction<DB>, id: string, data: CharacterUpdate) {
   return await trx.updateTable("character").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function deleteCharacter(trx: Transaction<DB>, id: string): Promise<Character | null> {
+export async function deleteCharacter(trx: Transaction<DB>, id: string) {
   return (await trx.deleteFrom("character").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法
-export async function findCharacterWithRelations(id: string) {
-  const db = await getDB();
+export async function findCharacterWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("character")
     .where("id", "=", id)
@@ -213,8 +213,8 @@ export async function findCharacterWithRelations(id: string) {
     .executeTakeFirst();
 }
 
-export async function findCharacters(accountId: string) {
-  const db = await getDB();
+export async function findCharacters(accountId: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("character")
     .innerJoin("player", "player.id", "character.masterId")

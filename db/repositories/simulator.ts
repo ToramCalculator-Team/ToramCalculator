@@ -62,7 +62,7 @@ export const simulatorSubRelations = simulatorRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSimulatorById(id: string): Promise<Simulator | null> {
-  const db = await getDB();
+  const db = trx || await getDB();
   return await db
     .selectFrom("simulator")
     .where("id", "=", id)
@@ -70,15 +70,15 @@ export async function findSimulatorById(id: string): Promise<Simulator | null> {
     .executeTakeFirst() || null;
 }
 
-export async function findSimulators(): Promise<Simulator[]> {
-  const db = await getDB();
+export async function findSimulators(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("simulator")
     .selectAll("simulator")
     .execute();
 }
 
-export async function insertSimulator(trx: Transaction<DB>, data: SimulatorInsert): Promise<Simulator> {
+export async function insertSimulator(trx: Transaction<DB>, data: SimulatorInsert) {
   return await trx
     .insertInto("simulator")
     .values(data)
@@ -86,7 +86,7 @@ export async function insertSimulator(trx: Transaction<DB>, data: SimulatorInser
     .executeTakeFirstOrThrow();
 }
 
-export async function createSimulator(trx: Transaction<DB>, data: SimulatorInsert): Promise<Simulator> {
+export async function createSimulator(trx: Transaction<DB>, data: SimulatorInsert) {
   // 注意：createSimulator 内部自己处理事务，所以我们需要在外部事务中直接插入
   const simulator = await trx
     .insertInto("simulator")
@@ -100,7 +100,7 @@ export async function createSimulator(trx: Transaction<DB>, data: SimulatorInser
   return simulator;
 }
 
-export async function updateSimulator(trx: Transaction<DB>, id: string, data: SimulatorUpdate): Promise<Simulator> {
+export async function updateSimulator(trx: Transaction<DB>, id: string, data: SimulatorUpdate) {
   return await trx
     .updateTable("simulator")
     .set(data)
@@ -109,7 +109,7 @@ export async function updateSimulator(trx: Transaction<DB>, id: string, data: Si
     .executeTakeFirstOrThrow();
 }
 
-export async function deleteSimulator(trx: Transaction<DB>, id: string): Promise<Simulator | null> {
+export async function deleteSimulator(trx: Transaction<DB>, id: string) {
   return await trx
     .deleteFrom("simulator")
     .where("id", "=", id)
@@ -118,8 +118,8 @@ export async function deleteSimulator(trx: Transaction<DB>, id: string): Promise
 }
 
 // 4. 特殊查询方法
-export async function findSimulatorWithRelations(id: string) {
-  const db = await getDB();
+export async function findSimulatorWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
   return await db
     .selectFrom("simulator")
     .where("id", "=", id)
