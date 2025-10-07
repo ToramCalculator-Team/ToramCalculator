@@ -19,22 +19,22 @@ export default defineConfig({
       // 启用Vite的manifest生成
       manifest: true,
       rollupOptions: {
-        external: [
-          "cloudflare:sockets",
-          "@babylonjs/core",
-          "@babylonjs/inspector",
-          "@babylonjs/loaders",
-          "@babylonjs/materials",
-          "@babylonjs/inspector",
-        ],
-        output: {
-          paths: {
-            "@babylonjs/loaders": "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js",
-            "@babylonjs/inspector": "https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js",
-            "@babylonjs/core": "https://cdn.babylonjs.com/babylon.js",
-            "@babylonjs/materials": "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js",
-          },
-        },
+        // external: [
+        //   "cloudflare:sockets",
+        //   "@babylonjs/core",
+        //   "@babylonjs/inspector",
+        //   "@babylonjs/loaders",
+        //   "@babylonjs/materials",
+        //   "@babylonjs/inspector",
+        // ],
+        // output: {
+        //   paths: {
+        //     "@babylonjs/loaders": "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js",
+        //     "@babylonjs/inspector": "https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js",
+        //     "@babylonjs/core": "https://cdn.babylonjs.com/babylon.js",
+        //     "@babylonjs/materials": "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js",
+        //   },
+        // },
       },
     },
     worker: {

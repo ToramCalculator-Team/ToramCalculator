@@ -31,7 +31,7 @@ export const Button = (props: MyButtonProps) => {
           : `bg-area-color hover:bg-dividing-color active:bg-accent-color active:text-primary-color`,
         quaternary: props.active
         ? `bg-accent-color text-primary-color`
-        : `bg-transparent hover:bg-area-color`,
+        : `bg-transparent hover:bg-area-color active:bg-dividing-color`,
       }[props.level ?? "default"],
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
     };

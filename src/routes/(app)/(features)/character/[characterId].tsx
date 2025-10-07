@@ -7,8 +7,8 @@ import {
   BuiltinAnimationType,
   type CharacterEntityRuntime,
 } from "~/components/features/simulator/render/RendererController";
-import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
-import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+// import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
+// import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import { Engine } from "@babylonjs/core/Engines/engine";
@@ -38,6 +38,7 @@ export default function CharactePage() {
   const [character, { refetch: refetchCharacter }] = createResource(() =>
     findCharacterWithRelations(params.characterId),
   );
+
   // ----------------------------------------预设内容-----------------------------------
   // 主题是定义
   const cssColors = {
@@ -136,32 +137,32 @@ export default function CharactePage() {
 
     // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
-    const mainSpotLight = new SpotLight(
-      "mainSpotLight",
-      new Vector3(0, 8, 0),
-      new Vector3(0, -1, 0),
-      Math.PI,
-      2,
-      scene,
-    );
-    mainSpotLight.id = "mainSpotLight";
-    mainSpotLight.radius = 10;
-    createEffect(() => {
-      switch (store.theme) {
-        case "light":
-          mainSpotLight.intensity = 200;
-          break;
-        case "dark":
-          mainSpotLight.intensity = 100;
-          break;
-      }
-    });
+    // const mainSpotLight = new SpotLight(
+    //   "mainSpotLight",
+    //   new Vector3(0, 8, 0),
+    //   new Vector3(0, -1, 0),
+    //   Math.PI,
+    //   2,
+    //   scene,
+    // );
+    // mainSpotLight.id = "mainSpotLight";
+    // mainSpotLight.radius = 10;
+    // createEffect(() => {
+    //   switch (store.theme) {
+    //     case "light":
+    //       mainSpotLight.intensity = 200;
+    //       break;
+    //     case "dark":
+    //       mainSpotLight.intensity = 100;
+    //       break;
+    //   }
+    // });
 
     // 顶部锥形光的阴影发生器---------------------
-    const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-    mainSpotLightShadowGenerator.bias = 0.000001;
-    mainSpotLightShadowGenerator.darkness = 0.1;
-    mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    // const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
+    // mainSpotLightShadowGenerator.bias = 0.000001;
+    // mainSpotLightShadowGenerator.darkness = 0.1;
+    // mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     // -----------------------------------------角色模型--------------------------------------------
     const factory = new EntityFactory(scene);
