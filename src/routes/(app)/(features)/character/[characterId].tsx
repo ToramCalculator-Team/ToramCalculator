@@ -242,23 +242,23 @@ export default function CharactePage() {
               textCenter
             />
           </div>
-          <div class="Content flex w-full flex-1 flex-col p-6">
-            <div class="CharacterView h-full w-full flex-1 overflow-hidden">
+          <div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
+            <div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
               <canvas
                 ref={setCanvas}
-                class="bg-brand-color-2nd border-dividing-color h-inherit w-full rounded-md border-1"
+                class="bg-brand-color-2nd border-dividing-color block h-full w-full rounded-md border-1"
               >
                 当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
               </canvas>
             </div>
-            <div class="Divider h-6 w-full flex-none"></div>
+            <div class="Divider landscape:hidden landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
             <OverlayScrollbarsComponent
               element="div"
-              options={{ scrollbars: { visibility: "hidden" }, overflow: { x: "scroll", y: "hidden" } }}
+              options={{ scrollbars: { visibility: "hidden" } }}
               defer
-              class="w-full flex-none"
+              class="flex-none portrait:w-full landscape:w-fit"
             >
-              <div class={`flex flex-row gap-2`}>
+              <div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
                 <Button
                   onClick={() => console.log("连击")}
                   level="quaternary"
@@ -325,64 +325,71 @@ export default function CharactePage() {
                 </Button>
               </div>
             </OverlayScrollbarsComponent>
-            <div class="Divider h-6 w-full flex-none"></div>
-            <div class={`flex h-fit w-full flex-none flex-wrap gap-3`}>
-              <div class="MainHand border-dividing-color flex w-[calc(50%-6px)] flex-col gap-1 overflow-hidden rounded border-1 backdrop-blur-2xl">
-                <div class="Label px-4 py-3">主手</div>
-                <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                  <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />
-                  {character().weapon?.name}
+            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
+            <OverlayScrollbarsComponent
+              element="div"
+              options={{ scrollbars: { autoHide: "scroll" } }}
+              defer
+              class="flex flex-none portrait:w-full landscape:w-1/2"
+            >
+              <div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
+                <div class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur-2xl portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                  <div class="Label px-4 py-3">主手</div>
+                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                    <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />
+                    {character().weapon?.name}
+                  </div>
+                  <div class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
+                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                  </div>
                 </div>
-                <div class="Function flex flex-none">
-                  <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                  <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                <div class="SubHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur-2xl portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                  <div class="Label px-4 py-3">副手</div>
+                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                    <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={24} />
+                    {character().subWeapon?.name}
+                  </div>
+                  <div class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
+                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                  </div>
+                </div>
+                <div class="Armor border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                  <div class="Label px-4 py-3 portrait:hidden">防具</div>
+                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                    <Icons.Spirits iconName={character().armor?.ability ?? ""} size={24} />
+                    {character().armor?.name}
+                  </div>
+                  <div class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
+                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                  </div>
+                </div>
+                <div class="OptEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                  <div class="Label px-4 py-3 portrait:hidden">追加</div>
+                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                    <Icons.Spirits iconName={"optEquip"} size={24} />
+                    {character().optEquip?.name}
+                  </div>
+                  <div class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
+                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                  </div>
+                </div>
+                <div class="SpeEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                  <div class="Label px-4 py-3 portrait:hidden">特殊</div>
+                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                    <Icons.Spirits iconName={"speEquip"} size={24} />
+                    {character().speEquip?.name}
+                  </div>
+                  <div class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
+                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                  </div>
                 </div>
               </div>
-              <div class="SubHand border-dividing-color flex w-[calc(50%-6px)] flex-col gap-1 overflow-hidden rounded border-1 backdrop-blur-2xl">
-                <div class="Label px-4 py-3">副手</div>
-                <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                  <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={24} />
-                  {character().subWeapon?.name}
-                </div>
-                <div class="Function flex flex-none">
-                  <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                  <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
-                </div>
-              </div>
-              <div class="Armor border-dividing-color flex w-full overflow-hidden rounded border-1 backdrop-blur-2xl">
-                {/* <div class="Label px-4 py-3">防具</div> */}
-                <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                  <Icons.Spirits iconName={character().armor?.ability ?? ""} size={24} />
-                  {character().armor?.name}
-                </div>
-                <div class="Function flex flex-none">
-                  <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                  <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
-                </div>
-              </div>
-              <div class="OptEquip border-dividing-color flex w-full overflow-hidden rounded border-1 backdrop-blur-2xl">
-                {/* <div class="Label px-4 py-3">追加</div> */}
-                <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                  <Icons.Spirits iconName={"optEquip"} size={24} />
-                  {character().optEquip?.name}
-                </div>
-                <div class="Function flex flex-none">
-                  <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                  <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
-                </div>
-              </div>
-              <div class="SpeEquip border-dividing-color flex w-full overflow-hidden rounded border-1 backdrop-blur-2xl">
-                {/* <div class="Label px-4 py-3">特殊</div> */}
-                <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                  <Icons.Spirits iconName={"speEquip"} size={24} />
-                  {character().speEquip?.name}
-                </div>
-                <div class="Function flex flex-none">
-                  <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                  <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
-                </div>
-              </div>
-            </div>
+            </OverlayScrollbarsComponent>
           </div>
         </div>
       )}

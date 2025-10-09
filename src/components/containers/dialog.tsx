@@ -118,11 +118,8 @@ export function Dialog(props: {
           onClick={handleClose}
         >
           <div 
-            class={`DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] w-full max-w-[90vw] flex-col items-center gap-3 rounded p-2`}
+            class={`DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] w-full max-w-[50vw] portrait:max-w-[90vw] flex-col items-center gap-3 rounded p-2`}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              "max-width": props.maxWith,
-            }}
           >
             <div class="DialogTitle z-10 drop-shadow-dividing-color absolute -top-3 flex items-center drop-shadow-xl">
               <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
