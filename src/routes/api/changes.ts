@@ -9,8 +9,8 @@ import { z } from "zod";
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
   if (!token) {
-    console.error("用户上传数据时，未发现jwt");
-    return new Response("未发现jwt", { status: 401 });
+    console.error("用户上传数据时，未发现jwt，终止数据写入");
+    return new Response("未发现jwt，终止数据写入", { status: 401 });
   }
 
   let jwtUser: any;
@@ -22,17 +22,17 @@ export async function POST(event: APIEvent) {
 
     jwtUser = payload;
   } catch (err) {
-    console.error("❌ 用户 JWT 验证失败:", err);
+    console.error("用户 JWT 验证失败，终止数据写入", err);
     return new Response("JWT 无效", { status: 401 });
   }
 
   const body = await event.request.json();
 
   const user = await findUserById(jwtUser.sub);
-  
+
   // 权限判断
   if (!user) {
-    return new Response("未认证用户", { status: 401 });
+    return new Response("未认证用户，终止数据写入", { status: 401 });
   }
 
   console.log("用户:" + user.name + " 变更数据,body:", body);
@@ -63,72 +63,72 @@ export async function POST(event: APIEvent) {
   //   return new Response("当前用户无权限", { status: 403 });
   // }
 
-// 在 changes.ts 中修改处理逻辑
-try {
-  const db = await getDB();
-  await db.transaction().execute(async (trx) => {
-    for (const transaction of body) {
-      for (const change of transaction.changes) {
-        // 获取表的主键列
-        const primaryKeys = await getPrimaryKeys(trx, change.table_name) as string[];
-        
-        // 如果没有主键，跳过这个变更
-        if (primaryKeys.length === 0) {
-          console.log(`表 ${change.table_name} 没有主键，跳过变更`);
-          continue;
-        }
+  // 在 changes.ts 中修改处理逻辑
+  try {
+    const db = await getDB();
+    await db.transaction().execute(async (trx) => {
+      for (const transaction of body) {
+        for (const change of transaction.changes) {
+          // 获取表的主键列
+          const primaryKeys = (await getPrimaryKeys(trx, change.table_name)) as string[];
 
-        // 基础安全策略：禁止未授权操作 & 限制表名格式
-        if (!SAFE_TABLE_NAME.test(change.table_name)) {
-          throw new Error(`非法表名: ${change.table_name}`);
-        }
-
-        if (!ALLOWED_OPS.has(change.operation)) {
-          // 若需要允许删除，可在此添加细粒度白名单或软删除逻辑
-          throw new Error(`禁止的操作: ${change.operation}`);
-        }
-
-        // 值过滤：移除 undefined，避免覆盖为 null/undefined
-        const cleanValue: Record<string, any> = {};
-        for (const [k, v] of Object.entries(change.value ?? {})) {
-          if (v !== undefined) cleanValue[k] = v;
-        }
-
-        switch (change.operation) {
-          case "insert":
-            await trx.insertInto(change.table_name).values(cleanValue).execute();
-            break;
-
-          case "update": {
-            let query = trx.updateTable(change.table_name).set(cleanValue);
-            // 添加所有主键条件
-            for (const pk of primaryKeys) {
-              query = query.where(pk, "=", change.value[pk]);
-            }
-            await query.execute();
-            break;
+          // 如果没有主键，跳过这个变更
+          if (primaryKeys.length === 0) {
+            console.log(`表 ${change.table_name} 没有主键，跳过变更`);
+            continue;
           }
 
-          case "delete": {
-            let query = trx.deleteFrom(change.table_name);
-            // 添加所有主键条件
-            for (const pk of primaryKeys) {
-              query = query.where(pk, "=", change.value[pk]);
-            }
-            await query.execute();
-            break;
+          // 基础安全策略：禁止未授权操作 & 限制表名格式
+          if (!SAFE_TABLE_NAME.test(change.table_name)) {
+            throw new Error(`非法表名: ${change.table_name}`);
           }
 
-          default:
-            throw new Error(`无法识别的数据库操作数: ${change.operation}`);
+          if (!ALLOWED_OPS.has(change.operation)) {
+            // 若需要允许删除，可在此添加细粒度白名单或软删除逻辑
+            throw new Error(`禁止的操作: ${change.operation}`);
+          }
+
+          // 值过滤：移除 undefined，避免覆盖为 null/undefined
+          const cleanValue: Record<string, any> = {};
+          for (const [k, v] of Object.entries(change.value ?? {})) {
+            if (v !== undefined) cleanValue[k] = v;
+          }
+
+          switch (change.operation) {
+            case "insert":
+              await trx.insertInto(change.table_name).values(cleanValue).execute();
+              break;
+
+            case "update": {
+              let query = trx.updateTable(change.table_name).set(cleanValue);
+              // 添加所有主键条件
+              for (const pk of primaryKeys) {
+                query = query.where(pk, "=", change.value[pk]);
+              }
+              await query.execute();
+              break;
+            }
+
+            case "delete": {
+              let query = trx.deleteFrom(change.table_name);
+              // 添加所有主键条件
+              for (const pk of primaryKeys) {
+                query = query.where(pk, "=", change.value[pk]);
+              }
+              await query.execute();
+              break;
+            }
+
+            default:
+              throw new Error(`无法识别的数据库操作数: ${change.operation}`);
+          }
         }
       }
-    }
-  });
+    });
 
-  return new Response("操作成功", { status: 200 });
-} catch (err) {
-  console.error("❌ 数据处理错误:", err);
-  return new Response("服务器内部错误", { status: 500 });
-}
+    return new Response("操作成功", { status: 200 });
+  } catch (err) {
+    console.error("❌ 数据处理错误:", err);
+    return new Response("服务器内部错误", { status: 500 });
+  }
 }

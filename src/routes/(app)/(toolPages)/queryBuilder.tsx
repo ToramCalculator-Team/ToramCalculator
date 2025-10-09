@@ -12,7 +12,7 @@ import { Button } from "~/components/controls/button";
 
 export default function Repl() {
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   // 当前选择的表
   const [selectedTable, setSelectedTable] = createSignal<string>("");

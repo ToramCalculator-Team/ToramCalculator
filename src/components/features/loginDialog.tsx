@@ -1,4 +1,4 @@
-import { Button  } from "~/components/controls/button";
+import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import type { AnyFieldApi } from "@tanstack/solid-form";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
@@ -11,6 +11,7 @@ import Icons from "~/components/icons/index";
 import { Input } from "../controls/input";
 import { z } from "zod";
 import { findAccountById } from "@db/repositories/account";
+import { Dialog } from "../containers/dialog";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -37,7 +38,7 @@ const defaultValues: LoginFormProps = {
   password: "",
 };
 
-export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen: boolean) => void }) => {
+export const LoginDialog = () => {
   const logIn = async (value: LoginFormProps) => {
     try {
       const response = await fetch("/api/auth/login", {
@@ -73,7 +74,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
         }
       }
 
-      props.setState(false);
+      setStore("pages", "loginDialogState", false);
     } catch (error) {
       console.error("请求错误:", error);
     }
@@ -86,7 +87,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       name: "",
       avatar: "",
     });
-    props.setState(false);
+    setStore;
   };
 
   const register = async (value: LoginFormProps) => {
@@ -131,7 +132,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
         }
       }
 
-      props.setState(false);
+      setStore("pages", "loginDialogState", false);
     } catch (error) {
       console.error("请求错误:", error);
     }
@@ -146,17 +147,17 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
       name: "",
       avatar: "",
     });
-    props.setState(false);
+    setStore("pages", "loginDialogState", false);
   };
 
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const [formModule, setFormModule] = createSignal<"logIn" | "register" | "unknown">("unknown");
 
   const formTitle = createMemo(() => {
-    const userName = () => store.session.user.name;
-    if (!store.session.user.id) {
+    const userName = () => store.session.user?.name;
+    if (!store.session.user?.id) {
       switch (formModule()) {
         case "logIn":
           return dictionary().ui.actions.logIn;
@@ -188,7 +189,7 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
   // 关闭弹出层时重置表单
   createEffect(
     on(
-      () => props.state(),
+      () => store.pages.loginDialogState,
       () => {
         setFormModule("unknown");
         form.reset();
@@ -197,97 +198,123 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
   );
 
   return (
-    <Presence exitBeforeEnter>
-      <Show when={props.state()}>
-        <Motion.div
-          animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-          exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SheetBox bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
+    <Dialog
+      state={store.pages.loginDialogState}
+      setState={() => setStore("pages", "loginDialogState", false)}
+      title={formTitle()}
+      maxWith="480px"
+    >
+      <Show
+        when={!store.session.user?.id && store.pages.loginDialogState}
+        fallback={
+          <div class="flex w-full flex-col items-center gap-4 lg:py-0">
+            <div class="flex w-full items-center gap-1">
+              <Button class="LoginOut flex-1" onClick={logOut}>
+                {dictionary().ui.actions.logOut}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          class="flex w-full flex-col"
         >
-          <div class="Box bg-primary-color shadow-dividing-color flex max-h-[90vh] w-[80vw] flex-col items-center gap-6 overflow-y-auto rounded-lg p-3 shadow-2xl lg:w-[560px] lg:p-12">
-            <Show
-              when={!store.session.user.id && props.state()}
-              fallback={
-                <div class="flex flex-col w-full items-center gap-4 lg:py-0">
-                  <h1 class="text-3xl font-bold">{formTitle()}</h1>
-                  <div class="flex w-full items-center gap-1">
-                    <Button class="LoginOut flex-1" onClick={logOut}>
-                      {dictionary().ui.actions.logOut}
-                    </Button>
-                    <Button class={`CloseBtn flex-1`} onClick={() => props.setState(false)}>
-                      {dictionary().ui.actions.close}
-                    </Button>
-                  </div>
-                </div>
-              }
-            >
-              <h1 class="text-3xl font-bold">{formTitle()}</h1>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  form.handleSubmit();
-                }}
-                class="flex w-full flex-col"
-              >
-                <div>
-                  {/* A type-safe field component*/}
-                  <form.Field
-                    name="email"
-                    asyncDebounceMs={500}
-                    validators={{
-                      onChange: ({ value }) => {
-                        const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-                        if (!result.success) {
-                          return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
-                        }
-                      },
-                      onChangeAsync: async ({ value }) => {
-                        const result = await emailExists(value);
-                        if (result) {
-                          setFormModule("logIn");
-                        } else {
-                          setFormModule("register");
-                        }
-                      },
-                    }}
-                    children={(field) => {
-                      return (
-                        <Input
-                          title="邮箱"
-                          // description="一定要填"
-                          autocomplete="email"
-                          type="text"
-                          id={field().name}
-                          name={field().name}
-                          value={field().state.value}
-                          onBlur={field().handleBlur}
-                          onInput={(e) => field().handleChange(e.target.value)}
-                          state={fieldInfo(field())}
-                          class="w-full"
-                        />
-                      );
-                    }}
+          <div>
+            {/* A type-safe field component*/}
+            <form.Field
+              name="email"
+              asyncDebounceMs={500}
+              validators={{
+                onChange: ({ value }) => {
+                  const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                  if (!result.success) {
+                    return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
+                  }
+                },
+                onChangeAsync: async ({ value }) => {
+                  const result = await emailExists(value);
+                  if (result) {
+                    setFormModule("logIn");
+                  } else {
+                    setFormModule("register");
+                  }
+                },
+              }}
+              children={(field) => {
+                return (
+                  <Input
+                    title="邮箱"
+                    // description="一定要填"
+                    autocomplete="email"
+                    type="text"
+                    id={field().name}
+                    name={field().name}
+                    value={field().state.value}
+                    onBlur={field().handleBlur}
+                    onInput={(e) => field().handleChange(e.target.value)}
+                    state={fieldInfo(field())}
+                    class="w-full"
                   />
-                </div>
-                <div>
+                );
+              }}
+            />
+          </div>
+          <div>
+            <form.Field
+              name="password"
+              validators={{
+                onChange: ({ value }) => {
+                  const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                  if (!result.success) {
+                    return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
+                  }
+                },
+              }}
+              children={(field) => (
+                <Input
+                  title="密码"
+                  // description="也是个摆设"
+                  autocomplete="current-password"
+                  type="password"
+                  id={field().name}
+                  name={field().name}
+                  value={field().state.value}
+                  onBlur={field().handleBlur}
+                  onInput={(e) => field().handleChange(e.target.value)}
+                  state={fieldInfo(field())}
+                  class="w-full"
+                />
+              )}
+            />
+          </div>
+          <Presence exitBeforeEnter>
+            <Show when={formModule() === "register"}>
+              <Motion.div
+                class={`grid`}
+                animate={{
+                  gridTemplateRows: ["0fr", "1fr"],
+                  paddingBlock: ["0rem", "0.75rem"],
+                }}
+                exit={{
+                  paddingBlock: "0rem",
+                  gridTemplateRows: ["1fr", "0fr"],
+                }}
+                transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+              >
+                <div class="h-full w-full overflow-hidden">
                   <form.Field
-                    name="password"
-                    validators={{
-                      onChange: ({ value }) => {
-                        const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-                        if (!result.success) {
-                          return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
-                        }
-                      },
-                    }}
+                    name="userName"
                     children={(field) => (
                       <Input
-                        title="密码"
-                        // description="也是个摆设"
-                        autocomplete="current-password"
-                        type="password"
+                        title="用户名"
+                        // description="目前是个摆设"
+                        autocomplete="off"
+                        type="text"
                         id={field().name}
                         name={field().name}
                         value={field().state.value}
@@ -299,71 +326,31 @@ export const LoginDialog = (props: { state: Accessor<boolean>; setState: (isOpen
                     )}
                   />
                 </div>
-                <Presence exitBeforeEnter>
-                  <Show when={formModule() === "register"}>
-                    <Motion.div
-                      class={`grid`}
-                      animate={{
-                        gridTemplateRows: ["0fr", "1fr"],
-                        paddingBlock: ["0rem", "0.75rem"],
-                      }}
-                      exit={{
-                        paddingBlock: "0rem",
-                        gridTemplateRows: ["1fr", "0fr"],
-                      }}
-                      transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                    >
-                      <div class="h-full w-full overflow-hidden">
-                        <form.Field
-                          name="userName"
-                          children={(field) => (
-                            <Input
-                              title="用户名"
-                              // description="目前是个摆设"
-                              autocomplete="off"
-                              type="text"
-                              id={field().name}
-                              name={field().name}
-                              value={field().state.value}
-                              onBlur={field().handleBlur}
-                              onInput={(e) => field().handleChange(e.target.value)}
-                              state={fieldInfo(field())}
-                              class="w-full"
-                            />
-                          )}
-                        />
-                      </div>
-                    </Motion.div>
-                  </Show>
-                </Presence>
-                <form.Subscribe
-                  selector={(state) => ({
-                    canSubmit: state.canSubmit,
-                    isSubmitting: state.isSubmitting,
-                  })}
-                  children={(state) => {
-                    return (
-                      <div class="flex items-center gap-1 p-2">
-                        <Button
-                          level="primary"
-                          class={`SubmitBtn flex-1`}
-                          type="submit"
-                          disabled={formModule() === "unknown" || !state().canSubmit}
-                        >
-                          {state().isSubmitting ? "..." : formTitle()}
-                        </Button>
-                        <Button level="secondary" class={`CloseBtn w-fit`} onClick={() => props.setState(false)}>
-                          {dictionary().ui.actions.close}
-                        </Button>
-                      </div>
-                    );
-                  }}
-                />
-              </form>
+              </Motion.div>
             </Show>
-          </div>
-        </Motion.div>
+          </Presence>
+          <form.Subscribe
+            selector={(state) => ({
+              canSubmit: state.canSubmit,
+              isSubmitting: state.isSubmitting,
+            })}
+            children={(state) => {
+              return (
+                <div class="flex items-center gap-1 p-2">
+                  <Button
+                    level="primary"
+                    class={`SubmitBtn flex-1`}
+                    type="submit"
+                    disabled={formModule() === "unknown" || !state().canSubmit}
+                  >
+                    {state().isSubmitting ? "..." : formTitle()}
+                  </Button>
+                </div>
+              );
+            }}
+          />
+        </form>
       </Show>
-    </Presence>
+    </Dialog>
   );
 };

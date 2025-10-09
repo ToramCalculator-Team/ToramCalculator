@@ -284,7 +284,7 @@ export function BabylonBg(): JSX.Element {
           brand_2nd: rgb2Bcolor3(cssColors.yellow),
           brand_3rd: rgb2Bcolor3(cssColors.orange),
         },
-      })[store.theme],
+      })[store.settings.userInterface.theme],
   );
 
   // 加载状态

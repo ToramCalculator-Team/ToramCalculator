@@ -1,5 +1,6 @@
 // @refresh reload
 import { StartServer, createHandler } from "@solidjs/start/server";
+import PreloadUrl from "~/preload?url";
 import { env } from "process";
 
 const APP_NAME = "托拉姆计算器-ToramCalculator:一个简单的托拉姆数值计算器";
@@ -32,14 +33,6 @@ export default createHandler(() => (
             <meta name="twitter:description" content={APP_DESCRIPTION} />
             <link rel="manifest" href="/manifest.json" />
             {/* <meta name="baidu-site-verification" content={env.BAIDU_HTML_LABEL} /> */}
-            <script>
-              const storeStr = localStorage.getItem("store"); const storeCache = storeStr ? JSON.parse(storeStr) :
-              undefined; const root = document.documentElement; let theme = "light"; if (storeCache) theme =
-              storeCache.theme; root.classList.add(theme); let isAnimationEnabled = true; if (storeCache)
-              isAnimationEnabled = storeCache.settings.userInterface.isAnimationEnabled; !isAnimationEnabled &&
-              root.classList.add("transitionNone"); let language = "zh-CN"; if (storeCache) language =
-              storeCache.settings.language; root.lang = language;
-            </script>
             {assets}
           </head>
           <body>
@@ -92,14 +85,7 @@ export default createHandler(() => (
             <div id="app" class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
               {children}
             </div>
-            <script>
-              {`try {
-                storeCache.resourcesLoaded; document.getElementById("loader").remove();
-                // console.log("资源加载完成");
-              } catch (error) {
-                // console.log("初次加载资源");
-              }`}
-            </script>
+            <script src={PreloadUrl} fetchpriority="high"></script>
             {scripts}
             {/* <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script> */}
           </body>

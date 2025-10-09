@@ -8,7 +8,7 @@ import { Button } from "~/components/controls/button";
 export default function ProfilePage() {
   const navigate = useNavigate();
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   // 页面附加功能（右上角按钮组）配置
   const [extraFunctionConfig] = createSignal<
@@ -18,11 +18,11 @@ export default function ProfilePage() {
     }[]
   >([
     {
-      onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
+      onClick: () => setStore("settings", "userInterface", "theme", store.settings.userInterface.theme == "dark" ? "light" : "dark"),
       icon: <Icons.Outline.Light />,
     },
     {
-      onClick: () => setStore("settingsDialogState", !store.settingsDialogState),
+      onClick: () => setStore("pages", "settingsDialogState", !store.pages.settingsDialogState),
       icon: <Icons.Outline.Settings />,
     },
   ]);
@@ -39,7 +39,7 @@ export default function ProfilePage() {
     <div class="Profile flex flex-col gap-4 p-3">
       <div class="Top flex flex-col items-center justify-center gap-3 p-6">
         <div class="Avatar bg-accent-color h-32 w-32 flex-none overflow-hidden rounded-full"></div>
-        <span class="text-2xl">{store.session.user.name}</span>
+        <span class="text-2xl">{store.session.user?.name}</span>
         <div class={`Config absolute top-3 right-3 flex gap-1`}>
           <For each={extraFunctionConfig()}>
             {(config, index) => {

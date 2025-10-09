@@ -1,30 +1,27 @@
-import { Character, CharacterInsert } from "@db/repositories/character";
-import { BabylonBg } from "~/components/features/BabylonGame";
-import { createEffect, createMemo, createSignal, JSX, onMount } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, JSX, onMount, ParentProps, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
-import { defaultData } from "@db/defaultData";
-import { Button } from "~/components/controls/button";
-import { A } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 
-export default function CharacterIndexPage() {
-  // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+// 此页面仅作为中转
 
-  // 状态管理参数
-  const setCharacter = (value: CharacterInsert) => setStore("character", "id", value.id);
+export default function CharacterIndexPage(props: ParentProps) {
+  // 导航
+  const navigate = useNavigate();
+
+  if (store.session.user?.account?.player?.character?.id) {
+    navigate(`/character/${store.session.user?.account?.player?.character?.id}`);
+  } else {
+    navigate(`/character/create`);
+  }
 
   onMount(() => {
     console.log("--CharacterIndexPage Render");
-    setCharacter(defaultData.character);
 
     return () => {
       console.log("--CharacterIndexPage Unmount");
     };
   });
 
-  return (
-    <>
-    </>
-  );
+  return <></>;
 }

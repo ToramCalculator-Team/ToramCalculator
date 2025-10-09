@@ -211,7 +211,7 @@ export default function FlowEditor(props: FlowEditorProps) {
   const [dictionary, setDictionary] = createSignal(getDictionary("en"));
 
   createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
+    setDictionary(getDictionary(store.settings.userInterface.language));
   });
 
   const [mounted, setMounted] = createSignal(false);

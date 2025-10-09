@@ -25,7 +25,7 @@ import {
   itemWithRelatedSchema,
   ItemWithSubObjectForm,
 } from "./item";
-import { CardSharedSection, getSpriteIcon } from "./utils";
+import { CardSharedSection } from "./utils";
 import pick from "lodash-es/pick";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
@@ -148,7 +148,7 @@ export const ConsumableDataConfig: dataDisplayConfig<
                                     class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
                                     onClick={handleSelect}
                                   >
-                                    {getSpriteIcon(option.value, 24)}
+                                    <Icons.Spirits iconName={option.value} size={24} />
                                     {option.label}
                                   </div>
                                 );

@@ -70,7 +70,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
           brand_2nd: rgb2Bcolor3(cssColors.yellow),
           brand_3rd: rgb2Bcolor3(cssColors.orange),
         },
-      })[store.theme],
+      })[store.settings.userInterface.theme],
   );
 
   // ==================== 基础变量 ====================
@@ -125,7 +125,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     scene.fogStart = 16;
     scene.fogEnd = 22;
     createEffect(() => {
-      if (store.theme === "light") {
+      if (store.settings.userInterface.theme === "light") {
         scene.fogColor = new Color3(0.8, 0.8, 0.8);
       } else {
         scene.fogColor = new Color3(0.3, 0.3, 0.3);
@@ -149,7 +149,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     mainSpotLight.id = "mainSpotLight";
     mainSpotLight.radius = 10;
     createEffect(() => {
-      switch (store.theme) {
+      switch (store.settings.userInterface.theme) {
         case "light":
           mainSpotLight.intensity = 200;
           break;
@@ -162,7 +162,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     // mainSpotLight.id = "mainSpotLight";
     // mainSpotLight.radius = 10;
     // createEffect(() => {
-    //   switch (store.theme) {
+    //   switch (store.settings.userInterface.theme) {
     //     case "light":
     //       mainSpotLight.intensity = 200;
     //       break;

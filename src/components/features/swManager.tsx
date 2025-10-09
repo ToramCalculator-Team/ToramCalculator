@@ -31,7 +31,7 @@ const defaultSWContext: SWContext = {
 };
 
 export const ServiceWorkerManager = () => {
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const [isAvailable, setIsAvailable] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);

@@ -8,10 +8,6 @@ import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { getDB } from "@db/repositories/database";
 import { setWikiStore } from "../store";
-import sprites from "~/../public/app-image/sprites.json";
-import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
-import { defaultData } from "@db/defaultData";
-import { Motion } from "solid-motionone";
 
 export const arrayDiff = async <T extends keyof DB>(props: {
   trx: Transaction<DB>;
@@ -71,7 +67,7 @@ export const CardSharedSection = <T extends object>(props: {
   delete: (trx: Transaction<DB>, data: T) => Promise<void>;
 }) => {
   return (
-    <Show when={props.data.createdByAccountId === store.session.user.account?.id}>
+    <Show when={props.data.createdByAccountId === store.session.user?.account?.id}>
       <section class="FunFieldGroup flex w-full flex-col gap-2">
         <h3 class="text-accent-color flex items-center gap-2 font-bold">
           {props.dic.ui.actions.operation}
@@ -102,92 +98,6 @@ export const CardSharedSection = <T extends object>(props: {
           />
         </div>
       </section>
-    </Show>
-  );
-};
-
-export const getSpriteIcon = (iconName: string, size?: number) => {
-  // if (iconName in defaultData) {
-  //   const tableName = iconName as keyof DB;
-  //   switch (tableName) {
-  //     case "activity":
-  //     case "address":
-  //     case "armor":
-  //     case "avatar":
-  //     case "character":
-  //     case "character_skill":
-  //     case "combo":
-  //     case "combo_step":
-  //     case "consumable":
-  //     case "crystal":
-  //     case "drop_item":
-  //     case "image":
-  //     case "item":
-  //     case "material":
-  //     case "member":
-  //     case "mercenary":
-  //     case "mob":
-  //     case "npc":
-  //     case "option":
-  //     case "player":
-  //     case "player_armor":
-  //     case "player_option":
-  //     case "player_pet":
-  //     case "player_special":
-  //     case "player_weapon":
-  //     case "post":
-  //     case "recipe":
-  //     case "recipe_ingredient":
-  //     case "session":
-  //     case "simulator":
-  //     case "skill":
-  //     case "skill_effect":
-  //     case "special":
-  //     case "statistic":
-  //     case "task":
-  //     case "task_collect_require":
-  //     case "task_kill_requirement":
-  //     case "task_reward":
-  //     case "team":
-  //     case "user":
-  //     case "verification_token":
-  //     case "weapon":
-  //     case "world":
-  //     case "zone":
-  //     default:
-  //       return <Icons.Outline.Gamepad />;
-  //   }
-  // }
-  // 不区分大小写查找
-  const backgroundImage = sprites.find((sprite) => sprite.name.toLowerCase() === iconName.toLowerCase());
-
-  return (
-    <Show when={backgroundImage} fallback={<Icons.Outline.Gamepad />}>
-      {(backgroundImage) => {
-        // 获取图片收缩比例
-        const scaleX = size ? size / backgroundImage().width : 1;
-        const scaleY = size ? size / backgroundImage().height : 1;
-        return (
-          <div class="relative h-6 w-6 flex-none">
-            <img
-              src={spritesUrl}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: `translate(-50%, -50%) scale(${scaleX}, ${scaleY})`,
-                width: `${backgroundImage().width}px`,
-                height: `${backgroundImage().height}px`,
-                "object-position": `${-backgroundImage().x}px ${-backgroundImage().y}px`,
-                "object-fit": "none",
-                "max-width": "none",
-                "max-height": "none",
-              }}
-              alt={iconName}
-            />
-          </div>
-        );
-      }}
     </Show>
   );
 };

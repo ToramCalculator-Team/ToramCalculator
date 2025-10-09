@@ -39,7 +39,7 @@ export default function WikiSubPage() {
   // console.log("WikiSubPage start", start);
   const media = useContext(MediaContext);
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
   // url 参数
   const params = useParams();
   const navigate = useNavigate();
@@ -210,7 +210,7 @@ export default function WikiSubPage() {
                     }}
                   />
                   <div class="FunctionGroup flex">
-                    <Show when={store.session.user.id}>
+                    <Show when={store.session.user?.id}>
                       <Button // 仅移动端显示
                         size="sm"
                         icon={<Icons.Outline.CloudUpload />}
@@ -228,7 +228,7 @@ export default function WikiSubPage() {
                       class="flex bg-transparent lg:hidden"
                       onClick={() => {}}
                     ></Button>
-                    <Show when={store.session.user.id}>
+                    <Show when={store.session.user?.id}>
                       <Button // 仅PC端显示
                         icon={<Icons.Outline.CloudUpload />}
                         class="hidden lg:flex"

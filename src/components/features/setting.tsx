@@ -47,7 +47,7 @@ async function getStorageUsageInfo(): Promise<{
 }
 
 export const Setting = () => {
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
   const [hasInstalled, setHasInstalled] = createSignal(true);
   const [deferredPrompt, setDeferredPrompt] = createSignal<BeforeInstallPromptEvent | null>(null);
   const [storageUsageInfo, { mutate: mutateStorageUsageInfo, refetch: refetchStorageUsageInfo }] =
@@ -88,14 +88,14 @@ export const Setting = () => {
 
   return (
     <Presence exitBeforeEnter>
-      <Show when={store.settingsDialogState}>
+      <Show when={store.pages.settingsDialogState}>
         <Motion.div
           animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
           exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`SettingBox bg-primary-color-10 fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
         >
-          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => setStore("settingsDialogState", false)}>
+          <Button class={`CloseBtn absolute top-3 right-3`} onClick={() => setStore("pages", "settingsDialogState", false)}>
             <Icons.Outline.Close />
           </Button>
           <div
@@ -151,29 +151,29 @@ export const Setting = () => {
                         <div class="Selector flex flex-col">
                           <Radio
                             name={"zh-CN"}
-                            checked={store.settings.language === "zh-CN"}
-                            onClick={() => setStore("settings", "language", "zh-CN")}
+                            checked={store.settings.userInterface.language === "zh-CN"}
+                            onClick={() => setStore("settings", "userInterface", "language", "zh-CN")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.zhCN}
                           </Radio>
                           <Radio
                             name="zh-TW"
-                            checked={store.settings.language === "zh-TW"}
-                            onClick={() => setStore("settings", "language", "zh-TW")}
+                            checked={store.settings.userInterface.language === "zh-TW"}
+                            onClick={() => setStore("settings", "userInterface", "language", "zh-TW")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.zhTW}
                           </Radio>
                           <Radio
                             name="en"
-                            checked={store.settings.language === "en"}
-                            onClick={() => setStore("settings", "language", "en")}
+                            checked={store.settings.userInterface.language === "en"}
+                            onClick={() => setStore("settings", "userInterface", "language", "en")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.enUS}
                           </Radio>
                           <Radio
                             name="ja"
-                            checked={store.settings.language === "ja"}
-                            onClick={() => setStore("settings", "language", "ja")}
+                            checked={store.settings.userInterface.language === "ja"}
+                            onClick={() => setStore("settings", "userInterface", "language", "ja")}
                           >
                             {dictionary().ui.settings.language.selectedLanguage.jaJP}
                           </Radio>
@@ -190,12 +190,12 @@ export const Setting = () => {
                         <div class="Selector flex flex-col">
                           <Radio
                             name={"Light"}
-                            checked={store.theme === "light"}
-                            onClick={() => setStore("theme", "light")}
+                            checked={store.settings.userInterface.theme === "light"}
+                            onClick={() => setStore("settings", "userInterface", "theme", "light")}
                           >
                             Light
                           </Radio>
-                          <Radio name="Dark" checked={store.theme === "dark"} onClick={() => setStore("theme", "dark")}>
+                          <Radio name="Dark" checked={store.settings.userInterface.theme === "dark"} onClick={() => setStore("settings", "userInterface", "theme", "dark")}>
                             Dark
                           </Radio>
                         </div>

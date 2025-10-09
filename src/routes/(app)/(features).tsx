@@ -48,7 +48,7 @@ const Divider = () => (
 const Nav = () => {
   const [display, setDisplay] = createSignal(false);
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
   const navigate = useNavigate();
   const media = useContext(MediaContext);
   const location = useLocation();
@@ -213,7 +213,7 @@ const Nav = () => {
           {/* <Button
           level="quaternary"
           class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
-          onClick={() => setStore("theme", store.theme == "dark" ? "light" : "dark")}
+          onClick={() => setStore("theme", store.settings.userInterface.theme == "dark" ? "light" : "dark")}
         >
           <Icons.Outline.Light />
         </Button> */}

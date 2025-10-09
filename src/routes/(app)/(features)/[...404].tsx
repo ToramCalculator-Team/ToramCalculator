@@ -29,7 +29,7 @@ export default function Loading() {
   })
 
   createEffect(() => {
-    setDictionary(getDictionary(store.settings.language));
+    setDictionary(getDictionary(store.settings.userInterface.language));
   });
 
   return (

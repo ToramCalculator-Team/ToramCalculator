@@ -4,80 +4,97 @@ import * as _ from "lodash-es";
 import { type DB } from "@db/generated/kysely/kysely";
 import { AccountType } from "@db/schema/enums";
 
-export type DialogType = "form" | "card";
+/**
+ * 本地存储结构
+ * 负责存储全局状态信息和用户偏好设置，数据会缓存在LocalStorage中
+ */
 
-export type Store = {
-  version: number;
-  theme: "light" | "dark";
-  settingsDialogState: boolean;
-  resourcesLoaded: boolean;
-  database: {
-    inited: boolean;
-    tableSyncState: Partial<Record<keyof DB, boolean>>;
-  };
-  settings: {
-    userInterface: {
-      isAnimationEnabled: boolean;
-      is3DbackgroundDisabled: boolean;
-    };
-    hasDismissedPWAInstall: boolean;
-    language: Locale;
-    statusAndSync: {
-      restorePreviousStateOnStartup: boolean;
-      syncStateAcrossClients: boolean;
-    };
-    privacy: {
-      postVisibility: "everyone" | "friends" | "onlyMe";
-    };
-    messages: {
-      notifyOnContentChange: {
-        notifyOnReferencedContentChange: boolean;
-        notifyOnLike: boolean;
-        notifyOnBookmark: boolean;
+type DatabaseState = {
+  inited: boolean;
+  tableSyncState: Partial<Record<keyof DB, boolean>>;
+};
+
+type SessionState = {
+  user?: {
+    id: string;
+    name: string;
+    avatar: string;
+    account?: {
+      id: string;
+      type: AccountType;
+      player?: {
+        id: string;
+        character?: {
+          id: string;
+        };
       };
     };
   };
-  session: {
-    user: {
-      id?: string;
-      name?: string;
-      avatar?: string;
-      account?: {
-        id: string;
-        type: AccountType;
-      }
+};
+
+type SettingsState = {
+  userInterface: {
+    theme: "light" | "dark";
+    language: Locale;
+    isAnimationEnabled: boolean;
+    is3DbackgroundDisabled: boolean;
+  };
+  hasDismissedPWAInstall: boolean;
+  statusAndSync: {
+    restorePreviousStateOnStartup: boolean;
+    syncStateAcrossClients: boolean;
+  };
+  privacy: {
+    postVisibility: "everyone" | "friends" | "onlyMe";
+  };
+  messages: {
+    notifyOnContentChange: {
+      notifyOnReferencedContentChange: boolean;
+      notifyOnLike: boolean;
+      notifyOnBookmark: boolean;
     };
   };
+};
+
+type PageState = {
+  resourcesLoaded: boolean;
+  settingsDialogState: boolean;
+  loginDialogState: boolean;
   indexPage: {};
   wiki: Partial<{
     [T in keyof DB]: {
       table: {
         sort: { id: keyof DB[T]; desc: boolean };
         hiddenColumns: Partial<Record<keyof DB[T], boolean>>;
-      }
-      form: {
-        
-      }
+      };
+      form: {};
       card: {
-        hiddenFields: Array<keyof DB[T]>
-      }
+        hiddenFields: Array<keyof DB[T]>;
+      };
     };
   }>;
-  character: {
-    id: string
-  };
-  sw: {
-    periodicCheckEnabled: boolean;
-    periodicCheckInterval: number; // ms
-    cacheStrategy: 'all' | 'core-only' | 'assets-only';
-    lastManualUpdate?: string; // ISO 时间戳
-  };
+};
+
+type SwState = {
+  periodicCheckEnabled: boolean;
+  periodicCheckInterval: number; // ms
+  cacheStrategy: "all" | "core-only" | "assets-only";
+  lastManualUpdate?: string; // ISO 时间戳
+};
+
+export type DialogType = "form" | "card";
+
+export type Store = {
+  version: number;
+  database: DatabaseState;
+  settings: SettingsState;
+  session: SessionState;
+  sw: SwState;
+  pages: PageState;
 };
 
 const initialStore: Store = {
-  version: 20250103,
-  theme: "light",
-  resourcesLoaded: false,
+  version: 20251009,
   database: {
     inited: false,
     tableSyncState: {
@@ -92,10 +109,11 @@ const initialStore: Store = {
   },
   settings: {
     userInterface: {
+      theme: "light",
+      language: "zh-CN",
       isAnimationEnabled: true,
       is3DbackgroundDisabled: false,
     },
-    language: "zh-CN",
     hasDismissedPWAInstall: false,
     statusAndSync: {
       restorePreviousStateOnStartup: true,
@@ -113,19 +131,18 @@ const initialStore: Store = {
     },
   },
   session: {
-    user: {},
   },
-  settingsDialogState: false,
-  indexPage: {},
-  wiki: {
-  },
-  character: {
-    id: "defaultCharacterId"
+  pages:{
+    resourcesLoaded: false,
+    settingsDialogState: false,
+    loginDialogState: false,
+    indexPage: {},
+    wiki: {},
   },
   sw: {
     periodicCheckEnabled: true,
     periodicCheckInterval: 30 * 60 * 1000, // 30分钟
-    cacheStrategy: 'all',
+    cacheStrategy: "all",
     lastManualUpdate: undefined,
   },
 };

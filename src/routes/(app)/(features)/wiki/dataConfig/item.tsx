@@ -51,7 +51,8 @@ import { Toggle } from "~/components/controls/toggle";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Select } from "~/components/controls/select";
 import { omit, pick } from "lodash-es";
-import { arrayDiff, getSpriteIcon, TextScroll } from "./utils";
+import { arrayDiff, TextScroll } from "./utils";
+import Icons from "~/components/icons";
 
 /**
  * item卡片数据类型
@@ -224,8 +225,8 @@ export const createItem = async (trx: Transaction<DB>, value: item) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.user?.account?.id,
+      updatedByAccountId: store.session.user?.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -237,7 +238,7 @@ export const updateItem = async (trx: Transaction<DB>, value: item) => {
     .updateTable("item")
     .set({
       ...value,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.user?.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()
@@ -1186,7 +1187,7 @@ export const ItemSharedFormDataSubmitor = async (
       .updateTable("recipe")
       .set({
         ...newRecipeData,
-        updatedByAccountId: store.session.user.account?.id,
+        updatedByAccountId: store.session.user?.account?.id,
       })
       .where("id", "=", oldRecipe.id)
       .returningAll()
@@ -1201,8 +1202,8 @@ export const ItemSharedFormDataSubmitor = async (
         id: createId(),
         statisticId: statistic.id,
         itemId: item.id,
-        createdByAccountId: store.session.user.account?.id,
-        updatedByAccountId: store.session.user.account?.id,
+        createdByAccountId: store.session.user?.account?.id,
+        updatedByAccountId: store.session.user?.account?.id,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -1529,16 +1530,27 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
                           },
                         ])
                       }
-                      icon={getSpriteIcon(itemTypeToTableType(recipeEntry.relatedItem?.itemType!), 24)}
+                      icon={
+                        <Icons.Spirits iconName={itemTypeToTableType(recipeEntry.relatedItem?.itemType!)} size={24} />
+                      }
                       class="justify-start"
                     >
-                      <TextScroll text={recipeEntry.relatedItem?.name ?? ""} width={100} /> <span class="flex-none">{` - ${recipeEntry.count}`}</span>
+                      <TextScroll text={recipeEntry.relatedItem?.name ?? ""} width={100} />{" "}
+                      <span class="flex-none">{` - ${recipeEntry.count}`}</span>
                     </Button>
                   );
                 default:
                   return (
-                    <Button onClick={() => null} icon={getSpriteIcon(recipeEntry.type, 24)} class="justify-start">
-                      <TextScroll text={props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type]} width={100} /> <span class="flex-none">{` - ${recipeEntry.count}`}</span>
+                    <Button
+                      onClick={() => null}
+                      icon={<Icons.Spirits iconName={recipeEntry.type} size={24} />}
+                      class="justify-start"
+                    >
+                      <TextScroll
+                        text={props.dic.db.recipe_ingredient.fields.type.enumMap[recipeEntry.type]}
+                        width={100}
+                      />{" "}
+                      <span class="flex-none">{` - ${recipeEntry.count}`}</span>
                     </Button>
                   );
               }
@@ -1555,10 +1567,11 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }])
               }
-              // icon={getSpriteIcon("mob")}
+              icon={<Icons.Spirits iconName="mob" size={24} />}
               class="justify-start"
             >
-              <TextScroll text={dropBy.relatedMob?.name ?? ""} width={100} /> <span class="flex-none">{` - ${dropBy.relatedPartType} - ${dropBy.probability}%`}</span>
+              <TextScroll text={dropBy.relatedMob?.name ?? ""} width={100} />{" "}
+              <span class="flex-none">{` - ${dropBy.relatedPartType} - ${dropBy.probability}%`}</span>
             </Button>
           );
         }}
@@ -1572,10 +1585,11 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }])
               }
-              // icon={getSpriteIcon("task")}
+              icon={<Icons.Spirits iconName="task" size={24} />}
               class="justify-start"
             >
-              <TextScroll text={rewardItem.relatedTask?.name ?? ""} width={100} /> <span class="flex-none">{` - ${rewardItem.value} - ${rewardItem.probability}%`}</span>
+              <TextScroll text={rewardItem.relatedTask?.name ?? ""} width={100} />{" "}
+              <span class="flex-none">{` - ${rewardItem.value} - ${rewardItem.probability}%`}</span>
             </Button>
           );
         }}
@@ -1593,10 +1607,11 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
                   { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
                 ])
               }
-              icon={getSpriteIcon(itemTypeToTableType(usedIn.relatedItem?.itemType!), 24)}
+              icon={<Icons.Spirits iconName={itemTypeToTableType(usedIn.relatedItem?.itemType!)} size={24} />}
               class="justify-start"
             >
-              <TextScroll text={usedIn.relatedItem?.name ?? ""} width={100} /> <span class="flex-none">{` - ${usedIn.count}`}</span>
+              <TextScroll text={usedIn.relatedItem?.name ?? ""} width={100} />{" "}
+              <span class="flex-none">{` - ${usedIn.count}`}</span>
             </Button>
           );
         }}
@@ -1610,10 +1625,11 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
               onClick={() =>
                 setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }])
               }
-              icon={getSpriteIcon("task", 24)}
+              icon={<Icons.Spirits iconName="task" size={24} />}
               class="justify-start"
             >
-              <TextScroll text={usedInTask.relatedTask?.name ?? ""} width={100} /> <span class="flex-none">{` - ${usedInTask.count}`}</span>
+              <TextScroll text={usedInTask.relatedTask?.name ?? ""} width={100} />{" "}
+              <span class="flex-none">{` - ${usedInTask.count}`}</span>
             </Button>
           );
         }}
@@ -1689,7 +1705,10 @@ export const ItemWithSubObjectForm = <SubObject extends Record<string, any>>(pro
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black flex items-center gap-2">{getSpriteIcon(itemTypeToTableType(props.type), 32)} {props.dic.db[itemTypeToTableType(props.type)].selfName}</h1>
+        <h1 class="FormTitle flex items-center gap-2 text-2xl font-black">
+          <Icons.Spirits iconName={itemTypeToTableType(props.type)} size={32} />{" "}
+          {props.dic.db[itemTypeToTableType(props.type)].selfName}
+        </h1>
       </div>
       <form
         onSubmit={(e) => {

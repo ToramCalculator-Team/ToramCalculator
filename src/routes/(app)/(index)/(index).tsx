@@ -56,7 +56,7 @@ export default function IndexPage() {
   const media = useContext(MediaContext);
 
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   // 小工具菜单配置
   const [toolMenuConfig] = createSignal<
@@ -97,11 +97,11 @@ export default function IndexPage() {
     }[]
   >([
     {
-      onClick: () => setStore("theme", store.theme == "dark" ? "light" : "dark"),
+      onClick: () => setStore("settings", "userInterface", "theme", store.settings.userInterface.theme == "dark" ? "light" : "dark"),
       icon: <Icons.Outline.Light />,
     },
     {
-      onClick: () => setStore("settingsDialogState", !store.settingsDialogState),
+      onClick: () => setStore("pages", "settingsDialogState", !store.pages.settingsDialogState),
       icon: <Icons.Outline.Settings />,
     },
   ]);
@@ -215,14 +215,6 @@ export default function IndexPage() {
     send({ type: "TOGGLE_SEARCH_RESULTS" });
   };
 
-  const handleOpenLoginDialog = () => {
-    send({ type: "OPEN_LOGIN_DIALOG" });
-  };
-
-  const handleCloseLoginDialog = () => {
-    send({ type: "CLOSE_LOGIN_DIALOG" });
-  };
-
   const handleToggleAnimation = () => {
     send({ type: "TOGGLE_ANIMATION" });
   };
@@ -240,13 +232,13 @@ export default function IndexPage() {
   };
 
   // userName
-  const [userName, setUserName] = createSignal(store.session.user.name);
+  const [userName, setUserName] = createSignal(store.session.user?.name);
 
   createEffect(
     on(
-      () => store.session.user.name,
+      () => store.session.user?.name,
       () => {
-        if (store.session.user.name) setUserName(store.session.user.name);
+        if (store.session.user?.name) setUserName(store.session.user?.name);
         else setUserName(dictionary().ui.index.adventurer);
       },
     ),
@@ -267,8 +259,8 @@ export default function IndexPage() {
           break;
         case "Escape":
           {
-            if (store.settingsDialogState) {
-              setStore("settingsDialogState", false);
+            if (store.pages.settingsDialogState) {
+              setStore("pages", "settingsDialogState", false);
               e.stopPropagation();
             } else if (document.activeElement === searchInputRef) {
               searchInputRef.blur();
@@ -376,7 +368,7 @@ export default function IndexPage() {
               >
                 <div
                   class={`LogoBox mb-2 cursor-pointer self-end overflow-hidden rounded backdrop-blur-sm landscape:mb-0 dark:backdrop-blur-none`}
-                  onClick={handleOpenLoginDialog}
+                  onClick={() => setStore("pages", "loginDialogState", true)}
                 >
                   <Icons.Brand.LogoText class="h-12 landscape:h-auto" />
                 </div>
@@ -769,7 +761,6 @@ export default function IndexPage() {
       </Sheet>
 
       <Filing />
-      <LoginDialog state={() => context().loginDialogIsOpen} setState={() => handleCloseLoginDialog()} />
     </MetaProvider>
   );
 }

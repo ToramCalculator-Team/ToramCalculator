@@ -146,7 +146,7 @@ export function BabylonBg(): JSX.Element {
           brand_2nd: rgb2Bcolor3(cssColors.yellow),
           brand_3rd: rgb2Bcolor3(cssColors.orange),
         },
-      })[store.theme],
+      })[store.settings.userInterface.theme],
   );
   // 场景渲染状态代替图片加载状态
   const [loaderState, setLoaderState] = createSignal(false);
@@ -347,7 +347,7 @@ export function BabylonBg(): JSX.Element {
     scene.fogStart = 16;
     scene.fogEnd = 22;
     createEffect(() => {
-      if (store.theme === "light") {
+      if (store.settings.userInterface.theme === "light") {
         scene.fogColor = new Color3(0.8, 0.8, 0.8);
       } else {
         scene.fogColor = new Color3(0.3, 0.3, 0.3);
@@ -379,7 +379,7 @@ export function BabylonBg(): JSX.Element {
     mainSpotLight.id = "mainSpotLight";
     mainSpotLight.radius = 10;
     createEffect(() => {
-      switch (store.theme) {
+      switch (store.settings.userInterface.theme) {
         case "light":
           mainSpotLight.intensity = 200;
           break;
@@ -392,7 +392,7 @@ export function BabylonBg(): JSX.Element {
     // mainSpotLight.id = "mainSpotLight";
     // mainSpotLight.radius = 10;
     // createEffect(() => {
-    //   switch (store.theme) {
+    //   switch (store.settings.userInterface.theme) {
     //     case "light":
     //       mainSpotLight.intensity = 200;
     //       break;

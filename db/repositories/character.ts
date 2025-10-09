@@ -213,13 +213,12 @@ export async function findCharacterWithRelations(id: string, trx?: Transaction<D
     .executeTakeFirst();
 }
 
-export async function findCharacters(accountId: string, trx?: Transaction<DB>) {
+export async function findCharactersByPlayerId(playerId: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db
     .selectFrom("character")
     .innerJoin("player", "player.id", "character.masterId")
-    .innerJoin("account", "account.id", "player.accountId")
-    .where("account.id", "=", accountId)
+    .where("player.id", "=", playerId)
     .selectAll("character")
     .execute();
 }

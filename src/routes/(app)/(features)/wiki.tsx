@@ -8,7 +8,7 @@ import { DB } from "@db/generated/kysely/kysely";
 
 export default function WikiPage(props: ParentProps) {
   // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.language));
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
   const [tableType, setTableType] = createSignal<keyof DB>("mob");
 
   onMount(() => {

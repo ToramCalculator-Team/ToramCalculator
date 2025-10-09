@@ -135,7 +135,7 @@ export function LogicEditor(props: LogicEditorProps) {
     "zh-TW": ZhTw,
     ja: Ja,
     en: En,
-  }[store.settings.language];
+  }[store.settings.userInterface.language];
 
   onMount(() => {
     // debugger

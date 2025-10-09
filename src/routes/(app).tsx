@@ -23,6 +23,7 @@ import { findOptions } from "@db/repositories/optEquip";
 import { findSpecials } from "@db/repositories/speEquip";
 import { findPlayers } from "@db/repositories/player";
 import { findSimulators } from "@db/repositories/simulator";
+import { LoginDialog } from "~/components/features/loginDialog";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -55,13 +56,13 @@ export default function AppMainContet(props: ParentProps) {
   // 主题切换时
   createEffect(
     on(
-      () => store.theme,
+      () => store.settings.userInterface.theme,
       () => {
         console.log("主题切换");
         document.documentElement.classList.add("transitionColorNone");
         setStore("settings", "userInterface", "isAnimationEnabled", false);
         document.documentElement.classList.remove("light", "dark");
-        document.documentElement.classList.add(store.theme);
+        document.documentElement.classList.add(store.settings.userInterface.theme);
         setTimeout(() => {
           document.documentElement.classList.remove("transitionColorNone");
           setStore("settings", "userInterface", "isAnimationEnabled", true);
@@ -90,11 +91,11 @@ export default function AppMainContet(props: ParentProps) {
   // 动态设置语言
   createEffect(
     on(
-      () => store.settings.language,
+      () => store.settings.userInterface.language,
       () => {
         console.log("语言切换");
-        document.documentElement.lang = store.settings.language;
-        document.cookie = `lang=${store.settings.language}; path=/; max-age=31536000;`;
+        document.documentElement.lang = store.settings.userInterface.language;
+        document.cookie = `lang=${store.settings.userInterface.language}; path=/; max-age=31536000;`;
       },
       {
         defer: true,
@@ -117,7 +118,7 @@ export default function AppMainContet(props: ParentProps) {
         loader.remove();
       }, 1000);
     }
-    setStore("resourcesLoaded", true);
+    setStore("pages", "resourcesLoaded", true);
 
     // 数据库查询测试
     findMobs();
@@ -147,11 +148,12 @@ export default function AppMainContet(props: ParentProps) {
       <RandomBallBackground />
       <Motion.div
         id="AppMainContet"
-        class={`h-full w-full overflow-hidden ${store.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+        class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
       >
         {props.children}
       </Motion.div>
       <Setting />
+      <LoginDialog />
     </MediaProvider>
   );
 }

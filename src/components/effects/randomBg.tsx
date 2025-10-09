@@ -35,7 +35,7 @@ export const RandomBallBackground = () => {
   const ballsRef: HTMLDivElement[] = [];
 
   createEffect(() => {
-    store.theme === "dark"
+    store.settings.userInterface.theme === "dark"
       ? ballsRef.forEach((ball, i) => {
           ball.style.filter = "drop-shadow(0 0 " + ballsSize[i] * 2 + "px currentcolor)";
         })

@@ -27,11 +27,12 @@ import z from "zod";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/dataDisplay/cardSection";
-import { CardSharedSection, getSpriteIcon } from "./utils";
+import { CardSharedSection } from "./utils";
 import pick from "lodash-es/pick";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { CrystalType } from "@db/schema/enums";
 import { Select } from "~/components/controls/select";
+import Icons from "~/components/icons";
 
 type CrystalWithRelated = crystal & {
   front: (crystal & item)[];
@@ -204,7 +205,7 @@ export const CrystalDataConfig: dataDisplayConfig<
                                   class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
                                   onClick={handleSelect}
                                 >
-                                  {getSpriteIcon(option.value, 24)}
+                                  <Icons.Spirits iconName={option.value} size={24} />
                                   {option.label}
                                 </div>
                               );
@@ -437,7 +438,7 @@ export const CrystalDataConfig: dataDisplayConfig<
                 <div class="Field flex gap-2">
                   <span class="text-main-text-color text-nowrap">{dic.fields[key].key}</span>:
                   <span class="flex items-center gap-2 font-bold">
-                    {getSpriteIcon(data.type, 24)} {String(value)}
+                    <Icons.Spirits iconName={data.type} size={24} /> {String(value)}
                   </span>
                 </div>
               );
@@ -451,7 +452,7 @@ export const CrystalDataConfig: dataDisplayConfig<
             return (
               <Button
                 onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }])}
-                icon={getSpriteIcon(front.type, 24)}
+                icon={<Icons.Spirits iconName={front.type} size={24} />}
                 class="justify-start"
               >
                 {front.name}
@@ -466,7 +467,7 @@ export const CrystalDataConfig: dataDisplayConfig<
             return (
               <Button
                 onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }])}
-                icon={getSpriteIcon(back.type, 24)}
+                icon={<Icons.Spirits iconName={back.type} size={24} />}
                 class="justify-start"
               >
                 {back.name}

@@ -688,7 +688,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 160,
           ja: 160,
           en: 160,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "name",
@@ -699,7 +699,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 180,
           ja: 260,
           en: 260,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "initialElement",
@@ -710,7 +710,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 115,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "type",
@@ -721,7 +721,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 80,
           ja: 120,
           en: 120,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "captureable",
@@ -732,7 +732,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 100,
           ja: 100,
           en: 100,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "baseLv",
@@ -743,7 +743,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 140,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "experience",
@@ -753,7 +753,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "physicalDefense",
@@ -763,7 +763,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "physicalResistance",
@@ -773,7 +773,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "magicalDefense",
@@ -783,7 +783,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "magicalResistance",
@@ -793,7 +793,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "criticalResistance",
@@ -803,7 +803,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 115,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "avoidance",
@@ -813,7 +813,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 100,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "dodge",
@@ -823,7 +823,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 100,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "block",
@@ -833,7 +833,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 100,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
       {
         id: "actions",
@@ -843,7 +843,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           "zh-TW": 120,
           ja: 180,
           en: 180,
-        }[store.settings.language],
+        }[store.settings.userInterface.language],
       },
     ],
     dictionary: (dic) => MobWithRelatedDic(dic),
