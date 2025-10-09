@@ -1,6 +1,5 @@
 // @refresh reload
 import { StartServer, createHandler } from "@solidjs/start/server";
-import PreloadUrl from "~/preload?url";
 import { env } from "process";
 
 const APP_NAME = "托拉姆计算器-ToramCalculator:一个简单的托拉姆数值计算器";
@@ -85,7 +84,7 @@ export default createHandler(() => (
             <div id="app" class="flex h-dvh w-dvw flex-col-reverse lg:flex-row">
               {children}
             </div>
-            <script src={PreloadUrl} fetchpriority="high"></script>
+            <script src="/preload.js" fetchpriority="high"></script>
             {scripts}
             {/* <script id="umami" defer src="https://cloud.umami.is/script.js" data-website-id={env.UMAMI_ID}></script> */}
           </body>

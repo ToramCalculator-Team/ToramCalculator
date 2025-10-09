@@ -86,8 +86,8 @@ export const LoginDialog = () => {
       id: "",
       name: "",
       avatar: "",
+      account: undefined,
     });
-    setStore;
   };
 
   const register = async (value: LoginFormProps) => {

@@ -1,13 +1,10 @@
 // 在路由组件可见之前需要做的全局设置
-
-import { Store } from "./store";
-
 const storeStr = localStorage.getItem("store");
 if (!storeStr) {
   document.documentElement.classList.add("light");
   document.documentElement.lang = "zh-CN";
 } else {
-  const storeCache = JSON.parse(storeStr) as unknown as Store;
+  const storeCache = JSON.parse(storeStr);
   const root = document.documentElement;
 
   // Theme
