@@ -67,7 +67,7 @@ export const LoginDialog = () => {
           avatar: user.image ?? defaultUserAvatarUrl,
         });
         if (user.accounts) {
-          setStore("session", "user", "account", {
+          setStore("session", "account", {
             id: user.accounts[0].id,
             type: user.accounts[0].type,
           });
@@ -82,12 +82,7 @@ export const LoginDialog = () => {
 
   const logOut = async () => {
     await fetch("/api/auth/logout");
-    setStore("session", "user", {
-      id: "",
-      name: "",
-      avatar: "",
-      account: undefined,
-    });
+    setStore("session", {});
   };
 
   const register = async (value: LoginFormProps) => {
@@ -125,7 +120,7 @@ export const LoginDialog = () => {
           avatar: user.image ?? defaultUserAvatarUrl,
         });
         if (user.accounts) {
-          setStore("session", "user", "account", {
+          setStore("session", "account", {
             id: user.accounts[0].id,
             type: user.accounts[0].type,
           });

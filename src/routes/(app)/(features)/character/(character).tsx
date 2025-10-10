@@ -9,8 +9,8 @@ export default function CharacterIndexPage(props: ParentProps) {
   // 导航
   const navigate = useNavigate();
 
-  if (store.session.user?.account?.player?.character?.id) {
-    navigate(`/character/${store.session.user?.account?.player?.character?.id}`);
+  if (store.session.account?.player?.character?.id) {
+    navigate(`/character/${store.session.account?.player?.character?.id}`);
   } else {
     navigate(`/character/create`);
   }

@@ -86,7 +86,7 @@ worker({
 
     const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
       const tableParams = urlParams ?? tableName;
-      pg.electric.syncShapeToTable({
+      return pg.electric.syncShapeToTable({
         shape: {
           url: ELECTRIC_HOST,
           params: {

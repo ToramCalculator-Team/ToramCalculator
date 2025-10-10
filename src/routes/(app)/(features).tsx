@@ -229,7 +229,7 @@ const Nav = () => {
           <Button
             level="quaternary"
             class="hidden rounded-full bg-transparent px-2 py-2 landscape:flex"
-            onClick={() => setStore("settingsDialogState", true)}
+            onClick={() => setStore("pages","settingsDialogState", true)}
           >
             <Icons.Outline.Settings />
           </Button>

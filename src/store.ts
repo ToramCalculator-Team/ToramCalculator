@@ -19,14 +19,14 @@ type SessionState = {
     id: string;
     name: string;
     avatar: string;
-    account?: {
+  };
+  account?: {
+    id: string;
+    type: AccountType;
+    player?: {
       id: string;
-      type: AccountType;
-      player?: {
+      character?: {
         id: string;
-        character?: {
-          id: string;
-        };
       };
     };
   };

@@ -23,8 +23,8 @@ export default function CreateCharacterPage() {
     const db = await getDB();
     const character = await db.transaction().execute(async (trx) => {
       let account;
-      if (store.session.user?.account?.id) {
-        account = await findAccountById(store.session.user.account.id, trx);
+      if (store.session.account?.id) {
+        account = await findAccountById(store.session.account.id, trx);
         console.log("account", account);
         if (!account) {
           throw new Error("Account not found");
@@ -34,7 +34,8 @@ export default function CreateCharacterPage() {
           ...defaultData.account,
           id: createId(),
         });
-        setStore("session", "user", "account", {
+        console.log("account22", account);
+        setStore("session", "account", {
           id: account.id,
           type: "User",
         });
@@ -58,7 +59,7 @@ export default function CreateCharacterPage() {
         masterId: player.id,
       });
       console.log("character", character);
-      setStore("session", "user", "account", {
+      setStore("session", "account", {
         id: account.id,
         type: account.type,
         player: {

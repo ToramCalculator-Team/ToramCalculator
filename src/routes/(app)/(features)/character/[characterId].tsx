@@ -45,7 +45,7 @@ export default function CharactePage() {
   );
 
   const [characters, { refetch: refetchCharacters }] = createResource(() =>
-    findCharactersByPlayerId(store.session.user?.account?.player?.id ?? ""),
+    findCharactersByPlayerId(store.session.account?.player?.id ?? ""),
   );
 
   // ----------------------------------------预设内容-----------------------------------
@@ -145,32 +145,32 @@ export default function CharactePage() {
 
     // -----------------------------------光照设置------------------------------------
     // 设置顶部锥形光
-    // const mainSpotLight = new SpotLight(
-    //   "mainSpotLight",
-    //   new Vector3(0, 8, 0),
-    //   new Vector3(0, -1, 0),
-    //   Math.PI,
-    //   2,
-    //   scene,
-    // );
-    // mainSpotLight.id = "mainSpotLight";
-    // mainSpotLight.radius = 10;
-    // createEffect(() => {
-    //   switch (store.settings.userInterface.theme) {
-    //     case "light":
-    //       mainSpotLight.intensity = 200;
-    //       break;
-    //     case "dark":
-    //       mainSpotLight.intensity = 100;
-    //       break;
-    //   }
-    // });
+    const mainSpotLight = new SpotLight(
+      "mainSpotLight",
+      new Vector3(0, 18, 8),
+      new Vector3(0, -1, 0),
+      Math.PI,
+      5,
+      scene,
+    );
+    mainSpotLight.id = "mainSpotLight";
+    mainSpotLight.radius = 10;
+    createEffect(() => {
+      switch (store.settings.userInterface.theme) {
+        case "light":
+          mainSpotLight.intensity = 2000;
+          break;
+        case "dark":
+          mainSpotLight.intensity = 1000;
+          break;
+      }
+    });
 
     // 顶部锥形光的阴影发生器---------------------
-    // const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-    // mainSpotLightShadowGenerator.bias = 0.000001;
-    // mainSpotLightShadowGenerator.darkness = 0.1;
-    // mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
+    mainSpotLightShadowGenerator.bias = 0.000001;
+    mainSpotLightShadowGenerator.darkness = 0.1;
+    mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     // -----------------------------------------角色模型--------------------------------------------
     const factory = new EntityFactory(scene);
@@ -180,8 +180,6 @@ export default function CharactePage() {
     createEffect(async () => {
       if (character()) {
         try {
-          console.log("🎭 开始创建角色:", character()?.name);
-
           // 创建角色实体
           characterEntity = await factory.createCharacter(
             character()?.id ?? "unknown",
@@ -246,12 +244,12 @@ export default function CharactePage() {
             <div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
               <canvas
                 ref={setCanvas}
-                class="bg-brand-color-2nd border-dividing-color block h-full w-full rounded-md border-1"
+                class="border-dividing-color block h-full w-full rounded-md border-1"
               >
                 当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
               </canvas>
             </div>
-            <div class="Divider landscape:hidden landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
+            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-[1px]"></div>
             <OverlayScrollbarsComponent
               element="div"
               options={{ scrollbars: { visibility: "hidden" } }}
@@ -263,7 +261,7 @@ export default function CharactePage() {
                   onClick={() => console.log("连击")}
                   level="quaternary"
                   icon={<Icons.Outline.Gamepad />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   {dictionary().db.combo.selfName}
                 </Button>
@@ -271,7 +269,7 @@ export default function CharactePage() {
                   onClick={() => console.log("装备")}
                   level="quaternary"
                   icon={<Icons.Outline.Category />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   装备
                 </Button>
@@ -279,7 +277,7 @@ export default function CharactePage() {
                   onClick={() => console.log("消耗品")}
                   level="quaternary"
                   icon={<Icons.Outline.Sale />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   {dictionary().db.consumable.selfName}
                 </Button>
@@ -287,7 +285,7 @@ export default function CharactePage() {
                   onClick={() => console.log("料理")}
                   level="quaternary"
                   icon={<Icons.Outline.Coupon2 />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   料理
                 </Button>
@@ -295,7 +293,7 @@ export default function CharactePage() {
                   onClick={() => console.log("雷吉斯托环")}
                   level="quaternary"
                   icon={<Icons.Outline.CreditCard />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   雷吉斯托环
                 </Button>
@@ -303,7 +301,7 @@ export default function CharactePage() {
                   onClick={() => console.log("技能")}
                   level="quaternary"
                   icon={<Icons.Outline.Scale />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   技能
                 </Button>
@@ -311,7 +309,7 @@ export default function CharactePage() {
                   onClick={() => console.log("能力值")}
                   level="quaternary"
                   icon={<Icons.Outline.Filter />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   能力值
                 </Button>
@@ -319,7 +317,7 @@ export default function CharactePage() {
                   onClick={() => console.log("基本配置")}
                   level="quaternary"
                   icon={<Icons.Outline.Edit />}
-                  class="flex-none"
+                  class="flex-none landscape:w-full"
                 >
                   基本配置
                 </Button>
@@ -333,59 +331,80 @@ export default function CharactePage() {
               class="flex flex-none portrait:w-full landscape:w-1/2"
             >
               <div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
-                <div class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur-2xl portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                <div class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />
                     {character().weapon?.name}
                   </div>
                   <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" />
+                    <Show
+                      when={character().weapon}
+                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                    >
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                    </Show>
                   </div>
                 </div>
-                <div class="SubHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur-2xl portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                <div class="SubHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
                   <div class="Label px-4 py-3">副手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={24} />
                     {character().subWeapon?.name}
                   </div>
                   <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                    <Show
+                      when={character().subWeapon}
+                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                    >
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                    </Show>
                   </div>
                 </div>
-                <div class="Armor border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                <div class="Armor border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().armor?.ability ?? ""} size={24} />
                     {character().armor?.name}
                   </div>
                   <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                    <Show
+                      when={character().armor}
+                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                    >
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                    </Show>
                   </div>
                 </div>
-                <div class="OptEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                <div class="OptEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"optEquip"} size={24} />
                     {character().optEquip?.name}
                   </div>
                   <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                    <Show
+                      when={character().optEquip}
+                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                    >
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                    </Show>
                   </div>
                 </div>
-                <div class="SpeEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur-2xl portrait:flex-row portrait:rounded portrait:border-1 landscape:border-b-1">
+                <div class="SpeEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"speEquip"} size={24} />
                     {character().speEquip?.name}
                   </div>
                   <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Edit />} level="quaternary" />
-                    <Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />
+                    <Show
+                      when={character().speEquip}
+                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                    >
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                    </Show>
                   </div>
                 </div>
               </div>
