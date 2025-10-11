@@ -21,7 +21,6 @@ import { getDictionary } from "~/locales/i18n";
 import Icons from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
 import { Filing } from "~/components/features/filing";
-import { Card } from "~/components/containers/card";
 
 import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -30,13 +29,7 @@ import { dictionary } from "~/locales/type";
 import { DB } from "@db/generated/kysely/kysely";
 import { MediaContext } from "~/lib/contexts/Media";
 import { setStore, store } from "~/store";
-import { LoginDialog } from "~/components/features/loginDialog";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { Portal } from "solid-js/web";
-import { DBDataConfig } from "../(features)/wiki/dataConfig/dataConfig";
-import { searchAllTables } from "~/routes/(app)/(index)/search";
-import { setWikiStore, wikiStore } from "../(features)/wiki/store";
-import { getCardDatas } from "~/lib/utils/cardDataCache";
 import { Sheet } from "~/components/containers/sheet";
 
 type Result = DB[keyof DB];
@@ -192,11 +185,6 @@ export default function IndexPage() {
       },
     ],
   });
-
-  const [cachedCardDatas, { refetch }] = createResource(
-    () => wikiStore.cardGroup,
-    (cardGroup) => getCardDatas(cardGroup),
-  );
 
   // 事件分发函数
   const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
@@ -564,7 +552,7 @@ export default function IndexPage() {
                                               onClick={async () => {
                                                 // 设置卡片类型和ID
                                                 "id" in resultItem
-                                                  ? setWikiStore("cardGroup", (pre) => [
+                                                  ? setStore("pages", "cardGroup", (pre) => [
                                                       ...pre,
                                                       { type: groupType, id: resultItem.id },
                                                     ])
@@ -696,47 +684,6 @@ export default function IndexPage() {
           </Show>
         </Presence>
       </Motion.div>
-
-      {/* 卡片组 */}
-      <Portal>
-        <Presence exitBeforeEnter>
-          <Show when={cachedCardDatas()?.length}>
-            <Motion.div
-              animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-              exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-              onClick={() => setWikiStore("cardGroup", (pre) => pre.slice(0, -1))}
-            >
-              <Index each={cachedCardDatas()}>
-                {(cardData, index) => {
-                  return (
-                    <Card
-                      display={cachedCardDatas()!.length - index < 5}
-                      title={
-                        cardData() && "name" in cardData()
-                          ? (cardData()["name"] as string)
-                          : dictionary().db[wikiStore.cardGroup[index]?.type as keyof DB].selfName
-                      }
-                      index={index}
-                      total={cachedCardDatas()!.length}
-                    >
-                      <Show when={wikiStore.cardGroup[index]?.type}>
-                        {(type) => {
-                          return DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
-                            dic: dictionary(),
-                            data: cardData(),
-                          });
-                        }}
-                      </Show>
-                    </Card>
-                  );
-                }}
-              </Index>
-            </Motion.div>
-          </Show>
-        </Presence>
-      </Portal>
 
       {/* 小工具菜单 */}
       <Sheet state={context().toolMenuIsOpen} setState={() => send({ type: "TOGGLE_TOOL_MENU" })}>

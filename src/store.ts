@@ -73,6 +73,10 @@ type PageState = {
       };
     };
   }>;
+  cardGroup: {
+    type: keyof DB;
+    id: string;
+  }[];
 };
 
 type SwState = {
@@ -138,6 +142,7 @@ const initialStore: Store = {
     loginDialogState: false,
     indexPage: {},
     wiki: {},
+    cardGroup: [],
   },
   sw: {
     periodicCheckEnabled: true,

@@ -2,17 +2,13 @@ import { A, useNavigate, useParams } from "@solidjs/router";
 import {
   createEffect,
   createMemo,
-  createResource,
   createSignal,
   For,
-  Index,
   JSX,
-  Match,
   on,
   onCleanup,
   onMount,
   Show,
-  Switch,
   useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
@@ -31,8 +27,6 @@ import { MediaContext } from "~/lib/contexts/Media";
 import { Dialog } from "~/components/containers/dialog";
 import { DBDataConfig } from "./dataConfig/dataConfig";
 import { setWikiStore, wikiStore } from "./store";
-import { getCardDatas } from "~/lib/utils/cardDataCache";
-import { Card } from "~/components/containers/card";
 
 export default function WikiSubPage() {
   // const start = performance.now();
@@ -51,11 +45,6 @@ export default function WikiSubPage() {
   const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any, any>>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
-
-  const [cachedCardDatas, { refetch }] = createResource(
-    () => wikiStore.cardGroup,
-    (cardGroup) => getCardDatas(cardGroup),
-  );
 
   // 监听url参数变化, 初始化页面状态
   createEffect(
@@ -343,7 +332,7 @@ export default function WikiSubPage() {
                   defaultSort: validDataConfig().table.defaultSort,
                   dictionary: validDataConfig().table.dictionary(dictionary()),
                   globalFilterStr: () => wikiStore.table.globalFilterStr,
-                  columnHandleClick: (id) => setWikiStore("cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+                  columnHandleClick: (id) => setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
                   columnVisibility: wikiStore.table.columnVisibility,
                   onColumnVisibilityChange: (updater) => {
                     if (typeof updater === "function") {
@@ -355,7 +344,7 @@ export default function WikiSubPage() {
                 })}
               >
                 {validDataConfig().main?.(dictionary(), (id) =>
-                  setWikiStore("cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+                  setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
                 )}
               </Show>
             </div>
@@ -448,47 +437,6 @@ export default function WikiSubPage() {
                 dic: dictionary(),
               })}
             </Sheet>
-          </Portal>
-
-          {/* 卡片组 */}
-          <Portal>
-            <Presence exitBeforeEnter>
-              <Show when={cachedCardDatas()?.length}>
-                <Motion.div
-                  animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-                  exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-                  transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-                  class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-                  onClick={() => setWikiStore("cardGroup", (pre) => pre.slice(0, -1))}
-                >
-                  <Index each={cachedCardDatas()}>
-                    {(cardData, index) => {
-                      return (
-                        <Card
-                          display={cachedCardDatas()!.length - index < 5}
-                          title={
-                            cardData() && "name" in cardData()
-                              ? (cardData()["name"] as string)
-                              : dictionary().db[wikiStore.cardGroup[index]?.type as keyof DB].selfName
-                          }
-                          index={index}
-                          total={cachedCardDatas()!.length}
-                        >
-                          <Show when={wikiStore.cardGroup[index]?.type}>
-                            {(type) => {
-                              return DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
-                                dic: dictionary(),
-                                data: cardData(),
-                              });
-                            }}
-                          </Show>
-                        </Card>
-                      );
-                    }}
-                  </Index>
-                </Motion.div>
-              </Show>
-            </Presence>
           </Portal>
 
           {/* 表格配置 */}

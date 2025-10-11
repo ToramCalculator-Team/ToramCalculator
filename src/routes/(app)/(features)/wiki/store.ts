@@ -1,7 +1,6 @@
 import { createStore } from "solid-js/store";
 import { DB } from "@db/generated/kysely/kysely";
 import { VisibilityState } from "@tanstack/solid-table";
-import { createEffect, on } from "solid-js";
 
 export type WikiStore = {
   type: keyof DB;
@@ -14,10 +13,6 @@ export type WikiStore = {
     data: Record<string, unknown> | undefined;
     isOpen: boolean;
   };
-  cardGroup: {
-    type: keyof DB;
-    id: string;
-  }[];
 };
 
 const [wikiStore, setWikiStore] = createStore<WikiStore>({
@@ -31,7 +26,6 @@ const [wikiStore, setWikiStore] = createStore<WikiStore>({
     data: {},
     isOpen: false,
   },
-  cardGroup: [],
 });
 
 export { wikiStore, setWikiStore };

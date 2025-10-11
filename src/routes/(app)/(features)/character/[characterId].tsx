@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createEffect, createMemo, createResource, createSignal, on, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount, Show } from "solid-js";
 import { findCharactersByPlayerId, findCharacterWithRelations } from "@db/repositories/character";
 import {
   EntityFactory,
@@ -12,7 +12,7 @@ import {
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import {
   AbstractEngine,
   ArcRotateCamera,
@@ -31,7 +31,7 @@ import { Motion } from "solid-motionone";
 import Icons from "~/components/icons";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { getDB } from "@db/repositories/database";
+import { DB } from "@db/generated/kysely/kysely";
 
 export default function CharactePage() {
   // UI文本字典
@@ -40,12 +40,13 @@ export default function CharactePage() {
   const navigate = useNavigate();
 
   const params = useParams();
-  const [character, { refetch: refetchCharacter }] = createResource(() =>
-    findCharacterWithRelations(params.characterId),
-  );
+  const characterFinder = (id: string) => findCharacterWithRelations(id);
+  const [character, { refetch: refetchCharacter }] = createResource(() => params.characterId, characterFinder);
 
-  const [characters, { refetch: refetchCharacters }] = createResource(() =>
-    findCharactersByPlayerId(store.session.account?.player?.id ?? ""),
+  const charactersFinder = (id: string) => findCharactersByPlayerId(id);
+  const [characters, { refetch: refetchCharacters }] = createResource(
+    () => store.session.account?.player?.id ?? "",
+    charactersFinder,
   );
 
   // ----------------------------------------预设内容-----------------------------------
@@ -97,7 +98,7 @@ export default function CharactePage() {
   // 相机定义
   let camera: ArcRotateCamera;
 
-  const createBabylonScene = (canvas: HTMLCanvasElement) => {
+  const createBabylonScene = (canvas: HTMLCanvasElement): Scene => {
     engine = new Engine(canvas, true);
     //自定义加载动画
     engine.loadingScreen = {
@@ -112,21 +113,12 @@ export default function CharactePage() {
     };
     scene = new Scene(engine);
     scene.autoClear = false;
-    createEffect(() => {
-      scene.ambientColor = themeColors().primary;
-    });
     // 雾
     scene.fogMode = Scene.FOGMODE_EXP2;
     scene.fogDensity = 0.01;
     scene.fogStart = 16;
     scene.fogEnd = 22;
-    createEffect(() => {
-      if (store.settings.userInterface.theme === "light") {
-        scene.fogColor = new Color3(0.8, 0.8, 0.8);
-      } else {
-        scene.fogColor = new Color3(0.3, 0.3, 0.3);
-      }
-    });
+    scene.fogColor = new Color3(0.8, 0.8, 0.8);
     // 测试模式配置函数
     // function testModelOpen() {
     //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,16 +147,7 @@ export default function CharactePage() {
     );
     mainSpotLight.id = "mainSpotLight";
     mainSpotLight.radius = 10;
-    createEffect(() => {
-      switch (store.settings.userInterface.theme) {
-        case "light":
-          mainSpotLight.intensity = 2000;
-          break;
-        case "dark":
-          mainSpotLight.intensity = 1000;
-          break;
-      }
-    });
+    mainSpotLight.intensity = 2000;
 
     // 顶部锥形光的阴影发生器---------------------
     const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
@@ -173,28 +156,6 @@ export default function CharactePage() {
     mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     // -----------------------------------------角色模型--------------------------------------------
-    const factory = new EntityFactory(scene);
-    let characterEntity: CharacterEntityRuntime | null = null;
-
-    // 等待角色数据加载完成后创建角色
-    createEffect(async () => {
-      if (character()) {
-        try {
-          // 创建角色实体
-          characterEntity = await factory.createCharacter(
-            character()?.id ?? "unknown",
-            character()?.name ?? "未命名角色",
-            new Vector3(0, 0, 4),
-          );
-
-          // idle 动画已经在 createCharacter 中自动播放
-          // 如果需要切换到其他动画，可以使用：
-          // characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
-        } catch (error) {
-          console.error("❌ 角色创建失败:", error);
-        }
-      }
-    });
 
     // 开始渲染循环
     engine.runRenderLoop(() => {
@@ -204,6 +165,7 @@ export default function CharactePage() {
     // 窗口大小调整
     const onWinResize = () => engine.resize();
     window.addEventListener("resize", onWinResize);
+    return scene;
   };
 
   createEffect(
@@ -211,10 +173,33 @@ export default function CharactePage() {
       () => canvas(),
       (c) => {
         // new Engine会重设canvas尺寸，这会导致布局重绘，然后引起视觉抖动。这里通过延迟渲染解决
-        if (c) setTimeout(() => createBabylonScene(c), 10);
+        if (c)
+          setTimeout(async () => {
+            const scene = createBabylonScene(c);
+            const factory = new EntityFactory(scene);
+            let characterEntity: CharacterEntityRuntime | null = null;
+            // 创建角色实体
+            characterEntity = await factory.createCharacter(
+              character()?.id ?? "unknown",
+              character()?.name ?? "未命名角色",
+              new Vector3(0, 0, 4),
+            );
+
+            // idle 动画已经在 createCharacter 中自动播放
+            // 如果需要切换到其他动画，可以使用：
+            // characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
+          }, 10);
       },
     ),
   );
+
+  onMount(() => {
+    console.log("--CharacterIdPage render");
+  });
+
+  onCleanup(() => {
+    console.log("--CharacterIdPage unmount");
+  });
 
   return (
     <Show
@@ -333,6 +318,8 @@ export default function CharactePage() {
               </div>
             </OverlayScrollbarsComponent>
             <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
+            
+            {/* 装备 */}
             <OverlayScrollbarsComponent
               element="div"
               options={{ scrollbars: { autoHide: "scroll" } }}
@@ -340,7 +327,13 @@ export default function CharactePage() {
               class="flex flex-none portrait:w-full landscape:w-1/2"
             >
               <div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
-                <div class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                <div
+                  onClick={() => {
+                    if(character().weapon) {
+                      setStore("pages", "cardGroup", (pre) => [...pre, { type: "weapon" as const, id: character().weapon.id }]);
+                    }
+                  }}
+                  class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />

@@ -25,7 +25,7 @@ import { findPlayers } from "@db/repositories/player";
 import { findSimulators } from "@db/repositories/simulator";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { ensureLocalAccount } from "~/lib/localAccount";
-import { syncControl } from "~/initialWorker";
+import { CardGroup } from "~/components/features/cardGroup";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -171,6 +171,7 @@ export default function AppMainContet(props: ParentProps) {
       </Motion.div>
       <Setting />
       <LoginDialog />
+      <CardGroup />
     </MediaProvider>
   );
 }
