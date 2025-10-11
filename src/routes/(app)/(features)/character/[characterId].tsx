@@ -187,8 +187,6 @@ export default function CharactePage() {
             new Vector3(0, 0, 4),
           );
 
-          console.log("✅ 角色创建成功:", characterEntity);
-
           // idle 动画已经在 createCharacter 中自动播放
           // 如果需要切换到其他动画，可以使用：
           // characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
@@ -212,7 +210,8 @@ export default function CharactePage() {
     on(
       () => canvas(),
       (c) => {
-        if (c) createBabylonScene(c);
+        // new Engine会重设canvas尺寸，这会导致布局重绘，然后引起视觉抖动。这里通过延迟渲染解决
+        if (c) setTimeout(() => createBabylonScene(c), 10);
       },
     ),
   );
@@ -227,7 +226,12 @@ export default function CharactePage() {
       }
     >
       {(character) => (
-        <div class="CharacterPage flex h-full w-full flex-col overflow-hidden">
+        <Motion.div
+          animate={{ opacity: [0, 1] }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+          class="CharacterPage flex h-full w-full flex-col overflow-hidden"
+        >
           <div class={`Title w-full`}>
             <Select
               value={character().name}
@@ -242,10 +246,7 @@ export default function CharactePage() {
           </div>
           <div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
             <div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
-              <canvas
-                ref={setCanvas}
-                class="border-dividing-color block h-full w-full rounded-md border-1"
-              >
+              <canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border-1">
                 当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
               </canvas>
             </div>
@@ -261,6 +262,7 @@ export default function CharactePage() {
                   onClick={() => console.log("连击")}
                   level="quaternary"
                   icon={<Icons.Outline.Gamepad />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   {dictionary().db.combo.selfName}
@@ -269,6 +271,7 @@ export default function CharactePage() {
                   onClick={() => console.log("装备")}
                   level="quaternary"
                   icon={<Icons.Outline.Category />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   装备
@@ -277,6 +280,7 @@ export default function CharactePage() {
                   onClick={() => console.log("消耗品")}
                   level="quaternary"
                   icon={<Icons.Outline.Sale />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   {dictionary().db.consumable.selfName}
@@ -285,6 +289,7 @@ export default function CharactePage() {
                   onClick={() => console.log("料理")}
                   level="quaternary"
                   icon={<Icons.Outline.Coupon2 />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   料理
@@ -293,6 +298,7 @@ export default function CharactePage() {
                   onClick={() => console.log("雷吉斯托环")}
                   level="quaternary"
                   icon={<Icons.Outline.CreditCard />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   雷吉斯托环
@@ -301,6 +307,7 @@ export default function CharactePage() {
                   onClick={() => console.log("技能")}
                   level="quaternary"
                   icon={<Icons.Outline.Scale />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   技能
@@ -309,6 +316,7 @@ export default function CharactePage() {
                   onClick={() => console.log("能力值")}
                   level="quaternary"
                   icon={<Icons.Outline.Filter />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   能力值
@@ -317,6 +325,7 @@ export default function CharactePage() {
                   onClick={() => console.log("基本配置")}
                   level="quaternary"
                   icon={<Icons.Outline.Edit />}
+                  textAlign="left"
                   class="flex-none landscape:w-full"
                 >
                   基本配置
@@ -410,7 +419,7 @@ export default function CharactePage() {
               </div>
             </OverlayScrollbarsComponent>
           </div>
-        </div>
+        </Motion.div>
       )}
     </Show>
   );

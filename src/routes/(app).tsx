@@ -24,6 +24,8 @@ import { findSpecials } from "@db/repositories/speEquip";
 import { findPlayers } from "@db/repositories/player";
 import { findSimulators } from "@db/repositories/simulator";
 import { LoginDialog } from "~/components/features/loginDialog";
+import { ensureLocalAccount } from "~/lib/localAccount";
+import { syncControl } from "~/initialWorker";
 
 export default function AppMainContet(props: ParentProps) {
   // 热键
@@ -108,17 +110,32 @@ export default function AppMainContet(props: ParentProps) {
     // console.log("本地存储更新");
   });
 
-  onMount(() => {
-    // 此组件挂载后移除全局加载动画
-    const loader = document.getElementById("loader");
-    if (loader) {
-      loader.style.opacity = "0";
-      loader.style.scale = "1.1";
-      setTimeout(() => {
-        loader.remove();
-      }, 1000);
-    }
+  // 移除全局加载动画
+  // 此处移除是为了客户端在初次下载完资源时，将画面从加载过渡到正常页面，preload.js中的是为了保证之后的每次页面都不展示加载动画
+  createEffect(
+    on(
+      () => store.pages.resourcesLoaded,
+      () => {
+        console.log("移除全局加载动画");
+        const loader = document.getElementById("loader");
+        if (loader) {
+          loader.style.opacity = "0";
+          loader.style.scale = "1.1";
+          setTimeout(() => {
+            loader.remove();
+          }, 1000);
+        }
+      },
+      {
+        defer: true,
+      },
+    ),
+  );
+
+  // 本地状态更新
+  onMount(async () => {
     setStore("pages", "resourcesLoaded", true);
+    await ensureLocalAccount();
 
     // 数据库查询测试
     findMobs();

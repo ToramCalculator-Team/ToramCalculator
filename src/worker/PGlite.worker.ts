@@ -25,6 +25,11 @@ export interface syncMessage {
   timestamp: string;
 }
 
+export interface SyncControlMessage {
+  type: "sync-control";
+  action: "start" | "stop";
+}
+
 const notifySyncProgress = (tableName: keyof DB) => {
   self.postMessage({
     type: "sync",
@@ -172,7 +177,22 @@ worker({
     console.log("已同步完成");
 
     const writePathSync = new ChangeLogSynchronizer(pg)
-    writePathSync.start()
+    // 不立即启动同步器，等待主线程控制
+    // writePathSync.start()
+
+    // 添加消息监听器处理同步控制
+    self.addEventListener('message', async (event) => {
+      const message = event.data as SyncControlMessage;
+      if (message.type === "sync-control") {
+        if (message.action === "start") {
+          console.log("启动数据同步");
+          await writePathSync.start();
+        } else if (message.action === "stop") {
+          console.log("停止数据同步");
+          await writePathSync.stop();
+        }
+      }
+    });
 
     return pg;
   },

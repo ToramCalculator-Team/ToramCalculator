@@ -25,6 +25,12 @@ const pgWorker = await PGliteWorker.create(pg_worker, {
 
 // console.log(performance.now(), "PGliteWorker初始化完成");
 
+// 导出同步控制函数
+export const syncControl = {
+  start: () => pg_worker.postMessage({ type: "sync-control", action: "start" }),
+  stop: () => pg_worker.postMessage({ type: "sync-control", action: "stop" })
+};
+
 export { pgWorker };
 
 // 初始化数据层服务

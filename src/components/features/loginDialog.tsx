@@ -12,6 +12,9 @@ import { Input } from "../controls/input";
 import { z } from "zod";
 import { findAccountById } from "@db/repositories/account";
 import { Dialog } from "../containers/dialog";
+import { syncControl } from "~/initialWorker";
+import { bindLocalAccountToUser, ensureLocalAccount } from "~/lib/localAccount";
+import { Radio } from "../controls/radio";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -30,12 +33,14 @@ interface LoginFormProps {
   email: string;
   userName: string;
   password: string;
+  bindLocalAccount: boolean;
 }
 
 const defaultValues: LoginFormProps = {
   userName: "",
   email: "",
   password: "",
+  bindLocalAccount: false,
 };
 
 export const LoginDialog = () => {
@@ -72,6 +77,10 @@ export const LoginDialog = () => {
             type: user.accounts[0].type,
           });
         }
+
+        // 启动数据同步
+        syncControl.start();
+        console.log("登录成功，启动数据同步");
       }
 
       setStore("pages", "loginDialogState", false);
@@ -83,6 +92,11 @@ export const LoginDialog = () => {
   const logOut = async () => {
     await fetch("/api/auth/logout");
     setStore("session", {});
+
+    // 停止数据同步
+    syncControl.stop();
+    await ensureLocalAccount();
+    console.log("用户登出，停止数据同步");
   };
 
   const register = async (value: LoginFormProps) => {
@@ -125,24 +139,19 @@ export const LoginDialog = () => {
             type: user.accounts[0].type,
           });
         }
+        if (value.bindLocalAccount) {
+          await bindLocalAccountToUser(user.id, user.accounts[0].id);
+        }
+
+        // 启动数据同步
+        syncControl.start();
+        console.log("注册成功，启动数据同步");
       }
 
       setStore("pages", "loginDialogState", false);
     } catch (error) {
       console.error("请求错误:", error);
     }
-  };
-
-  const [deleteCount, setDeleteCount] = createSignal(0);
-
-  const deleteUser = async () => {
-    await fetch("/api/auth/delete");
-    setStore("session", "user", {
-      id: "",
-      name: "",
-      avatar: "",
-    });
-    setStore("pages", "loginDialogState", false);
   };
 
   // UI文本字典
@@ -315,6 +324,26 @@ export const LoginDialog = () => {
                         value={field().state.value}
                         onBlur={field().handleBlur}
                         onInput={(e) => field().handleChange(e.target.value)}
+                        state={fieldInfo(field())}
+                        class="w-full"
+                      />
+                    )}
+                  />
+                  <form.Field
+                    name="bindLocalAccount"
+                    children={(field) => (
+                      <Input
+                        title="是否从本地数据创建"
+                        // description="目前是个摆设"
+                        autocomplete="off"
+                        type="boolean"
+                        id={field().name}
+                        name={field().name}
+                        onBlur={field().handleBlur}
+                        onClick={() => {
+                          field().setValue(!field().state.value);
+                        }}
+                        checked={field().state.value}
                         state={fieldInfo(field())}
                         class="w-full"
                       />

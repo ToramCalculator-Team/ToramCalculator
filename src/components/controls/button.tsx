@@ -9,6 +9,7 @@ interface MyButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
   level?: Level;
   active?: boolean;
+  textAlign?: "left" | "center" | "right";
 }
 
 export const Button = (props: MyButtonProps) => {
@@ -34,6 +35,11 @@ export const Button = (props: MyButtonProps) => {
         : `bg-transparent hover:bg-area-color active:bg-dividing-color`,
       }[props.level ?? "default"],
       disableClass: props.disabled ? "pointer-events-none opacity-50" : "",
+      textAlignClass: {
+        left: "justify-start",
+        center: "justify-center",
+        right: "justify-end",
+      }[props.textAlign ?? "center"],
     };
   });
 
@@ -41,7 +47,7 @@ export const Button = (props: MyButtonProps) => {
 
   createEffect(() => {
     setDefaultButtonClassNames(
-      `${config().disableClass} cursor-pointer flex items-center justify-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass}`,
+      `${config().disableClass} cursor-pointer flex items-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().textAlignClass}`,
     );
   });
 

@@ -1,5 +1,6 @@
 import { JSX, Match, Show, Switch } from "solid-js";
 import { createId } from "@paralleldrive/cuid2";
+import { Toggle } from "./toggle";
 
 type Size = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
@@ -29,12 +30,10 @@ export const Input = (props: InputProps) => {
     return sizeMap[props.size ?? "default"];
   };
 
-  const getDisableClass = () => props.disabled ? "pointer-events-none opacity-50" : "";
+  const getDisableClass = () => (props.disabled ? "pointer-events-none opacity-50" : "");
 
   return (
-    <div
-      class={`flex flex-1 flex-col items-start gap-2 p-2 ${props.class ?? ""}`}
-    >
+    <div class={`flex flex-1 flex-col items-start gap-2 p-2 ${props.class ?? ""}`}>
       <Show when={props.title}>
         <Show
           when={hasChildren}
@@ -96,6 +95,9 @@ export const Input = (props: InputProps) => {
                   width: props.inputWidth + "px",
                 }}
               />
+            </Match>
+            <Match when={props.type === "boolean"}>
+              <Toggle name={props.title ?? ""} {...props} checked={props.checked} />
             </Match>
           </Switch>
         }

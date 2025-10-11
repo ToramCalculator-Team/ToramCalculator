@@ -20,8 +20,10 @@ const accountSubRelationDefs = defineRelations({
         eb
           .selectFrom("account_create_data")
           .where("account_create_data.accountId", "=", accountId)
-          .selectAll("account_create_data")
-      ).$notNull().as("create"),
+          .selectAll("account_create_data"),
+      )
+        .$notNull()
+        .as("create"),
     schema: account_create_dataSchema.describe("账户创建数据"),
   },
   update: {
@@ -30,16 +32,16 @@ const accountSubRelationDefs = defineRelations({
         eb
           .selectFrom("account_update_data")
           .where("account_update_data.accountId", "=", accountId)
-          .selectAll("account_update_data")
-      ).$notNull().as("update"),
+          .selectAll("account_update_data"),
+      )
+        .$notNull()
+        .as("update"),
     schema: account_update_dataSchema.describe("账户更新数据"),
   },
 });
 
 // 生成 factory
-export const accountRelationsFactory = makeRelations<"account", typeof accountSubRelationDefs>(
-  accountSubRelationDefs
-);
+export const accountRelationsFactory = makeRelations<"account", typeof accountSubRelationDefs>(accountSubRelationDefs);
 
 // 构造关系Schema
 export const AccountWithRelationsSchema = z.object({
@@ -52,75 +54,51 @@ export const accountSubRelations = accountRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findAccountById(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("account")
-    .where("id", "=", id)
-    .selectAll()
-    .executeTakeFirst() || null;
+  const db = trx || (await getDB());
+  return (await db.selectFrom("account").where("id", "=", id).selectAll().executeTakeFirst()) || null;
 }
 
 export async function findAccounts(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("account")
-    .selectAll()
-    .execute();
+  const db = trx || (await getDB());
+  return await db.selectFrom("account").selectAll().execute();
 }
 
-export async function insertAccount(trx: Transaction<DB>, data: AccountInsert) {
-  return await trx
-    .insertInto("account")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+export async function insertAccount(data: AccountInsert, trx?: Transaction<DB>) {
+  const db = trx || (await getDB());
+  return await db.insertInto("account").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function createAccount(trx: Transaction<DB>, data: AccountInsert) {
-  const account = await trx
+export async function createAccount(data: AccountInsert, trx?: Transaction<DB>) {
+  const db = trx || (await getDB());
+  const account = await db
     .insertInto("account")
     .values({
       ...data,
-      id: data.id || createId(),
+      id: data.id ?? createId(),
     })
     .returningAll()
     .executeTakeFirstOrThrow();
 
   // 创建关联的账户数据
-  await trx
-    .insertInto("account_create_data")
-    .values({ accountId: account.id })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  await trx
-    .insertInto("account_update_data")
-    .values({ accountId: account.id })
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  await db.insertInto("account_create_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
+  await db.insertInto("account_update_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
 
   return account;
 }
 
-export async function updateAccount(trx: Transaction<DB>, id: string, data: AccountUpdate) {
-  return await trx
-    .updateTable("account")
-    .set(data)
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+export async function updateAccount(id: string, data: AccountUpdate, trx?: Transaction<DB>) {
+  const db = trx || (await getDB());
+  return await db.updateTable("account").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
-export async function deleteAccount(trx: Transaction<DB>, id: string) {
-  return await trx
-    .deleteFrom("account")
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+export async function deleteAccount(id: string, trx?: Transaction<DB>) {
+  const db = trx || (await getDB());
+  return (await db.deleteFrom("account").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 特殊查询方法
 export async function findAccountWithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
+  const db = trx || (await getDB());
   return await db
     .selectFrom("account")
     .where("id", "=", id)

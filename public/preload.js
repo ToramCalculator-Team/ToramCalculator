@@ -19,7 +19,7 @@ if (!storeStr) {
   const language = storeCache.settings.userInterface.language ?? "zh-CN";
   root.lang = language;
 
-  // Loading
+  // 此处移除是为了客户端在非首次打开页面时不看到加载动画
   const loader = document.getElementById("loader");
   if (loader) {
     storeCache.pages.resourcesLoaded && loader.remove();
