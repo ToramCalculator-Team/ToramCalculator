@@ -19,8 +19,8 @@
  */
 
 // 导入工具模块
-import { GENERATOR_CONFIG } from "./utils/config";
-import { FileUtils, LogUtils } from "./utils/common";
+import { GENERATOR_CONFIG, PATHS } from "./utils/config";
+import { CommandUtils, FileUtils, LogUtils } from "./utils/common";
 import { EnumProcessor } from "./utils/enumProcessor";
 
 // 导入生成器类
@@ -28,6 +28,7 @@ import { SQLGenerator } from "./SQLGenerator";
 import { TypeScriptGenerator } from "./TypeScriptGenerator";
 import { ZodGenerator } from "./ZodGenerator";
 import { QueryBuilderGenerator } from "./QueryBuilderGenerator";
+import { RepositoryGenerator } from "./RepositoryGenerator";
 
 /**
  * 主生成器
@@ -68,6 +69,11 @@ class MainGenerator {
       // 5. 生成 QueryBuilder 规则
       LogUtils.logStep("QueryBuilder生成", "生成 QueryBuilder 规则");
       QueryBuilderGenerator.generate(enumProcessor.getEnumTypeToNameMap());
+
+      // 6. 生成 Repository 文件
+      LogUtils.logStep("Repository生成", "生成 Repository 文件");
+      const repositoryGenerator = new RepositoryGenerator();
+      await repositoryGenerator.generateAll();
 
       // 清理临时文件
       FileUtils.cleanupTempFiles(GENERATOR_CONFIG.tempFiles);

@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@babylonjs/inspector": "^7.32.5",
+    "@prisma/generator-helper": "^6.17.1",
     "@types/bcrypt": "^5.0.2",
     "@types/js-cookie": "^3.0.6",
     "@types/lodash-es": "^4.17.12",

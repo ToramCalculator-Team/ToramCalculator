@@ -1,79 +1,94 @@
-import { DB } from "@db/generated/kysely/kyesely";
+import { DB } from "@db/generated/kysely/kysely";
+import { findUserWithRelations } from "./user";
 import { findAccountWithRelations } from "./account";
-import { findActivityWithRelations } from "./activity";
+import { findPostWithRelations } from "./post";
+import { findWorldWithRelations } from "./world";
 import { findAddressWithRelations } from "./address";
-import { findCharacterWithRelations } from "./character";
-import { findConsumableWithRelations } from "./consumable";
+import { findActivityWithRelations } from "./activity";
+import { findZoneWithRelations } from "./zone";
+import { findImageWithRelations } from "./image";
+import { findStatisticWithRelations } from "./statistic";
+import { findMobWithRelations } from "./mob";
 import { findItemWithRelations } from "./item";
-import { findMemberWithRelations } from "./member";
-import { findMercenaryWithRelations } from "./mercenary";
-import { findCrystalWithRelations } from "./crystal";
 import { findMaterialWithRelations } from "./material";
-import { findComboWithRelations } from "./combo";
+import { findConsumableWithRelations } from "./consumable";
+import { findCrystalWithRelations } from "./crystal";
+import { findWeaponWithRelations } from "./weapon";
+import { findArmorWithRelations } from "./armor";
+import { findOptionWithRelations } from "./option";
+import { findSpecialWithRelations } from "./special";
+import { findRecipeWithRelations } from "./recipe";
+import { findRecipeIngredientWithRelations } from "./recipe_ingredient";
+import { findDropItemWithRelations } from "./drop_item";
+import { findNpcWithRelations } from "./npc";
+import { findTaskWithRelations } from "./task";
+import { findTaskKillRequirementWithRelations } from "./task_kill_requirement";
+import { findTaskCollectRequireWithRelations } from "./task_collect_require";
+import { findTaskRewardWithRelations } from "./task_reward";
 import { findSkillWithRelations } from "./skill";
+import { findSkillEffectWithRelations } from "./skill_effect";
+import { findPlayerWithRelations } from "./player";
+import { findPlayerWeaponWithRelations } from "./player_weapon";
+import { findPlayerArmorWithRelations } from "./player_armor";
+import { findPlayerOptionWithRelations } from "./player_option";
+import { findPlayerSpecialWithRelations } from "./player_special";
+import { findPlayerPetWithRelations } from "./player_pet";
+import { findAvatarWithRelations } from "./avatar";
+import { findCharacterWithRelations } from "./character";
+import { findCharacterSkillWithRelations } from "./character_skill";
+import { findComboWithRelations } from "./combo";
+import { findComboStepWithRelations } from "./combo_step";
+import { findMercenaryWithRelations } from "./mercenary";
+import { findSimulatorWithRelations } from "./simulator";
+import { findTeamWithRelations } from "./team";
+import { findMemberWithRelations } from "./member";
 
-export const relationsDataFinder: Record<keyof DB, any> ={
-    _armorTocrystal: null,
-    _avatarTocharacter: null,
-    _backRelation: null,
-    _campA: null,
-    _campB: null,
-    _characterToconsumable: null,
-    _crystalTooption: null,
-    _crystalToplayer_armor: null,
-    _crystalToplayer_option: null,
-    _crystalToplayer_special: null,
-    _crystalToplayer_weapon: null,
-    _crystalTospecial: null,
-    _crystalToweapon: null,
-    _frontRelation: null,
-    _linkZones: null,
-    _mobTozone: null,
-    account: findAccountWithRelations,
-    account_create_data: null,
-    account_update_data: null,
-    activity: findActivityWithRelations,
-    address: findAddressWithRelations,
-    armor: null,
-    avatar: null,
-    character: findCharacterWithRelations,
-    character_skill: null,
-    combo: findComboWithRelations,
-    combo_step: null,
-    consumable: findConsumableWithRelations,
-    crystal: findCrystalWithRelations,
-    drop_item: null,
-    image: null,
-    item: findItemWithRelations,
-    material: findMaterialWithRelations,
-    member: findMemberWithRelations,
-    mercenary: findMercenaryWithRelations,
-    mob: null,
-    npc: null,
-    option: null,
-    player: null,
-    player_armor: null,
-    player_option: null,
-    player_pet: null,
-    player_special: null,
-    player_weapon: null,
-    post: null,
-    recipe: null,
-    recipe_ingredient: null,
-    session: null,
-    simulator: null,
-    skill: findSkillWithRelations,
-    skill_effect: null,
-    special: null,
-    statistic: null,
-    task: null,
-    task_collect_require: null,
-    task_kill_requirement: null,
-    task_reward: null,
-    team: null,
-    user: null,
-    verification_token: null,
-    weapon: null,
-    world: null,
-    zone: null
-}
+export const relationsDataFinder: Record<keyof DB, any> = {
+  user: findUserWithRelations,
+  account: findAccountWithRelations,
+  session: null,
+  verification_token: null,
+  post: findPostWithRelations,
+  account_create_data: null,
+  account_update_data: null,
+  world: findWorldWithRelations,
+  address: findAddressWithRelations,
+  activity: findActivityWithRelations,
+  zone: findZoneWithRelations,
+  image: findImageWithRelations,
+  statistic: findStatisticWithRelations,
+  mob: findMobWithRelations,
+  item: findItemWithRelations,
+  material: findMaterialWithRelations,
+  consumable: findConsumableWithRelations,
+  crystal: findCrystalWithRelations,
+  weapon: findWeaponWithRelations,
+  armor: findArmorWithRelations,
+  option: findOptionWithRelations,
+  special: findSpecialWithRelations,
+  recipe: findRecipeWithRelations,
+  recipe_ingredient: findRecipeIngredientWithRelations,
+  drop_item: findDropItemWithRelations,
+  npc: findNpcWithRelations,
+  task: findTaskWithRelations,
+  task_kill_requirement: findTaskKillRequirementWithRelations,
+  task_collect_require: findTaskCollectRequireWithRelations,
+  task_reward: findTaskRewardWithRelations,
+  skill: findSkillWithRelations,
+  skill_effect: findSkillEffectWithRelations,
+  player: findPlayerWithRelations,
+  player_weapon: findPlayerWeaponWithRelations,
+  player_armor: findPlayerArmorWithRelations,
+  player_option: findPlayerOptionWithRelations,
+  player_special: findPlayerSpecialWithRelations,
+  player_pet: findPlayerPetWithRelations,
+  avatar: findAvatarWithRelations,
+  character: findCharacterWithRelations,
+  character_skill: findCharacterSkillWithRelations,
+  combo: findComboWithRelations,
+  combo_step: findComboStepWithRelations,
+  mercenary: findMercenaryWithRelations,
+  simulator: findSimulatorWithRelations,
+  team: findTeamWithRelations,
+  member: findMemberWithRelations
+};

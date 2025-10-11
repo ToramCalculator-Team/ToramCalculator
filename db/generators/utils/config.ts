@@ -38,6 +38,9 @@ export const PATHS = {
   queryBuilder: {
     rules: path.join(__dirname, "../../generated/queryBuilderRules.ts"),
   },
+  repository: {
+    output: path.join(__dirname, "../../generated/repository"),
+  },
 } as const;
 
 /**
@@ -56,5 +59,6 @@ export const GENERATOR_CONFIG = {
     path.dirname(PATHS.clientDB.sql),
     path.dirname(PATHS.zod.schemas),
     path.dirname(PATHS.queryBuilder.rules),
+    PATHS.repository.output,
   ],
 };
