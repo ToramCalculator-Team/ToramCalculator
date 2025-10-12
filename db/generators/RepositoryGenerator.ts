@@ -493,8 +493,8 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof find${pascalN
 
     if (hasAccountTracking) {
       valueFields.push(
-        "    createdByAccountId: store.session.user.account?.id",
-        "    updatedByAccountId: store.session.user.account?.id"
+        "    createdByAccountId: store.session.account?.id",
+        "    updatedByAccountId: store.session.account?.id"
       );
     }
 
