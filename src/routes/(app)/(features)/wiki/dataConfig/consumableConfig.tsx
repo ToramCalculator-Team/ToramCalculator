@@ -11,7 +11,7 @@ import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import {
   defaultItemWithRelated,
@@ -189,7 +189,7 @@ export const ConsumableDataConfig: dataDisplayConfig<
               itemId: item.id,
             });
           }
-          setWikiStore("cardGroup", (pre) => [...pre, { type: "consumable", id: consumableItem.itemId }]);
+          setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "consumable", id: consumableItem.itemId });
           setWikiStore("form", {
             data: undefined,
             isOpen: false,

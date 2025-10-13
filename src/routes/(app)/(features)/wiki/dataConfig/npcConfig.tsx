@@ -16,7 +16,7 @@ import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import Icons from "~/components/icons/index";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
 import { createStatistic } from "@db/repositories/statistic";
@@ -143,7 +143,7 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
         }
         return npc;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "npc", id: npc.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -351,7 +351,7 @@ export const NpcDataConfig: dataDisplayConfig<npc, NpcWithRelated, NpcWithRelate
           title={"持有的" + dic.db.task.selfName}
           data={tasksData.latest}
           dataRender={(task) => {
-            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }])}>{task.name}</Button>;
+            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "task", id: task.id })}>{task.name}</Button>;
           }}
         />
         <CardSharedSection<NpcWithRelated> dic={dic} data={data} delete={deleteNpc} />

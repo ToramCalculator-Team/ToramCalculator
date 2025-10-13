@@ -68,7 +68,7 @@ export class RepositoryGenerator {
       
       LogUtils.logSuccess("Repository 生成器初始化完成（使用 DMMF）");
     } catch (error) {
-      LogUtils.logError("Repository 生成器初始化失败", error);
+      LogUtils.logError("Repository 生成器初始化失败", error as Error);
       throw error;
     }
   }
@@ -90,7 +90,7 @@ export class RepositoryGenerator {
     }
 
     if (schemaValidation.warnings.length > 0) {
-      LogUtils.logWarning("Schema 验证警告", ValidationUtils.formatValidationResult(schemaValidation));
+      LogUtils.logWarning(`Schema 验证警告: ${ValidationUtils.formatValidationResult(schemaValidation)}`);
     }
 
     const generatedFiles: string[] = [];
@@ -111,7 +111,7 @@ export class RepositoryGenerator {
 
         await this.generateRepository(model.name);
         generatedFiles.push(model.name);
-        LogUtils.logSuccess(`生成 ${model.name} Repository`);
+        // LogUtils.logSuccess(`生成 ${model.name} Repository`);
       } catch (error) {
         LogUtils.logError(`生成 ${model.name} Repository 失败`, error as Error);
       }
@@ -673,7 +673,7 @@ ${createLogic}
 
       // CRUD 函数导入
       crudImports.push(
-        `import { insert${pascalName}, update${pascalName}, delete${pascalName}, find${pascalName}ById, find${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
+        `import { insert${pascalName}, update${pascalName}, delete${pascalName}, find${pascalName}ById, find${pascalName}WithRelations, findAll${this.pluralize(pascalName)} } from "./${modelName.toLowerCase()}";`
       );
 
       crudExports[modelName.toLowerCase()] = {
@@ -681,7 +681,8 @@ ${createLogic}
         update: `update${pascalName}`,
         delete: `delete${pascalName}`,
         select: `find${pascalName}ById`,
-        selectWithRelation: `find${pascalName}WithRelations`
+        selectWithRelation: `find${pascalName}WithRelations`,
+        findAll: `findAll${this.pluralize(pascalName)}`
       };
     }
 
@@ -709,25 +710,8 @@ ${this.generateCrudExports(crudExports)}
     // 读取所有表名（包括跳过的表和中间表）
     const allTables = this.models.map((m: any) => m.name.toLowerCase());
     
-    // 添加中间表（这些表在 Prisma schema 中是隐式生成的）
-    const intermediateTables = [
-      '_armorTocrystal',
-      '_avatarTocharacter', 
-      '_backRelation',
-      '_campA',
-      '_campB',
-      '_characterToconsumable',
-      '_crystalTooption',
-      '_crystalToplayer_armor',
-      '_crystalToplayer_option',
-      '_crystalToplayer_special',
-      '_crystalToplayer_weapon',
-      '_crystalTospecial',
-      '_crystalToweapon',
-      '_frontRelation',
-      '_linkZones',
-      '_mobTozone'
-    ];
+    // 从 DMMF 中动态获取中间表
+    const intermediateTables = this.getIntermediateTables();
     
     // 合并所有表名
     const allTableNames = [...allTables, ...intermediateTables];
@@ -741,7 +725,8 @@ ${this.generateCrudExports(crudExports)}
     update: ${crudMethods.update},
     delete: ${crudMethods.delete},
     select: ${crudMethods.select},
-    selectWithRelation: ${crudMethods.selectWithRelation}
+    selectWithRelation: ${crudMethods.selectWithRelation},
+    findAll: ${crudMethods.findAll}
   }`);
       } else {
         // 对于跳过的表和中间表，所有方法都设置为 null
@@ -750,12 +735,82 @@ ${this.generateCrudExports(crudExports)}
     update: null,
     delete: null,
     select: null,
-    selectWithRelation: null
+    selectWithRelation: null,
+    findAll: null
   }`);
       }
     }
 
     return lines.join(",\n");
+  }
+
+  /**
+   * 从 DMMF 中获取所有中间表名称
+   */
+  private getIntermediateTables(): string[] {
+    const intermediateTables = new Set<string>();
+    
+    // 遍历所有模型的关系字段
+    for (const model of this.models) {
+      for (const field of model.fields) {
+        // 检查是否为多对多关系
+        if (field.kind === 'object' && field.isList && field.relationName) {
+          const relationName = field.relationName;
+          
+          // 检查是否为真正的多对多关系
+          if (this.isManyToManyRelation(field, model)) {
+            // 添加中间表名（Prisma 自动生成的中间表以 _ 开头）
+            intermediateTables.add(`_${relationName}`);
+          }
+        }
+      }
+    }
+    
+    return Array.from(intermediateTables).sort();
+  }
+
+  /**
+   * 判断是否为真正的多对多关系
+   * 多对多关系的特征：
+   * 1. 当前字段是 isList: true
+   * 2. 当前字段没有显式的外键字段（relationFromFields 为空）
+   * 3. 目标字段也是 isList: true
+   * 4. 目标字段也没有显式的外键字段
+   * 
+   * 如果任何一边有外键字段，那就是一对多关系，不是多对多关系
+   */
+  private isManyToManyRelation(field: any, model: any): boolean {
+    // 检查当前字段是否有显式的外键字段
+    if (field.relationFromFields && field.relationFromFields.length > 0) {
+      return false; // 有外键字段，不是多对多关系
+    }
+    
+    // 检查目标模型的反向关系
+    const targetModel = this.models.find(m => m.name === field.type);
+    if (!targetModel) {
+      return false;
+    }
+    
+    // 找到反向关系字段
+    const reverseField = targetModel.fields.find((f: any) => 
+      f.relationName === field.relationName && f.name !== field.name
+    );
+    
+    if (!reverseField) {
+      return false;
+    }
+    
+    // 反向关系也必须是 isList: true
+    if (!reverseField.isList) {
+      return false;
+    }
+    
+    // 反向关系也不能有外键字段
+    if (reverseField.relationFromFields && reverseField.relationFromFields.length > 0) {
+      return false;
+    }
+    
+    return true;
   }
 
   /**

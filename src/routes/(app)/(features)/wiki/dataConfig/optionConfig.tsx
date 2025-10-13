@@ -11,7 +11,7 @@ import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import {
   defaultItemWithRelated,
@@ -127,7 +127,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
               itemId: item.id,
             });
           }
-          setWikiStore("cardGroup", (pre) => [...pre, { type: "option", id: optionItem.itemId }]);
+          setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "option", id: optionItem.itemId });
           setWikiStore("form", {
             data: undefined,
             isOpen: false,
@@ -174,7 +174,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
                     await deleteOption(trx, data.itemId);
                   });
                   // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
                 }}
               />
               <Button
@@ -182,7 +182,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
                 icon={<Icons.Outline.Edit />}
                 onclick={() => {
                   // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
                   setWikiStore("form", { isOpen: true, data: data });
                 }}
               />

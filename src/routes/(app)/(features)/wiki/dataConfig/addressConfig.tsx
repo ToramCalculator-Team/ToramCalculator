@@ -31,6 +31,7 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
+import { setStore, store } from "~/store";
 
 
 const defaultAddressWithRelations: AddressWithRelations = {
@@ -96,7 +97,7 @@ const AddressWithRelationsForm = (dic: dictionary, oldAddress?: AddressWithRelat
         }
         return address;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "address", id: address.id });
       setWikiStore("form", {
         isOpen: false,
       });
@@ -474,7 +475,7 @@ export const AddressDataConfig: dataDisplayConfig<address, AddressWithRelations,
           title={"包含的" + dic.db.zone.selfName}
           data={zonesData.latest}
           dataRender={(zone) => {
-            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>{zone.name}</Button>;
+            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>{zone.name}</Button>;
           }}
         />
         <CardSharedSection<AddressWithRelations> dic={dic} data={data} delete={deleteAddress} />

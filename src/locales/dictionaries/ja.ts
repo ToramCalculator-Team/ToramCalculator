@@ -1050,7 +1050,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        playerId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1222,7 +1222,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        characterId: {
+        belongToCharacterId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1248,7 +1248,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        characterId: {
+        belongToCharacterId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1291,7 +1291,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        comboId: {
+        belongToComboId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1609,7 +1609,7 @@ const dictionary: dictionary = {
             Ultimate: ""
           }
         },
-        teamId: {
+        belongToTeamId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""
@@ -1917,7 +1917,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: ""
         },
-        accountId: {
+        belongToAccountId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: ""

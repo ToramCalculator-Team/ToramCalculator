@@ -23,7 +23,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { TaskRewardType } from "@db/schema/enums";
 import { createStatistic } from "@db/repositories/statistic";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import Icons from "~/components/icons/index";
 import { setWikiStore } from "../store";
 import { itemTypeToTableType } from "./item";
@@ -264,7 +264,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
 
         return task;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "task", id: task.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "task", id: task.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -827,10 +827,8 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
             return (
               <Button
                 onClick={() =>
-                  setWikiStore("cardGroup", (pre) => [
-                    ...pre,
-                    { type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId },
-                  ])
+                  setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: itemTypeToTableType(collectRequire.itemType), id: collectRequire.itemId })
+
                 }
               >
                 {collectRequire.itemName}
@@ -844,7 +842,7 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
           dataRender={(killRequirement) => {
             return (
               <Button
-                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: killRequirement.mobId }])}
+                onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "mob", id: killRequirement.mobId })}
               >
                 {killRequirement.mobName}
               </Button>
@@ -858,10 +856,8 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
             return (
               <Button
                 onClick={() =>
-                  setWikiStore("cardGroup", (pre) => [
-                    ...pre,
-                    { type: itemTypeToTableType(reward.itemType), id: reward.itemId! },
-                  ])
+                  setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: itemTypeToTableType(reward.itemType), id: reward.itemId! })
+
                 }
               >
                 {reward.itemName}

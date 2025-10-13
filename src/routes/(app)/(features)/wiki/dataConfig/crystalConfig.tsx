@@ -33,6 +33,7 @@ import { EnumSelect } from "~/components/controls/enumSelect";
 import { CrystalType } from "@db/schema/enums";
 import { Select } from "~/components/controls/select";
 import Icons from "~/components/icons";
+import { setStore, store } from "~/store";
 
 type CrystalWithRelated = crystal & {
   front: (crystal & item)[];
@@ -372,7 +373,7 @@ export const CrystalDataConfig: dataDisplayConfig<
               .execute();
           }
 
-          setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: crystalItem.itemId }]);
+          setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "crystal", id: crystalItem.itemId });
           setWikiStore("form", {
             data: undefined,
             isOpen: false,
@@ -451,7 +452,7 @@ export const CrystalDataConfig: dataDisplayConfig<
           dataRender={(front) => {
             return (
               <Button
-                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: front.id }])}
+                onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "crystal", id: front.id })}
                 icon={<Icons.Spirits iconName={front.type} size={24} />}
                 class="justify-start"
               >
@@ -466,7 +467,7 @@ export const CrystalDataConfig: dataDisplayConfig<
           dataRender={(back) => {
             return (
               <Button
-                onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "crystal", id: back.id }])}
+                onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "crystal", id: back.id })}
                 icon={<Icons.Spirits iconName={back.type} size={24} />}
                 class="justify-start"
               >

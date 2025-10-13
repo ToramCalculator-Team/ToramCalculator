@@ -11,7 +11,7 @@ import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import {
   defaultItemWithRelated,
@@ -201,7 +201,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
               itemId: item.id,
             });
           }
-          setWikiStore("cardGroup", (pre) => [...pre, { type: "weapon", id: weaponItem.itemId }]);
+          setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "weapon", id: weaponItem.itemId });
           setWikiStore("form", {
             data: undefined,
             isOpen: false,
@@ -248,7 +248,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
                     await deleteWeapon(trx, data.itemId);
                   });
                   // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setStore("pages","cardGroup", (pre) => pre.slice(0, -1));
                 }}
               />
               <Button
@@ -256,7 +256,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
                 icon={<Icons.Outline.Edit />}
                 onclick={() => {
                   // 关闭当前卡片
-                  setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+                  setStore("pages","cardGroup", (pre) => pre.slice(0, -1));
                   setWikiStore("form", { isOpen: true, data: data });
                 }}
               />

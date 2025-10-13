@@ -219,7 +219,7 @@ ${generatedSchemas}
           z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
         ]))`;
       case "unknown":
-        return `z.unknown()`;
+        return `z.record(z.unknown())`;
       default:
         // 检查是否是枚举类型（以 Type 结尾）
         if (type.endsWith("Type")) {

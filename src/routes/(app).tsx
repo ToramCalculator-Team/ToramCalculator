@@ -132,10 +132,21 @@ export default function AppMainContet(props: ParentProps) {
         if (!value.select?.name) {
           continue;
         }
-        const primaryKey = await getPrimaryKeys(trx, value.select.name as keyof DB);
-        console.log("表名：", key, "主键：", primaryKey,"默认值的主键：", defaultData[key as keyof DB][primaryKey[0]]);
+        const primaryKey = await getPrimaryKeys(trx, key as keyof DB);
+        if (primaryKey.length === 0) {
+          continue;
+        }
         const data = await value.select(defaultData[key as keyof DB][primaryKey[0]], trx);
-        console.log( "数据：", data);
+        // console.log(
+        //   "表名：",
+        //   key,
+        //   "主键：",
+        //   primaryKey,
+        //   "默认值的主键：",
+        //   defaultData[key as keyof DB][primaryKey[0]],
+        //   "数据：",
+        //   data,
+        // );
       }
     });
   });

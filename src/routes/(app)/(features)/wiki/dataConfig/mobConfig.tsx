@@ -29,7 +29,7 @@ import { EnumSelect } from "~/components/controls/enumSelect";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
 import { createStatistic } from "@db/repositories/statistic";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import { dataDisplayConfig } from "./dataConfig";
 import { Transaction } from "kysely";
@@ -218,7 +218,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
 
         return mob;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "mob", id: mob.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -981,14 +981,14 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           title={"出现的" + dic.db.zone.selfName}
           data={zonesData.latest}
           dataRender={(zone) => {
-            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>{zone.name}</Button>
+            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>{zone.name}</Button>
           }}
         />
         <CardSection
           title={"掉落的" + dic.db.drop_item.selfName}
           data={dropItemsData.latest}
           dataRender={(item) => {
-            return <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: itemTypeToTableType(item.itemType!), id: item.id }])}>{item.name}</Button>
+            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: itemTypeToTableType(item.itemType!), id: item.id })}>{item.name}</Button>
           }}
         />
         <CardSharedSection<MobWithRelated> dic={dic} data={data} delete={deleteMob} />

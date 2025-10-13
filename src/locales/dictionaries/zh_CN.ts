@@ -1045,7 +1045,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "头像的属性修正值",
           formFieldDescription: "请输入属性修正值",
         },
-        playerId: {
+        belongToPlayerId: {
           key: "玩家ID",
           tableFieldDescription: "关联的玩家ID",
           formFieldDescription: "选择关联的玩家",
@@ -1217,7 +1217,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        characterId: {
+        belongToCharacterId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1243,7 +1243,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        characterId: {
+        belongToCharacterId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1286,7 +1286,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        comboId: {
+        belongToComboId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1604,7 +1604,7 @@ const dictionary: dictionary = {
             Ultimate: "四星",
           },
         },
-        teamId: {
+        belongToTeamId: {
           key: "队伍ID",
           tableFieldDescription: "成员的队伍ID",
           formFieldDescription: "选择成员的队伍",
@@ -1916,7 +1916,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        accountId: {
+        belongToAccountId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",

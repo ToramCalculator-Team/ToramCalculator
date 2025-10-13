@@ -11,7 +11,7 @@ import { createForm } from "@tanstack/solid-form";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { Transaction } from "kysely";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 import {
   defaultItemWithRelated,
@@ -130,7 +130,7 @@ export const ArmorDataConfig: dataDisplayConfig<armor & item, armor & ItemWithRe
               itemId: item.id,
             });
           }
-          setWikiStore("cardGroup", (pre) => [...pre, { type: "armor", id: armor.itemId }]);
+          setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "armor", id: armor.itemId });
           setWikiStore("form", {
             data: undefined,
             isOpen: false,

@@ -17,7 +17,7 @@ import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { SkillDistanceType, SkillTreeType } from "@db/schema/enums";
 import Icons from "~/components/icons/index";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { createStatistic } from "@db/repositories/statistic";
 import { setWikiStore } from "../store";
 import { Transaction } from "kysely";
@@ -169,7 +169,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
         }
         return skill;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "skill", id: skill.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "skill", id: skill.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,

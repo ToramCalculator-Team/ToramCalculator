@@ -30,7 +30,7 @@ import { setWikiStore } from "../store";
 import { ExpressionBuilder, Transaction } from "kysely";
 import { createStatistic } from "@db/repositories/statistic";
 import { createId } from "@paralleldrive/cuid2";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import {
@@ -225,8 +225,8 @@ export const createItem = async (trx: Transaction<DB>, value: item) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user?.account?.id,
-      updatedByAccountId: store.session.user?.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -238,7 +238,7 @@ export const updateItem = async (trx: Transaction<DB>, value: item) => {
     .updateTable("item")
     .set({
       ...value,
-      updatedByAccountId: store.session.user?.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()
@@ -683,7 +683,9 @@ export const ItemSharedFormField = (
                                                 {(subField) => (
                                                   <Input
                                                     title={dic.db.drop_item.fields.belongToMobId.key}
-                                                    description={dic.db.drop_item.fields.belongToMobId.formFieldDescription}
+                                                    description={
+                                                      dic.db.drop_item.fields.belongToMobId.formFieldDescription
+                                                    }
                                                     state={fieldInfo(subField())}
                                                   >
                                                     <Autocomplete
@@ -1187,7 +1189,7 @@ export const ItemSharedFormDataSubmitor = async (
       .updateTable("recipe")
       .set({
         ...newRecipeData,
-        updatedByAccountId: store.session.user?.account?.id,
+        updatedByAccountId: store.session.account?.id,
       })
       .where("id", "=", oldRecipe.id)
       .returningAll()
@@ -1202,8 +1204,8 @@ export const ItemSharedFormDataSubmitor = async (
         id: createId(),
         statisticId: statistic.id,
         itemId: item.id,
-        createdByAccountId: store.session.user?.account?.id,
-        updatedByAccountId: store.session.user?.account?.id,
+        createdByAccountId: store.session.account?.id,
+        updatedByAccountId: store.session.account?.id,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -1420,9 +1422,9 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .selectFrom("drop_item")
             .where("drop_item.id", "=", item.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("mob").whereRef("mob.id", "=", "drop_item.belongToMobId").selectAll("mob")).as(
-                "relatedMob",
-              ),
+              jsonObjectFrom(
+                eb.selectFrom("mob").whereRef("mob.id", "=", "drop_item.belongToMobId").selectAll("mob"),
+              ).as("relatedMob"),
             ])
             .selectAll()
             .executeTakeFirstOrThrow();
@@ -1444,9 +1446,9 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .selectFrom("task_reward")
             .where("task_reward.id", "=", reward.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("task").whereRef("task.id", "=", "task_reward.belongToTaskId").selectAll("task")).as(
-                "relatedTask",
-              ),
+              jsonObjectFrom(
+                eb.selectFrom("task").whereRef("task.id", "=", "task_reward.belongToTaskId").selectAll("task"),
+              ).as("relatedTask"),
             ])
             .selectAll()
             .executeTakeFirstOrThrow();
@@ -1522,13 +1524,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
                   return (
                     <Button
                       onClick={() =>
-                        setWikiStore("cardGroup", (prev) => [
-                          ...prev,
-                          {
-                            type: itemTypeToTableType(recipeEntry.relatedItem?.itemType!),
-                            id: recipeEntry.relatedItem?.id ?? "",
-                          },
-                        ])
+                        setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                          type: itemTypeToTableType(recipeEntry.relatedItem?.itemType!),
+                          id: recipeEntry.relatedItem?.id ?? "",
+                        })
                       }
                       icon={
                         <Icons.Spirits iconName={itemTypeToTableType(recipeEntry.relatedItem?.itemType!)} size={24} />
@@ -1565,7 +1564,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
           return (
             <Button
               onClick={() =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "mob", id: dropBy.relatedMob?.id ?? "" }])
+                setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                  type: "mob",
+                  id: dropBy.relatedMob?.id ?? "",
+                })
               }
               icon={<Icons.Spirits iconName="mob" size={24} />}
               class="justify-start"
@@ -1583,7 +1585,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
           return (
             <Button
               onClick={() =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: rewardItem.relatedTask?.id ?? "" }])
+                setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                  type: "task",
+                  id: rewardItem.relatedTask?.id ?? "",
+                })
               }
               icon={<Icons.Spirits iconName="task" size={24} />}
               class="justify-start"
@@ -1602,10 +1607,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
           return (
             <Button
               onClick={() =>
-                setWikiStore("cardGroup", (prev) => [
-                  ...prev,
-                  { type: itemTypeToTableType(usedIn.relatedItem?.itemType!), id: usedIn.relatedItem?.id ?? "" },
-                ])
+                setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                  type: itemTypeToTableType(usedIn.relatedItem?.itemType!),
+                  id: usedIn.relatedItem?.id ?? "",
+                })
               }
               icon={<Icons.Spirits iconName={itemTypeToTableType(usedIn.relatedItem?.itemType!)} size={24} />}
               class="justify-start"
@@ -1623,7 +1628,10 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
           return (
             <Button
               onClick={() =>
-                setWikiStore("cardGroup", (prev) => [...prev, { type: "task", id: usedInTask.relatedTask?.id ?? "" }])
+                setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                  type: "task",
+                  id: usedInTask.relatedTask?.id ?? "",
+                })
               }
               icon={<Icons.Spirits iconName="task" size={24} />}
               class="justify-start"

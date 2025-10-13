@@ -24,6 +24,7 @@ import { pick } from "lodash-es";
 import { arrayDiff, CardSharedSection } from "./utils";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
+import { setStore, store } from "~/store";
 
 const defaultActivityWithRelations: ActivityWithRelations = {
   ...defaultData.activity,
@@ -87,7 +88,7 @@ const ActivityWithRelationsForm = (dic: dictionary, oldActivity?: ActivityWithRe
         }
         return activity;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "activity", id: activity.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -269,7 +270,7 @@ export const ActivityDataConfig: dataDisplayConfig<activity, ActivityWithRelatio
           data={zonesData.latest}
           dataRender={(zone) => {
             return (
-              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>
+              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>
                 {zone.name}
               </Button>
             );

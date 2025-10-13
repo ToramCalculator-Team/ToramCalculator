@@ -449,7 +449,7 @@ export class SchemaParser {
       const targetModel = this.models.find(m => m.name === targetTable);
       if (targetModel) {
         // 查找指向当前模型的外键字段
-        const foreignKeyField = targetModel.fields.find(f => 
+        const foreignKeyField = targetModel.fields.find((f: any) => 
           f.relationFromFields && f.relationFromFields.length > 0 && 
           f.type === model.name
         );
@@ -630,7 +630,7 @@ export class SchemaParser {
     }
     
     // 查找主键字段
-    const primaryKeyField = model.fields.find(field => field.isId);
+    const primaryKeyField = model.fields.find((field: any) => field.isId);
     if (primaryKeyField) {
       return primaryKeyField.name;
     }

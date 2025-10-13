@@ -17,7 +17,7 @@ import { createForm } from "@tanstack/solid-form";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "~/components/controls/toggle";
 import Icons from "~/components/icons/index";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { createStatistic } from "@db/repositories/statistic";
 import { setWikiStore } from "../store";
 import { pick } from "lodash-es";
@@ -212,7 +212,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
 
         return zone;
       });
-      setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }]);
+      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -664,7 +664,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={mobData.latest}
           dataRender={(mob) => {
             return (
-              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "mob", id: mob.id }])}>
+              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "mob", id: mob.id })}>
                 {mob.name}
               </Button>
             );
@@ -676,7 +676,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={npcsData.latest}
           dataRender={(npc) => {
             return (
-              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "npc", id: npc.id }])}>
+              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "npc", id: npc.id })}>
                 {npc.name}
               </Button>
             );
@@ -688,7 +688,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={linkZonesData.latest}
           dataRender={(zone) => {
             return (
-              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "zone", id: zone.id }])}>
+              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>
                 {zone.name}
               </Button>
             );
@@ -700,7 +700,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={addressData.latest}
           dataRender={(address) => {
             return (
-              <Button onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "address", id: address.id }])}>
+              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "address", id: address.id })}>
                 {address.name}
               </Button>
             );
@@ -714,7 +714,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
             dataRender={(activity) => {
               return (
                 <Button
-                  onClick={() => setWikiStore("cardGroup", (pre) => [...pre, { type: "activity", id: activity.id }])}
+                  onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "activity", id: activity.id })}
                 >
                   {activity.name}
                 </Button>
