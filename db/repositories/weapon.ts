@@ -76,8 +76,8 @@ export async function createWeapon(trx: Transaction<DB>, data: WeaponInsert, ite
     ...itemData,
     id: data.itemId || createId(),
     statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
+    createdByAccountId: store.session.account?.id,
+    updatedByAccountId: store.session.account?.id,
   });
   
   // 3. 创建 weapon 记录（复用 insertWeapon）

@@ -163,7 +163,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         // 设置引擎的镜像通信发送器
         gameEngine.setMirrorSender((msg: EngineCommand) => {
           try {
-            messagePort.postMessage({ taskId: "engine_state_machine", type: "engine_state_machine", data: msg });
+            messagePort.postMessage({ belongToTaskId: "engine_state_machine", type: "engine_state_machine", data: msg });
           } catch (error) {
             console.error("Worker: 发送镜像消息失败:", error);
           }
@@ -172,7 +172,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         // 设置MessageChannel端口用于任务通信
         messagePort.onmessage = async (portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>) => {
           console.log("🔌 Worker: 收到消息", portEvent.data);
-          const { taskId: portTaskId, payload, priority } = portEvent.data;
+          const { belongToTaskId: portbelongToTaskId, payload, priority } = portEvent.data;
           const startTime = performance.now();
 
           try {
@@ -206,7 +206,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 
             // 返回结果给SimulatorPool
             const response: WorkerMessageEvent<any, SimulatorTaskMap, any> = {
-              taskId: portTaskId,
+              belongToTaskId: portbelongToTaskId,
               result: portResult,
               error: null,
               metrics: {
@@ -222,7 +222,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 
             // 返回错误给SimulatorPool
             const errorResponse: WorkerMessageEvent<any, SimulatorTaskMap, any> = {
-              taskId: portTaskId,
+              belongToTaskId: portbelongToTaskId,
               result: null,
               error: error instanceof Error ? error.message : String(error),
               metrics: {
@@ -274,7 +274,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 function postSystemMessage(port: MessagePort, type: "system_event" | "frame_snapshot" | "render_cmd", data: any) {
   // 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
   const sanitizedData = sanitizeForPostMessage(data);
-  const msg = { taskId: type, type, data: sanitizedData } as const;
+  const msg = { belongToTaskId: type, type, data: sanitizedData } as const;
 
   try {
     const { message, transferables } = prepareForTransfer(msg);
@@ -283,7 +283,7 @@ function postSystemMessage(port: MessagePort, type: "system_event" | "frame_snap
     console.error("Worker: 消息序列化失败:", error);
     // 如果序列化失败，尝试发送清理后的数据
     try {
-      port?.postMessage({ taskId: type, type, data: sanitizedData });
+      port?.postMessage({ belongToTaskId: type, type, data: sanitizedData });
     } catch (fallbackError) {
       console.error("Worker: 备用消息发送也失败:", fallbackError);
     }

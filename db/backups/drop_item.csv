@@ -1,4 +1,4 @@
-id,itemId,probability,relatedPartType,relatedPartInfo,breakRewardType,dropById
+id,itemId,probability,relatedPartType,relatedPartInfo,breakRewardType,belongToMobId
 defaultDropItemCrystalId,defaultWeaponCrystalAItemId,0,A,"",None,defaultMobId
 defaultDropItemWeaponId,defaultWeaponItemId,0,A,"",None,defaultMobId
 s9je7rc9breqrq61ysqngzd0,hurdth139z0hy8r0noyd41go,0,A,"",None,cfcpq4nv2v41luglzbaswyl8

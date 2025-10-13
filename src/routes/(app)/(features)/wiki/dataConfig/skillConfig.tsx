@@ -85,8 +85,8 @@ const createSkill = async (trx: Transaction<DB>, value: skill) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -98,7 +98,7 @@ const updateSkill = async (trx: Transaction<DB>, value: skill) => {
     .updateTable("skill")
     .set({
       ...value,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()

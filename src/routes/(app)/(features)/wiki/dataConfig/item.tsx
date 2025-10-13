@@ -637,7 +637,7 @@ export const ItemSharedFormField = (
                             <form.Subscribe
                               selector={(state) =>
                                 state.values.usedInDropItems[dropItemIndex]
-                                  ? state.values.usedInDropItems[dropItemIndex].dropById
+                                  ? state.values.usedInDropItems[dropItemIndex].belongToMobId
                                   : ""
                               }
                             >
@@ -677,13 +677,13 @@ export const ItemSharedFormField = (
                                           case "id":
                                           case "itemId":
                                             return null;
-                                          case "dropById":
+                                          case "belongToMobId":
                                             return (
                                               <form.Field name={`usedInDropItems[${dropItemIndex}].${fieldKey}`}>
                                                 {(subField) => (
                                                   <Input
-                                                    title={dic.db.drop_item.fields.dropById.key}
-                                                    description={dic.db.drop_item.fields.dropById.formFieldDescription}
+                                                    title={dic.db.drop_item.fields.belongToMobId.key}
+                                                    description={dic.db.drop_item.fields.belongToMobId.formFieldDescription}
                                                     state={fieldInfo(subField())}
                                                   >
                                                     <Autocomplete
@@ -952,10 +952,10 @@ export const ItemSharedFormField = (
                                     case "itemId":
                                     case "type":
                                       return null;
-                                    case "taskId":
+                                    case "belongToTaskId":
                                       return (
                                         <form.Field
-                                          name={`usedInTaskRewards[${taskRewardIndex}].taskId`}
+                                          name={`usedInTaskRewards[${taskRewardIndex}].belongToTaskId`}
                                           validators={{
                                             onChangeAsyncDebounceMs: 500,
                                             onChangeAsync: task_rewardSchema.shape[fieldKey],
@@ -1060,10 +1060,10 @@ export const ItemSharedFormField = (
                                   case "id":
                                   case "itemId":
                                     return null;
-                                  case "taskId":
+                                  case "belongToTaskId":
                                     return (
                                       <form.Field
-                                        name={`usedInTaskCollectRequires[${taskCollectRequireIndex}].taskId`}
+                                        name={`usedInTaskCollectRequires[${taskCollectRequireIndex}].belongToTaskId`}
                                         validators={{
                                           onChangeAsyncDebounceMs: 500,
                                           onChangeAsync: task_collect_requireSchema.shape[fieldKey],
@@ -1072,14 +1072,14 @@ export const ItemSharedFormField = (
                                         {(itemIdField) => {
                                           return (
                                             <Input
-                                              title={dic.db.task_collect_require.fields.taskId.key}
+                                              title={dic.db.task_collect_require.fields.belongToTaskId.key}
                                               description={
-                                                dic.db.task_collect_require.fields.taskId.formFieldDescription
+                                                dic.db.task_collect_require.fields.belongToTaskId.formFieldDescription
                                               }
                                               state={fieldInfo(itemIdField())}
                                             >
                                               <Autocomplete
-                                                id={`usedInTaskCollectRequires[${taskCollectRequireIndex}].taskId`}
+                                                id={`usedInTaskCollectRequires[${taskCollectRequireIndex}].belongToTaskId`}
                                                 initialValue={itemIdField().state.value}
                                                 setValue={(value) => itemIdField().setValue(value.id)}
                                                 datasFetcher={async () => {
@@ -1420,7 +1420,7 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .selectFrom("drop_item")
             .where("drop_item.id", "=", item.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("mob").whereRef("mob.id", "=", "drop_item.dropById").selectAll("mob")).as(
+              jsonObjectFrom(eb.selectFrom("mob").whereRef("mob.id", "=", "drop_item.belongToMobId").selectAll("mob")).as(
                 "relatedMob",
               ),
             ])
@@ -1444,7 +1444,7 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .selectFrom("task_reward")
             .where("task_reward.id", "=", reward.id)
             .select((eb) => [
-              jsonObjectFrom(eb.selectFrom("task").whereRef("task.id", "=", "task_reward.taskId").selectAll("task")).as(
+              jsonObjectFrom(eb.selectFrom("task").whereRef("task.id", "=", "task_reward.belongToTaskId").selectAll("task")).as(
                 "relatedTask",
               ),
             ])
@@ -1497,7 +1497,7 @@ export const ItemSharedCardContent = (props: { data: ItemWithRelated; dic: dicti
             .where("task_collect_require.id", "=", require.id)
             .select((eb) => [
               jsonObjectFrom(
-                eb.selectFrom("task").whereRef("task.id", "=", "task_collect_require.taskId").selectAll("task"),
+                eb.selectFrom("task").whereRef("task.id", "=", "task_collect_require.belongToTaskId").selectAll("task"),
               ).as("relatedTask"),
             ])
             .selectAll()

@@ -84,7 +84,7 @@ const MobWithRelatedFetcher = async (id: string): Promise<MobWithRelated> => {
           .whereRef("_mobTozone.A", "=", "mob.id")
           .selectAll("zone"),
       ).as("appearInZones"),
-      jsonArrayFrom(eb.selectFrom("drop_item").whereRef("drop_item.dropById", "=", "mob.id").selectAll("drop_item")).as(
+      jsonArrayFrom(eb.selectFrom("drop_item").whereRef("drop_item.belongToMobId", "=", "mob.id").selectAll("drop_item")).as(
         "dropItems",
       ),
     ])
@@ -111,8 +111,8 @@ const createMob = async (trx: Transaction<DB>, value: mob) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -125,7 +125,7 @@ const updateMob = async (trx: Transaction<DB>, value: mob) => {
     .updateTable("mob")
     .set({
       ...value,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()
@@ -138,7 +138,7 @@ const deleteMob = async (trx: Transaction<DB>, mob: mob) => {
   // 删除和zone的关联
   await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).execute();
   // 将掉落物归属调整至defaultMob
-  await trx.updateTable("drop_item").set({ dropById: "defaultMobId" }).where("dropById", "=", mob.id).execute();
+  await trx.updateTable("drop_item").set({ belongToMobId: "defaultMobId" }).where("belongToMobId", "=", mob.id).execute();
   // 删除mob
   await trx.deleteFrom("mob").where("id", "=", mob.id).execute();
   // 删除统计
@@ -205,7 +205,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
             .values({
               ...dropItem,
               id: createId(),
-              dropById: mob.id,
+              belongToMobId: mob.id,
             })
             .execute();
         }
@@ -494,7 +494,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                                       const fieldValue = dropItemField()[1];
                                       switch (fieldKey) {
                                         case "id":
-                                        case "dropById":
+                                        case "belongToMobId":
                                           return null;
                                         case "breakRewardType":
                                           return (
@@ -889,7 +889,7 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
       return await db
         .selectFrom("drop_item")
         .innerJoin("item", "item.id", "drop_item.itemId")
-        .where("drop_item.dropById", "=", mobId)
+        .where("drop_item.belongToMobId", "=", mobId)
         .selectAll("item")
         .execute();
     });

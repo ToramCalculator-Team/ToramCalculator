@@ -1176,7 +1176,7 @@ const dictionary: dictionary = {
             Active: "主动",
           },
         },
-        masterId: {
+        belongToPlayerId: {
           key: "主人ID",
           tableFieldDescription: "角色的主人ID",
           formFieldDescription: "选择角色主人",
@@ -1405,7 +1405,7 @@ const dictionary: dictionary = {
             DropUp: "掉落提升",
           },
         },
-        dropById: {
+        belongToMobId: {
           key: "掉落于",
           tableFieldDescription: "掉落物品的怪物ID",
           formFieldDescription: "选择掉落物品的怪物",
@@ -1426,7 +1426,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "图片的URL",
           formFieldDescription: "请输入图片的URL",
         },
-        npcId: {
+        belongToNpcId: {
           key: "NPC ID",
           tableFieldDescription: "图片的NPC ID",
           formFieldDescription: "选择图片的NPC",
@@ -1972,7 +1972,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2008,7 +2008,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2163,7 +2163,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2194,7 +2194,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2255,7 +2255,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2736,7 +2736,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "任务描述",
           formFieldDescription: "任务描述",
         },
-        npcId: {
+        belongToNpcId: {
           key: "所属NPC",
           tableFieldDescription: "任务所属的NPC",
           formFieldDescription: "任务所属的NPC",
@@ -2777,7 +2777,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "所属道具",
           formFieldDescription: "所属道具",
         },
-        taskId: {
+        belongToTaskId: {
           key: "所属任务",
           tableFieldDescription: "所属任务",
           formFieldDescription: "所属任务",
@@ -2803,7 +2803,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "需要击杀的数量",
           formFieldDescription: "需要击杀的数量",
         },
-        taskId: {
+        belongToTaskId: {
           key: "所属任务",
           tableFieldDescription: "所属任务",
           formFieldDescription: "所属任务",
@@ -2844,7 +2844,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "奖励道具",
           formFieldDescription: "奖励道具",
         },
-        taskId: {
+        belongToTaskId: {
           key: "所属任务",
           tableFieldDescription: "所属任务",
           formFieldDescription: "所属任务",

@@ -38,22 +38,16 @@ interface Model {
 }
 
 export class QueryBuilderGenerator {
-  static generate(enumTypeToNameMap: EnumTypeToNameMap): void {
-    // 使用完整的 EnumProcessor
-    const enumProcessor = new EnumProcessor();
-    const result = enumProcessor.processEnums().processSchema() as any;
-    const { updatedSchema } = result;
-
+  static generate(updatedSchema: string, enumTypeToNameMap: EnumTypeToNameMap): void {
     // 解析 schema
     const models = SchemaParser.parseDetailedModels(updatedSchema);
     const schemaEnums = SchemaParser.parseEnums(updatedSchema);
 
-    // 合并枚举定义（从 EnumProcessor 获取）
+    // 使用 schemaEnums 中的枚举信息
     const allEnums: Record<string, string[]> = {};
-    for (const [enumName, values] of enumProcessor.getExtractedEnums()) {
-      allEnums[enumName] = values;
+    for (const [enumName, enumValues] of Object.entries(schemaEnums)) {
+      allEnums[enumName] = enumValues;
     }
-    Object.assign(allEnums, schemaEnums);
 
     let rulesContent = `// 由脚本自动生成，请勿手动修改
 import { Fields } from "@query-builder/solid-query-builder";

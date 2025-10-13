@@ -28,7 +28,7 @@ const itemSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("drop_item")
-          .innerJoin("mob", "drop_item.dropById", "mob.id")
+          .innerJoin("mob", "drop_item.belongToMobId", "mob.id")
           .where("drop_item.itemId", "=", id)
           .select(["mob.id", "mob.name"])
       ).as("dropByMob"),
@@ -42,8 +42,8 @@ const itemSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("task_reward")
-          .innerJoin("task", "task_reward.taskId", "task.id")
-          .innerJoin("npc", "task.npcId", "npc.id")
+          .innerJoin("task", "task_reward.belongToTaskId", "task.id")
+          .innerJoin("npc", "task.belongToNpcId", "npc.id")
           .where("task_reward.itemId", "=", id)
           .select(["npc.id", "npc.name", "task.id", "task.name"])
       ).as("rewardByNpcTask"),
@@ -61,7 +61,7 @@ const itemSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("task_collect_require")
-          .innerJoin("task", "task_collect_require.taskId", "task.id")
+          .innerJoin("task", "task_collect_require.belongToTaskId", "task.id")
           .where("task_collect_require.itemId", "=", id)
           .select(["task.id", "task.name"])
       ).as("collectRequireByTask"),
@@ -122,8 +122,8 @@ export async function createItem(trx: Transaction<DB>, data: ItemInsert) {
       ...data,
       id: data.id || createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

@@ -7,6 +7,7 @@ import fs from "fs";
 import { PATHS } from "./utils/config";
 import { FileUtils, CommandUtils, LogUtils } from "./utils/common";
 import { SchemaParser } from "./utils/schemaParser";
+import { PrismaExecutor } from "./utils/PrismaExecutor";
 
 interface TableStructure {
   tableName: string;
@@ -36,12 +37,8 @@ export class SQLGenerator {
     FileUtils.safeWriteFile(PATHS.clientDB.tempSchema, finalSchema);
 
     // 生成 SQL 文件
-    CommandUtils.execCommand(
-      `npx prisma migrate diff --from-empty --to-schema-datamodel ${PATHS.serverDB.tempSchema} --script > ${PATHS.serverDB.sql}`,
-    );
-    CommandUtils.execCommand(
-      `npx prisma migrate diff --from-empty --to-schema-datamodel ${PATHS.clientDB.tempSchema} --script > ${PATHS.clientDB.sql}`,
-    );
+    PrismaExecutor.generateServerSQL(PATHS.serverDB.tempSchema);
+    PrismaExecutor.generateClientSQL(PATHS.clientDB.tempSchema);
 
     // 转换clientDB/init.sql
     this.transformClientSql();

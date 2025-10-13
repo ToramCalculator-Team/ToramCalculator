@@ -19,7 +19,7 @@ const taskSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("task_reward")
-          .where("task_reward.taskId", "=", id)
+          .where("task_reward.belongToTaskId", "=", id)
           .selectAll("task_reward")
       ).as("rewards"),
     schema: z.array(task_rewardSchema).describe("任务奖励列表"),

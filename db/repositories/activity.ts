@@ -101,8 +101,8 @@ export async function createActivity(trx: Transaction<DB>, activityData: Activit
       ...activityData,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -113,7 +113,7 @@ export async function updateActivity(trx: Transaction<DB>, activityData: Activit
     .updateTable("activity")
     .set({
       ...activityData,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", activityData.id!)
     .returningAll()

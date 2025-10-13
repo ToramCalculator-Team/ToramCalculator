@@ -109,8 +109,8 @@ const createZone = async (trx: Transaction<DB>, value: zone) => {
       ...value,
       activityId: value.activityId !== "" ? value.activityId : null,
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

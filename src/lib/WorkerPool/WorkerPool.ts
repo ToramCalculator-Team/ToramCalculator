@@ -258,7 +258,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       const parsed = WorkerSystemMessageSchema.safeParse(event.data);
       if (parsed.success) {
         const sys = parsed.data;
-        this.emit("worker-message", { worker: wrapper, event: { type: sys.type, data: sys.data, taskId: sys.taskId } });
+        this.emit("worker-message", { worker: wrapper, event: { type: sys.type, data: sys.data, belongToTaskId: sys.belongToTaskId } });
         return;
       }
       this.handleWorkerMessage(wrapper, event);
@@ -303,14 +303,14 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     console.log("收到worker消息", event.data);
     // 使用类型约束解析消息数据
     const messageData = event.data;
-    const { taskId, result, error, metrics } = messageData;
+    const { belongToTaskId, result, error, metrics } = messageData;
 
     // 发射原始消息事件，让子类处理业务逻辑
     // 只传递实际需要的字段，避免传递未定义的字段
     this.emit("worker-message", {
       worker,
       event: {
-        taskId,
+        belongToTaskId,
         result,
         error,
         metrics,
@@ -323,7 +323,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     });
 
     // 处理任务结果
-    const taskCallback = this.taskMap.get(taskId);
+    const taskCallback = this.taskMap.get(belongToTaskId);
     if (!taskCallback) {
       // 任务不存在（可能已超时或被清理），忽略此消息
       return;
@@ -343,16 +343,16 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       if (task.retriesLeft > 0) {
         task.retriesLeft--;
         this.taskQueue.unshift(task); // 重试任务优先执行，提高成功率
-        this.emit("task-retry", { taskId, retriesLeft: task.retriesLeft, error });
+        this.emit("task-retry", { belongToTaskId, retriesLeft: task.retriesLeft, error });
       } else {
         // 重试次数用完，任务最终失败
-        this.taskMap.delete(taskId);
+        this.taskMap.delete(belongToTaskId);
         reject(new Error(error));
-        this.emit("task-failed", { taskId, error });
+        this.emit("task-failed", { belongToTaskId, error });
       }
     } else {
       // 任务执行成功，返回结果和性能指标
-      this.taskMap.delete(taskId);
+      this.taskMap.delete(belongToTaskId);
       const taskResult = {
         success: true,
         data: result,
@@ -360,7 +360,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       } as Result<TResult>;
 
       resolve(taskResult);
-      this.emit("task-completed", { taskId, result, metrics });
+      this.emit("task-completed", { belongToTaskId, result, metrics });
     }
 
     // 响应式任务分配：释放Worker并立即处理下一个任务
@@ -368,8 +368,8 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     worker.busy = false;
     worker.lastUsed = Date.now();
     // 清理任务与worker的绑定
-    if (taskId) {
-      this.taskToWorkerId.delete(taskId);
+    if (belongToTaskId) {
+      this.taskToWorkerId.delete(belongToTaskId);
     }
     this.processNextTask(); // 立即尝试处理队列中的下一个任务
   }
@@ -382,8 +382,8 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     const activeTask = Array.from(this.taskToWorkerId.entries()).find(([, workerId]) => workerId === worker.id);
 
     if (activeTask) {
-      const [taskId] = activeTask;
-      const callback = this.taskMap.get(taskId);
+      const [belongToTaskId] = activeTask;
+      const callback = this.taskMap.get(belongToTaskId);
       if (callback) {
         const { task } = callback;
         clearTimeout(callback.timeout);
@@ -392,14 +392,14 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
         if (task.retriesLeft > 0) {
           task.retriesLeft--;
           this.taskQueue.unshift(task);
-          this.emit("task-retry", { taskId, retriesLeft: task.retriesLeft, error: error.message });
+          this.emit("task-retry", { belongToTaskId, retriesLeft: task.retriesLeft, error: error.message });
         } else {
-          this.taskMap.delete(taskId);
+          this.taskMap.delete(belongToTaskId);
           callback.reject(new Error(`Worker error: ${error.message}`));
-          this.emit("task-failed", { taskId, error: error.message });
+          this.emit("task-failed", { belongToTaskId, error: error.message });
         }
       }
-      this.taskToWorkerId.delete(taskId);
+      this.taskToWorkerId.delete(belongToTaskId);
     }
 
     // 替换worker
@@ -528,12 +528,12 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
           if (task.retriesLeft > 0) {
             task.retriesLeft--;
             this.taskQueue.unshift(task); // 重试任务优先执行
-            this.emit("task-retry", { taskId: task.id, retriesLeft: task.retriesLeft, error: "timeout" });
+            this.emit("task-retry", { belongToTaskId: task.id, retriesLeft: task.retriesLeft, error: "timeout" });
           } else {
             // 重试次数用完，任务最终失败
             this.taskMap.delete(task.id);
             reject(new Error("Task timeout"));
-            this.emit("task-failed", { taskId: task.id, error: "timeout" });
+            this.emit("task-failed", { belongToTaskId: task.id, error: "timeout" });
           }
         }
       }, task.timeout);
@@ -625,7 +625,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
 
     // 构建类型安全的 Worker 消息
     const workerMessage: WorkerMessage<TTaskTypeMap[keyof TTaskTypeMap], TPriority> = {
-      taskId: task.id,
+      belongToTaskId: task.id,
       payload: task.payload,
       priority: task.priority,
     };
@@ -650,14 +650,14 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       if (task.retriesLeft > 0) {
         task.retriesLeft--;
         this.taskQueue.unshift(task); // 重试任务优先执行
-        this.emit("task-retry", { taskId: task.id, retriesLeft: task.retriesLeft, error: errorMessage });
+        this.emit("task-retry", { belongToTaskId: task.id, retriesLeft: task.retriesLeft, error: errorMessage });
       } else {
         // 重试次数用完，任务最终失败
         const callback = this.taskMap.get(task.id);
         if (callback) {
           this.taskMap.delete(task.id);
           callback.reject(errorObj);
-          this.emit("task-failed", { taskId: task.id, error: errorMessage });
+          this.emit("task-failed", { belongToTaskId: task.id, error: errorMessage });
         }
       }
       this.taskToWorkerId.delete(task.id);
@@ -761,10 +761,10 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       const now = Date.now();
 
       // 清理超时的任务
-      for (const [taskId, callback] of this.taskMap) {
+      for (const [belongToTaskId, callback] of this.taskMap) {
         if (callback && callback.task && now - callback.task.timestamp > callback.task.timeout * 2) {
           clearTimeout(callback.timeout);
-          this.taskMap.delete(taskId);
+          this.taskMap.delete(belongToTaskId);
           callback.reject(new Error("Task cleanup timeout"));
         }
       }

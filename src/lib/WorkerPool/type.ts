@@ -58,8 +58,8 @@ export interface Result<T> {
  * @example
  * type SimulatorEvent = WorkerMessageEvent<any, SimulatorTaskTypeMap, any>;
  * // 展开为：
- * // | { taskId: string, type: "engine_command", cmd: EngineCommand, ... }
- * // | { taskId: string, type: "data_query", cmd: DataQueryCommand, ... }
+ * // | { belongToTaskId: string, type: "engine_command", cmd: EngineCommand, ... }
+ * // | { belongToTaskId: string, type: "data_query", cmd: DataQueryCommand, ... }
  */
 export type WorkerMessageEvent<
   TResult,
@@ -67,7 +67,7 @@ export type WorkerMessageEvent<
   TData
 > = {
   [K in keyof TTaskTypeMap]: {
-    taskId: string;
+    belongToTaskId: string;
     result?: Result<TResult> | null;
     error?: string | null;
     metrics?: {
@@ -88,7 +88,7 @@ export type WorkerMessageEvent<
  * @template TPriority - 优先级类型（默认为标准三级优先级）
  */
 export interface WorkerMessage<TPayload, TPriority extends string> {
-  taskId: string;
+  belongToTaskId: string;
   payload: TPayload;
   priority: TPriority;
 }
@@ -99,5 +99,5 @@ export interface WorkerMessage<TPayload, TPriority extends string> {
 export const WorkerSystemMessageSchema = z.object({
     type: z.enum(["system_event", "frame_snapshot", "render_cmd", "engine_state_machine"]),
     data: z.any(),
-    taskId: z.string().optional(),
+    belongToTaskId: z.string().optional(),
   });

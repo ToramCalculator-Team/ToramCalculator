@@ -72,12 +72,12 @@ export async function createUser(trx: Transaction<DB>, data: UserInsert) {
     .executeTakeFirstOrThrow();
 
   // 2. 创建关联的账户数据
-  await createAccount(trx, {
+  await createAccount({
     ...defaultData.account,
     id: createId(),
     providerAccountId: createId(),
     userId: user.id,
-  });
+  }, trx);
 
   return user;
 }

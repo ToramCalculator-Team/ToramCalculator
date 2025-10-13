@@ -167,7 +167,7 @@ export const SpecialDataConfig: dataDisplayConfig<
           },
         })}
         <ItemSharedCardContent data={data} dic={dic} />
-        <Show when={data.createdByAccountId === store.session.user.account?.id}>
+        <Show when={data.createdByAccountId === store.session.account?.id}>
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dic.ui.actions.operation}

@@ -59,6 +59,25 @@ export class CascadeAnalyzer {
   }
 
   /**
+   * 获取模型的主键字段名
+   */
+  private getPrimaryKeyField(modelName: string): string {
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) {
+      throw new Error(`Model ${modelName} not found`);
+    }
+    
+    // 查找主键字段
+    const primaryKeyField = model.fields.find(field => field.isId);
+    if (primaryKeyField) {
+      return primaryKeyField.name;
+    }
+    
+    // 如果没有找到主键，默认使用 id
+    return 'id';
+  }
+
+  /**
    * 获取指定 model 被哪些其他 model 引用
    */
   getReferencedBy(modelName: string): DeleteDependency[] {
@@ -159,6 +178,21 @@ export class CascadeAnalyzer {
     const beforeDelete: string[] = [];
     const afterDelete: string[] = [];
 
+    // 如果需要重置引用，先查询一次数据
+    const needsResetReferences = customConfig?.resetReferences && 
+      dependencies.some(dep => dep.action !== DeleteAction.Cascade);
+    
+    if (needsResetReferences) {
+      beforeDelete.push(
+        `  // 获取 ${tableName} 信息用于重置引用
+  const ${tableName} = await trx
+    .selectFrom("${tableName}")
+    .where("${this.getPrimaryKeyField(modelName)}", "=", id)
+    .selectAll()
+    .executeTakeFirstOrThrow();`
+      );
+    }
+
     // 处理依赖
     for (const dep of dependencies) {
       if (dep.action === DeleteAction.Cascade) {
@@ -178,11 +212,6 @@ export class CascadeAnalyzer {
         // 自定义重置逻辑（如 item 的情况）
         beforeDelete.push(
           `  // 重置 ${dep.tableName} 表的引用为默认值
-  const ${tableName} = await trx
-    .selectFrom("${tableName}")
-    .where("id", "=", id)
-    .selectAll()
-    .executeTakeFirstOrThrow();
   await trx
     .updateTable("${dep.tableName}")
     .set({
@@ -203,7 +232,7 @@ export class CascadeAnalyzer {
     const deleteStatement = `  // 删除 ${tableName}
   await trx
     .deleteFrom("${tableName}")
-    .where("id", "=", id)
+    .where("${this.getPrimaryKeyField(modelName)}", "=", id)
     .executeTakeFirstOrThrow();`;
 
     // 处理关联删除（如 statistic）
@@ -213,7 +242,7 @@ export class CascadeAnalyzer {
         `  // 删除关联的 ${related}
   await trx
     .deleteFrom("${related}")
-    .where("id", "=", ${tableName}.${related}Id)
+    .where("${this.getPrimaryKeyField(related)}", "=", ${tableName}.${related}Id)
     .executeTakeFirstOrThrow();`
       );
     }

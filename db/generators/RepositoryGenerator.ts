@@ -5,8 +5,9 @@
  */
 
 import { FileUtils, LogUtils, StringUtils } from "./utils/common";
-import { RelationAnalyzer } from "./utils/relationAnalyzer";
+import { SchemaParser } from "./utils/schemaParser";
 import { CascadeAnalyzer } from "./utils/cascadeAnalyzer";
+import { ValidationUtils } from "./utils/validation";
 import {
   repositoryConfig,
   shouldSkipModel,
@@ -14,6 +15,7 @@ import {
   needsAccountTracking,
   getSpecialCreateLogic,
   getDeleteStrategy,
+  shouldSkipImportForCircularRef,
 } from "./repository.config";
 import { PATHS } from "./utils/config";
 import path from "path";
@@ -24,7 +26,7 @@ import { execSync } from "child_process";
  * Repository 生成器
  */
 export class RepositoryGenerator {
-  private relationAnalyzer!: RelationAnalyzer;
+  private schemaParser!: SchemaParser;
   private cascadeAnalyzer!: CascadeAnalyzer;
   private schema!: string;
   private models: any[] = [];
@@ -33,109 +35,44 @@ export class RepositoryGenerator {
    * 初始化生成器
    */
   async initialize(): Promise<void> {
-    // 读取 schema
-    this.schema = FileUtils.safeReadFile(PATHS.baseSchema);
+    try {
+      // 读取 schema
+      this.schema = FileUtils.safeReadFile(PATHS.baseSchema);
 
-    // 解析 schema 获取 models
-    this.models = this.parseModelsFromSchema(this.schema);
-
-    // 初始化分析器
-    const mockDMMF = {
-      datamodel: {
-        models: this.models,
-        enums: [],
-        types: [],
-        indexes: []
-      }
-    };
-    this.relationAnalyzer = new RelationAnalyzer(mockDMMF as any);
-    this.cascadeAnalyzer = new CascadeAnalyzer(mockDMMF as any);
-  }
-
-  /**
-   * 从 schema 字符串中解析 models
-   */
-  private parseModelsFromSchema(schema: string): any[] {
-    const models: any[] = [];
-    const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
-    let match;
-
-    while ((match = modelRegex.exec(schema)) !== null) {
-      const modelName = match[1];
-      const modelBody = match[2];
+      // 使用 Prisma DMMF 获取准确的关系信息
+      const { getDMMF } = await import('@prisma/internals');
+      const dmmf = await getDMMF({ datamodel: this.schema });
       
-      const fields = this.parseFieldsFromModelBody(modelBody);
+      // 从 DMMF 中提取模型信息
+      this.models = dmmf.datamodel.models.map(model => ({
+        name: model.name,
+        fields: model.fields.map(field => ({
+          name: field.name,
+          type: field.type,
+          kind: field.kind,
+          isList: field.isList,
+          isRequired: field.isRequired,
+          isId: field.isId,
+          isUnique: field.isUnique,
+          relationFromFields: field.relationFromFields,
+          relationToFields: field.relationToFields,
+          relationName: field.relationName,
+          relationOnDelete: field.relationOnDelete,
+          documentation: field.documentation || ''
+        }))
+      }));
+
+      // 初始化分析器
+      this.schemaParser = new SchemaParser(this.models);
+      this.cascadeAnalyzer = new CascadeAnalyzer(dmmf as any);
       
-      models.push({
-        name: modelName,
-        fields: fields
-      });
+      LogUtils.logSuccess("Repository 生成器初始化完成（使用 DMMF）");
+    } catch (error) {
+      LogUtils.logError("Repository 生成器初始化失败", error);
+      throw error;
     }
-
-    return models;
   }
 
-  /**
-   * 从 model body 中解析 fields
-   */
-  private parseFieldsFromModelBody(modelBody: string): any[] {
-    const fields: any[] = [];
-    // 改进正则表达式，更好地处理注释和复杂类型
-    const fieldRegex = /(\w+)\s+([^{}]+?)(?:\s+\/\/\/.*)?$/gm;
-    let match;
-
-    // 标量类型列表
-    const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'Bytes'];
-
-    while ((match = fieldRegex.exec(modelBody)) !== null) {
-      const fieldName = match[1];
-      const fieldType = match[2].trim();
-      
-      // 解析字段属性
-      const isList = fieldType.includes('[]');
-      const isOptional = fieldType.includes('?');
-      const isId = fieldType.includes('@id');
-      const isUnique = fieldType.includes('@unique');
-      
-      // 清理类型名称，移除注释和属性
-      let cleanType = fieldType.replace(/\/\/.*$/, '').trim(); // 移除注释
-      cleanType = cleanType.replace(/[\[\]?@].*/, '').trim(); // 移除数组、可选、属性标记
-      
-      // 检查是否是关系字段
-      // 1. 必须是标量类型
-      // 2. 不能是枚举注释
-      // 3. 必须有 @relation 属性才算是关系字段
-        const hasRelationAttribute = fieldType.includes('@relation');
-        const isEnumComment = cleanType.includes('// Enum') || cleanType.includes('// enum');
-        const isScalarType = scalarTypes.includes(cleanType);
-        
-        // 关系字段判断：必须有@relation属性才是关系字段
-        const isRelation = hasRelationAttribute && !scalarTypes.includes(cleanType) && !isEnumComment && cleanType.length > 0;
-      
-      // 解析外键信息
-      const foreignKeyMatch = fieldType.match(/@relation\([^)]*fields:\s*\[([^\]]+)\]/);
-      const relationFromFields = foreignKeyMatch ? [foreignKeyMatch[1]] : undefined;
-      
-      // 解析删除行为
-      const onDeleteMatch = fieldType.match(/onDelete:\s*(\w+)/);
-      const relationOnDelete = onDeleteMatch ? onDeleteMatch[1] : undefined;
-
-      fields.push({
-        name: fieldName,
-        type: cleanType,
-        kind: isRelation ? 'object' : 'scalar',
-        isList: isList,
-        isRequired: !isOptional,
-        isId: isId,
-        isUnique: isUnique,
-        relationFromFields: relationFromFields,
-        relationOnDelete: relationOnDelete,
-        documentation: ''
-      });
-    }
-
-    return fields;
-  }
 
   /**
    * 生成所有 repository 文件
@@ -144,6 +81,17 @@ export class RepositoryGenerator {
     LogUtils.logStep("Repository 生成", "开始生成 Repository 文件");
 
     await this.initialize();
+
+    // 验证 Schema
+    const schemaValidation = ValidationUtils.validateSchema({ models: this.models });
+    if (!schemaValidation.isValid) {
+      LogUtils.logError("Schema 验证失败", new Error(ValidationUtils.formatValidationResult(schemaValidation)));
+      return;
+    }
+
+    if (schemaValidation.warnings.length > 0) {
+      LogUtils.logWarning("Schema 验证警告", ValidationUtils.formatValidationResult(schemaValidation));
+    }
 
     const generatedFiles: string[] = [];
 
@@ -154,6 +102,13 @@ export class RepositoryGenerator {
       }
 
       try {
+        // 验证单个模型
+        const modelValidation = ValidationUtils.validateModel(model);
+        if (!modelValidation.isValid) {
+          LogUtils.logError(`模型 ${model.name} 验证失败`, new Error(ValidationUtils.formatValidationResult(modelValidation)));
+          continue;
+        }
+
         await this.generateRepository(model.name);
         generatedFiles.push(model.name);
         LogUtils.logSuccess(`生成 ${model.name} Repository`);
@@ -249,6 +204,18 @@ ${crudMethods}
     // 添加 subRelationFactory
     if (repositoryConfig.codeGeneration.includeRelations) {
       imports.push(`import { defineRelations, makeRelations } from "${relativePaths.subRelationFactory}";`);
+      
+      // 添加子关系函数导入
+      const subRelationImports = this.getSubRelationImports(modelName);
+      if (subRelationImports.length > 0) {
+        imports.push(subRelationImports.join("\n"));
+      }
+      
+      // 添加关系 schema 导入
+      const relationSchemaImports = this.getRelationSchemaImports(modelName);
+      if (relationSchemaImports.length > 0) {
+        imports.push(relationSchemaImports.join("\n"));
+      }
     }
 
     // 添加特殊导入
@@ -261,6 +228,14 @@ ${crudMethods}
     }
 
     return imports.join("\n");
+  }
+
+  /**
+   * 判断是否是业务父级关系
+   * 基于字段命名规范：belongTo*、usedBy*、createdBy、updatedBy
+   */
+  private isBusinessParentRelation(fieldName: string): boolean {
+    return SchemaParser.RelationUtils.isParentRelation(fieldName);
   }
 
   /**
@@ -289,6 +264,99 @@ ${crudMethods}
   }
 
   /**
+   * 获取需要导入的关系 schema（从 repository 文件导入）
+   */
+  private getRelationSchemaImports(modelName: string): string[] {
+    const imports: string[] = [];
+    
+    if (repositoryConfig.codeGeneration.includeRelations) {
+      const relations = this.schemaParser.getModelRelations(modelName);
+      const schemaMap = new Map<string, string[]>();
+      
+      for (const relation of relations) {
+        if (relation.targetTable && !relation.targetTable.includes('//')) {
+          const targetTable = relation.targetTable.toLowerCase();
+          const withRelationsSchema = `${StringUtils.toPascalCase(relation.targetTable)}WithRelationsSchema`;
+          
+          if (!schemaMap.has(targetTable)) {
+            schemaMap.set(targetTable, []);
+          }
+          
+          // 只有非业务父级关系才需要 WithRelationsSchema
+          const isBusinessParentRelation = this.isBusinessParentRelation(relation.name);
+          if (!isBusinessParentRelation) {
+            // 跳过自引用关系，避免循环导入
+            if (targetTable !== modelName.toLowerCase()) {
+              // 检查循环引用处理配置
+              if (!shouldSkipImportForCircularRef(modelName.toLowerCase(), relation.name)) {
+                schemaMap.get(targetTable)!.push(withRelationsSchema);
+              }
+            }
+          }
+        }
+      }
+      
+      // 为每个目标表生成导入语句
+      for (const [targetTable, schemas] of schemaMap) {
+        const importPath = `"./${targetTable}"`;
+        if (schemas.length > 0) {
+          imports.push(`import { ${[...new Set(schemas)].join(", ")} } from ${importPath};`);
+        }
+      }
+    }
+    
+    return imports;
+  }
+
+  /**
+   * 获取需要导入的子关系函数
+   */
+  private getSubRelationImports(modelName: string): string[] {
+    const relativePaths = this.calculateRelativePaths();
+    const imports: string[] = [];
+    
+    if (repositoryConfig.codeGeneration.includeRelations) {
+      const relations = this.schemaParser.getModelRelations(modelName);
+      const subRelationMap = new Map<string, string[]>();
+      
+      for (const relation of relations) {
+        if (relation.targetTable && !relation.targetTable.includes('//')) {
+          // 只有非父级关系才需要子关系函数导入
+          const isBusinessParentRelation = this.isBusinessParentRelation(relation.name);
+          if (!isBusinessParentRelation) {
+            const targetTable = relation.targetTable.toLowerCase();
+            
+            // 跳过自引用关系，避免循环导入
+            if (targetTable === modelName.toLowerCase()) {
+              continue;
+            }
+            
+            // 检查循环引用处理配置
+            if (shouldSkipImportForCircularRef(modelName.toLowerCase(), relation.name)) {
+              continue;
+            }
+            
+            const subRelationName = `${StringUtils.toCamelCase(targetTable)}SubRelations`;
+            
+            if (!subRelationMap.has(targetTable)) {
+              subRelationMap.set(targetTable, []);
+            }
+            subRelationMap.get(targetTable)!.push(subRelationName);
+          }
+        }
+      }
+      
+      // 为每个目标表生成导入语句
+      for (const [targetTable, subRelations] of subRelationMap) {
+        const importPath = `"./${targetTable}"`;
+        imports.push(`import { ${[...new Set(subRelations)].join(", ")} } from ${importPath};`);
+      }
+    }
+    
+    return imports;
+  }
+
+  /**
    * 获取需要导入的 schema
    */
   private getSchemaImports(modelName: string): string[] {
@@ -297,11 +365,11 @@ ${crudMethods}
 
     // 添加关系的 schema
     if (repositoryConfig.codeGeneration.includeRelations) {
-      const relations = this.relationAnalyzer.getModelRelations(modelName);
+      const relations = this.schemaParser.getModelRelations(modelName);
       for (const relation of relations) {
         // 只添加有效的关系 schema，跳过枚举类型
-        if (relation.targetModel && !relation.targetModel.includes('//')) {
-          const targetSchema = `${relation.targetModel.toLowerCase()}Schema`;
+        if (relation.targetTable && !relation.targetTable.includes('//')) {
+          const targetSchema = `${relation.targetTable.toLowerCase()}Schema`;
           schemas.add(targetSchema);
         }
       }
@@ -340,14 +408,13 @@ export type ${pascalName}Update = Updateable<${tableName}>;`;
     const pascalName = StringUtils.toPascalCase(modelName);
     const camelName = StringUtils.toCamelCase(modelName);
 
-    const generatedRelations = this.relationAnalyzer.generateAllRelations(modelName);
+    const generatedRelations = this.schemaParser.generateAllRelations(modelName);
+    
+    // 过滤掉父级关系，只保留子级关系用于 SubRelationDefs
+    const childRelations = generatedRelations.filter(rel => !this.isBusinessParentRelation(rel.name));
 
-    if (generatedRelations.length === 0) {
-      return `// 2. 无关系定义`;
-    }
-
-    // 生成 defineRelations
-    const relationDefs = generatedRelations
+    // 生成 defineRelations - 即使为空也要生成
+    const relationDefs = childRelations
       .map((rel) => {
         return `  ${rel.name}: {
     build: ${rel.buildCode},
@@ -361,7 +428,7 @@ const ${camelName}SubRelationDefs = defineRelations({
 ${relationDefs}
 });
 
-export const ${camelName}RelationsFactory = makeRelations<"${tableName}", typeof ${camelName}SubRelationDefs>(
+export const ${camelName}RelationsFactory = makeRelations(
   ${camelName}SubRelationDefs
 );
 
@@ -418,15 +485,28 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof find${pascalN
   }
 
   /**
+   * 获取模型的主键字段名
+   */
+  private getPrimaryKeyField(modelName: string): string {
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) {
+      throw new Error(`Model ${modelName} not found`);
+    }
+    
+    return SchemaParser.RelationUtils.getPrimaryKeyField(model);
+  }
+
+  /**
    * 生成 findById 方法
    */
   private generateFindById(modelName: string): string {
     const tableName = modelName.toLowerCase();
     const pascalName = StringUtils.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function find${pascalName}ById(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return (await db.selectFrom("${tableName}").where("id", "=", id).selectAll("${tableName}").executeTakeFirst()) || null;
+  return await db.selectFrom("${tableName}").where("${primaryKeyField}", "=", id).selectAll("${tableName}").executeTakeFirst();
 }`;
   }
 
@@ -438,7 +518,7 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof find${pascalN
     const pascalName = StringUtils.toPascalCase(modelName);
     const pluralName = this.pluralize(pascalName);
 
-    return `export async function find${pluralName}(trx?: Transaction<DB>) {
+    return `export async function findAll${pluralName}(trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db.selectFrom("${tableName}").selectAll("${tableName}").execute();
 }`;
@@ -482,10 +562,15 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof find${pascalN
     }
 
     // 创建主记录
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
     const valueFields: string[] = [
       "    ...data",
-      `    id: data.id || createId()`,
     ];
+
+    // 只有主键字段不是 itemId 时才添加 id 生成逻辑
+    if (primaryKeyField === 'id') {
+      valueFields.push(`    id: data.id || createId()`);
+    }
 
     if (hasStatistic) {
       valueFields.push("    statisticId: statistic.id");
@@ -524,9 +609,10 @@ ${createLogic}
   private generateUpdate(modelName: string): string {
     const tableName = modelName.toLowerCase();
     const pascalName = StringUtils.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function update${pascalName}(trx: Transaction<DB>, id: string, data: ${pascalName}Update) {
-  return await trx.updateTable("${tableName}").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
+  return await trx.updateTable("${tableName}").set(data).where("${primaryKeyField}", "=", id).returningAll().executeTakeFirstOrThrow();
 }`;
   }
 
@@ -536,12 +622,13 @@ ${createLogic}
   private generateDelete(modelName: string): string {
     const tableName = modelName.toLowerCase();
     const pascalName = StringUtils.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
     const strategy = getDeleteStrategy(modelName);
 
     if (strategy === "cascade") {
       // 简单删除，数据库处理级联
       return `export async function delete${pascalName}(trx: Transaction<DB>, id: string) {
-  return (await trx.deleteFrom("${tableName}").where("id", "=", id).returningAll().executeTakeFirst()) || null;
+  return await trx.deleteFrom("${tableName}").where("${primaryKeyField}", "=", id).returningAll().executeTakeFirst();
 }`;
     } else {
       // 复杂删除逻辑
@@ -559,12 +646,13 @@ ${createLogic}
     const tableName = modelName.toLowerCase();
     const pascalName = StringUtils.toPascalCase(modelName);
     const camelName = StringUtils.toCamelCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function find${pascalName}WithRelations(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db
     .selectFrom("${tableName}")
-    .where("id", "=", id)
+    .where("${primaryKeyField}", "=", id)
     .selectAll("${tableName}")
     .select((eb) => ${camelName}SubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
@@ -574,19 +662,27 @@ ${createLogic}
   /**
    * 生成 index.ts
    */
-  private async generateIndex(models: string[]): Promise<void> {
-    const imports: string[] = [];
-    const exports: Record<string, any> = {};
+  private async generateIndex(generatedFiles: string[]): Promise<void> {
+    const crudImports: string[] = [];
+    const crudExports: Record<string, any> = {};
 
-    for (const modelName of models) {
+    // 只为实际生成的文件添加导入
+    for (const modelName of generatedFiles) {
       const camelName = StringUtils.toCamelCase(modelName);
       const pascalName = StringUtils.toPascalCase(modelName);
 
-      imports.push(
-        `import { find${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
+      // CRUD 函数导入
+      crudImports.push(
+        `import { insert${pascalName}, update${pascalName}, delete${pascalName}, find${pascalName}ById, find${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
       );
 
-      exports[modelName.toLowerCase()] = `find${pascalName}WithRelations`;
+      crudExports[modelName.toLowerCase()] = {
+        insert: `insert${pascalName}`,
+        update: `update${pascalName}`,
+        delete: `delete${pascalName}`,
+        select: `find${pascalName}ById`,
+        selectWithRelation: `find${pascalName}WithRelations`
+      };
     }
 
     // 计算相对路径
@@ -594,11 +690,11 @@ ${createLogic}
 
     // 生成代码
     const indexCode = `import { DB } from "${relativePaths.kysely}";
-${imports.join("\n")}
+${crudImports.join("\n")}
 
-export const relationsDataFinder: Record<keyof DB, any> = {
-${this.generateIndexExports(exports)}
-};
+export const repositoryMethods = {
+${this.generateCrudExports(crudExports)}
+} as const;
 `;
 
     const outputPath = path.join(PATHS.repository.output, "index.ts");
@@ -607,16 +703,56 @@ ${this.generateIndexExports(exports)}
   }
 
   /**
-   * 生成 index.ts 的导出对象
+   * 生成 CRUD 导出对象
    */
-  private generateIndexExports(exports: Record<string, any>): string {
-    // 读取所有表名
+  private generateCrudExports(exports: Record<string, any>): string {
+    // 读取所有表名（包括跳过的表和中间表）
     const allTables = this.models.map((m: any) => m.name.toLowerCase());
+    
+    // 添加中间表（这些表在 Prisma schema 中是隐式生成的）
+    const intermediateTables = [
+      '_armorTocrystal',
+      '_avatarTocharacter', 
+      '_backRelation',
+      '_campA',
+      '_campB',
+      '_characterToconsumable',
+      '_crystalTooption',
+      '_crystalToplayer_armor',
+      '_crystalToplayer_option',
+      '_crystalToplayer_special',
+      '_crystalToplayer_weapon',
+      '_crystalTospecial',
+      '_crystalToweapon',
+      '_frontRelation',
+      '_linkZones',
+      '_mobTozone'
+    ];
+    
+    // 合并所有表名
+    const allTableNames = [...allTables, ...intermediateTables];
 
     const lines: string[] = [];
-    for (const tableName of allTables) {
-      const value = exports[tableName] || "null";
-      lines.push(`  ${tableName}: ${value}`);
+    for (const tableName of allTableNames) {
+      const crudMethods = exports[tableName];
+      if (crudMethods) {
+        lines.push(`  ${tableName}: {
+    insert: ${crudMethods.insert},
+    update: ${crudMethods.update},
+    delete: ${crudMethods.delete},
+    select: ${crudMethods.select},
+    selectWithRelation: ${crudMethods.selectWithRelation}
+  }`);
+      } else {
+        // 对于跳过的表和中间表，所有方法都设置为 null
+        lines.push(`  ${tableName}: {
+    insert: null,
+    update: null,
+    delete: null,
+    select: null,
+    selectWithRelation: null
+  }`);
+      }
     }
 
     return lines.join(",\n");

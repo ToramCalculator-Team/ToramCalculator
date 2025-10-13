@@ -68,7 +68,7 @@ class MainGenerator {
 
       // 5. 生成 QueryBuilder 规则
       LogUtils.logStep("QueryBuilder生成", "生成 QueryBuilder 规则");
-      QueryBuilderGenerator.generate(enumProcessor.getEnumTypeToNameMap());
+      QueryBuilderGenerator.generate(updatedSchema, enumProcessor.getEnumTypeToNameMap());
 
       // 6. 生成 Repository 文件
       LogUtils.logStep("Repository生成", "生成 Repository 文件");

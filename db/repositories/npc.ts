@@ -21,7 +21,7 @@ const npcSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("task")
-          .where("task.npcId", "=", id)
+          .where("task.belongToNpcId", "=", id)
           .selectAll("task")
       ).as("tasks"),
     schema: z.array(taskSchema).describe("任务列表"),
@@ -77,8 +77,8 @@ export async function createNpc(trx: Transaction<DB>, data: NpcInsert) {
     ...data,
     id: data.id || createId(),
     statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
+    createdByAccountId: store.session.account?.id,
+    updatedByAccountId: store.session.account?.id,
   });
   
   return npc;

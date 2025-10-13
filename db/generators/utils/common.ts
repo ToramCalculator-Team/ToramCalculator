@@ -244,6 +244,14 @@ export const LogUtils = {
   },
 
   /**
+   * 打印警告信息
+   * @param message - 警告消息
+   */
+  logWarning: (message: string): void => {
+    console.warn(`⚠️  ${message}`);
+  },
+
+  /**
    * 打印错误信息
    * @param message - 错误消息
    * @param error - 错误对象

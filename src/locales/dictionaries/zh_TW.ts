@@ -1176,7 +1176,7 @@ const dictionary: dictionary = {
             Active: "",
           },
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1405,7 +1405,7 @@ const dictionary: dictionary = {
             DropUp: "",
           },
         },
-        dropById: {
+        belongToMobId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1426,7 +1426,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        npcId: {
+        belongToNpcId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1972,7 +1972,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2008,7 +2008,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2163,7 +2163,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2194,7 +2194,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2255,7 +2255,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        masterId: {
+        belongToPlayerId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2781,7 +2781,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        npcId: {
+        belongToNpcId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2822,7 +2822,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        taskId: {
+        belongToTaskId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2848,7 +2848,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        taskId: {
+        belongToTaskId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -2889,7 +2889,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        taskId: {
+        belongToTaskId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",

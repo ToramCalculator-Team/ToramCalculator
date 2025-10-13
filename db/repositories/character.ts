@@ -62,7 +62,7 @@ const characterSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("combo")
-          .whereRef("combo.characterId", "=", "character.id")
+          .whereRef("combo.belongToCharacterId", "=", "character.id")
           .selectAll("combo")
           .select((subEb) => comboSubRelations(subEb, subEb.val("combo.id"))),
       )
@@ -75,7 +75,7 @@ const characterSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("character_skill")
-          .whereRef("character_skill.characterId", "=", "character.id")
+          .whereRef("character_skill.belongToCharacterId", "=", "character.id")
           .selectAll("character_skill")
           .select((subEb) => characterSkillSubRelations(subEb, subEb.val("character_skill.id"))),
       )
@@ -217,7 +217,7 @@ export async function findCharactersByPlayerId(playerId: string, trx?: Transacti
   const db = trx || await getDB();
   return await db
     .selectFrom("character")
-    .innerJoin("player", "player.id", "character.masterId")
+    .innerJoin("player", "player.id", "character.belongToPlayerId")
     .where("player.id", "=", playerId)
     .selectAll("character")
     .execute();

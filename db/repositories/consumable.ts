@@ -68,8 +68,8 @@ export async function createConsumable(trx: Transaction<DB>, data: ConsumableIns
     ...itemData,
     id: data.itemId || createId(),
     statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
+    createdByAccountId: store.session.account?.id,
+    updatedByAccountId: store.session.account?.id,
   });
   
   // 3. 创建 consumable 记录

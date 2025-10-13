@@ -65,12 +65,12 @@ export async function insertMercenary(trx: Transaction<DB>, data: MercenaryInser
     .executeTakeFirstOrThrow();
 }
 
-export async function createMercenary(trx: Transaction<DB>, data: MercenaryInsert, characterData: Omit<Insertable<character>, 'id' | 'statisticId' | 'masterId'>, playerData: Omit<Insertable<player>, 'id' | 'accountId'>) {
+export async function createMercenary(trx: Transaction<DB>, data: MercenaryInsert, characterData: Omit<Insertable<character>, 'id' | 'statisticId' | 'belongToPlayerId'>, playerData: Omit<Insertable<player>, 'id' | 'accountId'>) {
   // 1. 创建 statistic 记录
   const statistic = await createStatistic(trx);
   
   // 2. 创建 player 记录（注意：createPlayer 内部自己处理事务，所以我们需要在外部事务中直接插入）
-  const accountId = store.session.user.account?.id;
+  const accountId = store.session.account?.id;
   if (!accountId) {
     throw new Error("User account not found");
   }
@@ -90,7 +90,7 @@ export async function createMercenary(trx: Transaction<DB>, data: MercenaryInser
     ...characterData,
     id: data.templateId || createId(),
     statisticId: statistic.id,
-    masterId: player.id,
+    belongToPlayerId: player.id,
   });
   
   // 4. 创建 mercenary 记录（复用 insertMercenary）

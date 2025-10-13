@@ -1,1 +1,1 @@
-id,dataUrl,npcId,weaponId,armorId,optEquipId,mobId
+id,dataUrl,belongToNpcId,weaponId,armorId,optEquipId,mobId

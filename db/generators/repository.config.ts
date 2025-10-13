@@ -1,7 +1,7 @@
 /**
  * @file repository.config.ts
  * @description Repository 生成器配置文件
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 /**
@@ -12,12 +12,7 @@ export const repositoryConfig = {
    * 跳过生成的 model
    * 这些 model 不会生成 repository 文件
    */
-  skip: [
-    "session",
-    "verification_token",
-    "account_create_data",
-    "account_update_data",
-  ] as string[],
+  skip: [] as string[],
 
   /**
    * 自定义删除逻辑配置
@@ -32,52 +27,64 @@ export const repositoryConfig = {
   } as Record<string, "cascade" | "resetReferences" | "setNull">,
 
   /**
-   * 自定义关系配置
-   * 用于覆盖自动生成的关系查询逻辑
+   * 循环引用处理配置
+   * 用于处理表之间的循环引用关系
    */
-  customRelations: {
-    // 示例：
-    // character: {
-    //   weapon: (eb, id) => customWeaponQuery(eb, id)
-    // }
-  } as Record<string, Record<string, any>>,
+  circularReferenceHandling: {
+    /**
+     * 关系级别的循环引用处理
+     * 格式: "表名.关系名": "处理方式"
+     * 处理方式:
+     * - "baseSchema": 使用基础 schema，不包含子关系查询
+     * - "skipSubRelations": 跳过子关系查询，但使用 WithRelationsSchema
+     * - "skipImport": 跳过导入，使用基础 schema
+     */
+    relations: {
+      "recipe_ingredient.item": "skipImport", // recipe_ingredient 的 item 关系跳过导入
+      // 可以添加更多循环引用处理规则
+    } as Record<string, "baseSchema" | "skipSubRelations" | "skipImport">,
+  },
 
   /**
-   * 需要特殊处理的 model
-   * 这些 model 需要额外的创建逻辑（如创建 statistic）
+   * 需要特殊处理的 model 配置
+   * 合并了 statistic 和 account 跟踪的配置
    */
-  modelsWithStatistic: [
-    "mob",
-    "item",
-    "skill",
-    "character",
-    "simulator",
-    "world",
-    "address",
-    "activity",
-    "zone",
-    "recipe",
-    "npc",
-    "task",
-  ] as string[],
+  modelFeatures: {
+    /**
+     * 需要 statistic 的 model
+     */
+    withStatistic: [
+      "mob",
+      "item", 
+      "skill",
+      "character",
+      "simulator",
+      "world",
+      "address",
+      "activity",
+      "zone",
+      "recipe",
+      "npc",
+      "task",
+    ] as string[],
 
-  /**
-   * 需要 account 跟踪的 model
-   * 这些 model 在创建时需要记录 createdByAccountId
-   */
-  modelsWithAccountTracking: [
-    "mob",
-    "item",
-    "skill",
-    "simulator",
-    "world",
-    "address",
-    "activity",
-    "zone",
-    "recipe",
-    "npc",
-    "task",
-  ] as string[],
+    /**
+     * 需要 account 跟踪的 model
+     */
+    withAccountTracking: [
+      "mob",
+      "item",
+      "skill", 
+      "simulator",
+      "world",
+      "address",
+      "activity",
+      "zone",
+      "recipe",
+      "npc",
+      "task",
+    ] as string[],
+  },
 
   /**
    * 特殊的创建逻辑
@@ -94,25 +101,17 @@ export const repositoryConfig = {
   } as Record<string, { beforeCreate?: string[]; afterCreate?: string[] }>,
 
   /**
-   * 输出目录配置
+   * 输出配置
    */
   output: {
-    /** 生成的 repository 文件目录 */
-    repositoryDir: "db/repositories",
     /** 是否覆盖现有文件 */
     overwrite: true, // 直接替换，不跳过
-    /** 是否生成到单独的 generated 目录 */
-    useGeneratedDir: false,
   },
 
   /**
    * 代码生成选项
    */
   codeGeneration: {
-    /** 是否生成注释 */
-    includeComments: true,
-    /** 是否生成类型导入 */
-    includeTypeImports: true,
     /** 是否生成关系查询 */
     includeRelations: true,
     /** 是否生成 WithRelations 类型 */
@@ -138,20 +137,48 @@ export function shouldSkipModel(modelName: string): boolean {
  * 检查 model 是否需要 statistic
  */
 export function needsStatistic(modelName: string): boolean {
-  return repositoryConfig.modelsWithStatistic.includes(modelName);
+  return repositoryConfig.modelFeatures.withStatistic.includes(modelName);
 }
 
 /**
  * 检查 model 是否需要 account 跟踪
  */
 export function needsAccountTracking(modelName: string): boolean {
-  return repositoryConfig.modelsWithAccountTracking.includes(modelName);
+  return repositoryConfig.modelFeatures.withAccountTracking.includes(modelName);
+}
+
+/**
+ * 获取循环引用处理策略
+ */
+export function getCircularReferenceStrategy(
+  modelName: string,
+  relationName: string,
+): "baseSchema" | "skipSubRelations" | "skipImport" | null {
+  const key = `${modelName}.${relationName}`;
+  return repositoryConfig.circularReferenceHandling.relations[key] || null;
+}
+
+/**
+ * 检查是否应该跳过子关系查询（用于循环引用处理）
+ */
+export function shouldSkipSubRelationsForCircularRef(modelName: string, relationName: string): boolean {
+  const strategy = getCircularReferenceStrategy(modelName, relationName);
+  return strategy === "baseSchema" || strategy === "skipSubRelations" || strategy === "skipImport";
+}
+
+/**
+ * 检查是否应该跳过导入（用于循环引用处理）
+ */
+export function shouldSkipImportForCircularRef(modelName: string, relationName: string): boolean {
+  const strategy = getCircularReferenceStrategy(modelName, relationName);
+  return strategy === "skipImport";
 }
 
 /**
  * 获取特殊的创建逻辑
  */
-export function getSpecialCreateLogic(modelName: string): { beforeCreate?: string[]; afterCreate?: string[] } | undefined {
+export function getSpecialCreateLogic(
+  modelName: string,
+): { beforeCreate?: string[]; afterCreate?: string[] } | undefined {
   return repositoryConfig.specialCreateLogic[modelName];
 }
-

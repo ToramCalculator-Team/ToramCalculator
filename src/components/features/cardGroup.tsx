@@ -7,7 +7,7 @@ import { setStore, store } from "~/store";
 import { Card } from "../containers/card";
 import { getDictionary } from "~/locales/i18n";
 import { Transaction } from "kysely";
-import { relationsDataFinder } from "@db/repositories";
+import { repositoryMethods } from "@db/generated/repository";
 
 interface CardGroupItem {
   type: keyof DB;
@@ -28,7 +28,7 @@ async function getCardData(
   if (!forceRefresh && cardDataCache.has(key)) {
     return cardDataCache.get(key);
   }
-    const data = await relationsDataFinder[type](id);
+    const data = await repositoryMethods[type].select?.(id);
     cardDataCache.set(key, data);
     return data;
 }

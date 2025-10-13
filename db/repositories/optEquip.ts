@@ -76,8 +76,8 @@ export async function createOption(trx: Transaction<DB>, data: OptionInsert, ite
     ...itemData,
     id: data.itemId || createId(),
     statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
+    createdByAccountId: store.session.account?.id,
+    updatedByAccountId: store.session.account?.id,
   });
   
   // 3. 创建 option 记录（复用 insertOption）

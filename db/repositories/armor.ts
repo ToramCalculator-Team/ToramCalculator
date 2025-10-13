@@ -87,8 +87,8 @@ export async function createArmor(trx: Transaction<DB>, data: ArmorInsert, itemD
     ...itemData,
     id: data.itemId || createId(),
     statisticId: statistic.id,
-    createdByAccountId: store.session.user.account?.id,
-    updatedByAccountId: store.session.user.account?.id,
+    createdByAccountId: store.session.account?.id,
+    updatedByAccountId: store.session.account?.id,
   });
   
   // 3. 创建 armor 记录

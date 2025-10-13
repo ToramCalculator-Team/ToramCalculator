@@ -1,1 +1,1 @@
-id,templateId,name,pStr,pInt,pVit,pAgi,pDex,str,int,vit,agi,dex,weaponType,personaType,type,weaponAtk,generation,maxLv,masterId
+id,templateId,name,pStr,pInt,pVit,pAgi,pDex,str,int,vit,agi,dex,weaponType,personaType,type,weaponAtk,generation,maxLv,belongToPlayerId

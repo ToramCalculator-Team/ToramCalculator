@@ -81,7 +81,7 @@ const mobSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb.selectFrom("drop_item")
           .innerJoin("item", "item.id", "drop_item.itemId")
-          .where("drop_item.dropById", "=", id)
+          .where("drop_item.belongToMobId", "=", id)
           .selectAll("item")
       ).as("dropItems"),
     schema: z.array(itemSchema).describe("掉落物品列表"),

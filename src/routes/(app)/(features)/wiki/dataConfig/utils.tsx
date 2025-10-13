@@ -3,7 +3,7 @@ import { DB } from "@db/generated/kysely/kysely";
 import { getPrimaryKeys } from "@db/repositories/untils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons/index";
 import { getDB } from "@db/repositories/database";
@@ -67,7 +67,7 @@ export const CardSharedSection = <T extends object>(props: {
   delete: (trx: Transaction<DB>, data: T) => Promise<void>;
 }) => {
   return (
-    <Show when={props.data.createdByAccountId === store.session.user?.account?.id}>
+    <Show when={props.data.createdByAccountId === store.session.account?.id}>
       <section class="FunFieldGroup flex w-full flex-col gap-2">
         <h3 class="text-accent-color flex items-center gap-2 font-bold">
           {props.dic.ui.actions.operation}
@@ -83,7 +83,7 @@ export const CardSharedSection = <T extends object>(props: {
                 await props.delete(trx, props.data);
               });
               // 关闭当前卡片
-              setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+              setStore("pages","cardGroup", (pre) => pre.slice(0, -1));
             }}
           />
           <Button
@@ -91,7 +91,7 @@ export const CardSharedSection = <T extends object>(props: {
             icon={<Icons.Outline.Edit />}
             onclick={() => {
               // 关闭当前卡片
-              setWikiStore("cardGroup", (pre) => pre.slice(0, -1));
+              setStore("pages","cardGroup", (pre) => pre.slice(0, -1));
               // 打开表单
               setWikiStore("form", { isOpen: true, data: props.data });
             }}

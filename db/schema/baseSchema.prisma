@@ -194,8 +194,8 @@ model zone {
     belongToAddress  address   @relation(fields: [addressId], references: [id])
     addressId        String
 
-    link   zone[] @relation("linkZones")
-    linked zone[] @relation("linkZones")
+    link       zone[] @relation("linkZones")
+    usedBylink zone[] @relation("linkZones")
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -211,15 +211,15 @@ model image {
 
     dataUrl String
 
-    belongToNpc    npc?    @relation(fields: [npcId], references: [id], onDelete: Cascade)
-    npcId          String?
+    belongToNpc    npc?    @relation(fields: [belongToNpcId], references: [id], onDelete: Cascade)
+    belongToNpcId  String?
     belongToWeapon weapon? @relation(fields: [weaponId], references: [itemId], onDelete: Cascade)
     weaponId       String?
     belongToArmor  armor?  @relation(fields: [armorId], references: [itemId], onDelete: Cascade)
     armorId        String?
     belongToOption option? @relation(fields: [optEquipId], references: [itemId], onDelete: Cascade)
     optEquipId     String?
-    usedByMob      mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
+    belongToMob    mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
     mobId          String?
 }
 
@@ -237,13 +237,13 @@ model statistic {
     belongToSkill     skill?
     belongToCharacter character?
     belongToSimulator simulator?
-    world             world?
-    address           address?
-    activity          activity?
-    zone              zone?
-    recipe            recipe?
-    npc               npc?
-    task              task?
+    belongToWorld     world?
+    belongToAddress   address?
+    belongToActivity  activity?
+    belongToZone      zone?
+    belongToRecipe    recipe?
+    belongToNpc       npc?
+    belongToTask      task?
 }
 
 // 怪物
@@ -279,9 +279,9 @@ model mob {
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
-    image       image[]
+    images      image[]
 
-    belongToZones              zone[]
+    usedByZones                zone[]
     usedByTaskKillRequirements task_kill_requirement[]
     usedByMembers              member[]
     usedByPlayerPets           player_pet[]
@@ -313,9 +313,9 @@ model item {
 
     recipe recipe?
 
-    usedByDropItem    drop_item[]
-    usedByRewardItem  task_reward[]
-    usedByTaskRequire task_collect_require[]
+    usedByDropItems    drop_item[]
+    usedByRewardItems  task_reward[]
+    usedByTaskRequires task_collect_require[]
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -326,7 +326,7 @@ model item {
     createdByAccountId String?
 
     // 道具可以作为其他道具的配方原料
-    usedInIngredient recipe_ingredient[]
+    usedByIngredient recipe_ingredient[]
 }
 
 // 素材物品
@@ -347,9 +347,8 @@ model consumable {
 
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
-    // recipe       recipe?
 
-    usedBy character[]
+    usedByCharacters character[]
 }
 
 // 锻晶
@@ -363,17 +362,17 @@ model crystal {
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
 
-    usedByWeapon        weapon[]
-    usedByPlayerWeapon  player_weapon[]
-    usedByArmor         armor[]
-    usedByPlayerArmor   player_armor[]
-    usedByOption        option[]
-    usedByPlayerOption  player_option[]
-    usedBySpecial       special[]
-    usedByPlayerSpecial player_special[]
+    usedByWeapons        weapon[]
+    usedByPlayerWeapons  player_weapon[]
+    usedByArmors         armor[]
+    usedByPlayerArmors   player_armor[]
+    usedByOptions        option[]
+    usedByPlayerOptions  player_option[]
+    usedBySpecials       special[]
+    usedByPlayerSpecials player_special[]
 
-    frontRelated crystal[] @relation("frontRelation")
-    backRelated  crystal[] @relation("backRelation")
+    usedByFronts crystal[] @relation("frontRelation")
+    usedByBacks  crystal[] @relation("backRelation")
 }
 
 // 武器
@@ -386,10 +385,10 @@ model weapon {
     colorA          Int
     colorB          Int
     colorC          Int
-    image           image[]
+    images          image[]
     elementType     String // Enum ELEMENT_TYPE
 
-    usedBy player_weapon[]
+    usedByPlayerWeapons player_weapon[]
 
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
@@ -403,9 +402,9 @@ model armor {
     colorA          Int
     colorB          Int
     colorC          Int
-    image           image[]
+    images          image[]
 
-    usedBy player_armor[]
+    usedByPlayerArmors player_armor[]
 
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
@@ -419,9 +418,9 @@ model option {
     colorA          Int
     colorB          Int
     colorC          Int
-    image           image[]
+    images          image[]
 
-    usedBy player_option[]
+    usedByPlayerOptions player_option[]
 
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
@@ -433,7 +432,7 @@ model special {
     defaultCrystals crystal[]
     modifiers       String[]
 
-    usedBy player_special[]
+    usedByPlayerSpecials player_special[]
 
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @id
@@ -448,8 +447,8 @@ model recipe {
     belongToItem item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
     itemId       String @unique
 
-    inActivity activity? @relation(fields: [activityId], references: [id])
-    activityId String?
+    belongToActivity activity? @relation(fields: [activityId], references: [id])
+    activityId       String?
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -485,8 +484,8 @@ model drop_item {
     relatedPartInfo String
     breakRewardType String // Enum BOSS_PART_BREAK_REWARD_TYPE
 
-    dropBy   mob    @relation(fields: [dropById], references: [id], onDelete: Cascade)
-    dropById String
+    belongToMob   mob    @relation(fields: [belongToMobId], references: [id], onDelete: Cascade)
+    belongToMobId String
 }
 
 // NPC
@@ -495,8 +494,8 @@ model npc {
 
     name String
 
-    tasks task[]
-    image image[]
+    tasks  task[]
+    images image[]
 
     belongToZone zone   @relation(fields: [zoneId], references: [id])
     zoneId       String
@@ -522,8 +521,8 @@ model task {
     requires    task_collect_require[]
     rewards     task_reward[]
 
-    belongToNpc npc    @relation(fields: [npcId], references: [id])
-    npcId       String
+    belongToNpc   npc    @relation(fields: [belongToNpcId], references: [id])
+    belongToNpcId String
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -542,8 +541,8 @@ model task_kill_requirement {
     mobId String
     count Int
 
-    belongToTask task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-    taskId       String
+    belongToTask   task   @relation(fields: [belongToTaskId], references: [id], onDelete: Cascade)
+    belongToTaskId String
 }
 
 // 任务收集需求项
@@ -554,9 +553,8 @@ model task_collect_require {
     item   item   @relation(fields: [itemId], references: [id])
     itemId String
 
-    // 从属于任务
-    belongTorecipe task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-    taskId         String
+    belongTorecipe task   @relation(fields: [belongToTaskId], references: [id], onDelete: Cascade)
+    belongToTaskId String
 }
 
 // 任务奖励
@@ -569,8 +567,8 @@ model task_reward {
     item        item?   @relation(fields: [itemId], references: [id]) // 仅当type为item时生效
     itemId      String?
 
-    belongToTask task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-    taskId       String
+    belongToTask   task   @relation(fields: [belongToTaskId], references: [id], onDelete: Cascade)
+    belongToTaskId String
 }
 
 model skill {
@@ -585,7 +583,7 @@ model skill {
     chargingType String // Enum SKILL_CHARGING_TYPE
     distanceType String // Enum SKILL_DISTANCE_TYPE
     targetType   String // Enum SKILL_TARGET_TYPE
-    effect       skill_effect[]
+    effects      skill_effect[]
 
     details     String
     dataSources String
@@ -593,7 +591,7 @@ model skill {
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
 
-    usedByCharacterSkill character_skill[]
+    usedByCharacterSkills character_skill[]
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -643,10 +641,10 @@ model player {
     avatars    avatar[]
     characters character[]
 
-    belongToAccount account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    accountId       String
+    belongToAccount   account @relation(fields: [belongToAccountId], references: [id], onDelete: Cascade)
+    belongToAccountId String
 
-    usedByMember member[]
+    usedByMembers member[]
 }
 
 // 玩家自定义武器
@@ -665,8 +663,8 @@ model player_weapon {
     modifiers   String[]
     crystals    crystal[]
 
-    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId String
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
 
     usedByMainHand character[] @relation("weapon")
     usedBySubHand  character[] @relation("subWeapon")
@@ -686,8 +684,8 @@ model player_armor {
     modifiers  String[]
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId String
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
 
     usedBy character[]
 }
@@ -705,8 +703,8 @@ model player_option {
     modifiers  String[]
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId String
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
 
     usedBy character[]
 }
@@ -723,8 +721,8 @@ model player_special {
     modifiers  String[]
     crystals   crystal[]
 
-    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId String
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
 
     usedBy character[]
 }
@@ -753,21 +751,22 @@ model player_pet {
     generation  Int
     maxLv       Int
 
-    master   player @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId String
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
 }
 
 // 时装
 model avatar {
     id String @id
 
-    name           String
-    type           String // Enum AVATAR_TYPE
-    modifiers      String[]
-    belongToPlayer player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-    playerId       String
+    name      String
+    type      String // Enum AVATAR_TYPE
+    modifiers String[]
 
-    usedBy character[]
+    belongToPlayer   player @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId String
+
+    usedByCharacters character[]
 }
 
 // 机体
@@ -803,12 +802,12 @@ model character {
     partnerSkillBType String // Enum PARTNER_SKILL_TYPE
     consumables       consumable[]
     combos            combo[]
-    master            player            @relation(fields: [masterId], references: [id], onDelete: Cascade)
-    masterId          String
+    belongToPlayer    player            @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
+    belongToPlayerId  String
 
     details String?
 
-    usedInMercenary mercenary?
+    usedByMercenary mercenary?
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -823,10 +822,10 @@ model character_skill {
     template   skill   @relation(fields: [templateId], references: [id])
     templateId String
 
-    usedBy combo_step[]
+    usedByComboSteps combo_step[]
 
-    belongToCharacter character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-    characterId       String
+    belongToCharacter   character @relation(fields: [belongToCharacterId], references: [id], onDelete: Cascade)
+    belongToCharacterId String
 }
 
 // 连击
@@ -837,8 +836,8 @@ model combo {
     name    String
     content combo_step[]
 
-    belongToCharacter character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-    characterId       String
+    belongToCharacter   character @relation(fields: [belongToCharacterId], references: [id], onDelete: Cascade)
+    belongToCharacterId String
 }
 
 // 连击步骤
@@ -849,8 +848,8 @@ model combo_step {
     characterSkill   character_skill @relation(fields: [characterSkillId], references: [id])
     characterSkillId String
 
-    belongToCombo combo  @relation(fields: [comboId], references: [id], onDelete: Cascade)
-    comboId       String
+    belongToCombo   combo  @relation(fields: [belongToComboId], references: [id], onDelete: Cascade)
+    belongToComboId String
 }
 
 // 佣兵
@@ -864,8 +863,8 @@ model mercenary {
     skillBId   String
     skillBType String // Enum PARTNER_SKILL_TYPE
 
-    usedByMemberPartner   member[] @relation("partner")
-    usedByMemberMercenary member[] @relation("mercenary")
+    usedByMemberPartners    member[] @relation("partner")
+    usedByMemberMercenaries member[] @relation("mercenary")
 }
 
 // 模拟器
@@ -895,8 +894,8 @@ model team {
     members member[]
     gems    String[]
 
-    usedByCampA simulator[] @relation("campA")
-    usedByCampB simulator[] @relation("campB")
+    usedByCampAs simulator[] @relation("campA")
+    usedByCampBs simulator[] @relation("campB")
 }
 
 // 队伍成员
@@ -917,6 +916,6 @@ model member {
     mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
     actions           Json
 
-    belongToTeam team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-    teamId       String
+    belongToTeam   team   @relation(fields: [belongToTeamId], references: [id], onDelete: Cascade)
+    belongToTeamId String
 }

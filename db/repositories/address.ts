@@ -100,8 +100,8 @@ export async function createAddress(trx: Transaction<DB>, addressData: AddressIn
       ...addressData,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -112,7 +112,7 @@ export async function updateAddress(trx: Transaction<DB>, addressData: AddressUp
     .updateTable("address")
     .set({
       ...addressData,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", addressData.id!)
     .returningAll()

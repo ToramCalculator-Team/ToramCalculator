@@ -86,17 +86,17 @@ const TaskWithRelatedFetcher = async (id: string): Promise<TaskWithRelated> => {
       jsonArrayFrom(
         eb
           .selectFrom("task_collect_require")
-          .whereRef("task_collect_require.taskId", "=", eb.ref("task.id"))
+          .whereRef("task_collect_require.belongToTaskId", "=", eb.ref("task.id"))
           .selectAll("task_collect_require"),
       ).as("collectRequires"),
       jsonArrayFrom(
         eb
           .selectFrom("task_kill_requirement")
-          .whereRef("task_kill_requirement.taskId", "=", eb.ref("task.id"))
+          .whereRef("task_kill_requirement.belongToTaskId", "=", eb.ref("task.id"))
           .selectAll("task_kill_requirement"),
       ).as("killRequirements"),
       jsonArrayFrom(
-        eb.selectFrom("task_reward").whereRef("task_reward.taskId", "=", eb.ref("task.id")).selectAll("task_reward"),
+        eb.selectFrom("task_reward").whereRef("task_reward.belongToTaskId", "=", eb.ref("task.id")).selectAll("task_reward"),
       ).as("rewards"),
     ])
     .executeTakeFirstOrThrow();
@@ -117,8 +117,8 @@ const createTask = async (trx: Transaction<DB>, value: task) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -130,7 +130,7 @@ const updateTask = async (trx: Transaction<DB>, value: task) => {
     .updateTable("task")
     .set({
       ...value,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()
@@ -142,9 +142,9 @@ const deleteTask = async (trx: Transaction<DB>, task: task) => {
   // 重置任务关联数据
 
   // 删除任务关联数据
-  await trx.deleteFrom("task_collect_require").where("taskId", "=", task.id).execute();
-  await trx.deleteFrom("task_kill_requirement").where("taskId", "=", task.id).execute();
-  await trx.deleteFrom("task_reward").where("taskId", "=", task.id).execute();
+  await trx.deleteFrom("task_collect_require").where("belongToTaskId", "=", task.id).execute();
+  await trx.deleteFrom("task_kill_requirement").where("belongToTaskId", "=", task.id).execute();
+  await trx.deleteFrom("task_reward").where("belongToTaskId", "=", task.id).execute();
   // 删除任务
   await trx.deleteFrom("task").where("id", "=", task.id).execute();
   // 删除统计数据
@@ -185,7 +185,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
             .values({
               ...collectRequire,
               id: createId(),
-              taskId: task.id,
+              belongToTaskId: task.id,
             })
             .execute();
         }
@@ -218,7 +218,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
             .values({
               ...killRequirement,
               id: createId(),
-              taskId: task.id,
+              belongToTaskId: task.id,
             })
             .execute();
         }
@@ -251,7 +251,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
             .values({
               ...reward,
               id: createId(),
-              taskId: task.id,
+              belongToTaskId: task.id,
             })
             .execute();
         }
@@ -294,7 +294,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
               case "updatedByAccountId":
               case "statisticId":
                 return null;
-              case "npcId":
+              case "belongToNpcId":
                 return (
                   <form.Field
                     name={fieldKey}
@@ -303,18 +303,18 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                       onChangeAsync: TaskWithRelatedSchema.shape[fieldKey],
                     }}
                   >
-                    {(npcIdField) => (
+                    {(belongToNpcIdField) => (
                       <Input
                         title={dic.db.task.fields[fieldKey].key}
                         description={dic.db.task.fields[fieldKey].formFieldDescription}
-                        state={fieldInfo(npcIdField())}
+                        state={fieldInfo(belongToNpcIdField())}
                         class="border-dividing-color bg-primary-color w-full rounded-md border-1"
                       >
                         <Autocomplete
-                          id={npcIdField().name}
-                          initialValue={npcIdField().state.value}
+                          id={belongToNpcIdField().name}
+                          initialValue={belongToNpcIdField().state.value}
                           setValue={(value) => {
-                            npcIdField().setValue(value.id);
+                            belongToNpcIdField().setValue(value.id);
                           }}
                           datasFetcher={async () => {
                             const db = await getDB();
@@ -366,7 +366,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                             const fieldValue = collectRequireField()[1];
                                             switch (fieldKey) {
                                               case "id":
-                                              case "taskId":
+                                              case "belongToTaskId":
                                                 return null;
                                               case "itemId":
                                                 return (
@@ -483,7 +483,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                             const fieldValue = killRequirementField()[1];
                                             switch (fieldKey) {
                                               case "id":
-                                              case "taskId":
+                                              case "belongToTaskId":
                                                 return null;
                                               case "mobId":
                                                 return (
@@ -595,7 +595,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                                       const fieldValue = rewardField()[1];
                                       switch (fieldKey) {
                                         case "id":
-                                        case "taskId":
+                                        case "belongToTaskId":
                                           return null;
                                         case "itemId":
                                           return (
@@ -774,34 +774,34 @@ export const TaskDataConfig: dataDisplayConfig<task, TaskWithRelated, TaskWithRe
   },
   form: ({ dic, data }) => TaskWithRelatedForm(dic, data),
   card: ({ dic, data }) => {
-    const [collectRequiresData] = createResource(data.id, async (taskId) => {
+    const [collectRequiresData] = createResource(data.id, async (belongToTaskId) => {
       const db = await getDB();
       return await db
         .selectFrom("task_collect_require")
         .innerJoin("item", "task_collect_require.itemId", "item.id")
-        .where("task_collect_require.taskId", "=", taskId)
+        .where("task_collect_require.belongToTaskId", "=", belongToTaskId)
         .selectAll("task_collect_require")
         .select(["item.name as itemName", "item.itemType"])
         .execute();
     });
 
-    const [killRequirementsData] = createResource(data.id, async (taskId) => {
+    const [killRequirementsData] = createResource(data.id, async (belongToTaskId) => {
       const db = await getDB();
       return await db
         .selectFrom("task_kill_requirement")
         .innerJoin("mob", "task_kill_requirement.mobId", "mob.id")
-        .where("task_kill_requirement.taskId", "=", taskId)
+        .where("task_kill_requirement.belongToTaskId", "=", belongToTaskId)
         .selectAll("task_kill_requirement")
         .select(["mob.name as mobName"])
         .execute();
     });
 
-    const [rewardsData] = createResource(data.id, async (taskId) => {
+    const [rewardsData] = createResource(data.id, async (belongToTaskId) => {
       const db = await getDB();
       return await db
         .selectFrom("task_reward")
         .innerJoin("item", "task_reward.itemId", "item.id")
-        .where("task_reward.taskId", "=", taskId)
+        .where("task_reward.belongToTaskId", "=", belongToTaskId)
         .selectAll("task_reward")
         .select(["item.name as itemName", "item.itemType"])
         .execute();

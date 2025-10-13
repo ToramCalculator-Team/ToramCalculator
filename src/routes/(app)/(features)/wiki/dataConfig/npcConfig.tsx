@@ -56,7 +56,7 @@ const NpcWithRelatedFetcher = async (id: string): Promise<NpcWithRelated> => {
     .where("id", "=", id)
     .selectAll("npc")
     .select((eb) => [
-      jsonArrayFrom(eb.selectFrom("task").whereRef("task.npcId", "=", eb.ref("npc.id")).selectAll("task")).as("tasks"),
+      jsonArrayFrom(eb.selectFrom("task").whereRef("task.belongToNpcId", "=", eb.ref("npc.id")).selectAll("task")).as("tasks"),
     ])
     .executeTakeFirstOrThrow();
   return res as NpcWithRelated;
@@ -76,8 +76,8 @@ const createNpc = async (trx: Transaction<DB>, value: npc) => {
       ...value,
       id: createId(),
       statisticId: statistic.id,
-      createdByAccountId: store.session.user.account?.id,
-      updatedByAccountId: store.session.user.account?.id,
+      createdByAccountId: store.session.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -89,7 +89,7 @@ const updateNpc = async (trx: Transaction<DB>, value: npc) => {
     .updateTable("npc")
     .set({
       ...value,
-      updatedByAccountId: store.session.user.account?.id,
+      updatedByAccountId: store.session.account?.id,
     })
     .where("id", "=", value.id)
     .returningAll()
@@ -100,7 +100,7 @@ const updateNpc = async (trx: Transaction<DB>, value: npc) => {
 const deleteNpc = async (trx: Transaction<DB>, npc: npc) => {
   // 重置npc相关数据
   // 重置task
-  await trx.updateTable("task").set({ npcId: "defaultNpcId" }).where("npcId", "=", npc.id).execute();
+  await trx.updateTable("task").set({ belongToNpcId: "defaultbelongToNpcId" }).where("belongToNpcId", "=", npc.id).execute();
   // 删除npc
   await trx.deleteFrom("npc").where("id", "=", npc.id).execute();
   // 删除统计
@@ -136,10 +136,10 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
 
         // 关联项更新
         for (const task of tasksToAdd) {
-          await trx.updateTable("task").set({ npcId: npc.id }).where("id", "=", task.id).execute();
+          await trx.updateTable("task").set({ belongToNpcId: npc.id }).where("id", "=", task.id).execute();
         }
         for (const task of tasksToRemove) {
-          await trx.updateTable("task").set({ npcId: "defaultNpcId" }).where("id", "=", task.id).execute();
+          await trx.updateTable("task").set({ belongToNpcId: "defaultbelongToNpcId" }).where("id", "=", task.id).execute();
         }
         return npc;
       });
@@ -329,9 +329,9 @@ export const NpcDataConfig: dataDisplayConfig<npc, NpcWithRelated, NpcWithRelate
   },
   form: ({ dic, data }) => NpcWithRelatedForm(dic, data),
   card: ({ dic, data }) => {
-    const [tasksData] = createResource(data.id, async (npcId) => {
+    const [tasksData] = createResource(data.id, async (belongToNpcId) => {
       const db = await getDB();
-      return await db.selectFrom("task").where("task.npcId", "=", npcId).selectAll("task").execute();
+      return await db.selectFrom("task").where("task.belongToNpcId", "=", belongToNpcId).selectAll("task").execute();
     });
 
     return (

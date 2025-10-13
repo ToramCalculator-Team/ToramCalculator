@@ -1,2 +1,2 @@
-id,name,lv,str,int,vit,agi,dex,personalityType,personalityValue,weaponId,subWeaponId,armorId,optEquipId,speEquipId,cooking,modifiers,partnerSkillAId,partnerSkillAType,partnerSkillBId,partnerSkillBType,masterId,details,statisticId
+id,name,lv,str,int,vit,agi,dex,personalityType,personalityValue,weaponId,subWeaponId,armorId,optEquipId,speEquipId,cooking,modifiers,partnerSkillAId,partnerSkillAType,partnerSkillBId,partnerSkillBType,belongToPlayerId,details,statisticId
 defaultCharacterId,defaultCharacter,280,1,465,1,1,247,None,0,defaultPlayerWeaponId,defaultPlayerSubWeaponId,defaultPlayerArmorId,defaultPlayerOptionId,defaultPlayerSpecialId,{},{},,Passive,,Passive,defaultPlayerId,,defaultCharacterStatisticId

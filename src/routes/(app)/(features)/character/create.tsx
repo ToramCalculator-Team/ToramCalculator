@@ -56,7 +56,7 @@ export default function CreateCharacterPage() {
       const character = await createCharacter(trx, {
         ...defaultData.character,
         id: createId(),
-        masterId: player.id,
+        belongToPlayerId: player.id,
       });
       console.log("character", character);
       setStore("session", "account", {

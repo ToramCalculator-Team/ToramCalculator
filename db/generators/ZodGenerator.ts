@@ -5,7 +5,8 @@
 
 import fs from "fs";
 import { PATHS } from "./utils/config";
-import { CommandUtils, FileUtils, LogUtils, StringUtils } from "./utils/common";
+import { FileUtils, LogUtils, StringUtils } from "./utils/common";
+import { PrismaExecutor } from "./utils/PrismaExecutor";
 import * as enums from "../schema/enums";
 
 interface ParsedFields {
@@ -22,7 +23,7 @@ export class ZodGenerator {
    * 使用 prisma generate 生成 Zod 类型
    */
   static generateZodTypes(): void {
-    CommandUtils.execCommand(`prisma generate --schema=${PATHS.clientDB.tempSchema} --generator=zod`);
+    PrismaExecutor.generateZodTypes();
   }
 
 
