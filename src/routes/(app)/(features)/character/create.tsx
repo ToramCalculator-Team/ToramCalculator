@@ -1,8 +1,8 @@
 import { defaultData } from "@db/defaultData";
-import { findAccountById, createAccount } from "@db/repositories/account";
+import { findAccountById, createAccount, Account } from "@db/repositories/account";
 import { createCharacter } from "@db/repositories/character";
 import { getDB } from "@db/repositories/database";
-import { Player, findPlayersByAccountId, createPlayer } from "@db/repositories/player";
+import { Player, findPlayersByAccountId, createPlayer, findPlayerById } from "@db/repositories/player";
 import { createId } from "@paralleldrive/cuid2";
 import { createMemo, Show } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -12,6 +12,7 @@ import dictionary from "~/locales/dictionaries/zh_CN";
 import { store, setStore } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { useNavigate } from "@solidjs/router";
+import { ensureLocalAccount } from "~/lib/localAccount";
 
 export default function CreateCharacterPage() {
   // UI文本字典
@@ -22,35 +23,31 @@ export default function CreateCharacterPage() {
   const handleCreateCharacter = async () => {
     const db = await getDB();
     const character = await db.transaction().execute(async (trx) => {
-      let account;
-      if (store.session.account?.id) {
-        account = await findAccountById(store.session.account.id, trx);
-        console.log("account", account);
-        if (!account) {
-          throw new Error("Account not found");
-        }
-      } else {
-        account = await createAccount(trx, {
-          ...defaultData.account,
-          id: createId(),
-        });
-        console.log("account22", account);
-        setStore("session", "account", {
-          id: account.id,
-          type: "User",
-        });
-      }
+      let account: Account;
+      account = await ensureLocalAccount(trx);
       console.log("account", account);
       let player: Player;
-      const players = await findPlayersByAccountId(account.id, trx);
-      if (players.length > 0) {
-        player = players[0];
+      if (store.session.account?.player?.id) {
+        // 从LocalStorage中获取PlayerID，并查询数据库中是否存在对应的Player
+        const res = await findPlayerById(store.session.account.player.id, trx);
+        if (res) {
+          player = res;
+        } else {
+          throw new Error("LocalStorage中的PlayerID无效，未在数据库中找到对应的Player");
+        }
       } else {
-        player = await createPlayer(trx, {
-          ...defaultData.player,
-          id: createId(),
-          accountId: account.id,
-        });
+        const players = await findPlayersByAccountId(account.id, trx);
+        if (players.length > 0) {
+          // 账号存在多个角色时，默认使用第一个
+          player = players[0];
+        } else {
+          // 账号不存在角色时，创建第一个角色
+          player = await createPlayer(trx, {
+            ...defaultData.player,
+            id: createId(),
+            belongToAccountId: account.id,
+          });
+        }
       }
       console.log("player", player);
       const character = await createCharacter(trx, {

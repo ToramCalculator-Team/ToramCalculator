@@ -49,7 +49,7 @@ export async function findPlayersByAccountId(accountId: string, trx?: Transactio
   const db = trx || await getDB();
   return await db
     .selectFrom("player")
-    .where("accountId", "=", accountId)
+    .where("belongToAccountId", "=", accountId)
     .selectAll("player")
     .execute();
 }

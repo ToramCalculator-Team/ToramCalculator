@@ -19,18 +19,14 @@ const cardDataCache = new Map<string, any>();
 /**
  * 获取单个卡片数据，带临时缓存
  */
-async function getCardData(
-  type: keyof DB,
-  id: string,
-  forceRefresh: boolean = false,
-) {
+async function getCardData(type: keyof DB, id: string, forceRefresh: boolean = false) {
   const key = `${type}-${id}`;
   if (!forceRefresh && cardDataCache.has(key)) {
     return cardDataCache.get(key);
   }
-    const data = await repositoryMethods[type].select?.(id);
-    cardDataCache.set(key, data);
-    return data;
+  const data = await repositoryMethods[type].select?.(id);
+  cardDataCache.set(key, data);
+  return data;
 }
 
 /**
@@ -52,8 +48,10 @@ export const CardGroup = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const [cachedCardDatas, { refetch }] = createResource(
-    () => store.pages.cardGroup,
-    (cardGroup) => getCardDatas(cardGroup),
+    () => store.pages.cardGroup.length, // 不添加length的话，似乎不会追踪到素组元素新增，只会追踪数组本身是否变化
+    () => {
+      return getCardDatas(store.pages.cardGroup)
+    },
   );
 
   return (
@@ -69,20 +67,21 @@ export const CardGroup = () => {
           >
             <Index each={cachedCardDatas()}>
               {(cardData, index) => {
+                const cardGroupItem = store.pages.cardGroup[index];
                 return (
                   <Card
                     display={cachedCardDatas()!.length - index < 5}
                     title={
                       cardData() && "name" in cardData()
                         ? (cardData()["name"] as string)
-                        : dictionary().db[store.pages.cardGroup[index]?.type as keyof DB].selfName
+                        : cardGroupItem?.type ? dictionary().db[cardGroupItem.type].selfName : "" // 关闭时Index还在渲染，可能获取到undefined
                     }
                     index={index}
                     total={cachedCardDatas()!.length}
                   >
-                    <Show when={store.pages.cardGroup[index]?.type}>
+                    <Show when={cardGroupItem?.type}>
                       {(type) => {
-                        return DBDataConfig[type() as keyof typeof DBDataConfig]?.card({
+                        return DBDataConfig[type()]?.card({
                           dic: dictionary(),
                           data: cardData(),
                         });

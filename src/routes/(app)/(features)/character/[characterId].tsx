@@ -318,7 +318,7 @@ export default function CharactePage() {
               </div>
             </OverlayScrollbarsComponent>
             <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
-            
+
             {/* 装备 */}
             <OverlayScrollbarsComponent
               element="div"
@@ -327,13 +327,18 @@ export default function CharactePage() {
               class="flex flex-none portrait:w-full landscape:w-1/2"
             >
               <div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
+                {/* 主手 */}
                 <div
                   onClick={() => {
-                    if(character().weapon) {
-                      setStore("pages", "cardGroup", (pre) => [...pre, { type: "weapon" as const, id: character().weapon.id }]);
+                    if (character().weapon) {
+                      setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                        type: "player_weapon",
+                        id: character().weapon.id,
+                      });
                     }
                   }}
-                  class="MainHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                  class="MainHand active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
+                >
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />
@@ -349,7 +354,17 @@ export default function CharactePage() {
                     </Show>
                   </div>
                 </div>
-                <div class="SubHand border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                {/* 副手 */}
+                <div
+                  onClick={() => {
+                    if (character().subWeapon) {
+                      setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                        type: "player_weapon",
+                        id: character().subWeapon.id,
+                      });
+                    }
+                  }}
+                  class="SubHand active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
                   <div class="Label px-4 py-3">副手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={24} />
@@ -364,7 +379,17 @@ export default function CharactePage() {
                     </Show>
                   </div>
                 </div>
-                <div class="Armor border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                {/* 防具 */}
+                <div
+                  onClick={() => {
+                    if (character().armor) {
+                      setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                        type: "player_armor",
+                        id: character().armor.id,
+                      });
+                    }
+                  }}
+                  class="Armor active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().armor?.ability ?? ""} size={24} />
@@ -379,7 +404,17 @@ export default function CharactePage() {
                     </Show>
                   </div>
                 </div>
-                <div class="OptEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                {/* 追加 */}
+                <div
+                  onClick={() => {
+                    if (character().optEquip) {
+                      setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                        type: "player_option",
+                        id: character().optEquip.id,
+                      });
+                    }
+                  }}
+                  class="OptEquip active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"optEquip"} size={24} />
@@ -394,7 +429,17 @@ export default function CharactePage() {
                     </Show>
                   </div>
                 </div>
-                <div class="SpeEquip border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                {/* 特殊 */}
+                <div
+                  onClick={() => {
+                    if (character().speEquip) {
+                      setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                        type: "player_special",
+                        id: character().speEquip.id,
+                      });
+                    }
+                  }}
+                  class="SpeEquip active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"speEquip"} size={24} />

@@ -19,7 +19,7 @@ const comboSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("combo_step")
-          .whereRef("combo_step.comboId", "=", "combo.id")
+          .whereRef("combo_step.belongToComboId", "=", "combo.id")
           .selectAll("combo_step")
       ).$notNull().as("steps"),
     schema: z.array(combo_stepSchema).describe("连击步骤列表"),
