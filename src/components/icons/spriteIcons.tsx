@@ -2,7 +2,7 @@ import { Show } from "solid-js";
 import sprites from "~/../public/app-image/sprites.json";
 import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
 
-export const getSpriteIcon = (props: { iconName: string; size?: number }) => {
+export const getSpriteIcon = (props: { iconName: string; size?: number; outline?: boolean }) => {
   // 不区分大小写查找精灵图
   const sprite = sprites.find((sprite) => sprite.name.toLowerCase() === props.iconName.toLowerCase());
   const actSize = props.size ?? 24;
@@ -11,7 +11,7 @@ export const getSpriteIcon = (props: { iconName: string; size?: number }) => {
       when={sprite}
       fallback={
         <div
-          class={`DefaultIcon rounded-full`}
+          class={`DefaultIcon rounded-full ${props.outline ? "outline-dividing-color bg-[radial-gradient(ellipse_50.00%_50.00%_at_50.00%_50.00%,_#2F1A49_0%,_rgba(47,_26,_73,_0)_100%)] outline-1 outline-offset-[-1px]" : ""}`}
           style={{
             width: `${actSize}px`,
             height: `${actSize}px`,
@@ -22,7 +22,7 @@ export const getSpriteIcon = (props: { iconName: string; size?: number }) => {
       {(sprite) => {
         return (
           <div
-            class="grid outline-dividing-color relative flex-none rounded-full bg-[radial-gradient(ellipse_50.00%_50.00%_at_50.00%_50.00%,_#2F1A49_0%,_rgba(47,_26,_73,_0)_100%)] outline-1 outline-offset-[-1px]"
+            class={`relative grid flex-none rounded-full ${props.outline ? "outline-dividing-color bg-[radial-gradient(ellipse_50.00%_50.00%_at_50.00%_50.00%,_#2F1A49_0%,_rgba(47,_26,_73,_0)_100%)] outline-1 outline-offset-[-1px]" : ""}`}
             style={{
               width: `${actSize}px`,
               height: `${actSize}px`,

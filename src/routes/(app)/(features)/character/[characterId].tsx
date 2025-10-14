@@ -354,7 +354,7 @@ export default function CharactePage() {
                 >
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().weapon?.type ?? ""} size={40} />
+                    <Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
                     {character().weapon?.name}
                   </div>
                   <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
@@ -387,7 +387,7 @@ export default function CharactePage() {
                 >
                   <div class="Label px-4 py-3">副手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={40} />
+                    <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
                     {character().subWeapon?.name}
                   </div>
                   <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
@@ -420,7 +420,7 @@ export default function CharactePage() {
                 >
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().armor?.ability ?? ""} size={40} />
+                    <Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
                     {character().armor?.name}
                   </div>
                   <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
@@ -453,7 +453,7 @@ export default function CharactePage() {
                 >
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={"option"} size={40} />
+                    <Icons.Spirits iconName={"option"} size={36} />
                     {character().option?.name}
                   </div>
                   <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
@@ -486,7 +486,7 @@ export default function CharactePage() {
                 >
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={"special"} size={40} />
+                    <Icons.Spirits iconName={"special"} size={36} />
                     {character().special?.name}
                   </div>
                   <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
