@@ -147,13 +147,26 @@ export default function CharactePage() {
     );
     mainSpotLight.id = "mainSpotLight";
     mainSpotLight.radius = 10;
-    mainSpotLight.intensity = 2000;
+    mainSpotLight.intensity = 1500;
 
     // 顶部锥形光的阴影发生器---------------------
     const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
     mainSpotLightShadowGenerator.bias = 0.000001;
     mainSpotLightShadowGenerator.darkness = 0.1;
     mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    
+    // 设置正面锥形光
+    const frontSpotLight = new SpotLight(
+      "frontSpotLight",
+      new Vector3(0, -1, 10),
+      new Vector3(0, 1, 0),
+      Math.PI,
+      5,
+      scene,
+    );
+    frontSpotLight.id = "frontSpotLight";
+    frontSpotLight.radius = 10;
+    frontSpotLight.intensity = 1500;
 
     // -----------------------------------------角色模型--------------------------------------------
 
@@ -337,20 +350,26 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="MainHand active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
+                  class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
                 >
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().weapon?.type ?? ""} size={24} />
+                    <Icons.Spirits iconName={character().weapon?.type ?? ""} size={40} />
                     {character().weapon?.name}
                   </div>
-                  <div class="Function flex flex-none">
-                    <Button icon={<Icons.Outline.Category />} level="quaternary" />
+                  <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
                     <Show
                       when={character().weapon}
-                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                      fallback={
+                        <Button
+                          icon={<Icons.Outline.DocmentAdd />}
+                          level="quaternary"
+                          class="rounded-none rounded-tr"
+                        />
+                      }
                     >
-                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
                     </Show>
                   </div>
                 </div>
@@ -364,18 +383,26 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="SubHand active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1">
+                  class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
+                >
                   <div class="Label px-4 py-3">副手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={24} />
+                    <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={40} />
                     {character().subWeapon?.name}
                   </div>
-                  <div class="Function flex flex-none">
+                  <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
                     <Show
-                      when={character().subWeapon}
-                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                      when={character().weapon}
+                      fallback={
+                        <Button
+                          icon={<Icons.Outline.DocmentAdd />}
+                          level="quaternary"
+                          class="rounded-none rounded-tr"
+                        />
+                      }
                     >
-                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
                     </Show>
                   </div>
                 </div>
@@ -389,68 +416,92 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="Armor active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                  class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                >
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={character().armor?.ability ?? ""} size={24} />
+                    <Icons.Spirits iconName={character().armor?.ability ?? ""} size={40} />
                     {character().armor?.name}
                   </div>
-                  <div class="Function flex flex-none">
+                  <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
                     <Show
                       when={character().armor}
-                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                      fallback={
+                        <Button
+                          icon={<Icons.Outline.DocmentAdd />}
+                          level="quaternary"
+                          class="rounded-none rounded-tr"
+                        />
+                      }
                     >
-                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
                     </Show>
                   </div>
                 </div>
                 {/* 追加 */}
                 <div
                   onClick={() => {
-                    if (character().optEquip) {
+                    if (character().option) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_option",
-                        id: character().optEquip.id,
+                        id: character().option.id,
                       });
                     }
                   }}
-                  class="OptEquip active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                  class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                >
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={"optEquip"} size={24} />
-                    {character().optEquip?.name}
+                    <Icons.Spirits iconName={"option"} size={40} />
+                    {character().option?.name}
                   </div>
-                  <div class="Function flex flex-none">
+                  <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
                     <Show
-                      when={character().optEquip}
-                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                      when={character().option}
+                      fallback={
+                        <Button
+                          icon={<Icons.Outline.DocmentAdd />}
+                          level="quaternary"
+                          class="rounded-none rounded-tr"
+                        />
+                      }
                     >
-                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
                     </Show>
                   </div>
                 </div>
                 {/* 特殊 */}
                 <div
                   onClick={() => {
-                    if (character().speEquip) {
+                    if (character().special) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_special",
-                        id: character().speEquip.id,
+                        id: character().special.id,
                       });
                     }
                   }}
-                  class="SpeEquip active:bg-area-color active:border-brand-color-1st active:border-2 border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1">
+                  class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                >
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
-                    <Icons.Spirits iconName={"speEquip"} size={24} />
-                    {character().speEquip?.name}
+                    <Icons.Spirits iconName={"special"} size={40} />
+                    {character().special?.name}
                   </div>
-                  <div class="Function flex flex-none">
+                  <div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+                    <Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
                     <Show
-                      when={character().speEquip}
-                      fallback={<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" />}
+                      when={character().special}
+                      fallback={
+                        <Button
+                          icon={<Icons.Outline.DocmentAdd />}
+                          level="quaternary"
+                          class="rounded-none rounded-tr"
+                        />
+                      }
                     >
-                      <Button icon={<Icons.Outline.Trash />} level="quaternary" />
+                      <Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
                     </Show>
                   </div>
                 </div>

@@ -17,7 +17,7 @@ export type OptionInsert = Insertable<option>;
 export type OptionUpdate = Updateable<option>;
 
 // 2. 关联查询定义
-const optEquipSubRelationDefs = defineRelations({
+const optionSubRelationDefs = defineRelations({
   defaultCrystals: {
     build: (eb: ExpressionBuilder<DB, "item">, id: Expression<string>) =>
       jsonArrayFrom(
@@ -32,13 +32,13 @@ const optEquipSubRelationDefs = defineRelations({
   },
 });
 
-const optEquipRelationsFactory = makeRelations(optEquipSubRelationDefs);
+const optionRelationsFactory = makeRelations(optionSubRelationDefs);
 export const OptionWithRelationsSchema = z.object({
   ...optionSchema.shape,
   ...itemSchema.shape,
-  ...optEquipRelationsFactory.schema.shape,
+  ...optionRelationsFactory.schema.shape,
 });
-export const optEquipSubRelations = optEquipRelationsFactory.subRelations;
+export const optionSubRelations = optionRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findOptionById(id: string, trx?: Transaction<DB>) {
@@ -114,7 +114,7 @@ export async function findOptionWithRelations(id: string, trx?: Transaction<DB>)
     .innerJoin("item", "item.id", "option.itemId")
     .where("item.id", "=", id)
     .selectAll(["option", "item"])
-    .select((eb) => optEquipSubRelations(eb, eb.val(id)))
+    .select((eb) => optionSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 

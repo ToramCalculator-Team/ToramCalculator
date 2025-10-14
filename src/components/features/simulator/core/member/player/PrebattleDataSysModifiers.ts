@@ -302,13 +302,13 @@ function formatPathSegments(segments: string[]): string {
 
 /**
  * 为来源生成更语义化的路径：
- * - 装备相关（weapon/subWeapon/armor/optEquip/speEquip）前缀为 equipment.
+ * - 装备相关（weapon/subWeapon/armor/option/special）前缀为 equipment.
  * - 其他保持原始路径（如 avatar.top / consumables[0]）
  */
 function formatRootedPathFromCharacter(segments: string[]): string {
   const formatted = formatPathSegments(segments);
   const root = segments[0];
-  const equipmentRoots = new Set(["weapon", "subWeapon", "armor", "optEquip", "speEquip"]);
+  const equipmentRoots = new Set(["weapon", "subWeapon", "armor", "option", "special"]);
   if (root && equipmentRoots.has(root)) {
     return `equipment.${formatted}`;
   }

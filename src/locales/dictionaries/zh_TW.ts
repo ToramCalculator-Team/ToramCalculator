@@ -1128,12 +1128,12 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        optEquipId: {
+        optionId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        speEquipId: {
+        specialId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",
@@ -1441,7 +1441,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "",
           formFieldDescription: "",
         },
-        optEquipId: {
+        optionId: {
           key: "",
           tableFieldDescription: "",
           formFieldDescription: "",

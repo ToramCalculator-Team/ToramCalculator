@@ -7,38 +7,38 @@ export const EngineCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("INIT"),
     data: SimulatorWithRelationsSchema,
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("START"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("PAUSE"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("RESUME"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("STOP"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("RESET"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("STEP"),
-    origin: z.enum(["source", "mirror"]).optional(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
   z.object({
     type: z.literal("RESULT"),
     command: z.string(),
     success: z.boolean(),
-    error: z.string().optional(),
-    origin: z.enum(["source", "mirror"]).optional(),
+    error: z.string().option(),
+    origin: z.enum(["source", "mirror"]).option(),
   }),
 ]);
 

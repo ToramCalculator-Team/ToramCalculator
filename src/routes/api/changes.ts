@@ -47,10 +47,10 @@ export async function POST(event: APIEvent) {
     table_name: z.string().regex(SAFE_TABLE_NAME, "非法表名"),
     operation: z.union([z.literal("insert"), z.literal("update"), z.literal("delete")]),
     value: z.record(z.any()),
-    write_id: z.string().min(1).optional(),
-    transaction_id: z.string().min(1).optional(),
+    write_id: z.string().min(1).option(),
+    transaction_id: z.string().min(1).option(),
   });
-  const TxSchema = z.array(z.object({ id: z.string().optional(), changes: z.array(ChangeSchema) }));
+  const TxSchema = z.array(z.object({ id: z.string().option(), changes: z.array(ChangeSchema) }));
 
   try {
     TxSchema.parse(body);

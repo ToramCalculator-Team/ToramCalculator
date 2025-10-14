@@ -131,8 +131,8 @@ worker({
     const itemShape = await syncTable("item", ["id"]);
     const weaponShape = await syncTable("weapon", ["itemId"]);
     const armorShape = await syncTable("armor", ["itemId"]);
-    const optEquipShape = await syncTable("option", ["itemId"]);
-    const speEquipShape = await syncTable("special", ["itemId"]);
+    const optionShape = await syncTable("option", ["itemId"]);
+    const specialShape = await syncTable("special", ["itemId"]);
     const avatarShape = await syncTable("avatar", ["id"]);
     const avatarToCharacterShape = await syncTable("_avatarTocharacter", ["A", "B"], `"_avatarTocharacter"`);
     const crystalShape = await syncTable("crystal", ["itemId"]);

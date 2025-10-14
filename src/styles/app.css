@@ -1,7 +1,6 @@
 @import url(blockly.css);
 @import url(overlayscrollbars.css);
 
-@import url(global.css);
 @import url(flowEditor.css);
 @import url(wikiBanner.css);
 @import url(babylonjs.css);
@@ -9,6 +8,57 @@
 @import url(queryBuilder.css);
 
 @import "tailwindcss";
+
+@layer base {
+  * {
+    transition: all 150ms;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  .transitionColorNone * {
+    transition: all 0s !important;
+    transition-delay: 0s !important;
+  }
+
+  .transitionNone,
+  .transitionNone * {
+    transition: none !important;
+    transition-delay: 0s !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+
+  * {
+    outline-width: 2px;
+    outline-color: transparent;
+    outline-style: solid;
+    outline-offset: -2px;
+  }
+
+  *:focus-visible {
+    outline-color: rgb(var(--brand-1st));
+  }
+
+  /* 交互检测 */
+
+  /* *:hover {
+    outline-color: rgb(var(--brand-3rd));
+  }
+  
+  *:focus-visible {
+    background-color: red !important;
+    z-index: 9999;
+  } */
+}
 
 @source "../../src";
 @source inline("text-brand-color-1st text-brand-color-2nd text-brand-color-3rd bg-brand-color-1st bg-brand-color-2nd bg-brand-color-3rd");
@@ -60,7 +110,7 @@
   --box-shadow-color: rgb(var(--transition));
 
   --shadow-card: 0 4px 4px 0, 0 4px 16px 0;
-  --shadow-dialog: 0 4px 32px 0
+  --shadow-dialog: 0 4px 32px 0;
 }
 
 /* 颜色署名 */

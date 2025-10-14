@@ -267,9 +267,9 @@ ${generatedSchemas}
     let match;
 
     while ((match = fieldRegex.exec(fieldsStr)) !== null) {
-      const [, name, optional, type] = match;
+      const [, name, option, type] = match;
       const zodType = this.convertTypeToZod(type.trim());
-      fields[name] = optional ? `${zodType}.nullable()` : zodType;
+      fields[name] = option ? `${zodType}.nullable()` : zodType;
     }
 
     return fields;

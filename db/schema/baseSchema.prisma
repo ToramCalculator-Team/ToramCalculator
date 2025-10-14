@@ -12,7 +12,7 @@ generator client {
 generator zod {
     provider = "prisma-zod-generator"
     output   = "./generated/zod"
-    // optional config = "./zod-generator.config.json" (relative to schema file)
+    // option config = "./zod-generator.config.json" (relative to schema file)
 }
 
 generator kysely {
@@ -217,8 +217,8 @@ model image {
     weaponId       String?
     belongToArmor  armor?  @relation(fields: [armorId], references: [itemId], onDelete: Cascade)
     armorId        String?
-    belongToOption option? @relation(fields: [optEquipId], references: [itemId], onDelete: Cascade)
-    optEquipId     String?
+    belongToOption option? @relation(fields: [optionId], references: [itemId], onDelete: Cascade)
+    optionId     String?
     belongToMob    mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
     mobId          String?
 }
@@ -636,8 +636,8 @@ model player {
     pets       player_pet[]
     weapons    player_weapon[]
     armors     player_armor[]
-    optEquips  player_option[]
-    speEquips  player_special[]
+    options  player_option[]
+    specials  player_special[]
     avatars    avatar[]
     characters character[]
 
@@ -788,10 +788,10 @@ model character {
     subWeaponId       String?
     armor             player_armor?     @relation(fields: [armorId], references: [id])
     armorId           String?
-    optEquip          player_option?    @relation(fields: [optEquipId], references: [id])
-    optEquipId        String?
-    speEquip          player_special?   @relation(fields: [speEquipId], references: [id])
-    speEquipId        String?
+    option          player_option?    @relation(fields: [optionId], references: [id])
+    optionId        String?
+    special          player_special?   @relation(fields: [specialId], references: [id])
+    specialId        String?
     avatars           avatar[]
     cooking           String[]
     modifiers         String[]

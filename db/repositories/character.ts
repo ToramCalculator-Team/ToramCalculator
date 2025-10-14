@@ -122,30 +122,30 @@ const characterSubRelationDefs = defineRelations({
         .as("armor"),
     schema: PlayerArmorWithRelationsSchema.describe("护甲"),
   },
-  optEquip: {
+  option: {
     build: (eb: ExpressionBuilder<DB, "character">, id: Expression<string>) =>
       jsonObjectFrom(
         eb
           .selectFrom("player_option")
-          .whereRef("id", "=", "character.optEquipId")
+          .whereRef("id", "=", "character.optionId")
           .selectAll("player_option")
-          .select((eb) => playerOptionSubRelations(eb, eb.val("character.optEquipId"))),
+          .select((eb) => playerOptionSubRelations(eb, eb.val("character.optionId"))),
       )
         .$notNull()
-        .as("optEquip"),
+        .as("option"),
     schema: PlayerOptionWithRelationsSchema.describe("可选装备"),
   },
-  speEquip: {
+  special: {
     build: (eb: ExpressionBuilder<DB, "character">, id: Expression<string>) =>
       jsonObjectFrom(
         eb
           .selectFrom("player_special")
-          .whereRef("id", "=", "character.speEquipId")
+          .whereRef("id", "=", "character.specialId")
           .selectAll("player_special")
-          .select((eb) => playerSpecialSubRelations(eb, eb.val("character.speEquipId"))),
+          .select((eb) => playerSpecialSubRelations(eb, eb.val("character.specialId"))),
       )
         .$notNull()
-        .as("speEquip"),
+        .as("special"),
     schema: PlayerSpecialWithRelationsSchema.describe("特殊装备"),
   },
   statistic: {

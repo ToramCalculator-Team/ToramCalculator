@@ -233,11 +233,11 @@ export class SchemaParser {
 
         const fieldMatch = trimmedLine.match(/(\w+)\s+(\w+)(\?)?/);
         if (fieldMatch) {
-          const [, fieldName, fieldType, optional] = fieldMatch;
+          const [, fieldName, fieldType, option] = fieldMatch;
           fields.push({
             name: fieldName,
             type: fieldType,
-            isOptional: !!optional,
+            isOptional: !!option,
             enumType: this.isEnumType(fieldType) ? fieldType : undefined,
           });
         }

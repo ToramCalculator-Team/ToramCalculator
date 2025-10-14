@@ -1128,12 +1128,12 @@ const dictionary: dictionary = {
           tableFieldDescription: "装备的防具ID",
           formFieldDescription: "选择装备的防具",
         },
-        optEquipId: {
+        optionId: {
           key: "可选装备ID",
           tableFieldDescription: "装备的可选装备ID",
           formFieldDescription: "选择可选装备",
         },
-        speEquipId: {
+        specialId: {
           key: "特殊装备ID",
           tableFieldDescription: "装备的特殊装备ID",
           formFieldDescription: "选择特殊装备",
@@ -1441,7 +1441,7 @@ const dictionary: dictionary = {
           tableFieldDescription: "图片的防具ID",
           formFieldDescription: "选择图片的防具",
         },
-        optEquipId: {
+        optionId: {
           key: "追加装备ID",
           tableFieldDescription: "图片的追加装备ID",
           formFieldDescription: "选择图片的追加装备",

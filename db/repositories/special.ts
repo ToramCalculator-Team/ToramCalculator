@@ -19,7 +19,7 @@ export type SpecialInsert = Insertable<special>;
 export type SpecialUpdate = Updateable<special>;
 
 // 2. 关联查询定义
-const speEquipSubRelationDefs = defineRelations({
+const specialSubRelationDefs = defineRelations({
   defaultCrystals: {
     build: (eb: ExpressionBuilder<DB, "item">, id: Expression<string>) =>
       jsonArrayFrom(
@@ -34,13 +34,13 @@ const speEquipSubRelationDefs = defineRelations({
   },
 });
 
-const speEquipRelationsFactory = makeRelations(speEquipSubRelationDefs);
+const specialRelationsFactory = makeRelations(specialSubRelationDefs);
 export const SpecialWithRelationsSchema = z.object({
   ...specialSchema.shape,
   ...itemSchema.shape,
-  ...speEquipRelationsFactory.schema.shape,
+  ...specialRelationsFactory.schema.shape,
 });
-export const speEquipSubRelations = speEquipRelationsFactory.subRelations;
+export const specialSubRelations = specialRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSpecialById(id: string, trx?: Transaction<DB>) {
@@ -107,7 +107,7 @@ export async function findSpecialWithRelations(id: string, trx?: Transaction<DB>
     .innerJoin("item", "item.id", "special.itemId")
     .where("item.id", "=", id)
     .selectAll(["special", "item"])
-    .select((eb) => speEquipSubRelations(eb, eb.val(id)))
+    .select((eb) => specialSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
@@ -118,7 +118,7 @@ export async function findSpecialByItemId(id: string, trx?: Transaction<DB>) {
     .innerJoin("item", "item.id", "special.itemId")
     .where("item.id", "=", id)
     .selectAll(["special", "item"])
-    .select((eb) => speEquipSubRelations(eb, eb.val(id)))
+    .select((eb) => specialSubRelations(eb, eb.val(id)))
     .executeTakeFirstOrThrow();
 }
 
@@ -127,7 +127,7 @@ export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRela
 
 // export async function createSpecial(
 //   newSpecial: item & {
-//     speEquip: special & {
+//     special: special & {
 //       defaultCrystals: crystal[];
 //       image: image;
 //     };
@@ -138,8 +138,8 @@ export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRela
 // ) {
 //   const db = trx || await getDB();
 //   return await db.transaction().execute(async (trx) => {
-//     const { speEquip: _speEquipInput, repice: recipeInput, ...itemInput } = newSpecial;
-//     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...speEquipInput } = _speEquipInput;
+//     const { special: _specialInput, repice: recipeInput, ...itemInput } = newSpecial;
+//     const { image: imageInput, defaultCrystals: defaultCrystalsInput, ...specialInput } = _specialInput;
 //     const { ingredients: recipeIngredientsInput } = recipeInput;
 //     const image = await insertImage(trx, imageInput);
 //     const defaultCrystals = await Promise.all(defaultCrystalsInput.map((crystal) => insertCrystal(trx, crystal)));
@@ -153,14 +153,14 @@ export type SpecialWithRelations = Awaited<ReturnType<typeof findSpecialWithRela
 //       id: createId(),
 //       statisticId: statistic.id,
 //     });
-//     const speEquip = await insertSpecial(trx, {
-//       ...speEquipInput,
+//     const special = await insertSpecial(trx, {
+//       ...specialInput,
 //       itemId: item.id,
 //     });
 //     return {
 //       ...item,
-//       speEquip: {
-//         ...speEquip,
+//       special: {
+//         ...special,
 //         defaultCrystals,
 //         image,
 //       },

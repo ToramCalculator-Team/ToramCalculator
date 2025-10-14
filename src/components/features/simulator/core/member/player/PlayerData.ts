@@ -487,7 +487,7 @@ export interface PlayerDataStructure extends MemberBaseStructure {
     ref: null;
   };
 
-  optional: {
+  option: {
     baseAbi: null;
     ref: null;
   };
@@ -836,21 +836,21 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
       },
     },
 
-    optional: {
+    option: {
       baseAbi: {
         displayName: "追加装备基础值",
-        expression: `${character.optEquip.baseAbi}`,
+        expression: `${character.option.baseAbi}`,
       },
       ref: {
         displayName: "追加装备精炼",
-        expression: `${character.optEquip.refinement}`,
+        expression: `${character.option.refinement}`,
       },
     },
 
     special: {
       baseAbi: {
         displayName: "特殊装备基础值",
-        expression: `${character.speEquip.baseAbi}`,
+        expression: `${character.special.baseAbi}`,
       },
     },
 
