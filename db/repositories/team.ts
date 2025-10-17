@@ -20,7 +20,7 @@ const teamSubRelationDefs = defineRelations({
       jsonArrayFrom(
         eb
           .selectFrom("member")
-          .whereRef("member.teamId", "=", id)
+          .whereRef("member.belongToTeamId", "=", id)
           .selectAll("member")
           .select((subEb) => memberSubRelations(subEb, subEb.ref("member.id")))
       ).as("members"),

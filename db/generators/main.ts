@@ -56,22 +56,18 @@ class MainGenerator {
       };
 
       // 2. 生成 SQL
-      LogUtils.logStep("SQL生成", "生成 SQL");
       SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.getEnumDefinitions());
 
       // 3. 生成 TypeScript 类型
       TypeScriptGenerator.generate();
 
       // 4. 生成 Zod schemas
-      LogUtils.logStep("Zod生成", "生成 Zod schemas");
       ZodGenerator.generate();
 
       // 5. 生成 QueryBuilder 规则
-      LogUtils.logStep("QueryBuilder生成", "生成 QueryBuilder 规则");
       QueryBuilderGenerator.generate(updatedSchema, enumProcessor.getEnumTypeToNameMap());
 
       // 6. 生成 Repository 文件
-      LogUtils.logStep("Repository生成", "生成 Repository 文件");
       const repositoryGenerator = new RepositoryGenerator();
       await repositoryGenerator.generateAll();
 

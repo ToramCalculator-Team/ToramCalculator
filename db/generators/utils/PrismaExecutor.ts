@@ -26,7 +26,9 @@ export class PrismaExecutor {
    * 生成 Zod 类型
    */
   static generateZodTypes(): void {
+    LogUtils.logStep("Zod生成", "生成 Zod 类型");
     CommandUtils.execCommand(`prisma generate --schema=${PATHS.clientDB.tempSchema} --generator=zod`);
+    LogUtils.logSuccess("Zod 类型生成完成！");
   }
 
   /**

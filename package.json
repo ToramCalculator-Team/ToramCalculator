@@ -87,7 +87,7 @@
     "tailwindcss": "latest",
     "vinxi": "^0.5.3",
     "xstate": "^5.19.2",
-    "zod": "^3.23.8"
+    "zod": "^4.1.12"
   },
   "engines": {
     "node": ">=20"

@@ -3,21 +3,34 @@
  * 负责生成 Zod 验证模式
  */
 
-import fs from "fs";
 import { PATHS } from "./utils/config";
 import { FileUtils, LogUtils, StringUtils } from "./utils/common";
 import { PrismaExecutor } from "./utils/PrismaExecutor";
 import * as enums from "../schema/enums";
 
-interface ParsedFields {
-  [fieldName: string]: string;
-}
-
-interface ParsedTypes {
-  [typeName: string]: ParsedFields;
-}
-
 export class ZodGenerator {
+  private static dmmf: any = null;
+
+  /**
+   * JSON 类型的 Zod schema 定义
+   */
+  private static readonly JSON_ZOD_TYPE = `z.unknown()`;
+
+  /**
+   * 初始化 DMMF
+   */
+  private static async initializeDMMF(): Promise<void> {
+    if (this.dmmf) return;
+    
+    try {
+      const { getDMMF } = await import('@prisma/internals');
+      const schema = FileUtils.safeReadFile(PATHS.baseSchema);
+      this.dmmf = await getDMMF({ datamodel: schema });
+    } catch (error) {
+      LogUtils.logError("初始化 DMMF 失败", error as Error);
+      throw error;
+    }
+  }
 
   /**
    * 使用 prisma generate 生成 Zod 类型
@@ -26,16 +39,18 @@ export class ZodGenerator {
     PrismaExecutor.generateZodTypes();
   }
 
-
   /**
    * 生成 Zod schemas
    */
-  static generate(): void {
+  static async generate(): Promise<void> {
+    // 初始化 DMMF
+    await this.initializeDMMF();
+
     // 从 db/schema/enums.ts 生成 zod 枚举
     const enumSchemas = this.generateEnumSchemas();
 
-    // 从 Kysely 类型定义生成 Zod schemas
-    const generatedSchemas = this.generateModelSchemas();
+    // 从 DMMF 生成 Zod schemas
+    const generatedSchemas = this.generateModelSchemasFromDMMF();
 
     // 生成最终的 Zod schemas 文件内容
     const zodFileContent = `// 由脚本自动生成，请勿手动修改
@@ -60,8 +75,8 @@ ${generatedSchemas}
     try {
       // 遍历所有导出的枚举常量
       for (const [key, value] of Object.entries(enums)) {
-        // 只处理以 _TYPE 结尾的常量（枚举定义）
-        if (key.endsWith('_TYPE') && Array.isArray(value)) {
+        // 检查是否是数组类型的枚举常量（排除类型定义）
+        if (Array.isArray(value) && !key.endsWith("Type")) {
           const values = value as string[];
           if (values.length > 0) {
             // 使用 StringUtils.toPascalCase 进行正确的转换
@@ -80,19 +95,27 @@ ${generatedSchemas}
   }
 
   /**
-   * 生成模型 schemas
+   * 从 DMMF 生成模型 schemas
    * @returns 模型 schemas 内容
    */
-  static generateModelSchemas(): string {
-    const kyselyTypes = FileUtils.safeReadFile(PATHS.kysely.types);
-    const parsedTypes = this.parseTypes(kyselyTypes);
+  static generateModelSchemasFromDMMF(): string {
+    if (!this.dmmf) {
+      throw new Error("DMMF 未初始化");
+    }
 
-    // 生成 Zod schemas
-    const modelSchemas = Object.entries(parsedTypes)
-      .map(([typeName, fields]) => {
-        const schemaName = `${typeName.toLowerCase()}Schema`;
-        const fieldsStr = Object.entries(fields)
-          .map(([fieldName, zodType]) => `  ${fieldName}: ${zodType}`)
+    // 生成模型 schemas
+    const modelSchemas = this.dmmf.datamodel.models
+      .map((model: any) => {
+        const schemaName = `${model.name.toLowerCase()}Schema`;
+        const fieldsStr = model.fields
+          .filter((field: any) => {
+            // 跳过关联字段，只保留标量字段和枚举字段
+            return field.kind === "scalar" || field.kind === "enum";
+          })
+          .map((field: any) => {
+            const zodType = this.convertDMMFFieldToZod(field, model.name);
+            return `  ${field.name}: ${zodType}`;
+          })
           .join(",\n");
 
         return `export const ${schemaName} = z.object({\n${fieldsStr}\n});`;
@@ -100,207 +123,135 @@ ${generatedSchemas}
       .join("\n\n");
 
     // 生成 dbSchema
-    const dbSchema = this.generateDbSchema(kyselyTypes);
+    const dbSchema = this.generateDbSchemaFromDMMF();
 
     return modelSchemas + "\n\n" + dbSchema;
   }
 
   /**
-   * 生成 dbSchema
-   * @param kyselyTypes - Kysely 类型内容
-   * @returns dbSchema 内容
+   * 将 DMMF 字段转换为 Zod 类型
+   * @param field - DMMF 字段
+   * @param modelName - 模型名称
+   * @returns Zod 类型字符串
    */
-  static generateDbSchema(kyselyTypes: string): string {
-    // 查找 DB 类型定义
-    const dbTypeRegex = /export\s+type\s+DB\s*=\s*\{([\s\S]*?)\};/g;
-    const dbMatch = dbTypeRegex.exec(kyselyTypes);
+  static convertDMMFFieldToZod(field: any, modelName: string): string {
+    let zodType = "";
 
-    if (!dbMatch) {
-      return "";
+    // 处理字段类型
+    switch (field.kind) {
+      case "scalar":
+        // 标量字段
+        switch (field.type) {
+          case "String":
+            // 检查是否是枚举类型（通过注释判断）
+            const enumType = this.getEnumTypeFromComment(field, modelName);
+            if (enumType) {
+              // 将大写下划线格式转换为 PascalCase 格式
+              const pascalCaseEnumName = StringUtils.toPascalCase(enumType);
+              zodType = `${pascalCaseEnumName}Schema`;
+            } else {
+              zodType = "z.string()";
+            }
+            break;
+          case "Int":
+          case "Float":
+            zodType = "z.number()";
+            break;
+          case "Boolean":
+            zodType = "z.boolean()";
+            break;
+          case "DateTime":
+            zodType = "z.date()";
+            break;
+          case "Json":
+            zodType = this.JSON_ZOD_TYPE;
+            break;
+          default:
+            // 检查是否是枚举类型
+            if (this.dmmf.datamodel.enums.some((e: any) => e.name === field.type)) {
+              zodType = `${field.type}Schema`;
+            } else {
+              // 对于未知类型，使用更安全的 JSON 类型
+              zodType = this.JSON_ZOD_TYPE;
+            }
+        }
+        break;
+      case "object":
+        // 关联字段 - 跳过，因为关联字段不应该在 schema 中定义
+        // 关联字段通常通过 ID 字段来引用
+        return "SKIP_FIELD";
+      case "enum":
+        // 枚举字段
+        zodType = `${field.type}Schema`;
+        break;
+      default:
+        // 对于未知类型，使用更安全的 JSON 类型
+        zodType = this.JSON_ZOD_TYPE;
     }
 
-    const dbFieldsStr = dbMatch[1];
-    const dbFields = this.parseFields(dbFieldsStr);
+    // 处理数组类型
+    if (field.isList) {
+      zodType = `z.array(${zodType})`;
+    }
 
-    // 生成 dbSchema
-    const fieldsStr = Object.entries(dbFields)
-      .map(([fieldName, zodType]) => `  ${fieldName}: ${zodType}`)
+    // 处理可选字段
+    if (!field.isRequired) {
+      zodType = `${zodType}.nullable()`;
+    }
+
+    return zodType;
+  }
+
+  /**
+   * 从字段注释中提取枚举类型
+   * @param field - DMMF 字段
+   * @param modelName - 模型名称
+   * @returns 枚举类型名称或 null
+   */
+  static getEnumTypeFromComment(field: any, modelName: string): string | null {
+    // 从原始 schema 中解析注释
+    const schema = FileUtils.safeReadFile(PATHS.baseSchema);
+    
+    // 查找模型定义
+    const modelRegex = new RegExp(`model\\s+${modelName}\\s*\\{[\\s\\S]*?\\}`, 'g');
+    const modelMatch = modelRegex.exec(schema);
+    
+    if (!modelMatch) {
+      return null;
+    }
+    
+    const modelContent = modelMatch[0];
+    
+    // 查找字段定义和注释
+    const fieldRegex = new RegExp(`\\s+${field.name}\\s+String\\s*//\\s*Enum\\s+(\\w+)`, 'g');
+    const fieldMatch = fieldRegex.exec(modelContent);
+    
+    if (fieldMatch) {
+      return fieldMatch[1]; // 返回枚举类型名称
+    }
+    
+    return null;
+  }
+
+  /**
+   * 从 DMMF 生成 dbSchema
+   * @returns dbSchema 内容
+   */
+  static generateDbSchemaFromDMMF(): string {
+    if (!this.dmmf) {
+      throw new Error("DMMF 未初始化");
+    }
+
+    // 生成 dbSchema，包含所有模型
+    const fieldsStr = this.dmmf.datamodel.models
+      .map((model: any) => {
+        const schemaName = `${model.name.toLowerCase()}Schema`;
+        return `  ${model.name.toLowerCase()}: ${schemaName}`;
+      })
       .join(",\n");
 
     return `export const dbSchema = z.object({\n${fieldsStr}\n});`;
   }
 
-  /**
-   * 检查类型是否是关联类型
-   * @param type - TypeScript 类型
-   * @returns 是否是关联类型
-   */
-  static isRelationType(type: string): boolean {
-    // 检查是否是关联类型（包含 To 的类型，如 armorTocrystal, avatarTocharacter 等）
-    if (type.includes('To') || type.includes('Relation')) {
-      return true;
-    }
 
-    // 检查是否在 Kysely 类型文件中定义（如 campA, campB 等）
-    if (fs.existsSync(PATHS.kysely.types)) {
-      const typesContent = FileUtils.safeReadFile(PATHS.kysely.types);
-      const escapedType = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const typeRegex = new RegExp(`export\\s+type\\s+${escapedType}\\s*=\\s*\\{`);
-      return typeRegex.test(typesContent);
-    }
-
-    return false;
-  }
-
-  /**
-   * 检查类型是否是枚举类型
-   * @param type - TypeScript 类型
-   * @returns 是否是枚举类型
-   */
-  static isEnumType(type: string): boolean {
-    // 从 Kysely enums.ts 文件中读取枚举定义
-    if (fs.existsSync(PATHS.kysely.enums)) {
-      const enumsContent = FileUtils.safeReadFile(PATHS.kysely.enums);
-
-      // 检查是否存在对应的枚举定义
-      const enumRegex = new RegExp(`export const ${type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} = \\{`);
-      return enumRegex.test(enumsContent);
-    }
-
-    return false;
-  }
-
-  /**
-   * 转换类型到 Zod 类型
-   * @param type - TypeScript 类型
-   * @returns Zod 类型
-   */
-  static convertTypeToZod(type: string): string {
-    // 处理联合类型
-    if (type.includes("|")) {
-      const types = type.split("|").map((t) => t.trim());
-      // 如果包含 null，使用 nullable()
-      if (types.includes("null")) {
-        const nonNullTypes = types.filter((t) => t !== "null");
-        if (nonNullTypes.length === 1) {
-          return `${this.convertTypeToZod(nonNullTypes[0])}.nullable()`;
-        }
-        return `z.union([${nonNullTypes.map((t) => this.convertTypeToZod(t)).join(", ")}]).nullable()`;
-      }
-      return `z.union([${types.map((t) => this.convertTypeToZod(t)).join(", ")}])`;
-    }
-
-    // 处理数组类型
-    if (type.endsWith("[]")) {
-      const baseType = type.slice(0, -2);
-      return `z.array(${this.convertTypeToZod(baseType)})`;
-    }
-
-    // 处理基本类型
-    switch (type) {
-      case "string":
-        return "z.string()";
-      case "number":
-        return "z.number()";
-      case "boolean":
-        return "z.boolean()";
-      case "Date":
-        return "z.date()";
-      case "Timestamp":
-        return "z.string()"; // 从数据库查询返回的 Timestamp 类型是 Date
-      case "JsonValue":
-      case "InputJsonValue":
-        return `z.lazy(() => z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.literal(null),
-          z.record(z.lazy(() => z.union([z.any(), z.literal(null)]))),
-          z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
-        ]))`;
-      case "unknown":
-        return `z.record(z.unknown())`;
-      default:
-        // 检查是否是枚举类型（以 Type 结尾）
-        if (type.endsWith("Type")) {
-          const enumName = type.replace("Type", "");
-          // 确保枚举名称首字母大写
-          const pascalCaseEnum = enumName.charAt(0).toUpperCase() + enumName.slice(1);
-          return `${pascalCaseEnum}TypeSchema`;
-        }
-
-        // 检查是否是直接的枚举类型（如 MobDifficultyFlag）
-        if (this.isEnumType(type)) {
-          return `${type}Schema`;
-        }
-
-        // 检查是否是关联类型（如 armorTocrystal, avatarTocharacter 等）
-        if (this.isRelationType(type)) {
-          return `${type.toLowerCase()}Schema`;
-        }
-
-        // 检查是否是字面量类型
-        if (type.startsWith('"') && type.endsWith('"')) {
-          return `z.literal(${type})`;
-        }
-
-        // 对于未知类型，使用更安全的 JSON 类型
-        return `z.lazy(() => z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.literal(null),
-          z.record(z.lazy(() => z.union([z.any(), z.literal(null)]))),
-          z.array(z.lazy(() => z.union([z.any(), z.literal(null)])))
-        ]))`;
-    }
-  }
-
-  /**
-   * 解析字段
-   * @param fieldsStr - 字段字符串
-   * @returns 字段映射
-   */
-  static parseFields(fieldsStr: string): ParsedFields {
-    const fields: ParsedFields = {};
-    const fieldRegex = /(\w+)(\?)?:\s*([^;]+);/g;
-    let match;
-
-    while ((match = fieldRegex.exec(fieldsStr)) !== null) {
-      const [, name, option, type] = match;
-      const zodType = this.convertTypeToZod(type.trim());
-      fields[name] = option ? `${zodType}.nullable()` : zodType;
-    }
-
-    return fields;
-  }
-
-  /**
-   * 解析类型定义
-   * @param kyselyTypes - Kysely 类型内容
-   * @returns 类型映射
-   */
-  static parseTypes(kyselyTypes: string): ParsedTypes {
-    const types: ParsedTypes = {};
-    const typeRegex = /export\s+type\s+(\w+)\s*=\s*\{([\s\S]*?)\};/g;
-    let match;
-
-    while ((match = typeRegex.exec(kyselyTypes)) !== null) {
-      const [, typeName, fieldsStr] = match;
-
-      // 跳过不需要的类型
-      if (
-        typeName === "Generated" ||
-        typeName === "Timestamp" ||
-        typeName === "DB"
-      ) {
-        continue;
-      }
-
-      types[typeName] = this.parseFields(fieldsStr);
-    }
-
-    return types;
-  }
 }
-
