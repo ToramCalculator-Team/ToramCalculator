@@ -4,7 +4,7 @@ import { DB, task_kill_requirement } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { mobSchema, task_kill_requirementSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { MobWithRelationsSchema } from "./mob";
 

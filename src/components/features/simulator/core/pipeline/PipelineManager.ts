@@ -6,7 +6,7 @@
  * 2. 固定管线阶段来自各自的ActionPipelines定义
  */
 
-import { ZodTypeAny } from "zod/v3";
+import { ZodTypeAny } from "zod/v4";
 import { OutputOfSchema, PipeLineDef, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
 import { ParameterizedObject } from "xstate";
 

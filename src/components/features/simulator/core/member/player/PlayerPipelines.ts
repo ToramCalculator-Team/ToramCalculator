@@ -1,4 +1,4 @@
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { PlayerStateContext } from "./PlayerStateMachine";
 import { PipeLineDef, PipeStageFunDef } from "../../pipeline/PipelineStageType";
 import { skill_effectSchema } from "@db/generated/zod";

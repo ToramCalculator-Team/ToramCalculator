@@ -4,7 +4,7 @@ import { DB, task_collect_require } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { itemSchema, task_collect_requireSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义

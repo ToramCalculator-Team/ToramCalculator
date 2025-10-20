@@ -9,7 +9,7 @@ import { store } from "~/store";
 import { crystalSubRelations } from "./crystal";
 import { CrystalWithRelationsSchema } from "./crystal";
 import { weaponSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义

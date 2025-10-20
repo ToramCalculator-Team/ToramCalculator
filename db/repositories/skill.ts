@@ -4,7 +4,7 @@ import { DB, skill } from "../generated/kysely/kysely";
 import { insertStatistic } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -38,7 +38,7 @@ const skillSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const skillRelationsFactory = makeRelations<"skill", typeof skillSubRelationDefs>(
+export const skillRelationsFactory = makeRelations(
   skillSubRelationDefs
 );
 

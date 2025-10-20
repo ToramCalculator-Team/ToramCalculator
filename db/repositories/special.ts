@@ -10,7 +10,7 @@ import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
 import { specialSchema, itemSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义

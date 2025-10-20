@@ -15,7 +15,7 @@ import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { defaultData } from "@db/defaultData";
 import { CardSection } from "~/components/dataDisplay/cardSection";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { Button } from "~/components/controls/button";
 import { createForm } from "@tanstack/solid-form";

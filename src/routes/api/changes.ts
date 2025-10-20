@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 import { getDB } from "@db/repositories/database";
 import { findUserById } from "@db/repositories/user";
 import { getPrimaryKeys } from "@db/repositories/untils";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");

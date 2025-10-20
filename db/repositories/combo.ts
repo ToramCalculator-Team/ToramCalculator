@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, combo } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { comboSchema, combo_stepSchema } from "../generated/zod";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -27,7 +27,7 @@ const comboSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const comboRelationsFactory = makeRelations<"combo", typeof comboSubRelationDefs>(
+export const comboRelationsFactory = makeRelations(
   comboSubRelationDefs
 );
 

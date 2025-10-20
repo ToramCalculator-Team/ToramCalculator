@@ -1,5 +1,5 @@
 import { For, JSX, Show } from "solid-js";
-import { ZodFirstPartyTypeKind, ZodObject, ZodString, ZodTypeAny } from "zod";
+import { ZodFirstPartyTypeKind, ZodObject, ZodString, ZodTypeAny } from "zod/v4";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 缓存 Zod 类型解析

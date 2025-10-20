@@ -9,7 +9,7 @@ import { PlayerArmorWithRelationsSchema, playerArmorSubRelations } from "./playe
 import { PlayerOptionWithRelationsSchema, playerOptionSubRelations } from "./playerOption";
 import { PlayerSpecialWithRelationsSchema, playerSpecialSubRelations } from "./playerSpecial";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import {
   avatarSchema,
   characterSchema,

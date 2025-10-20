@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, image } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { imageSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -15,7 +15,7 @@ export type ImageUpdate = Updateable<image>;
 const imageSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const imageRelationsFactory = makeRelations<"image", typeof imageSubRelationDefs>(
+export const imageRelationsFactory = makeRelations(
   imageSubRelationDefs
 );
 

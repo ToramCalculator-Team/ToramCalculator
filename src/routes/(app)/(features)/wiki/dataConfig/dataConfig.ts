@@ -2,7 +2,7 @@ import { DB } from "@db/generated/kysely/kysely";
 import { MobDataConfig } from "./mobConfig";
 import { ColumnDef, Cell, VisibilityState, OnChangeFn } from "@tanstack/solid-table";
 import { Accessor, JSX, Setter } from "solid-js";
-import { ZodObject, ZodTypeAny } from "zod";
+import { ZodObject, ZodTypeAny } from "zod/v4";
 import { Dic, dictionary } from "~/locales/type";
 import { SkillDataConfig } from "./skillConfig";
 import { AddressDataConfig } from "./addressConfig";

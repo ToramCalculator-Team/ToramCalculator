@@ -6,7 +6,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { store } from "~/store";
 import { npcSchema, taskSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -29,7 +29,7 @@ const npcSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const npcRelationsFactory = makeRelations<"npc", typeof npcSubRelationDefs>(
+export const npcRelationsFactory = makeRelations(
   npcSubRelationDefs
 );
 

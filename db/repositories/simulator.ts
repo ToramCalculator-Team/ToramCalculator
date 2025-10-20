@@ -6,7 +6,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { TeamWithRelationsSchema, teamSubRelations } from "./team";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { simulatorSchema, statisticSchema, teamSchema } from "@db/generated/zod";
 
 // 1. 类型定义

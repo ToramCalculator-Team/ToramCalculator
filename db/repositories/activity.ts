@@ -5,7 +5,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { activitySchema, statisticSchema, zoneSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { createStatistic } from "./statistic";
 import { store } from "~/store";

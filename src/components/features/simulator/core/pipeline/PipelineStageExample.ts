@@ -1,7 +1,7 @@
 import { CharacterWithRelations } from "@db/repositories/character";
 import { PipelineStageHandlers } from "./PipelineStageType";
 import { skill_effectSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 
 // 定义外部上下文类型
 type ExternalContext = {

@@ -4,7 +4,7 @@ import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { account, DB } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { accountSchema, account_create_dataSchema, account_update_dataSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -41,7 +41,7 @@ const accountSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const accountRelationsFactory = makeRelations<"account", typeof accountSubRelationDefs>(accountSubRelationDefs);
+export const accountRelationsFactory = makeRelations(accountSubRelationDefs);
 
 // 构造关系Schema
 export const AccountWithRelationsSchema = z.object({

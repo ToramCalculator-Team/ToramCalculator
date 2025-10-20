@@ -26,7 +26,7 @@ import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConf
 import { type MemberSerializeData } from "./member/Member";
 import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { createActor } from "xstate";
 import { gameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
 import { SimulatorWithRelations } from "@db/repositories/simulator";

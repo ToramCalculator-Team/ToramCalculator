@@ -13,7 +13,7 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { armorSchema, crystalSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -38,7 +38,7 @@ const armorSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const armorRelationsFactory = makeRelations<"armor", typeof armorSubRelationDefs>(
+export const armorRelationsFactory = makeRelations(
   armorSubRelationDefs
 );
 

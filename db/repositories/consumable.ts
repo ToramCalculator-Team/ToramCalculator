@@ -7,7 +7,7 @@ import { createItem } from "./item";
 import { store } from "~/store";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { consumableSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -19,7 +19,7 @@ export type ConsumableUpdate = Updateable<consumable>;
 const consumableSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const consumableRelationsFactory = makeRelations<"consumable", typeof consumableSubRelationDefs>(
+export const consumableRelationsFactory = makeRelations(
   consumableSubRelationDefs
 );
 

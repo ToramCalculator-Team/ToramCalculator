@@ -3,8 +3,8 @@ import { getDB } from "./database";
 import { DB, character_skill } from "../generated/kysely/kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { skillSubRelations } from "./skill";
-import { z } from "zod";
+import { skillSubRelations, SkillWithRelationsSchema } from "./skill";
+import { z } from "zod/v4";
 import { character_skillSchema, skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -24,16 +24,12 @@ const characterSkillSubRelationDefs = defineRelations({
           .select((subEb) => skillSubRelations(subEb, subEb.val(id)))
           .selectAll("skill")
       ).$notNull().as("template"),
-    schema: z.object({
-      ...skillSchema.shape,
-      statistic: statisticSchema,
-      effects: z.array(skill_effectSchema),
-    }).describe("技能模板"),
+    schema: SkillWithRelationsSchema.describe("技能模板"),
   },
 });
 
 // 生成 factory
-export const characterSkillRelationsFactory = makeRelations<"character_skill", typeof characterSkillSubRelationDefs>(
+export const characterSkillRelationsFactory = makeRelations(
   characterSkillSubRelationDefs
 );
 

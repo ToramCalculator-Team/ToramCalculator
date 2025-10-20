@@ -5,7 +5,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { mobSubRelations, MobWithRelationsSchema } from "./mob";
 import { zoneSchema, npcSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { npcSubRelations, NpcWithRelationsSchema } from "./npc";
 

@@ -6,7 +6,7 @@ import { getDB } from "./database";
 import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { itemSchema, statisticSchema } from "../generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -86,7 +86,7 @@ const itemSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const itemRelationsFactory = makeRelations<"item", typeof itemSubRelationDefs>(
+export const itemRelationsFactory = makeRelations(
   itemSubRelationDefs
 );
 

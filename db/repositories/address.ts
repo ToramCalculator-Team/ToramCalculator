@@ -6,7 +6,7 @@ import { createStatistic } from "./statistic";
 import { Transaction, Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { jsonObjectFrom, jsonArrayFrom } from "kysely/helpers/postgres";
 import { addressSchema, worldSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -37,7 +37,7 @@ const addressSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const addressRelationsFactory = makeRelations<"address", typeof addressSubRelationDefs>(
+export const addressRelationsFactory = makeRelations(
   addressSubRelationDefs
 );
 

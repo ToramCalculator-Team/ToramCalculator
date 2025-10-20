@@ -6,7 +6,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { crystalSchema, itemSchema } from "../generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -44,7 +44,7 @@ const crystalSubRelationDefs = defineRelations({
 });
 
 // 生成 factory...
-export const crystalRelationsFactory = makeRelations<"crystal", typeof crystalSubRelationDefs>(
+export const crystalRelationsFactory = makeRelations(
   crystalSubRelationDefs
 );
 

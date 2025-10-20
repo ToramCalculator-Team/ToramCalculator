@@ -1,7 +1,7 @@
 import { setup, createMachine } from "xstate";
 import GameEngine from "./GameEngine";
 import { SimulatorWithRelationsSchema } from "@db/repositories/simulator";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 
 export const EngineCommandSchema = z.discriminatedUnion("type", [
   z.object({

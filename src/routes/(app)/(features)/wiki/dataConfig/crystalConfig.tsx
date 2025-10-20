@@ -23,7 +23,7 @@ import {
   itemWithRelatedSchema,
   ItemWithSubObjectForm,
 } from "./item";
-import z from "zod";
+import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { CardSection } from "~/components/dataDisplay/cardSection";

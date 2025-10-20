@@ -24,7 +24,7 @@ import { StepEditorWrapperContext, useStepEditor } from "./flowEditor/StepEditor
 import { createId } from "@paralleldrive/cuid2";
 import { type MathNode, all, create, floor, max, min, parse } from "mathjs";
 import * as _ from "lodash-es";
-import { set } from "zod";
+import { set } from "zod/v4";
 import { render } from "solid-js/web";
 
 const externalEditorClassName = "sqd-editor-solid";

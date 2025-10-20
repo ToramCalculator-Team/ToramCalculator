@@ -1,4 +1,4 @@
-import { z, ZodTypeAny } from "zod/v3";
+import { z, ZodTypeAny } from "zod/v4";
 import { ParameterizedObject, EventObject, ActionFunction, NonReducibleUnknown } from "xstate";
 
 /**

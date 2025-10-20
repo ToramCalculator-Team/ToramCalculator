@@ -4,7 +4,7 @@ import { DB, mob } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { drop_itemSchema, itemSchema, mobSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
-import { z, ZodRawShape, ZodTypeAny } from "zod";
+import { z, ZodRawShape, ZodTypeAny } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -98,7 +98,7 @@ const mobSubRelationDefs = defineRelations({
 })
 
 // 生成 factory
-export const mobRelationsFactory = makeRelations<"mob", typeof mobSubRelationDefs>(
+export const mobRelationsFactory = makeRelations(
   mobSubRelationDefs
 );
 

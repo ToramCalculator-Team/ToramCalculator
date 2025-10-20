@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, skill_effect } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { skill_effectSchema } from "@db/generated/zod";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -15,7 +15,7 @@ export type SkillEffectUpdate = Updateable<skill_effect>;
 const skillEffectSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const skillEffectRelationsFactory = makeRelations<"skill_effect", typeof skillEffectSubRelationDefs>(
+export const skillEffectRelationsFactory = makeRelations(
   skillEffectSubRelationDefs
 );
 

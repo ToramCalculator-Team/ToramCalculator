@@ -6,7 +6,7 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { materialSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -18,7 +18,7 @@ export type MaterialUpdate = Updateable<material>;
 const materialSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const materialRelationsFactory = makeRelations<"material", typeof materialSubRelationDefs>(
+export const materialRelationsFactory = makeRelations(
   materialSubRelationDefs
 );
 

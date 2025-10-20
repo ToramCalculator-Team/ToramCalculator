@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, statistic } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { statisticSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -15,7 +15,7 @@ export type StatisticUpdate = Updateable<statistic>;
 const statisticSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const statisticRelationsFactory = makeRelations<"statistic", typeof statisticSubRelationDefs>(
+export const statisticRelationsFactory = makeRelations(
   statisticSubRelationDefs
 );
 

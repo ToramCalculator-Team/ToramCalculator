@@ -193,7 +193,7 @@ ${crudMethods}
     imports.push(`import { createId } from "@paralleldrive/cuid2";`);
 
     // 添加 zod
-    imports.push(`import { z } from "zod";`);
+    imports.push(`import { z } from "zod/v4";`);
 
     // 添加 schema 导入
     const schemaImports = this.getSchemaImports(modelName);
@@ -257,7 +257,7 @@ ${crudMethods}
     return {
       database: path.relative(outputDir, path.join(repositoriesDir, "database")).replace(/\\/g, "/"),
       kysely: path.relative(outputDir, path.join(generatedDir, "kysely", "kysely")).replace(/\\/g, "/"),
-      zod: path.relative(outputDir, path.join(generatedDir, "zod", "index")).replace(/\\/g, "/"),
+      zod: path.relative(outputDir, path.join(generatedDir, "zod/v4", "index")).replace(/\\/g, "/"),
       subRelationFactory: path.relative(outputDir, path.join(repositoriesDir, "subRelationFactory")).replace(/\\/g, "/"),
       statistic: path.relative(outputDir, path.join(repositoriesDir, "statistic")).replace(/\\/g, "/"),
     };

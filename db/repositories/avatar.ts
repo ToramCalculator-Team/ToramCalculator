@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, avatar } from "../generated/kysely/kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { avatarSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -15,7 +15,7 @@ export type AvatarUpdate = Updateable<avatar>;
 const avatarSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const avatarRelationsFactory = makeRelations<"avatar", typeof avatarSubRelationDefs>(
+export const avatarRelationsFactory = makeRelations(
   avatarSubRelationDefs
 );
 

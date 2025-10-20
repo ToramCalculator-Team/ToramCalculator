@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import type { Expression, ExpressionBuilder } from "kysely";
 import { DB } from "../generated/kysely/kysely";
 
@@ -8,7 +8,7 @@ import { DB } from "../generated/kysely/kysely";
 export type RelationDef<
   TTable extends keyof DB,
   TQuery,
-  TSchema extends z.ZodTypeAny
+  TSchema extends z.ZodArray | z.ZodObject
 > = {
   schema: TSchema;
   build: (
@@ -22,7 +22,7 @@ export type RelationDef<
  */
 export function defineRelations<
   TTable extends keyof DB,
-  TDefs extends Record<string, RelationDef<TTable, any, z.ZodTypeAny>>
+  TDefs extends Record<string, RelationDef<TTable, any, z.ZodArray | z.ZodObject>>
 >(defs: TDefs): TDefs {
   return defs;
 }
@@ -32,7 +32,7 @@ export function defineRelations<
  */
 export function makeRelations<
   TTable extends keyof DB,
-  TDefs extends Record<string, RelationDef<TTable, any, z.ZodTypeAny>>
+  TDefs extends Record<string, RelationDef<TTable, any, z.ZodArray | z.ZodObject>>
 >(defs: TDefs) {
   const schema = z.object(
     Object.fromEntries(

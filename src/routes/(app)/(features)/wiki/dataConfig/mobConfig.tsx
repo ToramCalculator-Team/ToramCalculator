@@ -3,7 +3,7 @@ import { fieldInfo, renderField } from "../utils";
 import Icons from "~/components/icons/index";
 import { drop_itemSchema, mobSchema, zoneSchema } from "@db/generated/zod/index";
 import { Input } from "~/components/controls/input";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { DB, drop_item, mob, zone } from "@db/generated/kysely/kysely";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";

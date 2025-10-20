@@ -4,7 +4,7 @@ import { DB, recipe_ingredient } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { recipe_ingredientSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -16,7 +16,7 @@ export type RecipeIngredientUpdate = Updateable<recipe_ingredient>;
 const recipeIngredientSubRelationDefs = defineRelations({});
 
 // 生成 factory
-export const recipeIngredientRelationsFactory = makeRelations<"recipe_ingredient", typeof recipeIngredientSubRelationDefs>(
+export const recipeIngredientRelationsFactory = makeRelations(
   recipeIngredientSubRelationDefs
 );
 

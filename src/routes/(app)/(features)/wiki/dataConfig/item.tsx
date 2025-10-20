@@ -41,7 +41,7 @@ import {
   task_collect_requireSchema,
   task_rewardSchema,
 } from "@db/generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defaultData } from "@db/defaultData";
 import { Input } from "~/components/controls/input";
 import { AnyFieldApi, AnyFormApi, createForm, FormApi, SolidFormApi } from "@tanstack/solid-form";

@@ -5,7 +5,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { WeaponWithRelationsSchema, weaponSubRelations } from "./weapon";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { player_weaponSchema } from "@db/generated/zod";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { itemSchema, crystalSchema } from "@db/generated/zod";

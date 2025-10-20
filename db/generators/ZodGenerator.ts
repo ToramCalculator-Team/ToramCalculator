@@ -54,7 +54,7 @@ export class ZodGenerator {
 
     // 生成最终的 Zod schemas 文件内容
     const zodFileContent = `// 由脚本自动生成，请勿手动修改
-import { z } from "zod";
+import { z } from "zod/v4";
 
 ${enumSchemas}
 ${generatedSchemas}

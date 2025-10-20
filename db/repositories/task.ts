@@ -4,7 +4,7 @@ import { DB, task } from "../generated/kysely/kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { taskSchema, task_rewardSchema } from "../generated/zod/index";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -27,7 +27,7 @@ const taskSubRelationDefs = defineRelations({
 });
 
 // 生成 factory
-export const taskRelationsFactory = makeRelations<"task", typeof taskSubRelationDefs>(
+export const taskRelationsFactory = makeRelations(
   taskSubRelationDefs
 );
 

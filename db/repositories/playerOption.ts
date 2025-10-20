@@ -4,7 +4,7 @@ import { DB, player_option } from "../generated/kysely/kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { player_optionSchema, itemSchema } from "@db/generated/zod";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 

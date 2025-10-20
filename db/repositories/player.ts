@@ -4,7 +4,7 @@ import { DB, player } from "../generated/kysely/kysely";
 import { CharacterWithRelationsSchema, characterSubRelations } from "./character";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { playerSchema } from "@db/generated/zod";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 

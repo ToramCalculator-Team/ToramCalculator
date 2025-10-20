@@ -9,7 +9,7 @@ import { EngineStats } from "../GameEngine";
 import { EngineCommand, EngineCommandSchema } from "../GameEngineSM";
 import { RendererCmd } from "../../render/RendererProtocol";
 import { Result, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 
 /**
  * 通用任务优先级

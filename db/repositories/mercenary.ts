@@ -8,7 +8,7 @@ import { createStatistic } from "./statistic";
 import { createCharacter } from "./character";
 import { createPlayer } from "./player";
 import { store } from "~/store";
-import { z } from "zod/v3";
+import { z } from "zod/v4";
 import { mercenarySchema } from "@db/generated/zod";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
