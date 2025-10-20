@@ -1,2 +1,2 @@
-id,lv,isStarGem,templateId,characterId
+id,lv,isStarGem,templateId,belongToCharacterId
 defaultCharacterSkill,10,f,defaultSkillId,defaultCharacterId

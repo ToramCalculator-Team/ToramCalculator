@@ -8,6 +8,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { execSync, spawn } from "child_process";
 import dotenv from "dotenv";
+import readline from "readline";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,12 +65,15 @@ processEnvironmentVariables();
  * 配置
  */
 const CONFIG = {
-  // PostgreSQL 容器配置
-  PG_CONTAINER_NAME: "toram-calculator-postgres-1",
+  // PostgreSQL 配置
   PG_USERNAME: process.env.PG_USERNAME,
   PG_PASSWORD: process.env.PG_PASSWORD,
+  PG_HOST: process.env.PG_HOST,
   PG_PORT: process.env.PG_PORT,
   PG_DBNAME: process.env.PG_DBNAME,
+  
+  // PostgreSQL 容器配置（仅用于本地数据库）
+  PG_CONTAINER_NAME: "toram-calculator-postgres-1",
   
   // 备份目录
   BACKUP_DIR: path.join(__dirname, "../backups"),
@@ -94,18 +98,32 @@ const utils = {
   },
 
   /**
+   * 检查是否为本地数据库
+   * @returns {boolean} 是否为本地数据库
+   */
+  isLocalDatabase: () => {
+    return CONFIG.PG_HOST === "localhost" || CONFIG.PG_HOST === "127.0.0.1";
+  },
+
+  /**
    * 执行 PostgreSQL 命令
    * @param {string} sql - SQL 命令
    * @returns {string} 命令输出
    */
   execPsql: (sql) => {
-    const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@${CONFIG.PG_CONTAINER_NAME}:${CONFIG.PG_PORT}/${CONFIG.PG_DBNAME}`;
-    
-    // 使用 echo 和管道来避免引号问题
     const escapedSql = sql.replace(/'/g, "'\"'\"'");
-    const command = `echo '${escapedSql}' | docker exec -i ${CONFIG.PG_CONTAINER_NAME} psql "${pgUrl}"`;
     
-    return utils.execDockerCommand(command);
+    if (utils.isLocalDatabase()) {
+      // 本地数据库：通过 Docker 容器连接
+      const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@/${CONFIG.PG_DBNAME}`;
+      const command = `echo '${escapedSql}' | docker exec -i ${CONFIG.PG_CONTAINER_NAME} psql "${pgUrl}"`;
+      return utils.execDockerCommand(command);
+    } else {
+      // 远程数据库：使用 Docker 容器中的 psql 连接远程数据库
+      const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@${CONFIG.PG_HOST}:${CONFIG.PG_PORT}/${CONFIG.PG_DBNAME}`;
+      const command = `echo '${escapedSql}' | docker run --rm -i postgres:16-alpine psql "${pgUrl}"`;
+      return utils.execDockerCommand(command);
+    }
   },
 
   /**
@@ -149,6 +167,13 @@ class DatabaseRestorer {
   }
 
   /**
+   * 初始化（异步安全检查）
+   */
+  async initialize() {
+    await this.checkRemoteDatabaseSafety();
+  }
+
+  /**
    * 验证配置
    */
   validateConfig() {
@@ -161,6 +186,37 @@ class DatabaseRestorer {
 
     if (!utils.fileExists(CONFIG.BACKUP_DIR)) {
       throw new Error(`备份目录不存在: ${CONFIG.BACKUP_DIR}`);
+    }
+  }
+
+  /**
+   * 检查远程数据库操作安全性
+   */
+  checkRemoteDatabaseSafety() {
+    if (!utils.isLocalDatabase()) {
+      console.log("\n⚠️  ⚠️  ⚠️  安全警告  ⚠️  ⚠️  ⚠️");
+      console.log("🚨 检测到远程数据库操作！");
+      console.log(`📍 目标数据库: ${CONFIG.PG_HOST}:${CONFIG.PG_PORT}/${CONFIG.PG_DBNAME}`);
+      console.log("✅ 如果确认继续，请输入 'YES' 并按回车");
+      
+      // 等待用户确认
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      return new Promise((resolve, reject) => {
+        rl.question('\n请输入确认: ', (answer) => {
+          rl.close();
+          if (answer.trim().toUpperCase() === 'YES') {
+            console.log("✅ 用户确认，继续执行...");
+            resolve();
+          } else {
+            console.log("❌ 用户取消操作");
+            process.exit(0);
+          }
+        });
+      });
     }
   }
 
@@ -271,14 +327,28 @@ class DatabaseRestorer {
         console.log(`⬆️ 正在导入表: ${table}...`);
         try {
           const csvContent = utils.readCsvFile(csvFile);
-          const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@${CONFIG.PG_CONTAINER_NAME}:${CONFIG.PG_PORT}/${CONFIG.PG_DBNAME}`;
           
-          // 使用子进程执行命令并传递 CSV 内容
-          const child = spawn('docker', [
-            'exec', '-i', CONFIG.PG_CONTAINER_NAME,
-            'psql', pgUrl, '-c', `\\copy "${table}" FROM STDIN CSV HEADER;`
-          ], { stdio: ['pipe', 'pipe', 'pipe'] });
-      
+          let child;
+          if (utils.isLocalDatabase()) {
+            // 本地数据库：通过 Docker 容器导入
+            const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@/${CONFIG.PG_DBNAME}`;
+            
+            child = spawn('docker', [
+              'exec', '-i', CONFIG.PG_CONTAINER_NAME,
+              'psql', pgUrl
+            ], { stdio: ['pipe', 'pipe', 'pipe'] });
+          } else {
+            // 远程数据库：使用 Docker 容器中的 psql 连接远程数据库
+            const pgUrl = `postgresql://${CONFIG.PG_USERNAME}:${CONFIG.PG_PASSWORD}@${CONFIG.PG_HOST}:${CONFIG.PG_PORT}/${CONFIG.PG_DBNAME}`;
+            
+            child = spawn('docker', [
+              'run', '--rm', '-i', 'postgres:16-alpine',
+              'psql', pgUrl
+            ], { stdio: ['pipe', 'pipe', 'pipe'] });
+          }
+          
+          // 发送 SQL 命令和 CSV 数据
+          child.stdin.write(`SET session_replication_role = 'replica';\\copy "${table}" FROM STDIN CSV HEADER;\n`);
           child.stdin.write(csvContent);
           child.stdin.end();
       
@@ -390,6 +460,9 @@ class DatabaseRestorer {
   async restore() {
     try {
       console.log("🔄 开始从 CSV 文件恢复数据库...");
+      
+      // 0. 安全检查（如果是远程数据库）
+      await this.initialize();
       
       // 1. 禁用外键约束
       this.disableForeignKeys();

@@ -257,7 +257,7 @@ ${crudMethods}
     return {
       database: path.relative(outputDir, path.join(repositoriesDir, "database")).replace(/\\/g, "/"),
       kysely: path.relative(outputDir, path.join(generatedDir, "kysely", "kysely")).replace(/\\/g, "/"),
-      zod: path.relative(outputDir, path.join(generatedDir, "zod/v4", "index")).replace(/\\/g, "/"),
+      zod: path.relative(outputDir, path.join(generatedDir, "zod", "index")).replace(/\\/g, "/"),
       subRelationFactory: path.relative(outputDir, path.join(repositoriesDir, "subRelationFactory")).replace(/\\/g, "/"),
       statistic: path.relative(outputDir, path.join(repositoriesDir, "statistic")).replace(/\\/g, "/"),
     };
