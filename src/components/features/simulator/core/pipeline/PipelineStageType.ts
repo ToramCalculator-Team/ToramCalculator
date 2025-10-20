@@ -1,4 +1,4 @@
-import { z, ZodTypeAny } from "zod/v4";
+import { z, ZodType } from "zod/v4";
 import { ParameterizedObject, EventObject, ActionFunction, NonReducibleUnknown } from "xstate";
 
 /**
@@ -7,7 +7,7 @@ import { ParameterizedObject, EventObject, ActionFunction, NonReducibleUnknown }
  * @param schema Zod Schema实例
  * @returns 对应Schema的默认值对象
  */
-export function schemaToObject(schema: z.ZodTypeAny): any {
+export function schemaToObject(schema: z.ZodType): any {
   // 处理可选/可空字段，如果设置了default，优先使用default
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
     if ("defaultValue" in schema && typeof schema.defaultValue === "function") {
@@ -48,11 +48,11 @@ export function schemaToObject(schema: z.ZodTypeAny): any {
 
 /* ----------------- 静态阶段元组 ----------------- */
 /** [ stageName, zodSchemaForThisStageOutput ] */
-export type staticStageTuple = readonly [string, ZodTypeAny];
+export type staticStageTuple = readonly [string, ZodType];
 
 /* ----------------- 辅助类型 ----------------- */
 /** 从 Zod schema 推断输出类型 */
-export type OutputOfSchema<T extends ZodTypeAny> = z.infer<T>;
+export type OutputOfSchema<T extends ZodType> = z.infer<T>;
 
 /** 管线定义，每个 action 对应静态阶段数组 */
 export type PipeLineDef<TActionName extends string> = {

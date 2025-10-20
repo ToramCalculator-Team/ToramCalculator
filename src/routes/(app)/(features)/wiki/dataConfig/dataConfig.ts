@@ -2,7 +2,7 @@ import { DB } from "@db/generated/kysely/kysely";
 import { MobDataConfig } from "./mobConfig";
 import { ColumnDef, Cell, VisibilityState, OnChangeFn } from "@tanstack/solid-table";
 import { Accessor, JSX, Setter } from "solid-js";
-import { ZodObject, ZodTypeAny } from "zod/v4";
+import { ZodObject, ZodType } from "zod/v4";
 import { Dic, dictionary } from "~/locales/type";
 import { SkillDataConfig } from "./skillConfig";
 import { AddressDataConfig } from "./addressConfig";
@@ -23,7 +23,7 @@ export type dataDisplayConfig<T extends Record<string, unknown>, F extends Recor
   defaultData: F;
   dataFetcher: (id: string) => Promise<C>;
   datasFetcher: () => Promise<T[]>;
-  dataSchema: ZodObject<{ [K in keyof F]: ZodTypeAny }>;
+  dataSchema: ZodObject<{ [K in keyof F]: ZodType }>;
   main?: (dic: dictionary, itemHandleClick: (id: string) => void) => JSX.Element;
   table: {
     dataFetcher: () => Promise<T[]>;

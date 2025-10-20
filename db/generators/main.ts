@@ -29,6 +29,7 @@ import { TypeScriptGenerator } from "./TypeScriptGenerator";
 import { ZodGenerator } from "./ZodGenerator";
 import { QueryBuilderGenerator } from "./QueryBuilderGenerator";
 import { RepositoryGenerator } from "./RepositoryGenerator";
+import { SchemaInfoGenerator } from "./SchemaInfoGenerator";
 
 /**
  * 主生成器
@@ -70,6 +71,10 @@ class MainGenerator {
       // 6. 生成 Repository 文件
       const repositoryGenerator = new RepositoryGenerator();
       await repositoryGenerator.generateAll();
+
+      // 7. 生成数据库架构信息
+      const schemaInfoGenerator = new SchemaInfoGenerator();
+      await schemaInfoGenerator.generate();
 
       // 清理临时文件
       FileUtils.cleanupTempFiles(GENERATOR_CONFIG.tempFiles);

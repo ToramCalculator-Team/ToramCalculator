@@ -1,33 +1,12 @@
 import { For, JSX, Show } from "solid-js";
-import { ZodFirstPartyTypeKind, ZodObject, ZodString, ZodTypeAny } from "zod/v4";
+import { ZodAny, ZodObject, ZodType } from "zod/v4";
+import { getZodType } from "~/lib/utils/zodTools";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
-// 缓存 Zod 类型解析
-const schemaTypeCache = new WeakMap<ZodTypeAny, ZodFirstPartyTypeKind>();
-
-function getZodType(schema?: ZodTypeAny): ZodFirstPartyTypeKind {
-  if (!schema) return ZodFirstPartyTypeKind.ZodUndefined;
-
-  if (schemaTypeCache.has(schema)) {
-    return schemaTypeCache.get(schema)!;
-  }
-
-  const def = schema._def;
-  let type: ZodFirstPartyTypeKind;
-
-  if ("innerType" in def) {
-    type = getZodType(def.innerType);
-  } else {
-    type = def.typeName as ZodFirstPartyTypeKind;
-  }
-
-  schemaTypeCache.set(schema, type);
-  return type;
-}
 
 export function ObjRender<T extends Record<string, unknown>>(props: {
   data: T;
-  dataSchema?: ZodObject<Record<keyof T, ZodTypeAny>>;
+  dataSchema?: ZodObject<Record<keyof T, ZodAny>>;
   dictionary?: Dic<T>;
   hiddenFields?: Array<keyof T>;
   fieldGroupMap?: Record<string, Array<keyof T>>;
@@ -44,7 +23,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
             {([key, val]) => {
               if (props.hiddenFields?.includes(key)) return null;
               const schemaField = props.dataSchema?.shape[key];
-              const kind = schemaField ? getZodType(schemaField) : ZodFirstPartyTypeKind.ZodString;
+              const kind = schemaField ? getZodType(schemaField) : "string";
               const fieldName = props.dictionary?.fields[key].key ?? key;
               let fieldValue = val;
               const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
@@ -55,7 +34,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
               } catch (error) {}
 
               // 处理嵌套结构
-              if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
+              if (kind === "object" || kind === "array") {
                 const content = Object.entries(val as Record<string, unknown>);
                 return props.dictionary && hasGenerator ? (
                   props.fieldGenerator?.[key]?.(key, val as T[keyof T], props.dictionary)
@@ -106,7 +85,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                   {(key) => {
                     const val = props.data[key];
                     const schemaField = props.dataSchema?.shape[key];
-                    const kind = schemaField ? getZodType(schemaField) : ZodFirstPartyTypeKind.ZodString;
+                    const kind = schemaField ? getZodType(schemaField) : "string";
                     const fieldName = props.dictionary?.fields[key].key ?? key;
                     let fieldValue = val;
                     const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
@@ -117,7 +96,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
                     } catch (error) {}
 
                     // 处理嵌套结构
-                    if (kind === ZodFirstPartyTypeKind.ZodObject || kind === ZodFirstPartyTypeKind.ZodArray) {
+                    if (kind === "object" || kind === "array") {
                       const content = Object.entries(val as Record<string, unknown>);
                       return props.dictionary && hasGenerator ? props.fieldGenerator?.[key]?.(key, val, props.dictionary) : (
                         <div class="Field flex flex-col gap-2">

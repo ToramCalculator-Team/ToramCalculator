@@ -1,11 +1,13 @@
 import { AnyFieldApi, DeepKeys, DeepValue, Field } from "@tanstack/solid-form";
 import { For } from "solid-js";
-import { z, ZodEnum, ZodFirstPartyTypeKind, ZodObject, ZodTypeAny } from "zod/v4";
+import { z, ZodEnum, ZodObject, ZodAny } from "zod/v4";
+import { ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
+import { getZodType } from "~/lib/utils/zodTools";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 简化后的表单字段
@@ -43,28 +45,13 @@ export function fieldInfo(field: AnyFieldApi): string {
   return "";
 }
 
-// 获取表单字段的类型
-export const getZodType = <T extends z.ZodTypeAny>(schema: T): ZodFirstPartyTypeKind => {
-  if (schema === undefined || schema == null) {
-    return ZodFirstPartyTypeKind.ZodUndefined;
-  }
-  if ("_def" in schema) {
-    if ("innerType" in schema._def) {
-      return getZodType(schema._def.innerType);
-    } else {
-      return schema._def.typeName as ZodFirstPartyTypeKind;
-    }
-  }
-  return ZodFirstPartyTypeKind.ZodUndefined;
-};
-
 // 工具：根据值类型选择字段组件
 export function renderField<T extends Record<string, unknown>, K extends DeepKeys<T>>(
   form: any,
   fieldKey: string,
   fieldValue: DeepValue<T, K>,
   dictionary: Dic<T>,
-  dataSchema: ZodObject<Record<string, ZodTypeAny>>,
+  dataSchema: ZodObject<Record<string, ZodType>>,
 ) {
   // 如果fieldKey内存在.，则认为是子表单字段
   const isSubFormField = fieldKey.includes(".");
@@ -86,7 +73,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   const fieldCalss = `${isSubFormField ? "" : "border-dividing-color bg-primary-color rounded-md border-1"} w-full`;
 
   switch (valueType) {
-    case ZodFirstPartyTypeKind.ZodEnum: {
+    case "enum": {
       return (
         <Field
           form={form}
@@ -103,7 +90,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                 <EnumSelect
                   value={field().state.value as string}
                   setValue={(value) => field().setValue(value as DeepValue<T, DeepKeys<T>>)}
-                  options={enumValue.options}
+                  options={enumValue.options.map((i) => i.toString())}
                   dic={(dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap}
                   field={{
                     id: field().name,
@@ -117,7 +104,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
       );
     }
 
-    case ZodFirstPartyTypeKind.ZodNumber: {
+    case "number": {
       return (
         <Field
           form={form}
@@ -147,7 +134,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
         </Field>
       );
     }
-    case ZodFirstPartyTypeKind.ZodArray: {
+    case "array": {
       return (
         <Field
           form={form}
@@ -205,11 +192,11 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
         </Field>
       );
     }
-    case ZodFirstPartyTypeKind.ZodObject: {
+    case "object": {
       return JSON.stringify(fieldValue, null, 2);
     }
 
-    case ZodFirstPartyTypeKind.ZodLazy: {
+    case "lazy": {
       return (
         <Field
           form={form}
@@ -245,7 +232,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
       );
     }
 
-    case ZodFirstPartyTypeKind.ZodBoolean: {
+    case "boolean": {
       return (
         <Field
           form={form}

@@ -464,19 +464,22 @@ class DatabaseRestorer {
       // 0. 安全检查（如果是远程数据库）
       await this.initialize();
       
-      // 1. 禁用外键约束
+      // 1. 等待数据库表创建完成
+      await this.waitForTablesReady();
+      
+      // 2. 禁用外键约束
       this.disableForeignKeys();
       
-      // 2. 获取表的正确导入顺序
+      // 3. 获取表的正确导入顺序
       const tables = await this.getTableOrder();
       
-      // 3. 按顺序导入 CSV 文件
+      // 4. 按顺序导入 CSV 文件
       await this.importCsvFiles(tables);
       
-      // 4. 恢复外键约束
+      // 5. 恢复外键约束
       this.restoreForeignKeys();
       
-      // 5. 修复自增主键（序列）
+      // 6. 修复自增主键（序列）
       this.fixSequences(tables);
       
       console.log("✅ 数据库恢复完成！");

@@ -41,6 +41,9 @@ export const PATHS = {
   repository: {
     output: path.join(__dirname, "../../generated/repository"),
   },
+  generated: {
+    databaseSchema: path.join(__dirname, "../../generated/database-schema.ts"),
+  },
 } as const;
 
 /**

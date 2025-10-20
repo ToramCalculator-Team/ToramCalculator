@@ -6,7 +6,7 @@
  * 2. 固定管线阶段来自各自的ActionPipelines定义
  */
 
-import { ZodTypeAny } from "zod/v4";
+import { ZodType } from "zod/v4";
 import { OutputOfSchema, PipeLineDef, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
 import { ParameterizedObject } from "xstate";
 
@@ -39,7 +39,7 @@ type GetPreviousAndCurrentStageDefs<
   StopStage extends string,
   Acc extends readonly staticStageTuple[] = [],
 > = TStages extends readonly [infer First, ...infer Rest]
-  ? First extends readonly [infer Name extends string, infer Schema extends ZodTypeAny] // ← 关键：约束 Schema 为 ZodTypeAny
+  ? First extends readonly [infer Name extends string, infer Schema extends ZodType] // ← 关键：约束 Schema 为 ZodType
     ? Rest extends readonly staticStageTuple[]
       ? Equal<Name, StopStage> extends true
         ? [...Acc, First] // include current
@@ -50,7 +50,7 @@ type GetPreviousAndCurrentStageDefs<
 
 /* ---------- 累积输出为交叉类型 ---------- */
 type OutputsUnionFromDefs<TDefs extends readonly staticStageTuple[]> = TDefs[number] extends readonly [any, infer S]
-  ? S extends ZodTypeAny
+  ? S extends ZodType
     ? OutputOfSchema<S>
     : never
   : never;
@@ -79,7 +79,7 @@ type StageOutputOf<
   A extends TActionName,
   S extends StageNamesOf<TActionName, TDef, A>,
 > =
-  StageSchemaOf<TActionName, TDef, A, S> extends ZodTypeAny
+  StageSchemaOf<TActionName, TDef, A, S> extends ZodType
     ? OutputOfSchema<StageSchemaOf<TActionName, TDef, A, S>>
     : never;
 
