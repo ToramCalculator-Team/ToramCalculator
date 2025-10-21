@@ -13,16 +13,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../db/generated/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./healthcheck.sh:/usr/local/bin/healthcheck.sh
     command:
       - -c
       - listen_addresses=*
       - -c
       - wal_level=logical
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PG_USERNAME}"]
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 60
+      start_period: 120s
 
   electric:
     image: electricsql/electric
