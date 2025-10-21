@@ -29,22 +29,28 @@ export class SQLGenerator {
     clientGenerators: string[],
     enumDefinitions: Map<string, string>
   ): void {
-    // 生成最终的 schema 文件
+    LogUtils.logStep("SQL 生成", "开始生成 SQL 文件...");
+    
+    LogUtils.logInfo("生成最终的 schema 文件...");
     const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
 
-    // 创建临时 schema 文件
+    LogUtils.logInfo("创建临时 schema 文件...");
     FileUtils.safeWriteFile(PATHS.serverDB.tempSchema, finalSchema);
     FileUtils.safeWriteFile(PATHS.clientDB.tempSchema, finalSchema);
 
-    // 生成 SQL 文件
+    LogUtils.logInfo("生成服务端 SQL...");
     PrismaExecutor.generateServerSQL(PATHS.serverDB.tempSchema);
+    
+    LogUtils.logInfo("生成客户端 SQL...");
     PrismaExecutor.generateClientSQL(PATHS.clientDB.tempSchema);
 
-    // 转换clientDB/init.sql
+    LogUtils.logInfo("转换客户端 SQL...");
     this.transformClientSql();
 
-    // 修复关系表名称
+    LogUtils.logInfo("修复关系表名称...");
     this.fixRelationTableNames(updatedSchema);
+    
+    LogUtils.logSuccess("SQL 生成完成");
   }
 
   /**
@@ -52,9 +58,10 @@ export class SQLGenerator {
    */
   static transformClientSql(): void {
     const initSQLFilePath = PATHS.clientDB.sql;
-    // 读取文件内容
+    LogUtils.logInfo("读取客户端 SQL 文件...");
     let initContent = fs.readFileSync(initSQLFilePath, "utf-8");
 
+    LogUtils.logInfo("删除外键约束和索引...");
     // 删除所有 `ALTER TABLE` 语句中涉及 `FOREIGN KEY` 的行
     initContent = initContent.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
 
@@ -69,7 +76,6 @@ export class SQLGenerator {
     initContent = initContent.replace(/-- CreateIndex\s*\n?/g, "");
 
     fs.writeFileSync(initSQLFilePath, initContent, "utf-8");
-
     LogUtils.logSuccess("外键约束及索引已删除！");
 
     // 转换 SQL 为同步架构
@@ -136,7 +142,7 @@ EXECUTE FUNCTION changes_notify_trigger();
 `;
 
     fs.writeFileSync(initSQLFilePath, output.join("\n") + "\n" + changesTable, "utf-8");
-    LogUtils.logSuccess(`已转换initSQL ${initSQLFilePath}`);
+    LogUtils.logSuccess("已转换客户端 SQL 为同步架构");
   }
 
   /**

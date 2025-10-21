@@ -17,18 +17,14 @@ export class PrismaExecutor {
    * 生成 Kysely 类型
    */
   static generateKyselyTypes(): void {
-    LogUtils.logStep("TypeScript生成", "生成 TypeScript 类型");
     CommandUtils.execCommand(`prisma generate --schema=${PATHS.clientDB.tempSchema} --generator=kysely`);
-    LogUtils.logSuccess("Kysely 类型生成完成！");
   }
 
   /**
    * 生成 Zod 类型
    */
   static generateZodTypes(): void {
-    LogUtils.logStep("Zod生成", "生成 Zod 类型");
     CommandUtils.execCommand(`prisma generate --schema=${PATHS.clientDB.tempSchema} --generator=zod`);
-    LogUtils.logSuccess("Zod 类型生成完成！");
   }
 
   /**

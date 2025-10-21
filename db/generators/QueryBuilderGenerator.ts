@@ -137,7 +137,7 @@ export const OPERATORS = {
     }
 
     FileUtils.safeWriteFile(PATHS.queryBuilder.rules, rulesContent);
-    LogUtils.logSuccess("QueryBuilder 规则生成完成！");
+    LogUtils.logSuccess("QueryBuilder 生成完成");
   }
 }
 

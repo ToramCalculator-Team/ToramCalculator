@@ -56,25 +56,25 @@ class MainGenerator {
         clientGenerators: string[];
       };
 
-      // 2. 生成 SQL
-      SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.getEnumDefinitions());
-
-      // 3. 生成 TypeScript 类型
-      TypeScriptGenerator.generate();
-
-      // 4. 生成 Zod schemas
-      ZodGenerator.generate();
-
-      // 5. 生成 QueryBuilder 规则
-      QueryBuilderGenerator.generate(updatedSchema, enumProcessor.getEnumTypeToNameMap());
-
-      // 6. 生成 Repository 文件
-      const repositoryGenerator = new RepositoryGenerator();
-      await repositoryGenerator.generateAll();
-
-      // 7. 生成数据库架构信息
+      // 2. 生成数据库架构信息
       const schemaInfoGenerator = new SchemaInfoGenerator();
       await schemaInfoGenerator.generate();
+
+      // 3. 生成 SQL
+      SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.getEnumDefinitions());
+
+      // 4. 生成 TypeScript 类型
+      TypeScriptGenerator.generate();
+
+      // 5. 生成 Zod schemas
+      ZodGenerator.generate();
+
+      // 6. 生成 QueryBuilder 规则
+      QueryBuilderGenerator.generate(updatedSchema, enumProcessor.getEnumTypeToNameMap());
+
+      // 7. 生成 Repository 文件
+      const repositoryGenerator = new RepositoryGenerator();
+      await repositoryGenerator.generateAll();
 
       // 清理临时文件
       FileUtils.cleanupTempFiles(GENERATOR_CONFIG.tempFiles);

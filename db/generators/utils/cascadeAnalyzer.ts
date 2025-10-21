@@ -4,8 +4,8 @@
  * @version 1.0.0
  */
 
-import { DMMF } from "@prisma/generator-helper";
 import { StringUtils } from "./common";
+import { DATABASE_SCHEMA, type TableInfo, type FieldInfo } from '../../generated/database-schema.js';
 
 /**
  * 删除操作类型
@@ -50,25 +50,25 @@ export interface GeneratedDeleteCode {
  * 级联删除分析器
  */
 export class CascadeAnalyzer {
-  private models: readonly DMMF.Model[];
-  private modelMap: Map<string, DMMF.Model>;
+  private tables: readonly TableInfo[];
+  private tableMap: Map<string, TableInfo>;
 
-  constructor(dmmf: DMMF.Document) {
-    this.models = dmmf.datamodel.models;
-    this.modelMap = new Map(this.models.map((m) => [m.name, m]));
+  constructor(dmmf: any) {
+    this.tables = DATABASE_SCHEMA.tables;
+    this.tableMap = new Map(this.tables.map((t) => [t.name, t]));
   }
 
   /**
-   * 获取模型的主键字段名
+   * 获取表的主键字段名
    */
-  private getPrimaryKeyField(modelName: string): string {
-    const model = this.models.find(m => m.name === modelName);
-    if (!model) {
-      throw new Error(`Model ${modelName} not found`);
+  private getPrimaryKeyField(tableName: string): string {
+    const table = this.tables.find(t => t.name === tableName);
+    if (!table) {
+      throw new Error(`Table ${tableName} not found`);
     }
     
     // 查找主键字段
-    const primaryKeyField = model.fields.find(field => field.isId);
+    const primaryKeyField = table.fields.find(field => field.isId);
     if (primaryKeyField) {
       return primaryKeyField.name;
     }
@@ -78,25 +78,25 @@ export class CascadeAnalyzer {
   }
 
   /**
-   * 获取指定 model 被哪些其他 model 引用
+   * 获取指定表被哪些其他表引用
    */
-  getReferencedBy(modelName: string): DeleteDependency[] {
+  getReferencedBy(tableName: string): DeleteDependency[] {
     const dependencies: DeleteDependency[] = [];
 
-    for (const model of this.models) {
-      for (const field of model.fields) {
-        // 检查是否是引用当前 model 的关系字段
-        if (field.kind === "object" && field.type === modelName) {
+    for (const table of this.tables) {
+      for (const field of table.fields) {
+        // 检查是否是引用当前表的关系字段
+        if (field.kind === "object" && field.type === tableName) {
           const action = this.getDeleteAction(field);
           const foreignKeyField = field.relationFromFields?.[0];
 
           if (foreignKeyField) {
             // 检查字段是否必需
-            const foreignKeyFieldDef = model.fields.find((f) => f.name === foreignKeyField);
+            const foreignKeyFieldDef = table.fields.find((f) => f.name === foreignKeyField);
             const required = foreignKeyFieldDef?.isRequired ?? false;
 
             dependencies.push({
-              tableName: model.name.toLowerCase(),
+              tableName: table.name.toLowerCase(),
               foreignKeyField,
               action,
               required,
@@ -113,7 +113,7 @@ export class CascadeAnalyzer {
   /**
    * 获取删除操作类型
    */
-  private getDeleteAction(field: DMMF.Field): DeleteAction {
+  private getDeleteAction(field: FieldInfo): DeleteAction {
     // 从 field 的 relationOnDelete 属性获取删除操作
     const onDelete = field.relationOnDelete;
 
@@ -137,11 +137,11 @@ export class CascadeAnalyzer {
   /**
    * 检查是否有 statistic 字段
    */
-  private hasStatisticField(modelName: string): boolean {
-    const model = this.modelMap.get(modelName);
-    if (!model) return false;
+  private hasStatisticField(tableName: string): boolean {
+    const table = this.tableMap.get(tableName);
+    if (!table) return false;
 
-    return model.fields.some(
+    return table.fields.some(
       (f) => f.name === "statisticId" || (f.name === "statistic" && f.type === "statistic")
     );
   }
@@ -149,13 +149,13 @@ export class CascadeAnalyzer {
   /**
    * 获取需要删除的关联记录（如 statistic）
    */
-  private getRelatedDeletions(modelName: string): string[] {
+  private getRelatedDeletions(tableName: string): string[] {
     const deletions: string[] = [];
-    const model = this.modelMap.get(modelName);
-    if (!model) return deletions;
+    const table = this.tableMap.get(tableName);
+    if (!table) return deletions;
 
     // 检查是否有 statistic 关系
-    if (this.hasStatisticField(modelName)) {
+    if (this.hasStatisticField(tableName)) {
       deletions.push("statistic");
     }
 
@@ -166,15 +166,15 @@ export class CascadeAnalyzer {
    * 生成删除代码
    */
   generateDeleteCode(
-    modelName: string,
+    tableName: string,
     customConfig?: {
       resetReferences?: boolean;
       customBeforeDelete?: string[];
       customAfterDelete?: string[];
     }
   ): GeneratedDeleteCode {
-    const tableName = modelName.toLowerCase();
-    const dependencies = this.getReferencedBy(modelName);
+    const tableNameLower = tableName.toLowerCase();
+    const dependencies = this.getReferencedBy(tableName);
     const beforeDelete: string[] = [];
     const afterDelete: string[] = [];
 
@@ -184,10 +184,10 @@ export class CascadeAnalyzer {
     
     if (needsResetReferences) {
       beforeDelete.push(
-        `  // 获取 ${tableName} 信息用于重置引用
-  const ${tableName} = await trx
-    .selectFrom("${tableName}")
-    .where("${this.getPrimaryKeyField(modelName)}", "=", id)
+        `  // 获取 ${tableNameLower} 信息用于重置引用
+  const ${tableNameLower} = await trx
+    .selectFrom("${tableNameLower}")
+    .where("${this.getPrimaryKeyField(tableName)}", "=", id)
     .selectAll()
     .executeTakeFirstOrThrow();`
       );
@@ -215,7 +215,7 @@ export class CascadeAnalyzer {
   await trx
     .updateTable("${dep.tableName}")
     .set({
-      ${dep.foreignKeyField}: \`default\${${tableName}.${this.getTypeField(modelName)}}Id\`,
+      ${dep.foreignKeyField}: \`default\${${tableNameLower}.${this.getTypeField(tableName)}}Id\`,
     })
     .where("${dep.foreignKeyField}", "=", id)
     .execute();`
@@ -229,20 +229,20 @@ export class CascadeAnalyzer {
     }
 
     // 生成主删除语句
-    const deleteStatement = `  // 删除 ${tableName}
+    const deleteStatement = `  // 删除 ${tableNameLower}
   await trx
-    .deleteFrom("${tableName}")
-    .where("${this.getPrimaryKeyField(modelName)}", "=", id)
+    .deleteFrom("${tableNameLower}")
+    .where("${this.getPrimaryKeyField(tableName)}", "=", id)
     .executeTakeFirstOrThrow();`;
 
     // 处理关联删除（如 statistic）
-    const relatedDeletions = this.getRelatedDeletions(modelName);
+    const relatedDeletions = this.getRelatedDeletions(tableName);
     for (const related of relatedDeletions) {
       afterDelete.push(
         `  // 删除关联的 ${related}
   await trx
     .deleteFrom("${related}")
-    .where("${this.getPrimaryKeyField(related)}", "=", ${tableName}.${related}Id)
+    .where("${this.getPrimaryKeyField(related)}", "=", ${tableNameLower}.${related}Id)
     .executeTakeFirstOrThrow();`
       );
     }
@@ -262,12 +262,12 @@ export class CascadeAnalyzer {
   /**
    * 获取类型字段（用于生成默认值）
    */
-  private getTypeField(modelName: string): string {
-    const model = this.modelMap.get(modelName);
-    if (!model) return "type";
+  private getTypeField(tableName: string): string {
+    const table = this.tableMap.get(tableName);
+    if (!table) return "type";
 
     // 查找带有 "type" 或 "Type" 的字段
-    const typeField = model.fields.find(
+    const typeField = table.fields.find(
       (f) => f.name.toLowerCase().includes("type") && f.type === "String"
     );
 

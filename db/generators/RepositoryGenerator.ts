@@ -18,6 +18,7 @@ import {
   shouldSkipImportForCircularRef,
 } from "./repository.config";
 import { PATHS } from "./utils/config";
+import { DATABASE_SCHEMA, type TableInfo, type FieldInfo } from '../generated/database-schema.js';
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
@@ -36,17 +37,10 @@ export class RepositoryGenerator {
    */
   async initialize(): Promise<void> {
     try {
-      // 读取 schema
-      this.schema = FileUtils.safeReadFile(PATHS.baseSchema);
-
-      // 使用 Prisma DMMF 获取准确的关系信息
-      const { getDMMF } = await import('@prisma/internals');
-      const dmmf = await getDMMF({ datamodel: this.schema });
-      
-      // 从 DMMF 中提取模型信息
-      this.models = dmmf.datamodel.models.map(model => ({
-        name: model.name,
-        fields: model.fields.map(field => ({
+      // 从 DATABASE_SCHEMA 中提取模型信息
+      this.models = DATABASE_SCHEMA.tables.map(table => ({
+        name: table.name,
+        fields: table.fields.map(field => ({
           name: field.name,
           type: field.type,
           kind: field.kind,
@@ -58,15 +52,15 @@ export class RepositoryGenerator {
           relationToFields: field.relationToFields,
           relationName: field.relationName,
           relationOnDelete: field.relationOnDelete,
-          documentation: field.documentation || ''
+          documentation: ''
         }))
       }));
 
       // 初始化分析器
       this.schemaParser = new SchemaParser(this.models);
-      this.cascadeAnalyzer = new CascadeAnalyzer(dmmf as any);
+      this.cascadeAnalyzer = new CascadeAnalyzer(null); // 不再需要 DMMF
       
-      LogUtils.logSuccess("Repository 生成器初始化完成（使用 DMMF）");
+      LogUtils.logSuccess("Repository 生成器初始化完成（使用 DATABASE_SCHEMA）");
     } catch (error) {
       LogUtils.logError("Repository 生成器初始化失败", error as Error);
       throw error;
@@ -120,9 +114,7 @@ export class RepositoryGenerator {
     // 生成 index.ts
     await this.generateIndex(generatedFiles);
 
-    LogUtils.logSuccess(
-      `Repository 生成完成！共生成 ${generatedFiles.length} 个文件`
-    );
+    LogUtils.logSuccess(`Repository 生成完成！共生成 ${generatedFiles.length} 个文件`);
   }
 
   /**

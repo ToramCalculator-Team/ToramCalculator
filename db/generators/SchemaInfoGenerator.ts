@@ -17,10 +17,13 @@ import { PATHS } from "./utils/config";
 export interface FieldInfo {
   name: string;
   type: string;
+  kind: string;
   isRequired: boolean;
   isId: boolean;
   isUnique: boolean;
   isList: boolean;
+  isArray: boolean;
+  isOptional: boolean;
   defaultValue?: any;
   relationName?: string;
   relationFromFields?: string[];
@@ -61,11 +64,20 @@ export interface IndexInfo {
 }
 
 /**
+ * 枚举信息接口
+ */
+export interface EnumInfo {
+  name: string;
+  values: string[];
+}
+
+/**
  * 数据库架构信息接口
  */
 export interface DatabaseSchemaInfo {
   tables: TableInfo[];
   dependencies: DependencyInfo[];
+  enums: EnumInfo[];
   generatedAt: string;
   version: string;
 }
@@ -106,17 +118,16 @@ export class SchemaInfoGenerator {
     try {
       LogUtils.logStep("架构信息生成", "开始生成数据库架构信息...");
       
+      LogUtils.logInfo("初始化 DMMF...");
       await this.initializeDMMF();
       
+      LogUtils.logInfo("构建架构信息...");
       const schemaInfo = this.buildSchemaInfo();
       
-      // 生成 TypeScript 文件
+      LogUtils.logInfo("生成 TypeScript 文件...");
       this.generateTypeScriptFile(schemaInfo);
       
-      // 生成 JSON 文件（供 restore.js 使用）
-      this.generateJsonFile(schemaInfo);
-      
-      LogUtils.logSuccess("数据库架构信息生成完成");
+      LogUtils.logSuccess("架构信息生成完成");
     } catch (error) {
       LogUtils.logError("架构信息生成失败", error as Error);
       throw error;
@@ -129,6 +140,7 @@ export class SchemaInfoGenerator {
   private buildSchemaInfo(): DatabaseSchemaInfo {
     const tables: TableInfo[] = [];
     const dependencies: DependencyInfo[] = [];
+    const enums: EnumInfo[] = [];
 
     // 处理每个模型
     for (const model of this.dmmf.datamodel.models) {
@@ -140,9 +152,19 @@ export class SchemaInfoGenerator {
       dependencies.push(dependencyInfo);
     }
 
+    // 处理枚举
+    for (const enumDef of this.dmmf.datamodel.enums) {
+      const enumInfo: EnumInfo = {
+        name: enumDef.name,
+        values: enumDef.values.map((v: any) => v.name)
+      };
+      enums.push(enumInfo);
+    }
+
     return {
       tables,
       dependencies,
+      enums,
       generatedAt: new Date().toISOString(),
       version: "1.0.0"
     };
@@ -162,10 +184,13 @@ export class SchemaInfoGenerator {
       const fieldInfo: FieldInfo = {
         name: field.name,
         type: field.type,
+        kind: field.kind,
         isRequired: field.isRequired,
         isId: field.isId,
         isUnique: field.isUnique,
         isList: field.isList,
+        isArray: field.isList,
+        isOptional: !field.isRequired,
         defaultValue: field.default,
         relationName: field.relationName,
         relationFromFields: field.relationFromFields,
@@ -259,10 +284,13 @@ export class SchemaInfoGenerator {
 export interface FieldInfo {
   name: string;
   type: string;
+  kind: string;
   isRequired: boolean;
   isId: boolean;
   isUnique: boolean;
   isList: boolean;
+  isArray: boolean;
+  isOptional: boolean;
   defaultValue?: any;
   relationName?: string;
   relationFromFields?: string[];
@@ -293,9 +321,15 @@ export interface IndexInfo {
   isUnique: boolean;
 }
 
+export interface EnumInfo {
+  name: string;
+  values: string[];
+}
+
 export interface DatabaseSchemaInfo {
   tables: TableInfo[];
   dependencies: DependencyInfo[];
+  enums: EnumInfo[];
   generatedAt: string;
   version: string;
 }
@@ -391,11 +425,4 @@ export const SchemaUtils = {
     FileUtils.safeWriteFile(PATHS.generated.databaseSchema, content);
   }
 
-  /**
-   * 生成 JSON 文件
-   */
-  private generateJsonFile(schemaInfo: DatabaseSchemaInfo): void {
-    const jsonPath = PATHS.generated.databaseSchema.replace('.ts', '.json');
-    FileUtils.safeWriteFile(jsonPath, JSON.stringify(schemaInfo, null, 2));
-  }
 }

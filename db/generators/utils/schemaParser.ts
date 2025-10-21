@@ -753,15 +753,14 @@ export class SchemaParser {
      * 转换为驼峰命名
      */
     toCamelCase(str: string): string {
-      return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      return StringUtils.toCamelCase(str);
     },
 
     /**
      * 转换为帕斯卡命名
      */
     toPascalCase(str: string): string {
-      const camelCase = this.toCamelCase(str);
-      return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+      return StringUtils.toPascalCase(str);
     },
 
     /**

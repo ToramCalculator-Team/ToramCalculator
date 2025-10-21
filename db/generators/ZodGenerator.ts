@@ -7,30 +7,14 @@ import { PATHS } from "./utils/config";
 import { FileUtils, LogUtils, StringUtils } from "./utils/common";
 import { PrismaExecutor } from "./utils/PrismaExecutor";
 import * as enums from "../schema/enums";
+import { DATABASE_SCHEMA, type TableInfo, type FieldInfo } from '../generated/database-schema.js';
 
 export class ZodGenerator {
-  private static dmmf: any = null;
 
   /**
    * JSON 类型的 Zod schema 定义
    */
   private static readonly JSON_ZOD_TYPE = `z.unknown()`;
-
-  /**
-   * 初始化 DMMF
-   */
-  private static async initializeDMMF(): Promise<void> {
-    if (this.dmmf) return;
-    
-    try {
-      const { getDMMF } = await import('@prisma/internals');
-      const schema = FileUtils.safeReadFile(PATHS.baseSchema);
-      this.dmmf = await getDMMF({ datamodel: schema });
-    } catch (error) {
-      LogUtils.logError("初始化 DMMF 失败", error as Error);
-      throw error;
-    }
-  }
 
   /**
    * 使用 prisma generate 生成 Zod 类型
@@ -42,17 +26,16 @@ export class ZodGenerator {
   /**
    * 生成 Zod schemas
    */
-  static async generate(): Promise<void> {
-    // 初始化 DMMF
-    await this.initializeDMMF();
-
-    // 从 db/schema/enums.ts 生成 zod 枚举
+  static generate(): void {
+    LogUtils.logStep("Zod 生成", "开始生成 Zod schemas...");
+    
+    LogUtils.logInfo("生成枚举 schemas...");
     const enumSchemas = this.generateEnumSchemas();
 
-    // 从 DMMF 生成 Zod schemas
-    const generatedSchemas = this.generateModelSchemasFromDMMF();
+    LogUtils.logInfo("生成模型 schemas...");
+    const generatedSchemas = this.generateModelSchemasFromDatabaseSchema();
 
-    // 生成最终的 Zod schemas 文件内容
+    LogUtils.logInfo("写入 Zod schemas 文件...");
     const zodFileContent = `// 由脚本自动生成，请勿手动修改
 import { z } from "zod/v4";
 
@@ -60,8 +43,9 @@ ${enumSchemas}
 ${generatedSchemas}
 `;
 
-    // 写入 Zod schemas 文件
     FileUtils.safeWriteFile(PATHS.zod.schemas, zodFileContent);
+    
+    LogUtils.logSuccess("Zod 生成完成");
   }
 
   /**
@@ -95,25 +79,21 @@ ${generatedSchemas}
   }
 
   /**
-   * 从 DMMF 生成模型 schemas
+   * 从 DATABASE_SCHEMA 生成模型 schemas
    * @returns 模型 schemas 内容
    */
-  static generateModelSchemasFromDMMF(): string {
-    if (!this.dmmf) {
-      throw new Error("DMMF 未初始化");
-    }
-
+  static generateModelSchemasFromDatabaseSchema(): string {
     // 生成模型 schemas
-    const modelSchemas = this.dmmf.datamodel.models
-      .map((model: any) => {
-        const schemaName = `${model.name.toLowerCase()}Schema`;
-        const fieldsStr = model.fields
-          .filter((field: any) => {
+    const modelSchemas = DATABASE_SCHEMA.tables
+      .map((table: TableInfo) => {
+        const schemaName = `${table.name.toLowerCase()}Schema`;
+        const fieldsStr = table.fields
+          .filter((field: FieldInfo) => {
             // 跳过关联字段，只保留标量字段和枚举字段
             return field.kind === "scalar" || field.kind === "enum";
           })
-          .map((field: any) => {
-            const zodType = this.convertDMMFFieldToZod(field, model.name);
+          .map((field: FieldInfo) => {
+            const zodType = this.convertFieldToZod(field, table.name);
             return `  ${field.name}: ${zodType}`;
           })
           .join(",\n");
@@ -123,18 +103,18 @@ ${generatedSchemas}
       .join("\n\n");
 
     // 生成 dbSchema
-    const dbSchema = this.generateDbSchemaFromDMMF();
+    const dbSchema = this.generateDbSchemaFromDatabaseSchema();
 
     return modelSchemas + "\n\n" + dbSchema;
   }
 
   /**
-   * 将 DMMF 字段转换为 Zod 类型
-   * @param field - DMMF 字段
-   * @param modelName - 模型名称
+   * 将 FieldInfo 转换为 Zod 类型
+   * @param field - FieldInfo 字段
+   * @param tableName - 表名称
    * @returns Zod 类型字符串
    */
-  static convertDMMFFieldToZod(field: any, modelName: string): string {
+  static convertFieldToZod(field: FieldInfo, tableName: string): string {
     let zodType = "";
 
     // 处理字段类型
@@ -143,8 +123,8 @@ ${generatedSchemas}
         // 标量字段
         switch (field.type) {
           case "String":
-            // 检查是否是枚举类型（通过注释判断）
-            const enumType = this.getEnumTypeFromComment(field, modelName);
+            // 检查是否是枚举类型
+            const enumType = this.getEnumTypeFromField(field, tableName);
             if (enumType) {
               // 将大写下划线格式转换为 PascalCase 格式
               const pascalCaseEnumName = StringUtils.toPascalCase(enumType);
@@ -166,9 +146,12 @@ ${generatedSchemas}
           case "Json":
             zodType = this.JSON_ZOD_TYPE;
             break;
+          case "Bytes":
+            zodType = "z.instanceof(Buffer)";
+            break;
           default:
             // 检查是否是枚举类型
-            if (this.dmmf.datamodel.enums.some((e: any) => e.name === field.type)) {
+            if (DATABASE_SCHEMA.enums.some(e => e.name === field.type)) {
               zodType = `${field.type}Schema`;
             } else {
               // 对于未知类型，使用更安全的 JSON 类型
@@ -176,10 +159,6 @@ ${generatedSchemas}
             }
         }
         break;
-      case "object":
-        // 关联字段 - 跳过，因为关联字段不应该在 schema 中定义
-        // 关联字段通常通过 ID 字段来引用
-        return "SKIP_FIELD";
       case "enum":
         // 枚举字段
         zodType = `${field.type}Schema`;
@@ -190,63 +169,52 @@ ${generatedSchemas}
     }
 
     // 处理数组类型
-    if (field.isList) {
+    if (field.isArray) {
       zodType = `z.array(${zodType})`;
     }
 
     // 处理可选字段
-    if (!field.isRequired) {
-      zodType = `${zodType}.nullable()`;
+    if (field.isOptional) {
+      zodType = `${zodType}.optional()`;
     }
 
     return zodType;
   }
 
   /**
-   * 从字段注释中提取枚举类型
-   * @param field - DMMF 字段
-   * @param modelName - 模型名称
+   * 从字段中提取枚举类型
+   * @param field - FieldInfo 字段
+   * @param tableName - 表名称
    * @returns 枚举类型名称或 null
    */
-  static getEnumTypeFromComment(field: any, modelName: string): string | null {
-    // 从原始 schema 中解析注释
-    const schema = FileUtils.safeReadFile(PATHS.baseSchema);
-    
-    // 查找模型定义
-    const modelRegex = new RegExp(`model\\s+${modelName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-    const modelMatch = modelRegex.exec(schema);
-    
-    if (!modelMatch) {
-      return null;
+  static getEnumTypeFromField(field: FieldInfo, tableName: string): string | null {
+    // 如果字段本身就是枚举类型
+    if (field.kind === "enum") {
+      return field.type;
     }
     
-    const modelContent = modelMatch[0];
-    
-    // 查找字段定义和注释
-    const fieldRegex = new RegExp(`\\s+${field.name}\\s+String\\s*//\\s*Enum\\s+(\\w+)`, 'g');
-    const fieldMatch = fieldRegex.exec(modelContent);
-    
-    if (fieldMatch) {
-      return fieldMatch[1]; // 返回枚举类型名称
+    // 对于 String 类型，检查是否是枚举
+    if (field.kind === "scalar" && field.type === "String") {
+      // 检查 DATABASE_SCHEMA 中的枚举
+      const enumType = DATABASE_SCHEMA.enums.find(e => 
+        e.values.some(v => v === field.name || field.name.includes(v))
+      );
+      return enumType ? enumType.name : null;
     }
     
     return null;
   }
 
   /**
-   * 从 DMMF 生成 dbSchema
+   * 从 DATABASE_SCHEMA 生成 dbSchema
    * @returns dbSchema 内容
    */
-  static generateDbSchemaFromDMMF(): string {
-    if (!this.dmmf) {
-      throw new Error("DMMF 未初始化");
-    }
-
-    // 生成 dbSchema，包含所有模型
-    const fieldsStr = this.dmmf.datamodel.models
-      .map((model: any) => {
-        const schemaName = `${model.name.toLowerCase()}Schema`;
-        return `  ${model.name.toLowerCase()}: ${schemaName}`;
+  static generateDbSchemaFromDatabaseSchema(): string {
+    // 生成 dbSchema，包含所有表
+    const fieldsStr = DATABASE_SCHEMA.tables
+      .map((table: TableInfo) => {
+        const schemaName = `${table.name.toLowerCase()}Schema`;
+        return `  ${table.name.toLowerCase()}: ${schemaName}`;
       })
       .join(",\n");
 
