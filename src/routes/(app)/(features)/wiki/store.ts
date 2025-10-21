@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { VisibilityState } from "@tanstack/solid-table";
 
 export type WikiStore = {

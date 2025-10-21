@@ -1,4 +1,4 @@
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { createResource, Show, Index, createMemo } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Presence, Motion } from "solid-motionone";

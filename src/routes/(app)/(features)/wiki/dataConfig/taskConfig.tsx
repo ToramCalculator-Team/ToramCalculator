@@ -7,7 +7,7 @@ import {
   task_kill_requirementSchema,
   task_rewardSchema,
 } from "@db/generated/zod/index";
-import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "@db/generated/kysely/kysely";
+import { task, DB, task_collect_require, task_kill_requirement, task_reward } from "@db/generated/zod/index";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
@@ -308,7 +308,7 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                         title={dic.db.task.fields[fieldKey].key}
                         description={dic.db.task.fields[fieldKey].formFieldDescription}
                         state={fieldInfo(belongToNpcIdField())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Autocomplete
                           id={belongToNpcIdField().name}
@@ -345,14 +345,14 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                               title={dic.db.task_collect_require.selfName}
                               description={dic.db.task_collect_require.description}
                               state={fieldInfo(collectRequires())}
-                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              class="border-dividing-color bg-primary-color w-full rounded-md border"
                             >
                               <div class="ArrayBox flex w-full flex-col gap-2">
                                 <Index each={collectRequires().state.value}>
                                   {(collectRequire, collectRequireIndex) => {
                                     return (
-                                      <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                        <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                      <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                        <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                           <span class="text-accent-color font-bold">
                                             {dic.db.task_collect_require.selfName + " " + collectRequireIndex}
                                           </span>
@@ -462,14 +462,14 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                               title={dic.db.task_kill_requirement.selfName}
                               description={dic.db.task_kill_requirement.description}
                               state={fieldInfo(killRequirements())}
-                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              class="border-dividing-color bg-primary-color w-full rounded-md border"
                             >
                               <div class="ArrayBox flex w-full flex-col gap-2">
                                 <Index each={killRequirements().state.value}>
                                   {(killRequirement, killRequirementIndex) => {
                                     return (
-                                      <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                        <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                      <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                        <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                           <span class="text-accent-color font-bold">
                                             {dic.db.task_kill_requirement.selfName + " " + killRequirementIndex}
                                           </span>
@@ -576,14 +576,14 @@ const TaskWithRelatedForm = (dic: dictionary, oldTask?: TaskWithRelated) => {
                         title={dic.db.task_reward.selfName}
                         description={dic.db.task_reward.description}
                         state={fieldInfo(rewards())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={rewards().state.value}>
                             {(reward, rewardIndex) => {
                               return (
-                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                     <span class="text-accent-color font-bold">
                                       {dic.db.task_reward.selfName + " " + rewardIndex}
                                     </span>

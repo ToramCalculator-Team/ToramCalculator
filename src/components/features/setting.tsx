@@ -84,7 +84,7 @@ export const Setting = () => {
     </div>
   );
 
-  const Divider = () => <div class="Divider bg-dividing-color h-[1px] w-full flex-none"></div>;
+  const Divider = () => <div class="Divider bg-dividing-color h-px w-full flex-none"></div>;
 
   return (
     <Presence exitBeforeEnter>
@@ -135,7 +135,7 @@ export const Setting = () => {
                   <span class="w-full text-left">Service Worker</span>
                 </Button>
               </div>
-              <div class="Divider bg-dividing-color hidden h-full w-[1px] lg:block"></div>
+              <div class="Divider bg-dividing-color hidden h-full w-px lg:block"></div>
               <OverlayScrollbarsComponent
                 element="div"
                 options={{ scrollbars: { autoHide: "scroll" } }}

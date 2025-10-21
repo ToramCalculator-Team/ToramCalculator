@@ -20,7 +20,7 @@ import { Portal } from "solid-js/web";
 import { Sheet } from "~/components/containers/sheet";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { defaultData } from "@db/defaultData";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { dataDisplayConfig } from "./dataConfig/dataConfig";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { MediaContext } from "~/lib/contexts/Media";
@@ -191,7 +191,7 @@ export default function WikiSubPage() {
                     id="DataSearchBox"
                     type="search"
                     placeholder={dictionary().ui.searchPlaceholder}
-                    class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b-1 bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+                    class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
                     onInput={(e) => {
                       setWikiStore("table", {
                         globalFilterStr: e.target.value,
@@ -285,7 +285,7 @@ export default function WikiSubPage() {
                                   TOP.{index() + 1}
                                 </span>
                                 <div
-                                  class={`h-[1px] w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
+                                  class={`h-px w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
                                 ></div>
                                 <span
                                   class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
@@ -465,7 +465,7 @@ export default function WikiSubPage() {
                         <div class="GroupTitle flex flex-col gap-3">
                           <h3 class="text-accent-color flex items-center gap-2 font-bold">
                             {group.groupName}
-                            <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                            <div class="Divider bg-dividing-color h-px w-full flex-1" />
                           </h3>
                         </div>
                         <div class="GroupContent flex flex-wrap gap-2">

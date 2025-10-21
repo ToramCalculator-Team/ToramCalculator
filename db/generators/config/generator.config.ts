@@ -32,7 +32,7 @@ export const PATHS = {
     schemas: path.join(__dirname, "../../generated/zod/index.ts"),
   },
   kysely: {
-    types: path.join(__dirname, "../../generated/kysely/kysely.ts"),
+    types: path.join(__dirname, "../@db/generated/zod/index.ts"),
     enums: path.join(__dirname, "../../schema/enums.ts"),
   },
   queryBuilder: {

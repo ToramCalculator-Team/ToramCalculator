@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { materialSchema } from "@db/generated/zod/index";
-import { DB, item, material } from "@db/generated/kysely/kysely";
+import { DB, item, material } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -133,7 +133,7 @@ export const MaterialDataConfig: dataDisplayConfig<
                             title={dic.db.material.fields[fieldKey].key}
                             description={dic.db.material.fields[fieldKey].formFieldDescription}
                             state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border"
                           >
                             <Select
                               value={field().state.value}

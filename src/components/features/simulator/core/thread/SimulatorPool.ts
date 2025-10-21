@@ -2,7 +2,7 @@
 
 import { SimulatorWithRelations } from "@db/repositories/simulator";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { PoolConfig, WorkerPool, WorkerWrapper } from "../../../../../lib/WorkerPool/WorkerPool";
+import { PoolConfig, WorkerPool, WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import { IntentMessage, IntentMessageSchema } from "../MessageRouter";
 import { MemberSerializeData } from "../member/Member";
 import { EngineStats } from "../GameEngine";

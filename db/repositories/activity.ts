@@ -1,5 +1,5 @@
 import { getDB } from "./database";
-import { activity, DB } from "../generated/kysely/kysely";
+import { activity, DB } from "@db/generated/zod/index";
 import { Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";

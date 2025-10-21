@@ -2,7 +2,7 @@ import { Accessor, createResource, createSignal, For, Index, JSX, Setter, Show }
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { activitySchema } from "@db/generated/zod/index";
-import { activity, DB, zone } from "@db/generated/kysely/kysely";
+import { activity, DB, zone } from "@db/generated/zod/index";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import {
@@ -133,7 +133,7 @@ const ActivityWithRelationsForm = (dic: dictionary, oldActivity?: ActivityWithRe
                           title={"所属的" + dic.db.zone.selfName}
                           description={dic.db.zone.description}
                           state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <div class="ArrayBox flex w-full flex-col gap-2">
                             <Index each={field().state.value}>

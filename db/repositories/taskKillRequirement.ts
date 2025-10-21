@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, task_kill_requirement } from "../generated/kysely/kysely";
+import { DB, task_kill_requirement } from "@db/generated/zod/index";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { mobSchema, task_kill_requirementSchema } from "@db/generated/zod";

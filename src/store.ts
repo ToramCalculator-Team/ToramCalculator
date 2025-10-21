@@ -1,7 +1,7 @@
 import { createStore } from "solid-js/store";
 import { Locale } from "~/locales/i18n";
 import * as _ from "lodash-es";
-import { type DB } from "@db/generated/kysely/kysely";
+import { type DB } from "@db/generated/zod/index";
 import { AccountType } from "@db/schema/enums";
 
 /**

@@ -2,7 +2,7 @@ import { Accessor, createMemo, createResource, createSignal, For, JSX, Setter, S
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { addressSchema } from "@db/generated/zod/index";
-import { address, DB, zone } from "@db/generated/kysely/kysely";
+import { address, DB, zone } from "@db/generated/zod/index";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import {
@@ -141,7 +141,7 @@ const AddressWithRelationsForm = (dic: dictionary, oldAddress?: AddressWithRelat
                           title={"包含的" + dic.db.zone.selfName}
                           description={dic.db.zone.description}
                           state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <div class="ArrayBox flex w-full flex-col gap-2">
                             <For each={field().state.value}>
@@ -211,7 +211,7 @@ const AddressWithRelationsForm = (dic: dictionary, oldAddress?: AddressWithRelat
                         title={"所属" + dic.db.world.selfName}
                         description={dic.db.world.description}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Select
                           value={field().state.value}
@@ -381,7 +381,7 @@ const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => 
                       onClick={() => itemHandleClick(address.id)}
                     >
                       <div class="overflow-hidden font-bold text-nowrap text-ellipsis">{address.name}</div>
-                      <div class="Divider bg-boundary-color h-[1px] w-full flex-none rounded-full"></div>
+                      <div class="Divider bg-boundary-color h-px w-full flex-none rounded-full"></div>
                       <Show when={address.zones && address.zones.length > 0}>
                         <div class="Zones flex w-full flex-col items-start justify-start gap-1">
                           {(expandedAddresses().has(address.id) ? address.zones : address.zones.slice(0, 4)).map(

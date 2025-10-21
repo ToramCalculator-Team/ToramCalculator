@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { DB, item } from "../generated/kysely/kysely";
+import { DB, item } from "@db/generated/zod/index";
 import { ItemType } from "../schema/enums";
 import { getDB } from "./database";
 import { createStatistic } from "./statistic";

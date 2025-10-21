@@ -10,6 +10,7 @@
 
 import { FileUtils, LogUtils } from "./utils/common";
 import { PATHS } from "./utils/config";
+import { RelationProcessor, type DependencyInfo as RelationDependencyInfo } from "./processors/RelationProcessor";
 
 /**
  * 字段信息接口
@@ -95,20 +96,12 @@ export interface DependencyInfo {
  * 数据库架构信息生成器
  */
 export class SchemaInfoGenerator {
-  private dmmf: any = null;
+  private dmmf: any;
+  private relationProcessor: RelationProcessor;
 
-  /**
-   * 初始化 DMMF
-   */
-  private async initializeDMMF(): Promise<void> {
-    try {
-      const { getDMMF } = await import('@prisma/internals');
-      const schema = FileUtils.safeReadFile(PATHS.baseSchema);
-      this.dmmf = await getDMMF({ datamodel: schema });
-    } catch (error) {
-      LogUtils.logError("初始化 DMMF 失败", error as Error);
-      throw error;
-    }
+  constructor(dmmf: any, relationProcessor: RelationProcessor) {
+    this.dmmf = dmmf;
+    this.relationProcessor = relationProcessor;
   }
 
   /**
@@ -117,9 +110,6 @@ export class SchemaInfoGenerator {
   async generate(): Promise<void> {
     try {
       LogUtils.logStep("架构信息生成", "开始生成数据库架构信息...");
-      
-      LogUtils.logInfo("初始化 DMMF...");
-      await this.initializeDMMF();
       
       LogUtils.logInfo("构建架构信息...");
       const schemaInfo = this.buildSchemaInfo();
@@ -139,34 +129,35 @@ export class SchemaInfoGenerator {
    */
   private buildSchemaInfo(): DatabaseSchemaInfo {
     const tables: TableInfo[] = [];
-    const dependencies: DependencyInfo[] = [];
     const enums: EnumInfo[] = [];
 
     // 处理每个模型
     for (const model of this.dmmf.datamodel.models) {
       const tableInfo = this.buildTableInfo(model);
       tables.push(tableInfo);
-      
-      // 构建依赖关系
-      const dependencyInfo = this.buildDependencyInfo(model, tableInfo);
-      dependencies.push(dependencyInfo);
     }
 
-    // 处理枚举
-    for (const enumDef of this.dmmf.datamodel.enums) {
+    // 处理枚举：从 DMMF 中提取枚举信息
+    for (const enumModel of this.dmmf.datamodel.enums) {
       const enumInfo: EnumInfo = {
-        name: enumDef.name,
-        values: enumDef.values.map((v: any) => v.name)
+        name: enumModel.name,
+        values: enumModel.values.map((v: any) => v.name)
       };
       enums.push(enumInfo);
     }
+
+    // 使用 RelationProcessor 获取依赖关系
+    const dependencies = this.relationProcessor.getDependencies().map(dep => ({
+      ...dep,
+      dependents: [] // 暂时设为空数组，后续可以扩展
+    }));
 
     return {
       tables,
       dependencies,
       enums,
       generatedAt: new Date().toISOString(),
-      version: "1.0.0"
+      version: "2.0.0"
     };
   }
 
@@ -230,41 +221,6 @@ export class SchemaInfoGenerator {
       foreignKeys,
       indexes,
       isRelationTable
-    };
-  }
-
-  /**
-   * 构建依赖关系信息
-   */
-  private buildDependencyInfo(model: any, tableInfo: TableInfo): DependencyInfo {
-    const dependsOn: string[] = [];
-    const dependents: string[] = [];
-
-    // 分析外键依赖
-    for (const foreignKey of tableInfo.foreignKeys) {
-      if (!dependsOn.includes(foreignKey.referencedTable)) {
-        dependsOn.push(foreignKey.referencedTable);
-      }
-    }
-
-    // 分析被依赖关系
-    for (const otherModel of this.dmmf.datamodel.models) {
-      if (otherModel.name !== model.name) {
-        const otherTableInfo = this.buildTableInfo(otherModel);
-        const dependsOnThis = otherTableInfo.foreignKeys.some(fk => 
-          fk.referencedTable === model.name
-        );
-        
-        if (dependsOnThis && !dependents.includes(otherModel.name)) {
-          dependents.push(otherModel.name);
-        }
-      }
-    }
-
-    return {
-      table: model.name,
-      dependsOn,
-      dependents
     };
   }
 

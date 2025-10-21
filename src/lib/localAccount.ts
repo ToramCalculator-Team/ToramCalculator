@@ -3,7 +3,7 @@ import { getDB } from "@db/repositories/database";
 import { setStore, store } from "~/store";
 import { Account, createAccount, findAccountById } from "@db/repositories/account";
 import { Transaction } from "kysely";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 
 /**
  * 确保本地存在临时账户

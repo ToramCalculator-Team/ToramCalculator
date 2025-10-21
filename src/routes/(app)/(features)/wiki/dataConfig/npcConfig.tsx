@@ -2,7 +2,7 @@ import { createResource, For, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { npcSchema, taskSchema } from "@db/generated/zod/index";
-import { DB, npc, task } from "@db/generated/kysely/kysely";
+import { DB, npc, task } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
@@ -191,7 +191,7 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
                         title={dic.db.zone.selfName}
                         description={dic.db.zone.description}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Autocomplete
                           id={fieldKey}
@@ -226,7 +226,7 @@ const NpcWithRelatedForm = (dic: dictionary, oldNpc?: NpcWithRelated) => {
                         title={dic.db.task.selfName}
                         description={dic.db.task.description}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <For each={field().state.value}>

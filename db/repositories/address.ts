@@ -1,4 +1,4 @@
-import { DB, address } from "../generated/kysely/kysely";
+import { DB, address } from "@db/generated/zod/index";
 import { getDB } from "./database";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";

@@ -19,17 +19,21 @@
  */
 
 // 导入工具模块
-import { GENERATOR_CONFIG, PATHS } from "./utils/config";
+import { GENERATOR_CONFIG, PATHS } from "./config/generator.config";
 import { CommandUtils, FileUtils, LogUtils } from "./utils/common";
-import { EnumProcessor } from "./utils/enumProcessor";
+
+// 导入处理器
+import { EnumProcessor } from "./processors/EnumProcessor";
+import { SchemaBuilder } from "./processors/SchemaBuilder";
+import { DMMFProvider } from "./processors/DMMFProvider";
+import { RelationProcessor } from "./processors/RelationProcessor";
 
 // 导入生成器类
-import { SQLGenerator } from "./SQLGenerator";
-import { TypeScriptGenerator } from "./TypeScriptGenerator";
-import { ZodGenerator } from "./ZodGenerator";
-import { QueryBuilderGenerator } from "./QueryBuilderGenerator";
-import { RepositoryGenerator } from "./RepositoryGenerator";
-import { SchemaInfoGenerator } from "./SchemaInfoGenerator";
+import { SQLGenerator } from "./generators/SQLGenerator";
+import { ZodGenerator } from "./generators/ZodGenerator";
+import { QueryBuilderGenerator } from "./generators/QueryBuilderGenerator";
+import { RepositoryGenerator } from "./generators/RepositoryGenerator";
+import { SchemaInfoGenerator } from "./generators/SchemaInfoGenerator";
 
 /**
  * 主生成器
@@ -46,35 +50,48 @@ class MainGenerator {
       // 确保目录存在
       FileUtils.ensureDirectories(GENERATOR_CONFIG.directories);
 
-      // 1. 处理枚举和 Schema
+      // 1. 枚举处理
       LogUtils.logStep("枚举处理", "处理枚举和 Schema");
       const enumProcessor = new EnumProcessor();
-      const result = enumProcessor.processEnums().processSchema();
-      const { updatedSchema, kyselyGenerator, clientGenerators } = result as {
-        updatedSchema: string;
-        kyselyGenerator: string;
-        clientGenerators: string[];
-      };
-
-      // 2. 生成数据库架构信息
-      const schemaInfoGenerator = new SchemaInfoGenerator();
-      await schemaInfoGenerator.generate();
-
-      // 3. 生成 SQL
-      SQLGenerator.generate(updatedSchema, kyselyGenerator, clientGenerators, enumProcessor.getEnumDefinitions());
-
-      // 4. 生成 TypeScript 类型
-      TypeScriptGenerator.generate();
-
-      // 5. 生成 Zod schemas
-      ZodGenerator.generate();
-
-      // 6. 生成 QueryBuilder 规则
-      QueryBuilderGenerator.generate(updatedSchema, enumProcessor.getEnumTypeToNameMap());
-
-      // 7. 生成 Repository 文件
-      const repositoryGenerator = new RepositoryGenerator();
-      await repositoryGenerator.generateAll();
+      enumProcessor.processEnums();
+      
+      // 2. 构建完整 schema
+      LogUtils.logStep("Schema 构建", "构建完整的 Prisma schema");
+      const schemaBuilder = new SchemaBuilder(enumProcessor);
+      const fullSchema = schemaBuilder.build();
+      
+      // 3. 生成 DMMF
+      LogUtils.logStep("DMMF 生成", "从 Prisma schema 生成 DMMF");
+      const dmmfProvider = new DMMFProvider(fullSchema);
+      const dmmf = await dmmfProvider.getDMMF();
+      
+      // 4. 处理关系
+      LogUtils.logStep("关系处理", "提取表间依赖关系");
+      const relationProcessor = new RelationProcessor(dmmf);
+      relationProcessor.processRelations();
+      
+      // 5. 并行生成（互不依赖）
+      LogUtils.logStep("并行生成", "生成所有输出文件");
+      await Promise.all([
+        // 生成 database-schema.ts（供外部使用）
+        new SchemaInfoGenerator(dmmf, relationProcessor).generate(),
+        
+        // 生成 SQL
+        SQLGenerator.generate(fullSchema),
+        
+        // 生成 Zod + TS 类型
+        new ZodGenerator(dmmf, enumProcessor).generate(),
+        
+        // 生成 QueryBuilder 规则
+        new QueryBuilderGenerator(dmmf, enumProcessor).generate(),
+        
+        // 生成 Repository
+        (async () => {
+          const repositoryGenerator = new RepositoryGenerator(dmmf);
+          await repositoryGenerator.initialize();
+          await repositoryGenerator.generateAll();
+        })(),
+      ]);
 
       // 清理临时文件
       FileUtils.cleanupTempFiles(GENERATOR_CONFIG.tempFiles);

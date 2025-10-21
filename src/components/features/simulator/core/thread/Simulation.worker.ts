@@ -7,7 +7,7 @@ import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../G
 import type { SimulatorWithRelations } from "@db/repositories/simulator";
 import type { IntentMessage } from "../MessageRouter";
 
-import { prepareForTransfer, sanitizeForPostMessage } from "../../../../../lib/WorkerPool/MessageSerializer";
+import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import { createActor } from "xstate";
 import { gameEngineSM, type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
 import { DataQueryCommand, SimulatorTaskMap, SimulatorTaskTypeMapValue, SimulatorTaskPriority, DataQueryCommandSchema } from "./SimulatorPool";

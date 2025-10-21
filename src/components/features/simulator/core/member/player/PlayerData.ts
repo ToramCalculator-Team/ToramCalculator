@@ -722,6 +722,7 @@ export type PlayerDataNestedSchemaDic = ConvertToNestedSchemaDic<PlayerDataStruc
  * 基础值相关：baseValue → base
  */
 export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataNestedSchema => {
+  if (!character) throw new Error("PlayerAttrSchema参数不能为空");
   const mainWeaponType = character.weapon.type as MainHandType;
   const subWeaponType = character.subWeapon.type as SubHandType;
   return {

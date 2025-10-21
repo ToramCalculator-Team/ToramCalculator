@@ -6,7 +6,7 @@ import { Dic, EnumFieldDetail } from "~/locales/type";
 
 export function ObjRender<T extends Record<string, unknown>>(props: {
   data: T;
-  dataSchema?: ZodObject<Record<keyof T, ZodAny>>;
+  dataSchema?: ZodObject<Record<keyof T, ZodType>>;
   dictionary?: Dic<T>;
   hiddenFields?: Array<keyof T>;
   fieldGroupMap?: Record<string, Array<keyof T>>;
@@ -78,7 +78,7 @@ export function ObjRender<T extends Record<string, unknown>>(props: {
             <section class="FieldGroup flex w-full flex-col gap-2">
               <h3 class="text-accent-color flex items-center gap-2 font-bold">
                 {groupName}
-                <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                <div class="Divider bg-dividing-color h-px w-full flex-1" />
               </h3>
               <div class="Content flex flex-col gap-3 p-1">
                 <For each={keys}>

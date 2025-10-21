@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, npc } from "../generated/kysely/kysely";
+import { DB, npc } from "@db/generated/zod/index";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";

@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable, Selectable } from "kysely";
 import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { account, DB } from "../generated/kysely/kysely";
+import { account, DB } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { accountSchema, account_create_dataSchema, account_update_dataSchema } from "../generated/zod/index";
 import { z } from "zod/v4";

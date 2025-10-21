@@ -218,7 +218,7 @@ model image {
     belongToArmor  armor?  @relation(fields: [armorId], references: [itemId], onDelete: Cascade)
     armorId        String?
     belongToOption option? @relation(fields: [optionId], references: [itemId], onDelete: Cascade)
-    optionId     String?
+    optionId       String?
     belongToMob    mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
     mobId          String?
 }
@@ -636,8 +636,8 @@ model player {
     pets       player_pet[]
     weapons    player_weapon[]
     armors     player_armor[]
-    options  player_option[]
-    specials  player_special[]
+    options    player_option[]
+    specials   player_special[]
     avatars    avatar[]
     characters character[]
 
@@ -788,10 +788,10 @@ model character {
     subWeaponId       String?
     armor             player_armor?     @relation(fields: [armorId], references: [id])
     armorId           String?
-    option          player_option?    @relation(fields: [optionId], references: [id])
-    optionId        String?
-    special          player_special?   @relation(fields: [specialId], references: [id])
-    specialId        String?
+    option            player_option?    @relation(fields: [optionId], references: [id])
+    optionId          String?
+    special           player_special?   @relation(fields: [specialId], references: [id])
+    specialId         String?
     avatars           avatar[]
     cooking           String[]
     modifiers         String[]

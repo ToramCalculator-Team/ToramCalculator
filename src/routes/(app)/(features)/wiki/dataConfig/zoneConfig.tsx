@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Show, Index } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { mobSchema, npcSchema, zoneSchema } from "@db/generated/zod/index";
-import { DB, mob, npc, zone } from "@db/generated/kysely/kysely";
+import { DB, mob, npc, zone } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
@@ -257,7 +257,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                         title={dic.db.mob.selfName}
                         description={dic.db.mob.description}
                         state={fieldInfo(mobs())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={mobs().state.value}>
@@ -321,7 +321,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                         title={dic.db.npc.selfName}
                         description={dic.db.npc.description}
                         state={fieldInfo(npcs())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={npcs().state.value}>
@@ -385,7 +385,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                         title={"链接的" + dic.db.zone.selfName}
                         description={dic.db.zone.description}
                         state={fieldInfo(linkZones())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={linkZones().state.value}>
@@ -452,7 +452,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           title={"活动限时标记"}
                           description={"仅在某个活动开启时可进入的区域"}
                           state={undefined}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <Toggle
                             id={"isLimit"}
@@ -467,7 +467,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                             title={dic.db.activity.selfName}
                             description={dic.db.activity.description}
                             state={fieldInfo(activityIdField())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border"
                           >
                             <Autocomplete
                               id={activityIdField().name}
@@ -505,7 +505,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                         title={dic.db.address.selfName}
                         description={dic.db.address.description}
                         state={fieldInfo(addressIdField())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Autocomplete
                           id={addressIdField().name}

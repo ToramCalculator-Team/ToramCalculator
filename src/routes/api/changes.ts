@@ -46,7 +46,7 @@ export async function POST(event: APIEvent) {
   const ChangeSchema = z.object({
     table_name: z.string().regex(SAFE_TABLE_NAME, "非法表名"),
     operation: z.union([z.literal("insert"), z.literal("update"), z.literal("delete")]),
-    value: z.record(z.any()),
+    value: z.any(),
     write_id: z.string().min(1).optional(),
     transaction_id: z.string().min(1).optional(),
   });

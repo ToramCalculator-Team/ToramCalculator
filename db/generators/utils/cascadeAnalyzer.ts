@@ -5,7 +5,6 @@
  */
 
 import { StringUtils } from "./common";
-import { DATABASE_SCHEMA, type TableInfo, type FieldInfo } from '../../generated/database-schema.js';
 
 /**
  * 删除操作类型
@@ -50,25 +49,25 @@ export interface GeneratedDeleteCode {
  * 级联删除分析器
  */
 export class CascadeAnalyzer {
-  private tables: readonly TableInfo[];
-  private tableMap: Map<string, TableInfo>;
+  private models: readonly any[];
+  private modelMap: Map<string, any>;
 
   constructor(dmmf: any) {
-    this.tables = DATABASE_SCHEMA.tables;
-    this.tableMap = new Map(this.tables.map((t) => [t.name, t]));
+    this.models = dmmf.datamodel.models;
+    this.modelMap = new Map(this.models.map((model) => [model.name, model]));
   }
 
   /**
    * 获取表的主键字段名
    */
   private getPrimaryKeyField(tableName: string): string {
-    const table = this.tables.find(t => t.name === tableName);
-    if (!table) {
-      throw new Error(`Table ${tableName} not found`);
+    const model = this.models.find(m => m.name === tableName);
+    if (!model) {
+      throw new Error(`Model ${tableName} not found`);
     }
     
     // 查找主键字段
-    const primaryKeyField = table.fields.find(field => field.isId);
+    const primaryKeyField = model.fields.find((field: any) => field.isId);
     if (primaryKeyField) {
       return primaryKeyField.name;
     }
@@ -83,8 +82,8 @@ export class CascadeAnalyzer {
   getReferencedBy(tableName: string): DeleteDependency[] {
     const dependencies: DeleteDependency[] = [];
 
-    for (const table of this.tables) {
-      for (const field of table.fields) {
+    for (const model of this.models) {
+      for (const field of model.fields) {
         // 检查是否是引用当前表的关系字段
         if (field.kind === "object" && field.type === tableName) {
           const action = this.getDeleteAction(field);
@@ -92,11 +91,11 @@ export class CascadeAnalyzer {
 
           if (foreignKeyField) {
             // 检查字段是否必需
-            const foreignKeyFieldDef = table.fields.find((f) => f.name === foreignKeyField);
+            const foreignKeyFieldDef = model.fields.find((f: any) => f.name === foreignKeyField);
             const required = foreignKeyFieldDef?.isRequired ?? false;
 
             dependencies.push({
-              tableName: table.name.toLowerCase(),
+              tableName: model.name.toLowerCase(),
               foreignKeyField,
               action,
               required,
@@ -113,7 +112,7 @@ export class CascadeAnalyzer {
   /**
    * 获取删除操作类型
    */
-  private getDeleteAction(field: FieldInfo): DeleteAction {
+  private getDeleteAction(field: any): DeleteAction {
     // 从 field 的 relationOnDelete 属性获取删除操作
     const onDelete = field.relationOnDelete;
 
@@ -138,11 +137,11 @@ export class CascadeAnalyzer {
    * 检查是否有 statistic 字段
    */
   private hasStatisticField(tableName: string): boolean {
-    const table = this.tableMap.get(tableName);
-    if (!table) return false;
+    const model = this.modelMap.get(tableName);
+    if (!model) return false;
 
-    return table.fields.some(
-      (f) => f.name === "statisticId" || (f.name === "statistic" && f.type === "statistic")
+    return model.fields.some(
+      (f: any) => f.name === "statisticId" || (f.name === "statistic" && f.type === "statistic")
     );
   }
 
@@ -151,8 +150,8 @@ export class CascadeAnalyzer {
    */
   private getRelatedDeletions(tableName: string): string[] {
     const deletions: string[] = [];
-    const table = this.tableMap.get(tableName);
-    if (!table) return deletions;
+    const model = this.modelMap.get(tableName);
+    if (!model) return deletions;
 
     // 检查是否有 statistic 关系
     if (this.hasStatisticField(tableName)) {
@@ -199,12 +198,12 @@ export class CascadeAnalyzer {
         // Cascade 由数据库自动处理，不需要额外代码
         continue;
       } else if (dep.action === DeleteAction.SetNull && !dep.required) {
-        // SetNull: 将外键设为 null
+        // SetNull: 将外键设为 undefined
         beforeDelete.push(
           `  // 重置 ${dep.tableName} 表的引用
   await trx
     .updateTable("${dep.tableName}")
-    .set({ ${dep.foreignKeyField}: null })
+    .set({ ${dep.foreignKeyField}: undefined })
     .where("${dep.foreignKeyField}", "=", id)
     .execute();`
         );
@@ -263,12 +262,21 @@ export class CascadeAnalyzer {
    * 获取类型字段（用于生成默认值）
    */
   private getTypeField(tableName: string): string {
-    const table = this.tableMap.get(tableName);
-    if (!table) return "type";
+    const model = this.modelMap.get(tableName);
+    if (!model) return "type";
 
-    // 查找带有 "type" 或 "Type" 的字段
-    const typeField = table.fields.find(
-      (f) => f.name.toLowerCase().includes("type") && f.type === "String"
+    // 查找带有 "type" 或 "Type" 的字段，优先查找完全匹配的字段
+    const exactMatch = model.fields.find(
+      (f: any) => f.name === "type" && (f.type === "String" || f.type.includes("Type"))
+    );
+    
+    if (exactMatch) {
+      return exactMatch.name;
+    }
+
+    // 如果没有完全匹配的 "type" 字段，查找包含 "type" 的字段
+    const typeField = model.fields.find(
+      (f: any) => f.name.toLowerCase().includes("type") && (f.type === "String" || f.type.includes("Type"))
     );
 
     return typeField?.name || "type";
@@ -318,8 +326,9 @@ export class CascadeAnalyzer {
       ...deleteCode.afterDelete,
     ].join("\n\n");
 
-    return `export async function delete${pascalName}(trx: Transaction<DB>, id: string) {
-${allOperations}
+    return `export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+${allOperations.replace(/trx/g, 'db')}
 }`;
   }
 

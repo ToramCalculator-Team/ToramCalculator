@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
-import { findAccountById, createAccount, Account } from "@db/repositories/account";
+import { Account } from "@db/repositories/account";
 import { createCharacter } from "@db/repositories/character";
 import { getDB } from "@db/repositories/database";
 import { Player, findPlayersByAccountId, createPlayer, findPlayerById } from "@db/repositories/player";
 import { createId } from "@paralleldrive/cuid2";
 import { createMemo, Show } from "solid-js";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { Select } from "~/components/controls/select";
 import { Button } from "~/components/controls/button";
-import dictionary from "~/locales/dictionaries/zh_CN";
 import { store, setStore } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { useNavigate } from "@solidjs/router";

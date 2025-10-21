@@ -4,7 +4,7 @@ import Icons from "~/components/icons/index";
 import { drop_itemSchema, mobSchema, zoneSchema } from "@db/generated/zod/index";
 import { Input } from "~/components/controls/input";
 import { z } from "zod/v4";
-import { DB, drop_item, mob, zone } from "@db/generated/kysely/kysely";
+import { DB, drop_item, mob, zone } from "@db/generated/zod/index";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { getDB } from "@db/repositories/database";
@@ -273,7 +273,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                               onChange={(e) => {
                                 field().setValue(Number(e.target.value));
                               }}
-                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              class="border-dividing-color bg-primary-color w-full rounded-md border"
                             ></Input>
                           </Show>
                         )}
@@ -298,7 +298,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                               title={dic.db.mob.fields[fieldKey].key}
                               description={dic.db.mob.fields[fieldKey].formFieldDescription}
                               state={fieldInfo(field())}
-                              class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                              class="border-dividing-color bg-primary-color w-full rounded-md border"
                             >
                               <Toggle
                                 id={field().name}
@@ -330,7 +330,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                         title={dic.db.mob.fields[fieldKey].key}
                         description={dic.db.mob.fields[fieldKey].formFieldDescription}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <EnumSelect
                           value={field().state.value}
@@ -360,7 +360,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                         title={dic.db.mob.fields[fieldKey].key}
                         description={dic.db.mob.fields[fieldKey].formFieldDescription}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <EnumSelect
                           value={field().state.value}
@@ -400,7 +400,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                           title={"所属的" + dic.db.zone.selfName}
                           description={dic.db.zone.description}
                           state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <div class="ArrayBox flex w-full flex-col gap-2">
                             <Index each={field().state.value}>
@@ -468,15 +468,15 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                         title={dic.db.drop_item.selfName}
                         description={dic.db.drop_item.description}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                           <Index each={field().state.value}>
                             {(dropItem, i) => {
                               console.log("i, dropItem", i, dropItem());
                               return (
-                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                     <span class="text-accent-color font-bold">
                                       {dic.db.drop_item.selfName + " " + i}
                                     </span>

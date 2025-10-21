@@ -518,7 +518,7 @@ export default function AvatarMachinePage() {
                             delay:
                               animationEnabled() && store.settings.userInterface.isAnimationEnabled ? index * 0.3 : 0,
                           }}
-                          class={`Field border-dividing-color bg-primary-color flex h-16 items-center justify-center gap-1 rounded border-1 ${
+                          class={`Field border-dividing-color bg-primary-color flex h-16 items-center justify-center gap-1 rounded border ${
                             isMaxValue(attr().attrType, attr().attrValue) ? "text-brand-color-3rd" : ""
                           }`}
                         >
@@ -579,8 +579,8 @@ export default function AvatarMachinePage() {
                 <For each={history()}>
                   {(item, index) => {
                     return (
-                      <div class="Field bg-primary-color border-dividing-color flex rounded border-1">
-                        <div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r-1">
+                      <div class="Field bg-primary-color border-dividing-color flex rounded border">
+                        <div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r">
                           {index() + 1}
                         </div>
                         <div class="Attrs flex w-full flex-col gap-1">
@@ -588,7 +588,7 @@ export default function AvatarMachinePage() {
                             {(item, index) => {
                               return (
                                 <div
-                                  class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t-1"} ${
+                                  class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t"} ${
                                     isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
                                   }`}
                                 >

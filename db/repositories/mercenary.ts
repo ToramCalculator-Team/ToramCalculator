@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { character, DB, mercenary, player } from "../generated/kysely/kysely";
+import { character, DB, mercenary, player } from "@db/generated/zod/index";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { CharacterWithRelationsSchema, characterSubRelations } from "./character";
 import { createId } from "@paralleldrive/cuid2";

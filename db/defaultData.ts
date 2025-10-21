@@ -1,5 +1,5 @@
 import { Selectable } from "kysely";
-import { DB } from "./generated/kysely/kysely";
+import { DB } from "./generated/zod/index";
 
 type SelectDB<T> = {
   [K in keyof T]: Selectable<T[K]>;

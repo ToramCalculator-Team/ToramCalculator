@@ -2,7 +2,7 @@ import { For, JSX, Index, Show } from "solid-js";
 import { fieldInfo, renderField } from "../utils";
 import { dataDisplayConfig } from "./dataConfig";
 import { skillSchema, skill_effectSchema, statisticSchema } from "@db/generated/zod/index";
-import { DB, skill, skill_effect } from "@db/generated/kysely/kysely";
+import { DB, skill, skill_effect } from "@db/generated/zod/index";
 import { dictionary, EnumFieldDetail } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
 import { ObjRender } from "~/components/dataDisplay/objRender";
@@ -214,7 +214,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                         title={dic.db.skill.fields.treeType.key}
                         description={dic.db.skill.fields.treeType.formFieldDescription}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Select
                           value={field().state.value}
@@ -242,7 +242,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                         title={dic.db.skill.fields.distanceType.key}
                         description={dic.db.skill.fields.distanceType.formFieldDescription}
                         state={fieldInfo(field())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <Select
                           value={field().state.value}
@@ -271,15 +271,15 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                         title={dic.db.skill_effect.selfName}
                         description={dic.db.skill_effect.description}
                         state={fieldInfo(effects())}
-                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                       >
                         <div class="ArrayBox flex w-full flex-col gap-2">
                           <Index each={effects().state.value}>
                             {(effect, effectIndex) => {
                               console.log("effect", effect(), effectIndex);
                               return (
-                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                     <span class="text-accent-color font-bold">
                                       {fieldKey.toLocaleUpperCase() + " " + effectIndex}
                                     </span>
@@ -318,7 +318,7 @@ const SkillWithRelatedForm = (dic: dictionary, oldSkill?: SkillWithRelated) => {
                                                       logicField().handleChange(target.value);
                                                     }}
                                                     state={fieldInfo(logicField())}
-                                                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                                    class="border-dividing-color bg-primary-color w-full rounded-md border"
                                                   >
                                                     <LogicEditor
                                                       data={logicField().state.value}
@@ -471,7 +471,7 @@ export const SkillDataConfig: dataDisplayConfig<skill, SkillWithRelated, SkillWi
           <section class="FieldGroup w-full gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dic.db.skill_effect.selfName}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              <div class="Divider bg-dividing-color h-px w-full flex-1" />
             </h3>
             <div class="Content flex flex-col gap-3 p-1">
               <For each={data.effects}>

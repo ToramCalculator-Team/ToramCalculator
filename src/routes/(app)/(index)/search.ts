@@ -1,5 +1,5 @@
 import { getDB } from "@db/repositories/database";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { sql } from "kysely";
 import { Performance } from "~/lib/utils/performance";
 import { createId } from "@paralleldrive/cuid2";

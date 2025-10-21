@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, skill_effect } from "../generated/kysely/kysely";
+import { DB, skill_effect } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { skill_effectSchema } from "@db/generated/zod";
 import { z } from "zod/v4";

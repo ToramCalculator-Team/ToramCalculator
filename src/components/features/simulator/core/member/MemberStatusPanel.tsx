@@ -57,7 +57,7 @@ const StatsRenderer = (props: { data?: object }) => {
                   {renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
                 </div>
               </div>
-              <div class="bg-boundary-color h-[1px] w-full"></div>
+              <div class="bg-boundary-color h-px w-full"></div>
             </>
           );
         }
@@ -72,7 +72,7 @@ const StatsRenderer = (props: { data?: object }) => {
             value.static.percentage.length > 0 ||
             value.dynamic.fixed.length > 0 ||
             value.dynamic.percentage.length > 0 ? (
-              <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-[1px] lg:gap-4">
+              <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-px lg:gap-4">
                 <div
                   class={`TotalValue flex flex-col rounded-sm p-1 ${!(value.static.fixed.length > 0 || value.static.percentage.length > 0 || value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && "w-full"}`}
                 >
@@ -320,7 +320,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //     if (item.type === 'object') {
 //       return (
 //         <div
-//           class={`key=${currentPath} Object border-boundary-color flex gap-1 border-b-1 p-1 ${!currentPath.includes(".") && "columnsWidth"}`}
+//           class={`key=${currentPath} Object border-boundary-color flex gap-1 border-b p-1 ${!currentPath.includes(".") && "columnsWidth"}`}
 //           style={indentStyle}
 //         >
 //           <span class="bg-area-color text-main-text-color w-8 text-center font-bold"
@@ -347,7 +347,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //           </div>
 
 //           {hasModifiers ? (
-//             <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-[1px] lg:gap-4">
+//             <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-px lg:gap-4">
 //               <div class={`TotalValue flex flex-col rounded-sm p-1 ${!hasModifiers && "w-full"}`}>
 //                 <div class="Key text-accent-color-70 text-sm">实际值</div>
 //                 <div class="actualValueClass">{value.actValue}</div>

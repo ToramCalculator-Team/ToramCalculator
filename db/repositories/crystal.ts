@@ -1,7 +1,7 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { crystal, DB, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
+import { crystal, DB, item, recipe, recipe_ingredient } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";

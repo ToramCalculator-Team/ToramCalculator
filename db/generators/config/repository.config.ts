@@ -12,7 +12,7 @@ export const repositoryConfig = {
    * 跳过生成的 model
    * 这些 model 不会生成 repository 文件
    */
-  skip: [] as string[],
+  skip: ["user", "session", "account"] as string[],
 
   /**
    * 自定义删除逻辑配置
@@ -41,6 +41,8 @@ export const repositoryConfig = {
      */
     relations: {
       "recipe_ingredient.item": "skipImport", // recipe_ingredient 的 item 关系跳过导入
+      "crystal.front": "skipImport", // crystal 的 front 关系跳过导入
+      "crystal.back": "skipImport", // crystal 的 back 关系跳过导入
       // 可以添加更多循环引用处理规则
     } as Record<string, "baseSchema" | "skipSubRelations" | "skipImport">,
   },

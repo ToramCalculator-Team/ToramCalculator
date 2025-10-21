@@ -70,7 +70,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   const zodValue = dataSchema.shape[fieldName];
   // 判断字段类型，便于确定默认输入框
   const valueType = getZodType(zodValue);
-  const fieldCalss = `${isSubFormField ? "" : "border-dividing-color bg-primary-color rounded-md border-1"} w-full`;
+  const fieldCalss = `${isSubFormField ? "" : "border-dividing-color bg-primary-color rounded-md border"} w-full`;
 
   switch (valueType) {
     case "enum": {
@@ -317,7 +317,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   //             value={field().state.value as string}
   //             onChange={(e) => field().setValue(e.target.value)}
   //             onBlur={field().handleBlur}
-  //             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+  //             class="border-dividing-color bg-primary-color w-full rounded-md border"
   //           />
   //         )}
   //       </Field>
@@ -330,7 +330,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   //             title={dictionary?.fields[name]?.key ?? name}
   //             state={fieldInfo(field())}
   //             description={dictionary?.fields[name]?.formFieldDescription}
-  //             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+  //             class="border-dividing-color bg-primary-color w-full rounded-md border"
   //           >
   //             <Toggle
   //               id={field().name}
@@ -355,7 +355,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
   //             value={field().state.value as number}
   //             onChange={(e) => field().setValue(parseFloat(e.target.value))}
   //             onBlur={field().handleBlur}
-  //             class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+  //             class="border-dividing-color bg-primary-color w-full rounded-md border"
   //           />
   //         )}
   //       </Field>

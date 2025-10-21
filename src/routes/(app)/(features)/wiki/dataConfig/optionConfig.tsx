@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { optionSchema } from "@db/generated/zod/index";
-import { DB, item, option } from "@db/generated/kysely/kysely";
+import { DB, item, option } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -162,7 +162,7 @@ export const OptionDataConfig: dataDisplayConfig<option & item, option & ItemWit
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              <div class="Divider bg-dividing-color h-px w-full flex-1" />
             </h3>
             <div class="FunGroup flex gap-1">
               <Button

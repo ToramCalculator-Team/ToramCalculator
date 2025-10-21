@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { consumable, DB, item, recipe, recipe_ingredient } from "../generated/kysely/kysely";
+import { consumable, DB, item, recipe, recipe_ingredient } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";

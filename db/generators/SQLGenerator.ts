@@ -6,8 +6,6 @@
 import fs from "fs";
 import { PATHS } from "./utils/config";
 import { FileUtils, CommandUtils, LogUtils } from "./utils/common";
-import { SchemaParser } from "./utils/schemaParser";
-import { PrismaExecutor } from "./utils/PrismaExecutor";
 
 interface TableStructure {
   tableName: string;
@@ -18,39 +16,60 @@ interface TableStructure {
 export class SQLGenerator {
   /**
    * 生成 SQL 文件
-   * @param updatedSchema - 更新后的 schema 内容
-   * @param kyselyGenerator - Kysely generator 配置
-   * @param clientGenerators - 客户端 generators 配置
-   * @param enumDefinitions - 枚举定义
+   * @param fullSchema - 完整的 Prisma schema 内容
    */
-  static generate(
-    updatedSchema: string,
-    kyselyGenerator: string,
-    clientGenerators: string[],
-    enumDefinitions: Map<string, string>
-  ): void {
+  static generate(fullSchema: string): void {
     LogUtils.logStep("SQL 生成", "开始生成 SQL 文件...");
     
-    LogUtils.logInfo("生成最终的 schema 文件...");
-    const finalSchema = updatedSchema + "\n" + Array.from(enumDefinitions.values()).join("\n\n");
-
     LogUtils.logInfo("创建临时 schema 文件...");
-    FileUtils.safeWriteFile(PATHS.serverDB.tempSchema, finalSchema);
-    FileUtils.safeWriteFile(PATHS.clientDB.tempSchema, finalSchema);
+    FileUtils.safeWriteFile(PATHS.serverDB.tempSchema, fullSchema);
+    FileUtils.safeWriteFile(PATHS.clientDB.tempSchema, fullSchema);
 
     LogUtils.logInfo("生成服务端 SQL...");
-    PrismaExecutor.generateServerSQL(PATHS.serverDB.tempSchema);
+    this.generateServerSQL(PATHS.serverDB.tempSchema);
     
     LogUtils.logInfo("生成客户端 SQL...");
-    PrismaExecutor.generateClientSQL(PATHS.clientDB.tempSchema);
+    this.generateClientSQL(PATHS.clientDB.tempSchema);
 
     LogUtils.logInfo("转换客户端 SQL...");
     this.transformClientSql();
 
     LogUtils.logInfo("修复关系表名称...");
-    this.fixRelationTableNames(updatedSchema);
+    this.fixRelationTableNames(fullSchema);
     
     LogUtils.logSuccess("SQL 生成完成");
+  }
+
+  /**
+   * 生成服务端 SQL
+   * @param schemaPath - Schema 文件路径
+   */
+  private static generateServerSQL(schemaPath: string): void {
+    const command = `npx prisma migrate diff --from-empty --to-schema-datamodel ${schemaPath} --script > ${PATHS.serverDB.sql}`;
+    
+    try {
+      CommandUtils.execCommand(command);
+      LogUtils.logSuccess("服务端 SQL 生成完成");
+    } catch (error) {
+      LogUtils.logError("服务端 SQL 生成失败", error as Error);
+      throw new Error(`服务端 SQL 生成失败: ${error}`);
+    }
+  }
+
+  /**
+   * 生成客户端 SQL
+   * @param schemaPath - Schema 文件路径
+   */
+  private static generateClientSQL(schemaPath: string): void {
+    const command = `npx prisma migrate diff --from-empty --to-schema-datamodel ${schemaPath} --script > ${PATHS.clientDB.sql}`;
+    
+    try {
+      CommandUtils.execCommand(command);
+      LogUtils.logSuccess("客户端 SQL 生成完成");
+    } catch (error) {
+      LogUtils.logError("客户端 SQL 生成失败", error as Error);
+      throw new Error(`客户端 SQL 生成失败: ${error}`);
+    }
   }
 
   /**
@@ -529,9 +548,11 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
    * @param updatedSchema - 更新后的 schema 内容
    */
   static fixRelationTableNames(updatedSchema: string): void {
-    // 使用 SchemaParser 自动检测需要修复的关系表名称
-    const schemaAnalysis = SchemaParser.analyzeSchema(updatedSchema) as any;
-    const relationTables = schemaAnalysis.relationTables as string[];
+    // 从 schema 中提取关系表名称（以下划线开头的表）
+    const relationTableMatches = updatedSchema.match(/model\s+_\w+/g);
+    const relationTables = relationTableMatches 
+      ? relationTableMatches.map(match => match.replace('model ', ''))
+      : [];
 
     // 修复 SQL 中的表名引用
     const fixTableNames = (sql: string): string => {

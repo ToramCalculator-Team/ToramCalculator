@@ -1,5 +1,5 @@
 import { Transaction } from "kysely";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { getPrimaryKeys } from "@db/repositories/untils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
@@ -71,7 +71,7 @@ export const CardSharedSection = <T extends object>(props: {
       <section class="FunFieldGroup flex w-full flex-col gap-2">
         <h3 class="text-accent-color flex items-center gap-2 font-bold">
           {props.dic.ui.actions.operation}
-          <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+          <div class="Divider bg-dividing-color h-px w-full flex-1" />
         </h3>
         <div class="FunGroup flex gap-1">
           <Button

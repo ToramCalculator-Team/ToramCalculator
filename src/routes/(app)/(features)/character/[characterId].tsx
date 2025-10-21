@@ -4,7 +4,6 @@ import { createEffect, createMemo, createResource, createSignal, on, onCleanup, 
 import { findCharactersByPlayerId, findCharacterWithRelations } from "@db/repositories/character";
 import {
   EntityFactory,
-  BuiltinAnimationType,
   type CharacterEntityRuntime,
 } from "~/components/features/simulator/render/RendererController";
 // import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
@@ -31,7 +30,7 @@ import { Motion } from "solid-motionone";
 import Icons from "~/components/icons";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 
 export default function CharactePage() {
   // UI文本字典
@@ -244,11 +243,11 @@ export default function CharactePage() {
           </div>
           <div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
             <div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
-              <canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border-1">
+              <canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
                 当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
               </canvas>
             </div>
-            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-[1px]"></div>
+            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
             <OverlayScrollbarsComponent
               element="div"
               options={{ scrollbars: { visibility: "hidden" } }}
@@ -330,7 +329,7 @@ export default function CharactePage() {
                 </Button>
               </div>
             </OverlayScrollbarsComponent>
-            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-[1px]"></div>
+            <div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
 
             {/* 装备 */}
             <OverlayScrollbarsComponent
@@ -350,7 +349,7 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
+                  class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
                 >
                   <div class="Label px-4 py-3">主手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -383,7 +382,7 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border-1 landscape:w-full landscape:border-b-1"
+                  class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
                 >
                   <div class="Label px-4 py-3">副手</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -416,7 +415,7 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                  class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -449,7 +448,7 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                  class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -482,7 +481,7 @@ export default function CharactePage() {
                       });
                     }
                   }}
-                  class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border-1 portrait:py-2 landscape:border-b-1"
+                  class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
                   <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">

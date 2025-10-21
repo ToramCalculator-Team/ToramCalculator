@@ -253,7 +253,7 @@ export default function FlowEditor(props: FlowEditorProps) {
     </div>
   );
 
-  const Divider = () => <div class="Divider h-[1px] w-full flex-none bg-dividing-color"></div>;
+  const Divider = () => <div class="Divider h-px w-full flex-none bg-dividing-color"></div>;
 
   function rootEditorProvider(def: WorkflowDefinition, context: RootEditorContext, isReadonly: boolean) {
     const container = document.createElement("div");

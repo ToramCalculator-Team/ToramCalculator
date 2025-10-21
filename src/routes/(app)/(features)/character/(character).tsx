@@ -1,5 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, JSX, onMount, ParentProps, Show } from "solid-js";
-import { getDictionary } from "~/locales/i18n";
+import { onMount, ParentProps, Show } from "solid-js";
 import { setStore, store } from "~/store";
 import { useNavigate } from "@solidjs/router";
 

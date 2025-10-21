@@ -8,7 +8,7 @@ import { getDictionary } from "~/locales/i18n";
 import { createEffect, createSignal, JSX } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { MediaContext } from "~/lib/contexts/Media";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 
 const NavBtn = (props: {
   config: {
@@ -100,7 +100,7 @@ const Nav = () => {
       onMouseEnter={() => setDisplay(true)}
       onMouseLeave={() => setDisplay(false)}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-[1px] lg:landscape:bg-transparent"} landscape:py-5`}
+      class={`Nav w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-px lg:landscape:bg-transparent"} landscape:py-5`}
     >
       <div
         class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8`}

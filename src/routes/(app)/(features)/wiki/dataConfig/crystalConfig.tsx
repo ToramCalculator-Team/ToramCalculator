@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Index, onMount, Show } from "solid-j
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { crystalSchema, itemSchema } from "@db/generated/zod/index";
-import { DB, item, crystal } from "@db/generated/kysely/kysely";
+import { DB, item, crystal } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -191,7 +191,7 @@ export const CrystalDataConfig: dataDisplayConfig<
                           title={dic.db.crystal.fields[fieldKey].key}
                           description={dic.db.crystal.fields[fieldKey].formFieldDescription}
                           state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <Select
                             value={field().state.value}
@@ -233,7 +233,7 @@ export const CrystalDataConfig: dataDisplayConfig<
                             title={(fieldKey === "front" ? "前置" : "后置") + dic.db.crystal.selfName}
                             description={dic.db.crystal.description}
                             state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border"
                           >
                             <div class="ArrayBox flex w-full flex-col gap-2">
                               <Index each={field().state.value}>

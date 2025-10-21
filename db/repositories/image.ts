@@ -1,6 +1,6 @@
 import { Transaction, Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { getDB } from "./database";
-import { DB, image } from "../generated/kysely/kysely";
+import { DB, image } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { imageSchema } from "../generated/zod/index";
 import { z } from "zod/v4";

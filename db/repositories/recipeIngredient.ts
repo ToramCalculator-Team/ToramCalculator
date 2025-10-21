@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, recipe_ingredient } from "../generated/kysely/kysely";
+import { DB, recipe_ingredient } from "@db/generated/zod/index";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { recipe_ingredientSchema } from "../generated/zod/index";

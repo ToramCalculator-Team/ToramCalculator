@@ -1,4 +1,4 @@
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { MobDataConfig } from "./mobConfig";
 import { ColumnDef, Cell, VisibilityState, OnChangeFn } from "@tanstack/solid-table";
 import { Accessor, JSX, Setter } from "solid-js";

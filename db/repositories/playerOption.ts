@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, player_option } from "../generated/kysely/kysely";
+import { DB, player_option } from "@db/generated/zod/index";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";

@@ -75,7 +75,7 @@ export function Select(props: SelectProps) {
       <button
         type="button"
         onClick={() => !props.disabled && setIsOpen(!isOpen())}
-        class={`${!props.styleLess && "border-dividing-color border-1"} text-main-text-color flex w-full items-center justify-between rounded-md p-1 ${
+        class={`${!props.styleLess && "border-dividing-color border"} text-main-text-color flex w-full items-center justify-between rounded-md p-1 ${
           props.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         }`}
       >
@@ -133,7 +133,7 @@ export function Select(props: SelectProps) {
                 return (
                   <>
                     <Show when={index() !== 0}>
-                      <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+                      <div class="Divider bg-dividing-color h-px w-full flex-1" />
                     </Show>
                     {optionItem}
                   </>

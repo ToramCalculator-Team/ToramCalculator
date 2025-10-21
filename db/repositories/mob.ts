@@ -1,6 +1,6 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
-import { DB, mob } from "../generated/kysely/kysely";
+import { DB, mob } from "@db/generated/zod/index";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { drop_itemSchema, itemSchema, mobSchema, statisticSchema, zoneSchema } from "../generated/zod/index";

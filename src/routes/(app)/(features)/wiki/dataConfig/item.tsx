@@ -22,7 +22,7 @@ import {
   task,
   task_collect_require,
   task_reward,
-} from "@db/generated/kysely/kysely";
+} from "@db/generated/zod/index";
 import { CardSection } from "~/components/dataDisplay/cardSection";
 import { dictionary } from "~/locales/type";
 import { getDB } from "@db/repositories/database";
@@ -349,7 +349,7 @@ export const ItemSharedFormField = (
                       title={dic.db.recipe.selfName}
                       description={dic.db.recipe.description}
                       state={fieldInfo(recipeField())}
-                      class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                      class="border-dividing-color bg-primary-color w-full rounded-md border"
                     >
                       <Index each={Object.entries(recipeField().state.value)}>
                         {(recipe, recipeIndex) => {
@@ -378,7 +378,7 @@ export const ItemSharedFormField = (
                                         title={"活动配方标记"}
                                         description={"仅在某个活动开启时可使用的配方"}
                                         state={undefined}
-                                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                                       >
                                         <Toggle
                                           id={"isLimit"}
@@ -393,7 +393,7 @@ export const ItemSharedFormField = (
                                           title={dic.db.activity.selfName}
                                           description={dic.db.activity.description}
                                           state={fieldInfo(activityIdField())}
-                                          class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                                         >
                                           <Autocomplete
                                             id={activityIdField().name + "activityId"}
@@ -425,15 +425,15 @@ export const ItemSharedFormField = (
                                         title={dic.db.recipe_ingredient.selfName}
                                         description={dic.db.recipe_ingredient.description}
                                         state={fieldInfo(recipeEntries())}
-                                        class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                                        class="border-dividing-color bg-primary-color w-full rounded-md border"
                                       >
                                         <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                                           <Index each={recipeEntries().state.value}>
                                             {(recipeEntry, recipeEntryIndex) => {
                                               const recipeEntryData = recipeEntry();
                                               return (
-                                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                                <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                                  <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                                     <span class="text-accent-color font-bold">
                                                       {dic.db.recipe_ingredient.selfName + " " + recipeEntryIndex}
                                                     </span>
@@ -628,7 +628,7 @@ export const ItemSharedFormField = (
                     title={"隶属于" + dic.db.drop_item.selfName}
                     description={dic.db.drop_item.description}
                     state={fieldInfo(usedInDropItemsField())}
-                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                    class="border-dividing-color bg-primary-color w-full rounded-md border"
                   >
                     <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                       <Show when={usedInDropItemsField().state.value.length > 0}>
@@ -655,8 +655,8 @@ export const ItemSharedFormField = (
                                   }),
                                 );
                                 return (
-                                  <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                                    <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                                  <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                                    <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                       <span class="text-accent-color font-bold">
                                         {dic.db.drop_item.selfName + " " + dropItemIndex}
                                       </span>
@@ -815,14 +815,14 @@ export const ItemSharedFormField = (
                     title={"隶属于" + dic.db.recipe_ingredient.selfName}
                     description={dic.db.recipe_ingredient.description}
                     state={fieldInfo(usedInRecipeEntriesField())}
-                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                    class="border-dividing-color bg-primary-color w-full rounded-md border"
                   >
                     <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                       <Show when={usedInRecipeEntriesField().state.value.length > 0}>
                         <Index each={usedInRecipeEntriesField().state.value}>
                           {(recipeEntry, recipeEntryIndex) => (
-                            <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                              <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                            <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                              <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                 <span class="text-accent-color font-bold">
                                   {dic.db.recipe_ingredient.selfName + " " + recipeEntryIndex}
                                 </span>
@@ -925,14 +925,14 @@ export const ItemSharedFormField = (
                     title={"隶属于" + dic.db.task_reward.selfName}
                     description={dic.db.task_reward.description}
                     state={fieldInfo(usedInTaskRewardsField())}
-                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                    class="border-dividing-color bg-primary-color w-full rounded-md border"
                   >
                     <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                       <Show when={usedInTaskRewardsField().state.value.length > 0}>
                         <Index each={usedInTaskRewardsField().state.value}>
                           {(taskReward, taskRewardIndex) => (
-                            <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                              <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                            <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                              <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                                 <span class="text-accent-color font-bold">
                                   {dic.db.task_reward.selfName + " " + taskRewardIndex}
                                 </span>
@@ -1035,13 +1035,13 @@ export const ItemSharedFormField = (
                     title={"隶属于" + dic.db.task_collect_require.selfName}
                     description={dic.db.task_collect_require.description}
                     state={fieldInfo(usedInTaskCollectRequiresField())}
-                    class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                    class="border-dividing-color bg-primary-color w-full rounded-md border"
                   >
                     <div class="ArrayBox flex w-full flex-col gap-2 rounded-md">
                       <Index each={usedInTaskCollectRequiresField().state.value}>
                         {(taskCollectRequire, taskCollectRequireIndex) => (
-                          <div class="ObjectBox border-dividing-color flex flex-col rounded-md border-1">
-                            <div class="Title border-dividing-color flex w-full items-center justify-between border-b-1 p-2">
+                          <div class="ObjectBox border-dividing-color flex flex-col rounded-md border">
+                            <div class="Title border-dividing-color flex w-full items-center justify-between border-b p-2">
                               <span class="text-accent-color font-bold">
                                 {dic.db.task_collect_require.selfName + " " + taskCollectRequireIndex}
                               </span>

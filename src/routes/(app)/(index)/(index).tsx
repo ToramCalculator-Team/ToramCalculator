@@ -26,7 +26,7 @@ import { Motion, Presence } from "solid-motionone";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { useNavigate } from "@solidjs/router";
 import { dictionary } from "~/locales/type";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { MediaContext } from "~/lib/contexts/Media";
 import { setStore, store } from "~/store";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -398,7 +398,7 @@ export default function IndexPage() {
               </Button>
             </div>
             <div
-              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${context().searchResultOpened ? `landscape:basis-[100%]` : `landscape:basis-[426px]`}`}
+              class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${context().searchResultOpened ? `landscape:basis-full` : `landscape:basis-[426px]`}`}
             >
               <input
                 id="searchInput"
@@ -526,9 +526,9 @@ export default function IndexPage() {
                                         {dictionary().db[groupType].selfName} [{groupResultValue.length}]
                                       </span>
                                       {context().resultListState[groupIndex()] ? (
-                                        <Icons.Outline.Left class="rotate-[360deg]" />
+                                        <Icons.Outline.Left class="rotate-360" />
                                       ) : (
-                                        <Icons.Outline.Left class="rotate-[270deg]" />
+                                        <Icons.Outline.Left class="rotate-270" />
                                       )}
                                     </Motion.button>
                                     <div class="Content flex flex-col gap-1">
@@ -691,7 +691,7 @@ export default function IndexPage() {
           <Index each={toolMenuConfig()}>
             {(config, index) => {
               return (
-                <div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border-1 border-dashed">
+                <div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border border-dashed">
                   <Button
                     class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
                     level="quaternary"

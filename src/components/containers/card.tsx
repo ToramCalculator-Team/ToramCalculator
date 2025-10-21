@@ -147,7 +147,7 @@ export const Card = (props: CardProps) => {
               />
             </svg>
 
-            <div class="bg-primary-color z-10 -mx-[1px] py-[3px]">
+            <div class="bg-primary-color z-10 -mx-px py-[3px]">
               <div class="border-boundary-color border-y py-[3px]">
                 <h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">{props.title}</h1>
               </div>
@@ -172,7 +172,7 @@ export const Card = (props: CardProps) => {
           {/* 左侧装饰 */}
           <div class="Left z-10 flex flex-none flex-col">
             <Decorate class="" />
-            <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
+            <div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
             <Decorate class="-scale-y-100" />
           </div>
 
@@ -180,7 +180,7 @@ export const Card = (props: CardProps) => {
           <div class="Center -mx-10 flex w-full flex-1 flex-col items-center">
             {/* 上分割线 */}
             <div
-              class="Divider bg-boundary-color mt-1 h-[1px] w-full rounded-full"
+              class="Divider bg-boundary-color mt-1 h-px w-full rounded-full"
               style={{
                 width: "calc(100% - 80px)",
               }}
@@ -197,7 +197,7 @@ export const Card = (props: CardProps) => {
 
             {/* 下分割线 */}
             <div
-              class="Divider bg-boundary-color mb-1 h-[1px] w-full rounded-full"
+              class="Divider bg-boundary-color mb-1 h-px w-full rounded-full"
               style={{
                 width: "calc(100% - 80px)",
               }}
@@ -207,7 +207,7 @@ export const Card = (props: CardProps) => {
           {/* 右侧装饰 */}
           <div class="Right z-10 flex flex-none -scale-x-100 flex-col">
             <Decorate />
-            <div class="Divider bg-boundary-color ml-1 h-full w-[1px] flex-1 rounded-full"></div>
+            <div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
             <Decorate class="-scale-y-100" />
           </div>
         </div>

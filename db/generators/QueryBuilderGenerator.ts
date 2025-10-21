@@ -6,10 +6,7 @@
 import { PATHS } from "./utils/config";
 import { StringUtils, FileUtils, LogUtils } from "./utils/common";
 import { TypeConverter, COMMON_OPERATORS } from "./utils/typeConverter";
-import { SchemaParser } from "./utils/schemaParser";
-import { EnumProcessor } from "./utils/enumProcessor";
-
-interface EnumTypeToNameMap extends Map<string, string> {}
+import { EnumProcessor } from "./processors/EnumProcessor";
 
 interface FieldConfig {
   name: string;
@@ -28,8 +25,9 @@ interface FieldConfig {
 interface ModelField {
   name: string;
   type: string;
-  isOptional: boolean;
-  enumType?: string;
+  isRequired: boolean;
+  isList: boolean;
+  isEnum: boolean;
 }
 
 interface Model {
@@ -38,17 +36,68 @@ interface Model {
 }
 
 export class QueryBuilderGenerator {
-  static generate(updatedSchema: string, enumTypeToNameMap: EnumTypeToNameMap): void {
-    // 解析 schema
-    const models = SchemaParser.parseDetailedModels(updatedSchema);
-    const schemaEnums = SchemaParser.parseEnums(updatedSchema);
+  private dmmf: any;
+  private enumProcessor: EnumProcessor;
 
-    // 使用 schemaEnums 中的枚举信息
-    const allEnums: Record<string, string[]> = {};
-    for (const [enumName, enumValues] of Object.entries(schemaEnums)) {
-      allEnums[enumName] = enumValues;
+  constructor(dmmf: any, enumProcessor: EnumProcessor) {
+    this.dmmf = dmmf;
+    this.enumProcessor = enumProcessor;
+  }
+
+  /**
+   * 生成 QueryBuilder 规则
+   */
+  generate(): void {
+    LogUtils.logStep("QueryBuilder 生成", "开始生成 QueryBuilder 规则...");
+    
+    LogUtils.logInfo("解析 schema...");
+    const models = this.parseModelsFromDMMF();
+    const enums = this.parseEnumsFromDMMF();
+
+    LogUtils.logInfo("生成规则内容...");
+    const rulesContent = this.generateRulesContent(models, enums);
+
+    LogUtils.logInfo("写入文件...");
+    FileUtils.safeWriteFile(PATHS.queryBuilder.rules, rulesContent);
+    
+    LogUtils.logSuccess("QueryBuilder 规则生成完成");
+  }
+
+  /**
+   * 从 DMMF 解析模型
+   */
+  private parseModelsFromDMMF(): Model[] {
+    return this.dmmf.datamodel.models.map((model: any) => ({
+      name: model.name,
+      fields: model.fields
+        .filter((field: any) => field.kind === "scalar" || field.kind === "enum")
+        .map((field: any) => ({
+          name: field.name,
+          type: field.type,
+          isRequired: field.isRequired,
+          isList: field.isList,
+          isEnum: field.kind === "enum"
+        }))
+    }));
+  }
+
+  /**
+   * 从 DMMF 解析枚举
+   */
+  private parseEnumsFromDMMF(): Record<string, string[]> {
+    const enums: Record<string, string[]> = {};
+    
+    for (const enumModel of this.dmmf.datamodel.enums) {
+      enums[enumModel.name] = enumModel.values.map((v: any) => v.name);
     }
+    
+    return enums;
+  }
 
+  /**
+   * 生成规则内容
+   */
+  private generateRulesContent(models: Model[], enums: Record<string, string[]>): string {
     let rulesContent = `// 由脚本自动生成，请勿手动修改
 import { Fields } from "@query-builder/solid-query-builder";
 
@@ -65,79 +114,67 @@ export const OPERATORS = {
 `;
 
     // 生成枚举配置
-    for (const [enumName, values] of Object.entries(allEnums)) {
+    for (const [enumName, values] of Object.entries(enums)) {
       const pascalEnumName = StringUtils.toPascalCase(enumName);
       rulesContent += `export const ${pascalEnumName}Enum = [
-  ${values.map((v) => `{ value: "${v}", label: "${v}" }`).join(",\n  ")}
+  ${values.map(v => `{ label: "${v}", value: "${v}" }`).join(",\n  ")}
 ];
 
 `;
     }
 
     // 生成字段配置
+    rulesContent += "// 字段配置\nexport const FIELDS: Fields = {\n";
+
     for (const model of models) {
-      const modelName = StringUtils.toPascalCase(model.name);
-      rulesContent += `export const ${modelName}Fields: Fields[] = [
-  ${model.fields
-    .map((field: any) => {
-      const fieldName = StringUtils.toPascalCase(field.name);
-      const label = StringUtils.generateLabel(field.name);
-      const typeConfig = TypeConverter.prismaToQueryBuilder(field.type, field.isOptional) as any;
-
-      // 检查是否是枚举字段
-      let enumConfig = "";
-      let valueEditorType = typeConfig.valueEditorType;
-      let inputType = typeConfig.inputType;
-
-      if (field.enumType) {
-        // 使用已建立的枚举映射
-        const enumName = enumTypeToNameMap.get(field.enumType);
-
-        if (enumName && allEnums[enumName]) {
-          enumConfig = `,\n    values: ${StringUtils.toPascalCase(enumName)}Enum`;
-          // 枚举字段使用 radio 组件
-          valueEditorType = "radio";
-          inputType = "radio";
-        }
+      const modelNameLower = model.name.toLowerCase();
+      rulesContent += `  ${modelNameLower}: {\n`;
+      
+      for (const field of model.fields) {
+        const fieldConfig = this.generateFieldConfig(field, enums);
+        rulesContent += `    ${field.name}: ${JSON.stringify(fieldConfig, null, 6)},\n`;
       }
-
-      // 根据字段类型优化配置
-      let additionalConfig = "";
-      if (typeConfig.comparator === "boolean") {
-        // 布尔字段使用 checkbox
-        valueEditorType = "checkbox";
-        inputType = "checkbox";
-      } else if (typeConfig.comparator === "date") {
-        // 日期字段使用文本输入（库不支持 date 类型）
-        valueEditorType = "text";
-        inputType = "text";
-      } else if (typeConfig.comparator === "number") {
-        // 数字字段使用文本输入（库不支持 number 类型）
-        valueEditorType = "text";
-        inputType = "number";
-      }
-
-      return `{
-    name: "${fieldName}",
-    label: "${label}",
-    placeholder: "请选择或输入${label.toLowerCase()}",
-    id: "${field.name}",
-    valueEditorType: "${valueEditorType}",
-    inputType: "${inputType}",
-    comparator: "${typeConfig.comparator}",
-    operators: OPERATORS.${typeConfig.comparator},
-    defaultOperator: "${typeConfig.operators[0].value}",
-    defaultValue: ${field.isOptional ? "null" : '""'}${enumConfig}${additionalConfig}
-  }`;
-    })
-    .join(",\n  ")}
-];
-
-`;
+      
+      rulesContent += `  },\n`;
     }
 
-    FileUtils.safeWriteFile(PATHS.queryBuilder.rules, rulesContent);
-    LogUtils.logSuccess("QueryBuilder 生成完成");
+    rulesContent += "};\n";
+
+    return rulesContent;
+  }
+
+  /**
+   * 生成字段配置
+   */
+  private generateFieldConfig(field: ModelField, enums: Record<string, string[]>): FieldConfig {
+    const fieldConfig: FieldConfig = {
+      name: field.name,
+      label: StringUtils.generateLabel(field.name),
+      placeholder: `请输入${StringUtils.generateLabel(field.name)}`,
+      id: field.name,
+      valueEditorType: "text",
+      inputType: "text",
+      comparator: "=",
+      operators: [],
+      defaultOperator: "=",
+      defaultValue: null
+    };
+
+    // 根据字段类型设置配置
+    if (field.isEnum) {
+      fieldConfig.valueEditorType = "select";
+      fieldConfig.inputType = "select";
+      fieldConfig.operators = [...COMMON_OPERATORS.enum] as any[];
+      fieldConfig.defaultOperator = "=";
+      fieldConfig.values = enums[field.type]?.map(v => ({ label: v, value: v })) || [];
+    } else {
+      const typeConfig = TypeConverter.prismaToQueryBuilder(field.type);
+      fieldConfig.valueEditorType = typeConfig.valueEditorType;
+      fieldConfig.inputType = typeConfig.inputType;
+      fieldConfig.operators = [...typeConfig.operators] as any[];
+      fieldConfig.defaultOperator = "=";
+    }
+
+    return fieldConfig;
   }
 }
-

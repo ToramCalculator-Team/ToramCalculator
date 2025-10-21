@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { getDB } from "@db/repositories/database";
 import { dataDisplayConfig } from "./dataConfig";
 import { weaponSchema } from "@db/generated/zod/index";
-import { DB, item, weapon } from "@db/generated/kysely/kysely";
+import { DB, item, weapon } from "@db/generated/zod/index";
 import { dictionary } from "~/locales/type";
 import { ObjRender } from "~/components/dataDisplay/objRender";
 import { defaultData } from "@db/defaultData";
@@ -128,7 +128,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
                             title={dic.db.weapon.fields[fieldKey].key}
                             description={dic.db.weapon.fields[fieldKey].formFieldDescription}
                             state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border"
                           >
                             <Select
                               value={field().state.value}
@@ -156,7 +156,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
                             title={dic.db.weapon.fields[fieldKey].key}
                             description={dic.db.weapon.fields[fieldKey].formFieldDescription}
                             state={fieldInfo(field())}
-                            class="border-dividing-color bg-primary-color w-full rounded-md border-1"
+                            class="border-dividing-color bg-primary-color w-full rounded-md border"
                           >
                             <EnumSelect
                               value={field().state.value}
@@ -236,7 +236,7 @@ export const WeaponDataConfig: dataDisplayConfig<weapon & item, weapon & ItemWit
           <section class="FunFieldGroup flex w-full flex-col gap-2">
             <h3 class="text-accent-color flex items-center gap-2 font-bold">
               {dic.ui.actions.operation}
-              <div class="Divider bg-dividing-color h-[1px] w-full flex-1" />
+              <div class="Divider bg-dividing-color h-px w-full flex-1" />
             </h3>
             <div class="FunGroup flex gap-1">
               <Button

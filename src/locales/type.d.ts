@@ -1,4 +1,4 @@
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 
 export type FieldDetail = {
   key: string;

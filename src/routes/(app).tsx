@@ -12,7 +12,7 @@ import { CardGroup } from "~/components/features/cardGroup";
 import { repositoryMethods } from "@db/generated/repository";
 import { getDB } from "@db/repositories/database";
 import { getPrimaryKeys } from "@db/repositories/untils";
-import { DB } from "@db/generated/kysely/kysely";
+import { DB } from "@db/generated/zod/index";
 import { defaultData } from "@db/defaultData";
 
 export default function AppMainContet(props: ParentProps) {

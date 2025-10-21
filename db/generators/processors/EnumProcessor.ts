@@ -1,13 +1,13 @@
 /**
- * @file enumProcessor.ts
+ * @file EnumProcessor.ts
  * @description 枚举处理器
  * 负责处理 Prisma schema 中的枚举定义和映射
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { createRequire } from "module";
-import { StringUtils, FileUtils, LogUtils } from "./common.js";
-import { PATHS } from "./config.js";
+import { StringUtils, FileUtils, LogUtils } from "../utils/common.js";
+import { PATHS } from "../config/generator.config.js";
 
 const require = createRequire(import.meta.url);
 
@@ -17,13 +17,11 @@ const require = createRequire(import.meta.url);
  */
 export class EnumProcessor {
   private extractedEnums: Map<string, string[]>;
-  private enumModels: Map<string, any>;
   private enumDefinitions: Map<string, string>;
   private enumTypeToNameMap: Map<string, string>; // 存储枚举类型名到枚举名的映射
 
   constructor() {
     this.extractedEnums = new Map();
-    this.enumModels = new Map();
     this.enumDefinitions = new Map();
     this.enumTypeToNameMap = new Map();
   }
@@ -35,6 +33,8 @@ export class EnumProcessor {
    */
   processEnums(): this {
     try {
+      LogUtils.logStep("枚举处理", "解析 enums.ts 文件");
+      
       // 直接导入 enums.ts 模块，让 JS 引擎处理所有展开操作符
       const enumsModule = require(PATHS.enums);
       
@@ -53,7 +53,7 @@ export class EnumProcessor {
         }
       }
       
-      LogUtils.logSuccess(`成功解析 ${this.extractedEnums.size} 个枚举（使用模块导入方式）`);
+      LogUtils.logSuccess(`成功解析 ${this.extractedEnums.size} 个枚举`);
       
       return this;
     } catch (error) {
@@ -65,9 +65,11 @@ export class EnumProcessor {
   /**
    * 处理 Schema
    * 将枚举定义注入到 Prisma schema 中，并替换字段类型
-   * @returns 处理结果
+   * @returns 处理后的 Schema 内容
    */
-  processSchema(): { updatedSchema: string; kyselyGenerator: string; clientGenerators: string[] } {
+  processSchema(): string {
+    LogUtils.logStep("Schema 处理", "注入枚举定义并替换字段类型");
+    
     const baseSchema = FileUtils.safeReadFile(PATHS.baseSchema);
     
     // 生成枚举定义并存储到实例变量中
@@ -76,17 +78,9 @@ export class EnumProcessor {
     // 处理 Schema 内容，替换枚举字段类型
     const updatedSchema = this.replaceEnumFieldTypes(baseSchema);
     
-    // 生成 Kysely generator 配置
-    const kyselyGenerator = this.generateKyselyGenerator();
+    LogUtils.logSuccess("Schema 处理完成");
     
-    // 生成客户端 generators 配置
-    const clientGenerators = this.generateClientGenerators();
-    
-    return {
-      updatedSchema,
-      kyselyGenerator,
-      clientGenerators,
-    };
+    return updatedSchema;
   }
 
   /**
@@ -153,36 +147,6 @@ export class EnumProcessor {
     }
     
     return enumDefinitions;
-  }
-
-  /**
-   * 生成 Kysely generator 配置
-   * @returns Kysely generator 配置
-   */
-  generateKyselyGenerator(): string {
-    return `generator kysely {
-    provider     = "prisma-kysely"
-    output       = "../generated/kysely"
-    fileName     = "kysely.ts"
-    enumFileName = "enums.ts"
-}`;
-  }
-
-  /**
-   * 生成客户端 generators 配置
-   * @returns 客户端 generators 配置数组
-   */
-  generateClientGenerators(): string[] {
-    return [
-      `generator client {
-    provider        = "prisma-client-js"
-    previewFeatures = ["relationJoins", "fullTextSearchPostgres"]
-}`,
-      `generator zod {
-  provider = "prisma-zod-generator"
-  output = "../generated/zod"
-}`,
-    ];
   }
 
   /**
