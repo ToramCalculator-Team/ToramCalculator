@@ -411,11 +411,11 @@ ${crudMethods}
     if (isParentRelation) {
       // 父关系：外键在当前模型中，指向目标模型
       const foreignKey = this.getRelationForeignKey(field, model, targetTable);
-      return `(eb) =>
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
         jsonObjectFrom(
           eb
             .selectFrom("${targetTable}")
-            .whereRef("${targetTable}.${targetPrimaryKey}", "=", "${model.name.toLowerCase()}.${foreignKey}")
+            .where("${targetTable}.${targetPrimaryKey}", "=", id)
             .selectAll("${targetTable}")
         ).$notNull().as("${field.name}")`;
     } else {
@@ -424,22 +424,22 @@ ${crudMethods}
         // 外键在当前模型中，指向目标模型
         const foreignKey = field.relationFromFields[0];
         const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
-        return `(eb) =>
+        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
               .selectFrom("${targetTable}")
-              .whereRef("${targetTable}.${targetPrimaryKey}", "=", "${model.name.toLowerCase()}.${foreignKey}")
+              .where("${targetTable}.${targetPrimaryKey}", "=", id)
               .selectAll("${targetTable}")${subRelationCode}
           ).$notNull().as("${field.name}")`;
       } else {
         // 外键在目标表中，指向当前模型
         const reverseForeignKey = `${model.name.toLowerCase()}Id`;
         const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
-        return `(eb) =>
+        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
               .selectFrom("${targetTable}")
-              .whereRef("${targetTable}.${reverseForeignKey}", "=", "${model.name.toLowerCase()}.${currentModelPrimaryKey}")
+              .where("${targetTable}.${reverseForeignKey}", "=", id)
               .selectAll("${targetTable}")${subRelationCode}
           ).$notNull().as("${field.name}")`;
       }
@@ -481,11 +481,11 @@ ${crudMethods}
       }
       
       const reverseForeignKey = reverseField.relationFromFields[0];
-      return `(eb) =>
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
             .selectFrom("${targetTable}")
-            .whereRef("${targetTable}.${reverseForeignKey}", "=", "${model.name.toLowerCase()}.${currentModelPrimaryKey}")
+            .where("${targetTable}.${reverseForeignKey}", "=", id)
             .selectAll("${targetTable}")
         ).as("${field.name}")`;
     } else {
@@ -509,11 +509,11 @@ ${crudMethods}
       
       const reverseForeignKey = reverseField.relationFromFields[0];
       const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
-      return `(eb) =>
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
             .selectFrom("${targetTable}")
-            .whereRef("${targetTable}.${reverseForeignKey}", "=", "${model.name.toLowerCase()}.${currentModelPrimaryKey}")
+            .where("${targetTable}.${reverseForeignKey}", "=", id)
             .selectAll("${targetTable}")${subRelationCode}
         ).as("${field.name}")`;
     }
@@ -537,12 +537,12 @@ ${crudMethods}
     
     const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
     
-    return `(eb) =>
+    return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
       jsonArrayFrom(
         eb
           .selectFrom("${intermediateTable}")
           .innerJoin("${targetTable}", "${intermediateTable}.B", "${targetTable}.${targetPrimaryKey}")
-          .whereRef("${intermediateTable}.A", "=", "${model.name.toLowerCase()}.${currentModelPrimaryKey}")
+          .where("${intermediateTable}.A", "=", id)
           .selectAll("${targetTable}")${subRelationCode}
       ).as("${field.name}")`;
   }

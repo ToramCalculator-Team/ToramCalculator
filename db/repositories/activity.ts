@@ -19,18 +19,14 @@ export type ActivityUpdate = Updateable<activity>;
 const activitySubRelationDefs = defineRelations({
   zones: {
     build: (eb: ExpressionBuilder<DB, "activity">, id: Expression<string>) =>
-      jsonArrayFrom(
-        eb
-          .selectFrom("zone")
-          .where("zone.activityId", "=", id)
-          .selectAll("zone")
-      ).as("zones"),
+      jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
     schema: z.array(zoneSchema).describe("包含的区域"),
   },
   statistic: {
-    build: (eb, id) =>
-      jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "activity.statisticId").selectAll("statistic"))
-        .$notNull().as("statistic"),
+    build: (eb: ExpressionBuilder<DB, "activity">, id: Expression<string>) =>
+      jsonObjectFrom(eb.selectFrom("statistic").where("id", "=", id).selectAll("statistic"))
+        .$notNull()
+        .as("statistic"),
     schema: statisticSchema.describe("统计信息"),
   },
 });
@@ -44,34 +40,22 @@ export const activitySubRelations = activityRelationsFactory.subRelations;
 
 // 2. 基础 CRUD 方法
 export async function findActivityById(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("activity")
-    .where("id", "=", id)
-    .selectAll()
-    .executeTakeFirst() || null;
+  const db = trx || (await getDB());
+  return (await db.selectFrom("activity").where("id", "=", id).selectAll().executeTakeFirst()) || null;
 }
 
 export async function findActivities(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("activity")
-    .selectAll()
-    .execute();
+  const db = trx || (await getDB());
+  return await db.selectFrom("activity").selectAll().execute();
 }
 
 export async function insertActivity(trx: Transaction<DB>, data: ActivityInsert) {
-  return await trx
-    .insertInto("activity")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("activity").values(data).returningAll().executeTakeFirstOrThrow();
 }
-
 
 // 4. 特殊查询方法
 export async function findActivityWithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
+  const db = trx || (await getDB());
   return await db
     .selectFrom("activity")
     .where("id", "=", id)
@@ -81,7 +65,7 @@ export async function findActivityWithRelations(id: string, trx?: Transaction<DB
 }
 
 export async function findActivitiesWithRelations(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
+  const db = trx || (await getDB());
   return await db
     .selectFrom("activity")
     .selectAll("activity")
