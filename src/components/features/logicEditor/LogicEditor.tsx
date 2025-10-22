@@ -58,7 +58,6 @@ export function LogicEditor(props: LogicEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
 
-
   // 使用内置方法进行初始居中（不做额外偏差计算）
   const centerInitialView = (ws: WorkspaceSvg) => {
     if (!ws) return;
@@ -138,7 +137,6 @@ export function LogicEditor(props: LogicEditorProps) {
   }[store.settings.userInterface.language];
 
   onMount(() => {
-    // debugger
   });
 
   createEffect(
@@ -997,23 +995,15 @@ export function LogicEditor(props: LogicEditorProps) {
         let workerSpace = inject(div, injectionOptions);
         const data = props.data;
         serialization.workspaces.load(data ?? {}, workerSpace);
-        workerSpace.addChangeListener(() => props.setCode?.(javascriptGenerator.workspaceToCode(workerSpace)));
+        workerSpace.addChangeListener(() => {
+          props.setCode?.(javascriptGenerator.workspaceToCode(workerSpace))
+          props.setData(serialization.workspaces.save(workerSpace));
+        });
         
         // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
 
         // 使用内置方法进行初始居中（双 rAF 确保度量稳定）
         requestAnimationFrame(() => requestAnimationFrame(() => centerInitialView(workerSpace)));
-
-        // 当代码发生变化时
-        createEffect((prevCode) => {
-          const curCode = props.code?.();
-          if (curCode !== prevCode) {
-            // console.log(curCode);
-            props.setData(serialization.workspaces.save(workerSpace));
-            // console.log(JSON.stringify(serialization.workspaces.save(workerSpace)));
-          }
-          return curCode;
-        }, "");
       },
     ),
   );
