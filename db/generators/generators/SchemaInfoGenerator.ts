@@ -137,6 +137,12 @@ export class SchemaInfoGenerator {
       tables.push(tableInfo);
     }
 
+    // 处理中间表
+    const intermediateTables = this.extractIntermediateTables();
+    for (const table of intermediateTables) {
+      tables.push(table);
+    }
+
     // 处理枚举：从 DMMF 中提取枚举信息
     for (const enumModel of this.dmmf.datamodel.enums) {
       const enumInfo: EnumInfo = {
@@ -159,6 +165,105 @@ export class SchemaInfoGenerator {
       generatedAt: new Date().toISOString(),
       version: "2.0.0"
     };
+  }
+
+  /**
+   * 从 SQL 文件中提取中间表信息
+   * @returns 中间表信息数组
+   */
+  private extractIntermediateTables(): TableInfo[] {
+    const intermediateTables: TableInfo[] = [];
+    
+    try {
+      const sqlContent = FileUtils.safeReadFile(PATHS.serverDB.sql);
+      
+      // 匹配 CREATE TABLE "_tableName" 的模式
+      const createTableRegex = /CREATE TABLE "(_[^"]+)"\s*\(([\s\S]*?)\);/g;
+      let match;
+      
+      while ((match = createTableRegex.exec(sqlContent)) !== null) {
+        const tableName = match[1];
+        const fieldsContent = match[2];
+        
+        // 提取字段信息
+        const fields: FieldInfo[] = [];
+        const primaryKeys: string[] = [];
+        
+        // 匹配字段定义：字段名 类型 [NOT NULL]
+        const fieldRegex = /"([^"]+)"\s+([A-Z]+)(?:\s+NOT\s+NULL)?(?:,|\s*$)/g;
+        let fieldMatch;
+        
+        while ((fieldMatch = fieldRegex.exec(fieldsContent)) !== null) {
+          const fieldName = fieldMatch[1];
+          const fieldType = fieldMatch[2];
+          
+          // 确保是真正的字段定义，不是约束
+          if (fieldName && fieldType && !fieldName.includes('CONSTRAINT') && !fieldName.includes('PRIMARY') && !fieldName.includes('FOREIGN')) {
+            const fieldInfo: FieldInfo = {
+              name: fieldName,
+              type: this.convertSqlTypeToPrismaType(fieldType),
+              kind: 'scalar',
+              isRequired: true,
+              isId: false,
+              isUnique: false,
+              isList: false,
+              isArray: false,
+              isOptional: false
+            };
+            
+            fields.push(fieldInfo);
+            primaryKeys.push(fieldName); // 中间表的所有字段都是主键的一部分
+          }
+        }
+        
+        if (fields.length > 0) {
+          const tableInfo: TableInfo = {
+            name: tableName,
+            fields: fields,
+            primaryKeys: primaryKeys,
+            foreignKeys: [],
+            indexes: [],
+            isRelationTable: true
+          };
+          
+          intermediateTables.push(tableInfo);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to extract intermediate tables from SQL:', error);
+    }
+    
+    return intermediateTables;
+  }
+
+  /**
+   * 将 SQL 类型转换为 Prisma 类型
+   */
+  private convertSqlTypeToPrismaType(sqlType: string): string {
+    switch (sqlType.toLowerCase()) {
+      case 'varchar':
+      case 'text':
+      case 'char':
+        return 'String';
+      case 'int':
+      case 'integer':
+      case 'serial':
+        return 'Int';
+      case 'bigint':
+      case 'bigserial':
+        return 'BigInt';
+      case 'boolean':
+      case 'bool':
+        return 'Boolean';
+      case 'timestamp':
+      case 'timestamptz':
+        return 'DateTime';
+      case 'json':
+      case 'jsonb':
+        return 'Json';
+      default:
+        return 'String';
+    }
   }
 
   /**

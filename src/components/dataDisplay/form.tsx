@@ -1,5 +1,6 @@
 // 由于DeepKeys<T>与for方法的遍历结果不一致，目前存在许多ts问题，但是不影响实际使用，暂时忽略
 
+import { selectZoneById } from "@db/generated/repository/zone";
 import { AnyFieldApi, createForm, DeepKeys, DeepValue, Field } from "@tanstack/solid-form";
 import { Show, For, Accessor, createMemo, Index } from "solid-js";
 import { JSX } from "solid-js/jsx-runtime";
@@ -12,6 +13,10 @@ import { getZodType } from "~/lib/utils/zodTools";
 import { getDictionary } from "~/locales/i18n";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { store } from "~/store";
+
+
+
+console.log(await selectZoneById("defaultZoneId"))
 
 export const Form = <T extends Record<string, unknown>>(props: {
   initialValue: T;
@@ -49,9 +54,6 @@ export const Form = <T extends Record<string, unknown>>(props: {
 
         // 处理嵌套结构
         switch (schemaFieldVlaue.type) {
-          case "object": {
-            return;
-          }
           case "array": {
             return (
               <form.Field

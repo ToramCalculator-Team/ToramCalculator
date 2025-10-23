@@ -53,6 +53,7 @@ export default function FunctionPage(props: ParentProps) {
                   "magicalDefense",
                   "magicalResistance",
                 ],
+                关联数据:["details"],
                 其他: ["actions"],
               }}
               fieldGenerator={{

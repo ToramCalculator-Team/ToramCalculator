@@ -10,24 +10,24 @@ services:
       POSTGRES_PASSWORD: ${PG_PASSWORD}
     ports:
       - ${PG_PORT}:5432
+    tmpfs:
+      - /var/lib/postgresql/data
+      - /tmp
     volumes:
-      - postgres_data:/var/lib/postgresql/data
       - ../db/generated/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./healthcheck.sh:/usr/local/bin/healthcheck.sh
     command:
       - -c
       - listen_addresses=*
       - -c
       - wal_level=logical
     healthcheck:
-      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
-      retries: 60
-      start_period: 120s
+      retries: 5
 
   electric:
-    image: electricsql/electric
+    image: electricsql/electric:latest
     environment:
       DATABASE_URL: postgresql://${PG_USERNAME}:${PG_PASSWORD}@postgres:${PG_PORT}/${PG_DBNAME}?sslmode=disable
       # Not suitable for production. Only use insecure mode in development or if you've otherwise secured the Electric API.
@@ -38,6 +38,3 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-volumes:
-  postgres_data:

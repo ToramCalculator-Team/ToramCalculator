@@ -1,35 +1,7 @@
 /**
  * 自动完成组件
  *
- * 这个组件主要用于处理 ID 和显示值的映射关系，通常用在表单中需要选择关联数据的场景。
- * 例如：选择区域时，需要显示区域名称，但实际存储的是区域 ID。
- *
- * 特点：
- * 1. 支持异步加载选项
- * 2. 自动处理 ID 和显示值的转换
- * 3. 支持键盘导航和点击选择
- * 4. 与表单库（如 tanstack/form）完全兼容
- *
- * 使用示例：
- * ```tsx
- * <Autocomplete
- *   value={field().value}                    // 当前选中的值（通常是 ID）
- *   displayValue={field().displayValue}      // 当前显示的值（通常是名称）
- *   setValue={(value) => field().setValue(value)}  // 更新值的方法
- *   optionsFetcher={async (search) => {      // 异步加载选项的方法
- *     const items = await fetchItems(search);
- *     return items.map(item => ({
- *       label: item.name,  // 显示值
- *       value: item.id     // 实际值
- *     }));
- *   }}
- * />
- * ```
- *
- * @param props.value - 当前选中的值（通常是 ID）
- * @param props.displayValue - 当前显示的值（通常是名称）
- * @param props.setValue - 更新值的方法
- * @param props.optionsFetcher - 异步加载选项的方法，根据输入框内的label返回对应的options
+ * 负责对对象字段进行选择
  */
 
 import {
@@ -45,49 +17,63 @@ import {
   Show,
 } from "solid-js";
 import Icons from "~/components/icons/index";
-import { ObjRender } from "../dataDisplay/objRender";
+import { DB } from "@db/generated/zod";
+import { setStore, store } from "~/store";
+import { DATABASE_SCHEMA } from "@db/generated/database-schema";
+import { repositoryMethods } from "@db/generated/repository";
 
-interface AutocompleteProps<T extends Record<string, unknown>>
+interface AutocompleteProps<K extends keyof DB, T extends DB[K], P extends Partial<T>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
-  id: string;
-  initialValue: string;
-  setValue: (value: T) => void;
-  datasFetcher: () => Promise<T[]>;
-  extraLabel?: (value: T) => JSX.Element;
-  displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
-  valueField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] };
+  id: string; // input的唯一name
+  initialValue: P; // 实际选中的值
+  setValue: (value: P) => void; // 设置当前选中的值
+  table: K; // 数据表
+  extraLabel?: (value: T) => JSX.Element; // 额外标签
+  displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] }; // 显示字段，作为input的value
+  valueMap: (value: T) => P; // 值映射
 }
 
-export function Autocomplete<T extends Record<string, unknown>>(props: AutocompleteProps<T>) {
+export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Partial<T>>(
+  props: AutocompleteProps<K, T, P>,
+) {
   const [optionsIsOpen, setOptionsIsOpen] = createSignal(false);
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
   const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
+
+  // 是否处在选择过程中，防止在选择期间输入框内容变化引起搜索
   const [isSelecting, setIsSelecting] = createSignal(false);
+
+  // 是否已选择，用于控制input的边框样式
   const [isSelected, setIsSelected] = createSignal(true);
-  const [displayValue, setDisplayValue] = createSignal("");
-  // 用于存储输入框值，输入框内容变化时，会重新获取options
-  const [searchValue, setSearchValue] = createSignal("");
+
+
+  // 显示值，作为input的value
+  const [inputValue, setInputValue] = createSignal("");
+  setInputValue(props.initialValue[props.displayField] as string);
+
   // 所有可选项
-  const [options, setOptions] = createSignal<T[]>([]);
+  const [options, { refetch: refetchOptions }] = createResource(async () => {
+    const options = await repositoryMethods[props.table].selectAll?.() as T[];
+    return options;
+  });
+
   // 根据输入框内容过滤后的可选项
   const filteredOptions = createMemo(() => {
-    const visibleOptions = options();
-    if (visibleOptions) {
-      return visibleOptions.filter((option) => (option[props.displayField] as string).includes(searchValue()));
-    }
-    return [];
+    return options()?.filter((option) => (option[props.displayField] as string).includes(inputValue()));
+  });
+
+  createEffect(() => {
+    console.log(options());
   });
 
   // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
-  const handleInput = async (value: string) => {
+  const handleInput = (value: string) => {
     // 如果正在选择，则不进行任何操作
     if (isSelecting()) return;
     // 设置已选择状态
     setIsSelected(false);
-    // 设置搜索值
-    setSearchValue(value);
-    // 更新显示值
-    setDisplayValue(value);
+    // 更新输入框内容
+    setInputValue(value);
     // 打开下拉框
     setOptionsIsOpen(true);
   };
@@ -95,10 +81,10 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
   const handleSelect = (option: T) => {
     // 设置正在选择状态，防止在选择期间输入框内容变化引起搜索
     setIsSelecting(true);
-    // 设置显示值
-    setDisplayValue(option[props.displayField] as string);
+    // 设置输入框内容
+    setInputValue(option[props.displayField] as string);
     // 调用父组件的setValue方法，更新表单的值
-    props.setValue(option);
+    props.setValue(props.valueMap(option));
     // 关闭下拉框
     setOptionsIsOpen(false);
     // 设置已选择状态
@@ -107,18 +93,8 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
     setIsSelecting(false);
   };
 
-  // 处理初始值显示
-  createEffect(async () => {
-    const initialOptions = await props.datasFetcher();
-    setOptions(initialOptions);
-    const option = options().find((option) => option[props.valueField] === props.initialValue);
-    if (option) {
-      setDisplayValue(String(option[props.displayField]));
-    }
-  });
-
+  // 详情是否可见
   const [detailVisible, setDetailVisible] = createSignal(false);
-
   onMount(() => {
     // 处理点击外部关闭下拉框
     const handleClickOutside = (event: MouseEvent) => {
@@ -143,7 +119,7 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
       <input
         {...props}
         id={props.id}
-        value={displayValue()}
+        value={inputValue()}
         onInput={(e) => handleInput(e.target.value)}
         ref={setInputRef}
         autocomplete="off"
@@ -154,38 +130,39 @@ export function Autocomplete<T extends Record<string, unknown>>(props: Autocompl
           ref={setDropdownRef}
           class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 shadow-lg"
         >
-          <Show when={options()} fallback={<div class="px-4 py-2 text-sm text-gray-500">没有找到相关选项</div>}>
-            <For each={filteredOptions()}>
-              {(option) => (
-                <button
-                  class="relative flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelect(option);
-                  }}
-                >
-                  <span>{option[props.displayField] as string}</span>
-                  {props.extraLabel?.(option)}
-                  <div
-                    class="DetailControlBtn bg-area-color rounded-md p-1"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDetailVisible(!detailVisible());
-                    }}
-                  >
-                    <Icons.Outline.InfoCircle />
-                  </div>
-                  <Show when={detailVisible()}>
-                    <div class="DetailInfo bg-primary-color absolute top-0 right-0 h-fit w-full rounded">
-                      <ObjRender data={option} />
-                    </div>
-                  </Show>
-                </button>
-              )}
-            </For>
-          </Show>
+        <For each={filteredOptions()}>
+          {(option) => (
+            <button
+              class="relative flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSelect(option);
+              }}
+            >
+              <span>{option[props.displayField] as string}</span>
+              {props.extraLabel?.(option)}
+              <div
+                class="DetailControlBtn bg-area-color rounded-md p-1"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDetailVisible((prev) => !prev);
+                  const primaryKeys = DATABASE_SCHEMA.tables.find((table) => table.name === props.table)?.primaryKeys;
+                  if (!primaryKeys) {
+                    return;
+                  }
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                    type: props.table,
+                    id: option[primaryKeys[0] as keyof T] as string,
+                  }); // 基本上用到的表都只有单主键，没有复合主键，所以直接取第一个
+                }}
+              >
+                <Icons.Outline.InfoCircle />
+              </div>
+            </button>
+          )}
+        </For>
         </div>
       </Show>
     </div>

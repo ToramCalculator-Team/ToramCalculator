@@ -212,7 +212,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
 
         return zone;
       });
-      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id });
+      setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "zone", id: zone.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -267,24 +267,18 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   <label for={fieldKey + mobIndex} class="flex-1">
                                     <Autocomplete
                                       id={fieldKey + mobIndex}
-                                      initialValue={mob().id}
+                                      initialValue={mob()}
                                       setValue={(value) => {
-                                        const newArray = [...mobs().state.value];
-                                        newArray[mobIndex] = value;
-                                        mobs().setValue(newArray);
+                                        mobs().replaceValue(mobIndex, value);
                                       }}
-                                      datasFetcher={async () => {
-                                        const db = await getDB();
-                                        const mobs = await db.selectFrom("mob").selectAll("mob").execute();
-                                        return mobs;
-                                      }}
+                                      table="mob"
                                       displayField="name"
-                                      valueField="id"
+                                      valueMap={(value) => value}
                                     />
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      mobs().setValue((prev: mob[]) => prev.filter((_, i) => i !== mobIndex));
+                                      mobs().removeValue(mobIndex);
                                       e.stopPropagation();
                                     }}
                                   >
@@ -296,7 +290,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              mobs().setValue((prev: mob[]) => [...prev, defaultData.mob]);
+                              mobs().pushValue(defaultData.mob);
                             }}
                             class="w-full"
                           >
@@ -331,24 +325,18 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   <label for={fieldKey + npcIndex} class="flex-1">
                                     <Autocomplete
                                       id={fieldKey + npcIndex}
-                                      initialValue={npc().id}
+                                      initialValue={npc()}
                                       setValue={(value) => {
-                                        const newArray = [...npcs().state.value];
-                                        newArray[npcIndex] = value;
-                                        npcs().setValue(newArray);
+                                        npcs().replaceValue(npcIndex, value);
                                       }}
-                                      datasFetcher={async () => {
-                                        const db = await getDB();
-                                        const npcs = await db.selectFrom("npc").selectAll("npc").execute();
-                                        return npcs;
-                                      }}
+                                      table="npc"
                                       displayField="name"
-                                      valueField="id"
+                                      valueMap={(value) => value}
                                     />
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      npcs().setValue((prev: npc[]) => prev.filter((_, i) => i !== npcIndex));
+                                      npcs().removeValue(npcIndex);
                                       e.stopPropagation();
                                     }}
                                   >
@@ -360,7 +348,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              npcs().setValue((prev: npc[]) => [...prev, defaultData.npc]);
+                              npcs().pushValue(defaultData.npc);
                             }}
                             class="w-full"
                           >
@@ -395,26 +383,18 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                                   <label for={fieldKey + linkZoneIndex} class="flex-1">
                                     <Autocomplete
                                       id={fieldKey + linkZoneIndex}
-                                      initialValue={linkZone().id}
+                                      initialValue={linkZone()}
                                       setValue={(value) => {
-                                        const newArray = [...linkZones().state.value];
-                                        newArray[linkZoneIndex] = value;
-                                        linkZones().setValue(newArray);
+                                        linkZones().replaceValue(linkZoneIndex, value);
                                       }}
-                                      datasFetcher={async () => {
-                                        const db = await getDB();
-                                        const zones = await db.selectFrom("zone").selectAll("zone").execute();
-                                        return zones;
-                                      }}
+                                      table="zone"
                                       displayField="name"
-                                      valueField="id"
+                                      valueMap={(value) => value}
                                     />
                                   </label>
                                   <Button
                                     onClick={(e) => {
-                                      linkZones().setValue((prev: zone[]) =>
-                                        prev.filter((_, i) => i !== linkZoneIndex),
-                                      );
+                                      linkZones().removeValue(linkZoneIndex);
                                       e.stopPropagation();
                                     }}
                                   >
@@ -426,7 +406,7 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           </Index>
                           <Button
                             onClick={(e) => {
-                              linkZones().setValue((prev: zone[]) => [...prev, defaultData.zone]);
+                              linkZones().pushValue(defaultData.zone);
                             }}
                             class="w-full"
                           >
@@ -471,19 +451,11 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                           >
                             <Autocomplete
                               id={activityIdField().name}
-                              initialValue={activityIdField().state.value ?? ""}
+                              initialValue={{ id: activityIdField().state.value! }} // 活动限时标记打开时说明必定属于某个活动
                               setValue={(value) => activityIdField().setValue(value.id)}
-                              datasFetcher={async () => {
-                                const db = await getDB();
-                                const activities = await db
-                                  .selectFrom("activity")
-                                  .selectAll("activity")
-
-                                  .execute();
-                                return activities;
-                              }}
+                              table="activity"
                               displayField="name"
-                              valueField="id"
+                              valueMap={(value) => ({ id: value.id })}
                             />
                           </Input>
                         </Show>
@@ -509,15 +481,11 @@ const ZoneWithRelatedForm = (dic: dictionary, oldZone?: ZoneWithRelated) => {
                       >
                         <Autocomplete
                           id={addressIdField().name}
-                          initialValue={addressIdField().state.value}
+                          initialValue={{ id: addressIdField().state.value }}
                           setValue={(value) => addressIdField().setValue(value.id)}
-                          datasFetcher={async () => {
-                            const db = await getDB();
-                            const addresses = await db.selectFrom("address").selectAll("address").execute();
-                            return addresses;
-                          }}
+                          table="address"
                           displayField="name"
-                          valueField="id"
+                          valueMap={(value) => ({ id: value.id })}
                         />
                       </Input>
                     )}
@@ -604,6 +572,7 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
   form: ({ dic, data }) => ZoneWithRelatedForm(dic, data),
   card: ({ dic, data }) => {
     const [mobData] = createResource(data.id, async (zoneId) => {
+      console.log("mobId", data.id, "zoneId", zoneId);
       const db = await getDB();
       return await db
         .selectFrom("mob")
@@ -664,7 +633,11 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={mobData.latest}
           dataRender={(mob) => {
             return (
-              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "mob", id: mob.id })}>
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "mob", id: mob.id })
+                }
+              >
                 {mob.name}
               </Button>
             );
@@ -676,7 +649,11 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={npcsData.latest}
           dataRender={(npc) => {
             return (
-              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "npc", id: npc.id })}>
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "npc", id: npc.id })
+                }
+              >
                 {npc.name}
               </Button>
             );
@@ -688,7 +665,11 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={linkZonesData.latest}
           dataRender={(zone) => {
             return (
-              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "zone", id: zone.id })
+                }
+              >
                 {zone.name}
               </Button>
             );
@@ -700,7 +681,11 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
           data={addressData.latest}
           dataRender={(address) => {
             return (
-              <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "address", id: address.id })}>
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "address", id: address.id })
+                }
+              >
                 {address.name}
               </Button>
             );
@@ -714,7 +699,9 @@ export const ZoneDataConfig: dataDisplayConfig<zone, ZoneWithRelated, ZoneWithRe
             dataRender={(activity) => {
               return (
                 <Button
-                  onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "activity", id: activity.id })}
+                  onClick={() =>
+                    setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "activity", id: activity.id })
+                  }
                 >
                   {activity.name}
                 </Button>

@@ -1,16 +1,5 @@
 import { A, useNavigate, useParams } from "@solidjs/router";
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  JSX,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  useContext,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
@@ -257,7 +246,7 @@ export default function WikiSubPage() {
                         <Presence exitBeforeEnter>
                           <Show when={!isMainContentFullscreen()}>
                             <Motion.div
-                              class={`Banner-${index} flex-none overflow-hidden bg-primary-color rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
+                              class={`Banner-${index} bg-primary-color flex-none overflow-hidden rounded border-2 ${activeBannerIndex() === index() ? "active shadow-card shadow-dividing-color border-primary-color" : "border-transparent"}`}
                               onMouseEnter={() => setActiveBannerIndex(index())}
                               style={{
                                 // "background-image": `url(${mobList()?.[0]?.image.dataUrl !== `"data:image/png;base64,"` ? mobList()?.[0]?.image.dataUrl : defaultImage.dataUrl})`,
@@ -332,7 +321,8 @@ export default function WikiSubPage() {
                   defaultSort: validDataConfig().table.defaultSort,
                   dictionary: validDataConfig().table.dictionary(dictionary()),
                   globalFilterStr: () => wikiStore.table.globalFilterStr,
-                  columnHandleClick: (id) => setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+                  columnHandleClick: (id) =>
+                    setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
                   columnVisibility: wikiStore.table.columnVisibility,
                   onColumnVisibilityChange: (updater) => {
                     if (typeof updater === "function") {
@@ -430,71 +420,65 @@ export default function WikiSubPage() {
           </Presence>
 
           {/* 表单 */}
-          <Portal>
-            <Sheet state={wikiStore.form.isOpen} setState={(state) => setWikiStore("form", { isOpen: state })}>
-              {validDataConfig().form({
-                data: wikiStore.form.data,
-                dic: dictionary(),
-              })}
-            </Sheet>
-          </Portal>
+          <Sheet state={wikiStore.form.isOpen} setState={(state) => setWikiStore("form", { isOpen: state })}>
+            {validDataConfig().form({
+              data: wikiStore.form.data,
+              dic: dictionary(),
+            })}
+          </Sheet>
 
           {/* 表格配置 */}
-          <Portal>
-            <Dialog
-              state={wikiStore.table.configSheetIsOpen}
-              setState={(state) => setWikiStore("table", { configSheetIsOpen: state })}
-              title={dictionary().ui.wiki.tableConfig.title}
-            >
-              <div class="flex h-52 w-2xs flex-col gap-3"></div>
-            </Dialog>
-          </Portal>
+          <Dialog
+            state={wikiStore.table.configSheetIsOpen}
+            setState={(state) => setWikiStore("table", { configSheetIsOpen: state })}
+            title={dictionary().ui.wiki.tableConfig.title}
+          >
+            <div class="flex h-52 w-2xs flex-col gap-3"></div>
+          </Dialog>
 
           {/* wiki选择器 */}
-          <Portal>
-            <Dialog
-              state={wikiSelectorIsOpen()}
-              setState={setWikiSelectorIsOpen}
-              title={dictionary().ui.wiki.selector.title}
-            >
-              <div class="flex flex-col gap-3">
-                <For each={wikiSelectorConfig}>
-                  {(group, index) => {
-                    return (
-                      <div class="Group flex flex-col gap-2">
-                        <div class="GroupTitle flex flex-col gap-3">
-                          <h3 class="text-accent-color flex items-center gap-2 font-bold">
-                            {group.groupName}
-                            <div class="Divider bg-dividing-color h-px w-full flex-1" />
-                          </h3>
-                        </div>
-                        <div class="GroupContent flex flex-wrap gap-2">
-                          <For each={group.groupFields}>
-                            {(field, index) => {
-                              return (
-                                <A
-                                  href={`/wiki/${field.name}`}
-                                  onClick={() => {
-                                    setWikiSelectorIsOpen(false);
-                                  }}
-                                  class="border-dividing-color flex w-[calc(33.333333%-8px)] flex-col items-center gap-2 rounded border px-2 py-3"
-                                >
-                                  {field.icon}
-                                  <span class="text-nowrap overflow-ellipsis">
-                                    {dictionary().db[field.name].selfName}
-                                  </span>
-                                </A>
-                              );
-                            }}
-                          </For>
-                        </div>
+          <Dialog
+            state={wikiSelectorIsOpen()}
+            setState={setWikiSelectorIsOpen}
+            title={dictionary().ui.wiki.selector.title}
+          >
+            <div class="flex flex-col gap-3">
+              <For each={wikiSelectorConfig}>
+                {(group, index) => {
+                  return (
+                    <div class="Group flex flex-col gap-2">
+                      <div class="GroupTitle flex flex-col gap-3">
+                        <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                          {group.groupName}
+                          <div class="Divider bg-dividing-color h-px w-full flex-1" />
+                        </h3>
                       </div>
-                    );
-                  }}
-                </For>
-              </div>
-            </Dialog>
-          </Portal>
+                      <div class="GroupContent flex flex-wrap gap-2">
+                        <For each={group.groupFields}>
+                          {(field, index) => {
+                            return (
+                              <A
+                                href={`/wiki/${field.name}`}
+                                onClick={() => {
+                                  setWikiSelectorIsOpen(false);
+                                }}
+                                class="border-dividing-color flex w-[calc(33.333333%-8px)] flex-col items-center gap-2 rounded border px-2 py-3"
+                              >
+                                {field.icon}
+                                <span class="text-nowrap overflow-ellipsis">
+                                  {dictionary().db[field.name].selfName}
+                                </span>
+                              </A>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
+          </Dialog>
         </Show>
       )}
     </Show>

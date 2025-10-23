@@ -464,7 +464,7 @@ BEGIN
     WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
     ELSE
     INSERT INTO "${tableName}_local" (
-        ${pkCols.join(", ")},
+        ${pkCols.map((pk) => `"${pk}"`).join(", ")},
         "is_deleted",
         "write_id"
     )

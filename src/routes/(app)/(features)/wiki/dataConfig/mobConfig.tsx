@@ -84,9 +84,9 @@ const MobWithRelatedFetcher = async (id: string): Promise<MobWithRelated> => {
           .whereRef("_mobTozone.A", "=", "mob.id")
           .selectAll("zone"),
       ).as("appearInZones"),
-      jsonArrayFrom(eb.selectFrom("drop_item").whereRef("drop_item.belongToMobId", "=", "mob.id").selectAll("drop_item")).as(
-        "dropItems",
-      ),
+      jsonArrayFrom(
+        eb.selectFrom("drop_item").whereRef("drop_item.belongToMobId", "=", "mob.id").selectAll("drop_item"),
+      ).as("dropItems"),
     ])
     .executeTakeFirstOrThrow();
   return res;
@@ -138,7 +138,11 @@ const deleteMob = async (trx: Transaction<DB>, mob: mob) => {
   // 删除和zone的关联
   await trx.deleteFrom("_mobTozone").where("A", "=", mob.id).execute();
   // 将掉落物归属调整至defaultMob
-  await trx.updateTable("drop_item").set({ belongToMobId: "defaultMobId" }).where("belongToMobId", "=", mob.id).execute();
+  await trx
+    .updateTable("drop_item")
+    .set({ belongToMobId: "defaultMobId" })
+    .where("belongToMobId", "=", mob.id)
+    .execute();
   // 删除mob
   await trx.deleteFrom("mob").where("id", "=", mob.id).execute();
   // 删除统计
@@ -218,7 +222,7 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
 
         return mob;
       });
-      setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "mob", id: mob.id });
+      setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "mob", id: mob.id });
       setWikiStore("form", {
         data: undefined,
         isOpen: false,
@@ -410,21 +414,11 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                                     <label for={fieldKey + index} class="flex-1">
                                       <Autocomplete
                                         id={fieldKey + index}
-                                        initialValue={zone().id}
-                                        setValue={(value) => {
-                                          field().setValue((pre) => {
-                                            const newArray = [...pre];
-                                            newArray[index] = value;
-                                            return newArray;
-                                          });
-                                        }}
-                                        datasFetcher={async () => {
-                                          const db = await getDB();
-                                          const zones = await db.selectFrom("zone").selectAll("zone").execute();
-                                          return zones;
-                                        }}
+                                        initialValue={zone()}
+                                        setValue={(value) => field().replaceValue(index, value)}
+                                        table="zone"
                                         displayField="name"
-                                        valueField="id"
+                                        valueMap={(value) => value}
                                       />
                                     </label>
                                     <Button
@@ -587,19 +581,11 @@ const MobWithRelatedForm = (dic: dictionary, oldMob?: MobWithRelated) => {
                                                 >
                                                   <Autocomplete
                                                     id={`dropItems[${i}].${fieldKey}`}
-                                                    initialValue={subField().state.value}
+                                                    initialValue={{ id: subField().state.value }}
                                                     setValue={(value) => subField().setValue(value.id)}
-                                                    datasFetcher={async () => {
-                                                      const db = await getDB();
-                                                      const items = await db
-                                                        .selectFrom("item")
-                                                        .select(["id", "name"])
-
-                                                        .execute();
-                                                      return items;
-                                                    }}
+                                                    table="item"
                                                     displayField="name"
-                                                    valueField="id"
+                                                    valueMap={(value) => ({ id: value.id })}
                                                   />
                                                 </Input>
                                               )}
@@ -981,14 +967,33 @@ export const MobDataConfig: dataDisplayConfig<mob, MobWithRelated, MobWithRelate
           title={"出现的" + dic.db.zone.selfName}
           data={zonesData.latest}
           dataRender={(zone) => {
-            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: "zone", id: zone.id })}>{zone.name}</Button>
+            return (
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: "zone", id: zone.id })
+                }
+              >
+                {zone.name}
+              </Button>
+            );
           }}
         />
         <CardSection
           title={"掉落的" + dic.db.drop_item.selfName}
           data={dropItemsData.latest}
           dataRender={(item) => {
-            return <Button onClick={() => setStore("pages","cardGroup", store.pages.cardGroup.length ,{ type: itemTypeToTableType(item.itemType!), id: item.id })}>{item.name}</Button>
+            return (
+              <Button
+                onClick={() =>
+                  setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                    type: itemTypeToTableType(item.itemType!),
+                    id: item.id,
+                  })
+                }
+              >
+                {item.name}
+              </Button>
+            );
           }}
         />
         <CardSharedSection<MobWithRelated> dic={dic} data={data} delete={deleteMob} />
