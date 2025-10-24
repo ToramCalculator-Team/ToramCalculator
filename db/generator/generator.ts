@@ -16,6 +16,15 @@ import {
   parseMultiSchemaMap,
 } from "./helpers/multiSchemaHelpers";
 
+// 导入新的工具类
+import { SchemaCollector } from "./utils/schemaCollector";
+import { EnumInjector } from "./helpers/enumInjector";
+import { DatabaseSchemaGenerator } from "./helpers/generateDatabaseSchema";
+import { ZodGenerator } from "./helpers/generateZod";
+import { QueryBuilderGenerator } from "./helpers/generateQueryBuilder";
+import { RepositoryGenerator } from "./helpers/generateRepository";
+import { SQLGenerator } from "./helpers/generateSQL";
+
 const { generatorHandler } = pkg;
 
 generatorHandler({
@@ -27,13 +36,33 @@ generatorHandler({
     };
   },
   onGenerate: async (options: GeneratorOptions) => {
+    const schemaCollector = new SchemaCollector();
+    
+    try {
+      console.log("🚀 开始 Prisma 生成器流程...");
+
+      // Schema 准备阶段
+      console.log("📋 准备 Schema 文件...");
+      const enumInjector = new EnumInjector();
+
+      // 1. 收集和合并 schema 文件
+      const mergedSchema = schemaCollector.collectAndMerge();
+
+      // 2. 处理枚举
+      enumInjector.processEnums();
+      const processedSchema = enumInjector.processSchema(mergedSchema);
+      const finalSchema = enumInjector.injectEnumDefinitions(processedSchema);
+
+      // 3. 写入临时 schema 文件
+      const tempSchemaPath = schemaCollector.writeTempSchema(finalSchema);
+
+      console.log("✅ Schema 准备完成");
       
-    console.log(options.dmmf.datamodel.models)
-    // Parse the config
-    const config = validateConfig({
-      ...options.generator.config,
-      databaseProvider: options.datasources[0].provider,
-    });
+      // Parse the config
+      const config = validateConfig({
+        ...options.generator.config,
+        databaseProvider: options.datasources[0].provider,
+      });
 
     // Generate enum types
     let enums = options.dmmf.datamodel.enums
@@ -95,29 +124,73 @@ generatorHandler({
     // Generate the database type that ties it all together
     const databaseType = generateDatabaseType(models, config);
 
-    // Parse it all into a string. Either 1 or 2 files depending on user config
-    const files = generateFiles({
-      databaseType,
-      enumNames: options.dmmf.datamodel.enums.map((e) => e.name),
-      models,
-      enums,
-      enumsOutfile: config.enumFileName,
-      typesOutfile: config.fileName,
-      groupBySchema: config.groupBySchema,
-      defaultSchema: config.defaultSchema,
-      importExtension: config.importExtension,
-      exportWrappedTypes: config.exportWrappedTypes,
-    });
+    // 并行生成所有文件（除了 SQL，因为它需要 schema 内容）
+    console.log("📊 并行生成所有文件...");
+    const outputDir = options.generator.output?.value || "";
+    
+    const generationResults = await Promise.allSettled([
+      // Generate database schema info
+      (async () => {
+        console.log("📊 生成数据库架构信息...");
+        const databaseSchemaGenerator = new DatabaseSchemaGenerator(options.dmmf);
+        const databaseSchemaPath = path.join(outputDir, "database-schema.ts");
+        await databaseSchemaGenerator.generate(databaseSchemaPath);
+      })(),
 
-    // And write it to a file!
-    await Promise.allSettled(
-      files.map(({ filepath, content }) => {
-        const writeLocation = path.join(
-          options.generator.output?.value || "",
-          filepath
-        );
-        return writeFileSafely(writeLocation, content);
-      })
-    );
+      // Generate Zod schemas
+      (async () => {
+        console.log("🔍 生成 Zod schemas...");
+        const zodGenerator = new ZodGenerator(options.dmmf);
+        const zodPath = path.join(outputDir, "zod/index.ts");
+        await zodGenerator.generate(zodPath);
+      })(),
+
+      // Generate QueryBuilder rules
+      (async () => {
+        console.log("🔍 生成 QueryBuilder 规则...");
+        const queryBuilderGenerator = new QueryBuilderGenerator(options.dmmf);
+        const queryBuilderPath = path.join(outputDir, "queryBuilderRules.ts");
+        await queryBuilderGenerator.generate(queryBuilderPath);
+      })(),
+
+               // Generate Repository
+               (async () => {
+                 console.log("🔍 生成 Repository 文件...");
+                 const repositoryGenerator = new RepositoryGenerator(options.dmmf);
+                 const repositoryPath = path.join(outputDir, "repositories", "index.ts");
+                 await repositoryGenerator.generate(repositoryPath);
+               })(),
+    ]);
+
+    // 检查生成结果
+    const failedGenerations = generationResults.filter(result => result.status === 'rejected');
+    if (failedGenerations.length > 0) {
+      console.warn(`⚠️  ${failedGenerations.length} 个生成器失败，但继续执行其他任务`);
+      failedGenerations.forEach((result, index) => {
+        console.error(`生成器 ${index + 1} 失败:`, result.reason);
+      });
+    }
+
+    // Generate SQL (需要 schema 内容，所以单独执行)
+    console.log("🔍 生成 SQL 初始化脚本...");
+    try {
+      const sqlGenerator = new SQLGenerator(outputDir);
+      await sqlGenerator.generate(finalSchema);
+    } catch (error) {
+      console.warn("⚠️  SQL 生成失败，但继续执行其他任务:", error);
+    }
+
+      // 跳过 types.ts 生成，因为类型应该从 zod 导出
+      console.log("ℹ️  跳过 types.ts 生成，类型从 zod/index.ts 导出");
+      
+      console.log("✅ Prisma 生成器流程完成");
+      
+    } catch (error) {
+      console.error("❌ Prisma 生成器流程失败:", error);
+      throw error;
+    } finally {
+      // 确保临时文件被清理
+      schemaCollector.cleanupTempSchema();
+    }
   },
 });
