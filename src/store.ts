@@ -77,6 +77,10 @@ type PageState = {
     type: keyof DB;
     id: string;
   }[];
+  formGroup: {
+    type: keyof DB;
+    data: Record<string, unknown>;
+  }[];
 };
 
 type SwState = {
@@ -143,6 +147,7 @@ const initialStore: Store = {
     indexPage: {},
     wiki: {},
     cardGroup: [],
+    formGroup: [],
   },
   sw: {
     periodicCheckEnabled: true,

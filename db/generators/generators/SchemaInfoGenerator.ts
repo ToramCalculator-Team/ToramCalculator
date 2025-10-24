@@ -1,22 +1,23 @@
 /**
  * @file SchemaInfoGenerator.ts
- * @description 数据库架构信息生成器
+ * @description 数据库架构信息生成器 - 重构版本
  * 
  * 功能：
- * 1. 从 Prisma schema 生成数据库架构信息
+ * 1. 从 Prisma DMMF 生成数据库架构信息
  * 2. 包含表名、字段信息、主键、外键关系等
- * 3. 为 restore.js 提供架构驱动的恢复逻辑
+ * 3. 提供完整的类型安全支持
  */
 
 import { FileUtils, LogUtils } from "../utils/common";
 import { PATHS } from "../config/generator.config";
-import { RelationProcessor, type DependencyInfo as RelationDependencyInfo } from "../processors/RelationProcessor";
+import type { DB } from "../../generated/zod/index";
+import type { DMMF } from "@prisma/generator-helper";
 
 /**
- * 字段信息接口
+ * 字段信息接口 - 类型安全版本
  */
-export interface FieldInfo {
-  name: string;
+export interface FieldInfo<T extends keyof DB = keyof DB> {
+  name: string; // 使用 string 而不是 keyof DB[T]，避免联合类型问题
   type: string;
   kind: string;
   isRequired: boolean;
@@ -33,34 +34,34 @@ export interface FieldInfo {
 }
 
 /**
- * 表信息接口
+ * 表信息接口 - 类型安全版本
  */
-export interface TableInfo {
-  name: string;
-  fields: FieldInfo[];
-  primaryKeys: string[];
-  foreignKeys: ForeignKeyInfo[];
-  indexes: IndexInfo[];
+export interface TableInfo<T extends keyof DB = keyof DB> {
+  name: T;
+  fields: FieldInfo<T>[];
+  primaryKeys: string[]; // 使用 string[] 用于生成，最终会被类型断言
+  foreignKeys: ForeignKeyInfo<T>[];
+  indexes: IndexInfo<T>[];
   isRelationTable: boolean;
 }
 
 /**
- * 外键信息接口
+ * 外键信息接口 - 类型安全版本
  */
-export interface ForeignKeyInfo {
-  field: string;
-  referencedTable: string;
-  referencedField: string;
+export interface ForeignKeyInfo<T extends keyof DB = keyof DB> {
+  field: string; // 使用 string 而不是 keyof DB[T]，避免联合类型问题
+  referencedTable: keyof DB;
+  referencedField: string; // 使用 string 而不是复杂的泛型约束
   onDelete: string;
   onUpdate: string;
 }
 
 /**
- * 索引信息接口
+ * 索引信息接口 - 类型安全版本
  */
-export interface IndexInfo {
+export interface IndexInfo<T extends keyof DB = keyof DB> {
   name: string;
-  fields: string[];
+  fields: string[]; // 使用 string[] 而不是 (keyof DB[T])[]
   isUnique: boolean;
 }
 
@@ -73,7 +74,16 @@ export interface EnumInfo {
 }
 
 /**
- * 数据库架构信息接口
+ * 依赖关系信息接口 - 类型安全版本
+ */
+export interface DependencyInfo {
+  table: keyof DB;
+  dependsOn: (keyof DB)[];
+  dependents: (keyof DB)[];
+}
+
+/**
+ * 数据库架构信息接口 - 类型安全版本
  */
 export interface DatabaseSchemaInfo {
   tables: TableInfo[];
@@ -84,24 +94,13 @@ export interface DatabaseSchemaInfo {
 }
 
 /**
- * 依赖关系信息接口
- */
-export interface DependencyInfo {
-  table: string;
-  dependsOn: string[];
-  dependents: string[];
-}
-
-/**
- * 数据库架构信息生成器
+ * SchemaInfoGenerator 类 - 重构版本
  */
 export class SchemaInfoGenerator {
-  private dmmf: any;
-  private relationProcessor: RelationProcessor;
+  private dmmf: DMMF.Document;
 
-  constructor(dmmf: any, relationProcessor: RelationProcessor) {
+  constructor(dmmf: DMMF.Document) {
     this.dmmf = dmmf;
-    this.relationProcessor = relationProcessor;
   }
 
   /**
@@ -109,15 +108,12 @@ export class SchemaInfoGenerator {
    */
   async generate(): Promise<void> {
     try {
-      LogUtils.logStep("架构信息生成", "开始生成数据库架构信息...");
-      
       LogUtils.logInfo("构建架构信息...");
       const schemaInfo = this.buildSchemaInfo();
       
       LogUtils.logInfo("生成 TypeScript 文件...");
       this.generateTypeScriptFile(schemaInfo);
       
-      LogUtils.logSuccess("架构信息生成完成");
     } catch (error) {
       LogUtils.logError("架构信息生成失败", error as Error);
       throw error;
@@ -128,35 +124,9 @@ export class SchemaInfoGenerator {
    * 构建架构信息
    */
   private buildSchemaInfo(): DatabaseSchemaInfo {
-    const tables: TableInfo[] = [];
-    const enums: EnumInfo[] = [];
-
-    // 处理每个模型
-    for (const model of this.dmmf.datamodel.models) {
-      const tableInfo = this.buildTableInfo(model);
-      tables.push(tableInfo);
-    }
-
-    // 处理中间表
-    const intermediateTables = this.extractIntermediateTables();
-    for (const table of intermediateTables) {
-      tables.push(table);
-    }
-
-    // 处理枚举：从 DMMF 中提取枚举信息
-    for (const enumModel of this.dmmf.datamodel.enums) {
-      const enumInfo: EnumInfo = {
-        name: enumModel.name,
-        values: enumModel.values.map((v: any) => v.name)
-      };
-      enums.push(enumInfo);
-    }
-
-    // 使用 RelationProcessor 获取依赖关系
-    const dependencies = this.relationProcessor.getDependencies().map(dep => ({
-      ...dep,
-      dependents: [] // 暂时设为空数组，后续可以扩展
-    }));
+    const tables = this.buildTables();
+    const dependencies = this.buildDependencies();
+    const enums = this.buildEnums();
 
     return {
       tables,
@@ -168,165 +138,173 @@ export class SchemaInfoGenerator {
   }
 
   /**
-   * 从 SQL 文件中提取中间表信息
-   * @returns 中间表信息数组
-   */
-  private extractIntermediateTables(): TableInfo[] {
-    const intermediateTables: TableInfo[] = [];
-    
-    try {
-      const sqlContent = FileUtils.safeReadFile(PATHS.serverDB.sql);
-      
-      // 匹配 CREATE TABLE "_tableName" 的模式
-      const createTableRegex = /CREATE TABLE "(_[^"]+)"\s*\(([\s\S]*?)\);/g;
-      let match;
-      
-      while ((match = createTableRegex.exec(sqlContent)) !== null) {
-        const tableName = match[1];
-        const fieldsContent = match[2];
-        
-        // 提取字段信息
-        const fields: FieldInfo[] = [];
-        const primaryKeys: string[] = [];
-        
-        // 匹配字段定义：字段名 类型 [NOT NULL]
-        const fieldRegex = /"([^"]+)"\s+([A-Z]+)(?:\s+NOT\s+NULL)?(?:,|\s*$)/g;
-        let fieldMatch;
-        
-        while ((fieldMatch = fieldRegex.exec(fieldsContent)) !== null) {
-          const fieldName = fieldMatch[1];
-          const fieldType = fieldMatch[2];
-          
-          // 确保是真正的字段定义，不是约束
-          if (fieldName && fieldType && !fieldName.includes('CONSTRAINT') && !fieldName.includes('PRIMARY') && !fieldName.includes('FOREIGN')) {
-            const fieldInfo: FieldInfo = {
-              name: fieldName,
-              type: this.convertSqlTypeToPrismaType(fieldType),
-              kind: 'scalar',
-              isRequired: true,
-              isId: false,
-              isUnique: false,
-              isList: false,
-              isArray: false,
-              isOptional: false
-            };
-            
-            fields.push(fieldInfo);
-            primaryKeys.push(fieldName); // 中间表的所有字段都是主键的一部分
-          }
-        }
-        
-        if (fields.length > 0) {
-          const tableInfo: TableInfo = {
-            name: tableName,
-            fields: fields,
-            primaryKeys: primaryKeys,
-            foreignKeys: [],
-            indexes: [],
-            isRelationTable: true
-          };
-          
-          intermediateTables.push(tableInfo);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to extract intermediate tables from SQL:', error);
-    }
-    
-    return intermediateTables;
-  }
-
-  /**
-   * 将 SQL 类型转换为 Prisma 类型
-   */
-  private convertSqlTypeToPrismaType(sqlType: string): string {
-    switch (sqlType.toLowerCase()) {
-      case 'varchar':
-      case 'text':
-      case 'char':
-        return 'String';
-      case 'int':
-      case 'integer':
-      case 'serial':
-        return 'Int';
-      case 'bigint':
-      case 'bigserial':
-        return 'BigInt';
-      case 'boolean':
-      case 'bool':
-        return 'Boolean';
-      case 'timestamp':
-      case 'timestamptz':
-        return 'DateTime';
-      case 'json':
-      case 'jsonb':
-        return 'Json';
-      default:
-        return 'String';
-    }
-  }
-
-  /**
    * 构建表信息
    */
-  private buildTableInfo(model: any): TableInfo {
-    const fields: FieldInfo[] = [];
-    const primaryKeys: string[] = [];
-    const foreignKeys: ForeignKeyInfo[] = [];
-    const indexes: IndexInfo[] = [];
+  private buildTables(): TableInfo[] {
+    return this.dmmf.datamodel.models.map((model: DMMF.Model) => {
+      const fields = this.buildFields(model);
+      const primaryKeys = this.buildPrimaryKeys(model);
+      const foreignKeys = this.buildForeignKeys(model);
+      const indexes = this.buildIndexes(model);
+      const isRelationTable = this.isRelationTable(model);
 
-    // 处理字段
-    for (const field of model.fields) {
-      const fieldInfo: FieldInfo = {
-        name: field.name,
-        type: field.type,
-        kind: field.kind,
-        isRequired: field.isRequired,
-        isId: field.isId,
-        isUnique: field.isUnique,
-        isList: field.isList,
-        isArray: field.isList,
-        isOptional: !field.isRequired,
-        defaultValue: field.default,
-        relationName: field.relationName,
-        relationFromFields: field.relationFromFields,
-        relationToFields: field.relationToFields,
-        relationOnDelete: field.relationOnDelete
+      return {
+        name: model.name as keyof DB,
+        fields,
+        primaryKeys,
+        foreignKeys,
+        indexes,
+        isRelationTable
       };
+    });
+  }
 
-      fields.push(fieldInfo);
+  /**
+   * 构建字段信息
+   */
+  private buildFields(model: DMMF.Model): FieldInfo[] {
+    return model.fields.map((field: DMMF.Field) => ({
+      name: field.name,
+      type: field.type,
+      kind: field.kind,
+      isRequired: field.isRequired || false,
+      isId: field.isId || false,
+      isUnique: field.isUnique || false,
+      isList: field.isList || false,
+      isArray: false, // DMMF 中没有 isArray 属性
+      isOptional: !field.isRequired, // 根据 isRequired 推导
+      defaultValue: field.default,
+      relationName: field.relationName,
+      relationFromFields: field.relationFromFields ? [...field.relationFromFields] : undefined,
+      relationToFields: field.relationToFields ? [...field.relationToFields] : undefined,
+      relationOnDelete: field.relationOnDelete
+    }));
+  }
 
-      // 收集主键
-      if (field.isId) {
-        primaryKeys.push(field.name);
-      }
+  /**
+   * 构建主键信息
+   */
+  private buildPrimaryKeys(model: DMMF.Model): string[] {
+    return model.fields
+      .filter((field: DMMF.Field) => field.isId)
+      .map((field: DMMF.Field) => field.name);
+  }
 
-      // 收集外键
-      if (field.relationFromFields && field.relationFromFields.length > 0) {
-        const foreignKey: ForeignKeyInfo = {
-          field: field.name,
-          referencedTable: field.type,
-          referencedField: field.relationToFields?.[0] || 'id',
+  /**
+   * 构建外键信息
+   */
+  private buildForeignKeys(model: DMMF.Model): ForeignKeyInfo[] {
+    const foreignKeys: ForeignKeyInfo[] = [];
+
+    for (const field of model.fields) {
+      if (field.kind === 'object' && field.relationFromFields && field.relationFromFields.length > 0) {
+        // 这是一个外键字段
+        const relationFromField = field.relationFromFields[0];
+        const relationToField = field.relationToFields?.[0] || 'id';
+        
+        foreignKeys.push({
+          field: relationFromField,
+          referencedTable: field.type as keyof DB,
+          referencedField: relationToField,
           onDelete: field.relationOnDelete || 'CASCADE',
           onUpdate: 'CASCADE'
-        };
-        foreignKeys.push(foreignKey);
+        });
       }
     }
+    
+    return foreignKeys;
+  }
 
-    // 判断是否为关系表
-    const isRelationTable = model.name.startsWith('_') && 
-                           fields.length === 2 && 
-                           fields.every(f => f.type === 'String');
+  /**
+   * 构建索引信息
+   */
+  private buildIndexes(model: any): IndexInfo[] {
+    // 这里可以根据需要实现索引信息的构建
+    return [];
+  }
 
-    return {
-      name: model.name,
-      fields,
-      primaryKeys,
-      foreignKeys,
-      indexes,
-      isRelationTable
-    };
+  /**
+   * 检查是否为关系表
+   */
+  private isRelationTable(model: any): boolean {
+    // 关系表通常没有业务字段，只有外键字段
+    const businessFields = model.fields.filter((field: any) => 
+      field.kind === 'scalar' && !field.isId && !field.relationFromFields
+    );
+    return businessFields.length === 0;
+  }
+
+  /**
+   * 构建依赖关系
+   */
+  private buildDependencies(): DependencyInfo[] {
+    const dependencies: DependencyInfo[] = [];
+    
+    // 简化的依赖关系构建
+    this.dmmf.datamodel.models.forEach((model: DMMF.Model) => {
+      const dependsOn: (keyof DB)[] = [];
+      
+      model.fields.forEach((field: DMMF.Field) => {
+        if (field.kind === 'object' && field.type !== model.name) {
+          dependsOn.push(field.type as keyof DB);
+        }
+      });
+      
+      if (dependsOn.length > 0) {
+        dependencies.push({
+          table: model.name as keyof DB,
+          dependsOn,
+          dependents: []
+        });
+      }
+    });
+    
+    return dependencies;
+  }
+
+  /**
+   * 构建枚举信息
+   */
+  private buildEnums(): EnumInfo[] {
+    return this.dmmf.datamodel.enums.map((enumItem: DMMF.DatamodelEnum) => ({
+      name: enumItem.name,
+      values: enumItem.values.map((value: DMMF.EnumValue) => value.name)
+    }));
+  }
+
+  /**
+   * 生成带有类型断言的架构数据
+   */
+  private generateSchemaWithTypeAssertions(schemaInfo: DatabaseSchemaInfo): string {
+    let jsonString = JSON.stringify(schemaInfo, null, 2);
+    
+    // 为每个表的 primaryKeys 添加类型断言
+    schemaInfo.tables.forEach(table => {
+      const tableName = table.name;
+      
+      // 构建匹配模式，包含表名上下文
+      const tableContextPattern = `"name": "${tableName}"[\\s\\S]*?"primaryKeys": \\[([\\s\\S]*?)\\]`;
+      const match = jsonString.match(new RegExp(tableContextPattern));
+      
+      if (match) {
+        const arrayContent = match[1] || '';
+        const trimmedContent = arrayContent.trim();
+        
+        let replacement;
+        if (trimmedContent === '') {
+          // 空数组
+          replacement = `"primaryKeys": [] as (keyof DB["${tableName}"])[]`;
+        } else {
+          // 非空数组，保持原有格式但添加类型断言
+          replacement = `"primaryKeys": [${trimmedContent}] as (keyof DB["${tableName}"])[]`;
+        }
+        
+        // 替换整个匹配的部分
+        jsonString = jsonString.replace(match[0], match[0].replace(/\"primaryKeys\": \[[\s\S]*?\]/, replacement));
+      }
+    });
+    
+    return jsonString;
   }
 
   /**
@@ -335,15 +313,20 @@ export class SchemaInfoGenerator {
   private generateTypeScriptFile(schemaInfo: DatabaseSchemaInfo): void {
     const content = `/**
  * @file database-schema.ts
- * @description 数据库架构信息
+ * @description 数据库架构信息 - 类型安全版本
  * @generated ${schemaInfo.generatedAt}
  * @version ${schemaInfo.version}
  * 
  * 此文件由 SchemaInfoGenerator 自动生成，请勿手动修改
  */
 
-export interface FieldInfo {
-  name: string;
+import type { DB } from "./zod/index";
+
+/**
+ * 字段信息接口 - 类型安全版本
+ */
+export interface FieldInfo<T extends keyof DB = keyof DB> {
+  name: string; // 使用 string 而不是 keyof DB[T]，避免联合类型问题
   type: string;
   kind: string;
   isRequired: boolean;
@@ -359,34 +342,58 @@ export interface FieldInfo {
   relationOnDelete?: string;
 }
 
-export interface TableInfo {
-  name: string;
-  fields: FieldInfo[];
-  primaryKeys: string[];
-  foreignKeys: ForeignKeyInfo[];
-  indexes: IndexInfo[];
+/**
+ * 表信息接口 - 类型安全版本
+ */
+export interface TableInfo<T extends keyof DB = keyof DB> {
+  name: T;
+  fields: FieldInfo<T>[];
+  primaryKeys: string[]; // 使用 string[] 用于生成，最终会被类型断言
+  foreignKeys: ForeignKeyInfo<T>[];
+  indexes: IndexInfo<T>[];
   isRelationTable: boolean;
 }
 
-export interface ForeignKeyInfo {
-  field: string;
-  referencedTable: string;
-  referencedField: string;
+/**
+ * 外键信息接口 - 类型安全版本
+ */
+export interface ForeignKeyInfo<T extends keyof DB = keyof DB> {
+  field: string; // 使用 string 而不是 keyof DB[T]，避免联合类型问题
+  referencedTable: keyof DB;
+  referencedField: string; // 使用 string 而不是复杂的泛型约束
   onDelete: string;
   onUpdate: string;
 }
 
-export interface IndexInfo {
+/**
+ * 索引信息接口 - 类型安全版本
+ */
+export interface IndexInfo<T extends keyof DB = keyof DB> {
   name: string;
-  fields: string[];
+  fields: string[]; // 使用 string[] 而不是 (keyof DB[T])[]
   isUnique: boolean;
 }
 
+/**
+ * 枚举信息接口
+ */
 export interface EnumInfo {
   name: string;
   values: string[];
 }
 
+/**
+ * 依赖关系信息接口 - 类型安全版本
+ */
+export interface DependencyInfo {
+  table: keyof DB;
+  dependsOn: (keyof DB)[];
+  dependents: (keyof DB)[];
+}
+
+/**
+ * 数据库架构信息接口 - 类型安全版本
+ */
 export interface DatabaseSchemaInfo {
   tables: TableInfo[];
   dependencies: DependencyInfo[];
@@ -395,95 +402,111 @@ export interface DatabaseSchemaInfo {
   version: string;
 }
 
-export interface DependencyInfo {
-  table: string;
-  dependsOn: string[];
-  dependents: string[];
-}
+export const DATABASE_SCHEMA: DatabaseSchemaInfo = ${this.generateSchemaWithTypeAssertions(schemaInfo)};
 
-export const DATABASE_SCHEMA: DatabaseSchemaInfo = ${JSON.stringify(schemaInfo, null, 2)};
-
-// 工具函数
-export const SchemaUtils = {
   /**
    * 获取表信息
    */
-  getTableInfo(tableName: string): TableInfo | undefined {
-    return DATABASE_SCHEMA.tables.find(table => table.name === tableName);
-  },
+export function getTableInfo<T extends keyof DB>(tableName: T): TableInfo<T> | undefined {
+  return DATABASE_SCHEMA.tables.find(table => table.name === tableName) as TableInfo<T> | undefined;
+}
+
+/**
+ * 获取表的外键信息
+ */
+export function getForeignKeyInfo<T extends keyof DB>(tableName: T): ForeignKeyInfo<T>[] {
+  const table = getTableInfo(tableName);
+  return table?.foreignKeys || [];
+}
+
+/**
+ * 获取表的依赖关系
+ */
+export function getTableDependencies<T extends keyof DB>(tableName: T): DependencyInfo | undefined {
+    const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === tableName);
+  return dependency;
+}
 
   /**
-   * 获取表的所有依赖
+ * 获取表的所有依赖表
    */
-  getTableDependencies(tableName: string): string[] {
+export function getTableDependents<T extends keyof DB>(tableName: T): DependencyInfo | undefined {
     const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === tableName);
-    return dependency?.dependsOn || [];
-  },
-
-  /**
-   * 获取依赖此表的表
-   */
-  getTableDependents(tableName: string): string[] {
-    const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === tableName);
-    return dependency?.dependents || [];
-  },
+  return dependency;
+}
 
   /**
    * 获取所有表名
    */
-  getAllTableNames(): string[] {
-    return DATABASE_SCHEMA.tables.map(table => table.name);
-  },
+export function getAllTableNames(): (keyof DB)[] {
+  return DATABASE_SCHEMA.tables.map(table => table.name) as (keyof DB)[];
+}
 
-  /**
-   * 获取核心表（没有依赖的表）
-   */
-  getCoreTables(): string[] {
+/**
+ * 获取表的依赖顺序（拓扑排序）
+ */
+export function getTableDependencyOrder(): (keyof DB)[] {
     return DATABASE_SCHEMA.dependencies
-      .filter(dep => dep.dependsOn.length === 0)
+    .sort((a, b) => a.dependsOn.length - b.dependsOn.length)
       .map(dep => dep.table);
-  },
+}
 
-  /**
-   * 获取表的导入顺序（拓扑排序）
-   */
-  getImportOrder(): string[] {
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
-    const result: string[] = [];
+/**
+ * 检查表是否有依赖
+ */
+export function hasDependencies<T extends keyof DB>(tableName: T): boolean {
+  const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === tableName);
+  return dependency ? dependency.dependsOn.length > 0 : false;
+}
 
-    const visit = (tableName: string) => {
-      if (visiting.has(tableName)) {
-        throw new Error(\`循环依赖检测到: \${tableName}\`);
-      }
-      if (visited.has(tableName)) {
-        return;
-      }
-
-      visiting.add(tableName);
-      
-      const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === tableName);
+/**
+ * 获取表的所有依赖表（递归）
+ */
+export function getAllDependencies<T extends keyof DB>(tableName: T): (keyof DB)[] {
+  const visited = new Set<keyof DB>();
+  const dependencies: (keyof DB)[] = [];
+  
+  function collectDependencies(table: keyof DB) {
+    if (visited.has(table)) return;
+    visited.add(table);
+    
+    const dependency = DATABASE_SCHEMA.dependencies.find(dep => dep.table === table);
       if (dependency) {
-        for (const dep of dependency.dependsOn) {
-          visit(dep);
-        }
-      }
-
-      visiting.delete(tableName);
-      visited.add(tableName);
-      result.push(tableName);
-    };
-
-    for (const table of DATABASE_SCHEMA.tables) {
-      visit(table.name);
+      dependency.dependsOn.forEach(dep => {
+        dependencies.push(dep);
+        collectDependencies(dep);
+      });
     }
-
-    return result;
   }
-};
+  
+  collectDependencies(tableName);
+  return dependencies;
+}
+
+/**
+ * 检查字段是否为外键字段
+ */
+export function isForeignKeyField<T extends keyof DB>(
+  tableName: T, 
+  fieldName: keyof DB[T]
+): boolean {
+  const foreignKeys = getForeignKeyInfo(tableName);
+  return foreignKeys.some(fk => fk.field === fieldName);
+}
+
+/**
+ * 获取外键字段的引用信息
+ */
+export function getForeignKeyReference<T extends keyof DB>(
+  tableName: T, 
+  fieldName: keyof DB[T]
+): ForeignKeyInfo<T> | undefined {
+  const foreignKeys = getForeignKeyInfo(tableName);
+  return foreignKeys.find(fk => fk.field === fieldName);
+}
 `;
 
     FileUtils.safeWriteFile(PATHS.generated.databaseSchema, content);
+    LogUtils.logSuccess("生成 database-schema.ts");
   }
-
 }

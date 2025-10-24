@@ -10,6 +10,9 @@ import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { Input } from "~/components/controls/input";
 import { MemberBaseNestedSchema } from "~/components/features/simulator/core/member/MemberBaseSchema";
 import { CrystalWithRelationsSchema, selectCrystalWithRelations } from "@db/generated/repository/crystal";
+import { DBForm } from "~/components/dataDisplay/DBForm";
+import { selectCharacterById } from "@db/generated/repository/character";
+import { characterSchema } from "@db/generated/zod";
 
 export default function FunctionPage(props: ParentProps) {
   // UI文本字典
@@ -18,6 +21,8 @@ export default function FunctionPage(props: ParentProps) {
   const [mob, { refetch: refetchMob }] = createResource(() => "defaultMobId", mobFinder);
   const crystalFinder = (id: string) => selectCrystalWithRelations(id);
   const [crystal, { refetch: refetchCrystal }] = createResource(() => "defaultOptionCrystalAItemId", crystalFinder);
+  const characterFinder = (id: string) => selectCharacterById(id);
+  const [character, { refetch: refetchCharacter }] = createResource(() => "defaultCharacterId", characterFinder);
 
   onMount(() => {
     console.log("--FunctionPage Render");
@@ -35,6 +40,16 @@ export default function FunctionPage(props: ParentProps) {
           "transition-duration": "all 0s !important",
         }}
       >
+        <Show when={character()}>
+          {(varCharacter) => (
+            <DBForm
+              tableName="character"
+              initialValue={varCharacter()}
+              dataSchema={characterSchema}
+              dictionary={dictionary().db.character}
+            />
+          )}
+        </Show>
         <Show when={mob()}>
           {(varMob) => (
             <Form
@@ -53,7 +68,7 @@ export default function FunctionPage(props: ParentProps) {
                   "magicalDefense",
                   "magicalResistance",
                 ],
-                关联数据:["details"],
+                关联数据: ["details"],
                 其他: ["actions"],
               }}
               fieldGenerator={{

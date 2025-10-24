@@ -19,8 +19,6 @@ export class SQLGenerator {
    * @param fullSchema - 完整的 Prisma schema 内容
    */
   static generate(fullSchema: string): void {
-    LogUtils.logStep("SQL 生成", "开始生成 SQL 文件...");
-    
     LogUtils.logInfo("创建临时 schema 文件...");
     FileUtils.safeWriteFile(PATHS.serverDB.tempSchema, fullSchema);
     FileUtils.safeWriteFile(PATHS.clientDB.tempSchema, fullSchema);

@@ -185,9 +185,7 @@ export const CommandUtils = {
         ...options 
       };
       
-      console.log(`🔧 执行命令: ${command}`);
       execSync(command, defaultOptions);
-      console.log(`✅ 命令执行成功: ${command}`);
     } catch (error) {
       console.error(`❌ 命令执行失败: ${command}`, error);
       throw new Error(`命令执行失败: ${command} - ${(error as Error).message}`);

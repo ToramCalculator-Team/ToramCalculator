@@ -29,8 +29,6 @@ export class RelationProcessor {
    * @returns 当前实例，支持链式调用
    */
   processRelations(): this {
-    LogUtils.logStep("关系处理", "提取表间依赖关系");
-    
     this.extractDependencies();
     
     LogUtils.logSuccess(`提取到 ${this.dependencies.length} 个依赖关系`);

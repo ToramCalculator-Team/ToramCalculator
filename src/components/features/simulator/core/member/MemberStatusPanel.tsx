@@ -7,17 +7,12 @@
  * - 展示成员属性、位置、状态等数据
  */
 
-import { Accessor, Show, createMemo, createSignal, onMount } from "solid-js";
+import { Accessor, Show, createMemo, createSignal } from "solid-js";
 import { MemberSerializeData } from "./Member";
 import { DataStorage, isDataStorageType } from "../dataSys/StatContainer";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { Card } from "~/components/containers/card";
-import { Portal } from "solid-js/web";
-import { Motion, Presence } from "solid-motionone";
-import { store } from "~/store";
 import { Button } from "~/components/controls/button";
-import { Icon } from "@babylonjs/inspector/components/Icon";
 import Icons from "~/components/icons";
+import { Dialog } from "~/components/containers/dialog";
 
 // ============================== 组件实现 ==============================
 
@@ -48,7 +43,7 @@ const StatsRenderer = (props: { data?: object }) => {
                 class={`key=${currentPath} Object border-boundary-color flex gap-1 ${!currentPath.includes(".") && columnsWidth}`}
               >
                 <span
-                  class="bg-area-color text-main-text-color w-8 text-center font-bold rounded-sm"
+                  class="bg-area-color text-main-text-color w-8 rounded-sm text-center font-bold"
                   style={{ "writing-mode": "sideways-lr", "text-orientation": "mixed" }}
                 >
                   {key}
@@ -72,7 +67,7 @@ const StatsRenderer = (props: { data?: object }) => {
             value.static.percentage.length > 0 ||
             value.dynamic.fixed.length > 0 ||
             value.dynamic.percentage.length > 0 ? (
-              <div class="Values border-dividing-color flex flex-1 flex-wrap gap-1 border-t-px lg:gap-4">
+              <div class="Values border-dividing-color border-t-px flex flex-1 flex-wrap gap-1 lg:gap-4">
                 <div
                   class={`TotalValue flex flex-col rounded-sm p-1 ${!(value.static.fixed.length > 0 || value.static.percentage.length > 0 || value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && "w-full"}`}
                 >
@@ -546,41 +541,25 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
         </div>
       </Button>
 
-      <Portal>
-        <Presence exitBeforeEnter>
-          <Show when={displayDetail()}>
-            <Motion.div
-              animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-              exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-              onClick={() => setDisplayDetail(false)}
-            >
-              <Card title="属性详情" index={0} total={1} display={displayDetail()}>
-                <div class="flex w-full flex-1 flex-col gap-1">
-                  {/* 属性详情（从 attrs 构建的嵌套对象） */}
-                  <div class="flex-1 rounded">
-                    <StatsRenderer data={selectedMemberData()} />
-                  </div>
+      <Dialog state={displayDetail()} setState={setDisplayDetail} title="属性详情">
+        <div class="flex w-full flex-1 flex-col gap-1">
+          {/* 属性详情（从 attrs 构建的嵌套对象） */}
+          <div class="flex-1 rounded">
+            <StatsRenderer data={selectedMemberData()} />
+          </div>
 
-                  {/* 调试信息 */}
-                  <div class="bg-area-color rounded p-2">
-                    <h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
-                    <details class="text-xs">
-                      <summary class="text-dividing-color hover:text-main-text-color cursor-pointer">
-                        查看原始数据
-                      </summary>
-                      <pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
-                        {JSON.stringify(props.member(), null, 2)}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
-              </Card>
-            </Motion.div>
-          </Show>
-        </Presence>
-      </Portal>
+          {/* 调试信息 */}
+          <div class="bg-area-color rounded p-2">
+            <h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
+            <details class="text-xs">
+              <summary class="text-dividing-color hover:text-main-text-color cursor-pointer">查看原始数据</summary>
+              <pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
+                {JSON.stringify(props.member(), null, 2)}
+              </pre>
+            </details>
+          </div>
+        </div>
+      </Dialog>
     </Show>
   );
 }

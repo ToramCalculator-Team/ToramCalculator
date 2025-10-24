@@ -1,0 +1,94 @@
+model user {
+    id            String    @id
+    name          String? ///  @zod.string.min(2, { message: "最少2个字符" })
+    email         String?   @unique
+    emailVerified DateTime?
+    password      String? ///  @zod.string.min(8, { message: "最少8个字符" })
+    image         String?
+    accounts      account[]
+    sessions      session[]
+    posts         post[]
+}
+
+model account {
+    id                String   @id
+    type              String // Enum ACCOUNT_TYPE
+    provider          String
+    providerAccountId String
+    refresh_token     String?
+    access_token      String?
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String?
+    session_state     String?
+    user              user?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId            String?
+    players           player[]
+
+    create account_create_data?
+    update account_update_data?
+
+    @@unique([provider, providerAccountId])
+}
+
+model session {
+    id           String   @id
+    sessionToken String   @unique
+    expires      DateTime
+    user         user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId       String
+}
+
+model verification_token {
+    identifier String
+    token      String
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
+
+model post {
+    id          String   @id
+    name        String
+    createdAt   DateTime
+    updatedAt   DateTime @updatedAt
+    createdBy   user     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+    createdById String
+
+    @@index([name])
+}
+
+// 账户创建内容
+model account_create_data {
+    mobs            mob[]
+    items           item[]
+    skills          skill[]
+    simulators      simulator[]
+    world           world[]
+    address         address[]
+    activity        activity[]
+    zone            zone[]
+    recipe          recipe[]
+    npc             npc[]
+    task            task[]
+    belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String      @id
+}
+
+// 账户更新内容
+model account_update_data {
+    mobs            mob[]
+    items           item[]
+    skills          skill[]
+    simulator       simulator[]
+    world           world[]
+    address         address[]
+    activity        activity[]
+    zone            zone[]
+    recipe          recipe[]
+    npc             npc[]
+    task            task[]
+    belongToAccount account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    accountId       String      @id
+}

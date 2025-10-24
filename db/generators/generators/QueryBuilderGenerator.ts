@@ -48,8 +48,6 @@ export class QueryBuilderGenerator {
    * 生成 QueryBuilder 规则
    */
   generate(): void {
-    LogUtils.logStep("QueryBuilder 生成", "开始生成 QueryBuilder 规则...");
-    
     LogUtils.logInfo("解析 schema...");
     const models = this.parseModelsFromDMMF();
     const enums = this.parseEnumsFromDMMF();
@@ -60,7 +58,6 @@ export class QueryBuilderGenerator {
     LogUtils.logInfo("写入文件...");
     FileUtils.safeWriteFile(PATHS.queryBuilder.rules, rulesContent);
     
-    LogUtils.logSuccess("QueryBuilder 规则生成完成");
   }
 
   /**
@@ -124,7 +121,7 @@ export const OPERATORS = {
     }
 
     // 生成字段配置
-    rulesContent += "// 字段配置\nexport const FIELDS: Fields = {\n";
+    rulesContent += "// 字段配置\nexport const FIELDS: Record<string, any> = {\n";
 
     for (const model of models) {
       const modelNameLower = model.name.toLowerCase();

@@ -28,8 +28,6 @@ export class DMMFProvider {
       return this.dmmf;
     }
 
-    LogUtils.logStep("DMMF 生成", "从 Prisma schema 生成 DMMF");
-    
     try {
       // 动态导入 CommonJS 模块
       const { getDMMF } = await import('@prisma/internals');

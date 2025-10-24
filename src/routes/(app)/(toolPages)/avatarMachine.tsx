@@ -1,7 +1,6 @@
 import { createSignal, For, Index, Show } from "solid-js";
-import { Portal } from "solid-js/web";
-import { Motion, Presence } from "solid-motionone";
-import { Card } from "~/components/containers/card";
+import { Motion } from "solid-motionone";
+import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { PlayerAttrType } from "~/components/features/simulator/core/member/player/Player";
 import Icons from "~/components/icons";
@@ -565,51 +564,37 @@ export default function AvatarMachinePage() {
         </div>
       </div>
 
-      <Portal>
-        <Presence exitBeforeEnter>
-          <Show when={displayHistory()}>
-            <Motion.div
-              animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-              exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-              transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-              class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-              onClick={() => setDisplayHistory(false)}
-            >
-              <Card title="剪刀历史记录" index={0} total={1} display={displayHistory()}>
-                <For each={history()}>
-                  {(item, index) => {
-                    return (
-                      <div class="Field bg-primary-color border-dividing-color flex rounded border">
-                        <div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r">
-                          {index() + 1}
+      <Dialog state={displayHistory()} setState={setDisplayHistory} title="剪刀历史记录">
+        <For each={history()}>
+          {(item, index) => {
+            return (
+              <div class="Field bg-primary-color border-dividing-color flex rounded border">
+                <div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r">
+                  {index() + 1}
+                </div>
+                <div class="Attrs flex w-full flex-col gap-1">
+                  <For each={Object.values(item)}>
+                    {(item, index) => {
+                      return (
+                        <div
+                          class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t"} ${
+                            isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
+                          }`}
+                        >
+                          {attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
+                          {isMaxValue(item.attrType, item.attrValue) && (
+                            <span class="text-brand-color-3rd ml-1">✨</span>
+                          )}
                         </div>
-                        <div class="Attrs flex w-full flex-col gap-1">
-                          <For each={Object.values(item)}>
-                            {(item, index) => {
-                              return (
-                                <div
-                                  class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t"} ${
-                                    isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
-                                  }`}
-                                >
-                                  {attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
-                                  {isMaxValue(item.attrType, item.attrValue) && (
-                                    <span class="text-brand-color-3rd ml-1">✨</span>
-                                  )}
-                                </div>
-                              );
-                            }}
-                          </For>
-                        </div>
-                      </div>
-                    );
-                  }}
-                </For>
-              </Card>
-            </Motion.div>
-          </Show>
-        </Presence>
-      </Portal>
+                      );
+                    }}
+                  </For>
+                </div>
+              </div>
+            );
+          }}
+        </For>
+      </Dialog>
     </div>
   );
 }

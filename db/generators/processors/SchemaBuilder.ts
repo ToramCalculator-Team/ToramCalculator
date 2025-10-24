@@ -24,8 +24,6 @@ export class SchemaBuilder {
    * @returns 完整的 Prisma schema 字符串
    */
   build(): string {
-    LogUtils.logStep("Schema 构建", "构建完整的 Prisma schema");
-    
     // 处理枚举并替换字段类型
     const updatedSchema = this.enumProcessor.processSchema();
     

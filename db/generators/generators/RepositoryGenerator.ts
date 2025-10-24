@@ -10,12 +10,7 @@ import { ValidationUtils } from "../utils/validation";
 import {
   repositoryConfig,
   shouldSkipModel,
-  // 移除硬编码的业务逻辑导入
-  // needsStatistic,
-  // needsAccountTracking,
-  // getSpecialCreateLogic,
   getDeleteStrategy,
-  shouldSkipImportForCircularRef,
 } from "../config/repository.config";
 import { PATHS } from "../config/generator.config";
 import path from "path";
@@ -63,7 +58,6 @@ export class RepositoryGenerator {
       // 初始化分析器
       this.cascadeAnalyzer = new CascadeAnalyzer(this.dmmf);
       
-      LogUtils.logSuccess("Repository 生成器初始化完成（使用 DMMF）");
     } catch (error) {
       LogUtils.logError("Repository 生成器初始化失败", error as Error);
       throw error;
@@ -75,8 +69,6 @@ export class RepositoryGenerator {
    * 生成所有 repository 文件
    */
   async generateAll(): Promise<void> {
-    LogUtils.logStep("Repository 生成", "开始生成 Repository 文件");
-
     await this.initialize();
 
     // 验证 Schema
@@ -214,10 +206,6 @@ ${crudMethods}
     }
 
 
-    // 移除硬编码的账户跟踪导入
-    // if (needsAccountTracking(modelName)) {
-    //   imports.push(`import { store } from "~/store";`);
-    // }
 
     return imports.join("\n");
   }
@@ -320,7 +308,7 @@ ${crudMethods}
     const targetModel = this.models.find(m => m.name.toLowerCase() === targetTable.toLowerCase());
     if (targetModel) {
       // 查找目标模型中指向当前模型的关系字段
-      const reverseField = targetModel.fields.find(f => 
+      const reverseField = targetModel.fields.find((f: any) => 
         f.kind === 'object' && 
         f.type === model.name &&
         f.relationFromFields && 
@@ -402,8 +390,8 @@ ${crudMethods}
     // 检查是否是自关系
     const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
     
-    // 检查是否是循环引用关系
-    const shouldSkipImport = shouldSkipImportForCircularRef(model.name, field.name) || isSelfRelation;
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
     
     // 获取当前模型的主键
     const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
@@ -423,7 +411,7 @@ ${crudMethods}
       if (field.relationFromFields && field.relationFromFields.length > 0) {
         // 外键在当前模型中，指向目标模型
         const foreignKey = field.relationFromFields[0];
-        const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
+        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
         return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
@@ -434,7 +422,7 @@ ${crudMethods}
       } else {
         // 外键在目标表中，指向当前模型
         const reverseForeignKey = `${model.name.toLowerCase()}Id`;
-        const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
+        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
         return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
@@ -455,8 +443,8 @@ ${crudMethods}
     // 检查是否是自关系
     const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
     
-    // 检查是否是循环引用关系
-    const shouldSkipImport = shouldSkipImportForCircularRef(model.name, field.name) || isSelfRelation;
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
     
     // 获取当前模型的主键
     const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
@@ -469,7 +457,7 @@ ${crudMethods}
         throw new Error(`Target model ${targetTable} not found`);
       }
       
-      const reverseField = targetModel.fields.find(f => 
+      const reverseField = targetModel.fields.find((f: any) => 
         f.kind === 'object' && 
         f.type === model.name &&
         f.relationFromFields && 
@@ -496,7 +484,7 @@ ${crudMethods}
         throw new Error(`Target model ${targetTable} not found`);
       }
       
-      const reverseField = targetModel.fields.find(f => 
+      const reverseField = targetModel.fields.find((f: any) => 
         f.kind === 'object' && 
         f.type === model.name &&
         f.relationFromFields && 
@@ -508,7 +496,7 @@ ${crudMethods}
       }
       
       const reverseForeignKey = reverseField.relationFromFields[0];
-      const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
+      const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
       return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
@@ -529,13 +517,13 @@ ${crudMethods}
     // 检查是否是自关系
     const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
     
-    // 检查是否是循环引用关系
-    const shouldSkipImport = shouldSkipImportForCircularRef(model.name, field.name) || isSelfRelation;
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
     
     // 获取当前模型的主键
     const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
     
-    const subRelationCode = shouldSkipImport ? '' : `.select((subEb) => ${StringUtils.toCamelCase(targetTable)}SubRelations(subEb, subEb.val("${targetTable}.${targetPrimaryKey}")))`;
+    const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
     
     return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
       jsonArrayFrom(
@@ -571,7 +559,7 @@ ${crudMethods}
     const targetModel = this.models.find(m => m.name.toLowerCase() === targetTable.toLowerCase());
     if (targetModel) {
       // 查找目标模型中指向当前模型的关系字段
-      const reverseField = targetModel.fields.find(f => 
+      const reverseField = targetModel.fields.find((f: any) => 
         f.kind === 'object' && 
         f.type === model.name &&
         f.relationFromFields && 
@@ -670,10 +658,6 @@ ${crudMethods}
               continue;
             }
             
-            // 检查循环引用处理配置
-            if (shouldSkipImportForCircularRef(modelName.toLowerCase(), relation.name)) {
-              continue;
-            }
             
             const subRelationName = `${StringUtils.toCamelCase(targetTable)}SubRelations`;
             
@@ -714,11 +698,6 @@ ${crudMethods}
       }
     }
 
-    // 添加 statistic schema
-    // 移除硬编码的统计 schema 导入
-    // if (needsStatistic(modelName)) {
-    //   schemas.add("statisticSchema");
-    // }
 
     return Array.from(schemas);
   }
@@ -876,10 +855,10 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const fieldParams = fieldNames.map(f => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f)).join('And');
+      const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f)).join('And');
       
-      const whereConditions = fieldNames.map(f => `.where("${f}", "=", ${f})`).join('\n    ');
+      const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
       return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -890,11 +869,11 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
 }`;
     } else if (uniqueFields.length >= 2) {
       // 如果有多个唯一字段，生成基于所有唯一字段的查询方法
-      const fieldNames = uniqueFields.map(f => f.name);
-      const fieldParams = fieldNames.map(f => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f.name)).join('And');
+      const fieldNames = uniqueFields.map((f: any) => f.name);
+      const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f.name)).join('And');
       
-      const whereConditions = fieldNames.map(f => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
+      const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
       return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -940,10 +919,10 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const fieldParams = fieldNames.map(f => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f)).join('And');
+      const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f)).join('And');
       
-      const whereConditions = fieldNames.map(f => `.where("${f}", "=", ${f})`).join('\n    ');
+      const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
       return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -954,11 +933,11 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
 }`;
     } else if (uniqueFields.length >= 2) {
       // 如果有多个唯一字段，生成基于所有唯一字段的删除方法
-      const fieldNames = uniqueFields.map(f => f.name);
-      const fieldParams = fieldNames.map(f => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f.name)).join('And');
+      const fieldNames = uniqueFields.map((f: any) => f.name);
+      const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f.name)).join('And');
       
-      const whereConditions = fieldNames.map(f => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
+      const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
       return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -1023,73 +1002,6 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
 }`;
   }
 
-  /**
-   * 生成 create 方法 - 暂时注释掉，因为涉及复杂的嵌套创建逻辑
-   */
-  /*
-  private generateCreate(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = StringUtils.toPascalCase(modelName);
-    const hasStatistic = needsStatistic(modelName);
-    const hasAccountTracking = needsAccountTracking(modelName);
-    const specialLogic = getSpecialCreateLogic(modelName);
-
-    const beforeCreate = specialLogic?.beforeCreate || [];
-    const afterCreate = specialLogic?.afterCreate || [];
-
-    let createLogic = "";
-
-    // 添加前置逻辑
-    if (beforeCreate.length > 0) {
-      createLogic += beforeCreate.join("\n") + "\n\n";
-    }
-
-    // 创建 statistic
-    if (hasStatistic) {
-      createLogic += `  const statistic = await createStatistic({}, trx);\n\n`;
-    }
-
-    // 创建主记录
-    const primaryKeyField = this.getPrimaryKeyField(modelName);
-    const valueFields: string[] = [
-      "    ...data",
-    ];
-
-    // 为主键字段生成 ID（动态处理所有主键字段）
-    valueFields.push(`    ${primaryKeyField}: data.${primaryKeyField} || createId()`);
-
-    if (hasStatistic) {
-      valueFields.push("    statisticId: statistic.id");
-    }
-
-    if (hasAccountTracking) {
-      valueFields.push(
-        "    createdByAccountId: store.session.account?.id",
-        "    updatedByAccountId: store.session.account?.id"
-      );
-    }
-
-    createLogic += `  const ${tableName} = await trx
-    .insertInto("${tableName}")
-    .values({
-${valueFields.join(",\n")},
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();\n`;
-
-    // 添加后置逻辑
-    if (afterCreate.length > 0) {
-      createLogic += "\n" + afterCreate.join("\n");
-    }
-
-    createLogic += `\n  return ${tableName};`;
-
-    return `export async function create${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-${createLogic.replace(/trx/g, 'db')}
-}`;
-  }
-  */
 
   /**
    * 生成 update 方法
@@ -1155,9 +1067,41 @@ ${createLogic.replace(/trx/g, 'db')}
    */
   private async generateIndex(generatedFiles: string[]): Promise<void> {
     const crudImports: string[] = [];
+    const typeImports: string[] = [];
     const crudExports: Record<string, any> = {};
 
-    // 只为实际生成的文件添加导入
+    // 计算相对路径
+    const relativePaths = this.calculateRelativePaths();
+
+    // 添加所有模型的类型导入
+    for (const model of this.models) {
+      const modelName = model.name;
+      const pascalName = StringUtils.toPascalCase(modelName);
+      const hasPK = this.hasPrimaryKey(model);
+      
+      if (shouldSkipModel(modelName)) {
+        // 跳过的模型从 zod 导入基础类型
+        typeImports.push(
+          `import { ${pascalName} } from "${relativePaths.zod}";`
+        );
+      } else if (hasPK) {
+        // 有主键的模型导入 WithRelations 类型
+        typeImports.push(
+          `import { ${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
+        );
+      }
+    }
+    
+    // 添加中间表的类型导入
+    const intermediateTables = this.getIntermediateTables();
+    for (const tableName of intermediateTables) {
+      const pascalName = StringUtils.toPascalCase(tableName);
+      typeImports.push(
+        `import { ${pascalName} } from "${relativePaths.zod}";`
+      );
+    }
+
+    // 只为实际生成的文件添加 CRUD 导入
     for (const modelName of generatedFiles) {
       const camelName = StringUtils.toCamelCase(modelName);
       const pascalName = StringUtils.toPascalCase(modelName);
@@ -1194,12 +1138,15 @@ ${createLogic.replace(/trx/g, 'db')}
       }
     }
 
-    // 计算相对路径
-    const relativePaths = this.calculateRelativePaths();
-
     // 生成代码
     const indexCode = `import { DB } from "${relativePaths.zod}";
 ${crudImports.join("\n")}
+${typeImports.join("\n")}
+
+// DB[K] → DB[K]WithRelation 类型映射
+export type DBWithRelations = {
+${this.generateTypeMapping(generatedFiles)}
+};
 
 export const repositoryMethods = {
 ${this.generateCrudExports(crudExports)}
@@ -1212,20 +1159,45 @@ ${this.generateCrudExports(crudExports)}
   }
 
   /**
+   * 生成类型映射
+   */
+  private generateTypeMapping(generatedFiles: string[]): string {
+    const lines: string[] = [];
+    
+    // 为所有模型生成类型映射（包括跳过的模型）
+    for (const model of this.models) {
+      const modelName = model.name;
+      const pascalName = StringUtils.toPascalCase(modelName);
+      const hasPK = this.hasPrimaryKey(model);
+      
+      if (shouldSkipModel(modelName)) {
+        // 跳过的模型使用基础类型
+        lines.push(`  ${modelName.toLowerCase()}: ${pascalName};`);
+      } else if (hasPK) {
+        // 有主键的模型使用 WithRelations 类型
+        lines.push(`  ${modelName.toLowerCase()}: ${pascalName}WithRelations;`);
+      }
+    }
+    
+    // 添加中间表
+    const intermediateTables = this.getIntermediateTables();
+    for (const tableName of intermediateTables) {
+      const pascalName = StringUtils.toPascalCase(tableName);
+      lines.push(`  ${tableName}: ${pascalName};`);
+    }
+    
+    return lines.join('\n');
+  }
+
+  /**
    * 生成 CRUD 导出对象
    */
   private generateCrudExports(exports: Record<string, any>): string {
     // 读取所有表名（包括跳过的表和中间表）
-    const allTables = this.models.map((m: any) => m.name.toLowerCase());
-    
-    // 从 DMMF 中动态获取中间表
-    const intermediateTables = this.getIntermediateTables();
-    
-    // 合并所有表名
-    const allTableNames = [...allTables, ...intermediateTables];
+    const allTables = this.getAllTableNames();
 
     const lines: string[] = [];
-    for (const tableName of allTableNames) {
+    for (const tableName of allTables) {
       const crudMethods = exports[tableName];
       if (crudMethods) {
         // 确保所有标准字段都存在，不存在的用 null 表示
@@ -1261,6 +1233,24 @@ ${methodLines.join(',\n')}
     }
 
     return lines.join(",\n");
+  }
+
+  /**
+   * 获取所有DB表名（包括模型表和中间表）
+   */
+  private getAllTableNames(): string[] {
+    const tableNames: string[] = [];
+    
+    // 添加所有模型表名
+    for (const model of this.models) {
+      tableNames.push(model.name.toLowerCase());
+    }
+    
+    // 添加中间表名
+    const intermediateTables = this.getIntermediateTables();
+    tableNames.push(...intermediateTables);
+    
+    return tableNames;
   }
 
   /**
@@ -1371,10 +1361,10 @@ ${methodLines.join(',\n')}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map(f => StringUtils.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => StringUtils.toPascalCase(f.name)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length === 1) {
       const firstUniqueField = uniqueFields[0];
@@ -1405,12 +1395,12 @@ ${methodLines.join(',\n')}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map(f => StringUtils.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => StringUtils.toPascalCase(f)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map(f => StringUtils.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => StringUtils.toPascalCase(f.name)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };

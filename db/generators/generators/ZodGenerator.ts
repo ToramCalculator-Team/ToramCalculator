@@ -20,8 +20,6 @@ export class ZodGenerator {
    * 生成 Zod schemas
    */
   generate(): void {
-    LogUtils.logStep("Zod 生成", "开始生成 Zod schemas...");
-    
     LogUtils.logInfo("生成枚举 schemas...");
     const enumSchemas = this.generateEnumSchemas();
     
@@ -40,7 +38,6 @@ export class ZodGenerator {
     LogUtils.logInfo("写入文件...");
     this.writeZodFile(enumSchemas, modelSchemas, intermediateSchemas, kyselyTypes, dbInterface);
     
-    LogUtils.logSuccess("Zod schemas 生成完成");
   }
 
   /**

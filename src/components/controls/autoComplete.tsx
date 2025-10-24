@@ -21,6 +21,9 @@ import { DB } from "@db/generated/zod";
 import { setStore, store } from "~/store";
 import { DATABASE_SCHEMA } from "@db/generated/database-schema";
 import { repositoryMethods } from "@db/generated/repository";
+import { getDisplayField, isValidDisplayField } from "~/utils/fieldUtils";
+import { Button } from "./button";
+import { getPrimaryKeyFields } from "~/utils/formUtils";
 
 interface AutocompleteProps<K extends keyof DB, T extends DB[K], P extends Partial<T>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
@@ -29,7 +32,6 @@ interface AutocompleteProps<K extends keyof DB, T extends DB[K], P extends Parti
   setValue: (value: P) => void; // 设置当前选中的值
   table: K; // 数据表
   extraLabel?: (value: T) => JSX.Element; // 额外标签
-  displayField: keyof { [K in keyof T as T[K] extends string ? K : never]: T[K] }; // 显示字段，作为input的value
   valueMap: (value: T) => P; // 值映射
 }
 
@@ -46,24 +48,63 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
   // 是否已选择，用于控制input的边框样式
   const [isSelected, setIsSelected] = createSignal(true);
 
+  // 动态确定的显示字段
+  const [displayField, setDisplayField] = createSignal<keyof DB[K]>("id" as keyof DB[K]);
+
+  // 缓存主键字段，避免重复查找
+  const primaryKeys = createMemo(() => {
+    const table = DATABASE_SCHEMA.tables.find((table: any) => table.name === props.table);
+    return table?.primaryKeys || ["id"];
+  });
 
   // 显示值，作为input的value
   const [inputValue, setInputValue] = createSignal("");
-  setInputValue(props.initialValue[props.displayField] as string);
 
   // 所有可选项
   const [options, { refetch: refetchOptions }] = createResource(async () => {
-    const options = await repositoryMethods[props.table].selectAll?.() as T[];
+    const options = (await repositoryMethods[props.table].selectAll?.()) as T[];
+
+    // 动态确定显示字段（只在第一次获取时确定）
+    if (options && options.length > 0 && displayField() === "id") {
+      const detectedField = getDisplayField(props.table, options);
+      setDisplayField(() => detectedField);
+
+      // 设置初始显示值
+      if (props.initialValue && props.initialValue[detectedField as keyof P]) {
+        setInputValue(props.initialValue[detectedField as keyof P] as string);
+      }
+    }
+
     return options;
   });
 
   // 根据输入框内容过滤后的可选项
   const filteredOptions = createMemo(() => {
-    return options()?.filter((option) => (option[props.displayField] as string).includes(inputValue()));
-  });
+    const currentOptions = options();
+    const currentDisplayField = displayField();
+    const currentInputValue = inputValue();
 
-  createEffect(() => {
-    console.log(options());
+    if (!currentOptions || currentOptions.length === 0) {
+      return [];
+    }
+
+    // 如果没有输入值，返回所有选项
+    if (!currentInputValue || currentInputValue.trim() === "") {
+      return currentOptions;
+    }
+
+    // 预计算小写的搜索值，避免重复计算
+    const searchValue = currentInputValue.toLowerCase();
+
+    return currentOptions.filter((option) => {
+      const fieldValue = option[currentDisplayField as keyof T];
+
+      if (!isValidDisplayField(fieldValue)) {
+        return false;
+      }
+
+      return (fieldValue as string).toLowerCase().includes(searchValue);
+    });
   });
 
   // 输入框内容变化时，如果输入事件发生在选择事件期间，则不进行任何操作
@@ -82,7 +123,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
     // 设置正在选择状态，防止在选择期间输入框内容变化引起搜索
     setIsSelecting(true);
     // 设置输入框内容
-    setInputValue(option[props.displayField] as string);
+    setInputValue(option[displayField() as keyof T] as string);
     // 调用父组件的setValue方法，更新表单的值
     props.setValue(props.valueMap(option));
     // 关闭下拉框
@@ -130,39 +171,51 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
           ref={setDropdownRef}
           class="Options bg-primary-color shadow-dividing-color absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 shadow-lg"
         >
-        <For each={filteredOptions()}>
-          {(option) => (
-            <button
-              class="relative flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSelect(option);
-              }}
-            >
-              <span>{option[props.displayField] as string}</span>
-              {props.extraLabel?.(option)}
-              <div
-                class="DetailControlBtn bg-area-color rounded-md p-1"
+          <For each={filteredOptions()}>
+            {(option) => (
+              <button
+                class="relative flex w-full items-center px-4 py-2 text-left hover:bg-gray-100"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setDetailVisible((prev) => !prev);
-                  const primaryKeys = DATABASE_SCHEMA.tables.find((table) => table.name === props.table)?.primaryKeys;
-                  if (!primaryKeys) {
-                    return;
-                  }
-                  setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-                    type: props.table,
-                    id: option[primaryKeys[0] as keyof T] as string,
-                  }); // 基本上用到的表都只有单主键，没有复合主键，所以直接取第一个
+                  handleSelect(option);
+                  console.log(props.table, option, getPrimaryKeyFields(props.table));
                 }}
               >
-                <Icons.Outline.InfoCircle />
-              </div>
-            </button>
-          )}
-        </For>
+                <span class="w-full">{option[displayField() as keyof T] as string}</span>
+                {props.extraLabel?.(option)}
+                <Button
+                  class="Edit bg-area-color rounded-md p-1"
+                  level="quaternary"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <Icons.Outline.InfoCircle />
+                </Button>
+                <Button
+                  class="DetailControlBtn bg-area-color rounded-md p-1"
+                  level="quaternary"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDetailVisible((prev) => !prev);
+                    const currentPrimaryKeys = primaryKeys();
+                    if (!currentPrimaryKeys || currentPrimaryKeys.length === 0) {
+                      return;
+                    }
+                    setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                      type: props.table,
+                      id: option[currentPrimaryKeys[0] as keyof T] as string,
+                    }); // 基本上用到的表都只有单主键，没有复合主键，所以直接取第一个
+                  }}
+                >
+                  <Icons.Outline.InfoCircle />
+                </Button>
+              </button>
+            )}
+          </For>
         </div>
       </Show>
     </div>
