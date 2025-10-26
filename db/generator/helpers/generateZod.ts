@@ -6,15 +6,21 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { EnumInjector } from "./enumInjector";
 
 /**
  * Zod Schema 生成器
  */
 export class ZodGenerator {
   private dmmf: DMMF.Document;
+  private allModels: readonly DMMF.Model[] = []; // 包含中间表的完整模型列表
+  private enumInjector: EnumInjector;
 
-  constructor(dmmf: DMMF.Document) {
+  constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
     this.dmmf = dmmf;
+    this.allModels = allModels;
+    this.enumInjector = new EnumInjector();
+    this.enumInjector.processEnums();
   }
 
   /**
@@ -47,13 +53,14 @@ export class ZodGenerator {
   private generateEnumSchemas(): string {
     let enumSchemas = "";
 
-    // 从 DMMF 中提取枚举信息
-    for (const enumModel of this.dmmf.datamodel.enums) {
-      const enumName = enumModel.name;
-      const enumValues = enumModel.values.map((v: DMMF.EnumValue) => v.name);
-      
-      enumSchemas += `export const ${enumName}Schema = z.enum([${enumValues.map((v: string) => `"${v}"`).join(", ")}]);\n`;
-      enumSchemas += `export type ${enumName} = z.output<typeof ${enumName}Schema>;\n\n`;
+    // 从 EnumInjector 中获取枚举信息
+    const extractedEnums = (this.enumInjector as any).extractedEnums;
+    
+    if (extractedEnums && extractedEnums.size > 0) {
+      for (const [enumName, enumValues] of extractedEnums) {
+        enumSchemas += `export const ${enumName}Schema = z.enum([${enumValues.map((v: string) => `"${v}"`).join(", ")}]);\n`;
+        enumSchemas += `export type ${enumName} = z.output<typeof ${enumName}Schema>;\n\n`;
+      }
     }
 
     return enumSchemas;
@@ -65,8 +72,8 @@ export class ZodGenerator {
   private generateModelSchemas(): string {
     let modelSchemas = "";
 
-    // 从 DMMF 中提取模型信息
-    for (const model of this.dmmf.datamodel.models) {
+    // 从完整的模型列表中提取模型信息（包含中间表）
+    for (const model of this.allModels) {
       const schemaName = `${model.name.toLowerCase()}Schema`;
       const typeName = model.name;
       
@@ -94,16 +101,14 @@ export class ZodGenerator {
   private generateIntermediateTableSchemas(): string {
     let intermediateSchemas = "";
 
-    // 从 DMMF 中提取中间表信息
-    for (const model of this.dmmf.datamodel.models) {
-      // 检查是否为中间表（通常以 _ 开头或包含两个外键字段）
-      const isIntermediateTable = model.name.startsWith('_') || 
-        (model.fields.length === 2 && 
-         model.fields.every(field => field.kind === 'scalar' && field.type.includes('Id')));
-
-      if (isIntermediateTable) {
-        const schemaName = `${model.name.toLowerCase()}Schema`;
-        const typeName = model.name;
+    // 从完整的模型列表中提取中间表信息
+    for (const model of this.allModels) {
+      // 检查是否为中间表（以 _ 开头）
+      if (model.name.startsWith('_') || (model.dbName && model.dbName.startsWith('_'))) {
+        // 使用 dbName 作为表名（如果存在），否则使用 name
+        const tableName = model.dbName || model.name;
+        const schemaName = `${tableName.toLowerCase()}Schema`;
+        const typeName = this.convertToPascalCase(tableName);
         
         const fieldsStr = model.fields
           .filter((field: DMMF.Field) => field.kind === "scalar")
@@ -151,8 +156,9 @@ export class ZodGenerator {
         zodType = "z.instanceof(Buffer)";
         break;
       default:
-        // 检查是否为枚举类型
-        const isEnum = this.dmmf.datamodel.enums.some(e => e.name === field.type);
+        // 检查是否为枚举类型（从 EnumInjector 中获取枚举信息）
+        const extractedEnums = (this.enumInjector as any).extractedEnums;
+        const isEnum = extractedEnums && extractedEnums.has(field.type);
         if (isEnum) {
           zodType = `${field.type}Schema`;
         } else {
@@ -193,14 +199,33 @@ export type Whereable<T> = Partial<T>;
   private generateDBInterface(): string {
     let dbInterface = "export interface DB {\n";
 
-    // 添加所有模型
-    for (const model of this.dmmf.datamodel.models) {
-      dbInterface += `  ${model.name}: ${model.name};\n`;
+    // 添加所有模型（包括中间表）
+    for (const model of this.allModels) {
+      const tableName = model.dbName || model.name;
+      
+      if (tableName.startsWith('_')) {
+        // 中间表使用 PascalCase 类型名
+        const pascalCaseName = this.convertToPascalCase(tableName);
+        dbInterface += `  ${tableName}: ${pascalCaseName};\n`;
+      } else {
+        // 常规模型使用原始名称
+        dbInterface += `  ${tableName}: ${tableName};\n`;
+      }
     }
 
     dbInterface += "}\n";
 
     return dbInterface;
+  }
+
+  /**
+   * 将下划线命名转换为 PascalCase
+   */
+  private convertToPascalCase(name: string): string {
+    return name
+      .split('_')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join('');
   }
 
   /**

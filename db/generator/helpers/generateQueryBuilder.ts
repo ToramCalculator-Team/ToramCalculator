@@ -39,9 +39,11 @@ interface Model {
  */
 export class QueryBuilderGenerator {
   private dmmf: DMMF.Document;
+  private allModels: readonly DMMF.Model[] = []; // 包含中间表的完整模型列表
 
-  constructor(dmmf: DMMF.Document) {
+  constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
     this.dmmf = dmmf;
+    this.allModels = allModels;
   }
 
   /**
@@ -68,7 +70,7 @@ export class QueryBuilderGenerator {
    * 从 DMMF 解析模型
    */
   private parseModelsFromDMMF(): Model[] {
-    return this.dmmf.datamodel.models.map((model: DMMF.Model) => ({
+    return this.allModels.map((model: DMMF.Model) => ({
       name: model.name,
       fields: model.fields
         .filter((field: DMMF.Field) => field.kind === "scalar" || field.kind === "enum")

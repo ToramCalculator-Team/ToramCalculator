@@ -3,7 +3,9 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "dev:init": "prisma generate --schema=db/schema",
+    "dev:init": "npm run dev:init:inject && npm run dev:init:generate",
+    "dev:init:inject": "tsx db/scripts/injectEnums.ts",
+    "dev:init:generate": "prisma generate --schema=db/generated/schema.prisma",
     "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:restore",
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",

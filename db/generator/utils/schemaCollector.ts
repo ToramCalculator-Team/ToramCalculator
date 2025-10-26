@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { PATHS } from "../config";
 
 /**
  * Schema 收集器类
@@ -17,9 +18,9 @@ export class SchemaCollector {
   private readonly outputDir: string;
 
   constructor() {
-    this.schemaDir = path.resolve(process.cwd(), "db/schema");
-    this.modelsDir = path.join(this.schemaDir, "models");
-    this.outputDir = path.resolve(process.cwd(), "db/generated");
+    this.schemaDir = PATHS.mainSchema;
+    this.modelsDir = PATHS.schemaFolder;
+    this.outputDir = PATHS.generatedFolder;
   }
 
   /**
@@ -52,7 +53,10 @@ export class SchemaCollector {
    * 读取主配置文件 (main.prisma)
    */
   private readMainSchema(): string {
-    const mainSchemaPath = path.join(this.schemaDir, "main.prisma");
+    const mainSchemaPath = PATHS.mainSchema;
+    
+    console.log(`尝试读取主配置文件: ${mainSchemaPath}`);
+    console.log(`文件是否存在: ${fs.existsSync(mainSchemaPath)}`);
     
     if (!fs.existsSync(mainSchemaPath)) {
       throw new Error(`主配置文件不存在: ${mainSchemaPath}`);
@@ -128,17 +132,30 @@ export class SchemaCollector {
    * 将合并后的 schema 写入临时文件
    * @param schemaContent 完整的 schema 内容
    */
-  writeTempSchema(schemaContent: string): string {
+  writeTempSchema(schemaContent: string, outputPath?: string): string {
+    const tempSchemaPath = outputPath || path.join(this.outputDir, "schema.prisma");
+    
     // 确保输出目录存在
-    if (!fs.existsSync(this.outputDir)) {
-      fs.mkdirSync(this.outputDir, { recursive: true });
+    const outputDir = path.dirname(tempSchemaPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const tempSchemaPath = path.join(this.outputDir, "schema.prisma");
     fs.writeFileSync(tempSchemaPath, schemaContent, "utf-8");
     
     console.log(`📝 临时 schema 文件已写入: ${path.relative(process.cwd(), tempSchemaPath)}`);
     return tempSchemaPath;
+  }
+
+  /**
+   * 读取临时 schema 文件
+   */
+  readTempSchema(tempSchemaPath: string): string {
+    if (!fs.existsSync(tempSchemaPath)) {
+      throw new Error(`临时 schema 文件不存在: ${tempSchemaPath}`);
+    }
+    
+    return fs.readFileSync(tempSchemaPath, "utf-8");
   }
 
   /**

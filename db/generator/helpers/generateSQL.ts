@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { PATHS } from "../config";
 
 interface TableStructure {
   tableName: string;
@@ -25,7 +26,7 @@ export class SQLGenerator {
   constructor(outputDir: string) {
     this.outputDir = outputDir;
     // 使用与主生成器相同的临时文件路径
-    this.tempSchemaPath = path.join(outputDir, "schema.prisma");
+    this.tempSchemaPath = PATHS.tempSchema;
   }
 
   /**
@@ -72,6 +73,7 @@ export class SQLGenerator {
    * 生成服务端 SQL
    */
   private generateServerSQL(): string {
+    console.log("🔍 生成服务端 SQL...");
     try {
       // 确保临时 schema 文件存在
       if (!fs.existsSync(this.tempSchemaPath)) {
@@ -99,6 +101,7 @@ export class SQLGenerator {
    * 生成客户端 SQL
    */
   private generateClientSQL(): string {
+    console.log("🔍 生成客户端 SQL...");
     try {
       // 先生成基础 SQL
       const baseSQL = this.generateServerSQL();

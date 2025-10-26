@@ -18,9 +18,11 @@ import fs from "fs";
 export class RepositoryGenerator {
   private dmmf: DMMF.Document;
   private models: any[] = [];
+  private allModels: readonly DMMF.Model[] = []; // 包含中间表的完整模型列表
 
-  constructor(dmmf: DMMF.Document) {
+  constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
     this.dmmf = dmmf;
+    this.allModels = allModels;
   }
 
   /**
@@ -54,9 +56,10 @@ export class RepositoryGenerator {
    */
   private async initialize(): Promise<void> {
     try {
-      // 从 DMMF 中提取模型信息
-      this.models = this.dmmf.datamodel.models.map((model: DMMF.Model) => ({
+      // 从完整的模型列表中提取模型信息（包含中间表）
+      this.models = this.allModels.map((model: DMMF.Model) => ({
         name: model.name,
+        dbName: model.dbName, // 保留 dbName 信息
         fields: model.fields.map((field: DMMF.Field) => ({
           name: field.name,
           type: field.type,
@@ -75,7 +78,7 @@ export class RepositoryGenerator {
         uniqueFields: model.uniqueFields || []
       }));
       
-      console.log(`✅ 成功初始化 ${this.models.length} 个模型`);
+      console.log(`✅ 成功初始化 ${this.models.length} 个模型（包含中间表）`);
     } catch (error) {
       console.error("❌ Repository 生成器初始化失败:", error);
       throw error;
@@ -95,9 +98,10 @@ export class RepositoryGenerator {
       }
 
       try {
-        // 生成单个 repository 文件
-        await this.generateRepository(model.name);
-        generatedFiles.push(model.name);
+        // 生成单个 repository 文件，使用 dbName（如果存在）或 name
+        const modelIdentifier = model.dbName || model.name;
+        await this.generateRepository(modelIdentifier);
+        generatedFiles.push(modelIdentifier);
       } catch (error) {
         console.error(`生成 ${model.name} Repository 失败:`, error);
       }
@@ -114,6 +118,7 @@ export class RepositoryGenerator {
    */
   private async generateRepository(modelName: string): Promise<void> {
     const code = await this.generateRepositoryCode(modelName);
+    // 使用完整的模型名称（包括下划线）作为文件名
     const fileName = `${modelName.toLowerCase()}.ts`;
     const outputPath = path.join("db", "generated", "repositories", fileName);
 
@@ -157,239 +162,302 @@ ${crudMethods}
     const tableName = modelName.toLowerCase();
     const pascalName = this.toPascalCase(modelName);
 
+    // 计算相对路径
+    const relativePaths = this.calculateRelativePaths();
+
+    // 对于中间表，使用正确的类型名称
+    const typeName = modelName.startsWith('_') ? this.toPascalCase(modelName.substring(1)) : this.toPascalCase(modelName);
+
     const imports: string[] = [
       `import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";`,
-      `import { getDB } from "../../database";`,
-      `import { DB, ${tableName} } from "../zod/index";`,
-      `import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";`,
-      `import { createId } from "@paralleldrive/cuid2";`,
-      `import { z } from "zod";`,
+      `import { getDB } from "${relativePaths.database}";`,
+      `import { DB, ${typeName} } from "${relativePaths.zod}";`,
     ];
 
+    // 添加 kysely helpers
+    imports.push(
+      `import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";`
+    );
+
+    // 添加 cuid2
+    imports.push(`import { createId } from "@paralleldrive/cuid2";`);
+
+    // 添加 zod
+    imports.push(`import { z } from "zod/v4";`);
+
+    // 添加 schema 导入
+    const schemaImports = this.getSchemaImports(modelName);
+    if (schemaImports.length > 0) {
+      imports.push(`import { ${schemaImports.join(", ")} } from "${relativePaths.zod}";`);
+    }
+
+    // 添加 subRelationFactory
+    imports.push(`import { defineRelations, makeRelations } from "${relativePaths.subRelationFactory}";`);
+    
+    // 添加子关系函数导入
+    const subRelationImports = this.getSubRelationImports(modelName);
+    if (subRelationImports.length > 0) {
+      imports.push(subRelationImports.join("\n"));
+    }
+    
+    // 添加关系 schema 导入
+    const relationSchemaImports = this.getRelationSchemaImports(modelName);
+    if (relationSchemaImports.length > 0) {
+      imports.push(relationSchemaImports.join("\n"));
+    }
+
     return imports.join("\n");
+  }
+
+  /**
+   * 计算相对路径
+   */
+  private calculateRelativePaths(): {
+    database: string;
+    zod: string;
+    subRelationFactory: string;
+  } {
+    // 从输出目录到各个目标目录的相对路径
+    const outputDir = "db/generated/repositories";
+    const dbDir = "db"; // db 目录
+    const repositoriesDir = path.join(dbDir, "repositories");
+    const generatedDir = path.join(dbDir, "generated");
+
+    return {
+      database: path.relative(outputDir, path.join(repositoriesDir, "database")).replace(/\\/g, "/"),
+      zod: path.relative(outputDir, path.join(generatedDir, "zod", "index")).replace(/\\/g, "/"),
+      subRelationFactory: path.relative(outputDir, path.join(repositoriesDir, "subRelationFactory")).replace(/\\/g, "/"),
+    };
+  }
+
+  /**
+   * 判断是否是父级关系
+   */
+  private isParentRelation(fieldName: string): boolean {
+    return fieldName.startsWith('belongTo') || 
+           fieldName.startsWith('usedBy') || 
+           fieldName === 'createdBy' || 
+           fieldName === 'updatedBy';
+  }
+
+  /**
+   * 判断是否是业务父级关系
+   */
+  private isBusinessParentRelation(fieldName: string): boolean {
+    return this.isParentRelation(fieldName);
   }
 
   /**
    * 生成类型定义
    */
   private generateTypes(modelName: string): string {
-    const pascalName = this.toPascalCase(modelName);
     const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
 
-    return `// ${pascalName} 相关类型
-export type ${pascalName}SelectOptions = {
-  include?: {
-    [K in keyof ${pascalName}Relations]?: boolean;
-  };
-};
-
-export type ${pascalName}FindOptions = ${pascalName}SelectOptions & {
-  where?: ExpressionBuilder<DB, "${tableName}">;
-  orderBy?: ExpressionBuilder<DB, "${tableName}">;
-  limit?: number;
-  offset?: number;
-};
-
-export type ${pascalName}WithRelations = ${pascalName} & {
-  [K in keyof ${pascalName}Relations]: ${pascalName}Relations[K] extends Array<infer U> ? U[] : ${pascalName}Relations[K];
-};
-
-export type ${pascalName}Relations = {
-  // 关系字段将在这里定义
-};`;
+    return `// 1. 类型定义
+export type ${pascalName} = Selectable<${tableName}>;
+export type ${pascalName}Insert = Insertable<${tableName}>;
+export type ${pascalName}Update = Updateable<${tableName}>;`;
   }
 
   /**
    * 生成关系定义
    */
   private generateRelations(modelName: string): string {
-    const pascalName = this.toPascalCase(modelName);
     const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const camelName = this.toCamelCase(modelName);
+
+    const generatedRelations = this.generateAllRelations(modelName);
     
-    // 获取模型关系
+    // 过滤掉父级关系，只保留子级关系用于 SubRelationDefs
+    const childRelations = generatedRelations.filter(rel => !this.isBusinessParentRelation(rel.name));
+
+    // 生成 defineRelations - 即使为空也要生成
+    const relationDefs = childRelations
+      .map((rel) => {
+        return `  ${rel.name}: {
+    build: ${rel.buildCode},
+    schema: ${rel.schemaCode},
+  }`;
+      })
+      .join(",\n");
+
+    const relationCode = `// 2. 关系定义
+const ${camelName}SubRelationDefs = defineRelations({
+${relationDefs}
+});
+
+export const ${camelName}RelationsFactory = makeRelations(
+  ${camelName}SubRelationDefs
+);
+
+export const ${pascalName}WithRelationsSchema = z.object({
+  ...${tableName}Schema.shape,
+  ...${camelName}RelationsFactory.schema.shape,
+});
+
+export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelations;`;
+
+    return relationCode;
+  }
+
+  /**
+   * 生成所有关系
+   */
+  private generateAllRelations(modelName: string): any[] {
+    return this.getModelRelations(modelName);
+  }
+
+  /**
+   * 获取需要导入的 schema
+   */
+  private getSchemaImports(modelName: string): string[] {
+    const tableName = modelName.toLowerCase();
+    const schemas = new Set<string>([`${tableName}Schema`]);
+
+    // 添加关系的 schema
     const relations = this.getModelRelations(modelName);
-    
-    if (relations.length === 0) {
-      return `// ${pascalName} 关系定义
-export const ${pascalName}Relations = {};`;
-    }
-
-    let relationsCode = `// ${pascalName} 关系定义
-export const ${pascalName}Relations = {`;
-
     for (const relation of relations) {
-      relationsCode += `
-  ${relation.name}: (eb: ExpressionBuilder<DB, "${tableName}">) => {
-    ${relation.buildCode}
-  },`;
+      // 只添加有效的关系 schema，跳过枚举类型
+      if (relation.targetTable && !relation.targetTable.includes('//')) {
+        const targetSchema = `${relation.targetTable.toLowerCase()}Schema`;
+        schemas.add(targetSchema);
+      }
     }
 
-    relationsCode += `
-};`;
+    return Array.from(schemas);
+  }
 
-    return relationsCode;
+  /**
+   * 获取需要导入的子关系函数
+   */
+  private getSubRelationImports(modelName: string): string[] {
+    const relativePaths = this.calculateRelativePaths();
+    const imports: string[] = [];
+    
+    const relations = this.getModelRelations(modelName);
+    const subRelationMap = new Map<string, string[]>();
+    
+    for (const relation of relations) {
+      if (relation.targetTable && !relation.targetTable.includes('//')) {
+        // 只有非父级关系才需要子关系函数导入
+        const isBusinessParentRelation = this.isBusinessParentRelation(relation.name);
+        if (!isBusinessParentRelation) {
+          const targetTable = relation.targetTable.toLowerCase();
+          
+          // 跳过自引用关系，避免循环导入
+          if (targetTable === modelName.toLowerCase()) {
+            continue;
+          }
+          
+          const subRelationName = `${this.toCamelCase(targetTable)}SubRelations`;
+          
+          if (!subRelationMap.has(targetTable)) {
+            subRelationMap.set(targetTable, []);
+          }
+          subRelationMap.get(targetTable)!.push(subRelationName);
+        }
+      }
+    }
+    
+    // 为每个目标表生成导入语句
+    for (const [targetTable, subRelations] of subRelationMap) {
+      const importPath = `"./${targetTable}"`;
+      imports.push(`import { ${[...new Set(subRelations)].join(", ")} } from ${importPath};`);
+    }
+    
+    return imports;
+  }
+
+  /**
+   * 获取关系 schema 导入
+   */
+  private getRelationSchemaImports(modelName: string): string[] {
+    const imports: string[] = [];
+    
+    const relations = this.getModelRelations(modelName);
+    const schemaMap = new Set<string>();
+    
+    // 获取已经导入的 schema
+    const existingSchemas = this.getSchemaImports(modelName);
+    const existingSchemaSet = new Set(existingSchemas);
+    
+    for (const relation of relations) {
+      // 只处理非业务父级关系
+      if (!this.isBusinessParentRelation(relation.name)) {
+        const relationType = relation.type.toLowerCase();
+        const schemaName = `${relationType}Schema`;
+        
+        // 只添加还没有导入的 schema
+        if (!existingSchemaSet.has(schemaName)) {
+          schemaMap.add(schemaName);
+        }
+      }
+    }
+    
+    // 添加关系 schema 导入
+    if (schemaMap.size > 0) {
+      const schemaImports = Array.from(schemaMap).join(', ');
+      imports.push(`import { ${schemaImports} } from "../zod/index";`);
+    }
+    
+    return imports;
   }
 
   /**
    * 生成 CRUD 方法
    */
   private generateCrudMethods(modelName: string): string {
-    const pascalName = this.toPascalCase(modelName);
     const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
     const camelName = this.toCamelCase(modelName);
 
-    return `// ${pascalName} CRUD 方法
+    const methods: string[] = [];
+    
+    // 检查模型是否有主键
+    const model = this.models.find(m => m.name === modelName);
+    const hasPK = model ? this.hasPrimaryKey(model) : true;
 
-/**
- * 插入 ${pascalName}
- */
-export async function insert${pascalName}(
-  data: Insertable<DB["${tableName}"]>,
-  tx?: Transaction<DB>
-): Promise<Selectable<DB["${tableName}"]]> {
-  const db = tx || getDB();
-  
-  const insertData = {
-    ...data,
-    id: data.id || createId(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  return await db
-    .insertInto("${tableName}")
-    .values(insertData)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-/**
- * 更新 ${pascalName}
- */
-export async function update${pascalName}(
-  id: string,
-  data: Updateable<DB["${tableName}"]>,
-  tx?: Transaction<DB>
-): Promise<Selectable<DB["${tableName}"]]> {
-  const db = tx || getDB();
-
-  return await db
-    .updateTable("${tableName}")
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where("id", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-/**
- * 删除 ${pascalName}
- */
-export async function delete${pascalName}(
-  id: string,
-  tx?: Transaction<DB>
-): Promise<void> {
-  const db = tx || getDB();
-
-  await db
-    .deleteFrom("${tableName}")
-    .where("id", "=", id)
-    .execute();
-}
-
-/**
- * 根据 ID 查询 ${pascalName}
- */
-export async function select${pascalName}ById(
-  id: string,
-  options?: ${pascalName}SelectOptions,
-  tx?: Transaction<DB>
-): Promise<${pascalName}WithRelations | undefined> {
-  const db = tx || getDB();
-
-  let query = db
-    .selectFrom("${tableName}")
-    .selectAll();
-
-  // 添加关系查询
-  if (options?.include) {
-    for (const [relationName, include] of Object.entries(options.include)) {
-      if (include) {
-        const relation = ${pascalName}Relations[relationName as keyof typeof ${pascalName}Relations];
-        if (relation) {
-          query = query.select((eb) => [
-            relation(eb).as(relationName)
-          ]);
-        }
-      }
+    // selectById - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(this.generateSelectById(modelName));
     }
-  }
 
-  return await query
-    .where("id", "=", id)
-    .executeTakeFirst() as ${pascalName}WithRelations | undefined;
-}
+    // selectAll
+    methods.push(this.generateSelectAll(modelName));
 
-/**
- * 查询所有 ${pascalName}
- */
-export async function selectAll${this.pluralize(pascalName)}(
-  options?: ${pascalName}FindOptions,
-  tx?: Transaction<DB>
-): Promise<${pascalName}WithRelations[]> {
-  const db = tx || getDB();
-
-  let query = db
-    .selectFrom("${tableName}")
-    .selectAll();
-
-  // 添加关系查询
-  if (options?.include) {
-    for (const [relationName, include] of Object.entries(options.include)) {
-      if (include) {
-        const relation = ${pascalName}Relations[relationName as keyof typeof ${pascalName}Relations];
-        if (relation) {
-          query = query.select((eb) => [
-            relation(eb).as(relationName)
-          ]);
-        }
-      }
+    // insert
+    methods.push(this.generateInsert(modelName));
+    
+    // 对于没有主键的模型，生成基于唯一约束的查询方法
+    if (!hasPK) {
+      methods.push(this.generateFindByUniqueConstraint(modelName));
+      methods.push(this.generateDeleteByUniqueConstraint(modelName));
     }
-  }
 
-  // 添加条件
-  if (options?.where) {
-    query = query.where(options.where);
-  }
+    // update - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(this.generateUpdate(modelName));
+    }
 
-  // 添加排序
-  if (options?.orderBy) {
-    query = query.orderBy(options.orderBy);
-  }
+    // delete - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(this.generateDelete(modelName));
+    }
 
-  // 添加分页
-  if (options?.limit) {
-    query = query.limit(options.limit);
-  }
+    // selectWithRelations - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(this.generateSelectWithRelations(modelName));
+    }
 
-  if (options?.offset) {
-    query = query.offset(options.offset);
-  }
+    // WithRelations type - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(`// 关联查询类型
+export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pascalName}WithRelations>>;`);
+    }
 
-  return await query.execute() as ${pascalName}WithRelations[];
-}
-
-/**
- * 查询带关系的 ${pascalName}
- */
-export async function select${pascalName}WithRelations(
-  id: string,
-  tx?: Transaction<DB>
-): Promise<${pascalName}WithRelations | undefined> {
-  return await select${pascalName}ById(id, { include: {} }, tx);
-}`;
+    return `// 3. CRUD 方法\n${methods.join("\n\n")}`;
   }
 
   /**
@@ -400,6 +468,9 @@ export async function select${pascalName}WithRelations(
     const typeImports: string[] = [];
     const crudExports: Record<string, any> = {};
 
+    // 计算相对路径
+    const relativePaths = this.calculateRelativePaths();
+
     // 添加所有模型的类型导入
     for (const model of this.models) {
       const modelName = model.name;
@@ -409,7 +480,7 @@ export async function select${pascalName}WithRelations(
       if (this.shouldSkipModel(modelName)) {
         // 跳过的模型从 zod 导入基础类型
         typeImports.push(
-          `import { ${pascalName} } from "../zod/index";`
+          `import { ${pascalName} } from "${relativePaths.zod}";`
         );
       } else if (hasPK) {
         // 有主键的模型导入 WithRelations 类型
@@ -417,6 +488,15 @@ export async function select${pascalName}WithRelations(
           `import { ${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
         );
       }
+    }
+    
+    // 添加中间表的类型导入
+    const intermediateTables = this.getIntermediateTables();
+    for (const tableName of intermediateTables) {
+      const pascalName = this.toPascalCase(tableName);
+      typeImports.push(
+        `import { ${pascalName} } from "${relativePaths.zod}";`
+      );
     }
 
     // 只为实际生成的文件添加 CRUD 导入
@@ -441,20 +521,23 @@ export async function select${pascalName}WithRelations(
           selectAll: `selectAll${this.pluralize(pascalName)}`
         };
       } else {
-        // 无主键的模型：只有 insert 和 findAll
+        // 无主键的模型：只有 insert 和 findAll，以及特殊的查询/删除方法
+        const specialMethods = this.getSpecialMethodsForNoPKModel(modelName);
         crudImports.push(
-          `import { insert${pascalName}, selectAll${this.pluralize(pascalName)} } from "./${modelName.toLowerCase()}";`
+          `import { insert${pascalName}, selectAll${this.pluralize(pascalName)}${specialMethods} } from "./${modelName.toLowerCase()}";`
         );
 
+        const specialExports = this.getSpecialExportsForNoPKModel(modelName);
         crudExports[modelName.toLowerCase()] = {
           insert: `insert${pascalName}`,
-          selectAll: `selectAll${this.pluralize(pascalName)}`
+          selectAll: `selectAll${this.pluralize(pascalName)}`,
+          ...specialExports
         };
       }
     }
 
     // 生成代码
-    const indexCode = `import { DB } from "../zod/index";
+    const indexCode = `import { DB } from "${relativePaths.zod}";
 ${crudImports.join("\n")}
 ${typeImports.join("\n")}
 
@@ -473,52 +556,12 @@ ${this.generateCrudExports(crudExports)}
     console.log("✅ 生成 index.ts");
   }
 
-  /**
-   * 生成类型映射
-   */
-  private generateTypeMapping(generatedFiles: string[]): string {
-    const lines: string[] = [];
-    
-    // 为所有模型生成类型映射（包括跳过的模型）
-    for (const model of this.models) {
-      const modelName = model.name;
-      const pascalName = this.toPascalCase(modelName);
-      const hasPK = this.hasPrimaryKey(model);
-      
-      if (this.shouldSkipModel(modelName)) {
-        lines.push(`  ${modelName}: ${pascalName};`);
-      } else if (hasPK) {
-        lines.push(`  ${modelName}: ${pascalName}WithRelations;`);
-      } else {
-        lines.push(`  ${modelName}: ${pascalName};`);
-      }
-    }
-    
-    return lines.join("\n");
-  }
-
-  /**
-   * 生成 CRUD 导出
-   */
-  private generateCrudExports(crudExports: Record<string, any>): string {
-    const lines: string[] = [];
-    
-    for (const [modelName, methods] of Object.entries(crudExports)) {
-      lines.push(`  ${modelName}: {`);
-      for (const [methodName, methodRef] of Object.entries(methods)) {
-        lines.push(`    ${methodName}: ${methodRef},`);
-      }
-      lines.push(`  },`);
-    }
-    
-    return lines.join("\n");
-  }
 
   /**
    * 获取模型关系
    */
   private getModelRelations(modelName: string): any[] {
-    const model = this.dmmf.datamodel.models.find((m: DMMF.Model) => m.name === modelName);
+    const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
     if (!model) return [];
     
     return model.fields
@@ -526,18 +569,23 @@ ${this.generateCrudExports(crudExports)}
       .map((field: DMMF.Field) => {
         const relationType = this.determineRelationType(field, model);
         const targetTable = field.type.toLowerCase();
+        const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(this.allModels.find((m: DMMF.Model) => m.name === field.type) || model);
         
         let buildCode = '';
+        let schemaCode = '';
         
         switch (relationType) {
           case 'ONE_TO_ONE':
-            buildCode = this.generateOneToOneCode(field, model, targetTable);
+            buildCode = this.generateOneToOneCode(field, model, targetTable, targetPrimaryKey);
+            schemaCode = this.generateSchemaCode(field, model, targetTable);
             break;
           case 'ONE_TO_MANY':
-            buildCode = this.generateOneToManyCode(field, model, targetTable);
+            buildCode = this.generateOneToManyCode(field, model, targetTable, targetPrimaryKey);
+            schemaCode = this.generateSchemaCode(field, model, targetTable);
             break;
           case 'MANY_TO_MANY':
-            buildCode = this.generateManyToManyCode(field, model, targetTable);
+            buildCode = this.generateManyToManyCode(field, model, targetTable, targetPrimaryKey);
+            schemaCode = this.generateSchemaCode(field, model, targetTable);
             break;
         }
         
@@ -549,7 +597,8 @@ ${this.generateCrudExports(crudExports)}
           relationFromFields: field.relationFromFields,
           relationToFields: field.relationToFields,
           relationOnDelete: field.relationOnDelete,
-          buildCode: buildCode
+          buildCode: buildCode,
+          schemaCode: schemaCode
         };
       });
   }
@@ -559,52 +608,240 @@ ${this.generateCrudExports(crudExports)}
    */
   private determineRelationType(field: DMMF.Field, model: DMMF.Model): string {
     if (field.isList) {
+      // 检查是否有反向外键字段
+      const hasReverseForeignKey = this.hasReverseForeignKey(field.type, model.name);
+      
+      if (hasReverseForeignKey) {
+        return 'ONE_TO_MANY';
+      } else {
       return 'MANY_TO_MANY';
-    } else if (field.relationFromFields && field.relationFromFields.length > 0) {
+      }
+    }
+    
       return 'ONE_TO_ONE';
+  }
+
+  /**
+   * 检查是否有反向外键
+   */
+  private hasReverseForeignKey(targetModelName: string, currentModelName: string): boolean {
+    const targetModel = this.allModels.find((m: DMMF.Model) => m.name === targetModelName);
+    if (!targetModel) {
+      return false;
+    }
+
+    // 检查目标模型是否有指向当前模型的关系字段
+    return targetModel.fields.some((field: DMMF.Field) => 
+      field.kind === 'object' && 
+      field.type === currentModelName &&
+      field.relationFromFields && 
+      field.relationFromFields.length > 0
+    );
+  }
+
+  /**
+   * 获取主键字段
+   */
+  private getPrimaryKeyFieldFromModel(model: DMMF.Model): string {
+    const idField = model.fields.find((field: DMMF.Field) => field.isId);
+    if (!idField) {
+      throw new Error(`Model ${model.name} has no primary key field`);
+    }
+    return idField.name;
+  }
+
+  /**
+   * 生成 Schema 代码
+   */
+  private generateSchemaCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
+    if (field.isList) {
+      return `z.array(${targetTable}Schema)`;
     } else {
-      return 'ONE_TO_MANY';
+      return `${targetTable}Schema`;
     }
   }
 
   /**
    * 生成一对一关系代码
    */
-  private generateOneToOneCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
-    const foreignKey = field.relationFromFields?.[0] || 'id';
-    return `return jsonObjectFrom(
-      eb.selectFrom("${targetTable}")
-        .selectAll()
-        .where("${foreignKey}", "=", eb.ref("${model.name.toLowerCase()}.${foreignKey}"))
-    );`;
+  private generateOneToOneCode(field: DMMF.Field, model: DMMF.Model, targetTable: string, targetPrimaryKey: string): string {
+    const isParentRelation = this.isBusinessParentRelation(field.name);
+    
+    // 检查是否是自关系
+    const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
+    
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
+    
+    // 获取当前模型的主键
+    const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
+    
+    if (isParentRelation) {
+      // 父关系：外键在当前模型中，指向目标模型
+      const foreignKey = this.getRelationForeignKey(field, model, targetTable);
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+        jsonObjectFrom(
+          eb
+            .selectFrom("${targetTable}")
+            .where("${targetTable}.${targetPrimaryKey}", "=", id)
+            .selectAll("${targetTable}")
+        ).$notNull().as("${field.name}")`;
+    } else {
+      // 子关系：检查是否有 relationFromFields
+      if (field.relationFromFields && field.relationFromFields.length > 0) {
+        // 外键在当前模型中，指向目标模型
+        const foreignKey = field.relationFromFields[0];
+        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
+        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+          jsonObjectFrom(
+            eb
+              .selectFrom("${targetTable}")
+              .where("${targetTable}.${targetPrimaryKey}", "=", id)
+              .selectAll("${targetTable}")${subRelationCode}
+          ).$notNull().as("${field.name}")`;
+      } else {
+        // 外键在目标表中，指向当前模型
+        const reverseForeignKey = `${model.name.toLowerCase()}Id`;
+        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
+        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+          jsonObjectFrom(
+            eb
+              .selectFrom("${targetTable}")
+              .where("${targetTable}.${reverseForeignKey}", "=", id)
+              .selectAll("${targetTable}")${subRelationCode}
+          ).$notNull().as("${field.name}")`;
+      }
+    }
   }
 
   /**
    * 生成一对多关系代码
    */
-  private generateOneToManyCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
-    const foreignKey = field.relationToFields?.[0] || 'id';
-    return `return jsonArrayFrom(
-      eb.selectFrom("${targetTable}")
-        .selectAll()
-        .where("${foreignKey}", "=", eb.ref("${model.name.toLowerCase()}.id"))
-    );`;
+  private generateOneToManyCode(field: DMMF.Field, model: DMMF.Model, targetTable: string, targetPrimaryKey: string): string {
+    const isParentRelation = this.isBusinessParentRelation(field.name);
+    
+    // 检查是否是自关系
+    const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
+    
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
+    
+    // 获取当前模型的主键
+    const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
+    
+    if (isParentRelation) {
+      // 父关系：外键在目标表中，指向当前模型
+      // 从目标模型中查找指向当前模型的关系字段
+      const targetModel = this.models.find(m => m.name.toLowerCase() === targetTable.toLowerCase());
+      if (!targetModel) {
+        throw new Error(`Target model ${targetTable} not found`);
+      }
+      
+      const reverseField = targetModel.fields.find((f: any) => 
+        f.kind === 'object' && 
+        f.type === model.name &&
+        f.relationFromFields && 
+        f.relationFromFields.length > 0
+      );
+      
+      if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
+        throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
+      }
+      
+      const reverseForeignKey = reverseField.relationFromFields[0];
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+        jsonArrayFrom(
+          eb
+            .selectFrom("${targetTable}")
+            .where("${targetTable}.${reverseForeignKey}", "=", id)
+            .selectAll("${targetTable}")
+        ).as("${field.name}")`;
+    } else {
+      // 子关系：外键在目标表中，指向当前模型
+      // 从目标模型中查找指向当前模型的关系字段
+      const targetModel = this.models.find(m => m.name.toLowerCase() === targetTable.toLowerCase());
+      if (!targetModel) {
+        throw new Error(`Target model ${targetTable} not found`);
+      }
+      
+      const reverseField = targetModel.fields.find((f: any) => 
+        f.kind === 'object' && 
+        f.type === model.name &&
+        f.relationFromFields && 
+        f.relationFromFields.length > 0
+      );
+      
+      if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
+        throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
+      }
+      
+      const reverseForeignKey = reverseField.relationFromFields[0];
+      const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
+      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+        jsonArrayFrom(
+          eb
+            .selectFrom("${targetTable}")
+            .where("${targetTable}.${reverseForeignKey}", "=", id)
+            .selectAll("${targetTable}")${subRelationCode}
+        ).as("${field.name}")`;
+    }
   }
 
   /**
    * 生成多对多关系代码
    */
-  private generateManyToManyCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
-    // 简化实现，实际可能需要更复杂的中间表处理
-    return `return jsonArrayFrom(
-      eb.selectFrom("${targetTable}")
-        .selectAll()
-        .where("id", "in", 
-          eb.selectFrom("_${model.name.toLowerCase()}${this.toPascalCase(field.type)}")
-            .select("${field.type.toLowerCase()}Id")
-            .where("${model.name.toLowerCase()}Id", "=", eb.ref("${model.name.toLowerCase()}.id"))
-        )
-    );`;
+  private generateManyToManyCode(field: DMMF.Field, model: DMMF.Model, targetTable: string, targetPrimaryKey: string): string {
+    const relationName = field.relationName;
+    const intermediateTable = `_${relationName}`;
+    
+    // 检查是否是自关系
+    const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
+    
+    // 只检查自引用关系
+    const shouldSkipImport = isSelfRelation;
+    
+    // 获取当前模型的主键
+    const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
+    
+    const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
+    
+    return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+      jsonArrayFrom(
+        eb
+          .selectFrom("${intermediateTable}")
+          .innerJoin("${targetTable}", "${intermediateTable}.B", "${targetTable}.${targetPrimaryKey}")
+          .where("${intermediateTable}.A", "=", id)
+          .selectAll("${targetTable}")${subRelationCode}
+      ).as("${field.name}")`;
+  }
+
+  /**
+   * 获取关系外键字段
+   */
+  private getRelationForeignKey(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
+    // 优先从 relationFromFields 获取外键字段
+    if (field.relationFromFields && field.relationFromFields.length > 0) {
+      return field.relationFromFields[0];
+    }
+    
+    // 对于反向关系，从目标模型中查找对应的关系字段
+    const targetModel = this.models.find(m => m.name.toLowerCase() === targetTable.toLowerCase());
+    if (targetModel) {
+      // 查找目标模型中指向当前模型的关系字段
+      const reverseField = targetModel.fields.find((f: any) => 
+        f.kind === 'object' && 
+        f.type === model.name &&
+        f.relationFromFields && 
+        f.relationFromFields.length > 0
+      );
+      
+      if (reverseField && reverseField.relationFromFields && reverseField.relationFromFields.length > 0) {
+        return reverseField.relationFromFields[0];
+      }
+    }
+    
+    // 如果找不到，抛出错误而不是猜测
+    throw new Error(`Cannot determine foreign key field for relation ${field.name} in model ${model.name}`);
   }
 
   /**
@@ -648,5 +885,456 @@ ${this.generateCrudExports(crudExports)}
     } else {
       return str + 's';
     }
+  }
+
+  /**
+   * 获取模型的主键字段名
+   */
+  private getPrimaryKeyField(modelName: string): string {
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) {
+      throw new Error(`Model ${modelName} not found`);
+    }
+    
+    return this.getPrimaryKeyFieldFromModel(model);
+  }
+
+  /**
+   * 生成基于唯一约束的查询方法（用于无主键表）
+   */
+  private generateFindByUniqueConstraint(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    
+    // 获取模型的唯一约束字段
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) return '';
+    
+    // 查找唯一约束字段（包括复合唯一约束）
+    const uniqueFields = model.fields.filter((field: any) => field.isUnique);
+    const uniqueIndexes = model.uniqueIndexes || [];
+    
+    // 如果没有唯一字段和唯一索引，返回空
+    if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return '';
+    
+    // 优先处理复合唯一索引
+    if (uniqueIndexes.length > 0) {
+      const index = uniqueIndexes[0]; // 取第一个复合唯一索引
+      const fieldNames = index.fields; // fields 是字符串数组
+      const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      
+      const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
+      
+      return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.selectFrom("${tableName}")
+    ${whereConditions}
+    .selectAll("${tableName}")
+    .executeTakeFirst();
+}`;
+    } else if (uniqueFields.length >= 2) {
+      // 如果有多个唯一字段，生成基于所有唯一字段的查询方法
+      const fieldNames = uniqueFields.map((f: any) => f.name);
+      const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f.name)).join('And');
+      
+      const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
+      
+      return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.selectFrom("${tableName}")
+    ${whereConditions}
+    .selectAll("${tableName}")
+    .executeTakeFirst();
+}`;
+    } else if (uniqueFields.length === 1) {
+      // 如果只有一个唯一字段，生成基于该字段的查询方法
+      const firstUniqueField = uniqueFields[0];
+      return `export async function select${pascalName}By${this.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.selectFrom("${tableName}")
+    .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
+    .selectAll("${tableName}")
+    .executeTakeFirst();
+}`;
+    }
+    
+    return '';
+  }
+
+  /**
+   * 生成基于唯一约束的删除方法（用于无主键表）
+   */
+  private generateDeleteByUniqueConstraint(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    
+    // 查找模型
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) return '';
+    
+    // 查找唯一约束字段（包括复合唯一约束）
+    const uniqueFields = model.fields.filter((field: any) => field.isUnique);
+    const uniqueIndexes = model.uniqueIndexes || [];
+    
+    // 如果没有唯一字段和唯一索引，返回空
+    if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return '';
+    
+    // 优先处理复合唯一索引
+    if (uniqueIndexes.length > 0) {
+      const index = uniqueIndexes[0]; // 取第一个复合唯一索引
+      const fieldNames = index.fields; // fields 是字符串数组
+      const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      
+      const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
+      
+      return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.deleteFrom("${tableName}")
+    ${whereConditions}
+    .returningAll()
+    .executeTakeFirst();
+}`;
+    } else if (uniqueFields.length >= 2) {
+      // 如果有多个唯一字段，生成基于所有唯一字段的删除方法
+      const fieldNames = uniqueFields.map((f: any) => f.name);
+      const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f.name)).join('And');
+      
+      const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
+      
+      return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.deleteFrom("${tableName}")
+    ${whereConditions}
+    .returningAll()
+    .executeTakeFirst();
+}`;
+    } else if (uniqueFields.length === 1) {
+      // 如果只有一个唯一字段，生成基于该字段的删除方法
+      const firstUniqueField = uniqueFields[0];
+      return `export async function delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.deleteFrom("${tableName}")
+    .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
+    .returningAll()
+    .executeTakeFirst();
+}`;
+    }
+    
+    return '';
+  }
+
+  /**
+   * 生成 selectById 方法
+   */
+  private generateSelectById(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    return `export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.selectFrom("${tableName}").where("${primaryKeyField}", "=", id).selectAll("${tableName}").executeTakeFirst();
+}`;
+  }
+
+  /**
+   * 生成 selectAll 方法
+   */
+  private generateSelectAll(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const pluralName = this.pluralize(pascalName);
+
+    return `export async function selectAll${pluralName}(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.selectFrom("${tableName}").selectAll("${tableName}").execute();
+}`;
+  }
+
+  /**
+   * 生成 insert 方法
+   */
+  private generateInsert(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+
+    return `export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.insertInto("${tableName}").values(data).returningAll().executeTakeFirstOrThrow();
+}`;
+  }
+
+  /**
+   * 生成 update 方法
+   */
+  private generateUpdate(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    return `export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.updateTable("${tableName}").set(data).where("${primaryKeyField}", "=", id).returningAll().executeTakeFirstOrThrow();
+}`;
+  }
+
+  /**
+   * 生成 delete 方法
+   */
+  private generateDelete(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    return `export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db.deleteFrom("${tableName}").where("${primaryKeyField}", "=", id).returningAll().executeTakeFirst();
+}`;
+  }
+
+  /**
+   * 生成 selectWithRelations 方法
+   */
+  private generateSelectWithRelations(modelName: string): string {
+    const tableName = modelName.toLowerCase();
+    const pascalName = this.toPascalCase(modelName);
+    const camelName = this.toCamelCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    return `export async function select${pascalName}WithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db
+    .selectFrom("${tableName}")
+    .where("${primaryKeyField}", "=", id)
+    .selectAll("${tableName}")
+    .select((eb) => ${camelName}SubRelations(eb, eb.val(id)))
+    .executeTakeFirstOrThrow();
+}`;
+  }
+
+  /**
+   * 从 DMMF 中获取所有中间表名称
+   */
+  private getIntermediateTables(): string[] {
+    const intermediateTables: string[] = [];
+    
+    // 遍历所有模型，找出中间表（以 _ 开头的表名）
+    for (const model of this.allModels) {
+      if (model.name.startsWith('_')) {
+        intermediateTables.push(model.name);
+      }
+    }
+    
+    return intermediateTables.sort();
+  }
+
+  /**
+   * 判断是否为真正的多对多关系
+   */
+  private isManyToManyRelation(field: any, model: any): boolean {
+    // 检查当前字段是否有显式的外键字段
+    if (field.relationFromFields && field.relationFromFields.length > 0) {
+      return false; // 有外键字段，不是多对多关系
+    }
+    
+    // 检查目标模型的反向关系
+    const targetModel = this.models.find(m => m.name === field.type);
+    if (!targetModel) {
+      return false;
+    }
+    
+    // 找到反向关系字段
+    const reverseField = targetModel.fields.find((f: any) => 
+      f.relationName === field.relationName && f.name !== field.name
+    );
+    
+    if (!reverseField) {
+      return false;
+    }
+    
+    // 反向关系也必须是 isList: true
+    if (!reverseField.isList) {
+      return false;
+    }
+    
+    // 反向关系也不能有外键字段
+    if (reverseField.relationFromFields && reverseField.relationFromFields.length > 0) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * 获取无主键模型的特殊方法导入字符串
+   */
+  private getSpecialMethodsForNoPKModel(modelName: string): string {
+    const pascalName = this.toPascalCase(modelName);
+    
+    // 查找模型
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) return '';
+    
+    // 查找唯一约束字段（包括复合唯一约束）
+    const uniqueFields = model.fields.filter((field: any) => field.isUnique);
+    const uniqueIndexes = model.uniqueIndexes || [];
+    
+    // 如果没有唯一字段和唯一索引，返回空
+    if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return '';
+    
+    // 优先处理复合唯一索引
+    if (uniqueIndexes.length > 0) {
+      const index = uniqueIndexes[0]; // 取第一个复合唯一索引
+      const fieldNames = index.fields; // fields 是字符串数组
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      return `, delete${pascalName}By${pascalFieldNames}`;
+    } else if (uniqueFields.length >= 2) {
+      const pascalFieldNames = uniqueFields.map((f: any) => this.toPascalCase(f.name)).join('And');
+      return `, delete${pascalName}By${pascalFieldNames}`;
+    } else if (uniqueFields.length === 1) {
+      const firstUniqueField = uniqueFields[0];
+      return `, delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}`;
+    }
+    
+    return '';
+  }
+
+  /**
+   * 获取无主键模型的特殊导出对象
+   */
+  private getSpecialExportsForNoPKModel(modelName: string): Record<string, string> {
+    const pascalName = this.toPascalCase(modelName);
+    
+    // 查找模型
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) return {};
+    
+    // 查找唯一约束字段（包括复合唯一约束）
+    const uniqueFields = model.fields.filter((field: any) => field.isUnique);
+    const uniqueIndexes = model.uniqueIndexes || [];
+    
+    // 如果没有唯一字段和唯一索引，返回空
+    if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return {};
+    
+    // 优先处理复合唯一索引
+    if (uniqueIndexes.length > 0) {
+      const index = uniqueIndexes[0]; // 取第一个复合唯一索引
+      const fieldNames = index.fields; // fields 是字符串数组
+      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      return {
+        deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
+      };
+    } else if (uniqueFields.length >= 2) {
+      const pascalFieldNames = uniqueFields.map((f: any) => this.toPascalCase(f.name)).join('And');
+      return {
+        deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
+      };
+    } else if (uniqueFields.length === 1) {
+      const firstUniqueField = uniqueFields[0];
+      return {
+        deleteByUniqueField: `delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}`
+      };
+    }
+    
+    return {};
+  }
+
+  /**
+   * 生成类型映射
+   */
+  private generateTypeMapping(generatedFiles: string[]): string {
+    const lines: string[] = [];
+    
+    // 为所有模型生成类型映射（包括跳过的模型）
+    for (const model of this.models) {
+      const modelName = model.name;
+      const pascalName = this.toPascalCase(modelName);
+      const hasPK = this.hasPrimaryKey(model);
+      
+      if (this.shouldSkipModel(modelName)) {
+        // 跳过的模型使用基础类型
+        lines.push(`  ${modelName.toLowerCase()}: ${pascalName};`);
+      } else if (hasPK) {
+        // 有主键的模型使用 WithRelations 类型
+        lines.push(`  ${modelName.toLowerCase()}: ${pascalName}WithRelations;`);
+      }
+    }
+    
+    // 添加中间表
+    const intermediateTables = this.getIntermediateTables();
+    for (const tableName of intermediateTables) {
+      const pascalName = this.toPascalCase(tableName);
+      lines.push(`  ${tableName}: ${pascalName};`);
+    }
+    
+    return lines.join('\n');
+  }
+
+  /**
+   * 生成 CRUD 导出对象
+   */
+  private generateCrudExports(exports: Record<string, any>): string {
+    // 读取所有表名（包括跳过的表和中间表）
+    const allTables = this.getAllTableNames();
+
+    const lines: string[] = [];
+    for (const tableName of allTables) {
+      const crudMethods = exports[tableName];
+      if (crudMethods) {
+        // 确保所有标准字段都存在，不存在的用 null 表示
+        const methodLines: string[] = [];
+        methodLines.push(`    insert: ${crudMethods.insert || 'null'}`);
+        methodLines.push(`    update: ${crudMethods.update || 'null'}`);
+        methodLines.push(`    delete: ${crudMethods.delete || 'null'}`);
+        methodLines.push(`    select: ${crudMethods.select || 'null'}`);
+        methodLines.push(`    selectWithRelation: ${crudMethods.selectWithRelation || 'null'}`);
+        methodLines.push(`    selectAll: ${crudMethods.selectAll || 'null'}`);
+        
+        // 添加特殊方法
+        Object.keys(crudMethods).forEach(key => {
+          if (!['insert', 'update', 'delete', 'select', 'selectWithRelation', 'selectAll'].includes(key)) {
+            methodLines.push(`    ${key}: ${crudMethods[key]}`);
+          }
+        });
+        
+        lines.push(`  ${tableName}: {
+${methodLines.join(',\n')}
+  }`);
+      } else {
+        // 对于跳过的表和中间表，所有方法都设置为 null
+        lines.push(`  ${tableName}: {
+    insert: null,
+    update: null,
+    delete: null,
+    select: null,
+    selectWithRelation: null,
+    selectAll: null
+  }`);
+      }
+    }
+
+    return lines.join(",\n");
+  }
+
+  /**
+   * 获取所有DB表名（包括模型表和中间表）
+   */
+  private getAllTableNames(): string[] {
+    const tableNames: string[] = [];
+    
+    // 添加所有模型表名
+    for (const model of this.models) {
+      tableNames.push(model.name.toLowerCase());
+    }
+    
+    // 添加中间表名
+    const intermediateTables = this.getIntermediateTables();
+    tableNames.push(...intermediateTables);
+    
+    return tableNames;
   }
 }
