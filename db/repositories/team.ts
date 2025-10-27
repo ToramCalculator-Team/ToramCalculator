@@ -5,7 +5,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { MemberWithRelationsSchema, memberSubRelations } from "./member";
 import { z } from "zod/v4";
-import { teamSchema } from "@db/generated/zod";
+import { TeamSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -30,7 +30,7 @@ const teamSubRelationDefs = defineRelations({
 
 const teamRelationsFactory = makeRelations(teamSubRelationDefs);
 export const TeamWithRelationsSchema = z.object({
-  ...teamSchema.shape,
+  ...TeamSchema.shape,
   ...teamRelationsFactory.schema.shape,
 });
 export const teamSubRelations = teamRelationsFactory.subRelations;

@@ -9,7 +9,7 @@ import { createCharacter } from "./character";
 import { createPlayer } from "./player";
 import { store } from "~/store";
 import { z } from "zod/v4";
-import { mercenarySchema } from "@db/generated/zod";
+import { MercenarySchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -34,7 +34,7 @@ const mercenarySubRelationDefs = defineRelations({
 
 const mercenaryRelationsFactory = makeRelations(mercenarySubRelationDefs);
 export const MercenaryWithRelationsSchema = z.object({
-  ...mercenarySchema.shape,
+  ...MercenarySchema.shape,
   ...mercenaryRelationsFactory.schema.shape,
 });
 export const mercenarySubRelations = mercenaryRelationsFactory.subRelations;
@@ -80,7 +80,7 @@ export async function createMercenary(trx: Transaction<DB>, data: MercenaryInser
     .values({
       ...playerData,
       id: createId(),
-      accountId,
+      belongToAccountId: accountId,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

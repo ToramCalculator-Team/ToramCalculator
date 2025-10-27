@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, mob } from "@db/generated/zod/index";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { drop_itemSchema, itemSchema, mobSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
+import { DropItemSchema, ItemSchema, MobSchema, StatisticSchema, ZoneSchema } from "@db/generated/zod/index";
 import { z  } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -74,7 +74,7 @@ const mobSubRelationDefs = defineRelations({
           .where("_mobTozone.A", "=", id)
           .selectAll("zone")
       ).as("belongToZones"),
-    schema: z.array(zoneSchema).describe("所属区域名称列表"),
+    schema: z.array(ZoneSchema).describe("所属区域名称列表"),
   },
   dropItems: {
     build: (eb, id) =>
@@ -84,7 +84,7 @@ const mobSubRelationDefs = defineRelations({
           .where("drop_item.belongToMobId", "=", id)
           .selectAll("item")
       ).as("dropItems"),
-    schema: z.array(itemSchema).describe("掉落物品列表"),
+    schema: z.array(ItemSchema).describe("掉落物品列表"),
   },
   statistic: {
     build: (eb, id) =>{
@@ -93,7 +93,7 @@ const mobSubRelationDefs = defineRelations({
           .whereRef("id", "=", "mob.statisticId")
           .selectAll("statistic")
       ).$notNull().as("statistic")},
-    schema: statisticSchema.describe("对应的属性对象"),
+    schema: StatisticSchema.describe("对应的属性对象"),
   },
 })
 
@@ -104,7 +104,7 @@ export const mobRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const MobWithRelationsSchema = z.object({
-  ...mobSchema.shape,
+  ...MobSchema.shape,
   ...mobRelationsFactory.schema.shape,
 });
 

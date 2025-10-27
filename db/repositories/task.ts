@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, task } from "@db/generated/zod/index";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { taskSchema, task_rewardSchema } from "../generated/zod/index";
+import { TaskSchema, TaskRewardSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -22,7 +22,7 @@ const taskSubRelationDefs = defineRelations({
           .where("task_reward.belongToTaskId", "=", id)
           .selectAll("task_reward")
       ).as("rewards"),
-    schema: z.array(task_rewardSchema).describe("任务奖励列表"),
+    schema: z.array(TaskRewardSchema).describe("任务奖励列表"),
   },
 });
 
@@ -33,7 +33,7 @@ export const taskRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const TaskWithRelationsSchema = z.object({
-  ...taskSchema.shape,
+  ...TaskSchema.shape,
   ...taskRelationsFactory.schema.shape,
 });
 

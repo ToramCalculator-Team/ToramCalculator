@@ -7,7 +7,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
-import { optionSchema, itemSchema } from "@db/generated/zod";
+import { OptionSchema, ItemSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -34,8 +34,8 @@ const optionSubRelationDefs = defineRelations({
 
 const optionRelationsFactory = makeRelations(optionSubRelationDefs);
 export const OptionWithRelationsSchema = z.object({
-  ...optionSchema.shape,
-  ...itemSchema.shape,
+  ...OptionSchema.shape,
+  ...ItemSchema.shape,
   ...optionRelationsFactory.schema.shape,
 });
 export const optionSubRelations = optionRelationsFactory.subRelations;

@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, statistic } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { statisticSchema } from "../generated/zod/index";
+import { StatisticSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -21,7 +21,7 @@ export const statisticRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const StatisticWithRelationsSchema = z.object({
-  ...statisticSchema.shape,
+  ...StatisticSchema.shape,
   ...statisticRelationsFactory.schema.shape,
 });
 

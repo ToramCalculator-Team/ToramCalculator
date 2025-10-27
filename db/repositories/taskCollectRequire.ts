@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, task_collect_require } from "@db/generated/zod/index";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { itemSchema, task_collect_requireSchema } from "@db/generated/zod";
+import { ItemSchema, TaskCollectRequireSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -22,13 +22,13 @@ const taskCollectRequireSubRelationDefs = defineRelations({
           .whereRef("item.id", "=", "task_collect_require.itemId")
           .selectAll("item")
       ).$notNull().as("item"),
-    schema: itemSchema.describe("关联物品"),
+    schema: ItemSchema.describe("关联物品"),
   },
 });
 
 const taskCollectRequireRelationsFactory = makeRelations(taskCollectRequireSubRelationDefs);
 export const TaskCollectRequireWithRelationsSchema = z.object({
-  ...task_collect_requireSchema.shape,
+  ...TaskCollectRequireSchema.shape,
   ...taskCollectRequireRelationsFactory.schema.shape,
 });
 export const taskCollectRequireSubRelations = taskCollectRequireRelationsFactory.subRelations;

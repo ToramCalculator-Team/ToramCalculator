@@ -2,7 +2,7 @@ import { Transaction, Selectable, Insertable, Updateable, Expression, Expression
 import { getDB } from "./database";
 import { DB, image } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { imageSchema } from "../generated/zod/index";
+import { ImageSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -21,7 +21,7 @@ export const imageRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const ImageWithRelationsSchema = z.object({
-  ...imageSchema.shape,
+  ...ImageSchema.shape,
   ...imageRelationsFactory.schema.shape,
 });
 

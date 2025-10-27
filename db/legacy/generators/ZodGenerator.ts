@@ -10,10 +10,12 @@ import { EnumProcessor } from "../processors/EnumProcessor";
 export class ZodGenerator {
   private dmmf: any;
   private enumProcessor: EnumProcessor;
+  private allModels: any[]; // 包含所有表的完整模型列表
 
-  constructor(dmmf: any, enumProcessor: EnumProcessor) {
+  constructor(dmmf: any, enumProcessor: EnumProcessor, allModels: any[] = []) {
     this.dmmf = dmmf;
     this.enumProcessor = enumProcessor;
+    this.allModels = allModels.length > 0 ? allModels : dmmf.datamodel.models;
   }
 
   /**
@@ -60,14 +62,19 @@ export class ZodGenerator {
   }
 
   /**
-   * 从 DMMF 生成模型 schemas
+   * 从 allModels 生成模型 schemas（不包括中间表）
    * @returns 模型 schemas 内容
    */
   private generateModelSchemas(): string {
     let modelSchemas = "";
 
-    // 从 DMMF 中提取模型信息
-    for (const model of this.dmmf.datamodel.models) {
+    // 从 allModels 中提取常规模型（排除中间表）
+    for (const model of this.allModels) {
+      // 跳过中间表（以下划线开头）
+      if (model.dbName?.startsWith('_') || model.name.startsWith('_')) {
+        continue;
+      }
+      
       const schemaName = `${model.name.toLowerCase()}Schema`;
       const typeName = model.name;
       
@@ -90,105 +97,31 @@ export class ZodGenerator {
   }
 
   /**
-   * 从 SQL 文件中提取中间表信息
-   * @returns 中间表信息数组
-   */
-  private extractIntermediateTables(): Array<{name: string, fields: Array<{name: string, type: string}>}> {
-    const intermediateTables: Array<{name: string, fields: Array<{name: string, type: string}>}> = [];
-    
-    try {
-      const sqlContent = FileUtils.safeReadFile(PATHS.serverDB.sql);
-      
-      // 匹配 CREATE TABLE "_tableName" 的模式
-      const createTableRegex = /CREATE TABLE "(_[^"]+)"\s*\(([\s\S]*?)\);/g;
-      let match;
-      
-      while ((match = createTableRegex.exec(sqlContent)) !== null) {
-        const tableName = match[1];
-        const fieldsContent = match[2];
-        
-        // 提取字段信息
-        const fields: Array<{name: string, type: string}> = [];
-        
-        // 匹配字段定义：字段名 类型 [NOT NULL]
-        const fieldRegex = /"([^"]+)"\s+([A-Z]+)(?:\s+NOT\s+NULL)?(?:,|\s*$)/g;
-        let fieldMatch;
-        
-        while ((fieldMatch = fieldRegex.exec(fieldsContent)) !== null) {
-          const fieldName = fieldMatch[1];
-          const fieldType = fieldMatch[2];
-          
-          // 确保是真正的字段定义，不是约束
-          if (fieldName && fieldType && !fieldName.includes('CONSTRAINT') && !fieldName.includes('PRIMARY') && !fieldName.includes('FOREIGN')) {
-            fields.push({
-              name: fieldName,
-              type: fieldType
-            });
-          }
-        }
-        
-        if (fields.length > 0) {
-          intermediateTables.push({
-            name: tableName,
-            fields: fields
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to extract intermediate tables from SQL:', error);
-    }
-    
-    return intermediateTables;
-  }
-
-  /**
-   * 生成中间表的 Zod schemas
+   * 生成中间表的 Zod schemas（从 allModels 中提取）
    * @returns 中间表 schemas 内容
    */
   private generateIntermediateTableSchemas(): string {
     let intermediateSchemas = "";
     
-    const intermediateTables = this.extractIntermediateTables();
-    
-    for (const table of intermediateTables) {
-      const schemaName = `${table.name.toLowerCase()}Schema`;
-      const typeName = this.convertToPascalCase(table.name);
-      
-      const fieldsStr = table.fields
-        .map(field => {
-          // 将 SQL 类型转换为 Zod 类型
-          let zodType = "z.string()";
-          
-          switch (field.type.toLowerCase()) {
-            case 'int':
-            case 'integer':
-              zodType = "z.number().int()";
-              break;
-            case 'bigint':
-              zodType = "z.bigint()";
-              break;
-            case 'boolean':
-            case 'bool':
-              zodType = "z.boolean()";
-              break;
-            case 'timestamp':
-            case 'timestamptz':
-              zodType = "z.coerce.date()";
-              break;
-            case 'json':
-            case 'jsonb':
-              zodType = "z.unknown()";
-              break;
-            default:
-              zodType = "z.string()";
-          }
-          
-          return `  ${field.name}: ${zodType}`;
-        })
-        .join(",\n");
+    // 从 allModels 中提取中间表（以下划线开头的表）
+    for (const model of this.allModels) {
+      // 检查是否为中间表（以下划线开头）
+      if (model.dbName?.startsWith('_') || model.name.startsWith('_')) {
+        const tableName = model.dbName || model.name;
+        const schemaName = `${tableName.toLowerCase()}Schema`;
+        const typeName = this.convertToPascalCase(tableName);
+        
+        const fieldsStr = model.fields
+          .filter((field: any) => field.kind === "scalar")
+          .map((field: any) => {
+            const zodType = this.convertFieldToZod(field);
+            return `  ${field.name}: ${zodType}`;
+          })
+          .join(",\n");
 
-      intermediateSchemas += `export const ${schemaName} = z.object({\n${fieldsStr}\n});\n`;
-      intermediateSchemas += `export type ${typeName} = z.output<typeof ${schemaName}>;\n\n`;
+        intermediateSchemas += `export const ${schemaName} = z.object({\n${fieldsStr}\n});\n`;
+        intermediateSchemas += `export type ${typeName} = z.output<typeof ${schemaName}>;\n\n`;
+      }
     }
     
     return intermediateSchemas;
@@ -213,17 +146,18 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;`;
   private generateDBInterface(): string {
     let dbInterface = "// DB 接口\nexport interface DB {\n";
     
-    // 添加常规模型
-    for (const model of this.dmmf.datamodel.models) {
-      dbInterface += `  ${model.name.toLowerCase()}: ${model.name};\n`;
-    }
-    
-    // 添加中间表
-    const intermediateTables = this.extractIntermediateTables();
-    for (const table of intermediateTables) {
-      // 中间表名保持小写，但类型名使用正确的 PascalCase
-      const pascalCaseName = this.convertToPascalCase(table.name);
-      dbInterface += `  ${table.name}: ${pascalCaseName};\n`;
+    // 添加所有模型（包括中间表）
+    for (const model of this.allModels) {
+      const tableName = model.dbName || model.name;
+      
+      if (tableName.startsWith('_')) {
+        // 中间表使用 PascalCase 类型名
+        const pascalCaseName = this.convertToPascalCase(tableName);
+        dbInterface += `  ${tableName}: ${pascalCaseName};\n`;
+      } else {
+        // 常规模型使用原始名称
+        dbInterface += `  ${tableName}: ${tableName};\n`;
+      }
     }
     
     dbInterface += "}";

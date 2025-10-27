@@ -5,7 +5,7 @@ import { store } from "~/store";
 import { createStatistic } from "./statistic";
 import { Transaction, Selectable, Insertable, Updateable, Expression, ExpressionBuilder } from "kysely";
 import { jsonObjectFrom, jsonArrayFrom } from "kysely/helpers/postgres";
-import { addressSchema, worldSchema, statisticSchema, zoneSchema } from "../generated/zod/index";
+import { AddressSchema, WorldSchema, StatisticSchema, ZoneSchema } from "../generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -23,7 +23,7 @@ const addressSubRelationDefs = defineRelations({
           .where("statistic.id", "=", eb.ref("address.statisticId"))
           .selectAll("statistic")
       ).$notNull().as("statistic"),
-    schema: statisticSchema.describe("统计信息"),
+    schema: StatisticSchema.describe("统计信息"),
   },
   zones: {
     build: (eb, id) =>
@@ -32,7 +32,7 @@ const addressSubRelationDefs = defineRelations({
           .where("zone.addressId", "=", id)
           .selectAll("zone")
       ).as("zones"),
-    schema: z.array(zoneSchema).describe("所属区域列表"),
+    schema: z.array(ZoneSchema).describe("所属区域列表"),
   },
 });
 
@@ -43,7 +43,7 @@ export const addressRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const AddressWithRelationsSchema = z.object({
-  ...addressSchema.shape,
+  ...AddressSchema.shape,
   ...addressRelationsFactory.schema.shape,
 });
 

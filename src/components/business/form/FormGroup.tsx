@@ -3,13 +3,15 @@
  * 
  * 用于展示DB内的数据，form是特化的form
  */
-import { DB } from "@db/generated/zod/index";
+import { DB, DBSchema } from "@db/generated/zod/index";
 import { createResource, Show, Index, createMemo } from "solid-js";
 import { Presence, Motion } from "solid-motionone";
 import { DBDataConfig } from "~/routes/(app)/(features)/wiki/dataConfig/dataConfig";
 import { setStore, Store, store } from "~/store";
 import { Form } from "~/components/dataDisplay/form";
 import { getDictionary } from "~/locales/i18n";
+import { repositoryMethods } from "@db/generated/repositories";
+import { DBForm } from "./Form";
 
 
 export const FormGroup = () => {
@@ -35,27 +37,16 @@ export const FormGroup = () => {
             {(formData, index) => {
               const formGroupItem = store.pages.formGroup[index];
               return (
-                <Form
-                  display={formDatas()!.length - index < 5}
-                  title={
-                    formData() && "name" in formData()
-                      ? (formData()["name"] as string)
-                      : formGroupItem?.type
-                        ? dictionary().db[formGroupItem.type].selfName
-                        : "" // 关闭时Index还在渲染，可能获取到undefined
-                  }
-                  index={index}
-                  total={formDatas()!.length}
+                <DBForm
+                  tableName={formGroupItem.type}
+                  initialValue={formData() as any}
+                  dataSchema={DBSchema[formGroupItem.type]}
+                  dictionary={dictionary().db[formGroupItem.type]}
+                  hiddenFields={[]}
+                  fieldGroupMap={{}}
+                  onSubmit={(values) => repositoryMethods[formGroupItem.type].insert?.(values as any) ?? undefined}
                 >
-                  <Show when={formGroupItem?.type}>
-                    {(type) => {
-                      return DBDataConfig[type()]?.form({
-                        dic: dictionary(),
-                        data: formData(),
-                      });
-                    }}
-                  </Show>
-                </Form>
+                </DBForm>
               );
             }}
           </Index>

@@ -5,7 +5,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { player_armorSchema, itemSchema } from "@db/generated/zod";
+import { PlayerArmorSchema, ItemSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -28,7 +28,7 @@ const playerArmorSubRelationDefs = defineRelations({
       ).as("crystalList"),
     schema: z.array(
       z.object({
-        ...itemSchema.shape,
+        ...ItemSchema.shape,
         ...CrystalWithRelationsSchema.shape,
       })
     ).describe("水晶列表"),
@@ -37,7 +37,7 @@ const playerArmorSubRelationDefs = defineRelations({
 
 const playerArmorRelationsFactory = makeRelations(playerArmorSubRelationDefs);
 export const PlayerArmorWithRelationsSchema = z.object({
-  ...player_armorSchema.shape,
+  ...PlayerArmorSchema.shape,
   ...playerArmorRelationsFactory.schema.shape,
 });
 export const playerArmorSubRelations = playerArmorRelationsFactory.subRelations;

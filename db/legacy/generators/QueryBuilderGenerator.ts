@@ -38,10 +38,12 @@ interface Model {
 export class QueryBuilderGenerator {
   private dmmf: any;
   private enumProcessor: EnumProcessor;
+  private allModels: any[]; // 包含所有表的完整模型列表
 
-  constructor(dmmf: any, enumProcessor: EnumProcessor) {
+  constructor(dmmf: any, enumProcessor: EnumProcessor, allModels: any[] = []) {
     this.dmmf = dmmf;
     this.enumProcessor = enumProcessor;
+    this.allModels = allModels.length > 0 ? allModels : dmmf.datamodel.models;
   }
 
   /**

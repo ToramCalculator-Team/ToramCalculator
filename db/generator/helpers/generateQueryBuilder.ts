@@ -6,6 +6,7 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { NamingRules } from "../utils/namingRules";
 
 interface FieldConfig {
   name: string;
@@ -153,7 +154,7 @@ export const OPERATORS = {
 
     // 生成枚举配置
     for (const [enumName, values] of Object.entries(enums)) {
-      const pascalEnumName = this.toPascalCase(enumName);
+      const pascalEnumName = NamingRules.toPascalCase(enumName);
       rulesContent += `export const ${pascalEnumName}Enum = [
   ${values.map(v => `{ label: "${v}", value: "${v}" }`).join(",\n  ")}
 ];
@@ -262,13 +263,4 @@ export const OPERATORS = {
     ];
   }
 
-  /**
-   * 将字符串转换为 PascalCase
-   */
-  private toPascalCase(str: string): string {
-    return str
-      .split(/[-_\s]+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join('');
-  }
 }

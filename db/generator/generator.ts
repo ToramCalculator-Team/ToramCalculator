@@ -17,6 +17,7 @@ import { QueryBuilderGenerator } from "./helpers/generateQueryBuilder";
 import { RepositoryGenerator } from "./helpers/generateRepository";
 import { SQLGenerator } from "./helpers/generateSQL";
 import { PATHS } from "./config";
+import { writeFileSafely } from "./utils/writeFileSafely";
 
 const { generatorHandler } = pkg;
 
@@ -36,7 +37,6 @@ generatorHandler({
 
       // Schema 准备阶段
       // 注意：此时临时 schema 文件应该已经由第一阶段的脚本生成
-      // 我们只需要读取它来生成 SQL
       console.log("📋 Schema 准备完成（使用临时 schema 文件）");
 
       // 读取临时 schema 文件
@@ -54,9 +54,6 @@ generatorHandler({
         .filter((e): e is EnumType => !!e);
 
       // Generate DMMF models for implicit many to many tables
-      //
-      // (I don't know why you would want to use implicit tables
-      // with kysely, but hey, you do you)
       const implicitManyToManyModels = generateImplicitManyToManyModels(options.dmmf.datamodel.models);
 
       const hasMultiSchema = options.datasources.some((d) => d.schemas.length > 0);
@@ -64,12 +61,11 @@ generatorHandler({
       const multiSchemaMap =
         config.groupBySchema || hasMultiSchema ? parseMultiSchemaMap(options.datamodel) : undefined;
 
-      // Generate model types
-      let models = sorted([...options.dmmf.datamodel.models, ...implicitManyToManyModels], (a, b) =>
+      // 包含中间表的完整模型列表
+      let allModels = sorted([...options.dmmf.datamodel.models, ...implicitManyToManyModels], (a, b) =>
         a.name.localeCompare(b.name),
       );
 
-      // 并行生成所有文件（除了 SQL，因为它需要 schema 内容）
       console.log("📊 并行生成所有文件...");
       const outputDir = options.generator.output?.value || "";
 
@@ -77,7 +73,7 @@ generatorHandler({
         // Generate database schema info
         (async () => {
           console.log("📊 生成数据库架构信息...");
-          const databaseSchemaGenerator = new DatabaseSchemaGenerator(options.dmmf);
+          const databaseSchemaGenerator = new DatabaseSchemaGenerator(options.dmmf, allModels);
           const databaseSchemaPath = PATHS.dmmf;
           await databaseSchemaGenerator.generate(databaseSchemaPath);
         })(),
@@ -85,7 +81,7 @@ generatorHandler({
         // Generate Zod schemas
         (async () => {
           console.log("🔍 生成 Zod schemas...");
-          const zodGenerator = new ZodGenerator(options.dmmf, models);
+          const zodGenerator = new ZodGenerator(options.dmmf, allModels);
           const zodPath = PATHS.zodSchema;
           await zodGenerator.generate(zodPath);
         })(),
@@ -93,7 +89,7 @@ generatorHandler({
         // Generate QueryBuilder rules
         (async () => {
           console.log("🔍 生成 QueryBuilder 规则...");
-          const queryBuilderGenerator = new QueryBuilderGenerator(options.dmmf, models);
+          const queryBuilderGenerator = new QueryBuilderGenerator(options.dmmf, allModels);
           const queryBuilderPath = PATHS.queryBuilderRules;
           await queryBuilderGenerator.generate(queryBuilderPath);
         })(),
@@ -101,7 +97,7 @@ generatorHandler({
         // Generate Repository
         (async () => {
           console.log("🔍 生成 Repository 文件...");
-          const repositoryGenerator = new RepositoryGenerator(options.dmmf, models);
+          const repositoryGenerator = new RepositoryGenerator(options.dmmf, allModels);
           const repositoryPath = PATHS.repositoriesOutput;
           await repositoryGenerator.generate(repositoryPath);
         })(),

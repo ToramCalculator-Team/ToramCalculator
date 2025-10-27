@@ -14,7 +14,7 @@ services:
       - /var/lib/postgresql/data
       - /tmp
     volumes:
-      - ../db/generated/serverDB/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../db/generated/server.sql:/docker-entrypoint-initdb.d/init.sql
     command:
       - -c
       - listen_addresses=*

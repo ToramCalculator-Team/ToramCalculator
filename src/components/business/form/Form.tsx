@@ -16,16 +16,14 @@ import { Autocomplete } from "~/components/controls/autoComplete";
 import { getDictionary } from "~/locales/i18n";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { store, setStore } from "~/store";
-import { DB } from "~/../db/generated/zod";
+import { DB } from "@db/generated/zod/index";
 import { 
-  isForeignKeyFieldSafe, 
+  isForeignKeyField, 
   getForeignKeyFields,
   getPrimaryKeyFields,
   isPrimaryKeyField,
-  getFieldDisplayName,
-  getForeignKeyReferenceSafe,
-  getReferencedTableName
-} from "~/utils/formUtils";
+  getForeignKeyReference,
+} from "@db/generated/database-schema";
 
 export interface DBFormProps<T extends keyof DB> {
   tableName: T;
@@ -78,8 +76,8 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
         const hasGenerator = !!fieldGenerator;
         
         // 检查是否为外键字段
-        const isForeignKey = isForeignKeyFieldSafe(props.tableName, key);
-        const isPrimaryKey = isPrimaryKeyField(props.tableName, key);
+        const isForeignKey = isForeignKeyField(props.tableName, fieldName);
+        const isPrimaryKey = isPrimaryKeyField(props.tableName, fieldName);
 
         // 处理嵌套结构
         switch (schemaFieldValue.type) {
@@ -97,7 +95,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                   const arrayValue = () => field().state.value as string[];
                   return (
                     <Input
-                      title={getFieldDisplayName(fieldName)}
+                      title={fieldName}
                       description=""
                       state={fieldInfo(field())}
                       class="border-dividing-color bg-primary-color w-full rounded-md border"
@@ -157,15 +155,14 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                     return fieldGenerator(field, props.dictionary, props.dataSchema);
                   } else if (isForeignKey) {
                     // 外键字段使用 AutoComplete
-                    const referenceInfo = getForeignKeyReferenceSafe(props.tableName, fieldName);
-                    const referencedTable = getReferencedTableName(props.tableName, fieldName);
+                    const referencedTable = getForeignKeyReference(props.tableName, fieldName);
                     
                     if (referencedTable) {
                       
                       return (
                         <Input
-                          title={getFieldDisplayName(fieldName)}
-                          description={`选择 ${referencedTable} 记录`}
+                          title={referencedTable.table}
+                          description={`选择 ${referencedTable.table} 记录`}
                           state={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color rounded-md border w-full"
                         >
@@ -276,7 +273,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 }) {
   // 获取字段名
   const fieldName = props.field().name;
-  let inputTitle = getFieldDisplayName(fieldName);
+  let inputTitle = props.dictionary.selfName;
   let inputDescription = "";
   
   try {

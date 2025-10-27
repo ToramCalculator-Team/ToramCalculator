@@ -1,6 +1,6 @@
 // 由于DeepKeys<T>与for方法的遍历结果不一致，目前存在许多ts问题，但是不影响实际使用，暂时忽略
 
-import { selectZoneById } from "@db/generated/repository/zone";
+import { selectZoneById } from "@db/generated/repositories/zone";
 import { AnyFieldApi, createForm, DeepKeys, DeepValue, Field } from "@tanstack/solid-form";
 import { Show, For, Accessor, createMemo, Index } from "solid-js";
 import { JSX } from "solid-js/jsx-runtime";

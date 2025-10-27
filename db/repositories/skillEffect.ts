@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, skill_effect } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { skill_effectSchema } from "@db/generated/zod";
+import { SkillEffectSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -21,7 +21,7 @@ export const skillEffectRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const SkillEffectWithRelationsSchema = z.object({
-  ...skill_effectSchema.shape,
+  ...SkillEffectSchema.shape,
   ...skillEffectRelationsFactory.schema.shape,
 });
 

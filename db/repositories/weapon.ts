@@ -8,7 +8,7 @@ import { createItem } from "./item";
 import { store } from "~/store";
 import { crystalSubRelations } from "./crystal";
 import { CrystalWithRelationsSchema } from "./crystal";
-import { weaponSchema } from "@db/generated/zod";
+import { WeaponSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -35,7 +35,7 @@ const weaponSubRelationDefs = defineRelations({
 
 const weaponRelationsFactory = makeRelations(weaponSubRelationDefs);
 export const WeaponWithRelationsSchema = z.object({
-  ...weaponSchema.shape,
+  ...WeaponSchema.shape,
   ...weaponRelationsFactory.schema.shape,
 });
 export const weaponSubRelations = weaponRelationsFactory.subRelations;

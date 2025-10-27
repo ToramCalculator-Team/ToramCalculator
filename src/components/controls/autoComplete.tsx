@@ -19,11 +19,9 @@ import {
 import Icons from "~/components/icons/index";
 import { DB } from "@db/generated/zod";
 import { setStore, store } from "~/store";
-import { DATABASE_SCHEMA } from "@db/generated/database-schema";
-import { repositoryMethods } from "@db/generated/repository";
-import { getDisplayField, isValidDisplayField } from "~/utils/fieldUtils";
+import { getPrimaryKeyFields } from "@db/generated/database-schema";
+import { repositoryMethods } from "@db/generated/repositories";
 import { Button } from "./button";
-import { getPrimaryKeyFields } from "~/utils/formUtils";
 
 interface AutocompleteProps<K extends keyof DB, T extends DB[K], P extends Partial<T>>
   extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
@@ -52,10 +50,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
   const [displayField, setDisplayField] = createSignal<keyof DB[K]>("id" as keyof DB[K]);
 
   // 缓存主键字段，避免重复查找
-  const primaryKeys = createMemo(() => {
-    const table = DATABASE_SCHEMA.tables.find((table: any) => table.name === props.table);
-    return table?.primaryKeys || ["id"];
-  });
+  const primaryKeys = createMemo(() => getPrimaryKeyFields(props.table));
 
   // 显示值，作为input的value
   const [inputValue, setInputValue] = createSignal("");
@@ -66,7 +61,13 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
 
     // 动态确定显示字段（只在第一次获取时确定）
     if (options && options.length > 0 && displayField() === "id") {
-      const detectedField = getDisplayField(props.table, options);
+      const typeObj = options[0];
+      let detectedField: keyof DB[K];
+      if ("name" in typeObj && typeof typeObj.name === "string") {
+        detectedField = "name" as keyof DB[K];
+      } else {
+        detectedField = "id" as keyof DB[K];
+      }
       setDisplayField(() => detectedField);
 
       // 设置初始显示值
@@ -99,11 +100,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
     return currentOptions.filter((option) => {
       const fieldValue = option[currentDisplayField as keyof T];
 
-      if (!isValidDisplayField(fieldValue)) {
-        return false;
-      }
-
-      return (fieldValue as string).toLowerCase().includes(searchValue);
+      return String(fieldValue).toLowerCase().includes(searchValue);
     });
   });
 
@@ -201,13 +198,14 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
                     e.preventDefault();
                     e.stopPropagation();
                     setDetailVisible((prev) => !prev);
-                    const currentPrimaryKeys = primaryKeys();
-                    if (!currentPrimaryKeys || currentPrimaryKeys.length === 0) {
+                    const currentPrimary = primaryKeys();
+                    if (!currentPrimary) {
                       return;
                     }
+                    console.log(currentPrimary);
                     setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                       type: props.table,
-                      id: option[currentPrimaryKeys[0] as keyof T] as string,
+                      id: String(currentPrimary),
                     }); // 基本上用到的表都只有单主键，没有复合主键，所以直接取第一个
                   }}
                 >

@@ -2,7 +2,7 @@ import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Upd
 import { getDB } from "./database";
 import { DB, avatar } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { avatarSchema } from "../generated/zod/index";
+import { AvatarSchema } from "../generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -21,7 +21,7 @@ export const avatarRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const AvatarWithRelationsSchema = z.object({
-  ...avatarSchema.shape,
+  ...AvatarSchema.shape,
   ...avatarRelationsFactory.schema.shape,
 });
 

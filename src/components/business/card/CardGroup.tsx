@@ -11,7 +11,8 @@ import { setStore, Store, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { repositoryMethods } from "@db/generated/repositories";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { FieldGenMap, ObjRender } from "../dataDisplay/objRender";
+import { Card } from "./Card";
+import { DBdataRenderer } from "./DBdataRenderer";
 
 const cardDataCache = new Map<string, any>();
 
@@ -68,7 +69,7 @@ export const CardGroup = () => {
                 >
                   <Show when={cardData()} fallback={<pre>{JSON.stringify(cardData(), null, 2)}</pre>}>
                     {(cardData) => (
-                      <ObjRender
+                      <DBdataRenderer
                         data={cardData()}
                         dataSchema={DBSchema[cardGroupItem.type]}
                         dictionary={dictionary().db[cardGroupItem.type]}

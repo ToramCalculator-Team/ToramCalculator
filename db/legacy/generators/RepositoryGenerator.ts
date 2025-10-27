@@ -22,11 +22,13 @@ import { execSync } from "child_process";
  */
 export class RepositoryGenerator {
   private dmmf: any;
+  private allModels: any[]; // 包含所有表的完整模型列表
   private cascadeAnalyzer!: CascadeAnalyzer;
   private models: any[] = [];
 
-  constructor(dmmf: any) {
+  constructor(dmmf: any, allModels: any[] = []) {
     this.dmmf = dmmf;
+    this.allModels = allModels;
   }
 
   /**

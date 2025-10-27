@@ -9,6 +9,13 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { 
+  ZodTypeName, 
+  SchemaName, 
+  TypeName, 
+  FileName,
+  NamingRules 
+} from "../utils/namingRules";
 import path from "path";
 import fs from "fs";
 
@@ -118,8 +125,8 @@ export class RepositoryGenerator {
    */
   private async generateRepository(modelName: string): Promise<void> {
     const code = await this.generateRepositoryCode(modelName);
-    // 使用完整的模型名称（包括下划线）作为文件名
-    const fileName = `${modelName.toLowerCase()}.ts`;
+    // 使用 FileName 规范生成文件名
+    const fileName = FileName(modelName);
     const outputPath = path.join("db", "generated", "repositories", fileName);
 
     // 确保目录存在
@@ -135,9 +142,9 @@ export class RepositoryGenerator {
    * 生成 repository 代码
    */
   private async generateRepositoryCode(modelName: string): Promise<string> {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
-    const camelName = this.toCamelCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
+    const camelName = NamingRules.toCamelCase(modelName);
 
     // 生成各个部分
     const imports = this.generateImports(modelName);
@@ -159,19 +166,19 @@ ${crudMethods}
    * 生成导入语句
    */
   private generateImports(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
 
     // 计算相对路径
     const relativePaths = this.calculateRelativePaths();
 
-    // 对于中间表，使用正确的类型名称
-    const typeName = modelName.startsWith('_') ? this.toPascalCase(modelName.substring(1)) : this.toPascalCase(modelName);
+    // 使用 ZodTypeName 规范（从 zod 导入的 snake_case 类型）
+    const typeName = ZodTypeName(modelName);
 
     const imports: string[] = [
-      `import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";`,
+      `import { type Expression, type ExpressionBuilder, type Transaction, type Selectable, type Insertable, type Updateable } from "kysely";`,
       `import { getDB } from "${relativePaths.database}";`,
-      `import { DB, ${typeName} } from "${relativePaths.zod}";`,
+      `import { type DB, type ${typeName} } from "${relativePaths.zod}";`,
     ];
 
     // 添加 kysely helpers
@@ -193,18 +200,6 @@ ${crudMethods}
 
     // 添加 subRelationFactory
     imports.push(`import { defineRelations, makeRelations } from "${relativePaths.subRelationFactory}";`);
-    
-    // 添加子关系函数导入
-    const subRelationImports = this.getSubRelationImports(modelName);
-    if (subRelationImports.length > 0) {
-      imports.push(subRelationImports.join("\n"));
-    }
-    
-    // 添加关系 schema 导入
-    const relationSchemaImports = this.getRelationSchemaImports(modelName);
-    if (relationSchemaImports.length > 0) {
-      imports.push(relationSchemaImports.join("\n"));
-    }
 
     return imports.join("\n");
   }
@@ -251,8 +246,8 @@ ${crudMethods}
    * 生成类型定义
    */
   private generateTypes(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
 
     return `// 1. 类型定义
 export type ${pascalName} = Selectable<${tableName}>;
@@ -264,9 +259,10 @@ export type ${pascalName}Update = Updateable<${tableName}>;`;
    * 生成关系定义
    */
   private generateRelations(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
-    const camelName = this.toCamelCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const schemaName = SchemaName(tableName); // 使用 SchemaName 规范
+    const pascalName = TypeName(modelName, modelName);
+    const camelName = NamingRules.toCamelCase(modelName);
 
     const generatedRelations = this.generateAllRelations(modelName);
     
@@ -293,11 +289,9 @@ export const ${camelName}RelationsFactory = makeRelations(
 );
 
 export const ${pascalName}WithRelationsSchema = z.object({
-  ...${tableName}Schema.shape,
+  ...${schemaName}.shape,
   ...${camelName}RelationsFactory.schema.shape,
-});
-
-export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelations;`;
+});`;
 
     return relationCode;
   }
@@ -311,17 +305,20 @@ export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelation
 
   /**
    * 获取需要导入的 schema
+   * 使用 SchemaName 规范确保正确的 Schema 名称
    */
   private getSchemaImports(modelName: string): string[] {
-    const tableName = modelName.toLowerCase();
-    const schemas = new Set<string>([`${tableName}Schema`]);
+    const tableName = NamingRules.toLowerCase(modelName);
+    // 使用 SchemaName 规范生成 schema 名称
+    const schemas = new Set<string>([SchemaName(tableName)]);
 
     // 添加关系的 schema
     const relations = this.getModelRelations(modelName);
     for (const relation of relations) {
       // 只添加有效的关系 schema，跳过枚举类型
       if (relation.targetTable && !relation.targetTable.includes('//')) {
-        const targetSchema = `${relation.targetTable.toLowerCase()}Schema`;
+        // 使用 SchemaName 规范确保一致性
+        const targetSchema = SchemaName(relation.targetTable);
         schemas.add(targetSchema);
       }
     }
@@ -329,89 +326,14 @@ export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelation
     return Array.from(schemas);
   }
 
-  /**
-   * 获取需要导入的子关系函数
-   */
-  private getSubRelationImports(modelName: string): string[] {
-    const relativePaths = this.calculateRelativePaths();
-    const imports: string[] = [];
-    
-    const relations = this.getModelRelations(modelName);
-    const subRelationMap = new Map<string, string[]>();
-    
-    for (const relation of relations) {
-      if (relation.targetTable && !relation.targetTable.includes('//')) {
-        // 只有非父级关系才需要子关系函数导入
-        const isBusinessParentRelation = this.isBusinessParentRelation(relation.name);
-        if (!isBusinessParentRelation) {
-          const targetTable = relation.targetTable.toLowerCase();
-          
-          // 跳过自引用关系，避免循环导入
-          if (targetTable === modelName.toLowerCase()) {
-            continue;
-          }
-          
-          const subRelationName = `${this.toCamelCase(targetTable)}SubRelations`;
-          
-          if (!subRelationMap.has(targetTable)) {
-            subRelationMap.set(targetTable, []);
-          }
-          subRelationMap.get(targetTable)!.push(subRelationName);
-        }
-      }
-    }
-    
-    // 为每个目标表生成导入语句
-    for (const [targetTable, subRelations] of subRelationMap) {
-      const importPath = `"./${targetTable}"`;
-      imports.push(`import { ${[...new Set(subRelations)].join(", ")} } from ${importPath};`);
-    }
-    
-    return imports;
-  }
-
-  /**
-   * 获取关系 schema 导入
-   */
-  private getRelationSchemaImports(modelName: string): string[] {
-    const imports: string[] = [];
-    
-    const relations = this.getModelRelations(modelName);
-    const schemaMap = new Set<string>();
-    
-    // 获取已经导入的 schema
-    const existingSchemas = this.getSchemaImports(modelName);
-    const existingSchemaSet = new Set(existingSchemas);
-    
-    for (const relation of relations) {
-      // 只处理非业务父级关系
-      if (!this.isBusinessParentRelation(relation.name)) {
-        const relationType = relation.type.toLowerCase();
-        const schemaName = `${relationType}Schema`;
-        
-        // 只添加还没有导入的 schema
-        if (!existingSchemaSet.has(schemaName)) {
-          schemaMap.add(schemaName);
-        }
-      }
-    }
-    
-    // 添加关系 schema 导入
-    if (schemaMap.size > 0) {
-      const schemaImports = Array.from(schemaMap).join(', ');
-      imports.push(`import { ${schemaImports} } from "../zod/index";`);
-    }
-    
-    return imports;
-  }
 
   /**
    * 生成 CRUD 方法
    */
   private generateCrudMethods(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
-    const camelName = this.toCamelCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
+    const camelName = NamingRules.toCamelCase(modelName);
 
     const methods: string[] = [];
     
@@ -446,17 +368,6 @@ export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelation
       methods.push(this.generateDelete(modelName));
     }
 
-    // selectWithRelations - 只有有主键的模型才生成
-    if (hasPK) {
-      methods.push(this.generateSelectWithRelations(modelName));
-    }
-
-    // WithRelations type - 只有有主键的模型才生成
-    if (hasPK) {
-      methods.push(`// 关联查询类型
-export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pascalName}WithRelations>>;`);
-    }
-
     return `// 3. CRUD 方法\n${methods.join("\n\n")}`;
   }
 
@@ -474,8 +385,10 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
     // 添加所有模型的类型导入
     for (const model of this.models) {
       const modelName = model.name;
-      const pascalName = this.toPascalCase(modelName);
+      const tableName = model.dbName || model.name; // 使用真实表名
+      const pascalName = TypeName(modelName, modelName);
       const hasPK = this.hasPrimaryKey(model);
+      const fileName = NamingRules.toSnakeCase(modelName); // 用于文件路径
       
       if (this.shouldSkipModel(modelName)) {
         // 跳过的模型从 zod 导入基础类型
@@ -483,9 +396,9 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
           `import { ${pascalName} } from "${relativePaths.zod}";`
         );
       } else if (hasPK) {
-        // 有主键的模型导入 WithRelations 类型
+        // 有主键的模型导入基础类型
         typeImports.push(
-          `import { ${pascalName}WithRelations } from "./${modelName.toLowerCase()}";`
+          `import { type ${pascalName} } from "./${fileName}";`
         );
       }
     }
@@ -493,42 +406,43 @@ export type ${pascalName}WithRelations = Awaited<ReturnType<typeof select${pasca
     // 添加中间表的类型导入
     const intermediateTables = this.getIntermediateTables();
     for (const tableName of intermediateTables) {
-      const pascalName = this.toPascalCase(tableName);
+      const pascalName = TypeName(tableName, tableName);
       typeImports.push(
-        `import { ${pascalName} } from "${relativePaths.zod}";`
+        `import { type ${pascalName} } from "${relativePaths.zod}";`
       );
     }
 
     // 只为实际生成的文件添加 CRUD 导入
     for (const modelName of generatedFiles) {
-      const camelName = this.toCamelCase(modelName);
-      const pascalName = this.toPascalCase(modelName);
+      const camelName = NamingRules.toCamelCase(modelName);
+      const pascalName = TypeName(modelName, modelName);
       const model = this.models.find(m => m.name === modelName);
       const hasPK = model ? this.hasPrimaryKey(model) : true;
+      const tableName = model ? (model.dbName || model.name) : modelName; // 使用真实表名
+      const fileName = NamingRules.toSnakeCase(modelName); // 用于文件路径
 
       if (hasPK) {
         // 有主键的模型：标准 CRUD 方法
         crudImports.push(
-          `import { insert${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ById, select${pascalName}WithRelations, selectAll${this.pluralize(pascalName)} } from "./${modelName.toLowerCase()}";`
+          `import { insert${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ById, selectAll${this.pluralize(pascalName)} } from "./${fileName}";`
         );
 
-        crudExports[modelName.toLowerCase()] = {
+        crudExports[tableName] = {
           insert: `insert${pascalName}`,
           update: `update${pascalName}`,
           delete: `delete${pascalName}`,
           select: `select${pascalName}ById`,
-          selectWithRelation: `select${pascalName}WithRelations`,
           selectAll: `selectAll${this.pluralize(pascalName)}`
         };
       } else {
         // 无主键的模型：只有 insert 和 findAll，以及特殊的查询/删除方法
         const specialMethods = this.getSpecialMethodsForNoPKModel(modelName);
         crudImports.push(
-          `import { insert${pascalName}, selectAll${this.pluralize(pascalName)}${specialMethods} } from "./${modelName.toLowerCase()}";`
+          `import { insert${pascalName}, selectAll${this.pluralize(pascalName)}${specialMethods} } from "./${fileName}";`
         );
 
         const specialExports = this.getSpecialExportsForNoPKModel(modelName);
-        crudExports[modelName.toLowerCase()] = {
+        crudExports[tableName] = {
           insert: `insert${pascalName}`,
           selectAll: `selectAll${this.pluralize(pascalName)}`,
           ...specialExports
@@ -568,7 +482,7 @@ ${this.generateCrudExports(crudExports)}
       .filter((field: DMMF.Field) => field.kind === 'object')
       .map((field: DMMF.Field) => {
         const relationType = this.determineRelationType(field, model);
-        const targetTable = field.type.toLowerCase();
+        const targetTable = NamingRules.toLowerCase(field.type);
         const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(this.allModels.find((m: DMMF.Model) => m.name === field.type) || model);
         
         let buildCode = '';
@@ -652,12 +566,14 @@ ${this.generateCrudExports(crudExports)}
 
   /**
    * 生成 Schema 代码
+   * 使用 SchemaName 规范确保正确的 Schema 名称
    */
   private generateSchemaCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
+    const schemaName = SchemaName(targetTable); // 使用 SchemaName 规范
     if (field.isList) {
-      return `z.array(${targetTable}Schema)`;
+      return `z.array(${schemaName})`;
     } else {
-      return `${targetTable}Schema`;
+      return schemaName;
     }
   }
 
@@ -859,19 +775,6 @@ ${this.generateCrudExports(crudExports)}
     return modelName.startsWith('_') || modelName === 'changes';
   }
 
-  /**
-   * 转换为 PascalCase
-   */
-  private toPascalCase(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
-  /**
-   * 转换为 camelCase
-   */
-  private toCamelCase(str: string): string {
-    return str.charAt(0).toLowerCase() + str.slice(1);
-  }
 
   /**
    * 复数化
@@ -903,8 +806,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成基于唯一约束的查询方法（用于无主键表）
    */
   private generateFindByUniqueConstraint(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     
     // 获取模型的唯一约束字段
     const model = this.models.find(m => m.name === modelName);
@@ -922,7 +825,7 @@ ${this.generateCrudExports(crudExports)}
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
       const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
@@ -937,7 +840,7 @@ ${this.generateCrudExports(crudExports)}
       // 如果有多个唯一字段，生成基于所有唯一字段的查询方法
       const fieldNames = uniqueFields.map((f: any) => f.name);
       const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
@@ -951,7 +854,7 @@ ${this.generateCrudExports(crudExports)}
     } else if (uniqueFields.length === 1) {
       // 如果只有一个唯一字段，生成基于该字段的查询方法
       const firstUniqueField = uniqueFields[0];
-      return `export async function select${pascalName}By${this.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+      return `export async function select${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db.selectFrom("${tableName}")
     .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
@@ -967,8 +870,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成基于唯一约束的删除方法（用于无主键表）
    */
   private generateDeleteByUniqueConstraint(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     
     // 查找模型
     const model = this.models.find(m => m.name === modelName);
@@ -986,7 +889,7 @@ ${this.generateCrudExports(crudExports)}
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
       const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
@@ -1001,7 +904,7 @@ ${this.generateCrudExports(crudExports)}
       // 如果有多个唯一字段，生成基于所有唯一字段的删除方法
       const fieldNames = uniqueFields.map((f: any) => f.name);
       const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
@@ -1015,7 +918,7 @@ ${this.generateCrudExports(crudExports)}
     } else if (uniqueFields.length === 1) {
       // 如果只有一个唯一字段，生成基于该字段的删除方法
       const firstUniqueField = uniqueFields[0];
-      return `export async function delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+      return `export async function delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db.deleteFrom("${tableName}")
     .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
@@ -1031,8 +934,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成 selectById 方法
    */
   private generateSelectById(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
@@ -1045,8 +948,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成 selectAll 方法
    */
   private generateSelectAll(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     const pluralName = this.pluralize(pascalName);
 
     return `export async function selectAll${pluralName}(trx?: Transaction<DB>) {
@@ -1059,8 +962,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成 insert 方法
    */
   private generateInsert(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
 
     return `export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -1072,8 +975,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成 update 方法
    */
   private generateUpdate(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
@@ -1086,8 +989,8 @@ ${this.generateCrudExports(crudExports)}
    * 生成 delete 方法
    */
   private generateDelete(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     return `export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
@@ -1096,28 +999,10 @@ ${this.generateCrudExports(crudExports)}
 }`;
   }
 
-  /**
-   * 生成 selectWithRelations 方法
-   */
-  private generateSelectWithRelations(modelName: string): string {
-    const tableName = modelName.toLowerCase();
-    const pascalName = this.toPascalCase(modelName);
-    const camelName = this.toCamelCase(modelName);
-    const primaryKeyField = this.getPrimaryKeyField(modelName);
-
-    return `export async function select${pascalName}WithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("${tableName}")
-    .where("${primaryKeyField}", "=", id)
-    .selectAll("${tableName}")
-    .select((eb) => ${camelName}SubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
-}`;
-  }
 
   /**
    * 从 DMMF 中获取所有中间表名称
+   * 使用真实的表名（dbName 或 name），与 DB 接口保持一致
    */
   private getIntermediateTables(): string[] {
     const intermediateTables: string[] = [];
@@ -1125,7 +1010,9 @@ ${this.generateCrudExports(crudExports)}
     // 遍历所有模型，找出中间表（以 _ 开头的表名）
     for (const model of this.allModels) {
       if (model.name.startsWith('_')) {
-        intermediateTables.push(model.name);
+        // 使用真实的表名（dbName 或 name），不进行任何转换
+        const tableName = model.dbName || model.name;
+        intermediateTables.push(tableName);
       }
     }
     
@@ -1173,7 +1060,7 @@ ${this.generateCrudExports(crudExports)}
    * 获取无主键模型的特殊方法导入字符串
    */
   private getSpecialMethodsForNoPKModel(modelName: string): string {
-    const pascalName = this.toPascalCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     
     // 查找模型
     const model = this.models.find(m => m.name === modelName);
@@ -1190,14 +1077,14 @@ ${this.generateCrudExports(crudExports)}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map((f: any) => this.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length === 1) {
       const firstUniqueField = uniqueFields[0];
-      return `, delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}`;
+      return `, delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}`;
     }
     
     return '';
@@ -1207,7 +1094,7 @@ ${this.generateCrudExports(crudExports)}
    * 获取无主键模型的特殊导出对象
    */
   private getSpecialExportsForNoPKModel(modelName: string): Record<string, string> {
-    const pascalName = this.toPascalCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
     
     // 查找模型
     const model = this.models.find(m => m.name === modelName);
@@ -1224,19 +1111,19 @@ ${this.generateCrudExports(crudExports)}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map((f: any) => this.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map((f: any) => this.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };
     } else if (uniqueFields.length === 1) {
       const firstUniqueField = uniqueFields[0];
       return {
-        deleteByUniqueField: `delete${pascalName}By${this.toPascalCase(firstUniqueField.name)}`
+        deleteByUniqueField: `delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}`
       };
     }
     
@@ -1252,22 +1139,23 @@ ${this.generateCrudExports(crudExports)}
     // 为所有模型生成类型映射（包括跳过的模型）
     for (const model of this.models) {
       const modelName = model.name;
-      const pascalName = this.toPascalCase(modelName);
+      const tableName = model.dbName || model.name; // 使用真实表名，与 DB 接口一致
+      const pascalName = TypeName(modelName, modelName);
       const hasPK = this.hasPrimaryKey(model);
       
       if (this.shouldSkipModel(modelName)) {
         // 跳过的模型使用基础类型
-        lines.push(`  ${modelName.toLowerCase()}: ${pascalName};`);
+        lines.push(`  ${tableName}: ${pascalName};`);
       } else if (hasPK) {
-        // 有主键的模型使用 WithRelations 类型
-        lines.push(`  ${modelName.toLowerCase()}: ${pascalName}WithRelations;`);
+        // 有主键的模型使用基础类型
+        lines.push(`  ${tableName}: ${pascalName};`);
       }
     }
     
-    // 添加中间表
+    // 添加中间表（已经是真实的表名）
     const intermediateTables = this.getIntermediateTables();
     for (const tableName of intermediateTables) {
-      const pascalName = this.toPascalCase(tableName);
+      const pascalName = TypeName(tableName, tableName);
       lines.push(`  ${tableName}: ${pascalName};`);
     }
     
@@ -1291,12 +1179,11 @@ ${this.generateCrudExports(crudExports)}
         methodLines.push(`    update: ${crudMethods.update || 'null'}`);
         methodLines.push(`    delete: ${crudMethods.delete || 'null'}`);
         methodLines.push(`    select: ${crudMethods.select || 'null'}`);
-        methodLines.push(`    selectWithRelation: ${crudMethods.selectWithRelation || 'null'}`);
         methodLines.push(`    selectAll: ${crudMethods.selectAll || 'null'}`);
         
         // 添加特殊方法
         Object.keys(crudMethods).forEach(key => {
-          if (!['insert', 'update', 'delete', 'select', 'selectWithRelation', 'selectAll'].includes(key)) {
+          if (!['insert', 'update', 'delete', 'select', 'selectAll'].includes(key)) {
             methodLines.push(`    ${key}: ${crudMethods[key]}`);
           }
         });
@@ -1311,7 +1198,6 @@ ${methodLines.join(',\n')}
     update: null,
     delete: null,
     select: null,
-    selectWithRelation: null,
     selectAll: null
   }`);
       }
@@ -1322,16 +1208,18 @@ ${methodLines.join(',\n')}
 
   /**
    * 获取所有DB表名（包括模型表和中间表）
+   * 使用与 DB 接口相同的键名（即 dbName 或 name）
    */
   private getAllTableNames(): string[] {
     const tableNames: string[] = [];
     
-    // 添加所有模型表名
+    // 添加所有模型表名（使用 dbName 或 name，与 DB 接口保持一致）
     for (const model of this.models) {
-      tableNames.push(model.name.toLowerCase());
+      const tableName = model.dbName || model.name;
+      tableNames.push(tableName);
     }
     
-    // 添加中间表名
+    // 添加中间表名（使用 dbName 或 name，与 DB 接口保持一致）
     const intermediateTables = this.getIntermediateTables();
     tableNames.push(...intermediateTables);
     

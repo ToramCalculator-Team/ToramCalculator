@@ -1,3 +1,4 @@
+import { DB } from "@db/generated/zod";
 import { For, JSX, Show } from "solid-js";
 import { ZodAny, ZodObject, ZodType } from "zod/v4";
 import { getZodType } from "~/lib/utils/zodTools";
@@ -7,13 +8,13 @@ export type FieldGenMap<T> = Partial<{
   [K in keyof T]: (key: K, value: T[K], dictionary: Dic<T>["fields"][K]) => JSX.Element;
 }>;
 
-export function ObjRender<T extends Record<string, any>>(props: {
-  data: T;
-  dataSchema: ZodObject<Record<keyof T, ZodType>>;
-  dictionary?: Dic<T>;
-  hiddenFields?: Array<keyof T>;
-  fieldGroupMap?: Record<string, Array<keyof T>>;
-  fieldGenerator?: FieldGenMap<T>;
+export function DBdataRenderer<TableName extends keyof DB, TData extends DB[TableName]>(props: {
+  data: TData;
+  dataSchema: ZodObject<Record<keyof TData, ZodType>>;
+  dictionary?: Dic<TData>;
+  hiddenFields?: Array<keyof TData>;
+  fieldGroupMap?: Record<string, Array<keyof TData>>;
+  fieldGenerator?: FieldGenMap<TData>;
 }) {
   return (
     <div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3">
@@ -21,9 +22,11 @@ export function ObjRender<T extends Record<string, any>>(props: {
         when={"fieldGroupMap" in props}
         fallback={
           <For each={Object.entries(props.data)}>
-            {([key, val]) => {
+            {([_key, _val]) => {
+              const key = _key as keyof TData;
+              const val = _val as TData[typeof key];
               // 跳过需要隐藏的字段
-              if (props.hiddenFields?.includes(key)) return null;
+              if (props.hiddenFields?.some((hiddenField) => hiddenField === key)) return null;
               const fieldName = props.dictionary?.fields[key].key ?? key;
               let fieldValue = val;
               const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
@@ -85,19 +88,11 @@ export function ObjRender<T extends Record<string, any>>(props: {
                 <For each={keys}>
                   {(key) => {
                     const val = props.data[key];
-                    const schemaField = props.dataSchema?.shape[key];
-                    const kind = schemaField ? getZodType(schemaField) : "string";
                     const fieldName = props.dictionary?.fields[key].key ?? key;
                     let fieldValue = val;
                     const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
-                    try {
-                      fieldValue = (props.dictionary?.fields[key] as EnumFieldDetail<any>).enumMap[
-                        val
-                      ] as unknown as T[keyof T];
-                    } catch (error) {}
-
                     // 处理嵌套结构
-                    if (kind === "object" || kind === "array") {
+                    if (props.dataSchema?.shape[key].type === "array") {
                       const content = Object.entries(val as Record<string, unknown>);
                       return props.dictionary && hasGenerator ? (
                         props.fieldGenerator?.[key]?.(key, val, props.dictionary.fields[key])
@@ -126,7 +121,11 @@ export function ObjRender<T extends Record<string, any>>(props: {
                     ) : (
                       <div class="Field flex gap-2">
                         <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:
-                        <span class="font-bold">{String(fieldValue)}</span>
+                        <span class="font-bold">
+                          {props.dataSchema?.shape[key].type === "enum"
+                            ? (props.dictionary?.fields[key] as EnumFieldDetail<any>).enumMap[val]
+                            : String(fieldValue)}
+                        </span>
                         {/* <span class="text-dividing-color w-full text-right">{`[${kind}]`}</span> */}
                       </div>
                     );

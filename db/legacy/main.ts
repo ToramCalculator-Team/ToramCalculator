@@ -35,6 +35,14 @@ import { QueryBuilderGenerator } from "./generators/QueryBuilderGenerator";
 import { RepositoryGenerator } from "./generators/RepositoryGenerator";
 import { SchemaInfoGenerator } from "./generators/SchemaInfoGenerator";
 
+// 导入隐式多对多关系表生成函数
+import { generateImplicitManyToManyModels } from "../generator/helpers/generateImplicitManyToManyModels";
+
+// 辅助函数：排序
+function sorted<T>(array: T[], compareFn?: (a: T, b: T) => number): T[] {
+  return [...array].sort(compareFn);
+}
+
 /**
  * 主生成器
  * 协调所有生成器的执行
@@ -65,12 +73,21 @@ class MainGenerator {
       const dmmfProvider = new DMMFProvider(fullSchema);
       const dmmf = await dmmfProvider.getDMMF();
       
-      // 4. 处理关系
+      // 4. 生成隐式多对多关系表
+      LogUtils.logStep("中间表处理", "生成隐式多对多关系表");
+      const implicitManyToManyModels = generateImplicitManyToManyModels(dmmf.datamodel.models);
+      
+      // 包含中间表的完整模型列表
+      const allModels = sorted([...dmmf.datamodel.models, ...implicitManyToManyModels], (a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      
+      // 5. 处理关系
       LogUtils.logStep("关系处理", "提取表间依赖关系");
       const relationProcessor = new RelationProcessor(dmmf);
       relationProcessor.processRelations();
       
-      // 5. 并行生成（互不依赖）
+      // 6. 并行生成（互不依赖）
       LogUtils.logStep("并行生成", "生成所有输出文件");
       await Promise.all([
         // 生成 database-schema.ts（供外部使用）
@@ -80,14 +97,14 @@ class MainGenerator {
         SQLGenerator.generate(fullSchema),
         
         // 生成 Zod + TS 类型
-        new ZodGenerator(dmmf, enumProcessor).generate(),
+        new ZodGenerator(dmmf, enumProcessor, allModels).generate(),
         
         // 生成 QueryBuilder 规则
-        new QueryBuilderGenerator(dmmf, enumProcessor).generate(),
+        new QueryBuilderGenerator(dmmf, enumProcessor, allModels).generate(),
         
         // 生成 Repository
         (async () => {
-          const repositoryGenerator = new RepositoryGenerator(dmmf);
+          const repositoryGenerator = new RepositoryGenerator(dmmf, allModels);
           await repositoryGenerator.initialize();
           await repositoryGenerator.generateAll();
         })(),

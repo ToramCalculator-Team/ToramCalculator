@@ -5,7 +5,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { z } from "zod/v4";
-import { player_optionSchema, itemSchema } from "@db/generated/zod";
+import { PlayerOptionSchema, ItemSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -28,7 +28,7 @@ const playerOptionSubRelationDefs = defineRelations({
       ).as("crystalList"),
     schema: z.array(
       z.object({
-        ...itemSchema.shape,
+        ...ItemSchema.shape,
         ...CrystalWithRelationsSchema.shape,
       })
     ).describe("水晶列表"),
@@ -37,7 +37,7 @@ const playerOptionSubRelationDefs = defineRelations({
 
 const playerOptionRelationsFactory = makeRelations(playerOptionSubRelationDefs);
 export const PlayerOptionWithRelationsSchema = z.object({
-  ...player_optionSchema.shape,
+  ...PlayerOptionSchema.shape,
   ...playerOptionRelationsFactory.schema.shape,
 });
 export const playerOptionSubRelations = playerOptionRelationsFactory.subRelations;

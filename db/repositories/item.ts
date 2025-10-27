@@ -7,7 +7,7 @@ import { createStatistic } from "./statistic";
 import { createId } from "@paralleldrive/cuid2";
 import { store } from "~/store";
 import { z } from "zod/v4";
-import { itemSchema, statisticSchema } from "../generated/zod/index";
+import { ItemSchema, StatisticSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -21,7 +21,7 @@ const itemSubRelationDefs = defineRelations({
     build: (eb, id) =>
       jsonObjectFrom(eb.selectFrom("statistic").whereRef("id", "=", "item.statisticId").selectAll("statistic"))
         .$notNull().as("statistic"),
-    schema: statisticSchema.describe("统计信息"),
+    schema: StatisticSchema.describe("统计信息"),
   },
   dropByMob: {
     build: (eb, id) =>
@@ -92,7 +92,7 @@ export const itemRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const ItemWithRelationsSchema = z.object({
-  ...itemSchema.shape,
+  ...ItemSchema.shape,
   ...itemRelationsFactory.schema.shape,
 });
 

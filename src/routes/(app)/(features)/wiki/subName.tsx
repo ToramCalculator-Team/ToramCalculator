@@ -10,11 +10,10 @@ import { Sheet } from "~/components/containers/sheet";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { defaultData } from "@db/defaultData";
 import { DB } from "@db/generated/zod/index";
-import { dataDisplayConfig } from "./dataConfig/dataConfig";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { MediaContext } from "~/lib/contexts/Media";
 import { Dialog } from "~/components/containers/dialog";
-import { DBDataConfig } from "./dataConfig/dataConfig";
+import { type WikiConfig, wikiConfig } from "./wikiConfig";
 import { setWikiStore, wikiStore } from "./store";
 
 export default function WikiSubPage() {
@@ -31,7 +30,7 @@ export default function WikiSubPage() {
   const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
-  const [dataConfig, setDataConfig] = createSignal<dataDisplayConfig<any, any, any>>();
+  const [dataConfig, setDataConfig] = createSignal<any>();
 
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
@@ -58,7 +57,7 @@ export default function WikiSubPage() {
           });
           setIsMainContentFullscreen(false);
           setActiveBannerIndex(0);
-          setDataConfig(DBDataConfig[wikiType]);
+          setDataConfig(wikiConfig[wikiType]);
         } else {
           navigate(`/404`);
         }

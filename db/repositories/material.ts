@@ -5,7 +5,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
-import { materialSchema } from "../generated/zod/index";
+import { MaterialSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -24,7 +24,7 @@ export const materialRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const MaterialWithRelationsSchema = z.object({
-  ...materialSchema.shape,
+  ...MaterialSchema.shape,
   ...materialRelationsFactory.schema.shape,
 });
 

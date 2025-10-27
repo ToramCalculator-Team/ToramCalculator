@@ -7,7 +7,7 @@ import { TeamWithRelationsSchema, teamSubRelations } from "./team";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { simulatorSchema, statisticSchema, teamSchema } from "@db/generated/zod";
+import { SimulatorSchema } from "@db/generated/zod/index";
 
 // 1. 类型定义
 export type Simulator = Selectable<simulator>;
@@ -55,7 +55,7 @@ const simulatorSubRelationDefs = defineRelations({
 
 const simulatorRelationsFactory = makeRelations(simulatorSubRelationDefs);
 export const SimulatorWithRelationsSchema = z.object({
-  ...simulatorSchema.shape,
+  ...SimulatorSchema.shape,
   ...simulatorRelationsFactory.schema.shape,
 });
 export const simulatorSubRelations = simulatorRelationsFactory.subRelations;

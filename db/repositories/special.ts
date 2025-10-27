@@ -9,7 +9,7 @@ import { insertRecipe } from "./recipe";
 import { insertImage } from "./image";
 import { insertRecipeIngredient } from "./recipeIngredient";
 import { insertItem } from "./item";
-import { specialSchema, itemSchema } from "@db/generated/zod";
+import { SpecialSchema, ItemSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -28,7 +28,7 @@ const specialSubRelationDefs = defineRelations({
           .innerJoin("crystal", "_crystalTospecial.A", "crystal.itemId")
           .where("_crystalTospecial.B", "=", id)
           .selectAll("crystal")
-          .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId")))
+          .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
       ).as("defaultCrystals"),
     schema: z.array(CrystalWithRelationsSchema).describe("默认水晶列表"),
   },
@@ -36,36 +36,25 @@ const specialSubRelationDefs = defineRelations({
 
 const specialRelationsFactory = makeRelations(specialSubRelationDefs);
 export const SpecialWithRelationsSchema = z.object({
-  ...specialSchema.shape,
-  ...itemSchema.shape,
+  ...SpecialSchema.shape,
+  ...ItemSchema.shape,
   ...specialRelationsFactory.schema.shape,
 });
 export const specialSubRelations = specialRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findSpecialById(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("special")
-    .where("itemId", "=", id)
-    .selectAll("special")
-    .executeTakeFirst() || null;
+  const db = trx || (await getDB());
+  return (await db.selectFrom("special").where("itemId", "=", id).selectAll("special").executeTakeFirst()) || null;
 }
 
 export async function findSpecials(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
-    .selectFrom("special")
-    .selectAll("special")
-    .execute();
+  const db = trx || (await getDB());
+  return await db.selectFrom("special").selectAll("special").execute();
 }
 
 export async function insertSpecial(trx: Transaction<DB>, data: SpecialInsert) {
-  return await trx
-    .insertInto("special")
-    .values(data)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.insertInto("special").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createSpecial(trx: Transaction<DB>, data: SpecialInsert) {
@@ -78,30 +67,21 @@ export async function createSpecial(trx: Transaction<DB>, data: SpecialInsert) {
     })
     .returningAll()
     .executeTakeFirstOrThrow();
-  
+
   return special;
 }
 
 export async function updateSpecial(trx: Transaction<DB>, id: string, data: SpecialUpdate) {
-  return await trx
-    .updateTable("special")
-    .set(data)
-    .where("itemId", "=", id)
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  return await trx.updateTable("special").set(data).where("itemId", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteSpecial(trx: Transaction<DB>, id: string) {
-  return await trx
-    .deleteFrom("special")
-    .where("itemId", "=", id)
-    .returningAll()
-    .executeTakeFirst() || null;
+  return (await trx.deleteFrom("special").where("itemId", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 4. 特殊查询方法
 export async function findSpecialWithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
+  const db = trx || (await getDB());
   return await db
     .selectFrom("special")
     .innerJoin("item", "item.id", "special.itemId")
@@ -112,7 +92,7 @@ export async function findSpecialWithRelations(id: string, trx?: Transaction<DB>
 }
 
 export async function findSpecialByItemId(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
+  const db = trx || (await getDB());
   return await db
     .selectFrom("special")
     .innerJoin("item", "item.id", "special.itemId")

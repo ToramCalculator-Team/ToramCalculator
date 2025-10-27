@@ -5,7 +5,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { createStatistic } from "./statistic";
 import { store } from "~/store";
-import { npcSchema, taskSchema } from "../generated/zod/index";
+import { NpcSchema, TaskSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -24,7 +24,7 @@ const npcSubRelationDefs = defineRelations({
           .where("task.belongToNpcId", "=", id)
           .selectAll("task")
       ).as("tasks"),
-    schema: z.array(taskSchema).describe("任务列表"),
+    schema: z.array(TaskSchema).describe("任务列表"),
   },
 });
 
@@ -35,7 +35,7 @@ export const npcRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const NpcWithRelationsSchema = z.object({
-  ...npcSchema.shape,
+  ...NpcSchema.shape,
   ...npcRelationsFactory.schema.shape,
 });
 

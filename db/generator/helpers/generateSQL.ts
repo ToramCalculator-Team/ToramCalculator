@@ -2,6 +2,86 @@
  * @file generateSQL.ts
  * @description SQL 生成器
  * 从 Prisma schema 生成 SQL 初始化脚本，支持同步架构
+ * 
+ * ## 同步架构设计
+ * 
+ * 本生成器实现了 Electric SQL 的 "through-the-db" 同步模式：
+ * @see https://electric-sql.com/docs/guides/writes#through-the-db
+ * 
+ * ### 核心设计
+ * 
+ * 每个表被转换为三种数据库对象：
+ * 
+ * 1. **synced 表**（同步的数据，不可变）
+ *    - 存储从服务器同步的完整数据
+ *    - 包含所有业务列 + `write_id` 用于追踪同步
+ *    - 数据只能通过 Electric 复制流更新
+ * 
+ * 2. **local 表**（本地乐观状态）
+ *    - 存储本地修改的乐观状态
+ *    - 包含业务列（部分可为 NULL）+ 元数据列：
+ *      - `changed_columns`: 记录哪些列被修改了（用于视图合并）
+ *      - `is_deleted`: 软删除标记
+ *      - `write_id`: 用于 rebasing 和清理
+ * 
+ * 3. **视图**（合并读取接口）
+ *    - 使用 FULL OUTER JOIN 合并 synced 和 local
+ *    - 根据 `changed_columns` 智能选择数据源：
+ *      - 主键字段：COALESCE(local, synced)
+ *      - 其他字段：如果在 `changed_columns` 中，使用 local，否则使用 synced
+ *    - 过滤掉 `is_deleted = TRUE` 的本地删除记录
+ * 
+ * ### 写入流程
+ * 
+ * 通过 INSTEAD OF 触发器拦截对视图的写操作：
+ * 
+ * - **INSERT**: 插入到 local 表，记录到 changes 表
+ * - **UPDATE**: 
+ *   1. 查找 synced 和 local 记录
+ *   2. 比较字段变化，更新 `changed_columns`
+ *   3. 如果不存在则插入，存在则更新 local 表
+ *   4. 记录到 changes 表
+ * - **DELETE**: 
+ *   1. 标记 `is_deleted = TRUE` 或插入删除标记
+ *   2. 记录到 changes 表
+ * 
+ * ### 同步流程
+ * 
+ * 当数据从服务器同步下来：
+ * 
+ * 1. 数据插入到 synced 表
+ * 2. Trigger 自动清理 local 表中对应 `write_id` 的记录（匹配成功）
+ * 3. 视图自动显示新数据（local 已被清理）
+ * 
+ * 如果是并发修改（local 仍存在其他 `write_id` 的记录）：
+ * - local 记录保留，视图优先显示 local 数据
+ * - 等待新的变更触发 rebasing
+ * 
+ * ### Changes 表
+ * 
+ * `changes` 表记录所有本地写操作：
+ * - `table_name`: 表名
+ * - `operation`: 操作类型（insert/update/delete）
+ * - `value`: JSONB 数据
+ * - `write_id`: 关联的 write ID
+ * - `transaction_id`: 事务 ID
+ * 
+ * Changes 表通过 NOTIFY 触发后台同步进程，将本地变更发送到服务器。
+ * 
+ * ### 关键特性
+ * 
+ * - ✅ 支持离线写操作
+ * - ✅ 自动合并 synced 和 local 状态
+ * - ✅ 支持 rebasing：通过 `write_id` 匹配清理已同步的本地变更
+ * - ✅ 软删除：`is_deleted` 标记
+ * - ✅ 变更追踪：`changed_columns` 记录修改的字段
+ * - ✅ 多表支持：自动为所有表生成同步架构
+ * - ✅ 多列主键支持：正确处理复合主键
+ * 
+ * ### 参考
+ * 
+ * - Electric SQL 文档: https://electric-sql.com/docs/guides/writes#through-the-db
+ * - 示例实现: https://github.com/electric-sql/electric/tree/main/examples/write-patterns/patterns/4-through-the-db
  */
 
 import fs from "fs";
@@ -344,9 +424,9 @@ CREATE OR REPLACE VIEW "${tableName}" AS
       ? pkCols.map((pk) => `synced."${pk}" = local."${pk}"`).join(" AND ")
       : colNames.map((c) => `synced."${c}" = local."${c}"`).join(" AND ");
 
-    const whereCondition = pkCols.length
-      ? `(${pkCols.map((pk) => `local."${pk}" IS NULL`).join(" OR ")} OR local."is_deleted" = FALSE)`
-      : `local."is_deleted" = FALSE`;
+    // WHERE 条件：显示纯 synced 记录（local 的列全为 NULL）或未删除的 local 记录
+    const pkCol = pkCols.length > 0 ? pkCols[0] : colNames[0];
+    const whereCondition = `(local."${pkCol}" IS NULL OR local."is_deleted" = FALSE)`;
 
     const view = `
 CREATE OR REPLACE VIEW "${tableName}" AS
@@ -389,87 +469,119 @@ DECLARE
     local_write_id UUID := gen_random_uuid();
     changed_cols TEXT[] := ARRAY[]::TEXT[];
 BEGIN
+    -- Check if id already exists
+    IF EXISTS (SELECT 1 FROM "${tableName}_synced" WHERE ${pkCols.map(pk => `"${pk}" = NEW."${pk}"`).join(" AND ")}) THEN
+        RAISE EXCEPTION 'Cannot insert: id already exists in the synced table';
+    END IF;
+    IF EXISTS (SELECT 1 FROM "${tableName}_local" WHERE ${pkCols.map(pk => `"${pk}" = NEW."${pk}"`).join(" AND ")}) THEN
+        RAISE EXCEPTION 'Cannot insert: id already exists in the local table';
+    END IF;
+
     -- Add all non-primary key columns to changed_columns
     ${colNames
       .filter((name) => !pkCols.includes(name))
       .map((name) => `changed_cols := array_append(changed_cols, '${name}');`)
       .join("\n    ")}
-    
+
     INSERT INTO "${tableName}_local" (
-        ${colNames.map((name) => `"${name}"`).join(", ")},
-        "changed_columns",
-        "is_deleted",
-        "write_id"
-    ) VALUES (
-        ${colNames.map((name) => `NEW."${name}"`).join(", ")},
-        changed_cols,
-        FALSE,
-        local_write_id
-    );
-    
-    INSERT INTO changes (table_name, operation, value, write_id, transaction_id)
+    ${colNames.map((name) => `"${name}"`).join(", ")},
+    changed_columns,
+    is_deleted,
+    write_id
+    )
     VALUES (
-        '${tableName}',
-        'INSERT',
-        json_build_object(
-            ${jsonFields}
-        ),
-        local_write_id,
-        txid_current()
+    ${colNames.map((name) => `NEW."${name}"`).join(", ")},
+    changed_cols,
+    FALSE,
+    local_write_id
     );
-    
+
+    INSERT INTO changes (
+    table_name,
+    operation,
+    value,
+    write_id,
+    transaction_id
+    )
+    VALUES (
+    '${tableName}',
+    'insert',
+    jsonb_build_object(
+        ${jsonFields}
+    ),
+    local_write_id,
+    pg_current_xact_id()
+    );
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;`;
+
+    const updateSetLines =
+      colNames
+        .filter((c) => !pkCols.includes(c))
+        .map(
+          (name) =>
+            `
+    "${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
+        )
+        .join(",") || "-- no non-pk fields";
 
     const triggerFnUpdate = `
 CREATE OR REPLACE FUNCTION ${tableName}_update_trigger()
 RETURNS TRIGGER AS $$
 DECLARE
-    local_write_id UUID := gen_random_uuid();
+    synced "${tableName}_synced"%ROWTYPE;
+    local "${tableName}_local"%ROWTYPE;
     changed_cols TEXT[] := ARRAY[]::TEXT[];
-    synced RECORD;
+    local_write_id UUID := gen_random_uuid();
 BEGIN
-    -- Get synced record
     SELECT * INTO synced FROM "${tableName}_synced" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
-    
-    -- Check for changes
-    ${changedColsCheck}
-    
-    -- If no changes, do nothing
-    IF array_length(changed_cols, 1) IS NULL THEN
-        RETURN NEW;
-    END IF;
-    
-    -- Update or insert local record
+    SELECT * INTO local FROM "${tableName}_local" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
+    ${changedColsCheck || "-- no non-pk fields to track"}
+    IF NOT FOUND THEN
     INSERT INTO "${tableName}_local" (
         ${colNames.map((name) => `"${name}"`).join(", ")},
-        "changed_columns",
-        "is_deleted",
-        "write_id"
-    ) VALUES (
+        changed_columns,
+        write_id
+    )
+    VALUES (
         ${colNames.map((name) => `NEW."${name}"`).join(", ")},
         changed_cols,
-        FALSE,
         local_write_id
-    )
-    ON CONFLICT (${pkCols.map((pk) => `"${pk}"`).join(", ")})
-    DO UPDATE SET
-        ${colNames.filter((name) => !pkCols.includes(name)).map((name) => `"${name}" = EXCLUDED."${name}"`).join(", ")},
-        "changed_columns" = "${tableName}_local"."changed_columns" || EXCLUDED."changed_columns",
-        "write_id" = EXCLUDED."write_id";
-    
-    INSERT INTO changes (table_name, operation, value, write_id, transaction_id)
-    VALUES (
-        '${tableName}',
-        'UPDATE',
-        json_build_object(
-            ${updateJsonFields}
-        ),
-        local_write_id,
-        txid_current()
     );
-    
+    ELSE
+    UPDATE "${tableName}_local"
+    SET
+        ${updateSetLines},
+        changed_columns = (
+        SELECT array_agg(DISTINCT col) FROM (
+            SELECT unnest(local.changed_columns) AS col
+            UNION
+            SELECT unnest(changed_cols) AS col
+        ) AS cols
+        ),
+        write_id = local_write_id
+    WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
+    END IF;
+
+    INSERT INTO changes (
+    table_name,
+    operation,
+    value,
+    write_id,
+    transaction_id
+    )
+    VALUES (
+    '${tableName}',
+    'update',
+    jsonb_strip_nulls(jsonb_build_object(
+        ${updateJsonFields}
+    )),
+    local_write_id,
+    pg_current_xact_id()
+    );
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;`;
@@ -480,54 +592,100 @@ RETURNS TRIGGER AS $$
 DECLARE
     local_write_id UUID := gen_random_uuid();
 BEGIN
+    IF EXISTS (SELECT 1 FROM "${tableName}_local" WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")}) THEN
+    UPDATE "${tableName}_local"
+    SET is_deleted = TRUE,
+        write_id = local_write_id
+    WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
+    ELSE
     INSERT INTO "${tableName}_local" (
-        ${colNames.map((name) => `"${name}"`).join(", ")},
-        "changed_columns",
+        ${pkCols.map((pk) => `"${pk}"`).join(", ")},
         "is_deleted",
         "write_id"
-    ) VALUES (
-        ${colNames.map((name) => `OLD."${name}"`).join(", ")},
-        ARRAY[]::TEXT[],
+    )
+    VALUES (
+        ${pkCols.map((pk) => `OLD."${pk}"`).join(", ")},
         TRUE,
         local_write_id
-    )
-    ON CONFLICT (${pkCols.map((pk) => `"${pk}"`).join(", ")})
-    DO UPDATE SET
-        "is_deleted" = TRUE,
-        "write_id" = EXCLUDED."write_id";
-    
-    INSERT INTO changes (table_name, operation, value, write_id, transaction_id)
-    VALUES (
-        '${tableName}',
-        'DELETE',
-        json_build_object(
-            ${colNames.map((name) => `'${name}', OLD."${name}"`).join(",\n            ")}
-        ),
-        local_write_id,
-        txid_current()
     );
-    
+    END IF;
+
+    INSERT INTO changes (
+    table_name,
+    operation,
+    value,
+    write_id,
+    transaction_id
+    )
+    VALUES (
+    '${tableName}',
+    'delete',
+    jsonb_build_object(${pkCols.map((pk) => `'${pk}', OLD."${pk}"`).join(", ")}),
+    local_write_id,
+    pg_current_xact_id()
+    );
+
     RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;`;
 
     const triggers = `
-CREATE OR REPLACE TRIGGER ${tableName}_insert_trigger
-    INSTEAD OF INSERT ON "${tableName}"
-    FOR EACH ROW
-    EXECUTE FUNCTION ${tableName}_insert_trigger();
+CREATE OR REPLACE TRIGGER ${tableName}_insert
+INSTEAD OF INSERT ON "${tableName}"
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_insert_trigger();
 
-CREATE OR REPLACE TRIGGER ${tableName}_update_trigger
-    INSTEAD OF UPDATE ON "${tableName}"
-    FOR EACH ROW
-    EXECUTE FUNCTION ${tableName}_update_trigger();
+CREATE OR REPLACE TRIGGER ${tableName}_update
+INSTEAD OF UPDATE ON "${tableName}"
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_update_trigger();
 
-CREATE OR REPLACE TRIGGER ${tableName}_delete_trigger
-    INSTEAD OF DELETE ON "${tableName}"
-    FOR EACH ROW
-    EXECUTE FUNCTION ${tableName}_delete_trigger();`;
+CREATE OR REPLACE TRIGGER ${tableName}_delete
+INSTEAD OF DELETE ON "${tableName}"
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_trigger();
+`;
 
-    return triggerFnInsert + "\n" + triggerFnUpdate + "\n" + triggerFnDelete + "\n" + triggers;
+    const syncedInsertUpdateCleanupFn = `
+CREATE OR REPLACE FUNCTION ${tableName}_delete_local_on_synced_insert_and_update_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  DELETE FROM "${tableName}_local"
+  WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")}
+    AND write_id IS NOT NULL
+    AND write_id = NEW.write_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+`;
+
+    const syncedDeleteCleanupFn = `
+CREATE OR REPLACE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  DELETE FROM "${tableName}_local"
+  WHERE ${pkCols.map((pk) => `"${pk}" = OLD."${pk}"`).join(" AND ")};
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+`;
+
+    const syncedTriggers = `
+CREATE OR REPLACE TRIGGER delete_local_on_synced_insert
+AFTER INSERT OR UPDATE ON "${tableName}_synced"
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_insert_and_update_trigger();
+
+CREATE OR REPLACE TRIGGER delete_local_on_synced_delete
+AFTER DELETE ON "${tableName}_synced"
+FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger();
+`;
+
+    return [
+      triggerFnInsert,
+      triggerFnUpdate,
+      triggerFnDelete,
+      triggers,
+      syncedInsertUpdateCleanupFn,
+      syncedDeleteCleanupFn,
+      syncedTriggers,
+    ].join("\n");
   }
 
   /**

@@ -6,7 +6,7 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { consumableSchema } from "../generated/zod/index";
+import { ConsumableSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -25,7 +25,7 @@ export const consumableRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const ConsumableWithRelationsSchema = z.object({
-  ...consumableSchema.shape,
+  ...ConsumableSchema.shape,
   ...consumableRelationsFactory.schema.shape,
 });
 

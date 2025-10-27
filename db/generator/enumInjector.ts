@@ -7,6 +7,7 @@
 import { createRequire } from "module";
 import fs from "node:fs";
 import path from "node:path";
+import { PATHS } from "./config";
 
 const require = createRequire(import.meta.url);
 
@@ -34,7 +35,7 @@ export class EnumInjector {
       console.log("🔍 开始解析枚举文件...");
       
       // 获取 enums.ts 文件路径
-      const enumsPath = path.resolve(process.cwd(), "db/schema/enums.ts");
+      const enumsPath = PATHS.enums;
       
       if (!fs.existsSync(enumsPath)) {
         console.log("⚠️  枚举文件不存在，跳过枚举处理");

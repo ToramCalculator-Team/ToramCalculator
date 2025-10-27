@@ -1,20 +1,15 @@
 import { Expression, ExpressionBuilder, Transaction, Selectable, Insertable, Updateable } from "kysely";
 import { getDB } from "./database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
-import { insertStatistic } from "./statistic";
-import { crystalSubRelations, insertCrystal } from "./crystal";
 import { createId } from "@paralleldrive/cuid2";
-import { armor, crystal, DB, image, item, recipe, recipe_ingredient } from "@db/generated/zod/index";
-import { insertRecipe } from "./recipe";
-import { insertImage } from "./image";
-import { insertRecipeIngredient } from "./recipeIngredient";
+import { armor, ArmorSchema, CrystalSchema, DB, item } from "@db/generated/zod/index";
 import { insertItem } from "./item";
 import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
-import { armorSchema, crystalSchema } from "../generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
+import { crystalSubRelations } from "./crystal";
 
 // 1. 类型定义
 export type Armor = Selectable<armor>;
@@ -33,7 +28,7 @@ const armorSubRelationDefs = defineRelations({
           .selectAll("crystal")
         .select((subEb) => crystalSubRelations(subEb, subEb.val("crystal.itemId"))),
       ).as("defaultCrystals"),
-    schema: z.array(crystalSchema).describe("默认水晶列表"),
+    schema: z.array(CrystalSchema).describe("默认水晶列表"),
   },
 });
 
@@ -44,7 +39,7 @@ export const armorRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const ArmorWithRelationsSchema = z.object({
-  ...armorSchema.shape,
+  ...ArmorSchema.shape,
   ...armorRelationsFactory.schema.shape,
 });
 

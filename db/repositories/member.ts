@@ -6,7 +6,7 @@ import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { MercenaryWithRelationsSchema, mercenarySubRelations } from "./mercenary";
 import { MobWithRelationsSchema, mobSubRelations } from "./mob";
-import { memberSchema } from "@db/generated/zod";
+import { MemberSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -65,7 +65,7 @@ const memberSubRelationDefs = defineRelations({
 
 const memberRelationsFactory = makeRelations(memberSubRelationDefs);
 export const MemberWithRelationsSchema = z.object({
-  ...memberSchema.shape,
+  ...MemberSchema.shape,
   ...memberRelationsFactory.schema.shape,
 });
 export const memberSubRelations = memberRelationsFactory.subRelations;

@@ -30,39 +30,15 @@ export class SchemaCollector {
   collectAndMerge(): string {
     console.log("🔍 开始收集 schema 文件...");
 
-    // 1. 读取主配置文件
-    const mainSchema = this.readMainSchema();
-    console.log("✅ 读取主配置文件完成");
-
-    // 2. 收集所有模型文件
+    // 1. 收集所有模型文件
     const modelFiles = this.collectModelFiles();
     console.log(`✅ 收集到 ${modelFiles.length} 个模型文件`);
 
-    // 3. 读取并合并模型内容
-    const modelContent = this.readModelFiles(modelFiles);
+    // 2. 读取并合并模型内容
+    const fullSchema = this.readModelFiles(modelFiles);
     console.log("✅ 合并模型文件完成");
 
-    // 4. 生成完整的 schema
-    const fullSchema = this.buildFullSchema(mainSchema, modelContent);
-    console.log("✅ Schema 合并完成");
-
     return fullSchema;
-  }
-
-  /**
-   * 读取主配置文件 (main.prisma)
-   */
-  private readMainSchema(): string {
-    const mainSchemaPath = PATHS.mainSchema;
-    
-    console.log(`尝试读取主配置文件: ${mainSchemaPath}`);
-    console.log(`文件是否存在: ${fs.existsSync(mainSchemaPath)}`);
-    
-    if (!fs.existsSync(mainSchemaPath)) {
-      throw new Error(`主配置文件不存在: ${mainSchemaPath}`);
-    }
-
-    return fs.readFileSync(mainSchemaPath, "utf-8");
   }
 
   /**
@@ -117,15 +93,6 @@ export class SchemaCollector {
     }
 
     return content;
-  }
-
-  /**
-   * 构建完整的 schema
-   */
-  private buildFullSchema(mainSchema: string, modelContent: string): string {
-    // 移除主 schema 中的空行，然后添加模型内容
-    const cleanMainSchema = mainSchema.trim();
-    return `${cleanMainSchema}\n\n${modelContent}`;
   }
 
   /**

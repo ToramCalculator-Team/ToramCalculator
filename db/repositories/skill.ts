@@ -5,7 +5,7 @@ import { insertStatistic } from "./statistic";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
+import { SkillSchema, StatisticSchema, SkillEffectSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -23,7 +23,7 @@ const skillSubRelationDefs = defineRelations({
           .whereRef("id", "=", "skill.statisticId")
           .selectAll("statistic")
       ).$notNull().as("statistic"),
-    schema: statisticSchema.describe("统计信息"),
+    schema: StatisticSchema.describe("统计信息"),
   },
   effects: {
     build: (eb, id) =>
@@ -33,7 +33,7 @@ const skillSubRelationDefs = defineRelations({
           .whereRef("skill_effect.belongToskillId", "=", "skill.id")
           .selectAll("skill_effect")
       ).as("effects"),
-      schema: z.array(skill_effectSchema).describe("技能效果列表"),
+      schema: z.array(SkillEffectSchema).describe("技能效果列表"),
   },
 });
 
@@ -44,7 +44,7 @@ export const skillRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const SkillWithRelationsSchema = z.object({
-  ...skillSchema.shape,
+  ...SkillSchema.shape,
   ...skillRelationsFactory.schema.shape,
 });
 

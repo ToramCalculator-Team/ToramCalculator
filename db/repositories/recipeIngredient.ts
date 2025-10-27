@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, recipe_ingredient } from "@db/generated/zod/index";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { recipe_ingredientSchema } from "../generated/zod/index";
+import { RecipeIngredientSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -22,7 +22,7 @@ export const recipeIngredientRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const RecipeIngredientWithRelationsSchema = z.object({
-  ...recipe_ingredientSchema.shape,
+  ...RecipeIngredientSchema.shape,
   ...recipeIngredientRelationsFactory.schema.shape,
 });
 

@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { account, DB } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { accountSchema, account_create_dataSchema, account_update_dataSchema } from "../generated/zod/index";
+import { AccountSchema, AccountCreateDataSchema, AccountUpdateDataSchema } from "../generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -24,7 +24,7 @@ const accountSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("create"),
-    schema: account_create_dataSchema.describe("账户创建数据"),
+    schema: AccountCreateDataSchema.describe("账户创建数据"),
   },
   update: {
     build: (eb, accountId) =>
@@ -36,7 +36,7 @@ const accountSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("update"),
-    schema: account_update_dataSchema.describe("账户更新数据"),
+    schema: AccountUpdateDataSchema.describe("账户更新数据"),
   },
 });
 
@@ -45,7 +45,7 @@ export const accountRelationsFactory = makeRelations(accountSubRelationDefs);
 
 // 构造关系Schema
 export const AccountWithRelationsSchema = z.object({
-  ...accountSchema.shape,
+  ...AccountSchema.shape,
   ...accountRelationsFactory.schema.shape,
 });
 

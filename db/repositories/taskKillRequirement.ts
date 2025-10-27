@@ -3,7 +3,7 @@ import { getDB } from "./database";
 import { DB, task_kill_requirement } from "@db/generated/zod/index";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
-import { mobSchema, task_kill_requirementSchema } from "@db/generated/zod";
+import { MobSchema, TaskKillRequirementSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { MobWithRelationsSchema } from "./mob";
@@ -29,7 +29,7 @@ const taskKillRequirementSubRelationDefs = defineRelations({
 
 const taskKillRequirementRelationsFactory = makeRelations(taskKillRequirementSubRelationDefs);
 export const TaskKillRequirementWithRelationsSchema = z.object({
-  ...task_kill_requirementSchema.shape,
+  ...TaskKillRequirementSchema.shape,
   ...taskKillRequirementRelationsFactory.schema.shape,
 });
 export const taskKillRequirementSubRelations = taskKillRequirementRelationsFactory.subRelations;

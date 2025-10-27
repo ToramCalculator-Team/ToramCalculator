@@ -4,7 +4,7 @@ import { DB, player_pet } from "@db/generated/zod/index";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { mobSubRelations, MobWithRelationsSchema } from "./mob";
 import { createId } from "@paralleldrive/cuid2";
-import { player_petSchema } from "@db/generated/zod";
+import { PlayerPetSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
@@ -30,7 +30,7 @@ const playerPetSubRelationDefs = defineRelations({
 
 const playerPetRelationsFactory = makeRelations(playerPetSubRelationDefs);
 export const PlayerPetWithRelationsSchema = z.object({
-  ...player_petSchema.shape,
+  ...PlayerPetSchema.shape,
   ...playerPetRelationsFactory.schema.shape,
 });
 export const playerPetSubRelations = playerPetRelationsFactory.subRelations;

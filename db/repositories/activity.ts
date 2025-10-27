@@ -4,7 +4,7 @@ import { Selectable, Insertable, Updateable, Expression, ExpressionBuilder } fro
 import { createId } from "@paralleldrive/cuid2";
 import { Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
-import { activitySchema, statisticSchema, zoneSchema } from "@db/generated/zod";
+import { ActivitySchema, StatisticSchema, ZoneSchema } from "@db/generated/zod";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { createStatistic } from "./statistic";
@@ -20,20 +20,20 @@ const activitySubRelationDefs = defineRelations({
   zones: {
     build: (eb: ExpressionBuilder<DB, "activity">, id: Expression<string>) =>
       jsonArrayFrom(eb.selectFrom("zone").where("zone.activityId", "=", id).selectAll("zone")).as("zones"),
-    schema: z.array(zoneSchema).describe("包含的区域"),
+    schema: z.array(ZoneSchema).describe("包含的区域"),
   },
   statistic: {
     build: (eb: ExpressionBuilder<DB, "activity">, id: Expression<string>) =>
       jsonObjectFrom(eb.selectFrom("statistic").where("id", "=", id).selectAll("statistic"))
         .$notNull()
         .as("statistic"),
-    schema: statisticSchema.describe("统计信息"),
+    schema: StatisticSchema.describe("统计信息"),
   },
 });
 
 const activityRelationsFactory = makeRelations(activitySubRelationDefs);
 export const ActivityWithRelationsSchema = z.object({
-  ...activitySchema.shape,
+  ...ActivitySchema.shape,
   ...activityRelationsFactory.schema.shape,
 });
 export const activitySubRelations = activityRelationsFactory.subRelations;
@@ -106,9 +106,9 @@ export async function updateActivity(trx: Transaction<DB>, activityData: Activit
 
 export async function deleteActivity(trx: Transaction<DB>, activityData: Activity) {
   // 将用到此活动的zone的activityId设为null
-  await trx.updateTable("zone").set({ activityId: null }).where("activityId", "=", activityData.id).execute();
+  await trx.updateTable("zone").set({ activityId: undefined }).where("activityId", "=", activityData.id).execute();
   // 将用到此活动的recipe的activityId设为null
-  await trx.updateTable("recipe").set({ activityId: null }).where("activityId", "=", activityData.id).execute();
+  await trx.updateTable("recipe").set({ activityId: undefined }).where("activityId", "=", activityData.id).execute();
   // 删除活动
   await trx.deleteFrom("activity").where("id", "=", activityData.id).executeTakeFirstOrThrow();
   // 删除统计

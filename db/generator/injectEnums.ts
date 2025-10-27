@@ -6,9 +6,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { EnumInjector } from '../generator/helpers/enumInjector';
-import { SchemaCollector } from '../generator/utils/schemaCollector';
-import { PATHS } from '../generator/config';
+import { EnumInjector } from './enumInjector';
+import { SchemaCollector } from './utils/schemaCollector';
+import { PATHS } from './config';
 
 /**
  * 第一阶段：合并枚举生成临时 Prisma schema

@@ -5,7 +5,7 @@ import { CharacterWithRelationsSchema, characterSubRelations } from "./character
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { playerSchema } from "@db/generated/zod";
+import { PlayerSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -30,7 +30,7 @@ const playerSubRelationDefs = defineRelations({
 
 const playerRelationsFactory = makeRelations(playerSubRelationDefs);
 export const PlayerWithRelationsSchema = z.object({
-  ...playerSchema.shape,
+  ...PlayerSchema.shape,
   ...playerRelationsFactory.schema.shape,
 });
 export const playerSubRelations = playerRelationsFactory.subRelations;

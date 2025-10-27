@@ -39,7 +39,7 @@ export const PATHS = {
     rules: path.join(__dirname, "../../generated/queryBuilderRules.ts"),
   },
   repository: {
-    output: path.join(__dirname, "../../generated/repository"),
+    output: path.join(__dirname, "../../generated/repositories"),
   },
   generated: {
     databaseSchema: path.join(__dirname, "../../generated/database-schema.ts"),

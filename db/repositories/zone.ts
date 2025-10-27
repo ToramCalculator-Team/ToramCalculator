@@ -4,7 +4,7 @@ import { DB, zone } from "@db/generated/zod/index";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { mobSubRelations, MobWithRelationsSchema } from "./mob";
-import { zoneSchema, npcSchema } from "@db/generated/zod";
+import { ZoneSchema } from "@db/generated/zod/index";
 import { z } from "zod/v4";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 import { npcSubRelations, NpcWithRelationsSchema } from "./npc";
@@ -43,7 +43,7 @@ const zoneSubRelationDefs = defineRelations({
 
 const zoneRelationsFactory = makeRelations(zoneSubRelationDefs);
 export const ZoneWithRelationsSchema = z.object({
-  ...zoneSchema.shape,
+  ...ZoneSchema.shape,
   ...zoneRelationsFactory.schema.shape,
 });
 export const zoneSubRelations = zoneRelationsFactory.subRelations;

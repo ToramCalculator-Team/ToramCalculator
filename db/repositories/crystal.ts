@@ -7,7 +7,7 @@ import { createStatistic } from "./statistic";
 import { createItem } from "./item";
 import { store } from "~/store";
 import { z } from "zod/v4";
-import { crystalSchema, itemSchema } from "../generated/zod/index";
+import { CrystalSchema, ItemSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -27,7 +27,7 @@ const crystalSubRelationDefs = defineRelations({
           .whereRef("item.id", "=", "crystal.itemId")
           .selectAll("item")
       ).as("backs"),
-    schema: z.array(itemSchema).describe("前置水晶物品列表"),
+    schema: z.array(ItemSchema).describe("前置水晶物品列表"),
   },
   fronts: {
     build: (eb, id) =>
@@ -39,7 +39,7 @@ const crystalSubRelationDefs = defineRelations({
           .whereRef("item.id", "=", "crystal.itemId")
           .selectAll("item")
       ).as("fronts"),
-    schema: z.array(itemSchema).describe("后置水晶物品列表"),
+    schema: z.array(ItemSchema).describe("后置水晶物品列表"),
   },
 });
 
@@ -50,7 +50,7 @@ export const crystalRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const CrystalWithRelationsSchema = z.object({
-  ...crystalSchema.shape,
+  ...CrystalSchema.shape,
   ...crystalRelationsFactory.schema.shape,
 });
 

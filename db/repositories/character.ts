@@ -11,13 +11,13 @@ import { PlayerSpecialWithRelationsSchema, playerSpecialSubRelations } from "./p
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
 import {
-  avatarSchema,
-  characterSchema,
-  consumableSchema,
-  comboSchema,
-  character_skillSchema,
-  statisticSchema,
-} from "@db/generated/zod";
+  AvatarSchema,
+  CharacterSchema,
+  ConsumableSchema,
+  ComboSchema,
+  CharacterSkillSchema,
+  StatisticSchema,
+} from "@db/generated/zod/index";
 import { characterSkillSubRelations, CharacterSkillWithRelationsSchema } from "./characterSkill";
 import { ComboWithRelationsSchema } from "./combo";
 import { defineRelations, makeRelations } from "./subRelationFactory";
@@ -41,7 +41,7 @@ const characterSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("avatars"),
-    schema: z.array(avatarSchema).describe("头像列表"),
+    schema: z.array(AvatarSchema).describe("头像列表"),
   },
   consumables: {
     build: (eb: ExpressionBuilder<DB, "character">, id: Expression<string>) =>
@@ -55,7 +55,7 @@ const characterSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("consumables"),
-    schema: z.array(consumableSchema).describe("消耗品列表"),
+    schema: z.array(ConsumableSchema).describe("消耗品列表"),
   },
   combos: {
     build: (eb: ExpressionBuilder<DB, "character">, id: Expression<string>) =>
@@ -68,7 +68,7 @@ const characterSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("combos"),
-    schema: z.array(ComboWithRelationsSchema).describe("连击列表"),
+    schema: z.array(ComboSchema).describe("连击列表"),
   },
   skills: {
     build: (eb: ExpressionBuilder<DB, "character">, id: Expression<string>) =>
@@ -81,7 +81,7 @@ const characterSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("skills"),
-    schema: z.array(CharacterSkillWithRelationsSchema).describe("技能列表"),
+    schema: z.array(CharacterSkillSchema).describe("技能列表"),
   },
   weapon: {
     build: (eb) =>
@@ -159,13 +159,13 @@ const characterSubRelationDefs = defineRelations({
       )
         .$notNull()
         .as("statistic"),
-    schema: StatisticWithRelationsSchema.describe("属性统计"),
+    schema: StatisticSchema.describe("属性统计"),
   },
 });
 
 const characterRelationsFactory = makeRelations(characterSubRelationDefs);
 export const CharacterWithRelationsSchema = z.object({
-  ...characterSchema.shape,
+    ...CharacterSchema.shape,
   ...characterRelationsFactory.schema.shape,
 });
 export const characterSubRelations = characterRelationsFactory.subRelations;

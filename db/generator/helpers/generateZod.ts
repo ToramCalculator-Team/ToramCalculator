@@ -6,7 +6,8 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { writeFileSafely } from "../utils/writeFileSafely";
-import { EnumInjector } from "./enumInjector";
+import { EnumInjector } from "../enumInjector";
+import { TypeName, ZodTypeName, SchemaName, IsIntermediateTable, NamingRules } from "../utils/namingRules";
 
 /**
  * Zod Schema 生成器
@@ -31,12 +32,12 @@ export class ZodGenerator {
       console.log("🔍 生成 Zod schemas...");
       
       const enumSchemas = this.generateEnumSchemas();
-      const modelSchemas = this.generateModelSchemas();
-      const intermediateSchemas = this.generateIntermediateTableSchemas();
+      const tableSchemas = this.generateTableSchemas();
       const kyselyTypes = this.generateKyselyTypes();
       const dbInterface = this.generateDBInterface();
+      const dbSchema = this.generateDBSchema();
       
-      const fullContent = this.buildFullContent(enumSchemas, modelSchemas, intermediateSchemas, kyselyTypes, dbInterface);
+      const fullContent = this.buildFullContent(enumSchemas, tableSchemas, kyselyTypes, dbInterface, dbSchema);
       
       writeFileSafely(outputPath, fullContent);
       
@@ -58,8 +59,10 @@ export class ZodGenerator {
     
     if (extractedEnums && extractedEnums.size > 0) {
       for (const [enumName, enumValues] of extractedEnums) {
-        enumSchemas += `export const ${enumName}Schema = z.enum([${enumValues.map((v: string) => `"${v}"`).join(", ")}]);\n`;
-        enumSchemas += `export type ${enumName} = z.output<typeof ${enumName}Schema>;\n\n`;
+        const enumSchemaName = SchemaName(enumName); // 使用 SchemaName 规范
+        const enumTypeName = ZodTypeName(enumName); // 使用 ZodTypeName 规范（snake_case）
+        enumSchemas += `export const ${enumSchemaName} = z.enum([${enumValues.map((v: string) => `"${v}"`).join(", ")}]);\n`;
+        enumSchemas += `export type ${enumTypeName} = z.output<typeof ${enumSchemaName}>;\n\n`;
       }
     }
 
@@ -67,15 +70,21 @@ export class ZodGenerator {
   }
 
   /**
-   * 生成模型 schemas
+   * 生成所有表的 schemas（包括常规表和中间表）
    */
-  private generateModelSchemas(): string {
-    let modelSchemas = "";
+  private generateTableSchemas(): string {
+    let regularTableSchemas = "";
+    let intermediateTableSchemas = "";
 
-    // 从完整的模型列表中提取模型信息（包含中间表）
+    // 从完整的模型列表中提取所有表信息
     for (const model of this.allModels) {
-      const schemaName = `${model.name.toLowerCase()}Schema`;
-      const typeName = model.name;
+      const tableName = model.dbName || model.name;
+      const isIntermediateTable = IsIntermediateTable(tableName);
+      
+      // Schema 名称：PascalCase + Schema
+      const schemaName = SchemaName(tableName);
+      // 中间类型名称：snake_case（用于之后转换成 Selectable/Insertable/Updateable）
+      const typeName = ZodTypeName(tableName);
       
       const fieldsStr = model.fields
         .filter((field: DMMF.Field) => {
@@ -88,42 +97,18 @@ export class ZodGenerator {
         })
         .join(",\n");
 
-      modelSchemas += `export const ${schemaName} = z.object({\n${fieldsStr}\n});\n`;
-      modelSchemas += `export type ${typeName} = z.output<typeof ${schemaName}>;\n\n`;
-    }
+      const schemaCode = `export const ${schemaName} = z.object({\n${fieldsStr}\n});\n`;
+      const typeCode = `export type ${typeName} = z.output<typeof ${schemaName}>;\n\n`;
+      const content = schemaCode + typeCode;
 
-    return modelSchemas;
-  }
-
-  /**
-   * 生成中间表 schemas（以 _ 开头的表）
-   */
-  private generateIntermediateTableSchemas(): string {
-    let intermediateSchemas = "";
-
-    // 从完整的模型列表中提取中间表信息
-    for (const model of this.allModels) {
-      // 检查是否为中间表（以 _ 开头）
-      if (model.name.startsWith('_') || (model.dbName && model.dbName.startsWith('_'))) {
-        // 使用 dbName 作为表名（如果存在），否则使用 name
-        const tableName = model.dbName || model.name;
-        const schemaName = `${tableName.toLowerCase()}Schema`;
-        const typeName = this.convertToPascalCase(tableName);
-        
-        const fieldsStr = model.fields
-          .filter((field: DMMF.Field) => field.kind === "scalar")
-          .map((field: DMMF.Field) => {
-            const zodType = this.convertFieldToZod(field);
-            return `  ${field.name}: ${zodType}`;
-          })
-          .join(",\n");
-
-        intermediateSchemas += `export const ${schemaName} = z.object({\n${fieldsStr}\n});\n`;
-        intermediateSchemas += `export type ${typeName} = z.output<typeof ${schemaName}>;\n\n`;
+      if (isIntermediateTable) {
+        intermediateTableSchemas += content;
+      } else {
+        regularTableSchemas += content;
       }
     }
 
-    return intermediateSchemas;
+    return regularTableSchemas + "\n// ===== 中间表 Schemas =====\n" + intermediateTableSchemas;
   }
 
   /**
@@ -160,7 +145,8 @@ export class ZodGenerator {
         const extractedEnums = (this.enumInjector as any).extractedEnums;
         const isEnum = extractedEnums && extractedEnums.has(field.type);
         if (isEnum) {
-          zodType = `${field.type}Schema`;
+          // 使用 SchemaName 规范生成枚举 schema 名称
+          zodType = SchemaName(field.type);
         } else {
           zodType = "z.string()"; // 默认为字符串
         }
@@ -200,17 +186,12 @@ export type Whereable<T> = Partial<T>;
     let dbInterface = "export interface DB {\n";
 
     // 添加所有模型（包括中间表）
+    // DB 接口中的类型应该是 snake_case（Zod 导出的类型）
     for (const model of this.allModels) {
       const tableName = model.dbName || model.name;
+      const typeName = ZodTypeName(tableName);
       
-      if (tableName.startsWith('_')) {
-        // 中间表使用 PascalCase 类型名
-        const pascalCaseName = this.convertToPascalCase(tableName);
-        dbInterface += `  ${tableName}: ${pascalCaseName};\n`;
-      } else {
-        // 常规模型使用原始名称
-        dbInterface += `  ${tableName}: ${tableName};\n`;
-      }
+      dbInterface += `  ${tableName}: ${typeName};\n`;
     }
 
     dbInterface += "}\n";
@@ -219,19 +200,29 @@ export type Whereable<T> = Partial<T>;
   }
 
   /**
-   * 将下划线命名转换为 PascalCase
+   * 生成 DBSchema 对象
+   * 包含所有表的 Zod Schema，用于运行时验证
    */
-  private convertToPascalCase(name: string): string {
-    return name
-      .split('_')
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join('');
+  private generateDBSchema(): string {
+    let dbSchema = "// ===== DB Schema 对象 =====\nexport const DBSchema = {\n";
+
+    for (const model of this.allModels) {
+      const tableName = model.dbName || model.name;
+      const schemaName = SchemaName(tableName);
+      
+      dbSchema += `  ${tableName}: ${schemaName},\n`;
+    }
+
+    dbSchema += "} as const;\n";
+
+    return dbSchema;
   }
+
 
   /**
    * 构建完整内容
    */
-  private buildFullContent(enumSchemas: string, modelSchemas: string, intermediateSchemas: string, kyselyTypes: string, dbInterface: string): string {
+  private buildFullContent(enumSchemas: string, tableSchemas: string, kyselyTypes: string, dbInterface: string, dbSchema: string): string {
     return `/**
  * @file zod/index.ts
  * @description Zod 验证模式和 TypeScript 类型
@@ -244,16 +235,15 @@ import { z } from "zod";
 ${enumSchemas}
 
 // ===== 模型 Schemas =====
-${modelSchemas}
-
-// ===== 中间表 Schemas =====
-${intermediateSchemas}
+${tableSchemas}
 
 // ===== Kysely 工具类型 =====
 ${kyselyTypes}
 
 // ===== DB 接口 =====
 ${dbInterface}
+
+${dbSchema}
 `;
   }
 }

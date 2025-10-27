@@ -5,7 +5,7 @@ import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { createId } from "@paralleldrive/cuid2";
 import { skillSubRelations, SkillWithRelationsSchema } from "./skill";
 import { z } from "zod/v4";
-import { character_skillSchema, skillSchema, statisticSchema, skill_effectSchema } from "../generated/zod/index";
+import { CharacterSkillSchema, SkillSchema, StatisticSchema, SkillEffectSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -35,7 +35,7 @@ export const characterSkillRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const CharacterSkillWithRelationsSchema = z.object({
-  ...character_skillSchema.shape,
+  ...CharacterSkillSchema.shape,
   ...characterSkillRelationsFactory.schema.shape,
 });
 

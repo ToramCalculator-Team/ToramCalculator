@@ -6,9 +6,8 @@ import { crystalSubRelations, CrystalWithRelationsSchema } from "./crystal";
 import { WeaponWithRelationsSchema, weaponSubRelations } from "./weapon";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { player_weaponSchema } from "@db/generated/zod";
+import { PlayerWeaponSchema, ItemSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
-import { itemSchema, crystalSchema } from "@db/generated/zod";
 
 // 1. 类型定义
 export type PlayerWeapon = Selectable<player_weapon>;
@@ -30,7 +29,7 @@ const playerWeaponSubRelationDefs = defineRelations({
       ).as("crystalList"),
     schema: z.array(
       z.object({
-        ...itemSchema.shape,
+        ...ItemSchema.shape,
         ...CrystalWithRelationsSchema.shape,
       })
     ).describe("水晶列表"),
@@ -51,7 +50,7 @@ const playerWeaponSubRelationDefs = defineRelations({
 
 const playerWeaponRelationsFactory = makeRelations(playerWeaponSubRelationDefs);
 export const PlayerWeaponWithRelationsSchema = z.object({
-  ...player_weaponSchema.shape,
+  ...PlayerWeaponSchema.shape,
   ...playerWeaponRelationsFactory.schema.shape,
 });
 export const playerWeaponSubRelations = playerWeaponRelationsFactory.subRelations;

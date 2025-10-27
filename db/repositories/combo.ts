@@ -4,7 +4,7 @@ import { DB, combo } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { z } from "zod/v4";
-import { comboSchema, combo_stepSchema } from "../generated/zod";
+import { ComboSchema, ComboStepSchema } from "@db/generated/zod/index";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -22,7 +22,7 @@ const comboSubRelationDefs = defineRelations({
           .whereRef("combo_step.belongToComboId", "=", "combo.id")
           .selectAll("combo_step")
       ).$notNull().as("steps"),
-    schema: z.array(combo_stepSchema).describe("连击步骤列表"),
+    schema: z.array(ComboStepSchema).describe("连击步骤列表"),
   },
 });
 
@@ -33,7 +33,7 @@ export const comboRelationsFactory = makeRelations(
 
 // 构造关系Schema
 export const ComboWithRelationsSchema = z.object({
-  ...comboSchema.shape,
+  ...ComboSchema.shape,
   ...comboRelationsFactory.schema.shape,
 });
 

@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
-import initSQL from "@db/generated/clientDB/init.sql?raw";
+import initSQL from "@db/generated/client.sql?raw";
 import { DB } from "@db/generated/zod/index";
 import { ChangeLogSynchronizer } from "~/lib/ChangeLogSynchronizer";
 

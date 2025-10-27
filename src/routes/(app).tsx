@@ -9,7 +9,7 @@ import hotkeys from "hotkeys-js";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { ensureLocalAccount } from "~/lib/localAccount";
 import { CardGroup } from "~/components/features/cardGroup";
-import { repositoryMethods } from "@db/generated/repository";
+import { repositoryMethods } from "@db/generated/repositories";
 import { getDB } from "@db/repositories/database";
 import { getPrimaryKeys } from "@db/repositories/untils";
 import { DB } from "@db/generated/zod/index";
