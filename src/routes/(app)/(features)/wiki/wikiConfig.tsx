@@ -38,6 +38,138 @@ export type WikiConfig = Partial<{
 }>;
 
 export const wikiConfig: WikiConfig = {
+  activity: {
+    fieldGroupMap: {},
+    table: {
+      columnsDef: [
+        {
+          accessorKey: "id",
+          cell: (info) => info.getValue(),
+          size: 200,
+        },
+        {
+          accessorKey: "name",
+          cell: (info) => info.getValue(),
+          size: 220,
+        },
+      ],
+      hiddenColumnDef: ["id"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  address: {
+    fieldGroupMap: {
+      基本信息: ["name", "type"],
+      坐标信息: ["posX", "posY"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 160 },
+        { accessorKey: "posX", cell: (info: any) => info.getValue(), size: 160 },
+        { accessorKey: "posY", cell: (info: any) => info.getValue(), size: 160 },
+      ],
+      hiddenColumnDef: ["id"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  armor: {
+    fieldGroupMap: {
+      基本信息: ["name", "baseAbi"],
+      其他属性: ["modifiers"],
+      颜色信息: ["colorA", "colorB", "colorC"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "baseAbi", cell: (info: any) => info.getValue(), size: 100 },
+      ],
+      hiddenColumnDef: [],
+      defaultSort: { id: "itemId", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  consumable: {
+    fieldGroupMap: {},
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 150 },
+        { accessorKey: "effectDuration", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "effects", cell: (info: any) => info.getValue(), size: 150 },
+      ],
+      hiddenColumnDef: [],
+      defaultSort: { id: "itemId", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  crystal: {
+    fieldGroupMap: {
+      基本信息: ["name", "type", "modifiers"],
+    },
+    table: {
+      columnsDef: [],
+      hiddenColumnDef: [],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {
+        name: (key, value, dic) => {
+          return (
+            <div class="Field flex gap-2">
+              <span class="text-main-text-color text-nowrap">{dic.key}</span>:
+              <span class="flex items-center gap-2 font-bold">
+                <Icons.Spirits iconName={data.type} size={24} /> {String(value)}
+              </span>
+            </div>
+          );
+        },
+      },
+    },
+  },
   mob: {
     fieldGroupMap: {
       常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],

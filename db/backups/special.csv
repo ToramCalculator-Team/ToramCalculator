@@ -1,2 +1,2 @@
-baseAbi,modifiers,itemId
-10,"{""pie.m + 10%"",""mp.max + 300""}",defaultSpecialItemId
+,baseAbi,modifiers,itemId
+读星提灯,10,"{""pie.m + 10%"",""mp.max + 300""}",defaultSpecialItemId

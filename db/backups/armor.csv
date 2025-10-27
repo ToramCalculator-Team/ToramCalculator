@@ -1,2 +1,2 @@
-baseAbi,modifiers,colorA,colorB,colorC,itemId
-10,{},0,0,0,defaultArmorItemId
+name,baseAbi,modifiers,colorA,colorB,colorC,itemId
+冒险者服装,10,{},0,0,0,defaultArmorItemId

@@ -75,6 +75,7 @@ export const CardGroup = () => {
                         dictionary={dictionary().db[cardGroupItem.type]}
                         hiddenFields={wikiConfig[cardGroupItem.type]?.card.hiddenFields}
                         fieldGroupMap={wikiConfig[cardGroupItem.type]?.fieldGroupMap}
+                        // @ts-ignore-next-line  这里是TypeScript 的函数参数逆变性问题，暂时忽略
                         fieldGenerator={wikiConfig[cardGroupItem.type]?.card.fieldGenerator}
                       />
                     )}

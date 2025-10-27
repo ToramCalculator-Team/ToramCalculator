@@ -1,4 +1,3 @@
-
 // 世界
 model world {
     id String @id
@@ -206,6 +205,7 @@ model item {
 
 // 素材物品
 model material {
+    name    String
     type    String // Enum MATERIAL_TYPE
     ptValue Int
     price   Int
@@ -216,6 +216,7 @@ model material {
 
 // 消耗品
 model consumable {
+    name           String
     type           String // Enum CONSUMABLE_TYPE
     effectDuration Int
     effects        String[]
@@ -228,6 +229,7 @@ model consumable {
 
 // 锻晶
 model crystal {
+    name      String
     type      String // Enum CRYSTAL_TYPE
     modifiers String[]
 
@@ -252,6 +254,7 @@ model crystal {
 
 // 武器
 model weapon {
+    name            String
     type            String // Enum WEAPON_TYPE
     baseAbi         Int
     stability       Int
@@ -271,6 +274,7 @@ model weapon {
 
 // 防具
 model armor {
+    name            String
     baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -287,6 +291,7 @@ model armor {
 
 // 追加装备
 model option {
+    name            String
     baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
@@ -303,6 +308,7 @@ model option {
 
 // 特殊装备
 model special {
+    name            String
     baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]

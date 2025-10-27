@@ -1,9 +1,9 @@
-type,modifiers,itemId
-OptionCrystal,"{""distanceDmg.short + 10%"",""hp.max + 30%"",""c.rate.p + 50%"",""mp.max - 100"",""armor.ability == \""Light\"" && pie.p - 10%""}",defaultOptionCrystalBItemId
-OptionCrystal,"{""distanceDmg.short + 12%"",""distanceDmg.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pie.p + 10%""}",defaultOptionCrystalAItemId
-SpecialCrystal,"{""atk.m + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro.rate - 9%"",""subWeapon.type == \""Shield\"" && aggro.rate + 9%""}",defaultSpecialCrystalAItemId
-NormalCrystal,"{""distanceDmg.short + 9%"",""accuracy + 5%"",""mp.max + 200"",""hp.max - 300"",""c.rate.p - 7""}",defaultSpecialCrystalBItemId
-WeaponCrystal,"{""atk.m + 8%"",""pie.m + 20%"",""cspd - 16%""}",defaultWeaponCrystalAItemId
-WeaponCrystal,"{""atk.m + 10%"",""pie.m + 7%"",""aggro.rate - 11%"",""def.m - 30%""}",defaultWeaponCrystalBItemId
-ArmorCrystal,"{""atk.m + 10%"",""int + 6%"",""cspd + 40%"",""mp.atkRegen + 10%""}",defaultArmorCrystalAItemId
-ArmorCrystal,"{""stab.p + 11%"",""str + 6%"",""vit + 6%"",""armor.ability == \""Light\"" && distanceDmg.short + 11%"",""armor.ability == \""Light\"" && stab.p - 5%"",""armor.ability == \""Heavy\"" && distanceDmg.long + 11%"",""armor.ability == \""Heavy\"" && stab.p - 5%""}",defaultArmorCrystalBItemId
+name,type,modifiers,itemId
+大尺码佩鲁鲁,OptionCrystal,"{""distanceDmg.short + 10%"",""hp.max + 30%"",""c.rate.p + 50%"",""mp.max - 100"",""armor.ability == \""Light\"" && pie.p - 10%""}",defaultOptionCrystalBItemId
+卡斯蒂莉亚,OptionCrystal,"{""distanceDmg.short + 12%"",""distanceDmg.long + 6%"",""accuracy + 10%"",""aspd - 900"",""mainWeapon.type == \""Migictool\"" && mspd + 5%"",""subWeapon.type == \""Ninjutsuscroll\"" && pie.p + 10%""}",defaultOptionCrystalAItemId
+星之魔导士,SpecialCrystal,"{""atk.m + 9%"",""cspd + 9%"",""anticipate + 9%"",""mainWeapon.typ == \""Rod\"" && aggro.rate - 9%"",""subWeapon.type == \""Shield\"" && aggro.rate + 9%""}",defaultSpecialCrystalAItemId
+尉龙鲁迪斯,NormalCrystal,"{""distanceDmg.short + 9%"",""accuracy + 5%"",""mp.max + 200"",""hp.max - 300"",""c.rate.p - 7""}",defaultSpecialCrystalBItemId
+迪亚克,WeaponCrystal,"{""atk.m + 8%"",""pie.m + 20%"",""cspd - 16%""}",defaultWeaponCrystalAItemId
+巴图德,WeaponCrystal,"{""atk.m + 10%"",""pie.m + 7%"",""aggro.rate - 11%"",""def.m - 30%""}",defaultWeaponCrystalBItemId
+盖格纳,ArmorCrystal,"{""atk.m + 10%"",""int + 6%"",""cspd + 40%"",""mp.atkRegen + 10%""}",defaultArmorCrystalAItemId
+阿鲁塔达尔,ArmorCrystal,"{""stab.p + 11%"",""str + 6%"",""vit + 6%"",""armor.ability == \""Light\"" && distanceDmg.short + 11%"",""armor.ability == \""Light\"" && stab.p - 5%"",""armor.ability == \""Heavy\"" && distanceDmg.long + 11%"",""armor.ability == \""Heavy\"" && stab.p - 5%""}",defaultArmorCrystalBItemId
