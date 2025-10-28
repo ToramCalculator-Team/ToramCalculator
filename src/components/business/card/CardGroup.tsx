@@ -69,17 +69,25 @@ export const CardGroup = () => {
                   total={cachedCardDatas()!.length}
                 >
                   <Show when={cardData()} fallback={<pre>{JSON.stringify(cardData(), null, 2)}</pre>}>
-                    {(cardData) => (
-                      <DBdataRenderer
-                        data={cardData()}
-                        dataSchema={DBSchema[cardGroupItem.type]}
-                        dictionary={dictionary().db[cardGroupItem.type]}
-                        hiddenFields={DATA_CONFIG[cardGroupItem.type]?.card.hiddenFields}
-                        fieldGroupMap={DATA_CONFIG[cardGroupItem.type]?.fieldGroupMap}
-                        // @ts-ignore-next-line  这里是TypeScript 的函数参数逆变性问题，暂时忽略
-                        fieldGenerator={DATA_CONFIG[cardGroupItem.type]?.card.fieldGenerator}
-                      />
-                    )}
+                    {(cardData) => {
+                      const config = DATA_CONFIG[cardGroupItem.type];
+                      return (
+                        <DBdataRenderer<keyof DB, DB[keyof DB]>
+                          data={cardData()}
+                          dataSchema={DBSchema[cardGroupItem.type]}
+                          dictionary={dictionary().db[cardGroupItem.type]}
+                          // @ts-expect-error 动态类型导致的类型推断问题：hiddenFields
+                          hiddenFields={config?.card.hiddenFields}
+                          // @ts-expect-error 动态类型导致的类型推断问题：fieldGroupMap 
+                          fieldGroupMap={config?.fieldGroupMap}
+                          fieldGenerator={config?.card.fieldGenerator}
+                          // @ts-expect-error 函数逆变性问题：after
+                          after={config?.card.after}
+                          // @ts-expect-error 函数逆变性问题：before
+                          before={config?.card.before}
+                        />
+                      );
+                    }}
                   </Show>
                 </Card>
               );

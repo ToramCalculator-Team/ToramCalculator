@@ -3,10 +3,9 @@ import { Motion, Presence } from "solid-motionone";
 import { Nav } from "~/components/features/nav";
 import { setStore, store } from "~/store";
 
-
-export default function FunctionPage(props: ParentProps) {
+export default function ToolPage(props: ParentProps) {
   onMount(() => {
-    console.log("--FunctionPage Render");
+    console.log("--ToolPage Render");
   });
 
   return (
@@ -26,7 +25,7 @@ export default function FunctionPage(props: ParentProps) {
         animate={{ opacity: [0, 1] }}
         transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
         id="mainContent"
-        class="Content z-40 flex h-full w-full flex-col overflow-hidden lg:landscape:px-12"
+        class="Content z-40 flex h-full w-full flex-col overflow-hidden"
       >
         {props.children}
       </Motion.div>

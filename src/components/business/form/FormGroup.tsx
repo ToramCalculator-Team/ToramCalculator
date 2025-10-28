@@ -14,6 +14,7 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { DBForm } from "./DBFormRenderer";
 import { Sheet } from "~/components/containers/sheet";
 import { FormSheet } from "./FormSheet";
+import { getPrimaryKeyFields } from "@db/generated/database-schema";
 
 export const FormGroup = () => {
   // UI文本字典
@@ -31,7 +32,7 @@ export const FormGroup = () => {
           animate={{ opacity: [0, 1] }}
           exit={{ opacity: [1, 0] }}
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-          class={`SheetBox bg-primary-color-90 fixed flex flex-row-reverse portrait:flex-col-reverse top-0 left-0 w-dvw h-dvh z-50`}
+          class={`SheetBox bg-primary-color-90 fixed top-0 left-0 z-50 flex h-dvh w-dvw flex-row-reverse portrait:flex-col-reverse`}
           onClick={() => setStore("pages", "formGroup", (pre) => pre.slice(0, -1))}
         >
           <Index each={formDatas()}>
@@ -54,9 +55,14 @@ export const FormGroup = () => {
                         // @ts-ignore-next-line  问题同上，暂时忽略
                         fieldGroupMap={config().fieldGroupMap}
                         fieldGenerator={config().form.fieldGenerator}
-                        onSubmit={(values) =>
-                          repositoryMethods[formGroupItem.type].insert?.(values as any) ?? undefined
-                        }
+                        onSubmit={(values) => {
+                          if (formData()) {
+                            const primaryKeyFields = getPrimaryKeyFields(formGroupItem.type);
+                            repositoryMethods[formGroupItem.type].update?.(values[primaryKeyFields[0] as keyof typeof values], values as any)
+                          } else {
+                            repositoryMethods[formGroupItem.type].insert?.(values as any)
+                          }
+                        }}
                       ></DBForm>
                     )}
                   </Show>

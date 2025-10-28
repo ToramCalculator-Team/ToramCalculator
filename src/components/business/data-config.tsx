@@ -1,8 +1,8 @@
 import { DB } from "@db/generated/zod";
-import { ElementType, MobType } from "@db/schema/enums";
+import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType } from "@db/schema/enums";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { Cell, ColumnDef } from "@tanstack/solid-table";
-import { Accessor, JSX, Show } from "solid-js";
+import { Accessor, createEffect, createSignal, JSX, Show } from "solid-js";
 import { ZodObject, ZodType } from "zod/v4";
 import { FieldGenMap } from "~/components/dataDisplay/objRender";
 import Icons from "~/components/icons";
@@ -10,11 +10,16 @@ import { Dic, FieldDict } from "~/locales/type";
 import { store } from "~/store";
 import { LogicEditor } from "../features/logicEditor/LogicEditor";
 import { MemberBaseNestedSchema } from "../features/simulator/core/member/MemberBaseSchema";
+import { Select } from "../controls/select";
+import { generateBossDataByFlag } from "~/lib/utils/mob";
 
 export type DataConfig = Partial<{
   [T in keyof DB]: {
     fieldGroupMap: Record<string, Array<keyof DB[T]>>;
     table: {
+      measure?: {
+        estimateSize: number;
+      };
       columnsDef: ColumnDef<DB[T]>[];
       hiddenColumnDef: Array<keyof DB[T]>;
       defaultSort: { id: keyof DB[T]; desc: boolean };
@@ -35,6 +40,18 @@ export type DataConfig = Partial<{
     card: {
       hiddenFields: Array<keyof DB[T]>;
       fieldGenerator?: FieldGenMap<DB[T]>;
+      before?: (
+        data: DB[T],
+        setData: (data: DB[T]) => void,
+        dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
+        dictionary: Dic<DB[T]>,
+      ) => JSX.Element;
+      after?: (
+        data: DB[T],
+        setData: (data: DB[T]) => void,
+        dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
+        dictionary: Dic<DB[T]>,
+      ) => JSX.Element;
     };
   };
 }>;
@@ -147,6 +164,9 @@ export const DATA_CONFIG: DataConfig = {
       基本信息: ["name", "type", "modifiers"],
     },
     table: {
+      measure: {
+        estimateSize: 200,
+      },
       columnsDef: [
         { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
         { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
@@ -197,7 +217,7 @@ export const DATA_CONFIG: DataConfig = {
       额外说明: ["details"],
       怪物行为: ["actions"],
       词条信息: ["dataSources"],
-      关联数据: ["createdByAccountId","updatedByAccountId"]
+      关联数据: ["createdByAccountId", "updatedByAccountId"],
     },
     table: {
       columnsDef: [
@@ -394,13 +414,86 @@ export const DATA_CONFIG: DataConfig = {
     form: {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
       fieldGenerator: {
-        actions: (field, dictionary, dataSchema) => { 
-          return (<LogicEditor data={field().state.value} schema={MemberBaseNestedSchema} targetSchema={MemberBaseNestedSchema} setData={(data) => field().setValue(data)} state={true} />)
-        }
-      }
+        actions: (field, dictionary, dataSchema) => {
+          return (
+            <LogicEditor
+              data={field().state.value}
+              schema={MemberBaseNestedSchema}
+              targetSchema={MemberBaseNestedSchema}
+              setData={(data) => field().setValue(data)}
+              state={true}
+            />
+          );
+        },
+      },
     },
     card: {
-      hiddenFields: ["id"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
+      before: (data, setData, dataSchema, dictionary) => {
+        const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
+        
+        createEffect(() => {
+          setData(generateBossDataByFlag(data, difficulty()));
+        });
+      
+        return (
+          <Show when={data.type === "Boss"}>
+            <Select
+              value={difficulty()}
+              setValue={(value) => {
+                setDifficulty(value as MobDifficultyFlag);
+              }}
+              options={MOB_DIFFICULTY_FLAG.map((flag) => ({
+                label: flag,
+                value: flag,
+              }))}
+              optionGenerator={(option, selected, handleSelect) => {
+                return (
+                  <div
+                    class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
+                    onClick={handleSelect}
+                  >
+                    <div class="text-accent-color flex gap-1">
+                      <Icons.Filled.Star
+                        class={
+                          ["Normal", "Hard", "Lunatic", "Ultimate"].includes(option.value)
+                            ? "fill-brand-color-1st!"
+                            : "fill-none!"
+                        }
+                      />
+                      <Icons.Filled.Star
+                        class={
+                          ["Hard", "Lunatic", "Ultimate"].includes(option.value)
+                            ? "fill-brand-color-2nd!"
+                            : "fill-none!"
+                        }
+                      />
+                      <Icons.Filled.Star
+                        class={["Lunatic", "Ultimate"].includes(option.value) ? "fill-brand-color-3rd!" : "fill-none!"}
+                      />
+                      <Icons.Filled.Star
+                        class={["Ultimate"].includes(option.value) ? "fill-brand-color-4th!" : "fill-none!"}
+                      />
+                    </div>
+                    <span class="text-accent-color">
+                      Lv:
+                      {data.baseLv +
+                        ({
+                          Easy: -1,
+                          Normal: 0,
+                          Hard: 1,
+                          Lunatic: 2,
+                          Ultimate: 4,
+                        }[option.value] ?? 0) *
+                          10}
+                    </span>
+                  </div>
+                );
+              }}
+            />
+          </Show>
+        );
+      },
     },
   },
   player_weapon: {

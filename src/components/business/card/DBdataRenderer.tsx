@@ -1,17 +1,35 @@
 import { DB } from "@db/generated/zod";
-import { For, JSX, Show } from "solid-js";
+import { createSignal, For, JSX, Show } from "solid-js";
 import { ZodAny, ZodObject, ZodType } from "zod/v4";
 import { FieldGenMap } from "~/components/dataDisplay/objRender";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
-export function DBdataRenderer<TableName extends keyof DB, TData extends DB[TableName]>(props: {
+export type DBdataRendererProps<TableName extends keyof DB, TData extends DB[TableName]> = {
   data: TData;
   dataSchema: ZodObject<Record<keyof TData, ZodType>>;
-  dictionary?: Dic<TData>;
+  dictionary: Dic<TData>;
   hiddenFields?: Array<keyof TData>;
   fieldGroupMap?: Record<string, Array<keyof TData>>;
   fieldGenerator?: FieldGenMap<TData>;
-}) {
+  before?: (
+    data: TData,
+    setData: (data: TData) => void,
+    dataSchema: ZodObject<Record<keyof TData, ZodType>>,
+    dictionary: Dic<TData>,
+  ) => JSX.Element;
+  after?: (
+    data: TData,
+    setData: (data: TData) => void,
+    dataSchema: ZodObject<Record<keyof TData, ZodType>>,
+    dictionary: Dic<TData>,
+  ) => JSX.Element;
+};
+
+export function DBdataRenderer<TableName extends keyof DB, TData extends DB[TableName]>(
+  props: DBdataRendererProps<TableName, TData>,
+) {
+  const [data, setData] = createSignal<TData>(props.data);
+
   const fieldRenderer = (key: keyof TData, val: TData[typeof key]) => {
     // 跳过需要隐藏的字段
     if (props.hiddenFields?.some((hiddenField) => hiddenField === key)) return null;
@@ -23,7 +41,7 @@ export function DBdataRenderer<TableName extends keyof DB, TData extends DB[Tabl
     if (props.dataSchema.shape[key].type === "array") {
       const content = Object.entries(val as Record<string, unknown>);
       return props.dictionary && hasGenerator ? (
-        props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
+        props.fieldGenerator?.[key]?.(data(), key, props.dictionary)
       ) : (
         <div class="Field flex flex-col gap-2">
           <span class="Title text-main-text-color text-nowrap">{String(fieldName)}</span>
@@ -45,7 +63,7 @@ export function DBdataRenderer<TableName extends keyof DB, TData extends DB[Tabl
     }
 
     return props.dictionary && hasGenerator ? (
-      props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
+      props.fieldGenerator?.[key]?.(data(), key, props.dictionary)
     ) : (
       <div class="Field flex gap-2">
         <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:
@@ -61,15 +79,13 @@ export function DBdataRenderer<TableName extends keyof DB, TData extends DB[Tabl
 
   return (
     <div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3">
+      <div class="Image bg-area-color h-[18vh] w-full rounded"></div>
+      <Show when={props.before}>{(before) => before()(data(), setData, props.dataSchema, props.dictionary)}</Show>
       <Show
-        when={"fieldGroupMap" in props}
+        when={"fieldGroupMap" in props && Object.keys(props.fieldGroupMap ?? {}).length > 0}
         fallback={
-          <For each={Object.entries(props.data)}>
-            {([_key, _val]) => {
-              const key = _key as keyof TData;
-              const val = _val as TData[typeof key];
-              return fieldRenderer(key, val);
-            }}
+          <For each={Object.entries(data())}>
+            {([_key, _val]) => <>{fieldRenderer(_key as keyof TData, _val as TData[keyof TData])}</>}
           </For>
         }
       >
@@ -85,17 +101,13 @@ export function DBdataRenderer<TableName extends keyof DB, TData extends DB[Tabl
                 <div class="Divider bg-dividing-color h-px w-full flex-1" />
               </h3>
               <div class="Content flex flex-col gap-3 p-1">
-                <For each={keys}>
-                  {(key) => {
-                    const val = props.data[key];
-                    return fieldRenderer(key, val);
-                  }}
-                </For>
+                <For each={keys}>{(key) => <>{fieldRenderer(key, data()[key])}</>}</For>
               </div>
             </section>
           )}
         </For>
       </Show>
+      <Show when={props.after}>{(after) => after()(data(), setData, props.dataSchema, props.dictionary)}</Show>
     </div>
   );
 }
