@@ -8,8 +8,10 @@ import { FieldGenMap } from "~/components/dataDisplay/objRender";
 import Icons from "~/components/icons";
 import { Dic, FieldDict } from "~/locales/type";
 import { store } from "~/store";
+import { LogicEditor } from "../features/logicEditor/LogicEditor";
+import { MemberBaseNestedSchema } from "../features/simulator/core/member/MemberBaseSchema";
 
-export type WikiConfig = Partial<{
+export type DataConfig = Partial<{
   [T in keyof DB]: {
     fieldGroupMap: Record<string, Array<keyof DB[T]>>;
     table: {
@@ -37,7 +39,7 @@ export type WikiConfig = Partial<{
   };
 }>;
 
-export const wikiConfig: WikiConfig = {
+export const DATA_CONFIG: DataConfig = {
   activity: {
     fieldGroupMap: {},
     table: {
@@ -145,7 +147,12 @@ export const wikiConfig: WikiConfig = {
       基本信息: ["name", "type", "modifiers"],
     },
     table: {
-      columnsDef: [],
+      columnsDef: [
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
+        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
+        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
+      ],
       hiddenColumnDef: [],
       defaultSort: { id: "name", desc: false },
       tdGenerator: {},
@@ -157,12 +164,12 @@ export const wikiConfig: WikiConfig = {
     card: {
       hiddenFields: [],
       fieldGenerator: {
-        name: (key, value, dic) => {
+        name: (data, key, dictionary) => {
           return (
             <div class="Field flex gap-2">
-              <span class="text-main-text-color text-nowrap">{dic.key}</span>:
+              <span class="text-main-text-color text-nowrap">{dictionary.fields[key].key}</span>:
               <span class="flex items-center gap-2 font-bold">
-                <Icons.Spirits iconName={data.type} size={24} /> {String(value)}
+                <Icons.Spirits iconName={data.type} size={24} /> {String(data[key])}
               </span>
             </div>
           );
@@ -190,6 +197,7 @@ export const wikiConfig: WikiConfig = {
       额外说明: ["details"],
       怪物行为: ["actions"],
       词条信息: ["dataSources"],
+      关联数据: ["createdByAccountId","updatedByAccountId"]
     },
     table: {
       columnsDef: [
@@ -384,10 +392,15 @@ export const wikiConfig: WikiConfig = {
       },
     },
     form: {
-      hiddenFields: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
+      fieldGenerator: {
+        actions: (field, dictionary, dataSchema) => { 
+          return (<LogicEditor data={field().state.value} schema={MemberBaseNestedSchema} targetSchema={MemberBaseNestedSchema} setData={(data) => field().setValue(data)} state={true} />)
+        }
+      }
     },
     card: {
-      hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+      hiddenFields: ["id"],
     },
   },
   player_weapon: {
@@ -411,10 +424,10 @@ export const wikiConfig: WikiConfig = {
     card: {
       hiddenFields: [],
       fieldGenerator: {
-        name: (key, value, dictionary) => (
+        name: (data, key, dictionary) => (
           <div class="text-accent-color flex flex-col gap-1">
             <span>
-              {key}: {value} --- {dictionary.key}
+              {key}: {data[key]} --- {dictionary.fields[key].key}
             </span>
           </div>
         ),

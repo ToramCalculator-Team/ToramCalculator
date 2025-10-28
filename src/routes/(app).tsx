@@ -8,7 +8,8 @@ import { BabylonBg } from "~/components/effects/babylonBg";
 import hotkeys from "hotkeys-js";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { ensureLocalAccount } from "~/lib/localAccount";
-import { CardGroup } from "~/components/features/cardGroup";
+import { CardGroup } from "~/components/business/card/CardGroup";
+import { FormGroup } from "~/components/business/form/FormGroup";
 import { repositoryMethods } from "@db/generated/repositories";
 import { getDB } from "@db/repositories/database";
 import { getPrimaryKeys } from "@db/repositories/untils";
@@ -166,6 +167,7 @@ export default function AppMainContet(props: ParentProps) {
       <Setting />
       <LoginDialog />
       <CardGroup />
+      <FormGroup />
     </MediaProvider>
   );
 }

@@ -984,6 +984,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "防具的名称",
+          formFieldDescription: "请输入防具名称",
+        },
         baseAbi: {
           key: "基础防御",
           tableFieldDescription: "防具的基础防御值",
@@ -1297,6 +1302,11 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "消耗品的名称",
+          formFieldDescription: "请输入消耗品名称",
+        },
         type: {
           key: "类型",
           tableFieldDescription: "消耗品类型",
@@ -1337,6 +1347,11 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "锻晶",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "锻晶的名称",
+          formFieldDescription: "请输入锻晶名称",
+        },
         type: {
           key: "类型",
           tableFieldDescription: "锻晶的类型",
@@ -1523,6 +1538,11 @@ const dictionary: dictionary = {
     material: {
       selfName: "素材",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "素材的名称",
+          formFieldDescription: "请输入素材名称",
+        },
         type: {
           key: "类型",
           tableFieldDescription: "素材的类型",
@@ -1865,6 +1885,11 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加装备",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "追加装备的名称",
+          formFieldDescription: "请输入追加装备名称",
+        },
         baseAbi: {
           key: "基础防御",
           tableFieldDescription: "基础防御",
@@ -2653,6 +2678,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装备",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "特殊装备的名称",
+          formFieldDescription: "请输入特殊装备名称",
+        },
         baseAbi: {
           key: "基础防御",
           tableFieldDescription: "基础防御",
@@ -2933,6 +2963,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        name: {
+          key: "名称",
+          tableFieldDescription: "武器的名称",
+          formFieldDescription: "请输入武器名称",
+        },
         type: {
           key: "类型",
           tableFieldDescription: "武器的类型",

@@ -990,7 +990,7 @@ export function LogicEditor(props: LogicEditorProps) {
         // 初始化 Schema 积木生成器
         // 创建积木生成器并注册积木
         const schemaBlockGenerator = new SchemaBlockGenerator(props.schema, props.targetSchema);
-        console.log("✅ Schema 积木已生成:", schemaBlockGenerator.getBlockIds());
+        // console.log("✅ Schema 积木已生成:", schemaBlockGenerator.getBlockIds());
         
         let workerSpace = inject(div, injectionOptions);
         const data = props.data;
@@ -1008,5 +1008,5 @@ export function LogicEditor(props: LogicEditorProps) {
     ),
   );
 
-  return <div id="blocklyDiv" ref={setRef} class={props.class ? ` ` + " " + props.class : `h-full w-full`} />;
+  return <div id="blocklyDiv" ref={setRef} class={props.class ? ` ` + " " + props.class : `h-full w-full min-h-24`} />;
 }

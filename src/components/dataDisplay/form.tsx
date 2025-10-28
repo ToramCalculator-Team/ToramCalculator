@@ -154,8 +154,8 @@ export const Form = <T extends Record<string, unknown>>(props: {
             )}
           >
             {([groupName, keys]) => (
-              <section class="FieldGroup flex w-full flex-col gap-2">
-                <h3 class="text-accent-color flex items-center gap-2 font-bold">
+              <section class="FieldGroup flex px-1 w-full flex-col gap-2">
+                <h3 class="text-accent-color px-3 py-2 flex items-center gap-2">
                   {groupName}
                   <div class="Divider bg-dividing-color h-px w-full flex-1" />
                 </h3>

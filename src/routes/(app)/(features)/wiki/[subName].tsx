@@ -13,12 +13,13 @@ import { DB } from "@db/generated/zod/index";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { MediaContext } from "~/lib/contexts/Media";
 import { Dialog } from "~/components/containers/dialog";
-import { type WikiConfig, wikiConfig } from "./wikiConfig";
+import { type DataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { setWikiStore, wikiStore } from "./store";
+import { repositoryMethods } from "@db/generated/repositories";
+import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
+import { getPrimaryKeyFields } from "@db/generated/database-schema";
 
 export default function WikiSubPage() {
-  // const start = performance.now();
-  // console.log("WikiSubPage start", start);
   const media = useContext(MediaContext);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
@@ -30,34 +31,23 @@ export default function WikiSubPage() {
   const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(false);
   const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
-  const [dataConfig, setDataConfig] = createSignal<any>();
-
   const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
+
+  const [dataConfig, setDataConfig] = createSignal<DataConfig[keyof DataConfig] | undefined>();
 
   // 监听url参数变化, 初始化页面状态
   createEffect(
     on(
       () => params.subName,
       () => {
-        // const start = performance.now();
-        // console.log("Effect start", start);
         console.log("Url参数：", params.subName);
         if (params.subName in defaultData) {
-          const wikiType = params.subName as keyof DB;
+          const tabkeName = params.subName as keyof DB;
           // 初始化页面状态
-          setWikiStore("type", wikiType);
-          setWikiStore("table", {
-            globalFilterStr: "",
-            columnVisibility: {},
-            configSheetIsOpen: false,
-          });
-          setWikiStore("form", {
-            data: undefined,
-            isOpen: false,
-          });
+          setWikiStore("type", tabkeName);
           setIsMainContentFullscreen(false);
           setActiveBannerIndex(0);
-          setDataConfig(wikiConfig[wikiType]);
+          setDataConfig(DATA_CONFIG[wikiStore.type]);
         } else {
           navigate(`/404`);
         }
@@ -192,11 +182,12 @@ export default function WikiSubPage() {
                         size="sm"
                         icon={<Icons.Outline.CloudUpload />}
                         class="flex bg-transparent lg:hidden"
-                        onClick={() => {
-                          setWikiStore("form", {
-                            isOpen: true,
-                          });
-                        }}
+                        onClick={() =>
+                          setStore("pages", "formGroup", store.pages.formGroup.length, {
+                            type: wikiStore.type,
+                            data: defaultData[wikiStore.type],
+                          })
+                        }
                       ></Button>
                     </Show>
                     <Button // 仅移动端显示
@@ -210,8 +201,9 @@ export default function WikiSubPage() {
                         icon={<Icons.Outline.CloudUpload />}
                         class="hidden lg:flex"
                         onClick={() => {
-                          setWikiStore("form", {
-                            isOpen: true,
+                          setStore("pages", "formGroup", store.pages.formGroup.length, {
+                            type: wikiStore.type,
+                            data: defaultData[wikiStore.type],
                           });
                         }}
                       >
@@ -311,14 +303,18 @@ export default function WikiSubPage() {
                 />
               </div>
               <Show
-                when={validDataConfig().main}
-                fallback={VirtualTable({
-                  dataFetcher: validDataConfig().table.dataFetcher,
+                when={wikiPageConfig[wikiStore.type]?.mainContent}
+                fallback={VirtualTable<DB[typeof wikiStore.type]>({
+                  primaryKeyField: getPrimaryKeyFields(wikiStore.type)[0],
+                  dataFetcher: async () => (await repositoryMethods[wikiStore.type].selectAll?.()) ?? [],
+                  // @ts-ignore-next-line  数组联合类型问题，暂时忽略
                   columnsDef: validDataConfig().table.columnsDef,
+                  // @ts-ignore-next-line  数组联合类型问题，暂时忽略
                   hiddenColumnDef: validDataConfig().table.hiddenColumnDef,
                   tdGenerator: validDataConfig().table.tdGenerator,
+                  // @ts-ignore-next-line  数组联合类型问题，暂时忽略
                   defaultSort: validDataConfig().table.defaultSort,
-                  dictionary: validDataConfig().table.dictionary(dictionary()),
+                  dictionary: dictionary().db[wikiStore.type],
                   globalFilterStr: () => wikiStore.table.globalFilterStr,
                   columnHandleClick: (id) =>
                     setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
@@ -331,8 +327,32 @@ export default function WikiSubPage() {
                     }
                   },
                 })}
+                // 用jsx方式调用时不会刷新内容，不知道为什么
+                // fallback={
+                //   <VirtualTable<DB[typeof wikiStore.type]>
+                //     primaryKeyField={getPrimaryKeyFields(wikiStore.type)[0]}
+                //     dataFetcher={async () => (await repositoryMethods[wikiStore.type].selectAll?.()) ?? []}
+                //     columnsDef={validDataConfig().table.columnsDef}
+                //     hiddenColumnDef={validDataConfig().table.hiddenColumnDef}
+                //     tdGenerator={validDataConfig().table.tdGenerator}
+                //     defaultSort={validDataConfig().table.defaultSort}
+                //     dictionary={dictionary().db[wikiStore.type]}
+                //     globalFilterStr={() => wikiStore.table.globalFilterStr}
+                //     columnHandleClick={(id) =>
+                //       setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }])
+                //     }
+                //     columnVisibility={wikiStore.table.columnVisibility}
+                //     onColumnVisibilityChange={(updater) => {
+                //       if (typeof updater === "function") {
+                //         setWikiStore("table", {
+                //           columnVisibility: updater(wikiStore.table.columnVisibility),
+                //         });
+                //       }
+                //     }}
+                //   />
+                // }
               >
-                {validDataConfig().main?.(dictionary(), (id) =>
+                {wikiPageConfig[wikiStore.type]?.mainContent?.(dictionary(), (id) =>
                   setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
                 )}
               </Show>
@@ -417,14 +437,6 @@ export default function WikiSubPage() {
               </Motion.div>
             </Show>
           </Presence>
-
-          {/* 表单 */}
-          <Sheet state={wikiStore.form.isOpen} setState={(state) => setWikiStore("form", { isOpen: state })}>
-            {validDataConfig().form({
-              data: wikiStore.form.data,
-              dic: dictionary(),
-            })}
-          </Sheet>
 
           {/* 表格配置 */}
           <Dialog

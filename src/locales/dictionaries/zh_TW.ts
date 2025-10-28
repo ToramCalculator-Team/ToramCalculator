@@ -984,6 +984,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "防具的名稱",
+          formFieldDescription: "請輸入防具名稱",
+        },
         baseAbi: {
           key: "基礎防禦",
           tableFieldDescription: "防具的基礎防禦值",
@@ -1297,6 +1302,11 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "消耗品的名稱",
+          formFieldDescription: "請輸入消耗品名稱",
+        },
         type: {
           key: "類型",
           tableFieldDescription: "消耗品的類型",
@@ -1337,6 +1347,11 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "晶石",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "晶石的名稱",
+          formFieldDescription: "請輸入晶石名稱",
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1523,6 +1538,11 @@ const dictionary: dictionary = {
     material: {
       selfName: "材料",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "材料的名稱",
+          formFieldDescription: "請輸入材料名稱",
+        },
         type: {
           key: "類型",
           tableFieldDescription: "材料的類型",
@@ -1865,6 +1885,11 @@ const dictionary: dictionary = {
     option: {
       selfName: "追加裝備",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "追加裝備的名稱",
+          formFieldDescription: "請輸入追加裝備名稱",
+        },
         baseAbi: {
           key: "基礎防禦",
           tableFieldDescription: "追加裝備的基礎防禦值",
@@ -2698,6 +2723,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊裝備",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "特殊裝備的名稱",
+          formFieldDescription: "請輸入特殊裝備名稱",
+        },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
@@ -2978,6 +3008,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        name: {
+          key: "名稱",
+          tableFieldDescription: "武器的名稱",
+          formFieldDescription: "請輸入武器名稱",
+        },
         type: {
           key: "類型",
           tableFieldDescription: "武器的類型，包括主武器和副武器",

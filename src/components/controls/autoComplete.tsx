@@ -57,6 +57,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
 
   // 所有可选项
   const [options, { refetch: refetchOptions }] = createResource(async () => {
+    console.log("Autocomplete refetchOptions", props.table, repositoryMethods[props.table]);
     const options = (await repositoryMethods[props.table].selectAll?.()) as T[];
 
     // 动态确定显示字段（只在第一次获取时确定）

@@ -6,7 +6,7 @@
 import { DB, DBSchema } from "@db/generated/zod/index";
 import { createResource, Show, Index, createMemo, createEffect, createSignal, JSX, on } from "solid-js";
 import { Presence, Motion } from "solid-motionone";
-import { type WikiConfig, wikiConfig } from "~/routes/(app)/(features)/wiki/wikiConfig";
+import { type DataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { setStore, Store, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { repositoryMethods } from "@db/generated/repositories";
@@ -59,6 +59,7 @@ export const CardGroup = () => {
         >
           <Index each={cachedCardDatas()}>
             {(cardData, index) => {
+              console.log("cardData", cardData());
               const cardGroupItem = store.pages.cardGroup[index];
               return (
                 <Card
@@ -73,10 +74,10 @@ export const CardGroup = () => {
                         data={cardData()}
                         dataSchema={DBSchema[cardGroupItem.type]}
                         dictionary={dictionary().db[cardGroupItem.type]}
-                        hiddenFields={wikiConfig[cardGroupItem.type]?.card.hiddenFields}
-                        fieldGroupMap={wikiConfig[cardGroupItem.type]?.fieldGroupMap}
+                        hiddenFields={DATA_CONFIG[cardGroupItem.type]?.card.hiddenFields}
+                        fieldGroupMap={DATA_CONFIG[cardGroupItem.type]?.fieldGroupMap}
                         // @ts-ignore-next-line  这里是TypeScript 的函数参数逆变性问题，暂时忽略
-                        fieldGenerator={wikiConfig[cardGroupItem.type]?.card.fieldGenerator}
+                        fieldGenerator={DATA_CONFIG[cardGroupItem.type]?.card.fieldGenerator}
                       />
                     )}
                   </Show>

@@ -38,29 +38,12 @@ import { debounce } from "@solid-primitives/scheduled";
 import type { Column, Table as TanStackTable } from "@tanstack/solid-table";
 import { LoadingBar } from "../controls/loadingBar";
 
-// 获取表头样式
-export const getCommonPinningStyles = <T,>(column: Column<T>): JSX.CSSProperties => {
-  const isPinned = column.getIsPinned();
-  const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-  const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
-  const styles: JSX.CSSProperties = {
-    position: isPinned ? "sticky" : "relative",
-    width: column.getSize().toString(),
-    "z-index": isPinned ? 1 : 0,
-  };
-  if (isPinned) {
-    styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-    styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-    styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
-  }
-  return styles;
-};
-
-export function VirtualTable<T extends Record<string, unknown>>(props: {
+export interface VirtualTableProps<T extends Record<string, unknown>> {
   measure?: {
     estimateSize: number;
   };
   dataFetcher: () => Promise<T[]>;
+  primaryKeyField: string;
   columnsDef: ColumnDef<T>[];
   hiddenColumnDef: Array<keyof T>;
   tdGenerator: Partial<{
@@ -73,8 +56,9 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   onRefetch?: (refetch: () => void) => void;
-}) {
-  // console.log("VirtualTable", props);
+}
+
+export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
   //   const start = performance.now();
   //   console.log("virtualTable start", start);
   const media = useContext(MediaContext);
@@ -89,7 +73,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
 
   // 暴露 refetch 方法
   createEffect(() => {
-    console.log("VirtualTable createEffect");
+    console.log("表格已重新获取数据");
     props.onRefetch?.(refetchData);
   });
 
@@ -156,7 +140,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
     ),
   );
 
-  const handleMouseDown = (id: string, e: MouseEvent) => {
+  const handleMouseDown = (primaryKey: string, e: MouseEvent) => {
     if (e.button !== 0) return;
     const startX = e.pageX;
     const startY = e.pageY;
@@ -188,7 +172,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       if (!isDragging) {
-        props.columnHandleClick(id);
+        props.columnHandleClick(primaryKey);
       }
     };
 
@@ -313,7 +297,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                           {...{
                             onClick: header.column.getToggleSortingHandler(),
                           }}
-                          class={`hover:bg-area-color text-nowrap flex-none px-6 py-3 text-left font-normal lg:py-6 ${
+                          class={`hover:bg-area-color flex-none px-6 py-3 text-left font-normal text-nowrap lg:py-6 ${
                             header.column.getCanSort() ? "cursor-pointer select-none" : ""
                           }`}
                         >
@@ -374,16 +358,16 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
                           position: "absolute",
                           transform: `translateY(${virtualRow.start}px)`,
                         }}
-                        onMouseDown={(e) => handleMouseDown(row.getValue("id"), e)}
+                        onMouseDown={(e) => handleMouseDown(row.getValue(props.primaryKeyField), e)}
                         class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
                       >
                         <For
                           each={row
                             .getVisibleCells()
-                            .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
+                            .filter((cell) => !props.hiddenColumnDef.includes(cell.column.id))}
                         >
                           {(cell) => {
-                            const columnId = cell.column.id as keyof T;
+                            const columnId = cell.column.id;
                             let columnKey = columnId;
                             const isEnum = "enumMap" in props.dictionary.fields[columnId];
                             try {
@@ -425,3 +409,21 @@ export function VirtualTable<T extends Record<string, unknown>>(props: {
     </>
   );
 }
+
+// 获取表头样式
+export const getCommonPinningStyles = <T,>(column: Column<T>): JSX.CSSProperties => {
+  const isPinned = column.getIsPinned();
+  const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
+  const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+  const styles: JSX.CSSProperties = {
+    position: isPinned ? "sticky" : "relative",
+    width: column.getSize().toString(),
+    "z-index": isPinned ? 1 : 0,
+  };
+  if (isPinned) {
+    styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
+    styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
+    styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+  }
+  return styles;
+};

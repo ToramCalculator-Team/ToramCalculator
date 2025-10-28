@@ -17,8 +17,8 @@ import { getDictionary } from "~/locales/i18n";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 import { store, setStore } from "~/store";
 import { DB } from "@db/generated/zod/index";
-import { 
-  isForeignKeyField, 
+import {
+  isForeignKeyField,
   getForeignKeyFields,
   getPrimaryKeyFields,
   isPrimaryKeyField,
@@ -63,18 +63,17 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
     return getPrimaryKeyFields(props.tableName);
   });
 
-
   // 字段组生成器
   const fieldGroupGenerator = (fieldGroup: Array<keyof DB[T]>) => (
     <For each={fieldGroup}>
       {(key) => {
         if (props.hiddenFields?.includes(key)) return null;
-        
+
         const fieldName = String(key);
         const schemaFieldValue = props.dataSchema?.shape[key];
         const fieldGenerator = props.fieldGenerator?.[key];
         const hasGenerator = !!fieldGenerator;
-        
+
         // 检查是否为外键字段
         const isForeignKey = isForeignKeyField(props.tableName, fieldName);
         const isPrimaryKey = isPrimaryKeyField(props.tableName, fieldName);
@@ -156,28 +155,30 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                   } else if (isForeignKey) {
                     // 外键字段使用 AutoComplete
                     const referencedTable = getForeignKeyReference(props.tableName, fieldName);
-                    
+                    console.log("referencedTable", referencedTable);
+
                     if (referencedTable) {
-                      
                       return (
                         <Input
                           title={referencedTable.table}
                           description={`选择 ${referencedTable.table} 记录`}
                           state={fieldInfo(field())}
-                          class="border-dividing-color bg-primary-color rounded-md border w-full"
+                          class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <Autocomplete
                             id={fieldName}
-                            initialValue={{ id: field().state.value } as any}
+                            initialValue={{ id: field().state.value }}
                             setValue={(value: any) => field().setValue(value.id)}
-                            table={referencedTable as any}
+                            table={referencedTable.table}
                             valueMap={(value: any) => ({ id: value.id })}
                           />
                         </Input>
                       );
                     }
                   } else {
-                    return <DBFieldRenderer field={field} dictionary={props.dictionary} dataSchema={props.dataSchema} />;
+                    return (
+                      <DBFieldRenderer field={field} dictionary={props.dictionary} dataSchema={props.dataSchema} />
+                    );
                   }
                 }}
               </form.Field>
@@ -191,9 +192,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">
-          {props.dictionary.selfName ?? `编辑 ${props.tableName}`}
-        </h1>
+        <h1 class="FormTitle text-2xl font-black">{props.dictionary.selfName ?? `编辑 ${props.tableName}`}</h1>
       </div>
       <form
         onSubmit={(e) => {
@@ -201,10 +200,10 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
           e.stopPropagation();
           form.handleSubmit();
         }}
-        class="Form bg-area-color flex flex-col gap-3 rounded p-3 portrait:rounded-b-none"
+        class="Form bg-area-color flex flex-col gap-3 p-3 portrait:rounded-t"
       >
-        <Show 
-          when={props.fieldGroupMap} 
+        <Show
+          when={props.fieldGroupMap}
           fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[T]>)}
         >
           <For
@@ -214,7 +213,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
           >
             {([groupName, keys]) => (
               <section class="FieldGroup flex w-full flex-col gap-2">
-                <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                <h3 class="text-accent-color flex items-center gap-2 px-3 py-2">
                   {groupName}
                   <div class="Divider bg-dividing-color h-px w-full flex-1" />
                 </h3>
@@ -275,13 +274,12 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
   const fieldName = props.field().name;
   let inputTitle = props.dictionary.selfName;
   let inputDescription = "";
-  
+
   try {
     inputTitle = (props.dictionary.fields as any)[fieldName].key;
     inputDescription = (props.dictionary.fields as any)[fieldName].formFieldDescription;
-  } catch (error) {
-  }
-  
+  } catch (error) {}
+
   const fieldClass = "border-dividing-color bg-primary-color rounded-md border w-full";
 
   switch ((props.dataSchema.shape as any)[fieldName].type) {

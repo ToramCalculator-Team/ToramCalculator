@@ -4,7 +4,7 @@ import { getZodType } from "~/lib/utils/zodTools";
 import { Dic, EnumFieldDetail } from "~/locales/type";
 
 export type FieldGenMap<T> = Partial<{
-  [K in keyof T]: (key: K, value: T[K], dictionary: Dic<T>["fields"][K]) => JSX.Element;
+  [K in keyof T]: (data: T, key: K, dictionary: Dic<T>) => JSX.Element;
 }>;
 
 export function ObjRender<T extends Record<string, any>>(props: {
@@ -32,7 +32,7 @@ export function ObjRender<T extends Record<string, any>>(props: {
               if (props.dataSchema?.shape[key].type === "array") {
                 const content = Object.entries(val as Record<string, unknown>);
                 return props.dictionary && hasGenerator ? (
-                  props.fieldGenerator?.[key]?.(key, val, props.dictionary.fields[key])
+                  props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
                 ) : (
                   <div class="Field flex flex-col gap-2">
                     <span class="Title text-main-text-color text-nowrap">{String(fieldName)}</span>
@@ -54,7 +54,7 @@ export function ObjRender<T extends Record<string, any>>(props: {
               }
 
               return props.dictionary && hasGenerator ? (
-                props.fieldGenerator?.[key]?.(key, val, props.dictionary.fields[key])
+                props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
               ) : (
                 <div class="Field flex gap-2">
                   <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:
@@ -100,7 +100,7 @@ export function ObjRender<T extends Record<string, any>>(props: {
                     if (kind === "object" || kind === "array") {
                       const content = Object.entries(val as Record<string, unknown>);
                       return props.dictionary && hasGenerator ? (
-                        props.fieldGenerator?.[key]?.(key, val, props.dictionary.fields[key])
+                        props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
                       ) : (
                         <div class="Field flex flex-col gap-2">
                           <span class="Title text-main-text-color text-nowrap">{String(fieldName)}</span>
@@ -122,7 +122,7 @@ export function ObjRender<T extends Record<string, any>>(props: {
                     }
 
                     return props.dictionary && hasGenerator ? (
-                      props.fieldGenerator?.[key]?.(key, val, props.dictionary.fields[key])
+                      props.fieldGenerator?.[key]?.(props.data, key, props.dictionary)
                     ) : (
                       <div class="Field flex gap-2">
                         <span class="text-main-text-color text-nowrap">{String(fieldName)}</span>:

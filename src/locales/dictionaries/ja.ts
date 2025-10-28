@@ -989,35 +989,40 @@ const dictionary: dictionary = {
     armor: {
       selfName: "防具",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "防具の名前",
+          formFieldDescription: "防具の名前を入力してください。",
+        },
         baseAbi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "基礎防御",
+          tableFieldDescription: "防具の基礎防御",
+          formFieldDescription: "防具の基礎防御を入力してください。",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "付与属性",
+          tableFieldDescription: "防具の付与属性",
+          formFieldDescription: "防具の付与属性を入力してください。",
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色A",
+          tableFieldDescription: "防具の色A",
+          formFieldDescription: "防具の色Aを選択してください。",
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色B",
+          tableFieldDescription: "防具の色B",
+          formFieldDescription: "防具の色Bを選択してください。",
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色C",
+          tableFieldDescription: "防具の色C",
+          formFieldDescription: "防具の色Cを選択してください。",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "物品ID",
+          tableFieldDescription: "防具の物品ID",
+          formFieldDescription: "防具の物品IDを入力してください。",
         }
       },
       description: ""
@@ -1302,70 +1307,80 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "消耗品",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "武器の名前",
+          formFieldDescription: "武器の名前を入力してください。",
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "タイプ",
+          tableFieldDescription: "消耗品のタイプ",
+          formFieldDescription: "消耗品のタイプを選択してください。",
           enumMap: {
-            Hit: "",
-            MaxHp: "",
-            MaxMp: "",
-            pAtk: "",
-            mAtk: "",
-            Aspd: "",
-            Cspd: "",
-            Flee: "",
-            EleStro: "",
-            EleRes: "",
-            pRes: "",
-            mRes: ""
+            Hit: "ヒット",
+            MaxHp: "最大HP",
+            MaxMp: "最大MP",
+            pAtk: "物理攻撃力",
+            mAtk: "魔法攻撃力",
+            Aspd: "攻撃速度",
+            Cspd: "クリティカルスピード",
+            Flee: "回避",
+            EleStro: "元素耐性",
+            EleRes: "元素耐性",
+            pRes: "物理耐性",
+            mRes: "魔法耐性",
           }
         },
         effectDuration: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "効果持続時間",
+          tableFieldDescription: "消耗品の効果持続時間",
+          formFieldDescription: "消耗品の効果持続時間を入力してください。",
         },
         effects: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "効果",
+          tableFieldDescription: "消耗品の効果",
+          formFieldDescription: "消耗品の効果を入力してください。",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "物品ID",
+          tableFieldDescription: "消耗品の物品ID",
+          formFieldDescription: "消耗品の物品IDを入力してください。",
         }
       },
-      description: ""
+      description: "消耗品情報"
     },
     crystal: {
       selfName: "クリスタル",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "クリスタルの名前",
+          formFieldDescription: "クリスタルの名前を入力してください。",
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "タイプ",
+          tableFieldDescription: "クリスタルのタイプ",
+          formFieldDescription: "クリスタルのタイプを選択してください。",
           enumMap: {
-            NormalCrystal: "",
-            WeaponCrystal: "",
-            ArmorCrystal: "",
-            OptionCrystal: "",
-            SpecialCrystal: ""
+            NormalCrystal: "通常クリスタル",
+            WeaponCrystal: "武器クリスタル",
+            ArmorCrystal: "防具クリスタル",
+            OptionCrystal: "追加装備クリスタル",
+            SpecialCrystal: "特殊装備クリスタル",
           }
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "付与属性",
+          tableFieldDescription: "クリスタルの付与属性",
+          formFieldDescription: "クリスタルの付与属性を入力してください。",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "物品ID",
+          tableFieldDescription: "クリスタルの物品ID",
+          formFieldDescription: "クリスタルの物品IDを入力してください。",
         }
       },
-      description: ""
+      description: "クリスタル情報"
     },
     drop_item: {
       selfName: "ドロップアイテム",
@@ -1528,17 +1543,22 @@ const dictionary: dictionary = {
     material: {
       selfName: "素材",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "素材の名前",
+          formFieldDescription: "素材の名前を入力してください。",
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
+          key: "タイプ",
+          tableFieldDescription: "素材のタイプ",
+          formFieldDescription: "素材のタイプを選択してください。",
           enumMap: {
-            Metal: "",
-            Cloth: "",
-            Beast: "",
-            Wood: "",
-            Drug: "",
-            Magic: ""
+            Metal: "金属",
+            Cloth: "布",
+            Beast: "野獣",
+            Wood: "木",
+            Drug: "薬",
+            Magic: "魔法",
           }
         },
         ptValue: {
@@ -1866,38 +1886,43 @@ const dictionary: dictionary = {
     option: {
       selfName: "オプション装備",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "オプション装備の名前",
+          formFieldDescription: "オプション装備の名前を入力してください。",
+        },  
         baseAbi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "基礎防御",
+          tableFieldDescription: "オプション装備の基礎防御",
+          formFieldDescription: "オプション装備の基礎防御を入力してください。",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "付与属性",
+          tableFieldDescription: "オプション装備の付与属性",
+          formFieldDescription: "オプション装備の付与属性を入力してください。",
         },
         colorA: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色A",
+          tableFieldDescription: "オプション装備の色A",
+          formFieldDescription: "オプション装備の色Aを選択してください。",
         },
         colorB: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色B",
+          tableFieldDescription: "オプション装備の色B",
+          formFieldDescription: "オプション装備の色Bを選択してください。",
         },
         colorC: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "色C",
+          tableFieldDescription: "オプション装備の色C",
+          formFieldDescription: "オプション装備の色Cを選択してください。",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "物品ID",
+          tableFieldDescription: "オプション装備の物品ID",
+          formFieldDescription: "オプション装備の物品IDを入力してください。",
         }
       },
-      description: ""
+      description: "オプション装備情報"
     },
     player: {
       selfName: "プレイヤー",
@@ -2699,23 +2724,28 @@ const dictionary: dictionary = {
     special: {
       selfName: "特殊装備",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "特殊装備の名前",
+          formFieldDescription: "特殊装備の名前を入力してください。",
+        },
         baseAbi: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "基礎防御",
+          tableFieldDescription: "特殊装備の基礎防御",
+          formFieldDescription: "特殊装備の基礎防御を入力してください。",
         },
         modifiers: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "付与属性",
+          tableFieldDescription: "特殊装備の付与属性",
+          formFieldDescription: "特殊装備の付与属性を入力してください。",
         },
         itemId: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: ""
+          key: "物品ID",
+          tableFieldDescription: "特殊装備の物品ID",
+          formFieldDescription: "特殊装備の物品IDを入力してください。",
         }
       },
-      description: ""
+      description: "特殊装備情報"
     },
     statistic: {
       selfName: "統計",
@@ -2979,25 +3009,16 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "武器",
       fields: {
+        name: {
+          key: "名前",
+          tableFieldDescription: "武器の名前",
+          formFieldDescription: "武器の名前を入力してください。",
+        },
         type: {
-          key: "",
-          tableFieldDescription: "",
-          formFieldDescription: "",
-          enumMap: {
-            OneHandSword: "",
-            TwoHandSword: "",
-            Bow: "",
-            Bowgun: "",
-            Rod: "",
-            Magictool: "",
-            Knuckle: "",
-            Halberd: "",
-            Katana: "",
-            Arrow: "",
-            ShortSword: "",
-            NinjutsuScroll: "",
-            Shield: ""
-          }
+          key: "タイプ",
+          tableFieldDescription: "武器のタイプ",
+          formFieldDescription: "武器のタイプを選択してください。",
+          enumMap: weaponType
         },
         baseAbi: {
           key: "",

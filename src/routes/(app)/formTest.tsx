@@ -8,7 +8,7 @@ import { fieldInfo, Form } from "~/components/dataDisplay/form";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { Input } from "~/components/controls/input";
 import { MemberBaseNestedSchema } from "~/components/features/simulator/core/member/MemberBaseSchema";
-import { DBForm } from "~/components/business/form/Form";
+import { DBForm } from "~/components/business/form/DBFormRenderer";
 import { selectCharacterById } from "@db/generated/repositories/character";
 import { CharacterSchema } from "@db/generated/zod";
 
